@@ -1,0 +1,31 @@
+[package]
+name = "ironcalc"
+version = "0.1.0"
+authors = ["Nicolás Hatcher <nicolas@theuniverse.today>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+zip = "0.5"
+roxmltree = "0.13.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+# Uses `../../engine/base` when used locally, and uses
+# the inicated version from crates.io when published.
+# https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
+ironcalc_base = { path = "../base", version = "0.1.0" }
+itertools = "0.10.5"
+chrono = "0.4"
+
+[dev-dependencies]
+uuid = { version = "1.2.2", features = ["serde", "v4"] }
+
+[lib]
+name = "ironcalc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "test"
+path = "src/bin/test.rs"

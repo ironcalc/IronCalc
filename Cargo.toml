@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+
+members = [
+  "base",
+  "xlsx",
+]
+
+exclude = [
+  "generate_locale",
+]
+
+[profile.release]
+lto = true

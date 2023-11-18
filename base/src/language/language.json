@@ -1,0 +1,82 @@
+{
+    "en": {
+        "booleans": {
+            "true": "TRUE",
+            "false": "FALSE"
+        },
+        "errors":{
+            "ref": "#REF!",
+            "name": "#NAME?",
+            "value": "#VALUE!",
+            "div": "#DIV/0!",
+            "na": "#N/A",
+            "num": "#NUM!",
+            "error": "#ERROR!",
+            "nimpl": "#N/IMPL!",
+            "spill": "#SPILL!",
+            "null": "#NULL!",
+            "calc": "#CALC!",
+            "circ": "#CIRC!"
+        }
+    },
+    "de": {
+        "booleans": {
+            "true": "WAHR",
+            "false": "FALSCH"
+        },
+        "errors":{
+            "ref": "#BEZUG!",
+            "name": "#NAME?",
+            "value": "#WERT!",
+            "div": "#DIV/0!",
+            "na": "#NV",
+            "num": "#ZAHL!",
+            "error": "#ERROR!",
+            "nimpl": "#N/IMPL!",
+            "spill": "#ÜBERLAUF!",
+            "null": "#NULL!",
+            "calc": "#CALC!",
+            "circ": "#CIRC!"
+          }
+    },
+    "fr": {
+        "booleans": {
+            "true": "VRAI",
+            "false": "FAUX"
+        },
+        "errors":{
+            "ref": "#REF!",
+            "name": "#NOM?",
+            "value": "#VALEUR!",
+            "div": "#DIV/0!",
+            "na": "#N/A",
+            "num": "#NOMBRE!",
+            "error": "#ERROR!",
+            "nimpl": "#N/IMPL!",
+            "spill": "#SPILL!",
+            "null": "#NULL!",
+            "calc": "#CALC!",
+            "circ": "#CIRC!"
+        }
+    },
+    "es": {
+        "booleans": {
+            "true": "VERDADERO",
+            "false": "FALSO"
+        },
+        "errors": {
+            "ref": "#¡REF!",
+            "name": "#¿NOMBRE?",
+            "value": "#¡VALOR!",
+            "div": "#¡DIV/0!",
+            "na": "#N/A",
+            "num": "#¡NUM!",
+            "error": "#ERROR!",
+            "nimpl": "#N/IMPL!",
+            "spill": "#SPILL!",
+            "null": "#NULL!",
+            "calc": "#CALC!",
+            "circ": "#CIRC!"
+        }
+    }
+}
