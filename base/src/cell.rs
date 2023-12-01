@@ -127,7 +127,6 @@ impl Cell {
             Cell::BooleanCell { .. } => CellType::LogicalValue,
             Cell::NumberCell { .. } => CellType::Number,
             Cell::ErrorCell { .. } => CellType::ErrorValue,
-            // TODO: An empty string should likely be considered a Number (like an empty cell).
             Cell::SharedString { .. } => CellType::Text,
             Cell::CellFormula { .. } => CellType::Number,
             Cell::CellFormulaBoolean { .. } => CellType::LogicalValue,

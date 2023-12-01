@@ -651,3 +651,13 @@ pub struct Border {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diagonal: Option<BorderItem>,
 }
+
+/// Information need to show a sheet tab in the UI
+/// The color is serialized only if it is not Color::None
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct SheetInfo {
+    pub name: String,
+    pub state: String,
+    pub sheet_id: u32,
+    pub color: Option<String>,
+}

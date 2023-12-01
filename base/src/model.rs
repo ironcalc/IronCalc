@@ -7,7 +7,7 @@ use std::vec::Vec;
 use crate::{
     calc_result::{CalcResult, CellReference, Range},
     cell::CellValue,
-    constants,
+    constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::token::{Error, OpCompare, OpProduct, OpSum, OpUnary},
     expressions::{
         parser::move_formula::{move_formula, MoveContext},
@@ -1207,7 +1207,6 @@ impl Model {
         }
     }
 
-    // FIXME: Can't put it in Workbook, because language is outside of workbook, sic!
     /// Gets the Excel Value (Bool, Number, String) of a cell
     pub fn get_cell_value_by_ref(&self, cell_ref: &str) -> Result<CellValue, String> {
         let cell_reference = match self.parse_reference(cell_ref) {
@@ -1221,7 +1220,6 @@ impl Model {
         self.get_cell_value_by_index(sheet_index, row, column)
     }
 
-    // FIXME: Can't put it in Workbook, because language is outside of workbook, sic!
     pub fn get_cell_value_by_index(
         &self,
         sheet_index: u32,
@@ -1238,7 +1236,6 @@ impl Model {
         Ok(cell_value)
     }
 
-    // FIXME: Can't put it in Workbook, because locale and language are outside of workbook, sic!
     pub fn formatted_cell_value(
         &self,
         sheet_index: u32,
@@ -1259,6 +1256,28 @@ impl Model {
         Ok(formatted_value)
     }
 
+    /// Returns a string with the cell content. If there is a formula returns the formula
+    /// If the cell is empty returns the empty string
+    /// Raises an error if there is no worksheet
+    pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        let cell = match worksheet.cell(row, column) {
+            Some(c) => c,
+            None => return Ok("".to_string()),
+        };
+        match cell.get_formula() {
+            Some(formula_index) => {
+                let formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
+                let cell_ref = CellReferenceRC {
+                    sheet: worksheet.get_name(),
+                    row,
+                    column,
+                };
+                Ok(format!("={}", to_string(formula, &cell_ref)))
+            }
+            None => Ok(cell.get_text(&self.workbook.shared_strings, &self.language)),
+        }
+    }
     /// Returns a list of all cells
     pub fn get_all_cells(&self) -> Vec<CellIndex> {
         let mut cells = Vec::new();
@@ -1316,7 +1335,6 @@ impl Model {
         Ok(())
     }
 
-    // FIXME: expect
     pub fn get_cell_style_index(&self, sheet: u32, row: i32, column: i32) -> i32 {
         // First check the cell, then row, the column
         let cell = self
@@ -1413,6 +1431,50 @@ impl Model {
             iso: iso.to_string(),
         };
         Ok(())
+    }
+
+    pub fn get_frozen_rows(&self, sheet: u32) -> Result<i32, String> {
+        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
+            Ok(worksheet.frozen_rows)
+        } else {
+            Err("Invalid sheet".to_string())
+        }
+    }
+
+    pub fn get_frozen_columns(&self, sheet: u32) -> Result<i32, String> {
+        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
+            Ok(worksheet.frozen_columns)
+        } else {
+            Err("Invalid sheet".to_string())
+        }
+    }
+
+    pub fn set_frozen_rows(&mut self, sheet: u32, frozen_rows: i32) -> Result<(), String> {
+        if let Some(worksheet) = self.workbook.worksheets.get_mut(sheet as usize) {
+            if frozen_rows < 0 {
+                return Err("Frozen rows cannot be negative".to_string());
+            } else if frozen_rows >= LAST_ROW {
+                return Err("Too many rows".to_string());
+            }
+            worksheet.frozen_rows = frozen_rows;
+            Ok(())
+        } else {
+            Err("Invalid sheet".to_string())
+        }
+    }
+
+    pub fn set_frozen_columns(&mut self, sheet: u32, frozen_columns: i32) -> Result<(), String> {
+        if let Some(worksheet) = self.workbook.worksheets.get_mut(sheet as usize) {
+            if frozen_columns < 0 {
+                return Err("Frozen columns cannot be negative".to_string());
+            } else if frozen_columns >= LAST_COLUMN {
+                return Err("Too many columns".to_string());
+            }
+            worksheet.frozen_columns = frozen_columns;
+            Ok(())
+        } else {
+            Err("Invalid sheet".to_string())
+        }
     }
 }
 
