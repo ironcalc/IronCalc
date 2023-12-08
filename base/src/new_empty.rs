@@ -362,6 +362,7 @@ impl Model {
 
         let mut model = Model {
             workbook,
+            shared_strings: HashMap::new(),
             parsed_formulas,
             parsed_defined_names: HashMap::new(),
             parser,

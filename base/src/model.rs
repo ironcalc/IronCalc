@@ -76,11 +76,14 @@ pub enum ParsedDefinedName {
 ///     * A Workbook: An internal representation of and Excel workbook
 ///     * Parsed Formulas: All the formulas in the workbook are parsed here (runtime only)
 ///     * A list of cells with its status (evaluating, evaluated, not evaluated)
+///     * A dictionary with the shared strings and their indices.
+///       This is an optimization for large files (~1 million rows)
 #[derive(Clone)]
 pub struct Model {
     pub workbook: Workbook,
     pub parsed_formulas: Vec<Vec<Node>>,
     pub parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
+    pub shared_strings: HashMap<String, usize>,
     pub parser: Parser,
     pub cells: HashMap<(u32, i32, i32), CellState>,
     pub locale: Locale,
@@ -778,10 +781,15 @@ impl Model {
 
         // FIXME: Add support for display languages
         let language = get_language("en").expect("").clone();
+        let mut shared_strings = HashMap::new();
+        for (index, s) in workbook.shared_strings.iter().enumerate() {
+            shared_strings.insert(s.to_string(), index);
+        }
 
         let mut model = Model {
             workbook,
             parsed_formulas,
+            shared_strings,
             parsed_defined_names: HashMap::new(),
             parser,
             cells,
@@ -1188,21 +1196,17 @@ impl Model {
     }
 
     fn set_cell_with_string(&mut self, sheet: u32, row: i32, column: i32, value: &str, style: i32) {
-        // Interestingly, `self.workbook.worksheet()` cannot be used because it would create two
-        // mutable borrows of worksheet. However, I suspect that lexical lifetimes silently help
-        // here, so there is no issue with inlined call.
         let worksheets = &mut self.workbook.worksheets;
         let worksheet = &mut worksheets[sheet as usize];
-        let shared_strings = &mut self.workbook.shared_strings;
-        let index = shared_strings.iter().position(|r| r == value);
-        match index {
+        match self.shared_strings.get(value) {
             Some(string_index) => {
-                worksheet.set_cell_with_string(row, column, string_index as i32, style);
+                worksheet.set_cell_with_string(row, column, *string_index as i32, style);
             }
             None => {
-                shared_strings.push(value.to_string());
-                let string_index = shared_strings.len() as i32 - 1;
-                worksheet.set_cell_with_string(row, column, string_index, style);
+                let string_index = self.workbook.shared_strings.len();
+                self.workbook.shared_strings.push(value.to_string());
+                self.shared_strings.insert(value.to_string(), string_index);
+                worksheet.set_cell_with_string(row, column, string_index as i32, style);
             }
         }
     }
