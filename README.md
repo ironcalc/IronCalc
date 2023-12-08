@@ -58,7 +58,7 @@ Major milestones:
 
 MVP stands for _Minimum Viable Product_
 
-### Version 0.5 or MVP (15 January 2024)
+## Version 0.5 or MVP (15 January 2024)
 
 Version 0.5 includes the engine, javascript and nodejs bindings and a web application
 
@@ -83,7 +83,7 @@ UI features of the web application (backed by the engine):
 * Resize rows and columns
 * Correct scrolling and navigation
 
-### Version 1.0 or Stable (December 2024)
+## Version 1.0 or Stable (December 2024)
 
 Minor milestones in the ROADMAD for version 1.0.0 (engine and UI):
 
@@ -99,6 +99,14 @@ Minor milestones in the ROADMAD for version 1.0.0 (engine and UI):
 * Full test coverage
 
 I will be creating issues during the first two months of 2024
+
+# Early testing
+
+An early preview of the technology running entirely in your browser:
+
+https://playground.ironcalc.com
+
+
 
 # License
 
