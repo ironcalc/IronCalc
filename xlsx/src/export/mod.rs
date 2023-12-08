@@ -70,8 +70,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     let workbook = &model.workbook;
     let mut zip = zip::ZipWriter::new(writer);
 
-    let options =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    let options = zip::write::FileOptions::default();
 
     // root folder
     zip.start_file("[Content_Types].xml", options)?;
