@@ -1,4 +1,4 @@
-//! This cate reads an xlsx file and transforms it into an internal representation ([`Model`]).
+//! This crate reads an xlsx file and transforms it into an internal representation ([`Model`]).
 //! An `xlsx` is a zip file containing a set of folders and `xml` files. The IronCalc json structure mimics the relevant parts of the Excel zip.
 //! Although the xlsx structure is quite complicated, it's essentials regarding the spreadsheet technology are easier to grasp.
 //!
