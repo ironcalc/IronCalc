@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["APPLICATION","APP_VERSION","IRONCALC_USER"],"enum":["Tz"]};

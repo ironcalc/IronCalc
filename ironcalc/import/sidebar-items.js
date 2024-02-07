@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["load_from_excel","load_model_from_xlsx"]};

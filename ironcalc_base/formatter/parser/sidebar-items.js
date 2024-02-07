@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ParsePart","TextToken"],"struct":["DatePart","Digit","ErrorPart","GeneralPart","NumberPart","Parser"]};

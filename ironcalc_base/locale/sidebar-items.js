@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_locale","get_locale_fix"],"struct":["Currency","CurrencyFormats","Dates","DecimalFormats","Locale","NumbersProperties","NumbersSymbols"]};

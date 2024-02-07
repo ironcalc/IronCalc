@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["column_to_number","is_valid_column","is_valid_column_number","is_valid_identifier","is_valid_row","number_to_column","parse_reference_a1","parse_reference_r1c1","quote_name"]};

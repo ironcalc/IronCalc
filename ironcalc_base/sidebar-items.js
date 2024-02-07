@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["calc_result","cell","expressions","formatter","language","locale","model","new_empty","number_format","types","worksheet"]};

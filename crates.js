@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["ironcalc","ironcalc_base","test"];

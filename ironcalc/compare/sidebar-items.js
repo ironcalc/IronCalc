@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["compare","test_file","test_load_and_saving"],"struct":["CompareError","Diff"]};

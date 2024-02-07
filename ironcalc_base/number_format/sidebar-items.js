@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_number","get_default_num_fmt_id","get_new_num_fmt_index","get_num_fmt","to_excel_precision_str","to_precision","to_precision_str"]};

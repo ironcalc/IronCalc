@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Area","CellReference","CellReferenceIndex","CellReferenceRC","ParsedRange","ParsedReference"]};
