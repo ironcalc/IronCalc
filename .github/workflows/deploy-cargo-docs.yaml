@@ -20,7 +20,7 @@ jobs:
                   override: true
 
             - name: Generate Documentation
-              run: cargo doc --no-deps
+              run: make docs
 
             - name: Deploy to GitHub Pages
               uses: peaceiris/actions-gh-pages@v3

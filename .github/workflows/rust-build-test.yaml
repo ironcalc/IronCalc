@@ -19,8 +19,5 @@ jobs:
             - name: Build
               run: cargo build --release --verbose
 
-            - name: Run tests
-              run: cargo test --verbose
-
-            - name: Linting
-              run: make lint
+            - name: Linting and testing
+              run: make tests
