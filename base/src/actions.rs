@@ -1,4 +1,4 @@
-use crate::constants::{ LAST_COLUMN, LAST_ROW };
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::stringify::DisplaceData;
 use crate::model::Model;
 
@@ -37,7 +37,7 @@ impl Model {
         &self,
         sheet: u32,
         row: i32,
-        descending: bool
+        descending: bool,
     ) -> Result<Vec<i32>, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
         if let Some(row_data) = worksheet.sheet_data.get(&row) {
@@ -67,9 +67,10 @@ impl Model {
         source_row: i32,
         source_column: i32,
         target_row: i32,
-        target_column: i32
+        target_column: i32,
     ) -> Result<(), String> {
-        let source_cell = self.workbook
+        let source_cell = self
+            .workbook
             .worksheet(sheet)?
             .cell(source_row, source_column)
             .ok_or("Expected Cell to exist")?;
@@ -79,7 +80,9 @@ impl Model {
             .cell_formula(sheet, source_row, source_column)?
             .unwrap_or_else(|| source_cell.get_text(&self.workbook.shared_strings, &self.language));
         self.set_user_input(sheet, target_row, target_column, formula_or_value);
-        self.workbook.worksheet_mut(sheet)?.set_cell_style(target_row, target_column, style);
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_cell_style(target_row, target_column, style);
         self.delete_cell(sheet, source_row, source_column)?;
         Ok(())
     }
@@ -97,7 +100,7 @@ impl Model {
         &mut self,
         sheet: u32,
         column: i32,
-        column_count: i32
+        column_count: i32,
     ) -> Result<(), String> {
         if column_count <= 0 {
             return Err("Cannot add a negative number of cells :)".to_string());
@@ -107,7 +110,8 @@ impl Model {
         let last_column = dimensions.max_column + column_count;
         if last_column > LAST_COLUMN {
             return Err(
-                "Cannot shift cells because that would delete cells at the end of a row".to_string()
+                "Cannot shift cells because that would delete cells at the end of a row"
+                    .to_string(),
             );
         }
         let worksheet = self.workbook.worksheet(sheet)?;
@@ -130,7 +134,7 @@ impl Model {
                 sheet,
                 column,
                 delta: column_count,
-            })
+            }),
         );
 
         Ok(())
@@ -147,7 +151,7 @@ impl Model {
         &mut self,
         sheet: u32,
         column: i32,
-        column_count: i32
+        column_count: i32,
     ) -> Result<(), String> {
         if column_count <= 0 {
             return Err("Please use insert columns instead".to_string());
@@ -178,7 +182,7 @@ impl Model {
                 sheet,
                 column,
                 delta: -column_count,
-            })
+            }),
         );
 
         Ok(())
@@ -200,7 +204,8 @@ impl Model {
         let last_row = dimensions.max_row + row_count;
         if last_row > LAST_ROW {
             return Err(
-                "Cannot shift cells because that would delete cells at the end of a column".to_string()
+                "Cannot shift cells because that would delete cells at the end of a column"
+                    .to_string(),
             );
         }
 
@@ -243,7 +248,7 @@ impl Model {
                 sheet,
                 row,
                 delta: row_count,
-            })
+            }),
         );
 
         Ok(())
@@ -304,7 +309,7 @@ impl Model {
                 sheet,
                 row,
                 delta: -row_count,
-            })
+            }),
         );
         Ok(())
     }
@@ -325,7 +330,7 @@ impl Model {
         &mut self,
         sheet: u32,
         column: i32,
-        delta: i32
+        delta: i32,
     ) -> Result<(), &'static str> {
         // Check boundaries
         let target_column = column + delta;
@@ -344,7 +349,7 @@ impl Model {
                 sheet,
                 column,
                 delta,
-            })
+            }),
         );
 
         Ok(())
