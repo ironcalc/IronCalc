@@ -1,4 +1,4 @@
-use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::constants::{ LAST_COLUMN, LAST_ROW };
 use crate::expressions::parser::stringify::DisplaceData;
 use crate::model::Model;
 
@@ -8,18 +8,36 @@ use crate::model::Model;
 // I feel this is unimportant for now.
 
 impl Model {
+    /// This function iterates over all cells in the model and shifts their formulas according to the displacement data.
+    ///
+    /// # Arguments
+    ///
+    /// * `displace_data` - A reference to `DisplaceData` describing the displacement's direction and magnitude.
     fn displace_cells(&mut self, displace_data: &DisplaceData) {
         let cells = self.get_all_cells();
         for cell in cells {
             self.shift_cell_formula(cell.index, cell.row, cell.column, displace_data);
         }
     }
-    /// Returns the list of columns in row
+
+    /// Retrieves the column indices for a specific row in a given sheet, sorted in ascending or descending order.
+    ///
+    /// # Arguments
+    ///
+    /// * `sheet` - The sheet number to retrieve columns from.
+    /// * `row` - The row number to retrieve columns for.
+    /// * `descending` - If true, the columns are returned in descending order; otherwise, in ascending order.
+    ///
+    /// # Returns
+    ///
+    /// This function returns a `Result` containing either:
+    /// - `Ok(Vec<i32>)`: A vector of column indices for the specified row, sorted according to the `descending` flag.
+    /// - `Err(String)`: An error message if the sheet cannot be found.
     fn get_columns_for_row(
         &self,
         sheet: u32,
         row: i32,
-        descending: bool,
+        descending: bool
     ) -> Result<Vec<i32>, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
         if let Some(row_data) = worksheet.sheet_data.get(&row) {
@@ -34,17 +52,24 @@ impl Model {
         }
     }
 
-    /// Moves the contents of cell (source_row, source_column) tp (target_row, target_column)
+    /// Moves the contents of cell (source_row, source_column) to (target_row, target_column).
+    ///
+    /// # Arguments
+    ///
+    /// * `sheet` - The sheet number to retrieve columns from.
+    /// * `source_row` - The row index of the cell's current location.
+    /// * `source_column` - The column index of the cell's current location.
+    /// * `target_row` - The row index of the cell's new location.
+    /// * `target_column` - The column index of the cell's new location.
     fn move_cell(
         &mut self,
         sheet: u32,
         source_row: i32,
         source_column: i32,
         target_row: i32,
-        target_column: i32,
+        target_column: i32
     ) -> Result<(), String> {
-        let source_cell = self
-            .workbook
+        let source_cell = self.workbook
             .worksheet(sheet)?
             .cell(source_row, source_column)
             .ok_or("Expected Cell to exist")?;
@@ -54,18 +79,25 @@ impl Model {
             .cell_formula(sheet, source_row, source_column)?
             .unwrap_or_else(|| source_cell.get_text(&self.workbook.shared_strings, &self.language));
         self.set_user_input(sheet, target_row, target_column, formula_or_value);
-        self.workbook
-            .worksheet_mut(sheet)?
-            .set_cell_style(target_row, target_column, style);
+        self.workbook.worksheet_mut(sheet)?.set_cell_style(target_row, target_column, style);
         self.delete_cell(sheet, source_row, source_column)?;
         Ok(())
     }
 
+    /// Inserts one or more new columns into the model at the specified index.
+    ///
+    /// This method shifts existing columns to the right to make space for the new columns.
+    ///
+    /// # Arguments
+    ///
+    /// * `sheet` - The sheet number to retrieve columns from.
+    /// * `column` - The index at which the new columns should be inserted.
+    /// * `column_count` - The number of columns to insert.
     pub fn insert_columns(
         &mut self,
         sheet: u32,
         column: i32,
-        column_count: i32,
+        column_count: i32
     ) -> Result<(), String> {
         if column_count <= 0 {
             return Err("Cannot add a negative number of cells :)".to_string());
@@ -75,8 +107,7 @@ impl Model {
         let last_column = dimensions.max_column + column_count;
         if last_column > LAST_COLUMN {
             return Err(
-                "Cannot shift cells because that would delete cells at the end of a row"
-                    .to_string(),
+                "Cannot shift cells because that would delete cells at the end of a row".to_string()
             );
         }
         let worksheet = self.workbook.worksheet(sheet)?;
@@ -94,20 +125,29 @@ impl Model {
         }
 
         // Update all formulas in the workbook
-        self.displace_cells(&DisplaceData::Column {
-            sheet,
-            column,
-            delta: column_count,
-        });
+        self.displace_cells(
+            &(DisplaceData::Column {
+                sheet,
+                column,
+                delta: column_count,
+            })
+        );
 
         Ok(())
     }
 
+    /// Deletes one or more columns from the model starting at the specified index.
+    ///
+    /// # Arguments
+    ///
+    /// * `sheet` - The sheet number to retrieve columns from.
+    /// * `column` - The index of the first column to delete.
+    /// * `count` - The number of columns to delete.
     pub fn delete_columns(
         &mut self,
         sheet: u32,
         column: i32,
-        column_count: i32,
+        column_count: i32
     ) -> Result<(), String> {
         if column_count <= 0 {
             return Err("Please use insert columns instead".to_string());
@@ -133,15 +173,24 @@ impl Model {
         }
         // Update all formulas in the workbook
 
-        self.displace_cells(&DisplaceData::Column {
-            sheet,
-            column,
-            delta: -column_count,
-        });
+        self.displace_cells(
+            &(DisplaceData::Column {
+                sheet,
+                column,
+                delta: -column_count,
+            })
+        );
 
         Ok(())
     }
 
+    /// Inserts one or more new rows into the model at the specified index.
+    ///
+    /// # Arguments
+    ///
+    /// * `sheet` - The sheet number to retrieve columns from.
+    /// * `row` - The index at which the new rows should be inserted.
+    /// * `row_count` - The number of rows to insert.
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         if row_count <= 0 {
             return Err("Cannot add a negative number of cells :)".to_string());
@@ -151,8 +200,7 @@ impl Model {
         let last_row = dimensions.max_row + row_count;
         if last_row > LAST_ROW {
             return Err(
-                "Cannot shift cells because that would delete cells at the end of a column"
-                    .to_string(),
+                "Cannot shift cells because that would delete cells at the end of a column".to_string()
             );
         }
 
@@ -190,15 +238,24 @@ impl Model {
         self.workbook.worksheets[sheet as usize].rows = new_rows;
 
         // Update all formulas in the workbook
-        self.displace_cells(&DisplaceData::Row {
-            sheet,
-            row,
-            delta: row_count,
-        });
+        self.displace_cells(
+            &(DisplaceData::Row {
+                sheet,
+                row,
+                delta: row_count,
+            })
+        );
 
         Ok(())
     }
 
+    /// Deletes one or more rows from the model starting at the specified index.
+    ///
+    /// # Arguments
+    ///
+    /// * `sheet` - The sheet number to retrieve columns from.
+    /// * `row` - The index of the first row to delete.
+    /// * `row_count` - The number of rows to delete.
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         if row_count <= 0 {
             return Err("Please use insert rows instead".to_string());
@@ -242,11 +299,13 @@ impl Model {
             }
         }
         self.workbook.worksheets[sheet as usize].rows = new_rows;
-        self.displace_cells(&DisplaceData::Row {
-            sheet,
-            row,
-            delta: -row_count,
-        });
+        self.displace_cells(
+            &(DisplaceData::Row {
+                sheet,
+                row,
+                delta: -row_count,
+            })
+        );
         Ok(())
     }
 
@@ -266,7 +325,7 @@ impl Model {
         &mut self,
         sheet: u32,
         column: i32,
-        delta: i32,
+        delta: i32
     ) -> Result<(), &'static str> {
         // Check boundaries
         let target_column = column + delta;
@@ -280,11 +339,13 @@ impl Model {
         // TODO: Add the actual displacement of data and styles
 
         // Update all formulas in the workbook
-        self.displace_cells(&DisplaceData::ColumnMove {
-            sheet,
-            column,
-            delta,
-        });
+        self.displace_cells(
+            &(DisplaceData::ColumnMove {
+                sheet,
+                column,
+                delta,
+            })
+        );
 
         Ok(())
     }

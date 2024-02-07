@@ -6,7 +6,7 @@ format:
 	cargo fmt
 
 tests: lint
-	cargo test
+	cargo test --verbose
 
 clean:
 	cargo clean
