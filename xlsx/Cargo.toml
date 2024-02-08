@@ -3,6 +3,11 @@ name = "ironcalc"
 version = "0.1.0"
 authors = ["Nicolás Hatcher <nicolas@theuniverse.today>"]
 edition = "2021"
+homepage = "https://www.ironcalc.com"
+repository = "https://github.com/ironcalc/ironcalc/"
+description = "The democratization of spreadsheets"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,7 +17,7 @@ roxmltree = "0.13.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-# Uses `../../engine/base` when used locally, and uses
+# Uses `../base` when used locally, and uses
 # the inicated version from crates.io when published.
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
 ironcalc_base = { path = "../base", version = "0.1.0" }
