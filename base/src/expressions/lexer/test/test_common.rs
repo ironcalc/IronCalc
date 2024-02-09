@@ -6,7 +6,8 @@ use crate::locale::get_locale;
 use crate::expressions::{
     lexer::{Lexer, LexerMode},
     token::TokenType::*,
-    token::{Error, OpSum},
+    token::{Error, OpCompare, OpProduct, OpSum},
+    types::ParsedReference,
 };
 
 fn new_lexer(formula: &str, a1_mode: bool) -> Lexer {
@@ -504,5 +505,153 @@ fn test_ident_cannot_start_with_period() {
 fn test_xlfn() {
     let mut lx = new_lexer("_xlfn.MyVar", true);
     assert_eq!(lx.next_token(), Ident("_xlfn.MyVar".to_string()));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_power() {
+    let mut lx = new_lexer("4 ^ 2", false);
+    assert_eq!(lx.next_token(), Number(4.0));
+    assert_eq!(lx.next_token(), Power);
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_parenthesis() {
+    let mut lx = new_lexer("(1)", false);
+    assert_eq!(lx.next_token(), LeftParenthesis);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), RightParenthesis);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_brackets() {
+    let mut lx = new_lexer("[1]", false);
+    assert_eq!(lx.next_token(), LeftBracket);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), RightBracket);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_braces() {
+    let mut lx = new_lexer("{1}", false);
+    assert_eq!(lx.next_token(), LeftBrace);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), RightBrace);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_percent() {
+    let mut lx = new_lexer("10%", false);
+    assert_eq!(lx.next_token(), Number(10.0));
+    assert_eq!(lx.next_token(), Percent);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_range() {
+    let mut lx = new_lexer("A1:B3", true);
+    assert_eq!(
+        lx.next_token(),
+        Range {
+            sheet: None,
+            left: ParsedReference {
+                column: 1,
+                row: 1,
+                absolute_column: false,
+                absolute_row: false
+            },
+            right: ParsedReference {
+                column: 2,
+                row: 3,
+                absolute_column: false,
+                absolute_row: false
+            },
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_addition() {
+    let mut lx = new_lexer("1 + 2", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), Addition(OpSum::Add));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_subtraction() {
+    let mut lx = new_lexer("1 - 2", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), Addition(OpSum::Minus));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_multiplication() {
+    let mut lx = new_lexer("1 * 2", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), Product(OpProduct::Times));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_division() {
+    let mut lx = new_lexer("4 / 2", false);
+    assert_eq!(lx.next_token(), Number(4.0));
+    assert_eq!(lx.next_token(), Product(OpProduct::Divide));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_bang() {
+    let mut lx = new_lexer("!FALSE", false);
+    assert_eq!(lx.next_token(), Bang);
+    assert_eq!(lx.next_token(), Boolean(false));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_ampersand() {
+    let mut lx = new_lexer("1 & 2", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), And);
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_semicolon() {
+    let mut lx = new_lexer("FALSE;", false);
+    assert_eq!(lx.next_token(), Boolean(false));
+    assert_eq!(lx.next_token(), Semicolon);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_comparisons() {
+    let mut lx = new_lexer("1 < 2 > 3 <= 4 >= 5 = 6 <> 7", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::LessThan));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::GreaterThan));
+    assert_eq!(lx.next_token(), Number(3.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::LessOrEqualThan));
+    assert_eq!(lx.next_token(), Number(4.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::GreaterOrEqualThan));
+    assert_eq!(lx.next_token(), Number(5.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::Equal));
+    assert_eq!(lx.next_token(), Number(6.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::NonEqual));
+    assert_eq!(lx.next_token(), Number(7.0));
     assert_eq!(lx.next_token(), EOF);
 }
