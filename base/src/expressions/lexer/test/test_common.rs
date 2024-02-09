@@ -4,19 +4,16 @@ use crate::language::get_language;
 use crate::locale::get_locale;
 
 use crate::expressions::{
-    lexer::{Lexer, LexerMode},
+    lexer::{ Lexer, LexerMode },
     token::TokenType::*,
-    token::{Error, OpSum},
+    token::{ Error, OpSum, OpProduct, OpCompare },
+    types::ParsedReference,
 };
 
 fn new_lexer(formula: &str, a1_mode: bool) -> Lexer {
     let locale = get_locale("en").unwrap();
     let language = get_language("en").unwrap();
-    let mode = if a1_mode {
-        LexerMode::A1
-    } else {
-        LexerMode::R1C1
-    };
+    let mode = if a1_mode { LexerMode::A1 } else { LexerMode::R1C1 };
     Lexer::new(formula, mode, locale, language)
 }
 
@@ -108,80 +105,65 @@ fn test_boolean_true() {
 #[test]
 fn test_reference() {
     let mut lx = new_lexer("A1", true);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: None,
-            column: 1,
-            row: 1,
-            absolute_column: false,
-            absolute_row: false,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: None,
+        column: 1,
+        row: 1,
+        absolute_column: false,
+        absolute_row: false,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_absolute() {
     let mut lx = new_lexer("$A$1", true);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: None,
-            column: 1,
-            row: 1,
-            absolute_column: true,
-            absolute_row: true,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: None,
+        column: 1,
+        row: 1,
+        absolute_column: true,
+        absolute_row: true,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_absolute_1() {
     let mut lx = new_lexer("AB$12", true);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: None,
-            column: 28,
-            row: 12,
-            absolute_column: false,
-            absolute_row: true,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: None,
+        column: 28,
+        row: 12,
+        absolute_column: false,
+        absolute_row: true,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_absolute_2() {
     let mut lx = new_lexer("$CC234", true);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: None,
-            column: 81,
-            row: 234,
-            absolute_column: true,
-            absolute_row: false,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: None,
+        column: 81,
+        row: 234,
+        absolute_column: true,
+        absolute_row: false,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_sheet() {
     let mut lx = new_lexer("Sheet1!C34", true);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: Some("Sheet1".to_string()),
-            column: 3,
-            row: 34,
-            absolute_column: false,
-            absolute_row: false,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: Some("Sheet1".to_string()),
+        column: 3,
+        row: 34,
+        absolute_column: false,
+        absolute_row: false,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -189,32 +171,26 @@ fn test_reference_sheet() {
 fn test_reference_sheet_unicode() {
     // Not that also tests the '!'
     let mut lx = new_lexer("'A € world!'!C34", true);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: Some("A € world!".to_string()),
-            column: 3,
-            row: 34,
-            absolute_column: false,
-            absolute_row: false,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: Some("A € world!".to_string()),
+        column: 3,
+        row: 34,
+        absolute_column: false,
+        absolute_row: false,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_sheet_unicode_absolute() {
     let mut lx = new_lexer("'A €'!$C$34", true);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: Some("A €".to_string()),
-            column: 3,
-            row: 34,
-            absolute_column: true,
-            absolute_row: true,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: Some("A €".to_string()),
+        column: 3,
+        row: 34,
+        absolute_column: true,
+        absolute_row: true,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -237,27 +213,21 @@ fn test_sum() {
 #[test]
 fn test_sum_1() {
     let mut lx = new_lexer("A2 + 'First Sheet'!$B$3", true);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: None,
-            column: 1,
-            row: 2,
-            absolute_column: false,
-            absolute_row: false,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: None,
+        column: 1,
+        row: 2,
+        absolute_column: false,
+        absolute_row: false,
+    });
     assert_eq!(lx.next_token(), Addition(OpSum::Add));
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: Some("First Sheet".to_string()),
-            column: 2,
-            row: 3,
-            absolute_column: true,
-            absolute_row: true,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: Some("First Sheet".to_string()),
+        column: 2,
+        row: 3,
+        absolute_column: true,
+        absolute_row: true,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -357,16 +327,13 @@ fn test_variable_name() {
 #[test]
 fn test_last_reference() {
     let mut lx = new_lexer("XFD1048576", true);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: None,
-            column: 16384,
-            row: 1048576,
-            absolute_column: false,
-            absolute_row: false,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: None,
+        column: 16384,
+        row: 1048576,
+        absolute_column: false,
+        absolute_row: false,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -380,16 +347,13 @@ fn test_not_a_reference() {
 #[test]
 fn test_reference_r1c1() {
     let mut lx = new_lexer("R1C1", false);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: None,
-            column: 1,
-            row: 1,
-            absolute_column: true,
-            absolute_row: true,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: None,
+        column: 1,
+        row: 1,
+        absolute_column: true,
+        absolute_row: true,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -420,48 +384,39 @@ fn test_name_wrong_ref() {
 #[test]
 fn test_reference_1() {
     let mut lx = new_lexer("Sheet1!R[1]C[2]", false);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: Some("Sheet1".to_string()),
-            column: 2,
-            row: 1,
-            absolute_column: false,
-            absolute_row: false,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: Some("Sheet1".to_string()),
+        column: 2,
+        row: 1,
+        absolute_column: false,
+        absolute_row: false,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_quotes() {
     let mut lx = new_lexer("'Sheet 1'!R[1]C[2]", false);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: Some("Sheet 1".to_string()),
-            column: 2,
-            row: 1,
-            absolute_column: false,
-            absolute_row: false,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: Some("Sheet 1".to_string()),
+        column: 2,
+        row: 1,
+        absolute_column: false,
+        absolute_row: false,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_escape_quotes() {
     let mut lx = new_lexer("'Sheet ''one'' 1'!R[1]C[2]", false);
-    assert_eq!(
-        lx.next_token(),
-        Reference {
-            sheet: Some("Sheet 'one' 1".to_string()),
-            column: 2,
-            row: 1,
-            absolute_column: false,
-            absolute_row: false,
-        }
-    );
+    assert_eq!(lx.next_token(), Reference {
+        sheet: Some("Sheet 'one' 1".to_string()),
+        column: 2,
+        row: 1,
+        absolute_column: false,
+        absolute_row: false,
+    });
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -504,5 +459,140 @@ fn test_ident_cannot_start_with_period() {
 fn test_xlfn() {
     let mut lx = new_lexer("_xlfn.MyVar", true);
     assert_eq!(lx.next_token(), Ident("_xlfn.MyVar".to_string()));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_power() {
+    let mut lx = new_lexer("4 ^ 2", false);
+    assert_eq!(lx.next_token(), Number(4.0));
+    assert_eq!(lx.next_token(), Power);
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_parenthesis() {
+    let mut lx = new_lexer("(1)", false);
+    assert_eq!(lx.next_token(), LeftParenthesis);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), RightParenthesis);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_brackets() {
+    let mut lx = new_lexer("[1]", false);
+    assert_eq!(lx.next_token(), LeftBracket);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), RightBracket);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_braces() {
+    let mut lx = new_lexer("{1}", false);
+    assert_eq!(lx.next_token(), LeftBrace);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), RightBrace);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_percent() {
+    let mut lx = new_lexer("10%", false);
+    assert_eq!(lx.next_token(), Number(10.0));
+    assert_eq!(lx.next_token(), Percent);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_range() {
+    let mut lx = new_lexer("A1:B3", true);
+    assert_eq!(lx.next_token(), Range {
+        sheet: None,
+        left: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: false },
+        right: ParsedReference { column: 2, row: 3, absolute_column: false, absolute_row: false },
+    });
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_addition() {
+    let mut lx = new_lexer("1 + 2", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), Addition(OpSum::Add));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_subtraction() {
+    let mut lx = new_lexer("1 - 2", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), Addition(OpSum::Minus));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_multiplication() {
+    let mut lx = new_lexer("1 * 2", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), Product(OpProduct::Times));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_division() {
+    let mut lx = new_lexer("4 / 2", false);
+    assert_eq!(lx.next_token(), Number(4.0));
+    assert_eq!(lx.next_token(), Product(OpProduct::Divide));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_bang() {
+    let mut lx = new_lexer("!FALSE", false);
+    assert_eq!(lx.next_token(), Bang);
+    assert_eq!(lx.next_token(), Boolean(false));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_ampersand() {
+    let mut lx = new_lexer("1 & 2", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), And);
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_semicolon() {
+    let mut lx = new_lexer("FALSE;", false);
+    assert_eq!(lx.next_token(), Boolean(false));
+    assert_eq!(lx.next_token(), Semicolon);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_comparisons() {
+    let mut lx = new_lexer("1 < 2 > 3 <= 4 >= 5 = 6 <> 7", false);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::LessThan));
+    assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::GreaterThan));
+    assert_eq!(lx.next_token(), Number(3.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::LessOrEqualThan));
+    assert_eq!(lx.next_token(), Number(4.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::GreaterOrEqualThan));
+    assert_eq!(lx.next_token(), Number(5.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::Equal));
+    assert_eq!(lx.next_token(), Number(6.0));
+    assert_eq!(lx.next_token(), Compare(OpCompare::NonEqual));
+    assert_eq!(lx.next_token(), Number(7.0));
     assert_eq!(lx.next_token(), EOF);
 }
