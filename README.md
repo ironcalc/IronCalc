@@ -2,6 +2,7 @@
 
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
+[![codecov](https://codecov.io/gh/ironcalc/IronCalc/graph/badge.svg?token=ASJX12CHNR)](https://codecov.io/gh/ironcalc/IronCalc)
 
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: https://github.com/ironcalc/ironcalc/blob/master/LICENSE
