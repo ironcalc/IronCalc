@@ -1,5 +1,13 @@
 # 📚 IronCalc
 
+[![MIT licensed][mit-badge]][mit-url]
+[![Build Status][actions-badge]][actions-url]
+
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: https://github.com/ironcalc/ironcalc/blob/master/LICENSE
+[actions-badge]: https://github.com/ironcalc/ironcalc/actions/workflows/rust-build-test.yaml/badge.svg
+[actions-url]: https://github.com/ironcalc/ironcalc/actions?query=workflow%3ACI+branch%3Amaster
+
 IronCalc is a new, modern, work-in-progress spreadsheet engine and set of tools to work with spreadsheets in diverse settings.
 
 This repository contains the main engine and the xlsx reader and writer.

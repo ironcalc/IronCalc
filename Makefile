@@ -12,13 +12,13 @@ clean:
 	cargo clean
 	rm -r -f base/target
 	rm -r -f xlsx/target
-	rm cargo-test-*
-	rm base/cargo-test-*
-	rm xlsx/cargo-test-*
+	rm -f cargo-test-*
+	rm -f base/cargo-test-*
+	rm -f xlsx/cargo-test-*
 
 
 coverage:
-	CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
+	CARGO_INCREMENTAL=0 RUSTFLAGS='-C instrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
 	grcov . --binary-path ./target/debug/deps/ -s . -t html --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/html
 
 docs:
