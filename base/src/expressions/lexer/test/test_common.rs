@@ -4,16 +4,20 @@ use crate::language::get_language;
 use crate::locale::get_locale;
 
 use crate::expressions::{
-    lexer::{ Lexer, LexerMode },
+    lexer::{Lexer, LexerMode},
     token::TokenType::*,
-    token::{ Error, OpSum, OpProduct, OpCompare },
+    token::{Error, OpCompare, OpProduct, OpSum},
     types::ParsedReference,
 };
 
 fn new_lexer(formula: &str, a1_mode: bool) -> Lexer {
     let locale = get_locale("en").unwrap();
     let language = get_language("en").unwrap();
-    let mode = if a1_mode { LexerMode::A1 } else { LexerMode::R1C1 };
+    let mode = if a1_mode {
+        LexerMode::A1
+    } else {
+        LexerMode::R1C1
+    };
     Lexer::new(formula, mode, locale, language)
 }
 
@@ -105,65 +109,80 @@ fn test_boolean_true() {
 #[test]
 fn test_reference() {
     let mut lx = new_lexer("A1", true);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: None,
-        column: 1,
-        row: 1,
-        absolute_column: false,
-        absolute_row: false,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: None,
+            column: 1,
+            row: 1,
+            absolute_column: false,
+            absolute_row: false,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_absolute() {
     let mut lx = new_lexer("$A$1", true);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: None,
-        column: 1,
-        row: 1,
-        absolute_column: true,
-        absolute_row: true,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: None,
+            column: 1,
+            row: 1,
+            absolute_column: true,
+            absolute_row: true,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_absolute_1() {
     let mut lx = new_lexer("AB$12", true);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: None,
-        column: 28,
-        row: 12,
-        absolute_column: false,
-        absolute_row: true,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: None,
+            column: 28,
+            row: 12,
+            absolute_column: false,
+            absolute_row: true,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_absolute_2() {
     let mut lx = new_lexer("$CC234", true);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: None,
-        column: 81,
-        row: 234,
-        absolute_column: true,
-        absolute_row: false,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: None,
+            column: 81,
+            row: 234,
+            absolute_column: true,
+            absolute_row: false,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_sheet() {
     let mut lx = new_lexer("Sheet1!C34", true);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: Some("Sheet1".to_string()),
-        column: 3,
-        row: 34,
-        absolute_column: false,
-        absolute_row: false,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: Some("Sheet1".to_string()),
+            column: 3,
+            row: 34,
+            absolute_column: false,
+            absolute_row: false,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -171,26 +190,32 @@ fn test_reference_sheet() {
 fn test_reference_sheet_unicode() {
     // Not that also tests the '!'
     let mut lx = new_lexer("'A € world!'!C34", true);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: Some("A € world!".to_string()),
-        column: 3,
-        row: 34,
-        absolute_column: false,
-        absolute_row: false,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: Some("A € world!".to_string()),
+            column: 3,
+            row: 34,
+            absolute_column: false,
+            absolute_row: false,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_sheet_unicode_absolute() {
     let mut lx = new_lexer("'A €'!$C$34", true);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: Some("A €".to_string()),
-        column: 3,
-        row: 34,
-        absolute_column: true,
-        absolute_row: true,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: Some("A €".to_string()),
+            column: 3,
+            row: 34,
+            absolute_column: true,
+            absolute_row: true,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -213,21 +238,27 @@ fn test_sum() {
 #[test]
 fn test_sum_1() {
     let mut lx = new_lexer("A2 + 'First Sheet'!$B$3", true);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: None,
-        column: 1,
-        row: 2,
-        absolute_column: false,
-        absolute_row: false,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: None,
+            column: 1,
+            row: 2,
+            absolute_column: false,
+            absolute_row: false,
+        }
+    );
     assert_eq!(lx.next_token(), Addition(OpSum::Add));
-    assert_eq!(lx.next_token(), Reference {
-        sheet: Some("First Sheet".to_string()),
-        column: 2,
-        row: 3,
-        absolute_column: true,
-        absolute_row: true,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: Some("First Sheet".to_string()),
+            column: 2,
+            row: 3,
+            absolute_column: true,
+            absolute_row: true,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -327,13 +358,16 @@ fn test_variable_name() {
 #[test]
 fn test_last_reference() {
     let mut lx = new_lexer("XFD1048576", true);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: None,
-        column: 16384,
-        row: 1048576,
-        absolute_column: false,
-        absolute_row: false,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: None,
+            column: 16384,
+            row: 1048576,
+            absolute_column: false,
+            absolute_row: false,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -347,13 +381,16 @@ fn test_not_a_reference() {
 #[test]
 fn test_reference_r1c1() {
     let mut lx = new_lexer("R1C1", false);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: None,
-        column: 1,
-        row: 1,
-        absolute_column: true,
-        absolute_row: true,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: None,
+            column: 1,
+            row: 1,
+            absolute_column: true,
+            absolute_row: true,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -384,39 +421,48 @@ fn test_name_wrong_ref() {
 #[test]
 fn test_reference_1() {
     let mut lx = new_lexer("Sheet1!R[1]C[2]", false);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: Some("Sheet1".to_string()),
-        column: 2,
-        row: 1,
-        absolute_column: false,
-        absolute_row: false,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: Some("Sheet1".to_string()),
+            column: 2,
+            row: 1,
+            absolute_column: false,
+            absolute_row: false,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_quotes() {
     let mut lx = new_lexer("'Sheet 1'!R[1]C[2]", false);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: Some("Sheet 1".to_string()),
-        column: 2,
-        row: 1,
-        absolute_column: false,
-        absolute_row: false,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: Some("Sheet 1".to_string()),
+            column: 2,
+            row: 1,
+            absolute_column: false,
+            absolute_row: false,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
 #[test]
 fn test_reference_escape_quotes() {
     let mut lx = new_lexer("'Sheet ''one'' 1'!R[1]C[2]", false);
-    assert_eq!(lx.next_token(), Reference {
-        sheet: Some("Sheet 'one' 1".to_string()),
-        column: 2,
-        row: 1,
-        absolute_column: false,
-        absolute_row: false,
-    });
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: Some("Sheet 'one' 1".to_string()),
+            column: 2,
+            row: 1,
+            absolute_column: false,
+            absolute_row: false,
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
@@ -509,11 +555,24 @@ fn test_percent() {
 #[test]
 fn test_range() {
     let mut lx = new_lexer("A1:B3", true);
-    assert_eq!(lx.next_token(), Range {
-        sheet: None,
-        left: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: false },
-        right: ParsedReference { column: 2, row: 3, absolute_column: false, absolute_row: false },
-    });
+    assert_eq!(
+        lx.next_token(),
+        Range {
+            sheet: None,
+            left: ParsedReference {
+                column: 1,
+                row: 1,
+                absolute_column: false,
+                absolute_row: false
+            },
+            right: ParsedReference {
+                column: 2,
+                row: 3,
+                absolute_column: false,
+                absolute_row: false
+            },
+        }
+    );
     assert_eq!(lx.next_token(), EOF);
 }
 
