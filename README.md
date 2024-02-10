@@ -3,11 +3,14 @@
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
 [![codecov](https://codecov.io/gh/ironcalc/IronCalc/graph/badge.svg?token=ASJX12CHNR)](https://codecov.io/gh/ironcalc/IronCalc)
+[![docs-badge]][docs-url]
 
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: https://github.com/ironcalc/ironcalc/blob/master/LICENSE
 [actions-badge]: https://github.com/ironcalc/ironcalc/actions/workflows/rust-build-test.yaml/badge.svg
 [actions-url]: https://github.com/ironcalc/ironcalc/actions?query=workflow%3ACI+branch%3Amaster
+[docs-url]: https://docs.rs/ironcalc
+[docs-badge]: https://img.shields.io/docsrs/ironcalc?logo=rust&style=flat-square
 
 IronCalc is a new, modern, work-in-progress spreadsheet engine and set of tools to work with spreadsheets in diverse settings.
 
@@ -62,12 +65,12 @@ $ cargo doc --no-deps
 
 Major milestones:
 
-* MVP, version 0.5.0: We intend to have a working version by mid January 2024 (version 0.5, MVP)
+* MVP, version 0.5.0: We intend to have a working version by mid March 2024 (version 0.5, MVP)
 * Stable, version 1.0.0 will come later in December 2024
 
 MVP stands for _Minimum Viable Product_
 
-## Version 0.5 or MVP (15 January 2024)
+## Version 0.5 or MVP (15 March 2024)
 
 Version 0.5 includes the engine, javascript and nodejs bindings and a web application
 
