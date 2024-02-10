@@ -8,7 +8,7 @@
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: https://github.com/ironcalc/ironcalc/blob/master/LICENSE
 [actions-badge]: https://github.com/ironcalc/ironcalc/actions/workflows/rust-build-test.yaml/badge.svg
-[actions-url]: https://github.com/ironcalc/ironcalc/actions?query=workflow%3ACI+branch%3Amaster
+[actions-url]: https://github.com/ironcalc/IronCalc/actions/workflows/rust-build-test.yaml?query=workflow%3ARust+branch%3Amain
 [docs-url]: https://docs.rs/ironcalc
 [docs-badge]: https://img.shields.io/docsrs/ironcalc?logo=rust&style=flat-square
 
