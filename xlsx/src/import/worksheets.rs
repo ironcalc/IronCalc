@@ -20,7 +20,7 @@ use super::{
     util::{get_attribute, get_color, get_number},
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct Sheet {
     pub(crate) name: String,
     pub(crate) sheet_id: u32,
@@ -28,13 +28,13 @@ pub(crate) struct Sheet {
     pub(crate) state: SheetState,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct WorkbookXML {
     pub(crate) worksheets: Vec<Sheet>,
     pub(crate) defined_names: Vec<DefinedName>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct Relationship {
     pub(crate) target: String,
     pub(crate) rel_type: String,
@@ -183,7 +183,7 @@ fn load_comments<R: Read + std::io::Seek>(
     Ok(comments)
 }
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq)]
 enum ParseReferenceError {
     #[error("RowError: {0}")]
     RowError(ParseIntError),
