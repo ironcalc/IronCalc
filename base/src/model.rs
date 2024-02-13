@@ -62,7 +62,7 @@ pub enum CellState {
     Evaluating,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum ParsedDefinedName {
     CellReference(CellReference),
     RangeReference(Range),

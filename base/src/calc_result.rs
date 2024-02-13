@@ -9,7 +9,7 @@ pub struct CellReference {
     pub row: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Range {
     pub left: CellReference,
     pub right: CellReference,
