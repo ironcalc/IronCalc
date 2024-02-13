@@ -1,12 +1,13 @@
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::language::Language;
 
 use super::{lexer::LexerError, types::ParsedReference};
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum OpCompare {
     LessThan,
     GreaterThan,
@@ -44,7 +45,7 @@ impl fmt::Display for OpUnary {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum OpSum {
     Add,
     Minus,
@@ -59,7 +60,7 @@ impl fmt::Display for OpSum {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum OpProduct {
     Times,
     Divide,
@@ -200,7 +201,7 @@ pub fn is_english_error_string(name: &str) -> bool {
     names.iter().any(|e| *e == name)
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum TableSpecifier {
     All,
     Data,
@@ -209,13 +210,13 @@ pub enum TableSpecifier {
     Totals,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum TableReference {
     ColumnReference(String),
     RangeReference((String, String)),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum TokenType {
     Illegal(LexerError),
     EOF,

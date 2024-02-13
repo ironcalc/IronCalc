@@ -42,6 +42,8 @@
 //! assert!(matches!(lexer.next_token(), TokenType::Reference { .. }));
 //! ```
 
+use serde::{Deserialize, Serialize};
+
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
 
 use crate::language::Language;
@@ -59,7 +61,7 @@ mod test;
 mod ranges;
 mod structured_references;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LexerError {
     pub position: usize,
     pub message: String,

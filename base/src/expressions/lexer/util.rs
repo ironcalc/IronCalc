@@ -1,5 +1,7 @@
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use crate::expressions::token;
 use crate::language::get_language;
 use crate::locale::get_locale;
@@ -7,7 +9,7 @@ use crate::locale::get_locale;
 use super::{Lexer, LexerMode};
 
 /// A MarkedToken is a token together with its position on a formula
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct MarkedToken {
     pub token: token::TokenType,
     pub start: i32,
