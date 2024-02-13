@@ -112,7 +112,7 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
         .filter(|n| n.has_tag_name("autoFilter"))
         .collect::<Vec<Node>>();
 
-    let has_filters = if let Some(filter) = auto_filter.get(0) {
+    let has_filters = if let Some(filter) = auto_filter.first() {
         filter.children().count() > 0
     } else {
         false
@@ -179,7 +179,7 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
         .descendants()
         .filter(|n| n.has_tag_name("tableInfo"))
         .collect::<Vec<Node>>();
-    let style_info = match table_info.get(0) {
+    let style_info = match table_info.first() {
         Some(node) => {
             let name = node.attribute("name").map(|s| s.to_string());
             TableStyleInfo {

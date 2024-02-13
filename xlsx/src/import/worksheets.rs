@@ -10,7 +10,6 @@ use ironcalc_base::{
     types::{Cell, Col, Comment, DefinedName, Row, SheetData, SheetState, Table, Worksheet},
 };
 use roxmltree::Node;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::error::XlsxError;
@@ -20,7 +19,6 @@ use super::{
     util::{get_attribute, get_color, get_number},
 };
 
-#[derive(Serialize, Deserialize)]
 pub(crate) struct Sheet {
     pub(crate) name: String,
     pub(crate) sheet_id: u32,
@@ -28,13 +26,11 @@ pub(crate) struct Sheet {
     pub(crate) state: SheetState,
 }
 
-#[derive(Serialize, Deserialize)]
 pub(crate) struct WorkbookXML {
     pub(crate) worksheets: Vec<Sheet>,
     pub(crate) defined_names: Vec<DefinedName>,
 }
 
-#[derive(Serialize, Deserialize)]
 pub(crate) struct Relationship {
     pub(crate) target: String,
     pub(crate) rel_type: String,
