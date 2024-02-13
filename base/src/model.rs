@@ -62,7 +62,6 @@ pub enum CellState {
     Evaluating,
 }
 
-#[derive(Clone)]
 pub enum ParsedDefinedName {
     CellReference(CellReference),
     RangeReference(Range),
@@ -78,7 +77,6 @@ pub enum ParsedDefinedName {
 ///     * A list of cells with its status (evaluating, evaluated, not evaluated)
 ///     * A dictionary with the shared strings and their indices.
 ///       This is an optimization for large files (~1 million rows)
-#[derive(Clone)]
 pub struct Model {
     pub workbook: Workbook,
     pub parsed_formulas: Vec<Vec<Node>>,
