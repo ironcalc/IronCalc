@@ -1,16 +1,29 @@
 # 📚 IronCalc
 
 [![MIT licensed][mit-badge]][mit-url]
+[![Apache 2.0 licensed][apache-badge]][apache-url]
 [![Build Status][actions-badge]][actions-url]
-[![codecov](https://codecov.io/gh/ironcalc/IronCalc/graph/badge.svg?token=ASJX12CHNR)](https://codecov.io/gh/ironcalc/IronCalc)
+[![codecov][codecov-badge]][codecov-url]
 [![docs-badge]][docs-url]
+[![Discord chat][discord-badge]][discord-url]
 
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
-[mit-url]: https://github.com/ironcalc/ironcalc/blob/master/LICENSE
+[mit-url]: https://github.com/ironcalc/IronCalc/blob/main/LICENSE-MIT
+
+[apache-badge]: https://img.shields.io/badge/License-Apache_2.0-blue.svg
+[apache-url]: https://github.com/ironcalc/IronCalc/blob/main/LICENSE-Apache-2.0
+
+[codecov-badge]: https://codecov.io/gh/ironcalc/IronCalc/graph/badge.svg?token=ASJX12CHNR
+[codecov-url]: (https://codecov.io/gh/ironcalc/IronCalc)
+
 [actions-badge]: https://github.com/ironcalc/ironcalc/actions/workflows/rust-build-test.yaml/badge.svg
 [actions-url]: https://github.com/ironcalc/IronCalc/actions/workflows/rust-build-test.yaml?query=workflow%3ARust+branch%3Amain
+
 [docs-url]: https://docs.rs/ironcalc
 [docs-badge]: https://img.shields.io/docsrs/ironcalc?logo=rust&style=flat-square
+
+[discord-badge]: https://img.shields.io/discord/1206947691058171904.svg?logo=discord&style=flat-square
+[discord-url]: https://discord.gg/zZYWfh3RHJ
 
 IronCalc is a new, modern, work-in-progress spreadsheet engine and set of tools to work with spreadsheets in diverse settings.
 
