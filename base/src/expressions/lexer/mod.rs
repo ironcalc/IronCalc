@@ -140,7 +140,7 @@ impl Lexer {
     pub fn expect(&mut self, tk: TokenType) -> Result<()> {
         let nt = self.next_token();
         if index(&nt) != index(&tk) {
-            return Err(self.set_error(&format!("Error, expected {}", tk), self.position));
+            return Err(self.set_error(&format!("Error, expected {:?}", tk), self.position));
         }
         Ok(())
     }

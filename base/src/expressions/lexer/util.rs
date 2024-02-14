@@ -80,8 +80,3 @@ pub fn get_tokens(formula: &str) -> Vec<MarkedToken> {
     tokens
 }
 
-impl fmt::Display for MarkedToken {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}", self.token)
-    }
-}
