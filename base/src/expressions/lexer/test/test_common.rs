@@ -577,13 +577,13 @@ fn test_range() {
                 column: 1,
                 row: 1,
                 absolute_column: false,
-                absolute_row: false,
+                absolute_row: false
             },
             right: ParsedReference {
                 column: 2,
                 row: 3,
                 absolute_column: false,
-                absolute_row: false,
+                absolute_row: false
             },
         }
     );

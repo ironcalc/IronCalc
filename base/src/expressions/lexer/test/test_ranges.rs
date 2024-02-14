@@ -34,7 +34,7 @@ fn test_range() {
                 row: 4,
                 absolute_column: false,
                 absolute_row: false,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -58,7 +58,7 @@ fn test_range_absolute_column() {
                 row: 4,
                 absolute_column: false,
                 absolute_row: true,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -82,7 +82,7 @@ fn test_range_with_sheet() {
                 row: 4,
                 absolute_column: false,
                 absolute_row: false,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -106,7 +106,7 @@ fn test_range_with_sheet_with_space() {
                 row: 44,
                 absolute_column: false,
                 absolute_row: false,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -163,7 +163,7 @@ fn test_range_column() {
                 row: LAST_ROW,
                 absolute_column: false,
                 absolute_row: true,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -200,7 +200,7 @@ fn test_range_column_absolute1() {
                 row: LAST_ROW,
                 absolute_column: false,
                 absolute_row: true,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -224,7 +224,7 @@ fn test_range_column_absolute2() {
                 row: LAST_ROW,
                 absolute_column: true,
                 absolute_row: true,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -248,7 +248,7 @@ fn test_range_rows() {
                 row: 5,
                 absolute_column: true,
                 absolute_row: false,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -272,7 +272,7 @@ fn test_range_rows_absolute1() {
                 row: 5,
                 absolute_column: true,
                 absolute_row: false,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -296,7 +296,7 @@ fn test_range_rows_absolute2() {
                 row: 55,
                 absolute_column: true,
                 absolute_row: true,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -320,7 +320,7 @@ fn test_range_column_sheet() {
                 row: LAST_ROW,
                 absolute_column: false,
                 absolute_row: true,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -344,7 +344,7 @@ fn test_range_column_sheet_absolute() {
                 row: LAST_ROW,
                 absolute_column: true,
                 absolute_row: true,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -365,7 +365,7 @@ fn test_range_column_sheet_absolute() {
                 row: LAST_ROW,
                 absolute_column: true,
                 absolute_row: true,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -389,7 +389,7 @@ fn test_range_rows_sheet() {
                 row: 5,
                 absolute_column: true,
                 absolute_row: false,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -409,7 +409,7 @@ fn test_range_rows_sheet() {
                 row: 5,
                 absolute_column: true,
                 absolute_row: false,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -440,7 +440,7 @@ fn test_non_range_invalid_variable_name_a03() {
             row: 3,
             column: 1,
             absolute_column: false,
-            absolute_row: false,
+            absolute_row: false
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -456,7 +456,7 @@ fn test_non_range_invalid_variable_name_sheet1_a03() {
             row: 3,
             column: 1,
             absolute_column: false,
-            absolute_row: false,
+            absolute_row: false
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -480,7 +480,7 @@ fn test_range_rows_with_0() {
                 row: 5,
                 absolute_column: true,
                 absolute_row: false,
-            },
+            }
         }
     );
     assert_eq!(lx.next_token(), EOF);
