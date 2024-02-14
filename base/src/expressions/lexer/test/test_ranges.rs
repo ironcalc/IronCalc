@@ -113,6 +113,39 @@ fn test_range_with_sheet_with_space() {
 }
 
 #[test]
+fn test_range_error() {
+    let mut lx = new_lexer("'Sheet 1'!3.4:5");
+    assert_eq!(
+        lx.next_token(),
+        Illegal(LexerError {
+            position: 10,
+            message: "Expecting reference in range".to_string(),
+        })
+    );
+    assert_eq!(lx.next_token(), EOF);
+
+    let mut lx = new_lexer("'Sheet 1'!3:A2");
+    assert_eq!(
+        lx.next_token(),
+        Illegal(LexerError {
+            position: 14,
+            message: "Error parsing Range".to_string()
+        })
+    );
+    assert_eq!(lx.next_token(), EOF);
+
+    let mut lx = new_lexer("'Sheet 1'!3:");
+    assert_eq!(
+        lx.next_token(),
+        Illegal(LexerError {
+            position: 12,
+            message: "Error parsing Range".to_string()
+        })
+    );
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
 fn test_range_column() {
     let mut lx = new_lexer("C:D");
     assert_eq!(

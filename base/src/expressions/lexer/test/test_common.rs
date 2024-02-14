@@ -4,7 +4,7 @@ use crate::language::get_language;
 use crate::locale::get_locale;
 
 use crate::expressions::{
-    lexer::{Lexer, LexerMode},
+    lexer::{Lexer, LexerError, LexerMode},
     token::TokenType::*,
     token::{Error, OpCompare, OpProduct, OpSum},
     types::ParsedReference,
@@ -412,6 +412,20 @@ fn test_name_r1c1p() {
 }
 
 #[test]
+fn test_reference_r1c1_error() {
+    let mut lx = new_lexer("$A$4", false);
+    lx.mode = LexerMode::R1C1;
+    assert_eq!(
+        lx.next_token(),
+        Illegal(LexerError {
+            position: 1,
+            message: "Cannot parse A1 reference in R1C1 mode".to_string(),
+        })
+    );
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
 fn test_name_wrong_ref() {
     let mut lx = new_lexer("Sheet1!2", false);
     assert!(matches!(lx.next_token(), Illegal(_)));
@@ -626,6 +640,22 @@ fn test_ampersand() {
     assert_eq!(lx.next_token(), Number(1.0));
     assert_eq!(lx.next_token(), And);
     assert_eq!(lx.next_token(), Number(2.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_comma() {
+    // Used for testing locales where the comma is not a decimal separator
+    let mut lx = new_lexer("12,34", false);
+    assert_eq!(lx.next_token(), Number(12.0));
+    assert_eq!(lx.next_token(), Comma);
+    assert_eq!(lx.next_token(), Number(34.0));
+    assert_eq!(lx.next_token(), EOF);
+
+    // Used for testing locales where the comma is the decimal separator
+    let mut lx = new_lexer("12,34", false);
+    lx.locale.numbers.symbols.decimal = ",".to_string();
+    assert_eq!(lx.next_token(), Number(12.34));
     assert_eq!(lx.next_token(), EOF);
 }
 
