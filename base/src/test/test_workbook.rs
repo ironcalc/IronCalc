@@ -16,3 +16,16 @@ fn workbook_worksheets_info() {
         }
     );
 }
+
+#[test]
+fn workbook_worksheets_ids_and_names() {
+    let mut model = new_empty_model();
+    assert!(model.add_sheet("New Sheet").is_ok());
+    assert!(model.add_sheet("Newer Sheet").is_ok());
+
+    let sheet_ids = model.workbook.get_worksheet_ids();
+    assert_eq!(sheet_ids, vec![1, 2, 3]);
+
+    let sheet_names = model.workbook.get_worksheet_names();
+    assert_eq!(sheet_names, vec!["Sheet1", "New Sheet", "Newer Sheet"]);
+}
