@@ -38,6 +38,7 @@ mod test_sheet_markup;
 mod test_sheets;
 mod test_styles;
 mod test_trigonometric;
+mod test_workbook;
 mod test_worksheet;
 pub(crate) mod util;
 
@@ -47,6 +48,7 @@ mod test_number_format;
 
 mod test_escape_quotes;
 mod test_fn_type;
+mod test_frozen_rows_and_columns;
 mod test_get_cell_content;
 mod test_percentage;
 mod test_today;
