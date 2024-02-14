@@ -5,9 +5,9 @@ use super::Lexer;
 use super::{ParsedRange, ParsedReference, Result};
 
 impl Lexer {
-    // Consumes a reference in A1 style like:
-    // AS23, $AS23, AS$23, $AS$23, R12
-    // Or returns an error
+    /// Consumes a reference in A1 style like:
+    /// AS23, $AS23, AS$23, $AS$23, R12
+    /// Or returns an error
     fn consume_reference_a1(&mut self) -> Result<ParsedReference> {
         let mut absolute_column = false;
         let mut absolute_row = false;
@@ -70,6 +70,9 @@ impl Lexer {
     //    row         -> '$' row_name | row_name
     //    column_name -> 'A'..'XFD'
     //    row_name    -> 1..1_048_576
+    //
+    /// Consumes a range of references in A1 style like:
+    /// AS23:AS24, $AS23:AS24, AS$23:AS24, $AS$23:AS24, R12:R23, $R12:R23, R$12:R23, $R$12:R23
     pub(super) fn consume_range_a1(&mut self) -> Result<ParsedRange> {
         // first let's try to parse a cell
         let mut position = self.position;
@@ -203,6 +206,8 @@ impl Lexer {
         }
     }
 
+    /// Consumes a range of references in R1C1 style like:
+    /// R12C3:R23C4, R[2]C[-2]:R[3]C[6], R3C[6]:R[-3]C4, R[-2]C:R[-2]C
     pub(super) fn consume_range_r1c1(&mut self) -> Result<ParsedRange> {
         // first let's try to parse a cell
         match self.consume_reference_r1c1() {
@@ -230,6 +235,8 @@ impl Lexer {
         }
     }
 
+    /// Consumes a reference in R1C1 style like:
+    /// R12C3, R[2]C[-2], R3C[6], R[-3]C4, RC1, R[-2]C
     pub(super) fn consume_reference_r1c1(&mut self) -> Result<ParsedReference> {
         // R12C3, R[2]C[-2], R3C[6], R[-3]C4, RC1, R[-2]C
         let absolute_column;
