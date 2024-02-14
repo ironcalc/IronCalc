@@ -259,35 +259,3 @@ pub enum TokenType {
         table_reference: Option<TableReference>,
     },
 }
-
-pub fn index(token: &TokenType) -> u32 {
-    use self::TokenType::*;
-    match token {
-        Illegal(..) => 1,
-        EOF => 2,
-        Ident(..) => 3,
-        String(..) => 4,
-        Number(..) => 6,
-        Boolean(..) => 7,
-        Error(..) => 8,
-        Addition(..) => 9,
-        Product(..) => 10,
-        Power => 14,
-        LeftParenthesis => 15,
-        RightParenthesis => 16,
-        Colon => 17,
-        Semicolon => 18,
-        LeftBracket => 19,
-        RightBracket => 20,
-        LeftBrace => 21,
-        RightBrace => 22,
-        Comma => 23,
-        Bang => 24,
-        Percent => 30,
-        And => 31,
-        Reference { .. } => 34,
-        Range { .. } => 35,
-        Compare(..) => 37,
-        StructuredReference { .. } => 40,
-    }
-}

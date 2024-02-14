@@ -42,6 +42,8 @@
 //! assert!(matches!(lexer.next_token(), TokenType::Reference { .. }));
 //! ```
 
+use std::mem;
+
 use serde::{Deserialize, Serialize};
 
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
@@ -49,7 +51,7 @@ use crate::expressions::token::{OpCompare, OpProduct, OpSum};
 use crate::language::Language;
 use crate::locale::Locale;
 
-use super::token::{index, Error, TokenType};
+use super::token::{Error, TokenType};
 use super::types::*;
 use super::utils;
 
@@ -139,7 +141,7 @@ impl Lexer {
     /// Returns an error if the token is not the expected one.
     pub fn expect(&mut self, tk: TokenType) -> Result<()> {
         let nt = self.next_token();
-        if index(&nt) != index(&tk) {
+        if mem::discriminant(&nt) != mem::discriminant(&tk) {
             return Err(self.set_error(&format!("Error, expected {:?}", tk), self.position));
         }
         Ok(())

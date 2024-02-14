@@ -1,5 +1,3 @@
-use std::fmt;
-
 use serde::{Deserialize, Serialize};
 
 use crate::expressions::token;
@@ -79,4 +77,3 @@ pub fn get_tokens(formula: &str) -> Vec<MarkedToken> {
     }
     tokens
 }
-
