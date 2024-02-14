@@ -10,6 +10,11 @@ fn test_error_codes() {
         Error::NA,
         Error::NUM,
         Error::ERROR,
+        Error::NIMPL,
+        Error::SPILL,
+        Error::CALC,
+        Error::CIRC,
+        Error::NULL
     ];
     for (i, error) in errors.iter().enumerate() {
         let s = format!("{}", error);
