@@ -1,58 +1,64 @@
-//! This crate reads an xlsx file and transforms it into an internal representation ([`Model`]).
-//! An `xlsx` is a zip file containing a set of folders and `xml` files. The IronCalc json structure mimics the relevant parts of the Excel zip.
-//! Although the xlsx structure is quite complicated, it's essentials regarding the spreadsheet technology are easier to grasp.
-//!
-//! The simplest workbook folder structure might look like this:
-//!
-//! ```text
-//! docProps
-//!     app.xml
-//!     core.xml
-//!
-//! _rels
-//!     .rels
-//!
-//! xl
-//!     _rels
-//!         workbook.xml.rels
-//!     theme
-//!         theme1.xml
-//!     worksheets
-//!         sheet1.xml
-//!     calcChain.xml
-//!     styles.xml
-//!     workbook.xml
-//!     sharedStrings.xml
-//!
-//! [Content_Types].xml
+//! # IronCalc - Core API documentation
+//! 
+//! This technical API documentation in aimed at developers who want to develop bindings for a different language, 
+//! build a UI based on the engine or just use the library in a Rust program
+//! 
+//! ## Usage
+//! 
+//! Add the dependency in `Cargo.toml`:
+//! 
+//! ```toml
+//! [dependencies]
+//! ironcalc = { git = "https://github.com/ironcalc/IronCalc", version = "0.1.0"}
 //! ```
+//! 
+//! <small> until version 0.5.0 you should use the git dependencies as stated </small>
+//! 
+//! A simple example:
+//! 
+//! 
+//! ```rust
+//! use ironcalc::{
+//! base::{expressions::utils::number_to_column, model::Model},
+//! export::save_to_xlsx,
+//! };
 //!
-//! Note that more complicated workbooks will have many more files and folders.
-//! For instance charts, pivot tables, comments, tables,...
-//!
-//! The relevant json structure in IronCalc will be:
-//!
-//! ```json
-//! {
-//!     "name": "Workbook1",
-//!     "defined_names": [],
-//!     "shared_strings": [],
-//!     "worksheets": [],
-//!     "styles": {
-//!         "num_fmts": [],
-//!         "fonts": [],
-//!         "fills": [],
-//!         "borders": [],
-//!         "cell_style_xfs": [],
-//!         "cell_styles" : [],
-//!         "cell_xfs": []
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let mut model = Model::new_empty("hello-calc.xlsx", "en", "UTC")?;
+//! // Adds a square of numbers in the first sheet
+//! for row in 1..100 {
+//!     for column in 1..100 {
+//!         let value = row * column;
+//!         model.set_user_input(0, row, column, format!("{}", value));
 //!     }
 //! }
+//! // Adds a new sheet
+//! model.add_sheet("Calculation")?;
+//! // column 100 is CV
+//! let last_column = number_to_column(100).unwrap();
+//! let formula = format!("=SUM(Sheet1!A1:{}100)", last_column);
+//! model.set_user_input(1, 1, 1, formula);
+//!
+//! // evaluates
+//! model.evaluate();
+//!
+//! // saves to disk
+//! save_to_xlsx(&model, "hello-calc.xlsx")?;
+//! Ok(())
+//! }
 //! ```
-//!
-//! Note that there is not a 1-1 correspondence but there is a close resemblance.
-//!
-//! [`Model`]: ../ironcalc/struct.Model.html
+//! 
+//! You can then just:
+//! 
+//! ```bash
+//! cargo run
+//! ```
+
+
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/ironcalc/ironcalc/main/assets/logo.png",
+    html_favicon_url = "https://raw.githubusercontent.com/ironcalc/ironcalc/main/assets/favicon.ico"
+)]
 
 pub mod compare;
 pub mod error;
