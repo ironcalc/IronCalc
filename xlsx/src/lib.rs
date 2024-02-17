@@ -9,7 +9,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! ironcalc = { git = "https://github.com/ironcalc/IronCalc", version = "0.1.1"}
+//! ironcalc = { git = "https://github.com/ironcalc/IronCalc", version = "0.1.2"}
 //! ```
 //!
 //! <small> until version 0.5.0 you should use the git dependencies as stated </small>
