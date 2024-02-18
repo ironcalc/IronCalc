@@ -15,10 +15,10 @@ jobs:
       - name: Update Rust
         run: rustup update stable
 
-      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} --manifest-path base/Cargo.toml
+      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} --manifest-path base/Cargo.toml || true
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       
-      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} --manifest-path xlsx/Cargo.toml
+      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} --manifest-path xlsx/Cargo.toml || true
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
