@@ -1,0 +1,24 @@
+name: Publish
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Update Rust
+        run: rustup update stable
+
+      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} --manifest-path base/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      
+      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} --manifest-path xlsx/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
