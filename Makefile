@@ -6,9 +6,15 @@ format:
 	cargo fmt
 
 tests: lint
-	cargo test --verbose
+	cargo test
+	make remove-xlsx
 
-clean:
+remove-xlsx:
+	rm -f xlsx/hello-calc.xlsx
+	rm -f xlsx/hello-styles.xlsx
+	rm -f xlsx/widths-and-heights.xlsx
+
+clean: remove-xlsx
 	cargo clean
 	rm -r -f base/target
 	rm -r -f xlsx/target

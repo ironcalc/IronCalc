@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::model::Style;
 use crate::test::util::new_empty_model;
+use crate::types::Style;
 
 #[test]
 fn test_model_set_cells_with_values_styles() {

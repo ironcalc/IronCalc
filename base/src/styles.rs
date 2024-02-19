@@ -1,7 +1,7 @@
 use crate::{
-    model::{Model, Style},
+    model::Model,
     number_format::{get_default_num_fmt_id, get_new_num_fmt_index, get_num_fmt},
-    types::{Border, CellStyles, CellXfs, Fill, Font, NumFmt, Styles},
+    types::{Border, CellStyles, CellXfs, Fill, Font, NumFmt, Style, Styles},
 };
 
 // TODO: Move Styles and all related types from crate::types here

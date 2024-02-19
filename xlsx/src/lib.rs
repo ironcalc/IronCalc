@@ -1,7 +1,7 @@
 //! # IronCalc - Core API documentation
 //!
-//! This technical API documentation in aimed at developers who want to develop bindings for a different language,
-//! build a UI based on the engine or just use the library in a Rust program
+//! This technical API documentation is aimed at developers.
+//! It is used to build language bindings (like python, javascript or nodejs) or to build full fledged applications like ironCalc in the terminal or IronCalc, the Web application.
 //!
 //! ## Basic usage
 //!
@@ -21,7 +21,12 @@
 #![doc = include_str!("../examples/hello_calc.rs")]
 //! ```
 //!
-//! ## Styling the workbook
+//! ## Examples
+//!
+//! This is a collection of full fledged examples you can use as a starting point or for learning purposes.
+//! You might find the code in the examples folder
+//!
+//! ### Styling the workbook
 //!
 //! Adding colors, to cells, full columns or full rows is easy
 //!
@@ -29,12 +34,11 @@
 #![doc = include_str!("../examples/hello_styles.rs")]
 //! ```
 //!
-//! Changing column width and row heigh
+//! ### Changing column width and row heigh
 //!
 //! ```rust
 #![doc = include_str!("../examples/widths_and_heights.rs")]
 //! ```
-//!  
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/ironcalc/ironcalc/main/assets/logo.png",

@@ -315,6 +315,16 @@ impl Default for Styles {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct Style {
+    pub alignment: Option<Alignment>,
+    pub num_fmt: String,
+    pub fill: Fill,
+    pub font: Font,
+    pub border: Border,
+    pub quote_prefix: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct NumFmt {
     pub num_fmt_id: i32,
     pub format_code: String,

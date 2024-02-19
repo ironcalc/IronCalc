@@ -1,4 +1,12 @@
-use serde::{Deserialize, Serialize};
+#![deny(missing_docs)]
+
+//! # Model
+//!
+//! Note that sheets are 0-indexed and rows and columns are 1-indexed.
+//!
+//! IronCalc is row first. A cell is referenced by (`sheet`, `row`, `column`)
+//!
+
 use serde_json::json;
 
 use std::collections::HashMap;
@@ -39,6 +47,7 @@ pub use chrono_tz::Tz;
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
 
+/// wasm implementation for time
 #[cfg(not(test))]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_milliseconds_since_epoch() -> i64 {
@@ -56,53 +65,70 @@ pub fn get_milliseconds_since_epoch() -> i64 {
     Date::now() as i64
 }
 
+/// A cell might be evaluated or being evaluated
 #[derive(Clone)]
 pub enum CellState {
+    /// The cell has already been evaluated
     Evaluated,
+    /// The cell is being evaluated
     Evaluating,
 }
 
+/// A parsed formula for a defined name
 pub enum ParsedDefinedName {
+    /// CellReference (`=C4`)
     CellReference(CellReference),
+    /// A Range (`=C4:D6`)
     RangeReference(Range),
+    /// `=SomethingElse`
     InvalidDefinedNameFormula,
     // TODO: Support constants in defined names
     // TODO: Support formulas in defined names
     // TODO: Support tables in defined names
 }
 
-/// A model includes:
-///     * A Workbook: An internal representation of and Excel workbook
-///     * Parsed Formulas: All the formulas in the workbook are parsed here (runtime only)
-///     * A list of cells with its status (evaluating, evaluated, not evaluated)
-///     * A dictionary with the shared strings and their indices.
-///       This is an optimization for large files (~1 million rows)
+/// A dynamical IronCalc model.
+///
+/// Its is composed of a `Workbook`. Everything else are dynamical quantities:
+///
+/// * The Locale: a parsed version of the Workbook's locale
+/// * The Timezone: an object representing the Workbook's timezone
+/// * The language. Note that the timezone and the locale belong to the workbook while
+/// the language can be different for different users looking _at the same_ workbook.
+/// * Parsed Formulas: All the formulas in the workbook are parsed here (runtime only)
+/// * A list of cells with its status (evaluating, evaluated, not evaluated)
+/// * A dictionary with the shared strings and their indices.
+/// This is an optimization for large files (~1 million rows)
 pub struct Model {
+    /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook,
+    /// A list of parsed formulas
     pub parsed_formulas: Vec<Vec<Node>>,
+    /// A list of parsed defined names
     pub parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
+    /// An optimization to lookup strings faster
     pub shared_strings: HashMap<String, usize>,
+    /// An instance of the parser
     pub parser: Parser,
+    /// The list of cells with formulas that are evaluated of being evaluated
     pub cells: HashMap<(u32, i32, i32), CellState>,
+    /// The locale of the model
     pub locale: Locale,
+    /// Tha language used
     pub language: Language,
+    /// The timezone used to evaluate the model
     pub tz: Tz,
 }
 
+// FIXME: Maybe this should be the same as CellReference
+/// A struct pointing to a cell
 pub struct CellIndex {
+    /// Sheet index (0-indexed)
     pub index: u32,
+    /// Row index
     pub row: i32,
+    /// Column index
     pub column: i32,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct Style {
-    pub alignment: Option<Alignment>,
-    pub num_fmt: String,
-    pub fill: Fill,
-    pub font: Font,
-    pub border: Border,
-    pub quote_prefix: bool,
 }
 
 impl Model {
@@ -625,12 +651,27 @@ impl Model {
         }
     }
 
+    /// Sets the color of the sheet tab
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// assert_eq!(model.workbook.worksheet(0)?.color, None);
+    /// model.set_sheet_color(0, "#DBBE29")?;
+    /// assert_eq!(model.workbook.worksheet(0)?.color, Some("#DBBE29".to_string()));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> Result<(), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         if color.is_empty() {
             worksheet.color = None;
             return Ok(());
-        } else if common::is_valid_hex_color(color) {
+        }
+        if common::is_valid_hex_color(color) {
             worksheet.color = Some(color.to_string());
             return Ok(());
         }
@@ -677,11 +718,22 @@ impl Model {
         }
     }
 
-    /// Returns true if cell is completely empty.
-    /// Cell with formula that evaluates to empty string is not considered empty.
+    /// Returns `true` if the cell is completely empty.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// assert_eq!(model.is_empty_cell(0, 1, 1)?, true);
+    /// model.set_user_input(0, 1, 1, "Attention is all you need".to_string());
+    /// assert_eq!(model.is_empty_cell(0, 1, 1)?, false);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn is_empty_cell(&self, sheet: u32, row: i32, column: i32) -> Result<bool, String> {
-        let worksheet = self.workbook.worksheet(sheet)?;
-        worksheet.is_empty_cell(row, column)
+        self.workbook.worksheet(sheet)?.is_empty_cell(row, column)
     }
 
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReference) -> CalcResult {
@@ -743,14 +795,48 @@ impl Model {
         None
     }
 
-    // Public API
     /// Returns a model from a String representation of a workbook
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # use ironcalc_base::cell::CellValue;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// model.set_user_input(0, 1, 1, "Stella!".to_string());
+    /// let model2 = Model::from_json(&model.to_json_str())?;
+    /// assert_eq!(
+    ///     model2.get_cell_value_by_index(0, 1, 1),
+    ///     Ok(CellValue::String("Stella!".to_string()))
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn from_json(s: &str) -> Result<Model, String> {
         let workbook: Workbook =
             serde_json::from_str(s).map_err(|_| "Error parsing workbook".to_string())?;
         Model::from_workbook(workbook)
     }
 
+    /// Returns a model from a Workbook object
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # use ironcalc_base::cell::CellValue;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// model.set_user_input(0, 1, 1, "Stella!".to_string());
+    /// let model2 = Model::from_workbook(model.workbook)?;
+    /// assert_eq!(
+    ///     model2.get_cell_value_by_index(0, 1, 1),
+    ///     Ok(CellValue::String("Stella!".to_string()))
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn from_workbook(workbook: Workbook) -> Result<Model, String> {
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
@@ -803,6 +889,20 @@ impl Model {
     }
 
     /// Parses a reference like "Sheet1!B4" into {0, 2, 4}
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # use ironcalc_base::calc_result::CellReference;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// model.set_user_input(0, 1, 1, "Stella!".to_string());
+    /// let reference = model.parse_reference("Sheet1!D40");
+    /// assert_eq!(reference, Some(CellReference {sheet: 0, row: 40, column: 4}));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn parse_reference(&self, s: &str) -> Option<CellReference> {
         let bytes = s.as_bytes();
         let mut sheet_name = "".to_string();
@@ -857,7 +957,23 @@ impl Model {
         Some(CellReference { sheet, row, column })
     }
 
-    /// moves the value in area from source to target.
+    /// Moves the formula `value` from `source` (in `area`) to `target`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # use ironcalc_base::expressions::types::{Area, CellReferenceIndex};
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let source = CellReferenceIndex { sheet: 0, row: 3, column: 1};
+    /// let target = CellReferenceIndex { sheet: 0, row: 50, column: 1};
+    /// let area = Area { sheet: 0, row: 1, column: 1, width: 5, height: 4};
+    /// let result = model.move_cell_value_to_area("=B1", &source, &target, &area)?;
+    /// assert_eq!(&result, "=B48");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn move_cell_value_to_area(
         &mut self,
         value: &str,
@@ -908,7 +1024,22 @@ impl Model {
         }
     }
 
-    /// 'Extends' the value from cell [sheet, row, column] to [target_row, target_column]
+    /// 'Extends' the value from cell (`sheet`, `row`, `column`) to (`target_row`, `target_column`) in the same sheet
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let (sheet, row, column) = (0, 1, 1);
+    /// model.set_user_input(sheet, row, column, "=B1*D4".to_string());
+    /// let (target_row, target_column) = (30, 1);
+    /// let result = model.extend_to(sheet, row, column, target_row, target_column)?;
+    /// assert_eq!(&result, "=B30*D33");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn extend_to(
         &self,
         sheet: u32,
@@ -936,14 +1067,32 @@ impl Model {
         Ok(result)
     }
 
-    /// 'Extends' value from cell [sheet, row, column] to [target_row, target_column]
+    /// 'Extends' the formula `value` from `source` to `target`
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # use ironcalc_base::expressions::types::CellReferenceIndex;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let source = CellReferenceIndex {sheet: 0, row: 1, column: 1};
+    /// let target = CellReferenceIndex {sheet: 0, row: 30, column: 1};
+    /// let result = model.extend_copied_value("=B1*D4", &source, &target)?;
+    /// assert_eq!(&result, "=B30*D33");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn extend_copied_value(
-        &mut self, // FIXME: weird that it must be mutable
+        &mut self,
         value: &str,
-        source_sheet_name: &str,
         source: &CellReferenceIndex,
         target: &CellReferenceIndex,
     ) -> Result<String, String> {
+        let source_sheet_name = match self.workbook.worksheets.get(source.sheet as usize) {
+            Some(ws) => ws.get_name(),
+            None => {
+                return Err("Invalid worksheet index".to_owned());
+            }
+        };
         let target_sheet_name = match self.workbook.worksheets.get(target.sheet as usize) {
             Some(ws) => ws.get_name(),
             None => {
@@ -967,6 +1116,20 @@ impl Model {
         Ok(value.to_string())
     }
 
+    /// Returns the formula in (`sheet`, `row`, `column`) if any
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let (sheet, row, column) = (0, 1, 1);
+    /// model.set_user_input(sheet, row, column, "=SIN(B1*C3)+1".to_string());
+    /// model.evaluate();
+    /// let result = model.cell_formula(sheet, row, column)?;
+    /// assert_eq!(result, Some("=SIN(B1*C3)+1".to_string()));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn cell_formula(
         &self,
         sheet: u32,
@@ -1210,6 +1373,9 @@ impl Model {
     }
 
     /// Gets the Excel Value (Bool, Number, String) of a cell
+    ///
+    /// See also:
+    /// * [Model::get_cell_value_by_index()]
     pub fn get_cell_value_by_ref(&self, cell_ref: &str) -> Result<CellValue, String> {
         let cell_reference = match self.parse_reference(cell_ref) {
             Some(c) => c,
@@ -1222,6 +1388,10 @@ impl Model {
         self.get_cell_value_by_index(sheet_index, row, column)
     }
 
+    /// Returns the cell value for (`sheet`, `row`, `column`)
+    ///
+    /// See also:
+    /// * [Model::formatted_cell_value()]
     pub fn get_cell_value_by_index(
         &self,
         sheet_index: u32,
@@ -1238,6 +1408,26 @@ impl Model {
         Ok(cell_value)
     }
 
+    /// Returns the formatted cell value for (`sheet`, `row`, `column`)
+    ///
+    /// See also:
+    /// * [Model::get_cell_value_by_index()]
+    /// * [Model::get_cell_value_by_ref]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let (sheet, row, column) = (0, 1, 1);
+    /// model.set_user_input(sheet, row, column, "=1/3".to_string());
+    /// model.evaluate();
+    /// let result = model.formatted_cell_value(sheet, row, column)?;
+    /// assert_eq!(result, "0.333333333".to_string());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn formatted_cell_value(
         &self,
         sheet_index: u32,
@@ -1337,6 +1527,7 @@ impl Model {
         Ok(())
     }
 
+    /// Returns the style index for cell (`sheet`, `row`, `column`)
     pub fn get_cell_style_index(&self, sheet: u32, row: i32, column: i32) -> i32 {
         // First check the cell, then row, the column
         let cell = self
@@ -1370,6 +1561,7 @@ impl Model {
         }
     }
 
+    /// Returns the style for cell (`sheet`, `row`, `column`)
     pub fn get_style_for_cell(&self, sheet: u32, row: i32, column: i32) -> Style {
         self.workbook
             .styles
@@ -1415,6 +1607,9 @@ impl Model {
         Ok(rows.join("\n"))
     }
 
+    /// Sets the currency of the model.
+    /// Currently we only support `USD`, `EUR`, `GBP` and `JPY`
+    /// NB: This is not preserved in the JSON.
     pub fn set_currency(&mut self, iso: &str) -> Result<(), &str> {
         // TODO: Add a full list
         let symbol = if iso == "USD" {
@@ -1435,6 +1630,7 @@ impl Model {
         Ok(())
     }
 
+    /// Returns the number of frozen rows in `sheet`
     pub fn get_frozen_rows(&self, sheet: u32) -> Result<i32, String> {
         if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
             Ok(worksheet.frozen_rows)
@@ -1443,6 +1639,7 @@ impl Model {
         }
     }
 
+    /// Return the number of frozen columns in `sheet`
     pub fn get_frozen_columns(&self, sheet: u32) -> Result<i32, String> {
         if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
             Ok(worksheet.frozen_columns)
@@ -1451,11 +1648,14 @@ impl Model {
         }
     }
 
+    /// Sets the number of frozen rows to `frozen_rows` in the workbook.
+    /// Fails if `frozen`_rows` is either too small (<0) or too large (>LAST_ROW)`
     pub fn set_frozen_rows(&mut self, sheet: u32, frozen_rows: i32) -> Result<(), String> {
         if let Some(worksheet) = self.workbook.worksheets.get_mut(sheet as usize) {
             if frozen_rows < 0 {
                 return Err("Frozen rows cannot be negative".to_string());
-            } else if frozen_rows >= LAST_ROW {
+            }
+            if frozen_rows >= LAST_ROW {
                 return Err("Too many rows".to_string());
             }
             worksheet.frozen_rows = frozen_rows;
@@ -1465,11 +1665,14 @@ impl Model {
         }
     }
 
+    /// Sets the number of frozen columns to `frozen_column` in the workbook.
+    /// Fails if `frozen`_columns` is either too small (<0) or too large (>LAST_COLUMN)`
     pub fn set_frozen_columns(&mut self, sheet: u32, frozen_columns: i32) -> Result<(), String> {
         if let Some(worksheet) = self.workbook.worksheets.get_mut(sheet as usize) {
             if frozen_columns < 0 {
                 return Err("Frozen columns cannot be negative".to_string());
-            } else if frozen_columns >= LAST_COLUMN {
+            }
+            if frozen_columns >= LAST_COLUMN {
                 return Err("Too many columns".to_string());
             }
             worksheet.frozen_columns = frozen_columns;
