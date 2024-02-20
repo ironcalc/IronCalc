@@ -1172,6 +1172,18 @@ impl Model {
         }))
     }
 
+    /// Returns a boolean representing whether the cell contains a formula or not.
+    pub fn cell_contains_formula(&self, sheet_index: u32, row: i32, column: i32) -> bool {
+        let cell = &self.workbook.worksheets[sheet_index as usize].sheet_data[&row][&column];
+        cell.has_formula()
+    }
+
+    /// Returns a boolean representing whether the cell contains an error or not.
+    pub fn cell_contains_error(&self, sheet_index: u32, row: i32, column: i32) -> bool {
+        let cell = &self.workbook.worksheets[sheet_index as usize].sheet_data[&row][&column];
+        cell.get_type() == CellType::ErrorValue
+    }
+
     /// Updates the value of a cell with some text
     /// It does not change the style unless needs to add "quoting"
     ///
@@ -1608,6 +1620,7 @@ impl Model {
             None => Ok(cell.get_text(&self.workbook.shared_strings, &self.language)),
         }
     }
+
     /// Returns a list of all cells
     pub fn get_all_cells(&self) -> Vec<CellIndex> {
         let mut cells = Vec::new();
