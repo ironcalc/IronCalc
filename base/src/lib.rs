@@ -17,6 +17,11 @@
 //!
 //! ```rust
 #![doc = include_str!("../examples/hello_world.rs")]
+//! ```
+//!
+//! In this example, we demonstrate our ability to handle formulas and errors:
+//!
+//! ```rust
 #![doc = include_str!("../examples/formulas_and_errors.rs")]
 //! ```
 
