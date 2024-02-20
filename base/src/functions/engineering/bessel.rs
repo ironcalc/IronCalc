@@ -1,6 +1,6 @@
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::{parser::Node, token::Error},
+    calc_result::CalcResult,
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
@@ -11,7 +11,7 @@ use super::transcendental::{bessel_i, bessel_j, bessel_k, bessel_y, erf};
 // EXCEL_BESSEL(x, n) => bessel(n, x)
 
 impl Model {
-    pub(crate) fn fn_besseli(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_besseli(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -34,7 +34,7 @@ impl Model {
         }
         CalcResult::Number(result)
     }
-    pub(crate) fn fn_besselj(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_besselj(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -66,7 +66,7 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    pub(crate) fn fn_besselk(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_besselk(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -90,7 +90,7 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    pub(crate) fn fn_bessely(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_bessely(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -122,7 +122,7 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    pub(crate) fn fn_erf(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_erf(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -141,7 +141,7 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_erfprecise(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_erfprecise(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         };
@@ -152,7 +152,7 @@ impl Model {
         CalcResult::Number(erf(x))
     }
 
-    pub(crate) fn fn_erfc(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_erfc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         };
@@ -163,7 +163,7 @@ impl Model {
         CalcResult::Number(1.0 - erf(x))
     }
 
-    pub(crate) fn fn_erfcprecise(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_erfcprecise(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         };

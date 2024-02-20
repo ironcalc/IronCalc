@@ -1,9 +1,9 @@
 use chrono::Datelike;
 
 use crate::{
-    calc_result::{CalcResult, CellReference},
+    calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW},
-    expressions::{parser::Node, token::Error},
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
     model::Model,
 };
@@ -199,7 +199,7 @@ impl Model {
     fn get_array_of_numbers(
         &mut self,
         arg: &Node,
-        cell: &CellReference,
+        cell: &CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
         match self.evaluate_node_in_context(arg, *cell) {
@@ -234,7 +234,7 @@ impl Model {
                 }
                 for row in row1..row2 + 1 {
                     for column in column1..(column2 + 1) {
-                        match self.evaluate_cell(CellReference {
+                        match self.evaluate_cell(CellReferenceIndex {
                             sheet: left.sheet,
                             row,
                             column,
@@ -261,7 +261,7 @@ impl Model {
     fn get_array_of_numbers_xpnv(
         &mut self,
         arg: &Node,
-        cell: &CellReference,
+        cell: &CellReferenceIndex,
         error: Error,
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
@@ -297,7 +297,7 @@ impl Model {
                 }
                 for row in row1..row2 + 1 {
                     for column in column1..(column2 + 1) {
-                        match self.evaluate_cell(CellReference {
+                        match self.evaluate_cell(CellReferenceIndex {
                             sheet: left.sheet,
                             row,
                             column,
@@ -339,7 +339,7 @@ impl Model {
     fn get_array_of_numbers_xirr(
         &mut self,
         arg: &Node,
-        cell: &CellReference,
+        cell: &CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
         match self.evaluate_node_in_context(arg, *cell) {
@@ -373,7 +373,7 @@ impl Model {
                 }
                 for row in row1..row2 + 1 {
                     for column in column1..(column2 + 1) {
-                        match self.evaluate_cell(CellReference {
+                        match self.evaluate_cell(CellReferenceIndex {
                             sheet: left.sheet,
                             row,
                             column,
@@ -407,7 +407,7 @@ impl Model {
     }
 
     /// PMT(rate, nper, pv, [fv], [type])
-    pub(crate) fn fn_pmt(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_pmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(3..=5).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -455,7 +455,7 @@ impl Model {
     }
 
     // PV(rate, nper, pmt, [fv], [type])
-    pub(crate) fn fn_pv(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_pv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(3..=5).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -521,7 +521,7 @@ impl Model {
     }
 
     // RATE(nper, pmt, pv, [fv], [type], [guess])
-    pub(crate) fn fn_rate(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_rate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(3..=5).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -577,7 +577,7 @@ impl Model {
     }
 
     // NPER(rate,pmt,pv,[fv],[type])
-    pub(crate) fn fn_nper(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_nper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(3..=5).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -660,7 +660,7 @@ impl Model {
     }
 
     // FV(rate, nper, pmt, [pv], [type])
-    pub(crate) fn fn_fv(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_fv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(3..=5).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -708,7 +708,7 @@ impl Model {
     }
 
     // IPMT(rate, per, nper, pv, [fv], [type])
-    pub(crate) fn fn_ipmt(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_ipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(4..=6).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -771,7 +771,7 @@ impl Model {
     }
 
     // PPMT(rate, per, nper, pv, [fv], [type])
-    pub(crate) fn fn_ppmt(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_ppmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(4..=6).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -836,7 +836,7 @@ impl Model {
 
     // NPV(rate, value1, [value2],...)
     // npv = Sum[value[i]/(1+rate)^i, {i, 1, n}]
-    pub(crate) fn fn_npv(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_npv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if arg_count < 2 {
             return CalcResult::new_args_number_error(cell);
@@ -879,7 +879,7 @@ impl Model {
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -915,7 +915,7 @@ impl Model {
     // of payments (negative values) and income (positive values) that occur at regular periods
 
     // IRR(values, [guess])
-    pub(crate) fn fn_irr(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_irr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if arg_count > 2 || arg_count == 0 {
             return CalcResult::new_args_number_error(cell);
@@ -943,7 +943,7 @@ impl Model {
     }
 
     // XNPV(rate, values, dates)
-    pub(crate) fn fn_xnpv(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_xnpv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(2..=3).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -1005,7 +1005,7 @@ impl Model {
     }
 
     // XIRR(values, dates, [guess])
-    pub(crate) fn fn_xirr(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_xirr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(2..=3).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -1076,7 +1076,7 @@ impl Model {
     // $v_p$ the vector of positive values
     // $v_n$ the vector of negative values
     // and $y$ is dimension of $v$ - 1 (number of years)
-    pub(crate) fn fn_mirr(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_mirr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1168,7 +1168,7 @@ impl Model {
     // ISPMT(rate, per, nper, pv)
     // Formula is:
     // $$pv*rate*\left(\frac{per}{nper}-1\right)$$
-    pub(crate) fn fn_ispmt(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_ispmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 4 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1197,7 +1197,7 @@ impl Model {
     // RRI(nper, pv, fv)
     // Formula is
     // $$ \left(\frac{fv}{pv}\right)^{\frac{1}{nper}}-1  $$
-    pub(crate) fn fn_rri(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_rri(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1234,7 +1234,7 @@ impl Model {
     // SLN(cost, salvage, life)
     // Formula is:
     // $$ \frac{cost-salvage}{life} $$
-    pub(crate) fn fn_sln(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_sln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1261,7 +1261,7 @@ impl Model {
     // SYD(cost, salvage, life, per)
     // Formula is:
     // $$ \frac{(cost-salvage)*(life-per+1)*2}{life*(life+1)} $$
-    pub(crate) fn fn_syd(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_syd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 4 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1298,7 +1298,7 @@ impl Model {
     // where:
     //   $r$ is the effective interest rate
     //   $n$ is the number of periods per year
-    pub(crate) fn fn_nominal(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_nominal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1330,7 +1330,7 @@ impl Model {
     // where:
     //   $r$ is the nominal interest rate
     //   $n$ is the number of periods per year
-    pub(crate) fn fn_effect(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_effect(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1363,7 +1363,7 @@ impl Model {
     //   * $r$ is the interest rate per period
     //   * $pv$ is the present value of the investment
     //   * $fv$ is the desired future value of the investment
-    pub(crate) fn fn_pduration(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_pduration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1410,7 +1410,7 @@ impl Model {
     /// Together with the previous relation of $p$ and $v$ gives us a quadratic equation for $y$.
 
     // TBILLEQ(settlement, maturity, discount)
-    pub(crate) fn fn_tbilleq(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_tbilleq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1474,7 +1474,7 @@ impl Model {
     }
 
     // TBILLPRICE(settlement, maturity, discount)
-    pub(crate) fn fn_tbillprice(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_tbillprice(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1524,7 +1524,7 @@ impl Model {
     }
 
     // TBILLYIELD(settlement, maturity, pr)
-    pub(crate) fn fn_tbillyield(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_tbillyield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1567,7 +1567,7 @@ impl Model {
     }
 
     // DOLLARDE(fractional_dollar, fraction)
-    pub(crate) fn fn_dollarde(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_dollarde(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1596,7 +1596,7 @@ impl Model {
     }
 
     // DOLLARFR(decimal_dollar, fraction)
-    pub(crate) fn fn_dollarfr(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_dollarfr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1625,7 +1625,7 @@ impl Model {
     }
 
     // CUMIPMT(rate, nper, pv, start_period, end_period, type)
-    pub(crate) fn fn_cumipmt(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_cumipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 6 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1693,7 +1693,7 @@ impl Model {
     }
 
     // CUMPRINC(rate, nper, pv, start_period, end_period, type)
-    pub(crate) fn fn_cumprinc(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_cumprinc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 6 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1761,7 +1761,7 @@ impl Model {
     }
 
     // DDB(cost, salvage, life, period, [factor])
-    pub(crate) fn fn_ddb(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_ddb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(4..=5).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -1815,7 +1815,7 @@ impl Model {
     }
 
     // DB(cost, salvage, life, period, [month])
-    pub(crate) fn fn_db(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_db(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(4..=5).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);

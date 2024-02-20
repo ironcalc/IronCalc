@@ -1,4 +1,4 @@
-use crate::calc_result::{CellReference, Range};
+use crate::{calc_result::Range, expressions::types::CellReferenceIndex};
 
 /// It returns the closest cell from cell_reference to range in the same column/row
 /// Examples
@@ -6,9 +6,9 @@ use crate::calc_result::{CellReference, Range};
 ///  * i_i(B5, A7:A9) -> None
 ///  * i_i(B5, A2:D2) -> B2
 pub(crate) fn implicit_intersection(
-    cell_reference: &CellReference,
+    cell_reference: &CellReferenceIndex,
     range: &Range,
-) -> Option<CellReference> {
+) -> Option<CellReferenceIndex> {
     let left = &range.left;
     let right = &range.right;
     let sheet = cell_reference.sheet;
@@ -22,7 +22,7 @@ pub(crate) fn implicit_intersection(
         if left.column != right.column {
             return None;
         }
-        return Some(CellReference {
+        return Some(CellReferenceIndex {
             sheet,
             row,
             column: left.column,
@@ -31,14 +31,14 @@ pub(crate) fn implicit_intersection(
         if left.row != right.row {
             return None;
         }
-        return Some(CellReference {
+        return Some(CellReferenceIndex {
             sheet,
             row: left.row,
             column,
         });
     } else if left.row == right.row && left.column == right.column {
         // If the range is a single cell, then return it.
-        return Some(CellReference {
+        return Some(CellReferenceIndex {
             sheet,
             row: left.row,
             column: right.column,

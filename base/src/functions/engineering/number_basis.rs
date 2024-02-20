@@ -1,7 +1,6 @@
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::parser::Node,
-    expressions::token::Error,
+    calc_result::CalcResult,
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
@@ -34,7 +33,7 @@ fn from_binary_to_decimal(value: f64) -> Result<i64, String> {
 
 impl Model {
     // BIN2DEC(number)
-    pub(crate) fn fn_bin2dec(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_bin2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -49,7 +48,7 @@ impl Model {
     }
 
     // BIN2HEX(number, [places])
-    pub(crate) fn fn_bin2hex(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_bin2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -93,7 +92,7 @@ impl Model {
     }
 
     // BIN2OCT(number, [places])
-    pub(crate) fn fn_bin2oct(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_bin2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -136,7 +135,7 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_dec2bin(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_dec2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -175,7 +174,7 @@ impl Model {
         CalcResult::String(result)
     }
 
-    pub(crate) fn fn_dec2hex(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_dec2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -214,7 +213,7 @@ impl Model {
         CalcResult::String(result)
     }
 
-    pub(crate) fn fn_dec2oct(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_dec2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -255,7 +254,7 @@ impl Model {
     }
 
     // HEX2BIN(number, [places])
-    pub(crate) fn fn_hex2bin(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_hex2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -314,7 +313,7 @@ impl Model {
     }
 
     // HEX2DEC(number)
-    pub(crate) fn fn_hex2dec(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_hex2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -345,7 +344,7 @@ impl Model {
         CalcResult::Number(value as f64)
     }
 
-    pub(crate) fn fn_hex2oct(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_hex2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -403,7 +402,7 @@ impl Model {
         CalcResult::String(result)
     }
 
-    pub(crate) fn fn_oct2bin(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_oct2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -458,7 +457,7 @@ impl Model {
         CalcResult::String(result)
     }
 
-    pub(crate) fn fn_oct2dec(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_oct2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -486,7 +485,7 @@ impl Model {
         CalcResult::Number(value as f64)
     }
 
-    pub(crate) fn fn_oct2hex(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_oct2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }

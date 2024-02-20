@@ -1,12 +1,11 @@
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::parser::Node,
-    expressions::token::Error,
+    calc_result::CalcResult,
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::{Model, ParsedDefinedName},
 };
 
 impl Model {
-    pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Number(_) => return CalcResult::Boolean(true),
@@ -17,7 +16,7 @@ impl Model {
         }
         CalcResult::new_args_number_error(cell)
     }
-    pub(crate) fn fn_istext(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_istext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::String(_) => return CalcResult::Boolean(true),
@@ -28,7 +27,7 @@ impl Model {
         }
         CalcResult::new_args_number_error(cell)
     }
-    pub(crate) fn fn_isnontext(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_isnontext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::String(_) => return CalcResult::Boolean(false),
@@ -39,7 +38,7 @@ impl Model {
         }
         CalcResult::new_args_number_error(cell)
     }
-    pub(crate) fn fn_islogical(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_islogical(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Boolean(_) => return CalcResult::Boolean(true),
@@ -50,7 +49,7 @@ impl Model {
         }
         CalcResult::new_args_number_error(cell)
     }
-    pub(crate) fn fn_isblank(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_isblank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::EmptyCell => return CalcResult::Boolean(true),
@@ -61,7 +60,7 @@ impl Model {
         }
         CalcResult::new_args_number_error(cell)
     }
-    pub(crate) fn fn_iserror(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_iserror(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Error { .. } => return CalcResult::Boolean(true),
@@ -72,7 +71,7 @@ impl Model {
         }
         CalcResult::new_args_number_error(cell)
     }
-    pub(crate) fn fn_iserr(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_iserr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Error { error, .. } => {
@@ -89,7 +88,7 @@ impl Model {
         }
         CalcResult::new_args_number_error(cell)
     }
-    pub(crate) fn fn_isna(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_isna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Error { error, .. } => {
@@ -109,7 +108,7 @@ impl Model {
 
     // Returns true if it is a reference or evaluates to a reference
     // But DOES NOT evaluate
-    pub(crate) fn fn_isref(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_isref(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -122,7 +121,7 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_isodd(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_isodd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -133,7 +132,7 @@ impl Model {
         CalcResult::Boolean(value % 2 == 1)
     }
 
-    pub(crate) fn fn_iseven(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_iseven(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -145,7 +144,7 @@ impl Model {
     }
 
     // ISFORMULA arg needs to be a reference or something that evaluates to a reference
-    pub(crate) fn fn_isformula(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_isformula(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -181,7 +180,7 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_errortype(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_errortype(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -220,7 +219,7 @@ impl Model {
 
     // Excel believes for some reason that TYPE(A1:A7) is an array formula
     // Although we evaluate the same as Excel we cannot, ATM import this from excel
-    pub(crate) fn fn_type(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_type(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -237,7 +236,7 @@ impl Model {
             }
         }
     }
-    pub(crate) fn fn_sheet(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_sheet(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if arg_count > 1 {
             return CalcResult::new_args_number_error(cell);

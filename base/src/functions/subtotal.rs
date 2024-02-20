@@ -1,8 +1,9 @@
 use crate::{
-    calc_result::{CalcResult, CellReference},
+    calc_result::CalcResult,
     expressions::{
         parser::{parse_range, Node},
         token::Error,
+        types::CellReferenceIndex,
     },
     functions::Function,
     model::Model,
@@ -106,7 +107,7 @@ impl Model {
     fn subtotal_get_values(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> Result<Vec<f64>, CalcResult> {
         let mut result: Vec<f64> = Vec::new();
@@ -155,7 +156,7 @@ impl Model {
                                     if self.cell_is_subtotal(left.sheet, row, column) {
                                         continue;
                                     }
-                                    match self.evaluate_cell(CellReference {
+                                    match self.evaluate_cell(CellReferenceIndex {
                                         sheet: left.sheet,
                                         row,
                                         column,
@@ -179,7 +180,7 @@ impl Model {
         Ok(result)
     }
 
-    pub(crate) fn fn_subtotal(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_subtotal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -221,7 +222,7 @@ impl Model {
     fn subtotal_vars(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let values = match self.subtotal_get_values(args, cell, mode) {
@@ -253,7 +254,7 @@ impl Model {
     fn subtotal_varp(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let values = match self.subtotal_get_values(args, cell, mode) {
@@ -284,7 +285,7 @@ impl Model {
     fn subtotal_stdevs(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let values = match self.subtotal_get_values(args, cell, mode) {
@@ -316,7 +317,7 @@ impl Model {
     fn subtotal_stdevp(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let values = match self.subtotal_get_values(args, cell, mode) {
@@ -347,7 +348,7 @@ impl Model {
     fn subtotal_counta(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let mut counta = 0;
@@ -392,7 +393,7 @@ impl Model {
                                     if self.cell_is_subtotal(left.sheet, row, column) {
                                         continue;
                                     }
-                                    match self.evaluate_cell(CellReference {
+                                    match self.evaluate_cell(CellReferenceIndex {
                                         sheet: left.sheet,
                                         row,
                                         column,
@@ -419,7 +420,7 @@ impl Model {
     fn subtotal_count(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let mut count = 0;
@@ -462,7 +463,7 @@ impl Model {
                                         continue;
                                     }
                                     if let CalcResult::Number(_) =
-                                        self.evaluate_cell(CellReference {
+                                        self.evaluate_cell(CellReferenceIndex {
                                             sheet: left.sheet,
                                             row,
                                             column,
@@ -486,7 +487,7 @@ impl Model {
     fn subtotal_average(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let values = match self.subtotal_get_values(args, cell, mode) {
@@ -511,7 +512,7 @@ impl Model {
     fn subtotal_sum(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let values = match self.subtotal_get_values(args, cell, mode) {
@@ -528,7 +529,7 @@ impl Model {
     fn subtotal_product(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let values = match self.subtotal_get_values(args, cell, mode) {
@@ -545,7 +546,7 @@ impl Model {
     fn subtotal_max(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let values = match self.subtotal_get_values(args, cell, mode) {
@@ -565,7 +566,7 @@ impl Model {
     fn subtotal_min(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
         let values = match self.subtotal_get_values(args, cell, mode) {

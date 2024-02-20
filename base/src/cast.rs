@@ -1,6 +1,6 @@
 use crate::{
-    calc_result::{CalcResult, CellReference, Range},
-    expressions::{parser::Node, token::Error},
+    calc_result::{CalcResult, Range},
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     implicit_intersection::implicit_intersection,
     model::Model,
 };
@@ -9,7 +9,7 @@ impl Model {
     pub(crate) fn get_number(
         &mut self,
         node: &Node,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
         self.cast_to_number(result, cell)
@@ -18,7 +18,7 @@ impl Model {
     fn cast_to_number(
         &mut self,
         result: CalcResult,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         match result {
             CalcResult::Number(f) => Ok(f),
@@ -58,7 +58,7 @@ impl Model {
     pub(crate) fn get_number_no_bools(
         &mut self,
         node: &Node,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
         if matches!(result, CalcResult::Boolean(_)) {
@@ -74,7 +74,7 @@ impl Model {
     pub(crate) fn get_string(
         &mut self,
         node: &Node,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> Result<String, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
         self.cast_to_string(result, cell)
@@ -83,7 +83,7 @@ impl Model {
     pub(crate) fn cast_to_string(
         &mut self,
         result: CalcResult,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> Result<String, CalcResult> {
         // FIXME: I think when casting a number we should convert it to_precision(x, 15)
         // See function Exact
@@ -118,7 +118,7 @@ impl Model {
     pub(crate) fn get_boolean(
         &mut self,
         node: &Node,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> Result<bool, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
         self.cast_to_bool(result, cell)
@@ -127,7 +127,7 @@ impl Model {
     fn cast_to_bool(
         &mut self,
         result: CalcResult,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> Result<bool, CalcResult> {
         match result {
             CalcResult::Number(f) => {
@@ -171,7 +171,7 @@ impl Model {
     pub(crate) fn get_reference(
         &mut self,
         node: &Node,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
         match node {
             Node::ReferenceKind {
@@ -182,7 +182,7 @@ impl Model {
                 sheet_index,
                 sheet_name: _,
             } => {
-                let left = CellReference {
+                let left = CellReferenceIndex {
                     sheet: *sheet_index,
                     row: if *absolute_row { *row } else { *row + cell.row },
                     column: if *absolute_column {

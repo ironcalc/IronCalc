@@ -1,8 +1,8 @@
 use crate::expressions::token::get_error_by_name;
+use crate::expressions::types::CellReferenceIndex;
 use crate::language::Language;
 
 use crate::{
-    calc_result::CellReference,
     expressions::{
         lexer::{Lexer, LexerMode},
         token::TokenType,
@@ -13,8 +13,8 @@ use crate::{
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ParsedReference {
-    CellReference(CellReference),
-    Range(CellReference, CellReference),
+    CellReference(CellReferenceIndex),
+    Range(CellReferenceIndex, CellReferenceIndex),
 }
 
 impl ParsedReference {
@@ -71,7 +71,7 @@ impl ParsedReference {
                     );
                 }
 
-                Ok(ParsedReference::CellReference(CellReference {
+                Ok(ParsedReference::CellReference(CellReferenceIndex {
                     sheet: sheet_index,
                     row: row_id,
                     column: column_id,
@@ -103,12 +103,12 @@ impl ParsedReference {
                 }
 
                 Ok(ParsedReference::Range(
-                    CellReference {
+                    CellReferenceIndex {
                         sheet: sheet_index,
                         row: left.row,
                         column: left.column,
                     },
-                    CellReference {
+                    CellReferenceIndex {
                         sheet: sheet_index,
                         row: right.row,
                         column: right.column,
@@ -176,7 +176,7 @@ mod tests {
             ParsedReference::parse_reference_formula(Some(7), "A1", locale, |name| {
                 get_sheet_index_by_name(&sheet_names, name)
             },),
-            Ok(ParsedReference::CellReference(CellReference {
+            Ok(ParsedReference::CellReference(CellReferenceIndex {
                 sheet: 7,
                 row: 1,
                 column: 1,
@@ -187,7 +187,7 @@ mod tests {
             ParsedReference::parse_reference_formula(None, "Sheet1!A1", locale, |name| {
                 get_sheet_index_by_name(&sheet_names, name)
             },),
-            Ok(ParsedReference::CellReference(CellReference {
+            Ok(ParsedReference::CellReference(CellReferenceIndex {
                 sheet: 0,
                 row: 1,
                 column: 1,
@@ -198,7 +198,7 @@ mod tests {
             ParsedReference::parse_reference_formula(None, "Sheet1!$A$1", locale, |name| {
                 get_sheet_index_by_name(&sheet_names, name)
             },),
-            Ok(ParsedReference::CellReference(CellReference {
+            Ok(ParsedReference::CellReference(CellReferenceIndex {
                 sheet: 0,
                 row: 1,
                 column: 1,
@@ -209,7 +209,7 @@ mod tests {
             ParsedReference::parse_reference_formula(None, "Sheet2!$A$1", locale, |name| {
                 get_sheet_index_by_name(&sheet_names, name)
             },),
-            Ok(ParsedReference::CellReference(CellReference {
+            Ok(ParsedReference::CellReference(CellReferenceIndex {
                 sheet: 1,
                 row: 1,
                 column: 1,
@@ -227,12 +227,12 @@ mod tests {
                 get_sheet_index_by_name(&sheet_names, name)
             },),
             Ok(ParsedReference::Range(
-                CellReference {
+                CellReferenceIndex {
                     sheet: 5,
                     column: 1,
                     row: 1,
                 },
-                CellReference {
+                CellReferenceIndex {
                     sheet: 5,
                     column: 1,
                     row: 2,
@@ -245,12 +245,12 @@ mod tests {
                 get_sheet_index_by_name(&sheet_names, name)
             },),
             Ok(ParsedReference::Range(
-                CellReference {
+                CellReferenceIndex {
                     sheet: 0,
                     row: 1,
                     column: 1,
                 },
-                CellReference {
+                CellReferenceIndex {
                     sheet: 0,
                     row: 10,
                     column: 2,
@@ -263,12 +263,12 @@ mod tests {
                 get_sheet_index_by_name(&sheet_names, name)
             },),
             Ok(ParsedReference::Range(
-                CellReference {
+                CellReferenceIndex {
                     sheet: 1,
                     row: 1,
                     column: 27,
                 },
-                CellReference {
+                CellReferenceIndex {
                     sheet: 1,
                     row: 11,
                     column: 5,

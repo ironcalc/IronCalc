@@ -1,9 +1,6 @@
 use std::cmp::Ordering;
 
-use crate::{
-    calc_result::{CalcResult, CellReference},
-    model::Model,
-};
+use crate::{calc_result::CalcResult, expressions::types::CellReferenceIndex, model::Model};
 
 use super::util::compare_values;
 
@@ -144,8 +141,8 @@ impl Model {
     /// Returns an array with the list of cell values in the range
     pub(crate) fn prepare_array(
         &mut self,
-        left: &CellReference,
-        right: &CellReference,
+        left: &CellReferenceIndex,
+        right: &CellReferenceIndex,
         is_row_vector: bool,
     ) -> Vec<CalcResult> {
         let n = if is_row_vector {
@@ -164,7 +161,7 @@ impl Model {
                 column = left.column + index;
                 row = left.row;
             }
-            let value = self.evaluate_cell(CellReference {
+            let value = self.evaluate_cell(CellReferenceIndex {
                 sheet: left.sheet,
                 row,
                 column,
@@ -178,8 +175,8 @@ impl Model {
     pub(crate) fn binary_search(
         &mut self,
         target: &CalcResult,
-        left: &CellReference,
-        right: &CellReference,
+        left: &CellReferenceIndex,
+        right: &CellReferenceIndex,
         is_row_vector: bool,
     ) -> i32 {
         let array = self.prepare_array(left, right, is_row_vector);

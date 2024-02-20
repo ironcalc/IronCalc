@@ -4,19 +4,16 @@ use chrono::NaiveDateTime;
 use chrono::TimeZone;
 use chrono::Timelike;
 
+use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::dates::date_to_serial_number;
 use crate::model::get_milliseconds_since_epoch;
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    constants::EXCEL_DATE_BASE,
-    expressions::parser::Node,
-    expressions::token::Error,
-    formatter::dates::from_excel_date,
-    model::Model,
+    calc_result::CalcResult, constants::EXCEL_DATE_BASE, expressions::parser::Node,
+    expressions::token::Error, formatter::dates::from_excel_date, model::Model,
 };
 
 impl Model {
-    pub(crate) fn fn_day(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_day(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -40,7 +37,7 @@ impl Model {
         CalcResult::Number(day)
     }
 
-    pub(crate) fn fn_month(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_month(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -64,7 +61,7 @@ impl Model {
         CalcResult::Number(month)
     }
 
-    pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -119,7 +116,7 @@ impl Model {
     }
 
     // year, month, day
-    pub(crate) fn fn_date(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_date(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 3 {
             return CalcResult::new_args_number_error(cell);
@@ -176,7 +173,7 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_year(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_year(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -201,7 +198,7 @@ impl Model {
     }
 
     // date, months
-    pub(crate) fn fn_edate(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_edate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -249,7 +246,7 @@ impl Model {
         CalcResult::Number(serial_number as f64)
     }
 
-    pub(crate) fn fn_today(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_today(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 0 {
             return CalcResult::Error {
@@ -280,7 +277,7 @@ impl Model {
         CalcResult::Number(days_from_1900 as f64)
     }
 
-    pub(crate) fn fn_now(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_now(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 0 {
             return CalcResult::Error {

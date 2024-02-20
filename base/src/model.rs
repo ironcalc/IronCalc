@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::vec::Vec;
 
 use crate::{
-    calc_result::{CalcResult, CellReference, Range},
+    calc_result::{CalcResult, Range},
     cell::CellValue,
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::token::{Error, OpCompare, OpProduct, OpSum, OpUnary},
@@ -77,7 +77,7 @@ pub enum CellState {
 /// A parsed formula for a defined name
 pub enum ParsedDefinedName {
     /// CellReference (`=C4`)
-    CellReference(CellReference),
+    CellReference(CellReferenceIndex),
     /// A Range (`=C4:D6`)
     RangeReference(Range),
     /// `=SomethingElse`
@@ -135,7 +135,7 @@ impl Model {
     pub(crate) fn evaluate_node_with_reference(
         &mut self,
         node: &Node,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> CalcResult {
         match node {
             Node::ReferenceKind {
@@ -155,12 +155,12 @@ impl Model {
                     column1 += cell.column;
                 }
                 CalcResult::Range {
-                    left: CellReference {
+                    left: CellReferenceIndex {
                         sheet: *sheet_index,
                         row: row1,
                         column: column1,
                     },
-                    right: CellReference {
+                    right: CellReferenceIndex {
                         sheet: *sheet_index,
                         row: row1,
                         column: column1,
@@ -197,12 +197,12 @@ impl Model {
                 }
                 // FIXME: HACK. The parser is currently parsing Sheet3!A1:A10 as Sheet3!A1:(present sheet)!A10
                 CalcResult::Range {
-                    left: CellReference {
+                    left: CellReferenceIndex {
                         sheet: *sheet_index,
                         row: row_left,
                         column: column_left,
                     },
-                    right: CellReference {
+                    right: CellReferenceIndex {
                         sheet: *sheet_index,
                         row: row_right,
                         column: column_right,
@@ -213,7 +213,7 @@ impl Model {
         }
     }
 
-    fn get_range(&mut self, left: &Node, right: &Node, cell: CellReference) -> CalcResult {
+    fn get_range(&mut self, left: &Node, right: &Node, cell: CellReferenceIndex) -> CalcResult {
         let left_result = self.evaluate_node_with_reference(left, cell);
         let right_result = self.evaluate_node_with_reference(right, cell);
         match (left_result, right_result) {
@@ -254,7 +254,7 @@ impl Model {
     pub(crate) fn evaluate_node_in_context(
         &mut self,
         node: &Node,
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> CalcResult {
         use Node::*;
         match node {
@@ -298,7 +298,7 @@ impl Model {
                 if !absolute_column {
                     column1 += cell.column;
                 }
-                self.evaluate_cell(CellReference {
+                self.evaluate_cell(CellReferenceIndex {
                     sheet: *sheet_index,
                     row: row1,
                     column: column1,
@@ -323,7 +323,7 @@ impl Model {
                 absolute_column2,
                 sheet_name: _,
             } => CalcResult::Range {
-                left: CellReference {
+                left: CellReferenceIndex {
                     sheet: *sheet_index,
                     row: if *absolute_row1 {
                         *row1
@@ -336,7 +336,7 @@ impl Model {
                         *column1 + cell.column
                     },
                 },
-                right: CellReference {
+                right: CellReferenceIndex {
                     sheet: *sheet_index,
                     row: if *absolute_row2 {
                         *row2
@@ -531,7 +531,10 @@ impl Model {
         }
     }
 
-    fn cell_reference_to_string(&self, cell_reference: &CellReference) -> Result<String, String> {
+    fn cell_reference_to_string(
+        &self,
+        cell_reference: &CellReferenceIndex,
+    ) -> Result<String, String> {
         let sheet = self.workbook.worksheet(cell_reference.sheet)?;
         let column = utils::number_to_column(cell_reference.column)
             .ok_or_else(|| "Invalid column".to_string())?;
@@ -543,8 +546,8 @@ impl Model {
     /// Sets `result` in the cell given by `sheet` sheet index, row and column
     /// Note that will panic if the cell does not exist
     /// It will do nothing if the cell does not have a formula
-    fn set_cell_value(&mut self, cell_reference: CellReference, result: &CalcResult) {
-        let CellReference { sheet, column, row } = cell_reference;
+    fn set_cell_value(&mut self, cell_reference: CellReferenceIndex, result: &CalcResult) {
+        let CellReferenceIndex { sheet, column, row } = cell_reference;
         let cell = &self.workbook.worksheets[sheet as usize].sheet_data[&row][&column];
         let s = cell.get_style();
         if let Some(f) = cell.get_formula() {
@@ -678,7 +681,7 @@ impl Model {
         Err(format!("Invalid color: {}", color))
     }
 
-    fn get_cell_value(&self, cell: &Cell, cell_reference: CellReference) -> CalcResult {
+    fn get_cell_value(&self, cell: &Cell, cell_reference: CellReferenceIndex) -> CalcResult {
         use Cell::*;
         match cell {
             EmptyCell { .. } => CalcResult::EmptyCell,
@@ -736,7 +739,7 @@ impl Model {
         self.workbook.worksheet(sheet)?.is_empty_cell(row, column)
     }
 
-    pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReference) -> CalcResult {
+    pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
         let row_data = match self.workbook.worksheets[cell_reference.sheet as usize]
             .sheet_data
             .get(&cell_reference.row)
@@ -894,16 +897,16 @@ impl Model {
     ///
     /// ```rust
     /// # use ironcalc_base::model::Model;
-    /// # use ironcalc_base::calc_result::CellReference;
+    /// # use ironcalc_base::expressions::types::CellReferenceIndex;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// model.set_user_input(0, 1, 1, "Stella!".to_string());
     /// let reference = model.parse_reference("Sheet1!D40");
-    /// assert_eq!(reference, Some(CellReference {sheet: 0, row: 40, column: 4}));
+    /// assert_eq!(reference, Some(CellReferenceIndex {sheet: 0, row: 40, column: 4}));
     /// # Ok(())
     /// # }
     /// ```
-    pub fn parse_reference(&self, s: &str) -> Option<CellReference> {
+    pub fn parse_reference(&self, s: &str) -> Option<CellReferenceIndex> {
         let bytes = s.as_bytes();
         let mut sheet_name = "".to_string();
         let mut column = "".to_string();
@@ -954,7 +957,7 @@ impl Model {
             Err(_) => return None,
         };
 
-        Some(CellReference { sheet, row, column })
+        Some(CellReferenceIndex { sheet, row, column })
     }
 
     /// Moves the formula `value` from `source` (in `area`) to `target`.
@@ -1391,7 +1394,7 @@ impl Model {
                     .set_cell_with_formula(sheet, row, column, formula, new_style_index)
                     .expect("could not set the cell formula");
                 // Update the style if needed
-                let cell = CellReference { sheet, row, column };
+                let cell = CellReferenceIndex { sheet, row, column };
                 let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
                     let new_style_index = self
@@ -1635,7 +1638,7 @@ impl Model {
         let cells = self.get_all_cells();
 
         for cell in cells {
-            self.evaluate_cell(CellReference {
+            self.evaluate_cell(CellReferenceIndex {
                 sheet: cell.index,
                 row: cell.row,
                 column: cell.column,
@@ -1820,8 +1823,8 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test::util::new_empty_model;
+    use super::CellReferenceIndex as CellReference;
+    use crate::{test::util::new_empty_model, types::Cell};
 
     #[test]
     fn test_cell_reference_to_string() {

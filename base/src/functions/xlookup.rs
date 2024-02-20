@@ -1,9 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::types::CellReferenceIndex;
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::parser::Node,
-    expressions::token::Error,
-    model::Model,
+    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
 use super::{
@@ -146,7 +144,7 @@ impl Model {
     ///          in ascending order. If not sorted, invalid results will be returned.
     ///   * -2 - Perform a binary search that relies on lookup_array being sorted
     ///          in descending order. If not sorted, invalid results will be returned.
-    pub(crate) fn fn_xlookup(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_xlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 3 || args.len() > 6 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -268,12 +266,12 @@ impl Model {
                                 .dimension()
                                 .max_column;
                         }
-                        let left = CellReference {
+                        let left = CellReferenceIndex {
                             sheet: left.sheet,
                             column: column1,
                             row: row1,
                         };
-                        let right = CellReference {
+                        let right = CellReferenceIndex {
                             sheet: left.sheet,
                             column: column2,
                             row: row2,
@@ -287,7 +285,7 @@ impl Model {
                                             if is_row_vector { index as i32 } else { 0 };
                                         let column_index =
                                             if is_row_vector { 0 } else { index as i32 };
-                                        self.evaluate_cell(CellReference {
+                                        self.evaluate_cell(CellReferenceIndex {
                                             sheet: result_left.sheet,
                                             row: result_left.row + row_index,
                                             column: result_left.column + column_index,
@@ -329,14 +327,14 @@ impl Model {
                                         let column =
                                             result_left.column + if is_row_vector { 0 } else { l };
                                         if match_mode == MatchMode::ExactMatch {
-                                            let value = self.evaluate_cell(CellReference {
+                                            let value = self.evaluate_cell(CellReferenceIndex {
                                                 sheet: left.sheet,
                                                 row: left.row + if is_row_vector { l } else { 0 },
                                                 column: left.column
                                                     + if is_row_vector { 0 } else { l },
                                             });
                                             if compare_values(&value, &lookup_value) == 0 {
-                                                self.evaluate_cell(CellReference {
+                                                self.evaluate_cell(CellReferenceIndex {
                                                     sheet: result_left.sheet,
                                                     row,
                                                     column,
@@ -347,7 +345,7 @@ impl Model {
                                         } else if match_mode == MatchMode::ExactMatchSmaller
                                             || match_mode == MatchMode::ExactMatchLarger
                                         {
-                                            self.evaluate_cell(CellReference {
+                                            self.evaluate_cell(CellReferenceIndex {
                                                 sheet: result_left.sheet,
                                                 row,
                                                 column,

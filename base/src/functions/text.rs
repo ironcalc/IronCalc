@@ -1,8 +1,7 @@
 use crate::{
-    calc_result::{CalcResult, CellReference},
+    calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW},
-    expressions::parser::Node,
-    expressions::token::Error,
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     formatter::format::{format_number, parse_formatted_number},
     model::Model,
     number_format::to_precision,
@@ -52,7 +51,7 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
 }
 
 impl Model {
-    pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = "".to_string();
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
@@ -77,7 +76,7 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -106,7 +105,7 @@ impl Model {
         }
         CalcResult::String(result)
     }
-    pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
             let value = match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Number(f) => f,
@@ -153,7 +152,7 @@ impl Model {
     ///  * If start_num is not greater than zero, FIND and FINDB return the #VALUE! error value.
     ///  * If start_num is greater than the length of within_text, FIND and FINDB return the #VALUE! error value.
     /// NB: FINDB is not implemented. It is the same as FIND function unless locale is a DBCS (Double Byte Character Set)
-    pub(crate) fn fn_find(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_find(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -205,7 +204,7 @@ impl Model {
     ///  * Allows wildcards
     ///  * It is case insensitive
     /// SEARCH(find_text, within_text, [start_num])
-    pub(crate) fn fn_search(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_search(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -259,7 +258,7 @@ impl Model {
     }
 
     // LEN, LEFT, RIGHT, MID, LOWER, UPPER, TRIM
-    pub(crate) fn fn_len(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_len(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Number(v) => format!("{}", v),
@@ -287,7 +286,7 @@ impl Model {
         CalcResult::new_args_number_error(cell)
     }
 
-    pub(crate) fn fn_trim(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_trim(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Number(v) => format!("{}", v),
@@ -315,7 +314,7 @@ impl Model {
         CalcResult::new_args_number_error(cell)
     }
 
-    pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Number(v) => format!("{}", v),
@@ -343,7 +342,7 @@ impl Model {
         CalcResult::new_args_number_error(cell)
     }
 
-    pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Number(v) => format!("{}", v),
@@ -371,7 +370,7 @@ impl Model {
         CalcResult::new_args_number_error(cell)
     }
 
-    pub(crate) fn fn_left(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_left(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 2 || args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
@@ -439,7 +438,7 @@ impl Model {
         CalcResult::String(result)
     }
 
-    pub(crate) fn fn_right(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_right(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 2 || args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
@@ -507,7 +506,7 @@ impl Model {
         return CalcResult::String(result.chars().rev().collect::<String>());
     }
 
-    pub(crate) fn fn_mid(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_mid(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -611,7 +610,7 @@ impl Model {
     }
 
     // REPT(text, number_times)
-    pub(crate) fn fn_rept(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_rept(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -648,7 +647,7 @@ impl Model {
     }
 
     // TEXTAFTER(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])
-    pub(crate) fn fn_textafter(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_textafter(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(2..=6).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -753,7 +752,7 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_textbefore(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_textbefore(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(2..=6).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -859,7 +858,7 @@ impl Model {
     }
 
     // TEXTJOIN(delimiter, ignore_empty, text1, [text2], …)
-    pub(crate) fn fn_textjoin(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_textjoin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if arg_count < 3 {
             return CalcResult::new_args_number_error(cell);
@@ -906,7 +905,7 @@ impl Model {
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -955,7 +954,7 @@ impl Model {
     }
 
     // SUBSTITUTE(text, old_text, new_text, [instance_num])
-    pub(crate) fn fn_substitute(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_substitute(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(2..=4).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -1000,7 +999,7 @@ impl Model {
             CalcResult::String(text.replace(&old_text, &new_text))
         }
     }
-    pub(crate) fn fn_concatenate(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_concatenate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if arg_count == 0 {
             return CalcResult::new_args_number_error(cell);
@@ -1016,7 +1015,7 @@ impl Model {
         CalcResult::String(text_array.join(""))
     }
 
-    pub(crate) fn fn_exact(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_exact(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1039,7 +1038,7 @@ impl Model {
         }
     }
     // VALUE(text)
-    pub(crate) fn fn_value(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_value(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1074,7 +1073,7 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_t(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_t(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -1088,7 +1087,7 @@ impl Model {
     }
 
     // VALUETOTEXT(value)
-    pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }

@@ -1,17 +1,10 @@
 use std::cmp::Ordering;
 
-use crate::expressions::token::Error;
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub struct CellReference {
-    pub sheet: u32,
-    pub column: i32,
-    pub row: i32,
-}
+use crate::expressions::{token::Error, types::CellReferenceIndex};
 
 pub struct Range {
-    pub left: CellReference,
-    pub right: CellReference,
+    pub left: CellReferenceIndex,
+    pub right: CellReferenceIndex,
 }
 
 #[derive(Clone)]
@@ -21,26 +14,26 @@ pub(crate) enum CalcResult {
     Boolean(bool),
     Error {
         error: Error,
-        origin: CellReference,
+        origin: CellReferenceIndex,
         message: String,
     },
     Range {
-        left: CellReference,
-        right: CellReference,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
     },
     EmptyCell,
     EmptyArg,
 }
 
 impl CalcResult {
-    pub fn new_error(error: Error, origin: CellReference, message: String) -> CalcResult {
+    pub fn new_error(error: Error, origin: CellReferenceIndex, message: String) -> CalcResult {
         CalcResult::Error {
             error,
             origin,
             message,
         }
     }
-    pub fn new_args_number_error(origin: CellReference) -> CalcResult {
+    pub fn new_args_number_error(origin: CellReferenceIndex) -> CalcResult {
         CalcResult::Error {
             error: Error::ERROR,
             origin,

@@ -1,6 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::types::CellReferenceIndex;
 use crate::{
-    calc_result::{CalcResult, CellReference, Range},
+    calc_result::{CalcResult, Range},
     expressions::parser::Node,
     expressions::token::Error,
     model::Model,
@@ -9,7 +10,7 @@ use crate::{
 use super::util::build_criteria;
 
 impl Model {
-    pub(crate) fn fn_average(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_average(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
@@ -38,7 +39,7 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -90,7 +91,7 @@ impl Model {
         CalcResult::Number(sum / count)
     }
 
-    pub(crate) fn fn_averagea(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_averagea(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
@@ -108,7 +109,7 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -176,7 +177,7 @@ impl Model {
         CalcResult::Number(sum / count)
     }
 
-    pub(crate) fn fn_count(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_count(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
@@ -206,7 +207,7 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            if let CalcResult::Number(_) = self.evaluate_cell(CellReference {
+                            if let CalcResult::Number(_) = self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -224,7 +225,7 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    pub(crate) fn fn_counta(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_counta(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
@@ -242,7 +243,7 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -263,7 +264,7 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    pub(crate) fn fn_countblank(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_countblank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // COUNTBLANK requires only one argument
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -287,7 +288,7 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -309,7 +310,7 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
             let arguments = vec![args[0].clone(), args[1].clone()];
             self.fn_countifs(&arguments, cell)
@@ -320,7 +321,7 @@ impl Model {
 
     /// AVERAGEIF(criteria_range, criteria, [average_range])
     /// if average_rage is missing then criteria_range will be used
-    pub(crate) fn fn_averageif(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_averageif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
             let arguments = vec![args[0].clone(), args[0].clone(), args[1].clone()];
             self.fn_averageifs(&arguments, cell)
@@ -333,7 +334,7 @@ impl Model {
     }
 
     // FIXME: This function shares a lot of code with apply_ifs. Can we merge them?
-    pub(crate) fn fn_countifs(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_countifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count < 2 || args_count % 2 == 1 {
             return CalcResult::new_args_number_error(cell);
@@ -428,7 +429,7 @@ impl Model {
                     // We check if value in range n meets criterion n
                     let range = &ranges[case_index];
                     let fn_criterion = &fn_criteria[case_index];
-                    let value = self.evaluate_cell(CellReference {
+                    let value = self.evaluate_cell(CellReferenceIndex {
                         sheet: range.left.sheet,
                         row: range.left.row + row - first_range.left.row,
                         column: range.left.column + column - first_range.left.column,
@@ -449,7 +450,7 @@ impl Model {
     pub(crate) fn apply_ifs<F>(
         &mut self,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
         mut apply: F,
     ) -> Result<(), CalcResult>
     where
@@ -548,7 +549,7 @@ impl Model {
                     // We check if value in range n meets criterion n
                     let range = &ranges[case_index];
                     let fn_criterion = &fn_criteria[case_index];
-                    let value = self.evaluate_cell(CellReference {
+                    let value = self.evaluate_cell(CellReferenceIndex {
                         sheet: range.left.sheet,
                         row: range.left.row + row - sum_range.left.row,
                         column: range.left.column + column - sum_range.left.column,
@@ -559,7 +560,7 @@ impl Model {
                     }
                 }
                 if is_true {
-                    let v = self.evaluate_cell(CellReference {
+                    let v = self.evaluate_cell(CellReferenceIndex {
                         sheet: sum_range.left.sheet,
                         row,
                         column,
@@ -575,7 +576,7 @@ impl Model {
         Ok(())
     }
 
-    pub(crate) fn fn_averageifs(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_averageifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut total = 0.0;
         let mut count = 0.0;
 
@@ -597,7 +598,7 @@ impl Model {
         CalcResult::Number(total / count)
     }
 
-    pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut min = f64::INFINITY;
         let apply_min = |value: f64| min = value.min(min);
         if let Err(e) = self.apply_ifs(args, cell, apply_min) {
@@ -610,7 +611,7 @@ impl Model {
         CalcResult::Number(min)
     }
 
-    pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut max = -f64::INFINITY;
         let apply_max = |value: f64| max = value.max(max);
         if let Err(e) = self.apply_ifs(args, cell, apply_max) {

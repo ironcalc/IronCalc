@@ -1,7 +1,6 @@
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::parser::Node,
-    expressions::token::Error,
+    calc_result::CalcResult,
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
@@ -10,7 +9,7 @@ const MAX: f64 = 281474976710655.0;
 
 impl Model {
     // BITAND( number1, number2)
-    pub(crate) fn fn_bitand(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_bitand(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -48,7 +47,7 @@ impl Model {
     }
 
     // BITOR(number1, number2)
-    pub(crate) fn fn_bitor(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_bitor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -86,7 +85,7 @@ impl Model {
     }
 
     // BITXOR(number1, number2)
-    pub(crate) fn fn_bitxor(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_bitxor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -124,7 +123,7 @@ impl Model {
     }
 
     // BITLSHIFT(number, shift_amount)
-    pub(crate) fn fn_bitlshift(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_bitlshift(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -178,7 +177,7 @@ impl Model {
     }
 
     // BITRSHIFT(number, shift_amount)
-    pub(crate) fn fn_bitrshift(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_bitrshift(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }

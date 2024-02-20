@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::parser::Node,
-    expressions::token::Error,
+    calc_result::CalcResult,
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
@@ -44,7 +43,7 @@ fn convert_temperature(
 
 impl Model {
     // CONVERT(number, from_unit, to_unit)
-    pub(crate) fn fn_convert(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_convert(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }

@@ -1,6 +1,5 @@
 use crate::{
-    calc_result::CellReference,
-    expressions::{parser::Node, token::OpProduct},
+    expressions::{parser::Node, token::OpProduct, types::CellReferenceIndex},
     formatter::parser::{ParsePart, Parser},
     functions::Function,
     model::Model,
@@ -86,7 +85,7 @@ fn get_units_from_format_string(num_fmt: &str) -> Option<Units> {
 }
 
 impl Model {
-    fn compute_cell_units(&self, cell_reference: &CellReference) -> Option<Units> {
+    fn compute_cell_units(&self, cell_reference: &CellReferenceIndex) -> Option<Units> {
         let style = &self.get_style_for_cell(
             cell_reference.sheet,
             cell_reference.row,
@@ -95,7 +94,11 @@ impl Model {
         get_units_from_format_string(&style.num_fmt)
     }
 
-    pub(crate) fn compute_node_units(&self, node: &Node, cell: &CellReference) -> Option<Units> {
+    pub(crate) fn compute_node_units(
+        &self,
+        node: &Node,
+        cell: &CellReferenceIndex,
+    ) -> Option<Units> {
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -113,7 +116,7 @@ impl Model {
                 if !absolute_column {
                     column1 += cell.column;
                 }
-                self.compute_cell_units(&CellReference {
+                self.compute_cell_units(&CellReferenceIndex {
                     sheet: *sheet_index,
                     row: row1,
                     column: column1,
@@ -140,7 +143,7 @@ impl Model {
                 if !absolute_column1 {
                     column1 += cell.column;
                 }
-                self.compute_cell_units(&CellReference {
+                self.compute_cell_units(&CellReferenceIndex {
                     sheet: *sheet_index,
                     row: row1,
                     column: column1,
@@ -294,7 +297,7 @@ impl Model {
         &self,
         kind: &Function,
         args: &[Node],
-        cell: &CellReference,
+        cell: &CellReferenceIndex,
     ) -> Option<Units> {
         match kind {
             Function::Sum => self.units_fn_sum_like(args, cell),
@@ -319,7 +322,7 @@ impl Model {
         }
     }
 
-    fn units_fn_sum_like(&self, args: &[Node], cell: &CellReference) -> Option<Units> {
+    fn units_fn_sum_like(&self, args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
         // We return the unit of the first argument
         if !args.is_empty() {
             return self.compute_node_units(&args[0], cell);
@@ -327,7 +330,7 @@ impl Model {
         None
     }
 
-    fn units_fn_currency(&self, _args: &[Node], _cell: &CellReference) -> Option<Units> {
+    fn units_fn_currency(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
         let currency_symbol = &self.locale.currency.symbol;
         let standard_format = &self.locale.numbers.currency_formats.standard;
         let num_fmt = standard_format.replace('¤', currency_symbol);
@@ -341,7 +344,7 @@ impl Model {
         })
     }
 
-    fn units_fn_percentage(&self, _args: &[Node], _cell: &CellReference) -> Option<Units> {
+    fn units_fn_percentage(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
         Some(Units::Percentage {
             group_separator: false,
             precision: 0,
@@ -349,7 +352,7 @@ impl Model {
         })
     }
 
-    fn units_fn_percentage_2(&self, _args: &[Node], _cell: &CellReference) -> Option<Units> {
+    fn units_fn_percentage_2(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
         Some(Units::Percentage {
             group_separator: false,
             precision: 2,
@@ -357,7 +360,7 @@ impl Model {
         })
     }
 
-    fn units_fn_dates(&self, _args: &[Node], _cell: &CellReference) -> Option<Units> {
+    fn units_fn_dates(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
         // TODO: update locale and use it here
         Some(Units::Date("dd/mm/yyyy".to_string()))
     }

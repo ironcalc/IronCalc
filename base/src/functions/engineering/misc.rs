@@ -1,13 +1,13 @@
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::parser::Node,
+    calc_result::CalcResult,
+    expressions::{parser::Node, types::CellReferenceIndex},
     model::Model,
     number_format::to_precision,
 };
 
 impl Model {
     // DELTA(number1, [number2])
-    pub(crate) fn fn_delta(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_delta(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(1..=2).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
@@ -33,7 +33,7 @@ impl Model {
     }
 
     // GESTEP(number, [step])
-    pub(crate) fn fn_gestep(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_gestep(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if !(1..=2).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);

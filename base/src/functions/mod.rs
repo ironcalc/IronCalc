@@ -1,8 +1,8 @@
 use core::fmt;
 
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::{parser::Node, token::Error},
+    calc_result::CalcResult,
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
@@ -713,7 +713,7 @@ impl Model {
         &mut self,
         kind: &Function,
         args: &[Node],
-        cell: CellReference,
+        cell: CellReferenceIndex,
     ) -> CalcResult {
         match kind {
             // Logical

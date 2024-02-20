@@ -1,16 +1,14 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::types::CellReferenceIndex;
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::parser::Node,
-    expressions::token::Error,
-    model::Model,
+    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
 };
 
 use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex, values_are_equal};
 
 impl Model {
-    pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let row_num;
         let col_num;
         if args.len() == 3 {
@@ -88,7 +86,7 @@ impl Model {
                         message: "Wrong reference".to_string(),
                     };
                 }
-                self.evaluate_cell(CellReference {
+                self.evaluate_cell(CellReferenceIndex {
                     sheet: left.sheet,
                     row,
                     column,
@@ -113,7 +111,7 @@ impl Model {
     //                     The match_type argument specifies how Excel matches lookup_value
     //                     with values in lookup_array. The default value for this argument is 1.
     // NOTE: Please read the caveat above in binary search
-    pub(crate) fn fn_match(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_match(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 3 || args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -174,7 +172,7 @@ impl Model {
                                 column = left.column + m;
                                 row = left.row;
                             }
-                            let value = self.evaluate_cell(CellReference {
+                            let value = self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -238,7 +236,7 @@ impl Model {
                                 column = left.column + l;
                                 row = left.row;
                             }
-                            let value = self.evaluate_cell(CellReference {
+                            let value = self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -294,7 +292,7 @@ impl Model {
     /// We look for `lookup_value` in the first row of table array
     /// We return the value in row `row_index` of the same column in `table_array`
     /// `is_sorted` is true by default and assumes that values in first row are ordered
-    pub(crate) fn fn_hlookup(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_hlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -336,7 +334,7 @@ impl Model {
                             message: "Invalid reference".to_string(),
                         };
                     }
-                    self.evaluate_cell(CellReference {
+                    self.evaluate_cell(CellReferenceIndex {
                         sheet: left.sheet,
                         row,
                         column,
@@ -363,13 +361,13 @@ impl Model {
                             Box::new(move |x| compare_values(x, &lookup_value) == 0)
                         };
                     for l in 0..n {
-                        let value = self.evaluate_cell(CellReference {
+                        let value = self.evaluate_cell(CellReferenceIndex {
                             sheet: left.sheet,
                             row: left.row,
                             column: left.column + l,
                         });
                         if result_matches(&value) {
-                            return self.evaluate_cell(CellReference {
+                            return self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column: left.column + l,
@@ -401,7 +399,7 @@ impl Model {
     /// We look for `lookup_value` in the first column of table array
     /// We return the value in column `column_index` of the same row in `table_array`
     /// `is_sorted` is true by default and assumes that values in first column are ordered
-    pub(crate) fn fn_vlookup(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_vlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -443,7 +441,7 @@ impl Model {
                             message: "Invalid reference".to_string(),
                         };
                     }
-                    self.evaluate_cell(CellReference {
+                    self.evaluate_cell(CellReferenceIndex {
                         sheet: left.sheet,
                         row,
                         column,
@@ -470,13 +468,13 @@ impl Model {
                             Box::new(move |x| compare_values(x, &lookup_value) == 0)
                         };
                     for l in 0..n {
-                        let value = self.evaluate_cell(CellReference {
+                        let value = self.evaluate_cell(CellReferenceIndex {
                             sheet: left.sheet,
                             row: left.row + l,
                             column: left.column,
                         });
                         if result_matches(&value) {
-                            return self.evaluate_cell(CellReference {
+                            return self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row: left.row + l,
                                 column,
@@ -512,7 +510,7 @@ impl Model {
     // TODO: Implement the other form of INDEX:
     // INDEX(reference, row_num, [column_num], [area_num])
     // NOTE: Please read the caveat above in binary search
-    pub(crate) fn fn_lookup(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_lookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 3 || args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -561,7 +559,7 @@ impl Model {
                                 column = l1.column + l;
                                 row = l1.row;
                             }
-                            self.evaluate_cell(CellReference {
+                            self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -584,7 +582,7 @@ impl Model {
                         column = left.column + l;
                         row = left.row;
                     }
-                    self.evaluate_cell(CellReference {
+                    self.evaluate_cell(CellReferenceIndex {
                         sheet: left.sheet,
                         row,
                         column,
@@ -603,7 +601,7 @@ impl Model {
     // ROW([reference])
     // If reference is not present returns the row of the present cell.
     // Otherwise returns the row number of reference
-    pub(crate) fn fn_row(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_row(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -618,7 +616,7 @@ impl Model {
 
     // ROWS(range)
     // Returns the number of rows in range
-    pub(crate) fn fn_rows(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_rows(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -631,7 +629,7 @@ impl Model {
     // COLUMN([reference])
     // If reference is not present returns the column of the present cell.
     // Otherwise returns the column number of reference
-    pub(crate) fn fn_column(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_column(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -647,7 +645,7 @@ impl Model {
 
     /// CHOOSE(index_num, value1, [value2], ...)
     /// Uses index_num to return a value from the list of value arguments.
-    pub(crate) fn fn_choose(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_choose(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -670,7 +668,7 @@ impl Model {
 
     // COLUMNS(range)
     // Returns the number of columns in range
-    pub(crate) fn fn_columns(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_columns(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -682,7 +680,7 @@ impl Model {
 
     // INDIRECT(ref_tex)
     // Returns the reference specified by 'ref_text'
-    pub(crate) fn fn_indirect(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_indirect(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 2 || args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
@@ -731,7 +729,7 @@ impl Model {
     // Returns a reference to a range that is a specified number of rows and columns from a cell or range of cells.
     // The reference that is returned can be a single cell or a range of cells.
     // You can specify the number of rows and the number of columns to be returned.
-    pub(crate) fn fn_offset(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_offset(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let l = args.len();
         if !(3..=5).contains(&l) {
             return CalcResult::new_args_number_error(cell);
@@ -828,12 +826,12 @@ impl Model {
                 message: "Invalid reference".to_string(),
             };
         }
-        let left = CellReference {
+        let left = CellReferenceIndex {
             sheet: reference.left.sheet,
             row: row_start,
             column: column_start,
         };
-        let right = CellReference {
+        let right = CellReferenceIndex {
             sheet: reference.right.sheet,
             row: row_end,
             column: column_end,

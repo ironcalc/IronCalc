@@ -1,14 +1,13 @@
 use crate::{
-    calc_result::{CalcResult, CellReference},
-    expressions::parser::Node,
-    expressions::token::Error,
+    calc_result::CalcResult,
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
 use super::util::compare_values;
 
 impl Model {
-    pub(crate) fn fn_if(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_if(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 || args.len() == 3 {
             let cond_result = self.get_boolean(&args[0], cell);
             let cond = match cond_result {
@@ -28,7 +27,7 @@ impl Model {
         CalcResult::new_args_number_error(cell)
     }
 
-    pub(crate) fn fn_iferror(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_iferror(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
             let value = self.evaluate_node_in_context(&args[0], cell);
             match value {
@@ -41,7 +40,7 @@ impl Model {
         CalcResult::new_args_number_error(cell)
     }
 
-    pub(crate) fn fn_ifna(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_ifna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
             let value = self.evaluate_node_in_context(&args[0], cell);
             if let CalcResult::Error { error, .. } = &value {
@@ -54,7 +53,7 @@ impl Model {
         CalcResult::new_args_number_error(cell)
     }
 
-    pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.get_boolean(&args[0], cell) {
                 Ok(f) => return CalcResult::Boolean(!f),
@@ -66,7 +65,7 @@ impl Model {
         CalcResult::new_args_number_error(cell)
     }
 
-    pub(crate) fn fn_and(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_and(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut true_count = 0;
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
@@ -95,7 +94,7 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -136,7 +135,7 @@ impl Model {
         CalcResult::Boolean(true)
     }
 
-    pub(crate) fn fn_or(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_or(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = false;
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
@@ -159,7 +158,7 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -192,7 +191,7 @@ impl Model {
     /// XOR(logical1, [logical]*,...)
     /// Logical1 is required, subsequent logical values are optional. Can be logical values, arrays, or references.
     /// The result of XOR is TRUE when the number of TRUE inputs is odd and FALSE when the number of TRUE inputs is even.
-    pub(crate) fn fn_xor(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_xor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut true_count = 0;
         let mut false_count = 0;
         for arg in args {
@@ -221,7 +220,7 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReference {
+                            match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
@@ -255,7 +254,7 @@ impl Model {
     }
 
     /// =SWITCH(expression, case1, value1, [case, value]*, [default])
-    pub(crate) fn fn_switch(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_switch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count < 3 {
             return CalcResult::new_args_number_error(cell);
@@ -291,7 +290,7 @@ impl Model {
     }
 
     /// =IFS(condition1, value, [condition, value]*)
-    pub(crate) fn fn_ifs(&mut self, args: &[Node], cell: CellReference) -> CalcResult {
+    pub(crate) fn fn_ifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count < 2 {
             return CalcResult::new_args_number_error(cell);

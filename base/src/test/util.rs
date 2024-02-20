@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::calc_result::CellReference;
+use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
 use crate::types::Cell;
 
@@ -9,7 +9,7 @@ pub fn new_empty_model() -> Model {
 }
 
 impl Model {
-    fn _parse_reference(&self, cell: &str) -> CellReference {
+    fn _parse_reference(&self, cell: &str) -> CellReferenceIndex {
         if cell.contains('!') {
             self.parse_reference(cell).unwrap()
         } else {
@@ -39,7 +39,7 @@ impl Model {
         self.formatted_cell_value(sheet, row, column).unwrap()
     }
     pub fn _get_text(&self, cell: &str) -> String {
-        let CellReference { sheet, row, column } = self._parse_reference(cell);
+        let CellReferenceIndex { sheet, row, column } = self._parse_reference(cell);
         self._get_text_at(sheet, row, column)
     }
     pub fn _get_cell(&self, cell: &str) -> &Cell {
