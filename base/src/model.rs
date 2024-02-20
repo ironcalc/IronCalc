@@ -1172,18 +1172,6 @@ impl Model {
         }))
     }
 
-    /// Returns a boolean representing whether the cell contains a formula or not.
-    pub fn cell_contains_formula(&self, sheet_index: u32, row: i32, column: i32) -> bool {
-        let cell = &self.workbook.worksheets[sheet_index as usize].sheet_data[&row][&column];
-        cell.has_formula()
-    }
-
-    /// Returns a boolean representing whether the cell contains an error or not.
-    pub fn cell_contains_error(&self, sheet_index: u32, row: i32, column: i32) -> bool {
-        let cell = &self.workbook.worksheets[sheet_index as usize].sheet_data[&row][&column];
-        cell.get_type() == CellType::ErrorValue
-    }
-
     /// Updates the value of a cell with some text
     /// It does not change the style unless needs to add "quoting"
     ///
@@ -1921,27 +1909,5 @@ mod tests {
             model.workbook.worksheet(5),
             Err("Invalid sheet index".to_string()),
         )
-    }
-
-    #[test]
-    fn test_cell_contains_error() {
-        let mut model = new_empty_model();
-        model.set_user_input(0, 1, 1, "1".to_string());
-        model.set_user_input(0, 1, 2, "=A1/0".to_string());
-        model.evaluate();
-
-        assert!(!model.cell_contains_error(0, 1, 1));
-        assert!(model.cell_contains_error(0, 1, 2));
-    }
-
-    #[test]
-    fn test_cell_contains_formula() {
-        let mut model = new_empty_model();
-        model.set_user_input(0, 1, 1, "1".to_string());
-        model.set_user_input(0, 1, 2, "=SUM(A1:A3)".to_string());
-        model.evaluate();
-
-        assert!(!model.cell_contains_formula(0, 1, 1));
-        assert!(model.cell_contains_formula(0, 1, 2));
     }
 }

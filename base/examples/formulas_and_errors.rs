@@ -1,4 +1,4 @@
-use ironcalc_base::model::Model;
+use ironcalc_base::{model::Model, types::CellType};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut model = Model::new_empty("formulas-and-errors", "en", "UTC")?;
@@ -22,14 +22,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut error_count = 0;
 
     for cell in cells {
-        if model.cell_contains_error(cell.index, cell.row, cell.column) {
-            error_count += 1;
-        }
-        if model.cell_contains_formula(cell.index, cell.row, cell.column) {
-            formula_count += 1;
-        }
+        if let Some(cell) = model
+            .workbook
+            .worksheet(cell.index)?
+            .cell(cell.row, cell.column)
+        {
+            if cell.get_type() == CellType::ErrorValue {
+                error_count += 1;
+            }
+            if cell.has_formula() {
+                formula_count += 1;
+            }
 
-        cells_count += 1;
+            cells_count += 1;
+        }
     }
 
     assert_eq!(cells_count, 5);
