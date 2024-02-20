@@ -17,7 +17,7 @@ use crate::{
     utils::ParsedReference,
 };
 
-pub use chrono_tz::Tz;
+use chrono_tz::Tz;
 
 pub const APPLICATION: &str = "IronCalc Sheets";
 pub const APP_VERSION: &str = "10.0000";
@@ -28,7 +28,7 @@ pub const IRONCALC_USER: &str = "IronCalc User";
 /// \ , / , * , ? , : , [ , ].
 fn is_valid_sheet_name(name: &str) -> bool {
     let invalid = ['\\', '/', '*', '?', ':', '[', ']'];
-    return !name.is_empty() && name.chars().count() <= 31 && !name.contains(&invalid[..]);
+    !name.is_empty() && name.chars().count() <= 31 && !name.contains(&invalid[..])
 }
 
 impl Model {

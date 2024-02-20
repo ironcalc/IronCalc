@@ -42,7 +42,7 @@ use crate::{
     utils as common,
 };
 
-pub use chrono_tz::Tz;
+use chrono_tz::Tz;
 
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -651,7 +651,7 @@ impl Model {
         }
     }
 
-    /// Sets the color of the sheet tab
+    /// Sets the color of the sheet tab.
     ///
     /// # Examples
     ///
@@ -974,6 +974,10 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// See also:
+    /// * [Model::extend_to()]
+    /// * [Model::extend_copied_value()]
     pub fn move_cell_value_to_area(
         &mut self,
         value: &str,
@@ -1040,6 +1044,10 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// See also:
+    /// * [Model::extend_copied_value()]
+    /// * [Model::move_cell_value_to_area()]
     pub fn extend_to(
         &self,
         sheet: u32,
@@ -1069,6 +1077,8 @@ impl Model {
 
     /// 'Extends' the formula `value` from `source` to `target`
     ///
+    /// # Examples
+    ///
     /// ```rust
     /// # use ironcalc_base::model::Model;
     /// # use ironcalc_base::expressions::types::CellReferenceIndex;
@@ -1081,6 +1091,10 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// See also:
+    /// * [Model::extend_to()]
+    /// * [Model::move_cell_value_to_area()]
     pub fn extend_copied_value(
         &mut self,
         value: &str,
@@ -1118,6 +1132,8 @@ impl Model {
 
     /// Returns the formula in (`sheet`, `row`, `column`) if any
     ///
+    /// # Examples
+    ///
     /// ```rust
     /// # use ironcalc_base::model::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -1130,6 +1146,9 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// See also:
+    /// * [Model::get_cell_content()]
     pub fn cell_formula(
         &self,
         sheet: u32,
@@ -1152,6 +1171,28 @@ impl Model {
 
     /// Updates the value of a cell with some text
     /// It does not change the style unless needs to add "quoting"
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let (sheet, row, column) = (0, 1, 1);
+    /// model.set_user_input(sheet, row, column, "Hello!".to_string());
+    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "Hello!".to_string());
+    ///
+    /// model.update_cell_with_text(sheet, row, column, "Goodbye!");
+    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "Goodbye!".to_string());
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// See also:
+    /// * [Model::set_user_input()]
+    /// * [Model::update_cell_with_number()]
+    /// * [Model::update_cell_with_bool()]
+    /// * [Model::update_cell_with_formula()]
     pub fn update_cell_with_text(&mut self, sheet: u32, row: i32, column: i32, value: &str) {
         let style_index = self.get_cell_style_index(sheet, row, column);
         let new_style_index;
@@ -1173,6 +1214,28 @@ impl Model {
 
     /// Updates the value of a cell with a boolean value
     /// It does not change the style
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let (sheet, row, column) = (0, 1, 1);
+    /// model.set_user_input(sheet, row, column, "TRUE".to_string());
+    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "TRUE".to_string());
+    ///
+    /// model.update_cell_with_bool(sheet, row, column, false);
+    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "FALSE".to_string());
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// See also:
+    /// * [Model::set_user_input()]
+    /// * [Model::update_cell_with_number()]
+    /// * [Model::update_cell_with_text()]
+    /// * [Model::update_cell_with_formula()]
     pub fn update_cell_with_bool(&mut self, sheet: u32, row: i32, column: i32, value: bool) {
         let style_index = self.get_cell_style_index(sheet, row, column);
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
@@ -1188,6 +1251,28 @@ impl Model {
 
     /// Updates the value of a cell with a number
     /// It does not change the style
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let (sheet, row, column) = (0, 1, 1);
+    /// model.set_user_input(sheet, row, column, "42".to_string());
+    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "42".to_string());
+    ///
+    /// model.update_cell_with_number(sheet, row, column, 23.0);
+    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "23".to_string());
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// See also:
+    /// * [Model::set_user_input()]
+    /// * [Model::update_cell_with_text()]
+    /// * [Model::update_cell_with_bool()]
+    /// * [Model::update_cell_with_formula()]
     pub fn update_cell_with_number(&mut self, sheet: u32, row: i32, column: i32, value: f64) {
         let style_index = self.get_cell_style_index(sheet, row, column);
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
@@ -1204,6 +1289,30 @@ impl Model {
     /// Updates the formula of given cell
     /// It does not change the style unless needs to add "quoting"
     /// Expects the formula to start with "="
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let (sheet, row, column) = (0, 1, 1);
+    /// model.set_user_input(sheet, row, column, "=A2*2".to_string());
+    /// model.evaluate();
+    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "=A2*2".to_string());
+    ///
+    /// model.update_cell_with_formula(sheet, row, column, "=A3*2".to_string());
+    /// model.evaluate();
+    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "=A3*2".to_string());
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// See also:
+    /// * [Model::set_user_input()]
+    /// * [Model::update_cell_with_number()]
+    /// * [Model::update_cell_with_bool()]
+    /// * [Model::update_cell_with_text()]
     pub fn update_cell_with_formula(
         &mut self,
         sheet: u32,
@@ -1225,11 +1334,37 @@ impl Model {
         Ok(())
     }
 
-    /// Sets a cell parametrized by (`sheet`, `row`, `column`) with `value`
+    /// Sets a cell parametrized by (`sheet`, `row`, `column`) with `value`.
+    ///
     /// This mimics a user entering a value on a cell.
+    ///
     /// If you enter a currency `$100` it will set as a number and update the style
-    /// Note that for currencies/percentage there is only one possible style
-    /// The value is always a string, so we need to try to cast it into numbers/booleans/errors
+    ///  Note that for currencies/percentage there is only one possible style
+    ///  The value is always a string, so we need to try to cast it into numbers/booleans/errors
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use ironcalc_base::model::Model;
+    /// # use ironcalc_base::cell::CellValue;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// model.set_user_input(0, 1, 1, "100$".to_string());
+    /// model.set_user_input(0, 2, 1, "125$".to_string());
+    /// model.set_user_input(0, 3, 1, "-10$".to_string());
+    /// model.set_user_input(0, 1, 2, "=SUM(A:A)".to_string());
+    /// model.evaluate();
+    /// assert_eq!(model.get_cell_value_by_index(0, 1, 2), Ok(CellValue::Number(215.0)));
+    /// assert_eq!(model.formatted_cell_value(0, 1, 2), Ok("215$".to_string()));
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// See also:
+    /// * [Model::update_cell_with_formula()]
+    /// * [Model::update_cell_with_number()]
+    /// * [Model::update_cell_with_bool()]
+    /// * [Model::update_cell_with_text()]
     pub fn set_user_input(&mut self, sheet: u32, row: i32, column: i32, value: String) {
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column);
