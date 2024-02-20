@@ -1922,4 +1922,26 @@ mod tests {
             Err("Invalid sheet index".to_string()),
         )
     }
+
+    #[test]
+    fn test_cell_contains_error() {
+        let mut model = new_empty_model();
+        model.set_user_input(0, 1, 1, "1".to_string());
+        model.set_user_input(0, 1, 2, "=A1/0".to_string());
+        model.evaluate();
+
+        assert!(!model.cell_contains_error(0, 1, 1));
+        assert!(model.cell_contains_error(0, 1, 2));
+    }
+
+    #[test]
+    fn test_cell_contains_formula() {
+        let mut model = new_empty_model();
+        model.set_user_input(0, 1, 1, "1".to_string());
+        model.set_user_input(0, 1, 2, "=SUM(A1:A3)".to_string());
+        model.evaluate();
+
+        assert!(!model.cell_contains_formula(0, 1, 1));
+        assert!(model.cell_contains_formula(0, 1, 2));
+    }
 }
