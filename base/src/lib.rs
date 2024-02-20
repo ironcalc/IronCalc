@@ -17,6 +17,7 @@
 //!
 //! ```rust
 #![doc = include_str!("../examples/hello_world.rs")]
+#![doc = include_str!("../examples/formulas_and_errors.rs")]
 //! ```
 
 pub mod calc_result;
