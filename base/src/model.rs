@@ -1608,6 +1608,7 @@ impl Model {
             None => Ok(cell.get_text(&self.workbook.shared_strings, &self.language)),
         }
     }
+
     /// Returns a list of all cells
     pub fn get_all_cells(&self) -> Vec<CellIndex> {
         let mut cells = Vec::new();
