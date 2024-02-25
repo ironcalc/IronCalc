@@ -1,7 +1,7 @@
 //! # IronCalc - Core API documentation
 //!
 //! This technical API documentation is aimed at developers.
-//! It is used to build language bindings (like python, javascript or nodejs) or to build full fledged applications like ironCalc in the terminal or IronCalc, the Web application.
+//! It is used to build language bindings (like python, javascript or nodejs) or to build full fledged applications like TironCalc in the terminal or IronCalc, the Web application.
 //!
 //! ## Basic usage
 //!
@@ -9,7 +9,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! ironcalc = { git = "https://github.com/ironcalc/IronCalc", version = "0.1"}
+//! ironcalc = { git = "https://github.com/ironcalc/IronCalc" }
 //! ```
 //!
 //! <small> until version 0.5.0 you should use the git dependencies as stated </small>

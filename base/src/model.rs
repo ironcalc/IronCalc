@@ -47,7 +47,11 @@ use chrono_tz::Tz;
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
 
-/// wasm implementation for time
+/// Number of milliseconds since January 1, 1970
+/// Used by time and date functions. It takes the value from the environment:
+/// * The Operative System
+/// * The JavaScript environment
+/// * Or mocked for tests
 #[cfg(not(test))]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_milliseconds_since_epoch() -> i64 {
