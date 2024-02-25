@@ -42,7 +42,7 @@ impl Worksheet {
         self.sheet_data.get_mut(&row)?.get_mut(&column)
     }
 
-    fn update_cell(&mut self, row: i32, column: i32, new_cell: Cell) {
+    pub(crate) fn update_cell(&mut self, row: i32, column: i32, new_cell: Cell) {
         match self.sheet_data.get_mut(&row) {
             Some(column_data) => match column_data.get(&column) {
                 Some(_cell) => {
@@ -68,9 +68,8 @@ impl Worksheet {
             if row.r == row_index {
                 if row.custom_format {
                     return row.s;
-                } else {
-                    break;
                 }
+                break;
             }
         }
         let cols = &self.cols;
@@ -106,64 +105,8 @@ impl Worksheet {
     }
 
     pub fn set_column_style(&mut self, column: i32, style_index: i32) -> Result<(), String> {
-        let cols = &mut self.cols;
-        let col = Col {
-            min: column,
-            max: column,
-            width: constants::DEFAULT_COLUMN_WIDTH / constants::COLUMN_WIDTH_FACTOR,
-            custom_width: true,
-            style: Some(style_index),
-        };
-        let mut index = 0;
-        let mut split = false;
-        for c in cols.iter_mut() {
-            let min = c.min;
-            let max = c.max;
-            if min <= column && column <= max {
-                if min == column && max == column {
-                    c.style = Some(style_index);
-                    return Ok(());
-                } else {
-                    // We need to split the result
-                    split = true;
-                    break;
-                }
-            }
-            if column < min {
-                // We passed, we should insert at index
-                break;
-            }
-            index += 1;
-        }
-        if split {
-            let min = cols[index].min;
-            let max = cols[index].max;
-            let pre = Col {
-                min,
-                max: column - 1,
-                width: cols[index].width,
-                custom_width: cols[index].custom_width,
-                style: cols[index].style,
-            };
-            let post = Col {
-                min: column + 1,
-                max,
-                width: cols[index].width,
-                custom_width: cols[index].custom_width,
-                style: cols[index].style,
-            };
-            cols.remove(index);
-            if column != max {
-                cols.insert(index, post);
-            }
-            cols.insert(index, col);
-            if column != min {
-                cols.insert(index, pre);
-            }
-        } else {
-            cols.insert(index, col);
-        }
-        Ok(())
+        let width = constants::DEFAULT_COLUMN_WIDTH / constants::COLUMN_WIDTH_FACTOR;
+        self.set_column_width_and_style(column, width, Some(style_index))
     }
 
     pub fn set_row_style(&mut self, row: i32, style_index: i32) -> Result<(), String> {
@@ -191,7 +134,7 @@ impl Worksheet {
                 cell.set_style(style_index);
             }
             None => {
-                self.set_cell_empty_with_style(row, column, style_index);
+                self.cell_clear_contents_with_style(row, column, style_index);
             }
         }
 
@@ -223,13 +166,13 @@ impl Worksheet {
         self.update_cell(row, column, cell);
     }
 
-    pub fn set_cell_empty(&mut self, row: i32, column: i32) {
+    pub fn cell_clear_contents(&mut self, row: i32, column: i32) {
         let s = self.get_style(row, column);
         let cell = Cell::EmptyCell { s };
         self.update_cell(row, column, cell);
     }
 
-    pub fn set_cell_empty_with_style(&mut self, row: i32, column: i32, style: i32) {
+    pub fn cell_clear_contents_with_style(&mut self, row: i32, column: i32, style: i32) {
         let cell = Cell::EmptyCell { s: style };
         self.update_cell(row, column, cell);
     }
@@ -237,7 +180,8 @@ impl Worksheet {
     pub fn set_frozen_rows(&mut self, frozen_rows: i32) -> Result<(), String> {
         if frozen_rows < 0 {
             return Err("Frozen rows cannot be negative".to_string());
-        } else if frozen_rows >= constants::LAST_ROW {
+        }
+        if frozen_rows >= constants::LAST_ROW {
             return Err("Too many rows".to_string());
         }
         self.frozen_rows = frozen_rows;
@@ -247,7 +191,8 @@ impl Worksheet {
     pub fn set_frozen_columns(&mut self, frozen_columns: i32) -> Result<(), String> {
         if frozen_columns < 0 {
             return Err("Frozen columns cannot be negative".to_string());
-        } else if frozen_columns >= constants::LAST_COLUMN {
+        }
+        if frozen_columns >= constants::LAST_COLUMN {
             return Err("Too many columns".to_string());
         }
         self.frozen_columns = frozen_columns;
@@ -281,11 +226,21 @@ impl Worksheet {
         });
         Ok(())
     }
+
     /// Changes the width of a column.
     ///   * If the column does not a have a width we simply add it
     ///   * If it has, it might be part of a range and we ned to split the range.
     /// Fails if column index is outside allowed range.
     pub fn set_column_width(&mut self, column: i32, width: f64) -> Result<(), String> {
+        self.set_column_width_and_style(column, width, None)
+    }
+
+    pub(crate) fn set_column_width_and_style(
+        &mut self,
+        column: i32,
+        width: f64,
+        style: Option<i32>,
+    ) -> Result<(), String> {
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
         }
@@ -295,7 +250,7 @@ impl Worksheet {
             max: column,
             width: width / constants::COLUMN_WIDTH_FACTOR,
             custom_width: true,
-            style: None,
+            style,
         };
         let mut index = 0;
         let mut split = false;
@@ -306,11 +261,9 @@ impl Worksheet {
                 if min == column && max == column {
                     c.width = width / constants::COLUMN_WIDTH_FACTOR;
                     return Ok(());
-                } else {
-                    // We need to split the result
-                    split = true;
-                    break;
                 }
+                split = true;
+                break;
             }
             if column < min {
                 // We passed, we should insert at index
@@ -351,7 +304,7 @@ impl Worksheet {
     }
 
     /// Return the width of a column in pixels
-    pub fn column_width(&self, column: i32) -> Result<f64, String> {
+    pub fn get_column_width(&self, column: i32) -> Result<f64, String> {
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
         }
@@ -363,9 +316,8 @@ impl Worksheet {
             if column >= min && column <= max {
                 if col.custom_width {
                     return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
-                } else {
-                    break;
                 }
+                break;
             }
         }
         Ok(constants::DEFAULT_COLUMN_WIDTH)

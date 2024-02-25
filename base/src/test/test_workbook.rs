@@ -5,7 +5,7 @@ use crate::{test::util::new_empty_model, types::SheetInfo};
 #[test]
 fn workbook_worksheets_info() {
     let model = new_empty_model();
-    let sheets_info = model.workbook.get_worksheets_info();
+    let sheets_info = model.get_sheets_info();
     assert_eq!(
         sheets_info[0],
         SheetInfo {

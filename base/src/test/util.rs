@@ -32,11 +32,11 @@ impl Model {
         let cell_reference = self._parse_reference(cell);
         let column = cell_reference.column;
         let row = cell_reference.row;
-        self.cell_formula(cell_reference.sheet, row, column)
+        self.get_cell_formula(cell_reference.sheet, row, column)
             .unwrap()
     }
     pub fn _get_text_at(&self, sheet: u32, row: i32, column: i32) -> String {
-        self.formatted_cell_value(sheet, row, column).unwrap()
+        self.get_formatted_cell_value(sheet, row, column).unwrap()
     }
     pub fn _get_text(&self, cell: &str) -> String {
         let CellReferenceIndex { sheet, row, column } = self._parse_reference(cell);

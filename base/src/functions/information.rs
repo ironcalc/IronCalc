@@ -165,7 +165,8 @@ impl Model {
                     message: "argument must be a reference to a single cell".to_string(),
                 };
             }
-            let is_formula = if let Ok(f) = self.cell_formula(left.sheet, left.row, left.column) {
+            let is_formula = if let Ok(f) = self.get_cell_formula(left.sheet, left.row, left.column)
+            {
                 f.is_some()
             } else {
                 false

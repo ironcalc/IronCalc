@@ -236,3 +236,11 @@ fn test_delete_sheet_by_index() {
     assert_eq!(model.workbook.get_worksheet_names(), ["Sheet2"]);
     assert_eq!(model._get_text("Sheet2!A1"), "#REF!");
 }
+
+#[test]
+fn delete_sheet_error() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    assert!(model.delete_sheet(2).is_err());
+    assert!(model.delete_sheet(1).is_ok());
+}

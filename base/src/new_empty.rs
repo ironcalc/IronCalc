@@ -123,7 +123,7 @@ impl Model {
     }
 
     // Reparses all formulas and defined names
-    fn reset_parsed_structures(&mut self) {
+    pub(crate) fn reset_parsed_structures(&mut self) {
         self.parser
             .set_worksheets(self.workbook.get_worksheet_names());
         self.parsed_formulas = vec![];
@@ -134,10 +134,10 @@ impl Model {
     }
 
     /// Adds a sheet with a automatically generated name
-    pub fn new_sheet(&mut self) {
+    pub fn new_sheet(&mut self) -> (String, u32) {
         // First we find a name
 
-        // TODO: When/if we support i18n the name could depend on the locale
+        // TODO: The name should depend on the locale
         let base_name = "Sheet";
         let base_name_uppercase = base_name.to_uppercase();
         let mut index = 1;
@@ -156,6 +156,7 @@ impl Model {
         let worksheet = Model::new_empty_worksheet(&sheet_name, sheet_id);
         self.workbook.worksheets.push(worksheet);
         self.reset_parsed_structures();
+        (sheet_name, self.workbook.worksheets.len() as u32 - 1)
     }
 
     /// Inserts a sheet with a particular index
@@ -223,10 +224,10 @@ impl Model {
         new_name: &str,
     ) -> Result<(), String> {
         if !is_valid_sheet_name(new_name) {
-            return Err(format!("Invalid name for a sheet: '{}'", new_name));
+            return Err(format!("Invalid name for a sheet: '{}'.", new_name));
         }
         if self.get_sheet_index_by_name(new_name).is_some() {
-            return Err(format!("Sheet already exists: '{}'", new_name));
+            return Err(format!("Sheet already exists: '{}'.", new_name));
         }
         let worksheets = &self.workbook.worksheets;
         let sheet_count = worksheets.len() as u32;
@@ -270,7 +271,7 @@ impl Model {
         if sheet_count == 1 {
             return Err("Cannot delete only sheet".to_string());
         };
-        if sheet_index > sheet_count {
+        if sheet_index >= sheet_count {
             return Err("Sheet index too large".to_string());
         }
         self.workbook.worksheets.remove(sheet_index as usize);

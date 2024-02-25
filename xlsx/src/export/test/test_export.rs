@@ -1,6 +1,6 @@
 use std::fs;
 
-use ironcalc_base::model::Model;
+use ironcalc_base::Model;
 
 use crate::error::XlsxError;
 use crate::{export::save_to_xlsx, import::load_model_from_xlsx};
@@ -31,13 +31,22 @@ fn test_values() {
     save_to_xlsx(&model, temp_file_name).unwrap();
 
     let model = load_model_from_xlsx(temp_file_name, "en", "UTC").unwrap();
-    assert_eq!(model.formatted_cell_value(0, 1, 1).unwrap(), "123.456");
-    assert_eq!(model.formatted_cell_value(0, 2, 1).unwrap(), "Hello world!");
-    assert_eq!(model.formatted_cell_value(0, 3, 1).unwrap(), "Hello world!");
-    assert_eq!(model.formatted_cell_value(0, 4, 1).unwrap(), "你好世界！");
-    assert_eq!(model.formatted_cell_value(0, 5, 1).unwrap(), "TRUE");
-    assert_eq!(model.formatted_cell_value(0, 6, 1).unwrap(), "FALSE");
-    assert_eq!(model.formatted_cell_value(0, 7, 1).unwrap(), "#VALUE!");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "123.456");
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 1).unwrap(),
+        "Hello world!"
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 3, 1).unwrap(),
+        "Hello world!"
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 1).unwrap(),
+        "你好世界！"
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "TRUE");
+    assert_eq!(model.get_formatted_cell_value(0, 6, 1).unwrap(), "FALSE");
+    assert_eq!(model.get_formatted_cell_value(0, 7, 1).unwrap(), "#VALUE!");
 
     fs::remove_file(temp_file_name).unwrap();
 }
@@ -59,10 +68,10 @@ fn test_formulas() {
     save_to_xlsx(&model, temp_file_name).unwrap();
 
     let model = load_model_from_xlsx(temp_file_name, "en", "UTC").unwrap();
-    assert_eq!(model.formatted_cell_value(0, 1, 2).unwrap(), "11");
-    assert_eq!(model.formatted_cell_value(0, 2, 2).unwrap(), "13");
-    assert_eq!(model.formatted_cell_value(0, 3, 2).unwrap(), "15");
-    assert_eq!(model.formatted_cell_value(0, 4, 2).unwrap(), "58.5");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "11");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2).unwrap(), "13");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 2).unwrap(), "15");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 2).unwrap(), "58.5");
     fs::remove_file(temp_file_name).unwrap();
 }
 
