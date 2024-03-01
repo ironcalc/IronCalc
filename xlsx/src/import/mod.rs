@@ -16,8 +16,8 @@ use std::{
 use roxmltree::Node;
 
 use ironcalc_base::{
-    model::Model,
     types::{Metadata, Workbook, WorkbookSettings},
+    Model,
 };
 
 use crate::error::XlsxError;

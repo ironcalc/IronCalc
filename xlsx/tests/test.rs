@@ -4,8 +4,8 @@ use uuid::Uuid;
 use ironcalc::compare::{test_file, test_load_and_saving};
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::{load_from_excel, load_model_from_xlsx};
-use ironcalc_base::model::Model;
 use ironcalc_base::types::{HorizontalAlignment, VerticalAlignment, Workbook};
+use ironcalc_base::Model;
 
 // This is a functional test.
 // We check that the output of example.xlsx is what we expect.
@@ -179,7 +179,7 @@ fn test_defined_names_casing() {
         model.set_user_input(0, row, column, formula.to_string());
         model.evaluate();
         assert_eq!(
-            model.formatted_cell_value(0, row, column).unwrap(),
+            model.get_formatted_cell_value(0, row, column).unwrap(),
             expected_value
         );
     }

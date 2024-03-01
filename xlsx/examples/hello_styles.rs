@@ -1,4 +1,4 @@
-use ironcalc::{base::model::Model, export::save_to_xlsx};
+use ironcalc::{base::Model, export::save_to_xlsx};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut model = Model::new_empty("hello_styles", "en", "UTC")?;

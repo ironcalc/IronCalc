@@ -15,8 +15,8 @@ use std::{
 };
 
 use ironcalc_base::expressions::utils::number_to_column;
-use ironcalc_base::model::{get_milliseconds_since_epoch, Model};
 use ironcalc_base::types::Workbook;
+use ironcalc_base::{get_milliseconds_since_epoch, Model};
 
 use self::xml_constants::XML_DECLARATION;
 

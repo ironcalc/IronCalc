@@ -411,11 +411,11 @@ fn test_get_formatted_cell_value() {
 
     model.evaluate();
 
-    assert_eq!(model.formatted_cell_value(0, 1, 1).unwrap(), "foobar");
-    assert_eq!(model.formatted_cell_value(0, 2, 1).unwrap(), "TRUE");
-    assert_eq!(model.formatted_cell_value(0, 3, 1).unwrap(), "");
-    assert_eq!(model.formatted_cell_value(0, 4, 1).unwrap(), "123.456");
-    assert_eq!(model.formatted_cell_value(0, 5, 1).unwrap(), "$123.46");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "foobar");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), "TRUE");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 1).unwrap(), "123.456");
+    assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "$123.46");
 }
 
 #[test]
@@ -426,20 +426,20 @@ fn test_cell_formula() {
     model.evaluate();
 
     assert_eq!(
-        model.cell_formula(0, 1, 1), // A1
+        model.get_cell_formula(0, 1, 1), // A1
         Ok(Some("=1+2+3".to_string())),
     );
     assert_eq!(
-        model.cell_formula(0, 2, 1), // A2
+        model.get_cell_formula(0, 2, 1), // A2
         Ok(None),
     );
     assert_eq!(
-        model.cell_formula(0, 3, 1), // A3 - empty cell
+        model.get_cell_formula(0, 3, 1), // A3 - empty cell
         Ok(None),
     );
 
     assert_eq!(
-        model.cell_formula(42, 1, 1),
+        model.get_cell_formula(42, 1, 1),
         Err("Invalid sheet index".to_string()),
     );
 }
@@ -453,16 +453,16 @@ fn test_xlfn() {
     model.evaluate();
     // Only modern formulas strip the '_xlfn.'
     assert_eq!(
-        model.cell_formula(0, 1, 1).unwrap(),
+        model.get_cell_formula(0, 1, 1).unwrap(),
         Some("=_xlfn.SIN(1)".to_string())
     );
     // unknown formulas keep the '_xlfn.' prefix
     assert_eq!(
-        model.cell_formula(0, 2, 1).unwrap(),
+        model.get_cell_formula(0, 2, 1).unwrap(),
         Some("=_xlfn.SINY(1)".to_string())
     );
     assert_eq!(
-        model.cell_formula(0, 3, 1).unwrap(),
+        model.get_cell_formula(0, 3, 1).unwrap(),
         Some("=CONCAT(3,4)".to_string())
     );
 }
@@ -474,11 +474,11 @@ fn test_letter_case() {
     model._set("A2", "=sIn(2)");
     model.evaluate();
     assert_eq!(
-        model.cell_formula(0, 1, 1).unwrap(),
+        model.get_cell_formula(0, 1, 1).unwrap(),
         Some("=SIN(1)".to_string())
     );
     assert_eq!(
-        model.cell_formula(0, 2, 1).unwrap(),
+        model.get_cell_formula(0, 2, 1).unwrap(),
         Some("=SIN(2)".to_string())
     );
 }

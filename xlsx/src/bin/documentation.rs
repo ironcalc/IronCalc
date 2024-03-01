@@ -5,7 +5,7 @@
 
 use std::fs;
 
-use ironcalc_base::model::Model;
+use ironcalc_base::Model;
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();

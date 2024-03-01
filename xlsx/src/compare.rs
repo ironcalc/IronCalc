@@ -2,7 +2,7 @@ use std::path::Path;
 
 use ironcalc_base::cell::CellValue;
 use ironcalc_base::types::*;
-use ironcalc_base::{expressions::utils::number_to_column, model::Model};
+use ironcalc_base::{expressions::utils::number_to_column, Model};
 
 use crate::export::save_to_xlsx;
 use crate::import::load_model_from_xlsx;
@@ -208,7 +208,7 @@ pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(),
 #[cfg(test)]
 mod tests {
     use crate::compare::compare;
-    use ironcalc_base::model::Model;
+    use ironcalc_base::Model;
 
     #[test]
     fn compare_different_sheets() {

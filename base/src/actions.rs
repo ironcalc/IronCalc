@@ -77,7 +77,7 @@ impl Model {
         let style = source_cell.get_style();
         // FIXME: we need some user_input getter instead of get_text
         let formula_or_value = self
-            .cell_formula(sheet, source_row, source_column)?
+            .get_cell_formula(sheet, source_row, source_column)?
             .unwrap_or_else(|| source_cell.get_text(&self.workbook.shared_strings, &self.language));
         self.set_user_input(sheet, target_row, target_column, formula_or_value);
         self.workbook
@@ -184,6 +184,46 @@ impl Model {
                 delta: -column_count,
             }),
         );
+        let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
+
+        // deletes all the column styles
+        let mut new_columns = Vec::new();
+        for col in worksheet.cols.iter_mut() {
+            let min = col.min;
+            let max = col.max;
+            if column <= min && column + column_count >= max {
+                // delete: ------/************/-------
+                // range : --------/******/-----------
+                // delete column styles
+                // pass
+            } else if column <= min && column + column_count >= min && column + column_count < max {
+                // delete: ------/************/-------
+                // range : --------/*************/----
+                let mut new_col = col.clone();
+                new_col.min = column + column_count + 1;
+                new_columns.push(new_col);
+            } else if column >= min && column + column_count < max {
+                // delete: ---------/************/----
+                // range : ----/*************/--------
+                let mut new_col = col.clone();
+                new_col.max = column + column_count - 1;
+                new_columns.push(new_col);
+            } else if column >= min && column <= max {
+                // delete: --------/********/---------
+                // range : ----/**************/-------
+                // we need to split in two ranges [col.min, column -1] and [column+column_count+1, col.max]
+                let mut new_col = col.clone();
+                new_col.max = column - 1;
+                new_columns.push(new_col);
+
+                let mut new_col = col.clone();
+                new_col.min = column + column_count + 1;
+                new_columns.push(new_col);
+            } else {
+                new_columns.push(col.clone());
+            }
+        }
+        worksheet.cols = new_columns;
 
         Ok(())
     }
