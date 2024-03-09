@@ -50,6 +50,7 @@ mod implicit_intersection;
 mod units;
 mod utils;
 mod workbook;
+mod garbage_collector;
 
 #[cfg(test)]
 mod test;
