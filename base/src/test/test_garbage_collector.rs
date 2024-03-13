@@ -42,3 +42,20 @@ fn shared_strings_multiple_references() {
     model.garbage_collector().unwrap();
     assert_eq!(model.shared_strings.len(), 1);
 }
+
+#[test]
+fn evaluate_runs_garbage_collector() {
+    let mut model = new_empty_model();
+
+    // Set an arbitrary string in a cell
+    model._set("A1", "Hello");
+    assert_eq!(model.shared_strings.len(), 1);
+
+    // Deleting the cell will leave the string in model.shared_strings
+    model.delete_cell(0, 1, 1).unwrap();
+    assert_eq!(model.shared_strings.len(), 1);
+
+    // The garbage collector (via model.evaluate) should now remove the reference
+    model.evaluate();
+    assert_eq!(model.shared_strings.len(), 0);
+}
