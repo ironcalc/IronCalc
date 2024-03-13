@@ -1,7 +1,7 @@
 use super::util::new_empty_model;
 
 #[test]
-fn test_one_reference() {
+fn shared_strings_one_reference() {
     let mut model = new_empty_model();
 
     // Set an arbitrary string in a cell
@@ -22,7 +22,7 @@ fn test_one_reference() {
 }
 
 #[test]
-fn test_multiple_references() {
+fn shared_strings_multiple_references() {
     let mut model = new_empty_model();
 
     // Set an arbitrary string in a cell
