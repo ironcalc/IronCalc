@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use crate::model::Model;
 
 impl Model {
