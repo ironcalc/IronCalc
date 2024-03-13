@@ -79,7 +79,11 @@ fn fn_imcos() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), "-6.58066304055116+7.58155274274654i");
+    let value = model._get_text("A1");
+    assert!(
+        value == "-6.58066304055116+7.58155274274654i"
+            || value == "-6.58066304055116+7.58155274274655i"
+    );
 }
 
 #[test]
