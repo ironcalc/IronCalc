@@ -50,7 +50,7 @@ mod test_escape_quotes;
 mod test_extend;
 mod test_fn_type;
 mod test_frozen_rows_and_columns;
+mod test_garbage_collector;
 mod test_get_cell_content;
 mod test_percentage;
 mod test_today;
-mod test_garbage_collector;
