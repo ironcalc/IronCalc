@@ -1,4 +1,5 @@
 use core::fmt;
+use std::array::IntoIter;
 
 use crate::{
     calc_result::CalcResult,
@@ -242,6 +243,206 @@ pub enum Function {
     Delta,
     Gestep,
     Subtotal,
+}
+
+impl Function {
+    pub fn into_iter() -> IntoIter<Function, 192> {
+        [
+            Function::And,
+            Function::False,
+            Function::If,
+            Function::Iferror,
+            Function::Ifna,
+            Function::Ifs,
+            Function::Not,
+            Function::Or,
+            Function::Switch,
+            Function::True,
+            Function::Xor,
+            Function::Sin,
+            Function::Cos,
+            Function::Tan,
+            Function::Asin,
+            Function::Acos,
+            Function::Atan,
+            Function::Sinh,
+            Function::Cosh,
+            Function::Tanh,
+            Function::Asinh,
+            Function::Acosh,
+            Function::Atanh,
+            Function::Abs,
+            Function::Pi,
+            Function::Sqrt,
+            Function::Sqrtpi,
+            Function::Atan2,
+            Function::Power,
+            Function::Max,
+            Function::Min,
+            Function::Product,
+            Function::Rand,
+            Function::Randbetween,
+            Function::Round,
+            Function::Rounddown,
+            Function::Roundup,
+            Function::Sum,
+            Function::Sumif,
+            Function::Sumifs,
+            Function::Choose,
+            Function::Column,
+            Function::Columns,
+            Function::Index,
+            Function::Indirect,
+            Function::Hlookup,
+            Function::Lookup,
+            Function::Match,
+            Function::Offset,
+            Function::Row,
+            Function::Rows,
+            Function::Vlookup,
+            Function::Xlookup,
+            Function::Concatenate,
+            Function::Exact,
+            Function::Value,
+            Function::T,
+            Function::Valuetotext,
+            Function::Concat,
+            Function::Find,
+            Function::Left,
+            Function::Len,
+            Function::Lower,
+            Function::Mid,
+            Function::Right,
+            Function::Search,
+            Function::Text,
+            Function::Trim,
+            Function::Upper,
+            Function::Isnumber,
+            Function::Isnontext,
+            Function::Istext,
+            Function::Islogical,
+            Function::Isblank,
+            Function::Iserr,
+            Function::Iserror,
+            Function::Isna,
+            Function::Na,
+            Function::Isref,
+            Function::Isodd,
+            Function::Iseven,
+            Function::ErrorType,
+            Function::Isformula,
+            Function::Type,
+            Function::Sheet,
+            Function::Average,
+            Function::Averagea,
+            Function::Averageif,
+            Function::Averageifs,
+            Function::Count,
+            Function::Counta,
+            Function::Countblank,
+            Function::Countif,
+            Function::Countifs,
+            Function::Maxifs,
+            Function::Minifs,
+            Function::Year,
+            Function::Day,
+            Function::Month,
+            Function::Eomonth,
+            Function::Date,
+            Function::Edate,
+            Function::Today,
+            Function::Now,
+            Function::Pmt,
+            Function::Pv,
+            Function::Rate,
+            Function::Nper,
+            Function::Fv,
+            Function::Ppmt,
+            Function::Ipmt,
+            Function::Npv,
+            Function::Mirr,
+            Function::Irr,
+            Function::Xirr,
+            Function::Xnpv,
+            Function::Rept,
+            Function::Textafter,
+            Function::Textbefore,
+            Function::Textjoin,
+            Function::Substitute,
+            Function::Ispmt,
+            Function::Rri,
+            Function::Sln,
+            Function::Syd,
+            Function::Nominal,
+            Function::Effect,
+            Function::Pduration,
+            Function::Tbillyield,
+            Function::Tbillprice,
+            Function::Tbilleq,
+            Function::Dollarde,
+            Function::Dollarfr,
+            Function::Ddb,
+            Function::Db,
+            Function::Cumprinc,
+            Function::Cumipmt,
+            Function::Besseli,
+            Function::Besselj,
+            Function::Besselk,
+            Function::Bessely,
+            Function::Erf,
+            Function::ErfPrecise,
+            Function::Erfc,
+            Function::ErfcPrecise,
+            Function::Bin2dec,
+            Function::Bin2hex,
+            Function::Bin2oct,
+            Function::Dec2Bin,
+            Function::Dec2hex,
+            Function::Dec2oct,
+            Function::Hex2bin,
+            Function::Hex2dec,
+            Function::Hex2oct,
+            Function::Oct2bin,
+            Function::Oct2dec,
+            Function::Oct2hex,
+            Function::Bitand,
+            Function::Bitlshift,
+            Function::Bitor,
+            Function::Bitrshift,
+            Function::Bitxor,
+            Function::Complex,
+            Function::Imabs,
+            Function::Imaginary,
+            Function::Imargument,
+            Function::Imconjugate,
+            Function::Imcos,
+            Function::Imcosh,
+            Function::Imcot,
+            Function::Imcsc,
+            Function::Imcsch,
+            Function::Imdiv,
+            Function::Imexp,
+            Function::Imln,
+            Function::Imlog10,
+            Function::Imlog2,
+            Function::Impower,
+            Function::Improduct,
+            Function::Imreal,
+            Function::Imsec,
+            Function::Imsech,
+            Function::Imsin,
+            Function::Imsinh,
+            Function::Imsqrt,
+            Function::Imsub,
+            Function::Imsum,
+            Function::Imtan,
+            Function::Convert,
+            Function::Delta,
+            Function::Gestep,
+            Function::Subtotal,
+        ]
+        .into_iter()
+    }
 }
 
 impl Function {
@@ -708,7 +909,23 @@ impl fmt::Display for Function {
     }
 }
 
+/// Documentation for one function
+pub struct Documentation {
+    pub name: String,
+}
+
 impl Model {
+    /// Produces documentation for all implemented functions
+    pub fn documentation() -> Vec<Documentation> {
+        let mut doc = Vec::new();
+        for function in Function::into_iter() {
+            doc.push(Documentation {
+                name: function.to_string(),
+            });
+        }
+        doc
+    }
+
     pub(crate) fn evaluate_function(
         &mut self,
         kind: &Function,
@@ -925,6 +1142,69 @@ impl Model {
             Function::Gestep => self.fn_gestep(args, cell),
 
             Function::Subtotal => self.fn_subtotal(args, cell),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs::File,
+        io::{BufRead, BufReader},
+    };
+
+    use crate::functions::Function;
+
+    #[test]
+    fn function_iterator() {
+        // This checks that the number of functions in the enum is the same
+        // as the number of functions in the Iterator.
+
+        // This is tricky. In Rust we cannot loop over all the members of an enum.
+        // There are alternatives like using an external crate like strum.
+        // But I am not in the mood for that.
+
+        // What we do here is read this file , extract the functions in the enum
+        // and check they are the same as in the iterator
+        let file = File::open("src/functions/mod.rs").unwrap();
+        let reader = BufReader::new(file);
+        let mut start = false;
+        let mut list = Vec::new();
+
+        for line in reader.lines() {
+            let text = line.unwrap();
+            let text = text.trim().trim_end_matches(',');
+            if text == "pub enum Function {" {
+                start = true;
+                continue;
+            }
+            if start {
+                if text == "}" {
+                    break;
+                }
+                if text.starts_with("//") {
+                    // skip comments
+                    continue;
+                }
+                if text.is_empty() {
+                    // skip empty lines
+                    continue;
+                }
+                list.push(text.to_owned());
+            }
+        }
+        // We make a list with their functions names, but we escape ".": ERROR.TYPE => ERRORTYPE
+        let iter_list = Function::into_iter()
+            .map(|f| format!("{}", f).replace('.', ""))
+            .collect::<Vec<_>>();
+
+        let len = iter_list.len();
+
+        assert_eq!(list.len(), len);
+        // We still need to check there are no duplicates. This will fail if a function in iter_list
+        // is included twice and one is missing
+        for function in list {
+            assert!(iter_list.contains(&function.to_uppercase()));
         }
     }
 }
