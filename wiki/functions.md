@@ -1,4 +1,6 @@
-# List of Functions implemented in IronCalc\n* AND
+# List of Functions implemented in IronCalc
+
+* AND
 * FALSE
 * IF
 * IFERROR

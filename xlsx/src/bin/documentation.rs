@@ -17,7 +17,7 @@ fn main() {
         panic!("Usage: {} -o <file.md>", args[0]);
     };
     let mut doc = Vec::new();
-    doc.push(r#"# List of Functions implemented in IronCalc\n"#.to_owned());
+    doc.push("# List of Functions implemented in IronCalc\n\n".to_owned());
     for function in Model::documentation() {
         doc.push(format!("* {}\n", &function.name));
     }
