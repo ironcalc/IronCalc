@@ -30,6 +30,10 @@ coverage:
 	CARGO_INCREMENTAL=0 RUSTFLAGS='-C instrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
 	grcov . --binary-path ./target/debug/deps/ -s . -t html --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/html
 
+update-docs:
+	cargo build
+	./target/debug/documentation -o wiki/functions.md
+
 docs:
 	cargo doc --no-deps
 

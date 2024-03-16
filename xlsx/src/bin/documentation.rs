@@ -8,10 +8,19 @@ use std::fs;
 use ironcalc_base::model::Model;
 
 fn main() {
+    let args: Vec<_> = std::env::args().collect();
+    let output_file = if args.len() == 3 {
+        &args[2]
+    } else if args.len() == 1 {
+        "functions.md"
+    } else {
+        panic!("Usage: {} -o <file.md>", args[0]);
+    };
     let mut doc = Vec::new();
+    doc.push(r#"# List of Functions implemented in IronCalc\n"#.to_owned());
     for function in Model::documentation() {
-        doc.push(function.name);
+        doc.push(format!("* {}\n", &function.name));
     }
-    let data = doc.join("\n");
-    fs::write("functions.md", data).expect("Unable to write file");
+    let data = doc.join("");
+    fs::write(output_file, data).expect("Unable to write file");
 }
