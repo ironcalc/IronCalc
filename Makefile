@@ -8,6 +8,8 @@ format:
 tests: lint
 	cargo test
 	make remove-xlsx
+	./target/debug/documentation
+	cmp functions.md wiki/functions.md || exit 1
 
 remove-xlsx:
 	rm -f xlsx/hello-calc.xlsx
@@ -21,6 +23,7 @@ clean: remove-xlsx
 	rm -f cargo-test-*
 	rm -f base/cargo-test-*
 	rm -f xlsx/cargo-test-*
+	rm functions.md
 
 
 coverage:
