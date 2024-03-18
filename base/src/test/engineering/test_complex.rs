@@ -79,11 +79,36 @@ fn fn_imcos() {
 
     model.evaluate();
 
-    let value = model._get_text("A1");
+    let cell_value = model._get_text("A1");
+    let (real_part, imag_part) =
+        parse_complex_number(&cell_value).expect("Failed to parse complex number");
+
+    let expected_real = -6.58066304055116;
+    let expected_imag = 7.58155274274654;
+    let tolerance = 1e-14;
+
     assert!(
-        value == "-6.58066304055116+7.58155274274654i"
-            || value == "-6.58066304055116+7.58155274274655i"
+        (real_part - expected_real).abs() < tolerance
+            && (imag_part - expected_imag).abs() < tolerance,
+        "Expected approximately ({}, {}), got ({}, {})",
+        expected_real,
+        expected_imag,
+        real_part,
+        imag_part
     );
+}
+
+fn parse_complex_number(s: &str) -> Result<(f64, f64), &'static str> {
+    let parts: Vec<&str> = s.split('+').collect();
+    let real_part = parts[0].parse().map_err(|_| "Invalid real part")?;
+    let imag_part = parts[1]
+        .split('i')
+        .next()
+        .unwrap()
+        .parse()
+        .map_err(|_| "Invalid imaginary part")?;
+
+    Ok((real_part, imag_part))
 }
 
 #[test]
