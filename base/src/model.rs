@@ -1646,7 +1646,7 @@ impl Model {
             });
         }
 
-        self.garbage_collector().unwrap();
+        self.garbage_collector();
     }
 
     /// Sets cell to empty. Can be used to delete value without affecting style.

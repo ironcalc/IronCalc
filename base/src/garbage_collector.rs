@@ -30,9 +30,7 @@ impl Model {
         let mut cell_values = Vec::new();
 
         for cell in cells {
-            let cell_value = self
-                .formatted_cell_value(cell.index, cell.row, cell.column)
-                .unwrap();
+            let cell_value = self.formatted_cell_value(cell.index, cell.row, cell.column);
             cell_values.push(cell_value);
         }
 
