@@ -9,19 +9,14 @@
 
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: https://github.com/ironcalc/IronCalc/blob/main/LICENSE-MIT
-
 [apache-badge]: https://img.shields.io/badge/License-Apache_2.0-blue.svg
 [apache-url]: https://github.com/ironcalc/IronCalc/blob/main/LICENSE-Apache-2.0
-
 [codecov-badge]: https://codecov.io/gh/ironcalc/IronCalc/graph/badge.svg?token=ASJX12CHNR
 [codecov-url]: https://codecov.io/gh/ironcalc/IronCalc
-
 [actions-badge]: https://github.com/ironcalc/ironcalc/actions/workflows/rust-build-test.yaml/badge.svg
 [actions-url]: https://github.com/ironcalc/IronCalc/actions/workflows/rust-build-test.yaml?query=workflow%3ARust+branch%3Amain
-
 [docs-url]: https://docs.rs/ironcalc
 [docs-badge]: https://img.shields.io/docsrs/ironcalc?logo=rust&style=flat-square
-
 [discord-badge]: https://img.shields.io/discord/1206947691058171904.svg?logo=discord&style=flat-square
 [discord-url]: https://discord.gg/zZYWfh3RHJ
 
@@ -52,6 +47,7 @@ make tests
 Note that this runs unit tests, integration tests, linter tests and formatting tests.
 
 If you want to run the code coverage yourself:
+
 ```bash
 make coverage
 cd target/coverage/html/
@@ -75,6 +71,7 @@ And visit <http://0.0.0.0:8000/ironcalc/>
 # Simple example
 
 Add the dependency to `Cargo.toml`:
+
 ```toml
 [dependencies]
 ironcalc = { git = "https://github.com/ironcalc/IronCalc", version = "0.1"}
@@ -108,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     model.evaluate();
 
     // saves to disk
-    save_to_xlsx(&model, "hello-calc.xlsx")?;
+    save_to_xlsx(&mut model, "hello-calc.xlsx")?;
     Ok(())
 }
 ```
@@ -125,7 +122,6 @@ An early preview of the technology running entirely in your browser:
 
 https://playground.ironcalc.com
 
-
 # Collaborators needed!. Call to action
 
 We don't have a vibrant community just yet. This is the very stages of the project. But if you are passionate about code with high standards and no compromises, if you are looking for a project with high impact, if you are interested in a better, more open infrastructure for spreadsheets, whether you are a developer (rust, python, TypeScript, electron/tauri/anything else native app, React, you name it), a designer (we need a logo desperately!), an Excel power user who wants features, a business looking to integrate a MIT/Apache licensed spreadsheet in your own SaaS application join us!
@@ -136,12 +132,11 @@ Many have said it better before me:
 
 > Folks wanted for hazardous journey. Low wages, bitter cold, long hours of complete darkness. Safe return doubtful. Honour and recognition in event of success.
 
-
 # License
 
 Licensed under either of
 
-* [MIT license](LICENSE-MIT)
-* [Apache license, version 2.0](LICENSE-Apache-2.0)
+-   [MIT license](LICENSE-MIT)
+-   [Apache license, version 2.0](LICENSE-Apache-2.0)
 
 at your option.

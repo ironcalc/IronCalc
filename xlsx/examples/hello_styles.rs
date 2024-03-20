@@ -12,6 +12,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     model.set_cell_style(sheet, row, column, &style)?;
 
     // saves to disk
-    save_to_xlsx(&model, "hello-styles.xlsx")?;
+    save_to_xlsx(&mut model, "hello-styles.xlsx")?;
     Ok(())
 }

@@ -30,5 +30,5 @@ fn main() {
     let mut model = load_model_from_xlsx(file_name, "en", "UTC").unwrap();
     model.evaluate();
     println!("Saving result as: {output_file_name}. Please open with Excel and test.");
-    save_to_xlsx(&model, output_file_name).unwrap();
+    save_to_xlsx(&mut model, output_file_name).unwrap();
 }

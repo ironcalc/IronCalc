@@ -65,7 +65,7 @@ pub fn save_to_xlsx(model: &mut Model, file_name: &str) -> Result<(), XlsxError>
 
     let gc = model.garbage_collector();
     if gc.is_err() {
-        return Err(XlsxError::IO(gc.err().unwrap()));
+        return Err(XlsxError::IO("Garbage collector failed".to_string()));
     }
 
     Ok(())
@@ -129,9 +129,11 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &mut Model, writer: W) -> Res
         )?;
     }
 
+    let writer = zip.finish()?;
+
     let gc = model.garbage_collector();
     if gc.is_err() {
-        return Err(XlsxError::IO(gc.err().unwrap()));
+        return Err(XlsxError::IO("Garbage collector failed".to_string()));
     }
 
     Ok(writer)

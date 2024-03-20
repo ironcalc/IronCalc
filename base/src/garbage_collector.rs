@@ -7,19 +7,12 @@ impl Model {
     /// These include:
     /// - Shared strings that are no longer referenced by any cell
     pub fn garbage_collector(&mut self) -> Result<(), String> {
-        let cell_values = self.get_all_cell_values().unwrap();
-        let mut new_shared_strings = self.shared_strings.clone();
+        let cell_values = self.get_all_cell_values()?;
 
-        for (index, _) in self.shared_strings.iter() {
-            // A cell is referencing the string, so we continue
-            if cell_values.contains(index) {
-                continue;
-            }
-
-            new_shared_strings.remove(index);
-        }
-
-        self.shared_strings = new_shared_strings;
+        self.shared_strings.retain(|index, _| {
+            // A cell is referencing the string, so we keep it
+            cell_values.contains(index)
+        });
 
         Ok(())
     }
