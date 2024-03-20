@@ -136,6 +136,7 @@ fn test_existing_file() {
 #[test]
 fn save_to_xlsx_runs_garbage_collector() {
     let mut model = new_empty_model();
+    let temp_file_name = "temp_file_test_gc.xlsx";
 
     // Set an arbitrary string in a cell
     model.set_user_input(0, 1, 1, "Hello".to_string());
@@ -146,8 +147,8 @@ fn save_to_xlsx_runs_garbage_collector() {
     assert_eq!(model.shared_strings.len(), 1);
 
     // The garbage collector (via save_to_xlsx) should now remove the reference
-    let temp_file_name = "temp_file_test_sheets.xlsx";
     save_to_xlsx(&mut model, temp_file_name).unwrap();
     assert_eq!(model.shared_strings.len(), 0);
+
     fs::remove_file(temp_file_name).unwrap();
 }
