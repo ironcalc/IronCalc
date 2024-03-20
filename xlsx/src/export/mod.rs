@@ -54,7 +54,7 @@ fn get_content_types_xml(workbook: &Workbook) -> String {
 }
 
 /// Exports a model to an xlsx file
-pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
+pub fn save_to_xlsx(model: &mut Model, file_name: &str) -> Result<(), XlsxError> {
     let file_path = std::path::Path::new(&file_name);
     if file_path.exists() {
         return Err(XlsxError::IO(format!("file {} already exists", file_name)));
@@ -63,10 +63,15 @@ pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
     let writer = BufWriter::new(file);
     save_xlsx_to_writer(model, writer)?;
 
+    let gc = model.garbage_collector();
+    if gc.is_err() {
+        return Err(XlsxError::IO(gc.err().unwrap()));
+    }
+
     Ok(())
 }
 
-pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<W, XlsxError> {
+pub fn save_xlsx_to_writer<W: Write + Seek>(model: &mut Model, writer: W) -> Result<W, XlsxError> {
     let workbook = &model.workbook;
     let mut zip = zip::ZipWriter::new(writer);
 
@@ -124,7 +129,11 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
         )?;
     }
 
-    let writer = zip.finish()?;
+    let gc = model.garbage_collector();
+    if gc.is_err() {
+        return Err(XlsxError::IO(gc.err().unwrap()));
+    }
+
     Ok(writer)
 }
 

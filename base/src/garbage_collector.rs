@@ -1,12 +1,12 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::model::Model;
+use crate::model::Model; // Add the missing error module
 
 impl Model {
     /// The garbage collector cleans up any lefover elements in the workbook that are no longer used.
     /// These include:
     /// - Shared strings that are no longer referenced by any cell
-    pub(crate) fn garbage_collector(&mut self) -> Result<(), String> {
+    pub fn garbage_collector(&mut self) -> Result<(), String> {
         let cell_values = self.get_all_cell_values().unwrap();
         let mut new_shared_strings = self.shared_strings.clone();
 
@@ -31,7 +31,7 @@ impl Model {
 
         for cell in cells {
             let cell_value = self.formatted_cell_value(cell.index, cell.row, cell.column);
-            cell_values.push(cell_value);
+            cell_values.push(cell_value?);
         }
 
         Ok(cell_values)
