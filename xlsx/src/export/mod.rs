@@ -64,10 +64,6 @@ pub fn save_to_xlsx(model: &mut Model, file_name: &str) -> Result<(), XlsxError>
     let writer = BufWriter::new(file);
     save_xlsx_to_writer(model, writer)?;
 
-    if let Err(err) = model.garbage_collector() {
-        return Err(XlsxError::IO(err));
-    }
-
     Ok(())
 }
 
