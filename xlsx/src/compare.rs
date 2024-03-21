@@ -204,3 +204,18 @@ pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(),
     model2.evaluate();
     compare_models(&model1, &model2)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::compare::compare;
+    use ironcalc_base::model::Model;
+
+    #[test]
+    fn compare_different_sheets() {
+        let mut model1 = Model::new_empty("model", "en", "UTC").unwrap();
+        model1.new_sheet();
+        let model2 = Model::new_empty("model", "en", "UTC").unwrap();
+
+        assert!(compare(&model1, &model2).is_err());
+    }
+}
