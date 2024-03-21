@@ -10,7 +10,7 @@ use std::cell::RefCell;
 // 8 November 2022 12:13 Berlin time
 
 thread_local! {
-    static MOCK_TIME: RefCell<i64> = RefCell::new(1667906008578);
+    static MOCK_TIME: RefCell<i64> = const { RefCell::new(1667906008578) };
 }
 
 pub fn get_milliseconds_since_epoch() -> i64 {
