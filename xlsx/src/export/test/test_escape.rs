@@ -16,10 +16,9 @@ fn test_escape_xml() {
         escape_xml("This is <>&\"' say"),
         "This is &lt;&gt;&amp;&quot;&apos; say"
     );
-}
 
-// '&' => "&amp;"
-// '<' "&lt;")
-// '>' => "&gt;"
-// '"' => "&quot;"
-// '\'' => "&apos;"
+    assert_eq!(
+        escape_xml("One line\nanother line\n\r"),
+        "One line&#xA;another line&#xA;&#xD;"
+    );
+}
