@@ -108,7 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     model.evaluate();
 
     // saves to disk
-    save_to_xlsx(&model, "hello-calc.xlsx")?;
+    save_to_xlsx(&mut model, "hello-calc.xlsx")?;
     Ok(())
 }
 ```

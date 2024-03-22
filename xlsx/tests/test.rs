@@ -27,7 +27,7 @@ fn test_save_to_xlsx() {
     model.evaluate();
     let temp_file_name = "temp_file_example.xlsx";
     // test can safe
-    save_to_xlsx(&model, temp_file_name).unwrap();
+    save_to_xlsx(&mut model, temp_file_name).unwrap();
     // test can open
     let model = load_model_from_xlsx(temp_file_name, "en", "UTC").unwrap();
     let metadata = &model.workbook.metadata;
@@ -145,12 +145,12 @@ fn test_model_has_correct_styles(model: &Model) {
 
 #[test]
 fn test_simple_text() {
-    let model = load_model_from_xlsx("tests/basic_text.xlsx", "en", "UTC").unwrap();
+    let mut model = load_model_from_xlsx("tests/basic_text.xlsx", "en", "UTC").unwrap();
 
     test_model_has_correct_styles(&model);
 
     let temp_file_name = "temp_file_test_named_styles.xlsx";
-    save_to_xlsx(&model, temp_file_name).unwrap();
+    save_to_xlsx(&mut model, temp_file_name).unwrap();
 
     let model = load_model_from_xlsx(temp_file_name, "en", "UTC").unwrap();
     fs::remove_file(temp_file_name).unwrap();

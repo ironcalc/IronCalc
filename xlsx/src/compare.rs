@@ -191,14 +191,14 @@ pub fn test_file(file_path: &str) -> Result<(), String> {
 
 /// Tests that file in file_path can be converted to xlsx and read again
 pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(), String> {
-    let model1 = load_model_from_xlsx(file_path, "en", "UTC").unwrap();
+    let mut model1 = load_model_from_xlsx(file_path, "en", "UTC").unwrap();
 
     let base_name = Path::new(file_path).file_name().unwrap().to_str().unwrap();
 
     let temp_path_buff = temp_dir_name.join(base_name);
     let temp_file_path = &format!("{}.xlsx", temp_path_buff.to_str().unwrap());
     // test can save
-    save_to_xlsx(&model1, temp_file_path).unwrap();
+    save_to_xlsx(&mut model1, temp_file_path).unwrap();
     // test can open
     let mut model2 = load_model_from_xlsx(temp_file_path, "en", "UTC").unwrap();
     model2.evaluate();

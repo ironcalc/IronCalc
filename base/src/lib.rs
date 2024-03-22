@@ -47,6 +47,7 @@ mod styles;
 mod diffs;
 mod implicit_intersection;
 
+mod garbage_collector;
 mod units;
 mod utils;
 mod workbook;

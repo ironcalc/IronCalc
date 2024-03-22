@@ -28,7 +28,7 @@ fn test_values() {
     model.evaluate();
 
     let temp_file_name = "temp_file_test_values.xlsx";
-    save_to_xlsx(&model, temp_file_name).unwrap();
+    save_to_xlsx(&mut model, temp_file_name).unwrap();
 
     let model = load_model_from_xlsx(temp_file_name, "en", "UTC").unwrap();
     assert_eq!(model.formatted_cell_value(0, 1, 1).unwrap(), "123.456");
@@ -56,7 +56,7 @@ fn test_formulas() {
 
     model.evaluate();
     let temp_file_name = "temp_file_test_formulas.xlsx";
-    save_to_xlsx(&model, temp_file_name).unwrap();
+    save_to_xlsx(&mut model, temp_file_name).unwrap();
 
     let model = load_model_from_xlsx(temp_file_name, "en", "UTC").unwrap();
     assert_eq!(model.formatted_cell_value(0, 1, 2).unwrap(), "11");
@@ -78,7 +78,7 @@ fn test_sheets() {
     model.evaluate();
 
     let temp_file_name = "temp_file_test_sheets.xlsx";
-    save_to_xlsx(&model, temp_file_name).unwrap();
+    save_to_xlsx(&mut model, temp_file_name).unwrap();
 
     let model = load_model_from_xlsx(temp_file_name, "en", "UTC").unwrap();
     assert_eq!(
@@ -107,7 +107,7 @@ fn test_named_styles() {
     model.evaluate();
 
     let temp_file_name = "temp_file_test_named_styles.xlsx";
-    save_to_xlsx(&model, temp_file_name).unwrap();
+    save_to_xlsx(&mut model, temp_file_name).unwrap();
 
     let model = load_model_from_xlsx(temp_file_name, "en", "UTC").unwrap();
     assert!(model
@@ -124,11 +124,31 @@ fn test_existing_file() {
     fs::File::create(file_name).unwrap();
 
     assert_eq!(
-        save_to_xlsx(&new_empty_model(), file_name),
+        save_to_xlsx(&mut new_empty_model(), file_name),
         Err(XlsxError::IO(
             "file existing_file.xlsx already exists".to_string()
         )),
     );
 
     fs::remove_file(file_name).unwrap();
+}
+
+#[test]
+fn save_to_xlsx_runs_garbage_collector() {
+    let mut model = new_empty_model();
+    let temp_file_name = "temp_file_test_gc.xlsx";
+
+    // Set an arbitrary string in a cell
+    model.set_user_input(0, 1, 1, "Hello".to_string());
+    assert_eq!(model.shared_strings.len(), 1);
+
+    // Deleting the cell will leave the string in model.shared_strings
+    model.delete_cell(0, 1, 1).unwrap();
+    assert_eq!(model.shared_strings.len(), 1);
+
+    // The garbage collector (via save_to_xlsx) should now remove the reference
+    save_to_xlsx(&mut model, temp_file_name).unwrap();
+    assert_eq!(model.shared_strings.len(), 0);
+
+    fs::remove_file(temp_file_name).unwrap();
 }

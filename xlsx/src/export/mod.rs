@@ -14,6 +14,7 @@ use std::{
     io::{Seek, Write},
 };
 
+use crate::import::load_model_from_xlsx;
 use ironcalc_base::expressions::utils::number_to_column;
 use ironcalc_base::model::{get_milliseconds_since_epoch, Model};
 use ironcalc_base::types::Workbook;
@@ -54,7 +55,7 @@ fn get_content_types_xml(workbook: &Workbook) -> String {
 }
 
 /// Exports a model to an xlsx file
-pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
+pub fn save_to_xlsx(model: &mut Model, file_name: &str) -> Result<(), XlsxError> {
     let file_path = std::path::Path::new(&file_name);
     if file_path.exists() {
         return Err(XlsxError::IO(format!("file {} already exists", file_name)));
@@ -66,7 +67,7 @@ pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
     Ok(())
 }
 
-pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<W, XlsxError> {
+pub fn save_xlsx_to_writer<W: Write + Seek>(model: &mut Model, writer: W) -> Result<W, XlsxError> {
     let workbook = &model.workbook;
     let mut zip = zip::ZipWriter::new(writer);
 
@@ -125,13 +126,30 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     }
 
     let writer = zip.finish()?;
+
+    if let Err(err) = model.garbage_collector() {
+        return Err(XlsxError::IO(err));
+    }
+
     Ok(writer)
 }
 
 /// Exports an internal representation of a workbook into an equivalent IronCalc json format
-pub fn save_to_json(workbook: Workbook, output: &str) {
+pub fn save_to_json(workbook: Workbook, output: &str) -> Result<(), XlsxError> {
     let s = serde_json::to_string(&workbook).unwrap();
     let file_path = std::path::Path::new(output);
     let mut file = fs::File::create(file_path).unwrap();
     file.write_all(s.as_bytes()).unwrap();
+
+    let model = load_model_from_xlsx(output, "en", "UTC");
+    match model {
+        Ok(mut value) => {
+            if let Err(err) = value.garbage_collector() {
+                return Err(XlsxError::IO(err));
+            }
+        }
+        Err(err) => return Err(err),
+    }
+
+    Ok(())
 }
