@@ -3,6 +3,7 @@
 use crate::constants::LAST_COLUMN;
 use crate::model::Model;
 use crate::test::util::new_empty_model;
+use crate::types::Col;
 
 #[test]
 fn test_insert_columns() {
@@ -193,6 +194,113 @@ fn test_delete_columns() {
     // FIXME: In Excel this would be (lower limit won't change)
     // assert_eq!(model._get_formula("A3"), *"=SUM(E4:K4)");
     assert_eq!(model._get_formula("A3"), *"=SUM(#REF!:K4)");
+}
+
+#[test]
+fn test_delete_column_width() {
+    let mut model = new_empty_model();
+    let (sheet, column) = (1, 5);
+    let width = model.get_column_width(sheet, column).unwrap();
+    // Set the width of one column
+    assert!(model.set_column_width(sheet, column, width * 5.0).is_ok());
+
+    // delete it
+    assert!(model.delete_columns(sheet, column, 1).is_ok());
+
+    // all the columns around have the expected width
+    assert_eq!(model.get_column_width(sheet, column - 1).unwrap(), width);
+    assert_eq!(model.get_column_width(sheet, column).unwrap(), width);
+    assert_eq!(model.get_column_width(sheet, column + 1).unwrap(), width);
+}
+
+#[test]
+fn test_delete_first_column_width() {
+    let mut model = new_empty_model();
+    model.workbook.worksheets[0].cols = vec![Col {
+        min: 4,
+        max: 7,
+        width: 300.0,
+        custom_width: true,
+        style: None,
+    }];
+    let (sheet, column) = (0, 4);
+    assert!(model.delete_columns(sheet, column, 1).is_ok());
+    let cols = &model.workbook.worksheets[0].cols;
+    assert_eq!(cols.len(), 1);
+    assert_eq!(
+        cols[0],
+        Col {
+            min: 5,
+            max: 7,
+            width: 300.0,
+            custom_width: true,
+            style: None
+        }
+    );
+}
+
+#[test]
+fn test_delete_last_column_width() {
+    let mut model = new_empty_model();
+    model.workbook.worksheets[0].cols = vec![Col {
+        min: 4,
+        max: 7,
+        width: 300.0,
+        custom_width: true,
+        style: None,
+    }];
+    let (sheet, column) = (0, 7);
+    assert!(model.delete_columns(sheet, column, 1).is_ok());
+    let cols = &model.workbook.worksheets[0].cols;
+    assert_eq!(cols.len(), 1);
+    assert_eq!(
+        cols[0],
+        Col {
+            min: 4,
+            max: 6,
+            width: 300.0,
+            custom_width: true,
+            style: None
+        }
+    );
+}
+
+#[test]
+fn test_delete_middle_column_width() {
+    let mut model = new_empty_model();
+    model.workbook.worksheets[0].cols = vec![Col {
+        min: 4,
+        max: 17,
+        width: 300.0,
+        custom_width: true,
+        style: None,
+    }];
+
+    // deletes columns 10, 11, 12
+    let (sheet, column) = (0, 10);
+    assert!(model.delete_columns(sheet, column, 3).is_ok());
+    let cols = &model.workbook.worksheets[0].cols;
+    assert_eq!(cols.len(), 2);
+    assert_eq!(
+        cols[0],
+        Col {
+            min: 4,
+            max: 9,
+            width: 300.0,
+            custom_width: true,
+            style: None
+        }
+    );
+    assert_eq!(
+        cols[1],
+        Col {
+            min: 13,
+            max: 17,
+            width: 300.0,
+            custom_width: true,
+            style: None
+        }
+    );
 }
 
 #[test]

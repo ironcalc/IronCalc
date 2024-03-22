@@ -5,9 +5,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    expressions::utils::{is_valid_column_number, is_valid_row},
-    model::Model,
-    types::{Cell, Col, Row, Style},
+    constants, expressions::utils::{is_valid_column_number, is_valid_row}, model::Model, types::{Cell, Col, Row, Style}
 };
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -340,7 +338,8 @@ impl UserModel {
 
     /// Sets the width of a column
     pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> Result<(), String> {
-        let old_value = self.model.get_column_width(sheet, column)?;
+        let old_value =
+            self.model.get_column_width(sheet, column)?;
         self.history.push(vec![Diff::SetColumnWidth {
             sheet,
             column,
