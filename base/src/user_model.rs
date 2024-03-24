@@ -131,20 +131,53 @@ impl History {
     }
 }
 
-/// # UserModel
-/// UserModel is a wrapper around Model with undo/redo history and _diffs_.
+#[derive(Clone, Serialize, Deserialize)]
+enum DiffType {
+    Undo,
+    Redo,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct QueueDiffs {
+    r#type: DiffType,
+    list: DiffList,
+}
+
+/// # A wrapper around [`Model`] for a spreadsheet end user.
+/// UserModel is a wrapper around Model with undo/redo history, _diffs_ and automatic evaluation.
 ///
 /// A diff in this context (or more correctly a _user diff_) is a change created by a user.
-/// It is meant to be used by UI applications like Web IronCalc or TironCalc
+///
+/// Automatic evaluation means that actions like setting a value on a cell or deleting a column
+/// will evaluate the model if needed.
+///
+/// It is meant to be used by UI applications like Web IronCalc or TironCalc.
+///
+///
+/// # Examples
+///
+/// ```rust
+/// # use ironcalc_base::UserModel;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let mut model = UserModel::new_empty("model", "en", "UTC")?;
+/// model.set_user_input(0, 1, 1, "=1+1")?;
+/// assert_eq!(model.get_formatted_cell_value(0, 1, 1)?, "2");
+/// model.undo()?;
+/// assert_eq!(model.get_formatted_cell_value(0, 1, 1)?, "");
+/// model.redo()?;
+/// assert_eq!(model.get_formatted_cell_value(0, 1, 1)?, "2");
+/// # Ok(())
+/// # }
+/// ```
 pub struct UserModel {
     model: Model,
     history: History,
-    send_queue: Vec<DiffList>,
+    send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
 }
 
 impl UserModel {
-    /// Creates a user model from a model
+    /// Creates a user model from an existing model
     pub fn from_model(model: Model) -> UserModel {
         UserModel {
             model,
@@ -154,18 +187,40 @@ impl UserModel {
         }
     }
 
-    /// Undoes last change if any
+    /// Creates a new UserModel.
+    ///
+    /// See also:
+    /// * [Model::new_empty]
+    pub fn new_empty(name: &str, locale_id: &str, timezone: &str) -> Result<UserModel, String> {
+        let model = Model::new_empty(name, locale_id, timezone)?;
+        Ok(UserModel {
+            model,
+            history: History::default(),
+            send_queue: vec![],
+            pause_evaluation: false,
+        })
+    }
+
+    /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
     pub fn undo(&mut self) -> Result<(), String> {
         if let Some(diff_list) = self.history.undo() {
             self.apply_undo_diff_list(&diff_list)?;
+            self.send_queue.push(QueueDiffs {
+                r#type: DiffType::Undo,
+                list: diff_list.clone(),
+            });
         };
         Ok(())
     }
 
-    /// Redoes the last undone change
+    /// Redoes the last undone change, places the change in the undo list and evaluates the model if needed
     pub fn redo(&mut self) -> Result<(), String> {
         if let Some(diff_list) = self.history.redo() {
             self.apply_diff_list(&diff_list)?;
+            self.send_queue.push(QueueDiffs {
+                r#type: DiffType::Redo,
+                list: diff_list.clone(),
+            });
         };
         Ok(())
     }
@@ -180,12 +235,29 @@ impl UserModel {
         !self.history.redo_stack.is_empty()
     }
 
-    /// Pauses or unpauses automatic evaluation
-    pub fn set_pause_evaluation(&mut self, pause_evaluation: bool) {
-        self.pause_evaluation = pause_evaluation;
+    /// Pauses automatic evaluation.
+    ///
+    /// See also:
+    /// * [UserModel::evaluate]
+    /// * [UserModel::resume_evaluation]
+    pub fn pause_evaluation(&mut self) {
+        self.pause_evaluation = true;
+    }
+
+    /// Resumes automatic evaluation.
+    ///
+    /// See also:
+    /// * [UserModel::evaluate]
+    /// * [UserModel::pause_evaluation]
+    pub fn resume_evaluation(&mut self) {
+        self.pause_evaluation = false;
     }
 
     /// Forces an evaluation of the model
+    ///
+    /// See also:
+    /// * [Model::evaluate]
+    /// * [UserModel::pause_evaluation]
     pub fn evaluate(&mut self) {
         self.model.evaluate()
     }
@@ -200,9 +272,18 @@ impl UserModel {
 
     /// This are external diffs that need to be applied to the model
     pub fn apply_external_diffs(&mut self, diff_list_str: &str) -> Result<(), String> {
-        if let Ok(diff_list) = serde_json::from_str::<DiffList>(diff_list_str) {
-            self.apply_diff_list(&diff_list)?;
-        };
+        println!("{}", diff_list_str);
+        if let Ok(queue_diffs_list) = serde_json::from_str::<Vec<QueueDiffs>>(diff_list_str) {
+            for queue_diff in queue_diffs_list {
+                if matches!(queue_diff.r#type, DiffType::Redo) {
+                    self.apply_diff_list(&queue_diff.list)?;
+                } else {
+                    self.apply_undo_diff_list(&queue_diff.list)?;
+                }
+            }
+        } else {
+            return Err("Error parsing diff list".to_string());
+        }
         Ok(())
     }
 
@@ -238,7 +319,7 @@ impl UserModel {
             new_value: value.to_string(),
             old_value: Box::new(old_value),
         }];
-        self.history.push(diff_list);
+        self.push_diff_list(diff_list);
         Ok(())
     }
 
@@ -262,7 +343,7 @@ impl UserModel {
     /// Inserts a row
     pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
         let diff_list = vec![Diff::InsertRow { sheet, row }];
-        self.history.push(diff_list);
+        self.push_diff_list(diff_list);
         self.model.insert_rows(sheet, row, 1)
     }
 
@@ -286,14 +367,14 @@ impl UserModel {
             row,
             old_data,
         }];
-        self.history.push(diff_list);
+        self.push_diff_list(diff_list);
         self.model.delete_rows(sheet, row, 1)
     }
 
     /// Inserts a column
     pub fn insert_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
         let diff_list = vec![Diff::InsertColumn { sheet, column }];
-        self.history.push(diff_list);
+        self.push_diff_list(diff_list);
         self.model.insert_columns(sheet, column, 1)
     }
 
@@ -335,14 +416,14 @@ impl UserModel {
                 data,
             }),
         }];
-        self.history.push(diff_list);
+        self.push_diff_list(diff_list);
         self.model.delete_columns(sheet, column, 1)
     }
 
     /// Sets the width of a column
     pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> Result<(), String> {
         let old_value = self.model.get_column_width(sheet, column)?;
-        self.history.push(vec![Diff::SetColumnWidth {
+        self.push_diff_list(vec![Diff::SetColumnWidth {
             sheet,
             column,
             new_value: width,
@@ -354,7 +435,7 @@ impl UserModel {
     /// Sets the height of a row
     pub fn set_row_height(&mut self, sheet: u32, row: i32, height: f64) -> Result<(), String> {
         let old_value = self.model.get_row_height(sheet, row)?;
-        self.history.push(vec![Diff::SetRowHeight {
+        self.push_diff_list(vec![Diff::SetRowHeight {
             sheet,
             row,
             new_value: height,
@@ -399,7 +480,7 @@ impl UserModel {
     /// * [Model::set_frozen_rows()]
     pub fn set_frozen_rows_count(&mut self, sheet: u32, frozen_rows: i32) -> Result<(), String> {
         let old_value = self.model.get_frozen_rows_count(sheet)?;
-        self.history.push(vec![Diff::SetFrozenRowsCount {
+        self.push_diff_list(vec![Diff::SetFrozenRowsCount {
             sheet,
             new_value: frozen_rows,
             old_value,
@@ -417,7 +498,7 @@ impl UserModel {
         frozen_columns: i32,
     ) -> Result<(), String> {
         let old_value = self.model.get_frozen_columns_count(sheet)?;
-        self.history.push(vec![Diff::SetFrozenColumnsCount {
+        self.push_diff_list(vec![Diff::SetFrozenColumnsCount {
             sheet,
             new_value: frozen_columns,
             old_value,
@@ -426,6 +507,14 @@ impl UserModel {
     }
 
     // **** Private methods ****** //
+
+    fn push_diff_list(&mut self, diff_list: DiffList) {
+        self.send_queue.push(QueueDiffs {
+            r#type: DiffType::Redo,
+            list: diff_list.clone(),
+        });
+        self.history.push(diff_list);
+    }
 
     fn evaluate_if_not_paused(&mut self) {
         if !self.pause_evaluation {

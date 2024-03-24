@@ -156,3 +156,21 @@ fn insert_remove_columns() {
         Ok("100$".to_string())
     );
 }
+
+#[test]
+fn send_queue() {
+    let mut model1 = UserModel::from_model(new_empty_model());
+    let width = model1.get_column_width(0, 3).unwrap() * 3.0;
+    model1.set_column_width(0, 3, width).unwrap();
+    model1.set_user_input(0, 1, 2, "Hello IronCalc!").unwrap();
+    let send_queue = model1.flush_send_queue();
+
+    let mut model2 = UserModel::from_model(new_empty_model());
+    model2.apply_external_diffs(&send_queue).unwrap();
+
+    assert_eq!(model2.get_column_width(0, 3), Ok(width));
+    assert_eq!(
+        model2.get_formatted_cell_value(0, 1, 2),
+        Ok("Hello IronCalc!".to_string())
+    );
+}
