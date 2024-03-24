@@ -157,6 +157,11 @@ impl Model {
             return Err("Please use insert columns instead".to_string());
         }
 
+        // first column being deleted
+        let column_start = column;
+        // last column being deleted
+        let column_end = column + column_count - 1;
+
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
         let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
@@ -166,8 +171,8 @@ impl Model {
         for r in all_rows {
             let columns: Vec<i32> = self.get_columns_for_row(sheet, r, false)?;
             for col in columns {
-                if col >= column {
-                    if col >= column + column_count {
+                if col >= column_start {
+                    if col > column_end {
                         self.move_cell(sheet, r, col, r, col - column_count)?;
                     } else {
                         self.delete_cell(sheet, r, col)?;
@@ -189,37 +194,55 @@ impl Model {
         // deletes all the column styles
         let mut new_columns = Vec::new();
         for col in worksheet.cols.iter_mut() {
+            // range under study
             let min = col.min;
             let max = col.max;
-            if column <= min && column + column_count >= max {
-                // delete: ------/************/-------
-                // range : --------/******/-----------
-                // delete column styles
-                // pass
-            } else if column <= min && column + column_count >= min && column + column_count < max {
-                // delete: ------/************/-------
-                // range : --------/*************/----
-                let mut new_col = col.clone();
-                new_col.min = column + column_count + 1;
-                new_columns.push(new_col);
-            } else if column >= min && column + column_count < max {
-                // delete: ---------/************/----
-                // range : ----/*************/--------
-                let mut new_col = col.clone();
-                new_col.max = column + column_count - 1;
-                new_columns.push(new_col);
-            } else if column >= min && column <= max {
-                // delete: --------/********/---------
-                // range : ----/**************/-------
-                // we need to split in two ranges [col.min, column -1] and [column+column_count+1, col.max]
-                let mut new_col = col.clone();
-                new_col.max = column - 1;
-                new_columns.push(new_col);
-
-                let mut new_col = col.clone();
-                new_col.min = column + column_count + 1;
-                new_columns.push(new_col);
+            // In the diagram:
+            // |xxxxx| range we are studying [min, max]
+            // |*****| range we are deleting [column_start, column_end]
+            // we are going to split it in three big cases:
+            // ----------------|xxxxxxxx|-----------------
+            // -----|*****|------------------------------- Case A
+            // -------|**********|------------------------ Case B
+            // -------------|**************|-------------- Case C
+            // ------------------|****|------------------- Case D
+            // ---------------------|**********|---------- Case E
+            // -----------------------------|*****|------- Case F
+            if column_start < min {
+                if column_end < min {
+                    // Case A
+                    // We displace all columns
+                    let mut new_column = col.clone();
+                    new_column.min = min - column_count;
+                    new_column.max = max - column_count;
+                    new_columns.push(new_column);
+                } else if column_end < max {
+                    // Case B
+                    // We displace the end
+                    let mut new_column = col.clone();
+                    new_column.min = column_start;
+                    new_column.max = max - column_count;
+                    new_columns.push(new_column);
+                } else {
+                    // Case C
+                    // skip this, we are deleting the whole range
+                }
+            } else if column_start <= max {
+                if column_end <= max {
+                    // Case D
+                    // We displace the end
+                    let mut new_column = col.clone();
+                    new_column.max = max - column_count;
+                    new_columns.push(new_column);
+                } else {
+                    // Case E
+                    let mut new_column = col.clone();
+                    new_column.max = column_start - 1;
+                    new_columns.push(new_column);
+                }
             } else {
+                // Case F
+                // No action required
                 new_columns.push(col.clone());
             }
         }

@@ -146,7 +146,7 @@ fn insert_remove_columns() {
         Ok("125".to_string())
     );
 
-    // undo twice
+    // undo twice (set_user_input and delete_column)
     assert!(model.undo().is_ok());
     assert!(model.undo().is_ok());
 
