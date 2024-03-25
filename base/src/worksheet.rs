@@ -134,7 +134,7 @@ impl Worksheet {
                 cell.set_style(style_index);
             }
             None => {
-                self.set_cell_empty_with_style(row, column, style_index);
+                self.cell_clear_contents_with_style(row, column, style_index);
             }
         }
 
@@ -166,13 +166,13 @@ impl Worksheet {
         self.update_cell(row, column, cell);
     }
 
-    pub fn set_cell_empty(&mut self, row: i32, column: i32) {
+    pub fn cell_clear_contents(&mut self, row: i32, column: i32) {
         let s = self.get_style(row, column);
         let cell = Cell::EmptyCell { s };
         self.update_cell(row, column, cell);
     }
 
-    pub fn set_cell_empty_with_style(&mut self, row: i32, column: i32, style: i32) {
+    pub fn cell_clear_contents_with_style(&mut self, row: i32, column: i32, style: i32) {
         let cell = Cell::EmptyCell { s: style };
         self.update_cell(row, column, cell);
     }

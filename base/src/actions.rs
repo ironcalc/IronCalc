@@ -83,7 +83,7 @@ impl Model {
         self.workbook
             .worksheet_mut(sheet)?
             .set_cell_style(target_row, target_column, style);
-        self.delete_cell(sheet, source_row, source_column)?;
+        self.cell_clear_all(sheet, source_row, source_column)?;
         Ok(())
     }
 
@@ -175,7 +175,7 @@ impl Model {
                     if col > column_end {
                         self.move_cell(sheet, r, col, r, col - column_count)?;
                     } else {
-                        self.delete_cell(sheet, r, col)?;
+                        self.cell_clear_all(sheet, r, col)?;
                     }
                 }
             }
@@ -346,7 +346,7 @@ impl Model {
                     // remove all cells in row
                     // FIXME: We could just remove the entire row in one go
                     for column in columns {
-                        self.delete_cell(sheet, r, column)?;
+                        self.cell_clear_all(sheet, r, column)?;
                     }
                 }
             }

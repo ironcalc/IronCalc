@@ -1656,7 +1656,7 @@ impl Model {
     /// Removes the content of the cell but leaves the style.
     ///
     /// See also:
-    /// * [Model::delete_cell()]
+    /// * [Model::cell_clear_all()]
     ///
     /// # Examples
     ///
@@ -1666,24 +1666,24 @@ impl Model {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "100$".to_string());
-    /// model.set_cell_empty(sheet, row, column);
+    /// model.cell_clear_contents(sheet, row, column);
     /// model.set_user_input(sheet, row, column, "10".to_string());
     /// let result = model.get_formatted_cell_value(sheet, row, column)?;
     /// assert_eq!(result, "10$".to_string());
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_cell_empty(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+    pub fn cell_clear_contents(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_empty(row, column);
+            .cell_clear_contents(row, column);
         Ok(())
     }
 
     /// Deletes a cell by removing it from worksheet data. All content and style is removed.
     ///
     /// See also:
-    /// * [Model::set_cell_empty()]
+    /// * [Model::cell_clear_contents()]
     ///
     /// # Examples
     ///
@@ -1693,13 +1693,13 @@ impl Model {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "100$".to_string());
-    /// model.delete_cell(sheet, row, column);
+    /// model.cell_clear_all(sheet, row, column);
     /// model.set_user_input(sheet, row, column, "10".to_string());
     /// let result = model.get_formatted_cell_value(sheet, row, column)?;
     /// assert_eq!(result, "10".to_string());
     /// # Ok(())
     /// # }
-    pub fn delete_cell(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+    pub fn cell_clear_all(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
 
         let sheet_data = &mut worksheet.sheet_data;

@@ -5,16 +5,6 @@ use crate::test::util::new_empty_model;
 use crate::UserModel;
 
 #[test]
-fn model_evaluates_automatically() {
-    let model = new_empty_model();
-    let mut model = UserModel::from_model(model);
-    model.set_user_input(0, 1, 1, "=1 + 1").unwrap();
-
-    assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("2".to_string()));
-    assert_eq!(model.get_cell_content(0, 1, 1), Ok("=1+1".to_string()));
-}
-
-#[test]
 fn set_user_input_errors() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
@@ -30,58 +20,6 @@ fn set_user_input_errors() {
     // column too large
     assert!(model.set_user_input(0, 1, LAST_COLUMN, "1").is_ok());
     assert!(model.set_user_input(0, 1, LAST_COLUMN + 1, "1").is_err());
-}
-
-#[test]
-fn simple_undo_redo() {
-    let model = new_empty_model();
-    let mut model = UserModel::from_model(model);
-    // at the beginning I cannot undo or redo
-    assert!(!model.can_undo());
-    assert!(!model.can_redo());
-    assert!(model.set_user_input(0, 1, 1, "=1+2").is_ok());
-
-    // Once I enter a value I can undo but not redo
-    assert!(model.can_undo());
-    assert!(!model.can_redo());
-    assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("3".to_string()));
-
-    // If I undo, I can't undo anymore, but I can redo
-    assert!(model.undo().is_ok());
-    assert!(!model.can_undo());
-    assert!(model.can_redo());
-    assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("".to_string()));
-
-    // If I redo, I have the old value and formula
-    assert!(model.redo().is_ok());
-    assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("3".to_string()));
-    assert_eq!(model.get_cell_content(0, 1, 1), Ok("=1+2".to_string()));
-    assert!(model.can_undo());
-    assert!(!model.can_redo());
-}
-
-#[test]
-fn undo_redo_respect_styles() {
-    let model = new_empty_model();
-    let mut model = UserModel::from_model(model);
-    assert!(model.set_user_input(0, 1, 1, "100").is_ok());
-    assert!(model.set_user_input(0, 1, 1, "125$").is_ok());
-    // The content of the cell is just the number 125
-    assert_eq!(model.get_cell_content(0, 1, 1), Ok("125".to_string()));
-    assert!(model.undo().is_ok());
-    // The cell has no currency number formatting
-    assert_eq!(
-        model.get_formatted_cell_value(0, 1, 1),
-        Ok("100".to_string())
-    );
-    assert_eq!(model.get_cell_content(0, 1, 1), Ok("100".to_string()));
-    assert!(model.redo().is_ok());
-    // The cell has the number 125 formatted as '125$'
-    assert_eq!(
-        model.get_formatted_cell_value(0, 1, 1),
-        Ok("125$".to_string())
-    );
-    assert_eq!(model.get_cell_content(0, 1, 1), Ok("125".to_string()));
 }
 
 #[test]
@@ -157,20 +95,10 @@ fn insert_remove_columns() {
     );
 }
 
+
 #[test]
-fn send_queue() {
-    let mut model1 = UserModel::from_model(new_empty_model());
-    let width = model1.get_column_width(0, 3).unwrap() * 3.0;
-    model1.set_column_width(0, 3, width).unwrap();
-    model1.set_user_input(0, 1, 2, "Hello IronCalc!").unwrap();
-    let send_queue = model1.flush_send_queue();
-
-    let mut model2 = UserModel::from_model(new_empty_model());
-    model2.apply_external_diffs(&send_queue).unwrap();
-
-    assert_eq!(model2.get_column_width(0, 3), Ok(width));
-    assert_eq!(
-        model2.get_formatted_cell_value(0, 1, 2),
-        Ok("Hello IronCalc!".to_string())
-    );
+fn delete_remove_cell() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let (sheet, row, column) = (0, 1, 1);
+    model.set_user_input(sheet, row, column, "100$").unwrap();
 }

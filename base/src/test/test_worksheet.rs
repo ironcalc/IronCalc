@@ -39,7 +39,7 @@ fn test_worksheet_dimension_single_cell() {
 fn test_worksheet_dimension_single_cell_set_empty() {
     let mut model = new_empty_model();
     model._set("W11", "1");
-    model.set_cell_empty(0, 11, 23).unwrap();
+    model.cell_clear_contents(0, 11, 23).unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {
@@ -55,7 +55,7 @@ fn test_worksheet_dimension_single_cell_set_empty() {
 fn test_worksheet_dimension_single_cell_deleted() {
     let mut model = new_empty_model();
     model._set("W11", "1");
-    model.delete_cell(0, 11, 23).unwrap();
+    model.cell_clear_all(0, 11, 23).unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {
@@ -75,7 +75,7 @@ fn test_worksheet_dimension_multiple_cells() {
     model._set("AA17", "1");
     model._set("G17", "1");
     model._set("B19", "1");
-    model.delete_cell(0, 11, 23).unwrap();
+    model.cell_clear_all(0, 11, 23).unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {

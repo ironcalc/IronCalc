@@ -6,9 +6,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     constants,
-    expressions::utils::{is_valid_column_number, is_valid_row},
+    expressions::{
+        types::Area,
+        utils::{is_valid_column_number, is_valid_row},
+    },
     model::Model,
-    types::{Cell, Col, Row, Style},
+    types::{Cell, Col, Row, SheetData, Style, Worksheet},
 };
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -33,18 +36,18 @@ enum Diff {
         new_value: String,
         old_value: Box<Option<Cell>>,
     },
-    DeleteCell {
+    CellClearContents {
         sheet: u32,
         row: i32,
         column: i32,
         old_value: Box<Option<Cell>>,
     },
-    RemoveCell {
+    CellClearAll {
         sheet: u32,
         row: i32,
         column: i32,
         old_value: Box<Option<Cell>>,
-        old_style: i32,
+        old_style: Box<Style>,
     },
     SetCellStyle {
         sheet: u32,
@@ -94,6 +97,13 @@ enum Diff {
         new_value: i32,
         old_value: i32,
     },
+    DeleteSheet {
+        old_data: Worksheet
+    },
+    NewSheet {
+        index: u32,
+        name: String
+    }
 }
 
 type DiffList = Vec<Diff>;
@@ -263,6 +273,12 @@ impl UserModel {
     }
 
     /// Returns the list of pending diffs and removes them from the queue
+    ///
+    /// This is used together with [apply_external_diffs](UserModel::apply_external_diffs) to keep two remote models
+    /// in sync.
+    ///
+    /// See also:
+    /// * [UserModel::apply_external_diffs]
     pub fn flush_send_queue(&mut self) -> String {
         // This can never fail :O:
         let q = serde_json::to_string(&self.send_queue).unwrap();
@@ -271,8 +287,12 @@ impl UserModel {
     }
 
     /// This are external diffs that need to be applied to the model
+    ///
+    /// This is used together with [flush_send_queue](UserModel::flush_send_queue) to keep two remote models in sync
+    ///
+    /// See also:
+    /// * [UserModel::flush_send_queue]
     pub fn apply_external_diffs(&mut self, diff_list_str: &str) -> Result<(), String> {
-        println!("{}", diff_list_str);
         if let Ok(queue_diffs_list) = serde_json::from_str::<Vec<QueueDiffs>>(diff_list_str) {
             for queue_diff in queue_diffs_list {
                 if matches!(queue_diff.r#type, DiffType::Redo) {
@@ -287,7 +307,10 @@ impl UserModel {
         Ok(())
     }
 
-    /// set user input
+    /// Set the input in a cell
+    ///
+    /// See also:
+    /// * [Model::set_user_input]
     pub fn set_user_input(
         &mut self,
         sheet: u32,
@@ -323,13 +346,19 @@ impl UserModel {
         Ok(())
     }
 
-    /// Returns the content
+    /// Returns the content of a cell
+    ///
+    /// See also:
+    /// * [Model::get_cell_content]
     #[inline]
     pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
         self.model.get_cell_content(sheet, row, column)
     }
 
-    /// Returns formatted value
+    /// Returns the formatted value of a cell
+    ///
+    /// See also:
+    /// * [Model::get_formatted_cell_value]
     #[inline]
     pub fn get_formatted_cell_value(
         &self,
@@ -340,7 +369,87 @@ impl UserModel {
         self.model.get_formatted_cell_value(sheet, row, column)
     }
 
+    /// Adds new sheet
+    ///
+    /// See also:
+    /// * [Model::new_sheet]
+    pub fn new_sheet(&mut self) {
+        self.push_diff_list(vec![Diff::NewSheet{ index: todo!(), name: todo!() }]);
+        self.model.new_sheet()
+    }
+
+    /// Deletes sheet by index
+    /// 
+    /// See also:
+    /// * [Model::delete_sheet]
+    pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        self.push_diff_list(vec![Diff::DeleteSheet{ old_data: todo!() }]);
+        self.model.delete_sheet(sheet)?;
+        Ok(())
+    }
+
+    /// Removes cells contents and style
+    ///
+    /// See also:
+    /// * [Model::cell_clear_all]
+    pub fn range_clear_all(&mut self, range: &Area) -> Result<(), String> {
+        let sheet = range.sheet;
+        let mut diff_list = Vec::new();
+        for row in range.row..range.row + range.height {
+            for column in range.column..range.column + range.width {
+                let old_value = self
+                    .model
+                    .workbook
+                    .worksheet(sheet)?
+                    .cell(row, column)
+                    .cloned();
+                let old_style = self.model.get_style_for_cell(sheet, row, column);
+                self.model.cell_clear_all(sheet, row, column)?;
+                diff_list.push(Diff::CellClearAll {
+                    sheet,
+                    row,
+                    column,
+                    old_value: Box::new(old_value),
+                    old_style: Box::new(old_style),
+                });
+            }
+        }
+        self.push_diff_list(diff_list);
+        Ok(())
+    }
+
+    /// Deletes the content in cells, but keeps the style
+    ///
+    /// See also:
+    /// * [Model::cell_clear_contents]
+    pub fn range_clear_contents(&mut self, range: &Area) -> Result<(), String> {
+        let sheet = range.sheet;
+        let mut diff_list = Vec::new();
+        for row in range.row..range.row + range.height {
+            for column in range.column..range.column + range.width {
+                let old_value = self
+                    .model
+                    .workbook
+                    .worksheet(sheet)?
+                    .cell(row, column)
+                    .cloned();
+                self.model.cell_clear_contents(sheet, row, column)?;
+                diff_list.push(Diff::CellClearContents {
+                    sheet,
+                    row,
+                    column,
+                    old_value: Box::new(old_value),
+                });
+            }
+        }
+        self.push_diff_list(diff_list);
+        Ok(())
+    }
+
     /// Inserts a row
+    ///
+    /// See also:
+    /// * [Model::insert_rows]
     pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
         let diff_list = vec![Diff::InsertRow { sheet, row }];
         self.push_diff_list(diff_list);
@@ -348,6 +457,9 @@ impl UserModel {
     }
 
     /// Deletes a row
+    ///
+    /// See also:
+    /// * [Model::delete_rows]
     pub fn delete_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
         let mut row_data = None;
         let worksheet = self.model.workbook.worksheet(sheet)?;
@@ -372,6 +484,9 @@ impl UserModel {
     }
 
     /// Inserts a column
+    ///
+    /// See also:
+    /// * [Model::insert_columns]
     pub fn insert_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
         let diff_list = vec![Diff::InsertColumn { sheet, column }];
         self.push_diff_list(diff_list);
@@ -379,6 +494,9 @@ impl UserModel {
     }
 
     /// Deletes a column
+    ///
+    /// See also:
+    /// * [Model::delete_columns]
     pub fn delete_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
         if !is_valid_column_number(column) {
@@ -421,6 +539,9 @@ impl UserModel {
     }
 
     /// Sets the width of a column
+    ///
+    /// See also:
+    /// * [Model::set_column_width]
     pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> Result<(), String> {
         let old_value = self.model.get_column_width(sheet, column)?;
         self.push_diff_list(vec![Diff::SetColumnWidth {
@@ -433,6 +554,9 @@ impl UserModel {
     }
 
     /// Sets the height of a row
+    ///
+    /// See also:
+    /// * [Model::set_row_height]
     pub fn set_row_height(&mut self, sheet: u32, row: i32, height: f64) -> Result<(), String> {
         let old_value = self.model.get_row_height(sheet, row)?;
         self.push_diff_list(vec![Diff::SetRowHeight {
@@ -445,12 +569,18 @@ impl UserModel {
     }
 
     /// Gets the height of a row
+    ///
+    /// See also:
+    /// * [Model::get_row_height]
     #[inline]
     pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
         self.model.get_row_height(sheet, row)
     }
 
     /// Gets the width of a column
+    ///
+    /// See also:
+    /// * [Model::get_column_width]
     #[inline]
     pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
         self.model.get_column_width(sheet, column)
@@ -542,7 +672,7 @@ impl UserModel {
                                 .update_cell(*row, *column, value);
                         }
                         None => {
-                            self.model.delete_cell(*sheet, *row, *column)?;
+                            self.model.cell_clear_all(*sheet, *row, *column)?;
                         }
                     }
                 }
@@ -558,7 +688,7 @@ impl UserModel {
                     new_value: _,
                     old_value,
                 } => self.model.set_row_height(*sheet, *row, *old_value)?,
-                Diff::DeleteCell {
+                Diff::CellClearContents {
                     sheet,
                     row,
                     column,
@@ -572,7 +702,7 @@ impl UserModel {
                             .update_cell(*row, *column, value);
                     }
                 }
-                Diff::RemoveCell {
+                Diff::CellClearAll {
                     sheet,
                     row,
                     column,
@@ -647,6 +777,8 @@ impl UserModel {
                     new_value: _,
                     old_value,
                 } => self.model.set_frozen_columns(*sheet, *old_value)?,
+                Diff::DeleteSheet { old_data } => todo!(),
+                Diff::NewSheet { index, name } => todo!(),
             }
         }
         if needs_evaluation {
@@ -687,23 +819,23 @@ impl UserModel {
                 } => {
                     self.model.set_row_height(*sheet, *row, *new_value)?;
                 }
-                Diff::DeleteCell {
+                Diff::CellClearContents {
                     sheet,
                     row,
                     column,
                     old_value: _,
                 } => {
-                    self.model.delete_cell(*sheet, *row, *column)?;
+                    self.model.cell_clear_all(*sheet, *row, *column)?;
                     needs_evaluation = true;
                 }
-                Diff::RemoveCell {
+                Diff::CellClearAll {
                     sheet,
                     row,
                     column,
                     old_value: _,
                     old_style: _,
                 } => {
-                    self.model.set_cell_empty(*sheet, *row, *column)?;
+                    self.model.cell_clear_contents(*sheet, *row, *column)?;
                     needs_evaluation = true;
                 }
                 Diff::SetCellStyle {
@@ -749,6 +881,8 @@ impl UserModel {
                     new_value,
                     old_value: _,
                 } => self.model.set_frozen_columns(*sheet, *new_value)?,
+                Diff::DeleteSheet { old_data } => todo!(),
+                Diff::NewSheet { index, name } => todo!(),
             }
         }
 
