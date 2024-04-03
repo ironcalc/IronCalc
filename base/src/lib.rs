@@ -8,7 +8,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! ironcalc_base = { git = "https://github.com/ironcalc/IronCalc", version = "0.1"}
+//! ironcalc_base = { git = "https://github.com/ironcalc/IronCalc" }
 //! ```
 //!
 //! <small> until version 0.5.0 you should use the git dependencies as stated </small>
@@ -31,23 +31,21 @@ pub mod expressions;
 pub mod formatter;
 pub mod language;
 pub mod locale;
-pub mod model;
 pub mod new_empty;
 pub mod number_format;
 pub mod types;
 pub mod worksheet;
 
-mod functions;
-
 mod actions;
 mod cast;
 mod constants;
-mod styles;
-
 mod diffs;
+mod functions;
 mod implicit_intersection;
-
+mod model;
+mod styles;
 mod units;
+mod user_model;
 mod utils;
 mod workbook;
 
@@ -56,3 +54,7 @@ mod test;
 
 #[cfg(test)]
 pub mod mock_time;
+
+pub use model::get_milliseconds_since_epoch;
+pub use model::Model;
+pub use user_model::UserModel;

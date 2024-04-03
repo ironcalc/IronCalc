@@ -27,16 +27,4 @@ impl Workbook {
             .get_mut(worksheet_index as usize)
             .ok_or_else(|| "Invalid sheet index".to_string())
     }
-
-    pub fn get_worksheets_info(&self) -> Vec<SheetInfo> {
-        self.worksheets
-            .iter()
-            .map(|worksheet| SheetInfo {
-                name: worksheet.get_name(),
-                state: worksheet.state.to_string(),
-                color: worksheet.color.clone(),
-                sheet_id: worksheet.sheet_id,
-            })
-            .collect()
-    }
 }

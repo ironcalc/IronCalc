@@ -8,34 +8,37 @@ use crate::{
 #[test]
 fn test_empty_model() {
     let mut model = new_empty_model();
-    assert_eq!(model.get_frozen_rows(0), Ok(0));
-    assert_eq!(model.get_frozen_columns(0), Ok(0));
+    assert_eq!(model.get_frozen_rows_count(0), Ok(0));
+    assert_eq!(model.get_frozen_columns_count(0), Ok(0));
 
     let e = model.set_frozen_rows(0, 3);
     assert!(e.is_ok());
-    assert_eq!(model.get_frozen_rows(0), Ok(3));
-    assert_eq!(model.get_frozen_columns(0), Ok(0));
+    assert_eq!(model.get_frozen_rows_count(0), Ok(3));
+    assert_eq!(model.get_frozen_columns_count(0), Ok(0));
 
     let e = model.set_frozen_columns(0, 53);
     assert!(e.is_ok());
-    assert_eq!(model.get_frozen_rows(0), Ok(3));
-    assert_eq!(model.get_frozen_columns(0), Ok(53));
+    assert_eq!(model.get_frozen_rows_count(0), Ok(3));
+    assert_eq!(model.get_frozen_columns_count(0), Ok(53));
 
     // Set them back to zero
     let e = model.set_frozen_rows(0, 0);
     assert!(e.is_ok());
     let e = model.set_frozen_columns(0, 0);
     assert!(e.is_ok());
-    assert_eq!(model.get_frozen_rows(0), Ok(0));
-    assert_eq!(model.get_frozen_columns(0), Ok(0));
+    assert_eq!(model.get_frozen_rows_count(0), Ok(0));
+    assert_eq!(model.get_frozen_columns_count(0), Ok(0));
 }
 
 #[test]
 fn test_invalid_sheet() {
     let mut model = new_empty_model();
-    assert_eq!(model.get_frozen_rows(1), Err("Invalid sheet".to_string()));
     assert_eq!(
-        model.get_frozen_columns(3),
+        model.get_frozen_rows_count(1),
+        Err("Invalid sheet".to_string())
+    );
+    assert_eq!(
+        model.get_frozen_columns_count(3),
         Err("Invalid sheet".to_string())
     );
 

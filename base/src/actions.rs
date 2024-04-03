@@ -77,13 +77,13 @@ impl Model {
         let style = source_cell.get_style();
         // FIXME: we need some user_input getter instead of get_text
         let formula_or_value = self
-            .cell_formula(sheet, source_row, source_column)?
+            .get_cell_formula(sheet, source_row, source_column)?
             .unwrap_or_else(|| source_cell.get_text(&self.workbook.shared_strings, &self.language));
         self.set_user_input(sheet, target_row, target_column, formula_or_value);
         self.workbook
             .worksheet_mut(sheet)?
             .set_cell_style(target_row, target_column, style);
-        self.delete_cell(sheet, source_row, source_column)?;
+        self.cell_clear_all(sheet, source_row, source_column)?;
         Ok(())
     }
 
@@ -157,6 +157,11 @@ impl Model {
             return Err("Please use insert columns instead".to_string());
         }
 
+        // first column being deleted
+        let column_start = column;
+        // last column being deleted
+        let column_end = column + column_count - 1;
+
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
         let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
@@ -166,11 +171,11 @@ impl Model {
         for r in all_rows {
             let columns: Vec<i32> = self.get_columns_for_row(sheet, r, false)?;
             for col in columns {
-                if col >= column {
-                    if col >= column + column_count {
+                if col >= column_start {
+                    if col > column_end {
                         self.move_cell(sheet, r, col, r, col - column_count)?;
                     } else {
-                        self.delete_cell(sheet, r, col)?;
+                        self.cell_clear_all(sheet, r, col)?;
                     }
                 }
             }
@@ -184,6 +189,64 @@ impl Model {
                 delta: -column_count,
             }),
         );
+        let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
+
+        // deletes all the column styles
+        let mut new_columns = Vec::new();
+        for col in worksheet.cols.iter_mut() {
+            // range under study
+            let min = col.min;
+            let max = col.max;
+            // In the diagram:
+            // |xxxxx| range we are studying [min, max]
+            // |*****| range we are deleting [column_start, column_end]
+            // we are going to split it in three big cases:
+            // ----------------|xxxxxxxx|-----------------
+            // -----|*****|------------------------------- Case A
+            // -------|**********|------------------------ Case B
+            // -------------|**************|-------------- Case C
+            // ------------------|****|------------------- Case D
+            // ---------------------|**********|---------- Case E
+            // -----------------------------|*****|------- Case F
+            if column_start < min {
+                if column_end < min {
+                    // Case A
+                    // We displace all columns
+                    let mut new_column = col.clone();
+                    new_column.min = min - column_count;
+                    new_column.max = max - column_count;
+                    new_columns.push(new_column);
+                } else if column_end < max {
+                    // Case B
+                    // We displace the end
+                    let mut new_column = col.clone();
+                    new_column.min = column_start;
+                    new_column.max = max - column_count;
+                    new_columns.push(new_column);
+                } else {
+                    // Case C
+                    // skip this, we are deleting the whole range
+                }
+            } else if column_start <= max {
+                if column_end <= max {
+                    // Case D
+                    // We displace the end
+                    let mut new_column = col.clone();
+                    new_column.max = max - column_count;
+                    new_columns.push(new_column);
+                } else {
+                    // Case E
+                    let mut new_column = col.clone();
+                    new_column.max = column_start - 1;
+                    new_columns.push(new_column);
+                }
+            } else {
+                // Case F
+                // No action required
+                new_columns.push(col.clone());
+            }
+        }
+        worksheet.cols = new_columns;
 
         Ok(())
     }
@@ -283,7 +346,7 @@ impl Model {
                     // remove all cells in row
                     // FIXME: We could just remove the entire row in one go
                     for column in columns {
-                        self.delete_cell(sheet, r, column)?;
+                        self.cell_clear_all(sheet, r, column)?;
                     }
                 }
             }
