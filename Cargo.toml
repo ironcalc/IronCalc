@@ -4,6 +4,7 @@ resolver = "2"
 members = [
   "base",
   "xlsx",
+  "bindings/wasm",
 ]
 
 exclude = [

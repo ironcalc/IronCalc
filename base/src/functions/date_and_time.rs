@@ -1,7 +1,6 @@
+use chrono::DateTime;
 use chrono::Datelike;
 use chrono::Months;
-use chrono::NaiveDateTime;
-use chrono::TimeZone;
 use chrono::Timelike;
 
 use crate::expressions::types::CellReferenceIndex;
@@ -258,8 +257,8 @@ impl Model {
         // milliseconds since January 1, 1970 00:00:00 UTC.
         let milliseconds = get_milliseconds_since_epoch();
         let seconds = milliseconds / 1000;
-        let dt = match NaiveDateTime::from_timestamp_opt(seconds, 0) {
-            Some(dt) => dt,
+        let local_time = match DateTime::from_timestamp(seconds, 0) {
+            Some(dt) => dt.with_timezone(&self.tz),
             None => {
                 return CalcResult::Error {
                     error: Error::ERROR,
@@ -268,7 +267,6 @@ impl Model {
                 }
             }
         };
-        let local_time = self.tz.from_utc_datetime(&dt);
         // 693_594 is computed as:
         // NaiveDate::from_ymd(1900, 1, 1).num_days_from_ce() - 2
         // The 2 days offset is because of Excel 1900 bug
@@ -289,8 +287,8 @@ impl Model {
         // milliseconds since January 1, 1970 00:00:00 UTC.
         let milliseconds = get_milliseconds_since_epoch();
         let seconds = milliseconds / 1000;
-        let dt = match NaiveDateTime::from_timestamp_opt(seconds, 0) {
-            Some(dt) => dt,
+        let local_time = match DateTime::from_timestamp(seconds, 0) {
+            Some(dt) => dt.with_timezone(&self.tz),
             None => {
                 return CalcResult::Error {
                     error: Error::ERROR,
@@ -299,7 +297,6 @@ impl Model {
                 }
             }
         };
-        let local_time = self.tz.from_utc_datetime(&dt);
         // 693_594 is computed as:
         // NaiveDate::from_ymd(1900, 1, 1).num_days_from_ce() - 2
         // The 2 days offset is because of Excel 1900 bug

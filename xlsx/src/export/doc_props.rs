@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 use ironcalc_base::{
     new_empty::{APPLICATION, APP_VERSION, IRONCALC_USER},
     types::Workbook,
@@ -36,7 +36,7 @@ pub(crate) fn get_core_xml(workbook: &Workbook, milliseconds: i64) -> Result<Str
     // FIXME add now
 
     let seconds = milliseconds / 1000;
-    let dt = match NaiveDateTime::from_timestamp_opt(seconds, 0) {
+    let dt = match DateTime::from_timestamp(seconds, 0) {
         Some(s) => s,
         None => {
             return Err(XlsxError::Xml(format!(

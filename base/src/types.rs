@@ -316,6 +316,7 @@ impl Default for Styles {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Style {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
     pub num_fmt: String,
     pub fill: Fill,
@@ -665,9 +666,10 @@ pub struct Border {
 /// Information need to show a sheet tab in the UI
 /// The color is serialized only if it is not Color::None
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct SheetInfo {
+pub struct SheetProperties {
     pub name: String,
     pub state: String,
     pub sheet_id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
 }

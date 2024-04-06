@@ -12,8 +12,8 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-zip = "0.5"
-roxmltree = "0.13.0"
+zip = "0.6"
+roxmltree = "0.19"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
@@ -21,7 +21,7 @@ thiserror = "1.0"
 # the inicated version from crates.io when published.
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
 ironcalc_base = { path = "../base", version = "0.1.0" }
-itertools = "0.10.5"
+itertools = "0.12"
 chrono = "0.4"
 
 [dev-dependencies]

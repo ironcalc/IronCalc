@@ -31,6 +31,23 @@ fn add_undo_redo() {
 }
 
 #[test]
+fn set_sheet_color() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.set_sheet_color(0, "#343434").unwrap();
+    let worksheets_properties = model.get_worksheets_properties();
+    assert_eq!(worksheets_properties.len(), 1);
+    assert_eq!(worksheets_properties[0].color, Some("#343434".to_owned()));
+    model.undo().unwrap();
+    assert_eq!(model.get_worksheets_properties()[0].color, None);
+
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_worksheets_properties()[0].color,
+        Some("#343434".to_owned())
+    );
+}
+
+#[test]
 fn new_sheet_propagates() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
     model.new_sheet();
@@ -39,8 +56,8 @@ fn new_sheet_propagates() {
 
     let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
     model2.apply_external_diffs(&send_queue).unwrap();
-    let sheets_info = model2.get_sheets_info();
-    assert_eq!(sheets_info.len(), 2);
+    let worksheets_properties = model2.get_worksheets_properties();
+    assert_eq!(worksheets_properties.len(), 2);
 }
 
 #[test]
@@ -53,6 +70,6 @@ fn delete_sheet_propagates() {
 
     let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
     model2.apply_external_diffs(&send_queue).unwrap();
-    let sheets_info = model2.get_sheets_info();
+    let sheets_info = model2.get_worksheets_properties();
     assert_eq!(sheets_info.len(), 1);
 }

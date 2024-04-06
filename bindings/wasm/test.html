@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test IronCalc Web Bindings</title>
+    <script type="module">
+        import init, { Model } from "./pkg/wasm.js";
+
+        await init();
+
+        function test() {
+            const model = new Model('en', 'UTC');
+            model.setUserInput(0, 1, 1, "23");
+            model.setUserInput(0, 1, 2, "=A1*3+1");
+            
+            const result = model.getFormattedCellValue(0, 1, 2);
+            console.assert(result === "70");
+            console.log("Hoooray! Tests passed");
+        }
+
+        test();
+    </script>
+</head>
+<body>
+    <div>Please have a look at the console</div>
+</body>
+</html>

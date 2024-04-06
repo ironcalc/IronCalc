@@ -6,4 +6,5 @@ mod test_general;
 mod test_rename_sheet;
 mod test_row_column;
 mod test_styles;
+mod test_to_from_bytes;
 mod test_undo_redo;
