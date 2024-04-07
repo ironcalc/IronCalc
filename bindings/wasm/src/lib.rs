@@ -4,9 +4,9 @@ use wasm_bindgen::{
 };
 
 use ironcalc_base::{
-    expressions::{lexer::util::get_tokens as tokenizer, types::Area},
-    types::CellType,
-    UserModel as BaseModel,
+    expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
+    types::{CellType, Style},
+    BorderArea, UserModel as BaseModel,
 };
 
 fn to_js_error(error: String) -> JsError {
@@ -20,6 +20,15 @@ pub fn get_tokens(formula: &str) -> Result<JsValue, JsError> {
     let tokens = tokenizer(formula);
     serde_wasm_bindgen::to_value(&tokens).map_err(JsError::from)
 }
+
+#[wasm_bindgen(js_name = "columnNameFromNumber")]
+pub fn column_name_from_number(column: i32) -> Result<String, JsError> {
+    match number_to_column(column) {
+        Some(c) => Ok(c),
+        None => Err(JsError::new("Invalid column number")),
+    }
+}
+
 #[wasm_bindgen]
 pub struct Model {
     model: BaseModel,
@@ -100,6 +109,13 @@ impl Model {
     #[wasm_bindgen(js_name = "renameSheet")]
     pub fn rename_sheet(&mut self, sheet: u32, name: &str) -> Result<(), JsError> {
         self.model.rename_sheet(sheet, name).map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setSheetColor")]
+    pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> Result<(), JsError> {
+        self.model
+            .set_sheet_color(sheet, color)
+            .map_err(to_js_error)
     }
 
     #[wasm_bindgen(js_name = "rangeClearAll")]
@@ -264,6 +280,12 @@ impl Model {
             .map(|x| serde_wasm_bindgen::to_value(&x).unwrap())
     }
 
+    #[wasm_bindgen(js_name = "onPasteStyles")]
+    pub fn on_paste_styles(&mut self, styles: JsValue) -> Result<(), JsError> {
+        let styles: &Vec<Vec<Style>> = &serde_wasm_bindgen::from_value(styles).unwrap();
+        self.model.on_paste_styles(styles).map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "getCellType")]
     pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> Result<i32, JsError> {
         Ok(
@@ -375,5 +397,89 @@ impl Model {
         self.model
             .auto_fill_columns(&area, to_column)
             .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onArrowRight")]
+    pub fn on_arrow_right(&mut self) -> Result<(), JsError> {
+        self.model.on_arrow_right().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onArrowLeft")]
+    pub fn on_arrow_left(&mut self) -> Result<(), JsError> {
+        self.model.on_arrow_left().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onArrowUp")]
+    pub fn on_arrow_up(&mut self) -> Result<(), JsError> {
+        self.model.on_arrow_up().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onArrowDown")]
+    pub fn on_arrow_down(&mut self) -> Result<(), JsError> {
+        self.model.on_arrow_down().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onPageDown")]
+    pub fn on_page_down(&mut self) -> Result<(), JsError> {
+        self.model.on_page_down().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onPageUp")]
+    pub fn on_page_up(&mut self) -> Result<(), JsError> {
+        self.model.on_page_up().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setWindowWidth")]
+    pub fn set_window_width(&mut self, window_width: f64) {
+        self.model.set_window_width(window_width);
+    }
+
+    #[wasm_bindgen(js_name = "setWindowHeight")]
+    pub fn set_window_height(&mut self, window_height: f64) {
+        self.model.set_window_height(window_height);
+    }
+
+    #[wasm_bindgen(js_name = "getScrollX")]
+    pub fn get_scroll_x(&self) -> Result<f64, JsError> {
+        self.model.get_scroll_x().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "getScrollY")]
+    pub fn get_scroll_y(&self) -> Result<f64, JsError> {
+        self.model.get_scroll_y().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onExpandSelectedRange")]
+    pub fn on_expand_selected_range(&mut self, key: &str) -> Result<(), JsError> {
+        self.model
+            .on_expand_selected_range(key)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onAreaSelecting")]
+    pub fn on_area_selecting(
+        &mut self,
+        target_row: i32,
+        target_column: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .on_area_selecting(target_row, target_column)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setAreaWithBorder")]
+    pub fn set_area_with_border(
+        &mut self,
+        area: JsValue,
+        border_area: JsValue,
+    ) -> Result<(), JsError> {
+        let range: Area =
+            serde_wasm_bindgen::from_value(area).map_err(|e| to_js_error(e.to_string()))?;
+        let border: BorderArea =
+            serde_wasm_bindgen::from_value(border_area).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .set_area_with_border(&range, &border)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        Ok(())
     }
 }

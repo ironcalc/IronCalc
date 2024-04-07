@@ -33,6 +33,10 @@ pub struct WorkbookSettings {
 pub struct WorkbookView {
     /// The index of the currently selected sheet.
     pub sheet: u32,
+    /// The current width of the window
+    pub window_width: i64,
+    /// The current heigh of the window
+    pub window_height: i64,
 }
 
 /// An internal representation of an IronCalc Workbook

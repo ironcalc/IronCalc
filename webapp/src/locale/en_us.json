@@ -1,0 +1,55 @@
+{
+  "toolbar": {
+    "redo": "Redo",
+    "undo": "Undo",
+    "copy_styles": "Copy styles",
+    "euro": "Format as Euro",
+    "percentage": "Format as Percentage",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "strike_through": "Strikethrough",
+    "align_left": "Align left",
+    "align_right": "Align right",
+    "align_center": "Align center",
+    "format_number": "Format number",
+    "font_color": "Font color",
+    "fill_color": "Fill color",
+    "borders": "Borders",
+    "decimal_places_increase": "Increase decimal places",
+    "decimal_places_decrease": "Decrease decimal places",
+    "format_menu": {
+      "auto": "Auto",
+      "number": "Number",
+      "percentage": "Percentage",
+      "currency_eur": "Euro (EUR)",
+      "currency_usd": "Dollar (USD",
+      "currency_gbp": "British Pound (GBD)",
+      "date_short": "Short date",
+      "date_long": "Long date",
+      "custom": "Custom",
+      "number_example": "1,000.00",
+      "percentage_example": "10%",
+      "currency_eur_example": "€",
+      "currency_usd_example": "$",
+      "currency_gbp_example": "£",
+      "date_short_example": "09/24/2024",
+      "date_long_example": "Tuesday, September 24, 2024"
+    }
+  },
+  "num_fmt": {
+    "title": "Custom number format",
+    "label": "Number format",
+    "save": "Save"
+  },
+  "sheet_rename": {
+    "rename": "Save",
+    "label": "New name",
+    "title": "Rename Sheet"
+  },
+  "formula_input": {
+    "update": "Update",
+    "label": "Formula",
+    "title": "Update formula"
+  }
+}

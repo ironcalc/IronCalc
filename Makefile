@@ -1,6 +1,7 @@
 lint:
 	cargo fmt -- --check
 	cargo clippy --all-targets --all-features
+	cd webapp && npm install && npm run check
 
 format:
 	cargo fmt
@@ -10,7 +11,10 @@ tests: lint
 	./target/debug/documentation
 	cmp functions.md wiki/functions.md || exit 1
 	make remove-artifacts
-	cd bindings/wasm/ && wasm-pack build --target nodejs && node tests/test.mjs
+	# Regretabbly we need to build the wasm twice, once for the nodejs tests
+	# and a second one for the vitest.
+	cd bindings/wasm/ && wasm-pack build --target nodejs && node tests/test.mjs && make
+	cd webapp && npm run test
 
 remove-artifacts:
 	rm -f xlsx/hello-calc.xlsx

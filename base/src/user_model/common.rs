@@ -2,7 +2,6 @@
 
 use std::{collections::HashMap, fmt::Debug};
 
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -13,180 +12,35 @@ use crate::{
     },
     model::Model,
     types::{
-        Alignment, BorderItem, BorderStyle, Cell, CellType, Col, HorizontalAlignment, Row,
-        SheetProperties, Style, VerticalAlignment,
+        Alignment, BorderItem, BorderStyle, CellType, Col, HorizontalAlignment, SheetProperties,
+        Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
 };
 
+use crate::user_model::history::{
+    ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
+};
+
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq, Debug))]
-pub struct SelectedView {
-    pub sheet: u32,
-    pub row: i32,
-    pub column: i32,
-    pub range: [i32; 4],
-    pub top_row: i32,
-    pub left_column: i32,
+pub enum BorderType {
+    All,
+    Inner,
+    Outer,
+    Top,
+    Right,
+    Bottom,
+    Left,
+    CenterH,
+    CenterV,
+    None,
 }
 
-#[derive(Clone, Encode, Decode)]
-struct RowData {
-    row: Option<Row>,
-    data: HashMap<i32, Cell>,
-}
-
-#[derive(Clone, Encode, Decode)]
-struct ColumnData {
-    column: Option<Col>,
-    data: HashMap<i32, Cell>,
-}
-
-#[derive(Clone, Encode, Decode)]
-enum Diff {
-    // Cell diffs
-    SetCellValue {
-        sheet: u32,
-        row: i32,
-        column: i32,
-        new_value: String,
-        old_value: Box<Option<Cell>>,
-    },
-    CellClearContents {
-        sheet: u32,
-        row: i32,
-        column: i32,
-        old_value: Box<Option<Cell>>,
-    },
-    CellClearAll {
-        sheet: u32,
-        row: i32,
-        column: i32,
-        old_value: Box<Option<Cell>>,
-        old_style: Box<Style>,
-    },
-    SetCellStyle {
-        sheet: u32,
-        row: i32,
-        column: i32,
-        old_value: Box<Style>,
-        new_value: Box<Style>,
-    },
-    // Column and Row diffs
-    SetColumnWidth {
-        sheet: u32,
-        column: i32,
-        new_value: f64,
-        old_value: f64,
-    },
-    SetRowHeight {
-        sheet: u32,
-        row: i32,
-        new_value: f64,
-        old_value: f64,
-    },
-    InsertRow {
-        sheet: u32,
-        row: i32,
-    },
-    DeleteRow {
-        sheet: u32,
-        row: i32,
-        old_data: Box<RowData>,
-    },
-    InsertColumn {
-        sheet: u32,
-        column: i32,
-    },
-    DeleteColumn {
-        sheet: u32,
-        column: i32,
-        old_data: Box<ColumnData>,
-    },
-    SetFrozenRowsCount {
-        sheet: u32,
-        new_value: i32,
-        old_value: i32,
-    },
-    SetFrozenColumnsCount {
-        sheet: u32,
-        new_value: i32,
-        old_value: i32,
-    },
-    DeleteSheet {
-        sheet: u32,
-    },
-    NewSheet {
-        index: u32,
-        name: String,
-    },
-    RenameSheet {
-        index: u32,
-        old_value: String,
-        new_value: String,
-    },
-    SetSheetColor {
-        index: u32,
-        old_value: String,
-        new_value: String,
-    },
-    SetShowGridLines {
-        sheet: u32,
-        old_value: bool,
-        new_value: bool,
-    }, // FIXME: we are missing SetViewDiffs
-}
-
-type DiffList = Vec<Diff>;
-
-#[derive(Default)]
-struct History {
-    undo_stack: Vec<DiffList>,
-    redo_stack: Vec<DiffList>,
-}
-
-impl History {
-    fn push(&mut self, diff_list: DiffList) {
-        self.undo_stack.push(diff_list);
-        self.redo_stack = vec![];
-    }
-
-    fn undo(&mut self) -> Option<Vec<Diff>> {
-        match self.undo_stack.pop() {
-            Some(diff_list) => {
-                self.redo_stack.push(diff_list.clone());
-                Some(diff_list)
-            }
-            None => None,
-        }
-    }
-
-    fn redo(&mut self) -> Option<Vec<Diff>> {
-        match self.redo_stack.pop() {
-            Some(diff_list) => {
-                self.undo_stack.push(diff_list.clone());
-                Some(diff_list)
-            }
-            None => None,
-        }
-    }
-
-    fn clear(&mut self) {
-        self.redo_stack = vec![];
-        self.undo_stack = vec![];
-    }
-}
-
-#[derive(Clone, Encode, Decode)]
-enum DiffType {
-    Undo,
-    Redo,
-}
-
-#[derive(Clone, Encode, Decode)]
-struct QueueDiffs {
-    r#type: DiffType,
-    list: DiffList,
+/// This is the struct for a border area
+#[derive(Serialize, Deserialize)]
+pub struct BorderArea {
+    item: BorderItem,
+    r#type: BorderType,
 }
 
 fn boolean(value: &str) -> Result<bool, String> {
@@ -292,7 +146,7 @@ fn vertical(value: &str) -> Result<VerticalAlignment, String> {
 /// # }
 /// ```
 pub struct UserModel {
-    model: Model,
+    pub(crate) model: Model,
     history: History,
     send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
@@ -540,6 +394,14 @@ impl UserModel {
         self.push_diff_list(vec![Diff::DeleteSheet { sheet }]);
         // There is no coming back
         self.history.clear();
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        // If we are deleting the last sheet we need to change the selected sheet
+        if sheet == sheet_count - 1 && sheet_count > 1 {
+            if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+                view.sheet = sheet_count - 2;
+            };
+        }
+
         self.model.delete_sheet(sheet)?;
         Ok(())
     }
@@ -826,6 +688,155 @@ impl UserModel {
             old_value,
         }]);
         self.model.set_frozen_columns(sheet, frozen_columns)
+    }
+
+    /// Paste `styles` in the selected area
+    pub fn on_paste_styles(&mut self, styles: &[Vec<Style>]) -> Result<(), String> {
+        let styles_heigh = styles.len() as i32;
+        let styles_width = styles[0].len() as i32;
+        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
+            view.sheet
+        } else {
+            return Ok(());
+        };
+        let range = if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
+            if let Some(view) = worksheet.views.get(&self.model.view_id) {
+                view.range
+            } else {
+                return Ok(());
+            }
+        } else {
+            return Ok(());
+        };
+
+        // If the pasted area is smaller than the selected area we increase it
+        let [row_start, column_start, row_end, column_end] = range;
+        let last_row = row_end.max(row_start + styles_heigh - 1);
+        let last_column = column_end.max(column_start + styles_width - 1);
+
+        let mut diff_list = Vec::new();
+        for row in row_start..=last_row {
+            for column in column_start..=last_column {
+                let row_index = ((row - row_start) % styles_heigh) as usize;
+                let column_index = ((column - column_start) % styles_width) as usize;
+                let style = &styles[row_index][column_index];
+                let old_value = self.model.get_style_for_cell(sheet, row, column);
+                self.model.set_cell_style(sheet, row, column, style)?;
+                diff_list.push(Diff::SetCellStyle {
+                    sheet,
+                    row,
+                    column,
+                    old_value: Box::new(old_value),
+                    new_value: Box::new(style.clone()),
+                });
+            }
+        }
+        self.push_diff_list(diff_list);
+
+        // select the pasted range
+        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
+            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
+                view.range = [row_start, column_start, last_row, last_column];
+            }
+        }
+        Ok(())
+    }
+
+    /// Sets the border
+    pub fn set_area_with_border(
+        &mut self,
+        range: &Area,
+        border_area: &BorderArea,
+    ) -> Result<(), String> {
+        // FIXME: We need to set the border also in neighbouring cells.
+        let sheet = range.sheet;
+        let mut diff_list = Vec::new();
+        let last_row = range.row + range.height - 1;
+        let last_column = range.column + range.width - 1;
+        for row in range.row..=last_row {
+            for column in range.column..=last_column {
+                let old_value = self.model.get_style_for_cell(sheet, row, column);
+                let mut style = old_value.clone();
+
+                // First remove all existing borders
+                style.border.top = None;
+                style.border.right = None;
+                style.border.bottom = None;
+                style.border.left = None;
+
+                match border_area.r#type {
+                    BorderType::All => {
+                        style.border.top = Some(border_area.item.clone());
+                        style.border.right = Some(border_area.item.clone());
+                        style.border.bottom = Some(border_area.item.clone());
+                        style.border.left = Some(border_area.item.clone());
+                    }
+                    BorderType::Inner => {
+                        if row != range.row {
+                            style.border.top = Some(border_area.item.clone());
+                        }
+                        if row != last_row {
+                            style.border.bottom = Some(border_area.item.clone());
+                        }
+                        if column != range.column {
+                            style.border.left = Some(border_area.item.clone());
+                        }
+                        if column != last_column {
+                            style.border.right = Some(border_area.item.clone());
+                        }
+                    }
+                    BorderType::Outer => {
+                        if row == range.row {
+                            style.border.top = Some(border_area.item.clone());
+                        }
+                        if row == last_row {
+                            style.border.bottom = Some(border_area.item.clone());
+                        }
+                        if column == range.column {
+                            style.border.left = Some(border_area.item.clone());
+                        }
+                        if column == last_column {
+                            style.border.right = Some(border_area.item.clone());
+                        }
+                    }
+                    BorderType::Top => style.border.top = Some(border_area.item.clone()),
+                    BorderType::Right => style.border.right = Some(border_area.item.clone()),
+                    BorderType::Bottom => style.border.bottom = Some(border_area.item.clone()),
+                    BorderType::Left => style.border.left = Some(border_area.item.clone()),
+                    BorderType::CenterH => {
+                        if row != range.row {
+                            style.border.top = Some(border_area.item.clone());
+                        }
+                        if row != last_row {
+                            style.border.bottom = Some(border_area.item.clone());
+                        }
+                    }
+                    BorderType::CenterV => {
+                        if column != range.column {
+                            style.border.left = Some(border_area.item.clone());
+                        }
+                        if column != last_column {
+                            style.border.right = Some(border_area.item.clone());
+                        }
+                    }
+                    BorderType::None => {
+                        // noop, we already removed all the borders
+                    }
+                }
+
+                self.model.set_cell_style(sheet, row, column, &style)?;
+                diff_list.push(Diff::SetCellStyle {
+                    sheet,
+                    row,
+                    column,
+                    old_value: Box::new(old_value),
+                    new_value: Box::new(style),
+                });
+            }
+        }
+
+        self.push_diff_list(diff_list);
+        Ok(())
     }
 
     /// Updates the range with a cell style.
@@ -1152,166 +1163,6 @@ impl UserModel {
     #[inline]
     pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
         self.model.get_worksheets_properties()
-    }
-
-    /// Returns the selected sheet index
-    pub fn get_selected_sheet(&self) -> u32 {
-        if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        }
-    }
-
-    /// Returns the selected cell
-    pub fn get_selected_cell(&self) -> (u32, i32, i32) {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
-        if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
-            if let Some(view) = worksheet.views.get(&self.model.view_id) {
-                return (sheet, view.row, view.column);
-            }
-        }
-        // return a safe default
-        (0, 1, 1)
-    }
-
-    /// Returns selected view
-    pub fn get_selected_view(&self) -> SelectedView {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
-        if let Ok(worksheet) = self.model.workbook.worksheet(sheet) {
-            if let Some(view) = worksheet.views.get(&self.model.view_id) {
-                return SelectedView {
-                    sheet,
-                    row: view.row,
-                    column: view.column,
-                    range: view.range,
-                    top_row: view.top_row,
-                    left_column: view.left_column,
-                };
-            }
-        }
-        // return a safe default
-        SelectedView {
-            sheet: 0,
-            row: 1,
-            column: 1,
-            range: [1, 1, 1, 1],
-            top_row: 1,
-            left_column: 1,
-        }
-    }
-
-    /// Sets the the selected sheet
-    pub fn set_selected_sheet(&mut self, sheet: u32) -> Result<(), String> {
-        if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
-        }
-        if let Some(view) = self.model.workbook.views.get_mut(&0) {
-            view.sheet = sheet;
-        }
-        Ok(())
-    }
-
-    /// Sets the selected cell
-    pub fn set_selected_cell(&mut self, row: i32, column: i32) -> Result<(), String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
-        if !is_valid_column_number(column) {
-            return Err(format!("Invalid column: '{column}'"));
-        }
-        if !is_valid_row(row) {
-            return Err(format!("Invalid row: '{row}'"));
-        }
-        if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
-        }
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&0) {
-                view.row = row;
-                view.column = column;
-                view.range = [row, column, row, column];
-            }
-        }
-        Ok(())
-    }
-
-    /// Sets the selected range
-    pub fn set_selected_range(
-        &mut self,
-        start_row: i32,
-        start_column: i32,
-        end_row: i32,
-        end_column: i32,
-    ) -> Result<(), String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
-
-        if !is_valid_column_number(start_column) {
-            return Err(format!("Invalid column: '{start_column}'"));
-        }
-        if !is_valid_column_number(start_row) {
-            return Err(format!("Invalid row: '{start_row}'"));
-        }
-
-        if !is_valid_column_number(end_column) {
-            return Err(format!("Invalid column: '{end_column}'"));
-        }
-        if !is_valid_column_number(end_row) {
-            return Err(format!("Invalid row: '{end_row}'"));
-        }
-        if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
-        }
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&0) {
-                view.range = [start_row, start_column, end_row, end_column];
-            }
-        }
-        Ok(())
-    }
-
-    /// Sets the value of the first visible cell
-    pub fn set_top_left_visible_cell(
-        &mut self,
-        top_row: i32,
-        left_column: i32,
-    ) -> Result<(), String> {
-        let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
-            view.sheet
-        } else {
-            0
-        };
-
-        if !is_valid_column_number(left_column) {
-            return Err(format!("Invalid column: '{left_column}'"));
-        }
-        if !is_valid_column_number(top_row) {
-            return Err(format!("Invalid row: '{top_row}'"));
-        }
-        if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
-        }
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&0) {
-                view.top_row = top_row;
-                view.left_column = left_column;
-            }
-        }
-        Ok(())
     }
 
     /// Set the gid lines in the worksheet to visible (`true`) or hidden (`false`)
@@ -1643,7 +1494,7 @@ impl UserModel {
 mod tests {
     use crate::{
         types::{HorizontalAlignment, VerticalAlignment},
-        user_model::{horizontal, vertical},
+        user_model::common::{horizontal, vertical},
     };
 
     #[test]
