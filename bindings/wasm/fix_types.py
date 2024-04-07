@@ -107,6 +107,36 @@ autofill_columns_types = r"""
   autoFillColumns(source_area: Area, to_column: number): void;
 """
 
+set_cell_style = r"""
+/**
+* @param {any} styles
+*/
+  onPasteStyles(styles: any): void;
+"""
+
+set_cell_style_types = r"""
+/**
+* @param {CellStyle[][]} styles
+*/
+  onPasteStyles(styles: CellStyle[][]): void;
+"""
+
+set_area_border = r"""
+/**
+* @param {any} area
+* @param {any} border_area
+*/
+  setAreaWithBorder(area: any, border_area: any): void;
+"""
+
+set_area_border_types = r"""
+/**
+* @param {Area} area
+* @param {BorderArea} border_area
+*/
+  setAreaWithBorder(area: Area, border_area: BorderArea): void;
+"""
+
 def fix_types(text):
     text = text.replace(get_tokens_str, get_tokens_str_types)
     text = text.replace(update_style_str, update_style_str_types)
@@ -115,6 +145,8 @@ def fix_types(text):
     text = text.replace(view, view_types)
     text = text.replace(autofill_rows, autofill_rows_types)
     text = text.replace(autofill_columns, autofill_columns_types)
+    text = text.replace(set_cell_style, set_cell_style_types)
+    text = text.replace(set_area_border, set_area_border_types)
     with open("types.ts") as f:
         types_str = f.read()
         header_types = "{}\n\n{}".format(header, types_str)

@@ -93,6 +93,8 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         0,
         WorkbookView {
             sheet: selected_sheet,
+            window_width: 800,
+            window_height: 600,
         },
     );
     Ok(Workbook {

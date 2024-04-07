@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     calc_result::Range,
+    constants::{DEFAULT_WINDOW_HEIGH, DEFAULT_WINDOW_WIDTH},
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -353,7 +354,14 @@ impl Model {
         let now = dt.format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
         let mut views = HashMap::new();
-        views.insert(0, WorkbookView { sheet: 0 });
+        views.insert(
+            0,
+            WorkbookView {
+                sheet: 0,
+                window_width: DEFAULT_WINDOW_WIDTH,
+                window_height: DEFAULT_WINDOW_HEIGH,
+            },
+        );
 
         // String versions of the locale are added here to simplify the serialize/deserialize logic
         let workbook = Workbook {

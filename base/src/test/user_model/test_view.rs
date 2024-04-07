@@ -52,19 +52,12 @@ fn set_the_cell_sets_the_range() {
 fn set_the_range_does_not_set_the_cell() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    model.set_selected_range(5, 4, 10, 6).unwrap();
-    assert_eq!(model.get_selected_sheet(), 0);
-    assert_eq!(model.get_selected_cell(), (0, 1, 1));
     assert_eq!(
-        model.get_selected_view(),
-        SelectedView {
-            sheet: 0,
-            row: 1,
-            column: 1,
-            range: [5, 4, 10, 6],
-            top_row: 1,
-            left_column: 1
-        }
+        model.set_selected_range(5, 4, 10, 6),
+        Err(
+            "The selected cells is not in one of the corners. Row: '1' and row range '(5, 10)'"
+                .to_string()
+        )
     );
 }
 
