@@ -55,6 +55,11 @@ pub fn get_milliseconds_since_epoch() -> i64 {
         .as_millis() as i64
 }
 
+/// Number of milliseconds since January 1, 1970
+/// Used by time and date functions. It takes the value from the environment:
+/// * The Operative System
+/// * The JavaScript environment
+/// * Or mocked for tests
 #[cfg(not(test))]
 #[cfg(target_arch = "wasm32")]
 pub fn get_milliseconds_since_epoch() -> i64 {
@@ -1761,11 +1766,11 @@ impl Model {
     }
 
     /// Returns data about the worksheets
-    pub fn get_sheets_info(&self) -> Vec<SheetInfo> {
+    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
         self.workbook
             .worksheets
             .iter()
-            .map(|worksheet| SheetInfo {
+            .map(|worksheet| SheetProperties {
                 name: worksheet.get_name(),
                 state: worksheet.state.to_string(),
                 color: worksheet.color.clone(),

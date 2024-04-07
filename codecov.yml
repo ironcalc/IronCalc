@@ -1,2 +1,3 @@
 ignore:
   - "xlsx/src/bin"
+  - "bindings/wasm"

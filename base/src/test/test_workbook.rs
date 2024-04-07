@@ -1,14 +1,14 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{test::util::new_empty_model, types::SheetInfo};
+use crate::{test::util::new_empty_model, types::SheetProperties};
 
 #[test]
 fn workbook_worksheets_info() {
     let model = new_empty_model();
-    let sheets_info = model.get_sheets_info();
+    let sheets_info = model.get_worksheets_properties();
     assert_eq!(
         sheets_info[0],
-        SheetInfo {
+        SheetProperties {
             name: "Sheet1".to_string(),
             state: "visible".to_string(),
             sheet_id: 1,

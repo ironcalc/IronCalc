@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 
 use std::collections::HashMap;
 
@@ -324,7 +324,7 @@ impl Model {
 
         let milliseconds = get_milliseconds_since_epoch();
         let seconds = milliseconds / 1000;
-        let dt = match NaiveDateTime::from_timestamp_opt(seconds, 0) {
+        let dt = match DateTime::from_timestamp(seconds, 0) {
             Some(s) => s,
             None => return Err(format!("Invalid timestamp: {}", milliseconds)),
         };

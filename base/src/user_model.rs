@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use serde::{Deserialize, Serialize};
 
@@ -12,8 +12,8 @@ use crate::{
     },
     model::Model,
     types::{
-        Alignment, BorderItem, BorderStyle, Cell, Col, HorizontalAlignment, Row, SheetInfo, Style,
-        VerticalAlignment,
+        Alignment, BorderItem, BorderStyle, Cell, Col, HorizontalAlignment, Row, SheetProperties,
+        Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
 };
@@ -109,6 +109,11 @@ enum Diff {
         name: String,
     },
     RenameSheet {
+        index: u32,
+        old_value: String,
+        new_value: String,
+    },
+    SetSheetColor {
         index: u32,
         old_value: String,
         new_value: String,
@@ -276,6 +281,12 @@ pub struct UserModel {
     pause_evaluation: bool,
 }
 
+impl Debug for UserModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UserModel").finish()
+    }
+}
+
 impl UserModel {
     /// Creates a user model from an existing model
     pub fn from_model(model: Model) -> UserModel {
@@ -301,7 +312,32 @@ impl UserModel {
         })
     }
 
+    /// Creates a model from it's internal representation
+    ///
+    /// See also:
+    /// * [Model::from_json]
+    pub fn from_bytes(s: &str) -> Result<UserModel, String> {
+        let model = Model::from_json(s)?;
+        Ok(UserModel {
+            model,
+            history: History::default(),
+            send_queue: vec![],
+            pause_evaluation: false,
+        })
+    }
+
+    /// Returns the internal representation of a model
+    ///
+    /// See also:
+    ///  * [Model::to_json_str]
+    pub fn to_bytes(&self) -> String {
+        self.model.to_json_str()
+    }
+
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
+    ///
+    /// See also:
+    /// * [UserModel::redo]
     pub fn undo(&mut self) -> Result<(), String> {
         if let Some(diff_list) = self.history.undo() {
             self.apply_undo_diff_list(&diff_list)?;
@@ -314,6 +350,9 @@ impl UserModel {
     }
 
     /// Redoes the last undone change, places the change in the undo list and evaluates the model if needed
+    ///
+    /// See also:
+    /// * [UserModel::redo]
     pub fn redo(&mut self) -> Result<(), String> {
         if let Some(diff_list) = self.history.redo() {
             self.apply_diff_list(&diff_list)?;
@@ -491,6 +530,27 @@ impl UserModel {
             index: sheet,
             old_value,
             new_value: new_name.to_string(),
+        }]);
+        Ok(())
+    }
+
+    /// Sets sheet color
+    ///
+    /// Note: an empty string will remove the color
+    ///
+    /// See also
+    /// * [Model::set_sheet_color]
+    /// * [UserModel::get_worksheets_properties]
+    pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> Result<(), String> {
+        let old_value = match &self.model.workbook.worksheet(sheet)?.color {
+            Some(c) => c.clone(),
+            None => "".to_string(),
+        };
+        self.model.set_sheet_color(sheet, color)?;
+        self.push_diff_list(vec![Diff::SetSheetColor {
+            index: sheet,
+            old_value,
+            new_value: color.to_string(),
         }]);
         Ok(())
     }
@@ -858,10 +918,10 @@ impl UserModel {
     /// Returns information about the sheets
     ///
     /// See also:
-    /// * [Model::get_sheets_info]
+    /// * [Model::get_worksheets_properties]
     #[inline]
-    pub fn get_sheets_info(&self) -> Vec<SheetInfo> {
-        self.model.get_sheets_info()
+    pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
+        self.model.get_worksheets_properties()
     }
 
     // **** Private methods ****** //
@@ -1020,6 +1080,13 @@ impl UserModel {
                 } => {
                     self.model.rename_sheet_by_index(*index, old_value)?;
                 }
+                Diff::SetSheetColor {
+                    index,
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_sheet_color(*index, old_value)?;
+                }
             }
         }
         if needs_evaluation {
@@ -1132,6 +1199,13 @@ impl UserModel {
                     new_value,
                 } => {
                     self.model.rename_sheet_by_index(*index, new_value)?;
+                }
+                Diff::SetSheetColor {
+                    index,
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_sheet_color(*index, new_value)?;
                 }
             }
         }
