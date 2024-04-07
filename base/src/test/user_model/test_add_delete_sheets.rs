@@ -45,6 +45,15 @@ fn set_sheet_color() {
         model.get_worksheets_properties()[0].color,
         Some("#343434".to_owned())
     );
+    // changes the color if there is one
+    model.set_sheet_color(0, "#2534FF").unwrap();
+    assert_eq!(
+        model.get_worksheets_properties()[0].color,
+        Some("#2534FF".to_owned())
+    );
+    // Setting it back to none
+    model.set_sheet_color(0, "").unwrap();
+    assert_eq!(model.get_worksheets_properties()[0].color, None);
 }
 
 #[test]

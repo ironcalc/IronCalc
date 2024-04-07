@@ -23,6 +23,13 @@ fn set_user_input_errors() {
 }
 
 #[test]
+fn user_model_debug_message() {
+    let model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let s = &format!("{:?}", model);
+    assert_eq!(s, "UserModel");
+}
+
+#[test]
 fn insert_remove_rows() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
