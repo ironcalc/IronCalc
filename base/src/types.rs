@@ -666,7 +666,7 @@ pub struct Border {
 
 /// Information need to show a sheet tab in the UI
 /// The color is serialized only if it is not Color::None
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SheetProperties {
     pub name: String,
     pub state: String,
