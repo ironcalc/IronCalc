@@ -1,6 +1,8 @@
 all:
 	wasm-pack build --target web --scope ironcalc
 	cp README.pkg.md pkg/README.md
+	tsc types.ts --target esnext --module esnext
+	python fix_types.py
 
 lint:
 	cargo check
@@ -10,5 +12,6 @@ lint:
 clean:
 	cargo clean
 	rm -rf pkg
+	rm -f types.js
 
-.PHONY: all web lint
+.PHONY: all lint clean
