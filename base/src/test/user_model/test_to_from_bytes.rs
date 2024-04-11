@@ -22,7 +22,7 @@ fn basic() {
 
 #[test]
 fn errors() {
-    let model_bytes = "Early in the morning, late in the century, Cricklewood Broadway.";
+    let model_bytes = "Early in the morning, late in the century, Cricklewood Broadway.".as_bytes();
     assert_eq!(
         &UserModel::from_bytes(model_bytes).unwrap_err(),
         "Error parsing workbook"

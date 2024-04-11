@@ -12,8 +12,8 @@ use crate::{
     },
     model::Model,
     types::{
-        Alignment, BorderItem, BorderStyle, Cell, Col, HorizontalAlignment, Row, SheetProperties,
-        Style, VerticalAlignment,
+        Alignment, BorderItem, BorderStyle, Cell, CellType, Col, HorizontalAlignment, Row,
+        SheetProperties, Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
 };
@@ -315,9 +315,9 @@ impl UserModel {
     /// Creates a model from it's internal representation
     ///
     /// See also:
-    /// * [Model::from_json]
-    pub fn from_bytes(s: &str) -> Result<UserModel, String> {
-        let model = Model::from_json(s)?;
+    /// * [Model::from_bytes]
+    pub fn from_bytes(s: &[u8]) -> Result<UserModel, String> {
+        let model = Model::from_bytes(s)?;
         Ok(UserModel {
             model,
             history: History::default(),
@@ -330,8 +330,8 @@ impl UserModel {
     ///
     /// See also:
     ///  * [Model::to_json_str]
-    pub fn to_bytes(&self) -> String {
-        self.model.to_json_str()
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.model.to_bytes()
     }
 
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
@@ -496,6 +496,14 @@ impl UserModel {
         column: i32,
     ) -> Result<String, String> {
         self.model.get_formatted_cell_value(sheet, row, column)
+    }
+
+    /// Returns the type of the cell
+    ///
+    /// See also
+    /// * [Model::get_cell_type]
+    pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> Result<CellType, String> {
+        self.model.get_cell_type(sheet, row, column)
     }
 
     /// Adds new sheet

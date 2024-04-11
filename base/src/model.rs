@@ -1,7 +1,5 @@
 #![deny(missing_docs)]
 
-use serde_json::json;
-
 use std::collections::HashMap;
 use std::vec::Vec;
 
@@ -810,7 +808,7 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// model.set_user_input(0, 1, 1, "Stella!".to_string());
-    /// let model2 = Model::from_json(&model.to_json_str())?;
+    /// let model2 = Model::from_bytes(&model.to_bytes())?;
     /// assert_eq!(
     ///     model2.get_cell_value_by_index(0, 1, 1),
     ///     Ok(CellValue::String("Stella!".to_string()))
@@ -818,9 +816,9 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_json(s: &str) -> Result<Model, String> {
+    pub fn from_bytes(s: &[u8]) -> Result<Model, String> {
         let workbook: Workbook =
-            serde_json::from_str(s).map_err(|_| "Error parsing workbook".to_string())?;
+            bitcode::decode(s).map_err(|_| "Error parsing workbook".to_string())?;
         Model::from_workbook(workbook)
     }
 
@@ -1596,6 +1594,14 @@ impl Model {
         }
     }
 
+    /// Return the typeof a cell
+    pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> Result<CellType, String> {
+        Ok(match self.workbook.worksheet(sheet)?.cell(row, column) {
+            Some(c) => c.get_type(),
+            None => CellType::Number,
+        })
+    }
+
     /// Returns a string with the cell content. If there is a formula returns the formula
     /// If the cell is empty returns the empty string
     /// Raises an error if there is no worksheet
@@ -1755,14 +1761,8 @@ impl Model {
     }
 
     /// Returns a JSON string of the workbook
-    pub fn to_json_str(&self) -> String {
-        match serde_json::to_string(&self.workbook) {
-            Ok(s) => s,
-            Err(_) => {
-                // TODO, is this branch possible at all?
-                json!({"error": "Error stringifying workbook"}).to_string()
-            }
-        }
+    pub fn to_bytes(&self) -> Vec<u8> {
+        bitcode::encode(&self.workbook)
     }
 
     /// Returns data about the worksheets

@@ -23,6 +23,7 @@ thiserror = "1.0"
 ironcalc_base = { path = "../base", version = "0.1.0" }
 itertools = "0.12"
 chrono = "0.4"
+bitcode = "0.6.0"
 
 [dev-dependencies]
 uuid = { version = "1.2.2", features = ["serde", "v4"] }

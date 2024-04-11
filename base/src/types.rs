@@ -1,3 +1,4 @@
+use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
@@ -33,7 +34,7 @@ fn hashmap_is_empty(h: &HashMap<String, Table>) -> bool {
     h.values().len() == 0
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Metadata {
     pub application: String,
     pub app_version: String,
@@ -43,13 +44,13 @@ pub struct Metadata {
     pub last_modified: String, //"2020-11-20T16:24:35"
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct WorkbookSettings {
     pub tz: String,
     pub locale: String,
 }
 /// An internal representation of an IronCalc Workbook
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Workbook {
     pub shared_strings: Vec<String>,
@@ -65,7 +66,7 @@ pub struct Workbook {
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct DefinedName {
     pub name: String,
     pub formula: String,
@@ -79,7 +80,7 @@ pub struct DefinedName {
 /// * state:
 ///    18.18.68 ST_SheetState (Sheet Visibility Types)
 ///    hidden, veryHidden, visible
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum SheetState {
     Visible,
@@ -98,7 +99,7 @@ impl Display for SheetState {
 }
 
 /// Internal representation of a worksheet Excel object
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Worksheet {
     pub dimension: String,
     pub cols: Vec<Col>,
@@ -125,7 +126,7 @@ pub struct Worksheet {
 pub type SheetData = HashMap<i32, HashMap<i32, Cell>>;
 
 // ECMA-376-1:2016 section 18.3.1.73
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Row {
     /// Row index
     pub r: i32,
@@ -139,7 +140,7 @@ pub struct Row {
 }
 
 // ECMA-376-1:2016 section 18.3.1.13
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Col {
     // Column definitions are defined on ranges, unlike rows which store unique, per-row entries.
     /// First column affected by this record. Settings apply to column in \[min, max\] range.
@@ -164,7 +165,7 @@ pub enum CellType {
     CompoundData = 128,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, Clone, PartialEq)]
 #[serde(tag = "t", deny_unknown_fields)]
 pub enum Cell {
     #[serde(rename = "empty")]
@@ -208,7 +209,7 @@ impl Default for Cell {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Comment {
     pub text: String,
     pub author_name: String,
@@ -218,7 +219,7 @@ pub struct Comment {
 }
 
 // ECMA-376-1:2016 section 18.5.1.2
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Table {
     pub name: String,
     pub display_name: String,
@@ -241,7 +242,7 @@ pub struct Table {
 
 // totals_row_label vs totals_row_function might be mutually exclusive. Use an enum?
 // the totals_row_function is an enum not String methinks
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct TableColumn {
     pub id: u32,
     pub name: String,
@@ -271,7 +272,7 @@ impl Default for TableColumn {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct TableStyleInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -289,7 +290,7 @@ pub struct TableStyleInfo {
     pub show_column_stripes: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Styles {
     pub num_fmts: Vec<NumFmt>,
     pub fonts: Vec<Font>,
@@ -314,7 +315,7 @@ impl Default for Styles {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
@@ -325,7 +326,7 @@ pub struct Style {
     pub quote_prefix: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct NumFmt {
     pub num_fmt_id: i32,
     pub format_code: String,
@@ -343,7 +344,7 @@ impl Default for NumFmt {
 // ST_FontScheme simple type (§18.18.33).
 // Usually major fonts are used for styles like headings,
 // and minor fonts are used for body and paragraph text.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 #[derive(Default)]
 pub enum FontScheme {
@@ -363,7 +364,7 @@ impl Display for FontScheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Font {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
@@ -406,7 +407,7 @@ impl Default for Font {
 }
 
 // TODO: Maybe use an enum for the pattern_type values here?
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Fill {
     pub pattern_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -425,7 +426,7 @@ impl Default for Fill {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum HorizontalAlignment {
     Center,
@@ -467,7 +468,7 @@ impl Display for HorizontalAlignment {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum VerticalAlignment {
     Bottom,
@@ -502,7 +503,7 @@ impl Display for VerticalAlignment {
 }
 
 // 1762
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct Alignment {
     #[serde(default)]
     #[serde(skip_serializing_if = "HorizontalAlignment::is_default")]
@@ -515,7 +516,7 @@ pub struct Alignment {
     pub wrap_text: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct CellStyleXfs {
     pub num_fmt_id: i32,
     pub font_id: i32,
@@ -558,7 +559,7 @@ impl Default for CellStyleXfs {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct CellXfs {
     pub xf_id: i32,
     pub num_fmt_id: i32,
@@ -590,7 +591,7 @@ pub struct CellXfs {
     pub alignment: Option<Alignment>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct CellStyles {
     pub name: String,
     pub xf_id: i32,
@@ -607,7 +608,7 @@ impl Default for CellStyles {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum BorderStyle {
     Thin,
@@ -637,13 +638,13 @@ impl Display for BorderStyle {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct BorderItem {
     pub style: BorderStyle,
     pub color: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct Border {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
@@ -665,7 +666,7 @@ pub struct Border {
 
 /// Information need to show a sheet tab in the UI
 /// The color is serialized only if it is not Color::None
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq)]
 pub struct SheetProperties {
     pub name: String,
     pub state: String,
