@@ -1,5 +1,6 @@
 use std::fmt;
 
+use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
@@ -80,7 +81,7 @@ impl fmt::Display for OpProduct {
 ///  * "#ERROR!" means there was an error processing the formula (for instance "=A1+")
 ///  * "#N/IMPL!" means the formula or feature in Excel but has not been implemented in IronCalc
 /// Note that they are serialized/deserialized by index
-#[derive(Serialize_repr, Deserialize_repr, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize_repr, Deserialize_repr, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[repr(u8)]
 pub enum Error {
     REF,

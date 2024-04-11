@@ -2,6 +2,7 @@
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::test::util::new_empty_model;
+use crate::types::CellType;
 use crate::UserModel;
 
 #[test]
@@ -27,6 +28,26 @@ fn user_model_debug_message() {
     let model = UserModel::new_empty("model", "en", "UTC").unwrap();
     let s = &format!("{:?}", model);
     assert_eq!(s, "UserModel");
+}
+
+#[test]
+fn cell_type() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.set_user_input(0, 1, 1, "1").unwrap();
+    model.set_user_input(0, 1, 2, "Wish you were here").unwrap();
+    model.set_user_input(0, 1, 3, "true").unwrap();
+    model.set_user_input(0, 1, 4, "=1/0").unwrap();
+
+    assert_eq!(model.get_cell_type(0, 1, 1).unwrap(), CellType::Number);
+    assert_eq!(model.get_cell_type(0, 1, 2).unwrap(), CellType::Text);
+    assert_eq!(
+        model.get_cell_type(0, 1, 3).unwrap(),
+        CellType::LogicalValue
+    );
+    assert_eq!(model.get_cell_type(0, 1, 4).unwrap(), CellType::ErrorValue);
+
+    // empty cells are number type
+    assert_eq!(model.get_cell_type(0, 40, 40).unwrap(), CellType::Number);
 }
 
 #[test]
