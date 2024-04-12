@@ -3,10 +3,22 @@ use wasm_bindgen::{
     JsValue,
 };
 
-use ironcalc_base::{expressions::types::Area, UserModel as BaseModel};
+use ironcalc_base::{
+    expressions::{lexer::util::get_tokens as tokenizer, types::Area},
+    types::CellType,
+    UserModel as BaseModel,
+};
 
 fn to_js_error(error: String) -> JsError {
     JsError::new(&error.to_string())
+}
+
+/// Return an array with a list of all the tokens from a formula
+/// This is used by the UI to color them according to a theme.
+#[wasm_bindgen(js_name = "getTokens")]
+pub fn get_tokens(formula: &str) -> Result<JsValue, JsError> {
+    let tokens = tokenizer(formula);
+    serde_wasm_bindgen::to_value(&tokens).map_err(JsError::from)
 }
 #[wasm_bindgen]
 pub struct Model {
@@ -18,6 +30,11 @@ impl Model {
     #[wasm_bindgen(constructor)]
     pub fn new(locale: &str, timezone: &str) -> Result<Model, JsError> {
         let model = BaseModel::new_empty("workbook", locale, timezone).map_err(to_js_error)?;
+        Ok(Model { model })
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Model, JsError> {
+        let model = BaseModel::from_bytes(bytes).map_err(to_js_error)?;
         Ok(Model { model })
     }
 
@@ -245,6 +262,24 @@ impl Model {
             .get_cell_style(sheet, row, column)
             .map_err(to_js_error)
             .map(|x| serde_wasm_bindgen::to_value(&x).unwrap())
+    }
+
+    #[wasm_bindgen(js_name = "getCellType")]
+    pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> Result<i32, JsError> {
+        Ok(
+            match self
+                .model
+                .get_cell_type(sheet, row, column)
+                .map_err(to_js_error)?
+            {
+                CellType::Number => 1,
+                CellType::Text => 2,
+                CellType::LogicalValue => 4,
+                CellType::ErrorValue => 16,
+                CellType::Array => 64,
+                CellType::CompoundData => 128,
+            },
+        )
     }
 
     #[wasm_bindgen(js_name = "getWorksheetsProperties")]
