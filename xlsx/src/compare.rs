@@ -5,7 +5,7 @@ use ironcalc_base::types::*;
 use ironcalc_base::{expressions::utils::number_to_column, Model};
 
 use crate::export::save_to_xlsx;
-use crate::import::load_model_from_xlsx;
+use crate::import::load_from_xlsx;
 
 pub struct CompareError {
     message: String,
@@ -164,13 +164,13 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
                 let mut message = "".to_string();
                 for diff in diffs {
                     message = format!(
-                        "{}\n.Diff: {}!{}{}, value1: {}, value2 {}\n {}",
+                        "{}\n.Diff: {}!{}{}, value1: {:?}, value2 {:?}\n {}",
                         message,
                         diff.sheet_name,
                         number_to_column(diff.column).unwrap(),
                         diff.row,
-                        serde_json::to_string(&diff.value1).unwrap(),
-                        serde_json::to_string(&diff.value2).unwrap(),
+                        &diff.value1,
+                        &diff.value2,
                         diff.reason
                     );
                 }
@@ -183,15 +183,15 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
 
 /// Tests that file in file_path produces the same results in Excel and in IronCalc.
 pub fn test_file(file_path: &str) -> Result<(), String> {
-    let model1 = load_model_from_xlsx(file_path, "en", "UTC").unwrap();
-    let mut model2 = load_model_from_xlsx(file_path, "en", "UTC").unwrap();
+    let model1 = load_from_xlsx(file_path, "en", "UTC").unwrap();
+    let mut model2 = load_from_xlsx(file_path, "en", "UTC").unwrap();
     model2.evaluate();
     compare_models(&model1, &model2)
 }
 
 /// Tests that file in file_path can be converted to xlsx and read again
 pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(), String> {
-    let model1 = load_model_from_xlsx(file_path, "en", "UTC").unwrap();
+    let model1 = load_from_xlsx(file_path, "en", "UTC").unwrap();
 
     let base_name = Path::new(file_path).file_name().unwrap().to_str().unwrap();
 
@@ -200,7 +200,7 @@ pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(),
     // test can save
     save_to_xlsx(&model1, temp_file_path).unwrap();
     // test can open
-    let mut model2 = load_model_from_xlsx(temp_file_path, "en", "UTC").unwrap();
+    let mut model2 = load_from_xlsx(temp_file_path, "en", "UTC").unwrap();
     model2.evaluate();
     compare_models(&model1, &model2)
 }

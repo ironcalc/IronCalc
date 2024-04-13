@@ -308,9 +308,9 @@ impl Lexer {
                                 return self.consume_range(None);
                             }
                             let name_upper = name.to_ascii_uppercase();
-                            if name_upper == self.language.booleans.true_value {
+                            if name_upper == self.language.booleans.r#true {
                                 return TokenType::Boolean(true);
-                            } else if name_upper == self.language.booleans.false_value {
+                            } else if name_upper == self.language.booleans.r#false {
                                 return TokenType::Boolean(false);
                             }
                             if self.mode == LexerMode::A1 {
@@ -660,8 +660,8 @@ impl Lexer {
     fn consume_error(&mut self) -> TokenType {
         let errors = &self.language.errors;
         let rest_of_formula: String = self.chars[self.position - 1..self.len].iter().collect();
-        if rest_of_formula.starts_with(&errors.ref_value) {
-            self.position += errors.ref_value.chars().count() - 1;
+        if rest_of_formula.starts_with(&errors.r#ref) {
+            self.position += errors.r#ref.chars().count() - 1;
             return TokenType::Error(Error::REF);
         } else if rest_of_formula.starts_with(&errors.name) {
             self.position += errors.name.chars().count() - 1;

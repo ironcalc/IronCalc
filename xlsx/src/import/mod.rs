@@ -106,7 +106,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
 // Public methods
 
 /// Imports a file from disk into an internal representation
-pub fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, XlsxError> {
+fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, XlsxError> {
     let file_path = std::path::Path::new(file_name);
     let file = fs::File::open(file_path)?;
     let reader = BufReader::new(file);
@@ -118,7 +118,14 @@ pub fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbo
     load_xlsx_from_reader(name, reader, locale, tz)
 }
 
-pub fn load_model_from_xlsx(file_name: &str, locale: &str, tz: &str) -> Result<Model, XlsxError> {
+pub fn load_from_xlsx(file_name: &str, locale: &str, tz: &str) -> Result<Model, XlsxError> {
     let workbook = load_from_excel(file_name, locale, tz)?;
+    Model::from_workbook(workbook).map_err(XlsxError::Workbook)
+}
+
+pub fn load_from_icalc(file_name: &str) -> Result<Model, XlsxError> {
+    let contents = fs::read(file_name)
+        .map_err(|e| XlsxError::IO(format!("Could not extract workbook name: {}", e)))?;
+    let workbook: Workbook = bitcode::decode(&contents).unwrap();
     Model::from_workbook(workbook).map_err(XlsxError::Workbook)
 }

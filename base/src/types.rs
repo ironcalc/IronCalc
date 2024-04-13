@@ -4,37 +4,15 @@ use std::{collections::HashMap, fmt::Display};
 
 use crate::expressions::token::Error;
 
-// Useful for `#[serde(default = "default_as_true")]`
-fn default_as_true() -> bool {
-    true
-}
-
 fn default_as_false() -> bool {
     false
-}
-
-// Useful for `#[serde(skip_serializing_if = "is_true")]`
-fn is_true(b: &bool) -> bool {
-    *b
 }
 
 fn is_false(b: &bool) -> bool {
     !*b
 }
 
-fn is_zero(num: &i32) -> bool {
-    *num == 0
-}
-
-fn is_default_alignment(o: &Option<Alignment>) -> bool {
-    o.is_none() || *o == Some(Alignment::default())
-}
-
-fn hashmap_is_empty(h: &HashMap<String, Table>) -> bool {
-    h.values().len() == 0
-}
-
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Metadata {
     pub application: String,
     pub app_version: String,
@@ -44,14 +22,13 @@ pub struct Metadata {
     pub last_modified: String, //"2020-11-20T16:24:35"
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct WorkbookSettings {
     pub tz: String,
     pub locale: String,
 }
 /// An internal representation of an IronCalc Workbook
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
-#[serde(deny_unknown_fields)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Workbook {
     pub shared_strings: Vec<String>,
     pub defined_names: Vec<DefinedName>,
@@ -60,17 +37,14 @@ pub struct Workbook {
     pub name: String,
     pub settings: WorkbookSettings,
     pub metadata: Metadata,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "hashmap_is_empty")]
     pub tables: HashMap<String, Table>,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct DefinedName {
     pub name: String,
     pub formula: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub sheet_id: Option<u32>,
 }
 
@@ -80,8 +54,7 @@ pub struct DefinedName {
 /// * state:
 ///    18.18.68 ST_SheetState (Sheet Visibility Types)
 ///    hidden, veryHidden, visible
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
-#[serde(rename_all = "lowercase")]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub enum SheetState {
     Visible,
     Hidden,
@@ -99,7 +72,7 @@ impl Display for SheetState {
 }
 
 /// Internal representation of a worksheet Excel object
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Worksheet {
     pub dimension: String,
     pub cols: Vec<Col>,
@@ -109,15 +82,10 @@ pub struct Worksheet {
     pub shared_formulas: Vec<String>,
     pub sheet_id: u32,
     pub state: SheetState,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
     pub merge_cells: Vec<String>,
     pub comments: Vec<Comment>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_zero")]
     pub frozen_rows: i32,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_zero")]
     pub frozen_columns: i32,
 }
 
@@ -126,7 +94,7 @@ pub struct Worksheet {
 pub type SheetData = HashMap<i32, HashMap<i32, Cell>>;
 
 // ECMA-376-1:2016 section 18.3.1.73
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Row {
     /// Row index
     pub r: i32,
@@ -134,23 +102,19 @@ pub struct Row {
     pub custom_format: bool,
     pub custom_height: bool,
     pub s: i32,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub hidden: bool,
 }
 
 // ECMA-376-1:2016 section 18.3.1.13
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Col {
     // Column definitions are defined on ranges, unlike rows which store unique, per-row entries.
     /// First column affected by this record. Settings apply to column in \[min, max\] range.
     pub min: i32,
     /// Last column affected by this record. Settings apply to column in \[min, max\] range.
     pub max: i32,
-
     pub width: f64,
     pub custom_width: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub style: Option<i32>,
 }
 
@@ -165,32 +129,55 @@ pub enum CellType {
     CompoundData = 128,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, Clone, PartialEq)]
-#[serde(tag = "t", deny_unknown_fields)]
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
 pub enum Cell {
-    #[serde(rename = "empty")]
-    EmptyCell { s: i32 },
-    #[serde(rename = "b")]
-    BooleanCell { v: bool, s: i32 },
-    #[serde(rename = "n")]
-    NumberCell { v: f64, s: i32 },
+    EmptyCell {
+        s: i32,
+    },
+
+    BooleanCell {
+        v: bool,
+        s: i32,
+    },
+
+    NumberCell {
+        v: f64,
+        s: i32,
+    },
     // Maybe we should not have this type. In Excel this is just a string
-    #[serde(rename = "e")]
-    ErrorCell { ei: Error, s: i32 },
+    ErrorCell {
+        ei: Error,
+        s: i32,
+    },
     // Always a shared string
-    #[serde(rename = "s")]
-    SharedString { si: i32, s: i32 },
+    SharedString {
+        si: i32,
+        s: i32,
+    },
     // Non evaluated Formula
-    #[serde(rename = "u")]
-    CellFormula { f: i32, s: i32 },
-    #[serde(rename = "fb")]
-    CellFormulaBoolean { f: i32, v: bool, s: i32 },
-    #[serde(rename = "fn")]
-    CellFormulaNumber { f: i32, v: f64, s: i32 },
+    CellFormula {
+        f: i32,
+        s: i32,
+    },
+
+    CellFormulaBoolean {
+        f: i32,
+        v: bool,
+        s: i32,
+    },
+
+    CellFormulaNumber {
+        f: i32,
+        v: f64,
+        s: i32,
+    },
     // always inline string
-    #[serde(rename = "str")]
-    CellFormulaString { f: i32, v: String, s: i32 },
-    #[serde(rename = "fe")]
+    CellFormulaString {
+        f: i32,
+        v: String,
+        s: i32,
+    },
+
     CellFormulaError {
         f: i32,
         ei: Error,
@@ -209,17 +196,16 @@ impl Default for Cell {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Comment {
     pub text: String,
     pub author_name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub author_id: Option<String>,
     pub cell_ref: String,
 }
 
 // ECMA-376-1:2016 section 18.5.1.2
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Table {
     pub name: String,
     pub display_name: String,
@@ -227,34 +213,24 @@ pub struct Table {
     pub reference: String,
     pub totals_row_count: u32,
     pub header_row_count: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub header_row_dxf_id: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data_dxf_id: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub totals_row_dxf_id: Option<u32>,
     pub columns: Vec<TableColumn>,
     pub style_info: TableStyleInfo,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub has_filters: bool,
 }
 
 // totals_row_label vs totals_row_function might be mutually exclusive. Use an enum?
 // the totals_row_function is an enum not String methinks
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct TableColumn {
     pub id: u32,
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub totals_row_label: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub header_row_dxf_id: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data_dxf_id: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub totals_row_dxf_id: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub totals_row_function: Option<String>,
 }
 
@@ -272,25 +248,16 @@ impl Default for TableColumn {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct TableStyleInfo {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub show_first_column: bool,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub show_last_column: bool,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub show_row_stripes: bool,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub show_column_stripes: bool,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Styles {
     pub num_fmts: Vec<NumFmt>,
     pub fonts: Vec<Font>,
@@ -326,7 +293,7 @@ pub struct Style {
     pub quote_prefix: bool,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct NumFmt {
     pub num_fmt_id: i32,
     pub format_code: String,
@@ -516,29 +483,17 @@ pub struct Alignment {
     pub wrap_text: bool,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct CellStyleXfs {
     pub num_fmt_id: i32,
     pub font_id: i32,
     pub fill_id: i32,
     pub border_id: i32,
-    #[serde(default = "default_as_true")]
-    #[serde(skip_serializing_if = "is_true")]
     pub apply_number_format: bool,
-    #[serde(default = "default_as_true")]
-    #[serde(skip_serializing_if = "is_true")]
     pub apply_border: bool,
-    #[serde(default = "default_as_true")]
-    #[serde(skip_serializing_if = "is_true")]
     pub apply_alignment: bool,
-    #[serde(default = "default_as_true")]
-    #[serde(skip_serializing_if = "is_true")]
     pub apply_protection: bool,
-    #[serde(default = "default_as_true")]
-    #[serde(skip_serializing_if = "is_true")]
     pub apply_font: bool,
-    #[serde(default = "default_as_true")]
-    #[serde(skip_serializing_if = "is_true")]
     pub apply_fill: bool,
 }
 
@@ -559,39 +514,24 @@ impl Default for CellStyleXfs {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct CellXfs {
     pub xf_id: i32,
     pub num_fmt_id: i32,
     pub font_id: i32,
     pub fill_id: i32,
     pub border_id: i32,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub apply_number_format: bool,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub apply_border: bool,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub apply_alignment: bool,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub apply_protection: bool,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub apply_font: bool,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub apply_fill: bool,
-    #[serde(default = "default_as_false")]
-    #[serde(skip_serializing_if = "is_false")]
     pub quote_prefix: bool,
-    #[serde(skip_serializing_if = "is_default_alignment")]
     pub alignment: Option<Alignment>,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct CellStyles {
     pub name: String,
     pub xf_id: i32,

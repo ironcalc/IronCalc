@@ -120,7 +120,7 @@ impl Error {
     pub fn to_localized_error_string(&self, language: &Language) -> String {
         match self {
             Error::NULL => language.errors.null.to_string(),
-            Error::REF => language.errors.ref_value.to_string(),
+            Error::REF => language.errors.r#ref.to_string(),
             Error::NAME => language.errors.name.to_string(),
             Error::VALUE => language.errors.value.to_string(),
             Error::DIV => language.errors.div.to_string(),
@@ -137,7 +137,7 @@ impl Error {
 
 pub fn get_error_by_name(name: &str, language: &Language) -> Option<Error> {
     let errors = &language.errors;
-    if name == errors.ref_value {
+    if name == errors.r#ref {
         return Some(Error::REF);
     } else if name == errors.name {
         return Some(Error::NAME);

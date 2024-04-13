@@ -53,4 +53,5 @@ mod test_frozen_rows_and_columns;
 mod test_get_cell_content;
 mod test_percentage;
 mod test_today;
+mod test_types;
 mod user_model;
