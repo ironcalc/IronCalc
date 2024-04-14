@@ -25,7 +25,7 @@ fn send_queue() {
 #[test]
 fn apply_external_diffs_wrong_str() {
     let mut model1 = UserModel::from_model(new_empty_model());
-    assert!(model1.apply_external_diffs("invalid").is_err());
+    assert!(model1.apply_external_diffs("invalid".as_bytes()).is_err());
 }
 
 #[test]
@@ -155,5 +155,7 @@ fn new_sheet() {
 #[test]
 fn wrong_diffs_handled() {
     let mut model = UserModel::from_model(new_empty_model());
-    assert!(model.apply_external_diffs("Hello world").is_err());
+    assert!(model
+        .apply_external_diffs("Hello world".as_bytes())
+        .is_err());
 }

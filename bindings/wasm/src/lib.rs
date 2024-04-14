@@ -71,12 +71,12 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "flushSendQueue")]
-    pub fn flush_send_queue(&mut self) -> String {
+    pub fn flush_send_queue(&mut self) -> Vec<u8> {
         self.model.flush_send_queue()
     }
 
     #[wasm_bindgen(js_name = "applyExternalDiffs")]
-    pub fn apply_external_diffs(&mut self, diffs: &str) -> Result<(), JsError> {
+    pub fn apply_external_diffs(&mut self, diffs: &[u8]) -> Result<(), JsError> {
         self.model.apply_external_diffs(diffs).map_err(to_js_error)
     }
 

@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, fmt::Debug};
 
-use serde::{Deserialize, Serialize};
+use bitcode::{Decode, Encode};
 
 use crate::{
     constants,
@@ -18,19 +18,19 @@ use crate::{
     utils::is_valid_hex_color,
 };
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Encode, Decode)]
 struct RowData {
     row: Option<Row>,
     data: HashMap<i32, Cell>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Encode, Decode)]
 struct ColumnData {
     column: Option<Col>,
     data: HashMap<i32, Cell>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Encode, Decode)]
 enum Diff {
     // Cell diffs
     SetCellValue {
@@ -160,13 +160,13 @@ impl History {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Encode, Decode)]
 enum DiffType {
     Undo,
     Redo,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Encode, Decode)]
 struct QueueDiffs {
     r#type: DiffType,
     list: DiffList,
@@ -408,9 +408,9 @@ impl UserModel {
     ///
     /// See also:
     /// * [UserModel::apply_external_diffs]
-    pub fn flush_send_queue(&mut self) -> String {
+    pub fn flush_send_queue(&mut self) -> Vec<u8> {
         // This can never fail :O:
-        let q = serde_json::to_string(&self.send_queue).unwrap();
+        let q = bitcode::encode(&self.send_queue);
         self.send_queue = vec![];
         q
     }
@@ -421,8 +421,8 @@ impl UserModel {
     ///
     /// See also:
     /// * [UserModel::flush_send_queue]
-    pub fn apply_external_diffs(&mut self, diff_list_str: &str) -> Result<(), String> {
-        if let Ok(queue_diffs_list) = serde_json::from_str::<Vec<QueueDiffs>>(diff_list_str) {
+    pub fn apply_external_diffs(&mut self, diff_list_str: &[u8]) -> Result<(), String> {
+        if let Ok(queue_diffs_list) = bitcode::decode::<Vec<QueueDiffs>>(diff_list_str) {
             for queue_diff in queue_diffs_list {
                 if matches!(queue_diff.r#type, DiffType::Redo) {
                     self.apply_diff_list(&queue_diff.list)?;
@@ -844,6 +844,9 @@ impl UserModel {
                     }
                     "fill.bg_color" => {
                         style.fill.bg_color = color(value)?;
+                    }
+                    "fill.fg_color" => {
+                        style.fill.fg_color = color(value)?;
                     }
                     "num_fmt" => {
                         style.num_fmt = value.to_owned();

@@ -8,7 +8,7 @@
 
 use std::path;
 
-use ironcalc::{compare::test_file, export::save_to_xlsx, import::load_model_from_xlsx};
+use ironcalc::{compare::test_file, export::save_to_xlsx, import::load_from_xlsx};
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
@@ -27,7 +27,7 @@ fn main() {
     let file_path = path::Path::new(file_name);
     let base_name = file_path.file_stem().unwrap().to_str().unwrap();
     let output_file_name = &format!("{base_name}.output.xlsx");
-    let mut model = load_model_from_xlsx(file_name, "en", "UTC").unwrap();
+    let mut model = load_from_xlsx(file_name, "en", "UTC").unwrap();
     model.evaluate();
     println!("Saving result as: {output_file_name}. Please open with Excel and test.");
     save_to_xlsx(&model, output_file_name).unwrap();

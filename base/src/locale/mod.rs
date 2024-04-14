@@ -80,14 +80,8 @@ static LOCALES: Lazy<HashMap<String, Locale>> = Lazy::new(|| {
     serde_json::from_str(include_str!("locales.json")).expect("Failed parsing locale")
 });
 
-pub fn get_locale(_id: &str) -> Result<&Locale, String> {
+pub fn get_locale(id: &str) -> Result<&Locale, String> {
     // TODO: pass the locale once we implement locales in Rust
-    let locale = LOCALES.get("en").ok_or("Invalid locale")?;
-    Ok(locale)
-}
-
-// TODO: Remove this function one we implement locales properly
-pub fn get_locale_fix(id: &str) -> Result<&Locale, String> {
     let locale = LOCALES.get(id).ok_or("Invalid locale")?;
     Ok(locale)
 }

@@ -798,7 +798,7 @@ impl Model {
         None
     }
 
-    /// Returns a model from a String representation of a workbook
+    /// Returns a model from an internal binary representation of a workbook
     ///
     /// # Examples
     ///
@@ -816,9 +816,12 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// See also:
+    /// * [Model::to_bytes]
     pub fn from_bytes(s: &[u8]) -> Result<Model, String> {
         let workbook: Workbook =
-            bitcode::decode(s).map_err(|_| "Error parsing workbook".to_string())?;
+            bitcode::decode(s).map_err(|e| format!("Error parsing workbook: {e}"))?;
         Model::from_workbook(workbook)
     }
 
@@ -1760,7 +1763,10 @@ impl Model {
             .get_style(self.get_cell_style_index(sheet, row, column))
     }
 
-    /// Returns a JSON string of the workbook
+    /// Returns an internal binary representation of the workbook
+    ///
+    /// See also:
+    /// * [Model::from_bytes]
     pub fn to_bytes(&self) -> Vec<u8> {
         bitcode::encode(&self.workbook)
     }

@@ -6,11 +6,11 @@ use crate::{
         token::TokenType,
     },
     language::get_language,
-    locale::get_locale_fix,
+    locale::get_locale,
 };
 
 fn new_language_lexer(formula: &str, locale: &str, language: &str) -> Lexer {
-    let locale = get_locale_fix(locale).unwrap();
+    let locale = get_locale(locale).unwrap();
     let language = get_language(language).unwrap();
     Lexer::new(formula, LexerMode::A1, locale, language)
 }

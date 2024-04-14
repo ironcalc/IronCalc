@@ -5,16 +5,13 @@ use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Booleans {
-    #[serde(rename = "true")]
-    pub true_value: String,
-    #[serde(rename = "false")]
-    pub false_value: String,
+    pub r#true: String,
+    pub r#false: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Errors {
-    #[serde(rename = "ref")]
-    pub ref_value: String,
+    pub r#ref: String,
     pub name: String,
     pub value: String,
     pub div: String,

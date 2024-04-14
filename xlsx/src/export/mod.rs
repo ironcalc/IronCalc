@@ -129,9 +129,9 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
 }
 
 /// Exports an internal representation of a workbook into an equivalent IronCalc json format
-pub fn save_to_json(workbook: Workbook, output: &str) {
-    let s = serde_json::to_string(&workbook).unwrap();
+pub fn save_to_icalc(workbook: Workbook, output: &str) {
+    let s = bitcode::encode(&workbook);
     let file_path = std::path::Path::new(output);
     let mut file = fs::File::create(file_path).unwrap();
-    file.write_all(s.as_bytes()).unwrap();
+    file.write_all(&s).unwrap();
 }

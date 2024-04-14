@@ -14,9 +14,9 @@ export function getTokens(formula: string): any;
 """.strip()
 
 get_tokens_str_types = r"""
-* @returns {TokenType[]}
+* @returns {MarkedToken[]}
 */
-export function getTokens(formula: string): TokenType[];
+export function getTokens(formula: string): MarkedToken[];
 """.strip()
 
 update_style_str = r"""
