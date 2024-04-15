@@ -1,28 +1,14 @@
 use crate::{
     expressions::token::Error, language::Language, number_format::to_excel_precision_str, types::*,
 };
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 /// A CellValue is the representation of the cell content.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
+#[derive(Debug, PartialEq)]
 pub enum CellValue {
     None,
     String(String),
     Number(f64),
     Boolean(bool),
-}
-
-impl CellValue {
-    pub fn to_json_str(&self) -> String {
-        match &self {
-            CellValue::None => "null".to_string(),
-            CellValue::String(s) => json!(s).to_string(),
-            CellValue::Number(f) => json!(f).to_string(),
-            CellValue::Boolean(b) => json!(b).to_string(),
-        }
-    }
 }
 
 impl From<f64> for CellValue {

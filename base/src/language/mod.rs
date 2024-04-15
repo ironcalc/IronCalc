@@ -1,15 +1,15 @@
-use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
-
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize, Clone)]
+use bitcode::{Decode, Encode};
+use once_cell::sync::Lazy;
+
+#[derive(Encode, Decode, Clone)]
 pub struct Booleans {
     pub r#true: String,
     pub r#false: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Encode, Decode, Clone)]
 pub struct Errors {
     pub r#ref: String,
     pub name: String,
@@ -25,14 +25,14 @@ pub struct Errors {
     pub null: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Encode, Decode, Clone)]
 pub struct Language {
     pub booleans: Booleans,
     pub errors: Errors,
 }
 
 static LANGUAGES: Lazy<HashMap<String, Language>> = Lazy::new(|| {
-    serde_json::from_str(include_str!("language.json")).expect("Failed parsing language file")
+    bitcode::decode(include_bytes!("language.bin")).expect("Failed parsing language file")
 });
 
 pub fn get_language(id: &str) -> Result<&Language, String> {
