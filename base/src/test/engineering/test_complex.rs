@@ -1,3 +1,4 @@
+use crate::test::util::assert_complex_eq;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -75,20 +76,15 @@ fn fn_imconjugate() {
 #[test]
 fn fn_imcos() {
     let mut model = new_empty_model();
-    model._set("A1", r#"0.11212+1.234523I"#);
-    model._set("A2", r#"=IMABS(IMCOS(3)-A1)"#);
+    model._set("A1", r#"=IMCOS("4+3i")"#);
 
     model.evaluate();
 
-    let result_str = model._get_text("A2");
-    let float_value = match result_str.parse::<f64>() {
-        Ok(value) => value,
-        Err(err) => {
-            panic!("{}", err);
-        }
-    };
-
-    assert!(float_value < f64::EPSILON);
+    assert_complex_eq(
+        &model._get_text("A1"),
+        "-6.58066304055116+7.58155274274654i",
+        1e-14,
+    );
 }
 
 #[test]

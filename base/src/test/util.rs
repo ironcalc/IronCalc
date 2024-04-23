@@ -50,3 +50,33 @@ impl Model {
             .unwrap()
     }
 }
+
+// pub fn assert_float_eq(a: &str, b: &str, epsilon: f64) {
+//     let a_float = a.parse::<f64>().unwrap();
+//     let b_float = b.parse::<f64>().unwrap();
+//     assert!((a_float - b_float).abs() < epsilon, "{} != {}", a, b);
+// }
+
+pub fn assert_complex_eq(a: &str, b: &str, epsilon: f64) {
+    let re_a = a.split('+').next().unwrap().parse::<f64>().unwrap();
+    let im_a = a
+        .split('+')
+        .last()
+        .unwrap()
+        .trim_end_matches('i')
+        .parse::<f64>()
+        .unwrap();
+
+    let re_b = b.split('+').next().unwrap().parse::<f64>().unwrap();
+    let im_b = b
+        .split('+')
+        .last()
+        .unwrap()
+        .trim_end_matches('i')
+        .parse::<f64>()
+        .unwrap();
+
+    let diff_re = (re_a - re_b).abs();
+    let diff_im = (im_a - im_b).abs();
+    assert!(diff_re < epsilon && diff_im < epsilon, "{} != {}", a, b);
+}
