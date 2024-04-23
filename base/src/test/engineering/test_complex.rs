@@ -82,7 +82,7 @@ fn fn_imcos() {
     assert_complex_eq(
         &model._get_text("A1"),
         "-6.58066304055116+7.58155274274654i",
-        1e-14,
+        Some(1e-14),
     );
 }
 
