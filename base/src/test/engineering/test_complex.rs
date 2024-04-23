@@ -1,5 +1,4 @@
-use crate::test::util::assert_complex_eq;
-use crate::test::util::new_empty_model;
+use crate::test::util::{assert_complex_eq, new_empty_model};
 
 #[test]
 fn fn_complex() {
