@@ -51,7 +51,9 @@ impl Model {
     }
 }
 
-pub fn assert_complex_eq(a: &str, b: &str, epsilon: f64) {
+pub fn assert_complex_eq(a: &str, b: &str, epsilon: Option<f64>) {
+    let epsilon = epsilon.unwrap_or(1e-14);
+
     let re_a = a.split('+').next().unwrap().parse::<f64>().unwrap();
     let im_a = a
         .split('+')
@@ -72,5 +74,6 @@ pub fn assert_complex_eq(a: &str, b: &str, epsilon: f64) {
 
     let diff_re = (re_a - re_b).abs();
     let diff_im = (im_a - im_b).abs();
+
     assert!(diff_re < epsilon && diff_im < epsilon, "{} != {}", a, b);
 }
