@@ -51,12 +51,6 @@ impl Model {
     }
 }
 
-// pub fn assert_float_eq(a: &str, b: &str, epsilon: f64) {
-//     let a_float = a.parse::<f64>().unwrap();
-//     let b_float = b.parse::<f64>().unwrap();
-//     assert!((a_float - b_float).abs() < epsilon, "{} != {}", a, b);
-// }
-
 pub fn assert_complex_eq(a: &str, b: &str, epsilon: f64) {
     let re_a = a.split('+').next().unwrap().parse::<f64>().unwrap();
     let im_a = a
