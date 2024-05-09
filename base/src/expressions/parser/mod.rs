@@ -222,7 +222,7 @@ impl Parser {
 
     pub fn parse(&mut self, formula: &str, context: &Option<CellReferenceRC>) -> Node {
         self.lexer.set_formula(formula);
-        self.context = context.clone();
+        self.context.clone_from(context);
         self.parse_expr()
     }
 
