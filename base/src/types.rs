@@ -71,6 +71,14 @@ impl Display for SheetState {
     }
 }
 
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub struct Selection {
+    pub is_selected: bool,
+    pub row: i32,
+    pub column: i32,
+    pub range: [i32; 4],
+}
+
 /// Internal representation of a worksheet Excel object
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Worksheet {
@@ -87,6 +95,7 @@ pub struct Worksheet {
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
+    pub selection: Selection,
 }
 
 /// Internal representation of Excel's sheet_data
