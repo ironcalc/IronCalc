@@ -6,14 +6,16 @@ use crate::{
     calc_result::Range,
     expressions::{
         lexer::LexerMode,
-        parser::stringify::{rename_sheet_in_node, to_rc_format},
-        parser::Parser,
+        parser::{
+            stringify::{rename_sheet_in_node, to_rc_format},
+            Parser,
+        },
         types::CellReferenceRC,
     },
     language::get_language,
     locale::get_locale,
     model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
-    types::{Metadata, SheetState, Workbook, WorkbookSettings, Worksheet},
+    types::{Metadata, Selection, SheetState, Workbook, WorkbookSettings, Worksheet},
     utils::ParsedReference,
 };
 
@@ -48,6 +50,12 @@ impl Model {
             color: Default::default(),
             frozen_columns: 0,
             frozen_rows: 0,
+            selection: Selection {
+                is_selected: false,
+                row: 1,
+                column: 1,
+                range: [1, 1, 1, 1],
+            },
         }
     }
 

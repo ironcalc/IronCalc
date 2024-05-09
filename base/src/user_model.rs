@@ -849,7 +849,7 @@ impl UserModel {
                         style.fill.fg_color = color(value)?;
                     }
                     "num_fmt" => {
-                        style.num_fmt = value.to_owned();
+                        value.clone_into(&mut style.num_fmt);
                     }
                     "border.left" => {
                         style.border.left = border(value)?;

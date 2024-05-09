@@ -5,9 +5,11 @@ use ironcalc_base::{
         parser::{stringify::to_rc_format, Parser},
         token::{get_error_by_english_name, Error},
         types::CellReferenceRC,
-        utils::column_to_number,
+        utils::{column_to_number, parse_reference_a1},
     },
-    types::{Cell, Col, Comment, DefinedName, Row, SheetData, SheetState, Table, Worksheet},
+    types::{
+        Cell, Col, Comment, DefinedName, Row, Selection, SheetData, SheetState, Table, Worksheet,
+    },
 };
 use roxmltree::Node;
 use thiserror::Error;
@@ -45,6 +47,50 @@ fn get_column_from_ref(s: &str) -> String {
         }
     }
     column.into_iter().collect()
+}
+
+fn parse_cell_reference(cell: &str) -> Result<(i32, i32), String> {
+    if let Some(r) = parse_reference_a1(cell) {
+        Ok((r.row, r.column))
+    } else {
+        Err(format!("Invalid cell reference: '{}'", cell))
+    }
+}
+
+fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
+    let parts: Vec<&str> = range.split(':').collect();
+    if parts.len() == 1 {
+        if let Some(r) = parse_reference_a1(parts[0]) {
+            Ok((r.row, r.column, r.row, r.column))
+        } else {
+            Err(format!("Invalid range: '{}'", range))
+        }
+    } else if parts.len() == 2 {
+        match (parse_reference_a1(parts[0]), parse_reference_a1(parts[1])) {
+            (Some(left), Some(right)) => {
+                return Ok((left.row, left.column, right.row, right.column));
+            }
+            _ => return Err(format!("Invalid range: '{}'", range)),
+        }
+    } else {
+        return Err(format!("Invalid range: '{}'", range));
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::import::worksheets::parse_range;
+
+    #[test]
+    fn test_parse_range() {
+        assert!(parse_range("3Aw").is_err());
+        assert_eq!(parse_range("A1"), Ok((1, 1, 1, 1)));
+        assert_eq!(parse_range("B5:C6"), Ok((5, 2, 6, 3)));
+        assert!(parse_range("A1:A2:A3").is_err());
+        assert!(parse_range("A1:34").is_err());
+        assert!(parse_range("A").is_err());
+        assert!(parse_range("12").is_err());
+    }
 }
 
 fn load_dimension(ws: Node) -> String {
@@ -490,7 +536,29 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     Ok(comments)
 }
 
-fn get_frozen_rows_and_columns(ws: Node) -> (i32, i32) {
+struct SheetView {
+    is_selected: bool,
+    selected_row: i32,
+    selected_column: i32,
+    frozen_columns: i32,
+    frozen_rows: i32,
+    range: [i32; 4],
+}
+
+impl Default for SheetView {
+    fn default() -> Self {
+        Self {
+            is_selected: false,
+            selected_row: 1,
+            selected_column: 1,
+            frozen_rows: 0,
+            frozen_columns: 0,
+            range: [1, 1, 1, 1],
+        }
+    }
+}
+
+fn get_sheet_view(ws: Node) -> SheetView {
     // <sheetViews>
     //   <sheetView workbookViewId="0">
     //     <selection activeCell="E10" sqref="E10"/>
@@ -511,19 +579,20 @@ fn get_frozen_rows_and_columns(ws: Node) -> (i32, i32) {
     // bottomLeft, bottomRight, topLeft, topRight
 
     // NB: bottomLeft is used when only rows are frozen, etc
-    // Calc ignores all those.
+    // IronCalc ignores all those.
 
     let mut frozen_rows = 0;
     let mut frozen_columns = 0;
 
-    // In Calc there can only be one sheetView
+    // In IronCalc there can only be one sheetView
     let sheet_views = ws
         .children()
         .filter(|n| n.has_tag_name("sheetViews"))
         .collect::<Vec<Node>>();
 
+    // We are only expecting one `sheetViews` element. Otherwise return a default
     if sheet_views.len() != 1 {
-        return (0, 0);
+        return SheetView::default();
     }
 
     let sheet_view = sheet_views[0]
@@ -531,25 +600,64 @@ fn get_frozen_rows_and_columns(ws: Node) -> (i32, i32) {
         .filter(|n| n.has_tag_name("sheetView"))
         .collect::<Vec<Node>>();
 
+    // We are only expecting one `sheetView` element. Otherwise return a default
     if sheet_view.len() != 1 {
-        return (0, 0);
+        return SheetView::default();
     }
 
-    let pane = sheet_view[0]
+    let sheet_view = sheet_view[0];
+    let is_selected = sheet_view.attribute("tabSelected").unwrap_or("0") == "1";
+
+    let pane = sheet_view
         .children()
         .filter(|n| n.has_tag_name("pane"))
         .collect::<Vec<Node>>();
 
     // 18.18.53 ST_PaneState (Pane State)
     // frozen, frozenSplit, split
-    if pane.len() == 1 && pane[0].attribute("state").unwrap_or("split") == "frozen" {
-        // TODO: Should we assert that topLeft is consistent?
-        // let top_left_cell = pane[0].attribute("topLeftCell").unwrap_or("A1").to_string();
+    if pane.len() == 1 {
+        if let Some("frozen") = pane[0].attribute("state") {
+            // TODO: Should we assert that topLeft is consistent?
+            // let top_left_cell = pane[0].attribute("topLeftCell").unwrap_or("A1").to_string();
 
-        frozen_columns = get_number(pane[0], "xSplit");
-        frozen_rows = get_number(pane[0], "ySplit");
+            frozen_columns = get_number(pane[0], "xSplit");
+            frozen_rows = get_number(pane[0], "ySplit");
+        }
     }
-    (frozen_rows, frozen_columns)
+    let selections = sheet_view
+        .children()
+        .filter(|n| n.has_tag_name("selection"))
+        .collect::<Vec<Node>>();
+
+    if let Some(selection) = selections.last() {
+        let active_cell = match selection.attribute("activeCell").map(parse_cell_reference) {
+            Some(Ok(s)) => Some(s),
+            _ => None,
+        };
+        let sqref = match selection.attribute("sqref").map(parse_range) {
+            Some(Ok(s)) => Some(s),
+            _ => None,
+        };
+
+        let (selected_row, selected_column, row1, column1, row2, column2) =
+            match (active_cell, sqref) {
+                (Some(cell), Some(range)) => (cell.0, cell.1, range.0, range.1, range.2, range.3),
+                (Some(cell), None) => (cell.0, cell.1, cell.0, cell.1, cell.0, cell.1),
+                (None, Some(range)) => (range.0, range.1, range.0, range.1, range.2, range.3),
+                _ => (1, 1, 1, 1, 1, 1),
+            };
+
+        SheetView {
+            frozen_rows,
+            frozen_columns,
+            selected_row,
+            selected_column,
+            is_selected,
+            range: [row1, column1, row2, column2],
+        }
+    } else {
+        SheetView::default()
+    }
 }
 
 pub(super) struct SheetSettings {
@@ -583,7 +691,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let dimension = load_dimension(ws);
 
-    let (frozen_rows, frozen_columns) = get_frozen_rows_and_columns(ws);
+    let sheet_view = get_sheet_view(ws);
 
     let cols = load_columns(ws)?;
     let color = load_sheet_color(ws)?;
@@ -856,8 +964,14 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         color,
         merge_cells,
         comments: settings.comments,
-        frozen_rows,
-        frozen_columns,
+        frozen_rows: sheet_view.frozen_rows,
+        frozen_columns: sheet_view.frozen_columns,
+        selection: Selection {
+            is_selected: sheet_view.is_selected,
+            row: sheet_view.selected_row,
+            column: sheet_view.selected_column,
+            range: sheet_view.range,
+        },
     })
 }
 
