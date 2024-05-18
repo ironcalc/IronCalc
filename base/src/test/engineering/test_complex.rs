@@ -76,10 +76,16 @@ fn fn_imconjugate() {
 fn fn_imcos() {
     let mut model = new_empty_model();
     model._set("A1", r#"=IMCOS("4+3i")"#);
+    // In macos non intel this is "-6.58066304055116+7.58155274274655i"
+    model._set("A2", r#"=COMPLEX(-6.58066304055116, 7.58155274274654)"#);
+    model._set("A3", r#"=IMABS(IMSUB(A1, A2)) < G1"#);
+
+    // small number
+    model._set("G1", "0.0000001");
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), "-6.58066304055116+7.58155274274654i");
+    assert_eq!(model._get_text("A3"), "TRUE");
 }
 
 #[test]
