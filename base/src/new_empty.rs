@@ -15,7 +15,9 @@ use crate::{
     language::get_language,
     locale::get_locale,
     model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
-    types::{Metadata, Selection, SheetState, Workbook, WorkbookSettings, Worksheet},
+    types::{
+        Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet, WorksheetView,
+    },
     utils::ParsedReference,
 };
 
@@ -35,7 +37,20 @@ fn is_valid_sheet_name(name: &str) -> bool {
 
 impl Model {
     /// Creates a new worksheet. Note that it does not check if the name or the sheet_id exists
-    fn new_empty_worksheet(name: &str, sheet_id: u32) -> Worksheet {
+    fn new_empty_worksheet(name: &str, sheet_id: u32, view_ids: &[&u32]) -> Worksheet {
+        let mut views = HashMap::new();
+        for id in view_ids {
+            views.insert(
+                **id,
+                WorksheetView {
+                    row: 1,
+                    column: 1,
+                    range: [1, 1, 1, 1],
+                    top_row: 1,
+                    left_column: 1,
+                },
+            );
+        }
         Worksheet {
             cols: vec![],
             rows: vec![],
@@ -50,12 +65,7 @@ impl Model {
             color: Default::default(),
             frozen_columns: 0,
             frozen_rows: 0,
-            selection: Selection {
-                is_selected: false,
-                row: 1,
-                column: 1,
-                range: [1, 1, 1, 1],
-            },
+            views,
         }
     }
 
@@ -130,7 +140,7 @@ impl Model {
         self.parsed_defined_names = parsed_defined_names;
     }
 
-    // Reparses all formulas and defined names
+    /// Reparses all formulas and defined names
     pub(crate) fn reset_parsed_structures(&mut self) {
         self.parser
             .set_worksheets(self.workbook.get_worksheet_names());
@@ -161,7 +171,8 @@ impl Model {
         let sheet_name = format!("{}{}", base_name, index);
         // Now we need a sheet_id
         let sheet_id = self.get_new_sheet_id();
-        let worksheet = Model::new_empty_worksheet(&sheet_name, sheet_id);
+        let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
+        let worksheet = Model::new_empty_worksheet(&sheet_name, sheet_id, &view_ids);
         self.workbook.worksheets.push(worksheet);
         self.reset_parsed_structures();
         (sheet_name, self.workbook.worksheets.len() as u32 - 1)
@@ -192,7 +203,8 @@ impl Model {
             Some(id) => id,
             None => self.get_new_sheet_id(),
         };
-        let worksheet = Model::new_empty_worksheet(sheet_name, sheet_id);
+        let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
+        let worksheet = Model::new_empty_worksheet(sheet_name, sheet_id, &view_ids);
         if sheet_index as usize > self.workbook.worksheets.len() {
             return Err("Sheet index out of range".to_string());
         }
@@ -339,11 +351,14 @@ impl Model {
         // "2020-08-06T21:20:53Z
         let now = dt.format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
+        let mut views = HashMap::new();
+        views.insert(0, WorkbookView { sheet: 0 });
+
         // String versions of the locale are added here to simplify the serialize/deserialize logic
         let workbook = Workbook {
             shared_strings: vec![],
             defined_names: vec![],
-            worksheets: vec![Model::new_empty_worksheet("Sheet1", 1)],
+            worksheets: vec![Model::new_empty_worksheet("Sheet1", 1, &[&0])],
             styles: Default::default(),
             name: name.to_string(),
             settings: WorkbookSettings {
@@ -359,6 +374,7 @@ impl Model {
                 last_modified: now,
             },
             tables: HashMap::new(),
+            views,
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
@@ -379,6 +395,7 @@ impl Model {
             locale,
             language,
             tz,
+            view_id: 0,
         };
         model.parse_formulas();
         Ok(model)

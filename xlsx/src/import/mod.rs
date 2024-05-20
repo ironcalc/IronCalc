@@ -16,7 +16,7 @@ use std::{
 use roxmltree::Node;
 
 use ironcalc_base::{
-    types::{Metadata, Workbook, WorkbookSettings},
+    types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
     Model,
 };
 
@@ -66,7 +66,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     let workbook = load_workbook(&mut archive)?;
     let rels = load_relationships(&mut archive)?;
     let mut tables = HashMap::new();
-    let worksheets = load_sheets(
+    let (worksheets, selected_sheet) = load_sheets(
         &mut archive,
         &rels,
         &workbook,
@@ -88,6 +88,13 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
             }
         }
     };
+    let mut views = HashMap::new();
+    views.insert(
+        0,
+        WorkbookView {
+            sheet: selected_sheet,
+        },
+    );
     Ok(Workbook {
         shared_strings,
         defined_names: workbook.defined_names,
@@ -100,6 +107,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         },
         metadata,
         tables,
+        views,
     })
 }
 

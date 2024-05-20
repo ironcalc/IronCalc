@@ -286,4 +286,56 @@ impl Model {
     pub fn get_worksheets_properties(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.model.get_worksheets_properties()).unwrap()
     }
+
+    #[wasm_bindgen(js_name = "getSelectedSheet")]
+    pub fn get_selected_sheet(&self) -> u32 {
+        self.model.get_selected_sheet()
+    }
+
+    #[wasm_bindgen(js_name = "getSelectedCell")]
+    pub fn get_selected_cell(&self) -> Vec<i32> {
+        let (sheet, row, column) = self.model.get_selected_cell();
+        vec![sheet as i32, row, column]
+    }
+
+    #[wasm_bindgen(js_name = "getSelectedView")]
+    pub fn get_selected_view(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.model.get_selected_view()).unwrap()
+    }
+
+    #[wasm_bindgen(js_name = "setSelectedSheet")]
+    pub fn set_selected_sheet(&mut self, sheet: u32) -> Result<(), JsError> {
+        self.model.set_selected_sheet(sheet).map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setSelectedCell")]
+    pub fn set_selected_cell(&mut self, row: i32, column: i32) -> Result<(), JsError> {
+        self.model
+            .set_selected_cell(row, column)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setSelectedRange")]
+    pub fn set_selected_range(
+        &mut self,
+        start_row: i32,
+        start_column: i32,
+        end_row: i32,
+        end_column: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_selected_range(start_row, start_column, end_row, end_column)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setTopLeftVisibleCell")]
+    pub fn set_top_left_visible_cell(
+        &mut self,
+        top_row: i32,
+        top_column: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_top_left_visible_cell(top_row, top_column)
+            .map_err(to_js_error)
+    }
 }
