@@ -16,33 +16,32 @@ fn test_example() {
     let workbook = model.workbook;
     let ws = &workbook.worksheets;
     let expected_names = vec![
-        ("Sheet1".to_string(), false),
-        ("Second".to_string(), false),
-        ("Sheet4".to_string(), false),
-        ("shared".to_string(), false),
-        ("Table".to_string(), false),
-        ("Sheet2".to_string(), false),
-        ("Created fourth".to_string(), false),
-        ("Frozen".to_string(), true),
-        ("Split".to_string(), false),
-        ("Hidden".to_string(), false),
+        "Sheet1".to_string(),
+        "Second".to_string(),
+        "Sheet4".to_string(),
+        "shared".to_string(),
+        "Table".to_string(),
+        "Sheet2".to_string(),
+        "Created fourth".to_string(),
+        "Frozen".to_string(),
+        "Split".to_string(),
+        "Hidden".to_string(),
     ];
-    let names: Vec<(String, bool)> = ws
-        .iter()
-        .map(|s| (s.name.clone(), s.selection.is_selected))
-        .collect();
+    let names: Vec<String> = ws.iter().map(|s| s.name.clone()).collect();
 
     // One is not not imported and one is hidden
     assert_eq!(expected_names, names);
+
+    assert_eq!(workbook.views[&0].sheet, 7);
 
     // Test selection:
     // First sheet (Sheet1)
     // E13 and E13:N20
     assert_eq!(ws[0].frozen_rows, 0);
     assert_eq!(ws[0].frozen_columns, 0);
-    assert_eq!(ws[0].selection.row, 13);
-    assert_eq!(ws[0].selection.column, 5);
-    assert_eq!(ws[0].selection.range, [13, 5, 20, 14]);
+    assert_eq!(ws[0].views[&0].row, 13);
+    assert_eq!(ws[0].views[&0].column, 5);
+    assert_eq!(ws[0].views[&0].range, [13, 5, 20, 14]);
 
     let model2 = load_from_icalc("tests/example.ic").unwrap();
     let s = bitcode::encode(&model2.workbook);

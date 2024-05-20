@@ -118,6 +118,8 @@ pub struct Model {
     pub(crate) language: Language,
     /// The timezone used to evaluate the model
     pub(crate) tz: Tz,
+    /// The view id. A view consist of a selected sheet and ranges.
+    pub(crate) view_id: u32,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -886,6 +888,7 @@ impl Model {
             language,
             locale,
             tz,
+            view_id: 0,
         };
 
         model.parse_formulas();

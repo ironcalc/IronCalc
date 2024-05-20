@@ -8,7 +8,8 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        Cell, Col, Comment, DefinedName, Row, Selection, SheetData, SheetState, Table, Worksheet,
+        Cell, Col, Comment, DefinedName, Row, SheetData, SheetState, Table, Worksheet,
+        WorksheetView,
     },
 };
 use roxmltree::Node;
@@ -674,7 +675,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     worksheets: &[String],
     tables: &HashMap<String, Table>,
     shared_strings: &mut Vec<String>,
-) -> Result<Worksheet, XlsxError> {
+) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
     let state = &settings.state;
@@ -952,27 +953,37 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 
-    Ok(Worksheet {
-        dimension,
-        cols,
-        rows,
-        shared_formulas,
-        sheet_data,
-        name: sheet_name.to_string(),
-        sheet_id,
-        state: state.to_owned(),
-        color,
-        merge_cells,
-        comments: settings.comments,
-        frozen_rows: sheet_view.frozen_rows,
-        frozen_columns: sheet_view.frozen_columns,
-        selection: Selection {
-            is_selected: sheet_view.is_selected,
+    let mut views = HashMap::new();
+    views.insert(
+        0,
+        WorksheetView {
             row: sheet_view.selected_row,
             column: sheet_view.selected_column,
             range: sheet_view.range,
+            top_row: 1,
+            left_column: 1,
         },
-    })
+    );
+
+    Ok((
+        Worksheet {
+            dimension,
+            cols,
+            rows,
+            shared_formulas,
+            sheet_data,
+            name: sheet_name.to_string(),
+            sheet_id,
+            state: state.to_owned(),
+            color,
+            merge_cells,
+            comments: settings.comments,
+            frozen_rows: sheet_view.frozen_rows,
+            frozen_columns: sheet_view.frozen_columns,
+            views,
+        },
+        sheet_view.is_selected,
+    ))
 }
 
 pub(super) fn load_sheets<R: Read + std::io::Seek>(
@@ -981,7 +992,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     workbook: &WorkbookXML,
     tables: &mut HashMap<String, Table>,
     shared_strings: &mut Vec<String>,
-) -> Result<Vec<Worksheet>, XlsxError> {
+) -> Result<(Vec<Worksheet>, u32), XlsxError> {
     // load comments and tables
     let mut comments = HashMap::new();
     for sheet in &workbook.worksheets {
@@ -1003,6 +1014,8 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     // load all sheets
     let worksheets: &Vec<String> = &workbook.worksheets.iter().map(|s| s.name.clone()).collect();
     let mut sheets = Vec::new();
+    let mut selected_sheet = 0;
+    let mut sheet_index = 0;
     for sheet in &workbook.worksheets {
         let sheet_name = &sheet.name;
         let rel_id = &sheet.id;
@@ -1021,15 +1034,14 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 state: state.clone(),
                 comments: comments.get(rel_id).expect("").to_vec(),
             };
-            sheets.push(load_sheet(
-                archive,
-                &path,
-                settings,
-                worksheets,
-                tables,
-                shared_strings,
-            )?);
+            let (s, is_selected) =
+                load_sheet(archive, &path, settings, worksheets, tables, shared_strings)?;
+            if is_selected {
+                selected_sheet = sheet_index;
+            }
+            sheets.push(s);
+            sheet_index += 1;
         }
     }
-    Ok(sheets)
+    Ok((sheets, selected_sheet))
 }

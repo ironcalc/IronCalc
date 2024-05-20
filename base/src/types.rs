@@ -27,6 +27,14 @@ pub struct WorkbookSettings {
     pub tz: String,
     pub locale: String,
 }
+
+/// A Workbook View tracks of the selected sheet for each view
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub struct WorkbookView {
+    /// The index of the currently selected sheet.
+    pub sheet: u32,
+}
+
 /// An internal representation of an IronCalc Workbook
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Workbook {
@@ -38,6 +46,7 @@ pub struct Workbook {
     pub settings: WorkbookSettings,
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
+    pub views: HashMap<u32, WorkbookView>,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -47,9 +56,6 @@ pub struct DefinedName {
     pub formula: String,
     pub sheet_id: Option<u32>,
 }
-
-// TODO: Move to worksheet.rs make frozen_rows/columns private and u32
-/// Internal representation of a worksheet Excel object
 
 /// * state:
 ///    18.18.68 ST_SheetState (Sheet Visibility Types)
@@ -71,12 +77,21 @@ impl Display for SheetState {
     }
 }
 
+/// Represents the state of the worksheet as seen by the user. This includes
+/// details such as the currently selected cell, the visible range, and the
+/// position of the viewport.
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct Selection {
-    pub is_selected: bool,
+pub struct WorksheetView {
+    /// The row index of the currently selected cell.
     pub row: i32,
+    /// The column index of the currently selected cell.
     pub column: i32,
+    /// The selected range in the worksheet, specified as [start_row, start_column, end_row, end_column].
     pub range: [i32; 4],
+    /// The row index of the topmost visible cell in the worksheet view.
+    pub top_row: i32,
+    /// The column index of the leftmost visible cell in the worksheet view.
+    pub left_column: i32,
 }
 
 /// Internal representation of a worksheet Excel object
@@ -95,7 +110,7 @@ pub struct Worksheet {
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
-    pub selection: Selection,
+    pub views: HashMap<u32, WorksheetView>,
 }
 
 /// Internal representation of Excel's sheet_data
