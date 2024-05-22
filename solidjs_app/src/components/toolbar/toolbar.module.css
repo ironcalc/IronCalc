@@ -1,0 +1,67 @@
+.toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  /* ${({ theme }) => theme.palette.background.paper}; */
+  background: #fff;
+  height: 40px;
+  line-height: 40px;
+  /* theme.palette.grey["600"] */
+  border-bottom: 1px solid #757575;
+  font-family: Inter;
+  border-radius: 4px 4px 0px 0px;
+  overflow-x: auto;
+}
+
+.button {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  border: 0px solid #fff;
+  border-radius: 2px;
+  margin-right: 5px;
+  transition: all 0.2s;
+  cursor: pointer;
+  background-color: white;
+  padding: 0px;
+}
+
+.button:disabled {
+  color: grey;
+  cursor: default;
+}
+
+.button:not(disabled) {
+  border-top: none;
+  border-bottom: none;
+  color: #21243a;
+  background-color: #fff;
+}
+
+.button:hover {
+  background-color: #f1f2f8;
+  border-top-color: #f1f2f8;
+}
+
+.button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.divider {
+  width: 0px;
+  height: 10px;
+  border-left: 1px solid #d3d6e9;
+  margin-left: 5px;
+  margin-right: 10px;
+}
+
+.format_menu {
+    width: 40px; 
+    font-size: 13px;
+    font-weight: 400;
+    display: flex;
+}
