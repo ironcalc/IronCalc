@@ -111,6 +111,8 @@ pub struct Worksheet {
     pub frozen_rows: i32,
     pub frozen_columns: i32,
     pub views: HashMap<u32, WorksheetView>,
+    /// Whether or not to show the grid lines in the worksheet
+    pub show_grid_lines: bool,
 }
 
 /// Internal representation of Excel's sheet_data

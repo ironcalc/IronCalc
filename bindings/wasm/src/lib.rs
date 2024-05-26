@@ -338,4 +338,20 @@ impl Model {
             .set_top_left_visible_cell(top_row, top_column)
             .map_err(to_js_error)
     }
+
+    #[wasm_bindgen(js_name = "setShowGridLines")]
+    pub fn set_show_grid_lines(
+        &mut self,
+        sheet: u32,
+        show_grid_lines: bool,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_show_grid_lines(sheet, show_grid_lines)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "getShowGridLines")]
+    pub fn get_show_grid_lines(&mut self, sheet: u32) -> Result<bool, JsError> {
+        self.model.get_show_grid_lines(sheet).map_err(to_js_error)
+    }
 }

@@ -49,6 +49,27 @@ fn test_example() {
 }
 
 #[test]
+fn no_grid() {
+    let model = load_from_xlsx("tests/NoGrid.xlsx", "en", "UTC").unwrap();
+    let workbook = model.workbook;
+    let ws = &workbook.worksheets;
+
+    // NoGrid does not show grid lines
+    let no_grid_sheet = &ws[0];
+    assert_eq!(no_grid_sheet.name, "NoGrid".to_string());
+    assert!(!no_grid_sheet.show_grid_lines);
+
+    let sheet2 = &ws[1];
+    assert_eq!(no_grid_sheet.name, "NoGrid".to_string());
+    assert!(sheet2.show_grid_lines);
+
+    let no_grid_no_headers_sheet = &ws[2];
+    assert_eq!(no_grid_sheet.name, "NoGrid".to_string());
+    // There is also no headers
+    assert!(!no_grid_no_headers_sheet.show_grid_lines);
+}
+
+#[test]
 fn test_save_to_xlsx() {
     let mut model = load_from_xlsx("tests/example.xlsx", "en", "UTC").unwrap();
     model.evaluate();
