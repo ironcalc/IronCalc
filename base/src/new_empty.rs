@@ -65,6 +65,7 @@ impl Model {
             color: Default::default(),
             frozen_columns: 0,
             frozen_rows: 0,
+            show_grid_lines: true,
             views,
         }
     }

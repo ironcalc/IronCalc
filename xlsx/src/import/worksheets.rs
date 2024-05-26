@@ -544,6 +544,7 @@ struct SheetView {
     frozen_columns: i32,
     frozen_rows: i32,
     range: [i32; 4],
+    show_grid_lines: bool,
 }
 
 impl Default for SheetView {
@@ -555,6 +556,7 @@ impl Default for SheetView {
             frozen_rows: 0,
             frozen_columns: 0,
             range: [1, 1, 1, 1],
+            show_grid_lines: true,
         }
     }
 }
@@ -608,6 +610,7 @@ fn get_sheet_view(ws: Node) -> SheetView {
 
     let sheet_view = sheet_view[0];
     let is_selected = sheet_view.attribute("tabSelected").unwrap_or("0") == "1";
+    let show_grid_lines = sheet_view.attribute("showGridLines").unwrap_or("1") == "1";
 
     let pane = sheet_view
         .children()
@@ -654,6 +657,7 @@ fn get_sheet_view(ws: Node) -> SheetView {
             selected_row,
             selected_column,
             is_selected,
+            show_grid_lines,
             range: [row1, column1, row2, column2],
         }
     } else {
@@ -980,6 +984,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             comments: settings.comments,
             frozen_rows: sheet_view.frozen_rows,
             frozen_columns: sheet_view.frozen_columns,
+            show_grid_lines: sheet_view.show_grid_lines,
             views,
         },
         sheet_view.is_selected,

@@ -3,6 +3,7 @@ mod test_clear_cells;
 mod test_diff_queue;
 mod test_evaluation;
 mod test_general;
+mod test_grid_lines;
 mod test_rename_sheet;
 mod test_row_column;
 mod test_styles;

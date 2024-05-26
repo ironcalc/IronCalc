@@ -683,6 +683,13 @@ impl Model {
         Err(format!("Invalid color: {}", color))
     }
 
+    /// Makes the grid lines in the sheet visible (`true`) or hidden (`false`)
+    pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<(), String> {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        worksheet.show_grid_lines = show_grid_lines;
+        Ok(())
+    }
+
     fn get_cell_value(&self, cell: &Cell, cell_reference: CellReferenceIndex) -> CalcResult {
         use Cell::*;
         match cell {

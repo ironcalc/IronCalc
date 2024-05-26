@@ -130,7 +130,11 @@ enum Diff {
         old_value: String,
         new_value: String,
     },
-    // FIXME: we are missing SetViewDiffs
+    SetShowGridLines {
+        sheet: u32,
+        old_value: bool,
+        new_value: bool,
+    }, // FIXME: we are missing SetViewDiffs
 }
 
 type DiffList = Vec<Diff>;
@@ -1107,6 +1111,25 @@ impl UserModel {
         }
         Ok(())
     }
+
+    /// Set the gid lines in the worksheet to visible (`true`) or hidden (`false`)
+    pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<(), String> {
+        let old_value = self.model.workbook.worksheet(sheet)?.show_grid_lines;
+        self.model.set_show_grid_lines(sheet, show_grid_lines)?;
+
+        self.push_diff_list(vec![Diff::SetShowGridLines {
+            sheet,
+            new_value: show_grid_lines,
+            old_value,
+        }]);
+        Ok(())
+    }
+
+    /// Returns true in the grid lines for
+    pub fn get_show_grid_lines(&self, sheet: u32) -> Result<bool, String> {
+        Ok(self.model.workbook.worksheet(sheet)?.show_grid_lines)
+    }
+
     // **** Private methods ****** //
 
     fn push_diff_list(&mut self, diff_list: DiffList) {
@@ -1270,6 +1293,13 @@ impl UserModel {
                 } => {
                     self.model.set_sheet_color(*index, old_value)?;
                 }
+                Diff::SetShowGridLines {
+                    sheet,
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_show_grid_lines(*sheet, *old_value)?;
+                }
             }
         }
         if needs_evaluation {
@@ -1389,6 +1419,13 @@ impl UserModel {
                     new_value,
                 } => {
                     self.model.set_sheet_color(*index, new_value)?;
+                }
+                Diff::SetShowGridLines {
+                    sheet,
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_show_grid_lines(*sheet, *new_value)?;
                 }
             }
         }
