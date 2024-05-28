@@ -55,6 +55,7 @@ pub(crate) fn get_worksheet_xml(
     worksheet: &Worksheet,
     parsed_formulas: &[Node],
     dimension: &str,
+    is_sheet_selected: bool,
 ) -> String {
     let mut sheet_data_str: Vec<String> = vec![];
     let mut cols_str: Vec<String> = vec![];
@@ -247,6 +248,38 @@ pub(crate) fn get_worksheet_xml(
         format!("<cols>{cols}</cols>")
     };
 
+    let tab_selected = if is_sheet_selected {
+        " tabSelected=\"1\""
+    } else {
+        ""
+    };
+
+    let show_grid_lines = if !worksheet.show_grid_lines {
+        " showGridLines=\"0\""
+    } else {
+        ""
+    };
+
+    let mut active_cell = "A1".to_string();
+    let mut sqref = "A1".to_string();
+
+    let views = &worksheet.views;
+    if let Some(view) = views.get(&0) {
+        let range = view.range;
+        let row = view.row;
+        let column = view.column;
+        let column_name = number_to_column(column).unwrap_or("A".to_string());
+        active_cell = format!("{column_name}{row}");
+
+        let column_start = number_to_column(range[1]).unwrap_or("A".to_string());
+        let column_end = number_to_column(range[3]).unwrap_or("A".to_string());
+        if range[0] == range[2] && range[1] == range[3] {
+            sqref = format!("{column_start}{}", range[0]);
+        } else {
+            sqref = format!("{}{}:{}{}", column_start, range[0], column_end, range[2]);
+        }
+    }
+
     format!(
         "{XML_DECLARATION}
 <worksheet \
@@ -254,8 +287,8 @@ xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" \
 xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
   <dimension ref=\"{dimension}\"/>\
   <sheetViews>\
-    <sheetView workbookViewId=\"0\">\
-        <selection activeCell=\"A1\" sqref=\"A1\"/>\
+    <sheetView workbookViewId=\"0\"{show_grid_lines}{tab_selected}>\
+        <selection activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>\
     </sheetView>\
   </sheetViews>\
   {cols}\
