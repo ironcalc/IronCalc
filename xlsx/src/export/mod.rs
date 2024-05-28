@@ -68,6 +68,10 @@ pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
 
 pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<W, XlsxError> {
     let workbook = &model.workbook;
+    let selected_sheet = match workbook.views.get(&0) {
+        Some(view) => view.sheet,
+        _ => 0,
+    };
     let mut zip = zip::ZipWriter::new(writer);
 
     let options = zip::write::FileOptions::default();
@@ -94,7 +98,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.start_file("xl/styles.xml", options)?;
     zip.write_all(styles::get_styles_xml(workbook).as_bytes())?;
     zip.start_file("xl/workbook.xml", options)?;
-    zip.write_all(workbook::get_workbook_xml(workbook).as_bytes())?;
+    zip.write_all(workbook::get_workbook_xml(workbook, selected_sheet).as_bytes())?;
 
     zip.add_directory("xl/_rels", options)?;
     zip.start_file("xl/_rels/workbook.xml.rels", options)?;
@@ -114,11 +118,13 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
         let min_row = dimension.min_row;
         let max_row = dimension.max_row;
         let sheet_dimension_str = &format!("{column_min_str}{min_row}:{column_max_str}{max_row}");
+        let is_sheet_selected = selected_sheet as usize == sheet_index;
         zip.write_all(
             worksheets::get_worksheet_xml(
                 worksheet,
                 &model.parsed_formulas[sheet_index],
                 sheet_dimension_str,
+                is_sheet_selected,
             )
             .as_bytes(),
         )?;
