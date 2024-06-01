@@ -1,4 +1,5 @@
 mod test_add_delete_sheets;
+mod test_autofill;
 mod test_clear_cells;
 mod test_diff_queue;
 mod test_evaluation;

@@ -354,4 +354,13 @@ impl Model {
     pub fn get_show_grid_lines(&mut self, sheet: u32) -> Result<bool, JsError> {
         self.model.get_show_grid_lines(sheet).map_err(to_js_error)
     }
+
+    #[wasm_bindgen(js_name = "autoFillRows")]
+    pub fn auto_fill_rows(&mut self, source_area: JsValue, to_row: i32) -> Result<(), JsError> {
+        let area: Area =
+            serde_wasm_bindgen::from_value(source_area).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .auto_fill_rows(&area, to_row)
+            .map_err(to_js_error)
+    }
 }
