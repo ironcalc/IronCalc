@@ -363,4 +363,17 @@ impl Model {
             .auto_fill_rows(&area, to_row)
             .map_err(to_js_error)
     }
+
+    #[wasm_bindgen(js_name = "autoFillColumns")]
+    pub fn auto_fill_columns(
+        &mut self,
+        source_area: JsValue,
+        to_column: i32,
+    ) -> Result<(), JsError> {
+        let area: Area =
+            serde_wasm_bindgen::from_value(source_area).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .auto_fill_columns(&area, to_column)
+            .map_err(to_js_error)
+    }
 }

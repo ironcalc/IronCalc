@@ -1044,6 +1044,107 @@ impl UserModel {
         Ok(())
     }
 
+    /// Fills the cells from `source_area` until `to_column`.
+    /// This simulates the user clicking on the cell outline handle and dragging it to the right (or to the left)
+    pub fn auto_fill_columns(&mut self, source_area: &Area, to_column: i32) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        let sheet = source_area.sheet;
+        let row1 = source_area.row;
+        let column1 = source_area.column;
+        let width1 = source_area.width;
+        let height1 = source_area.height;
+
+        // Check first all parameters are valid
+        if self.model.workbook.worksheet(sheet).is_err() {
+            return Err(format!("Invalid worksheet index: '{sheet}'"));
+        }
+
+        if !is_valid_column_number(column1) {
+            return Err(format!("Invalid column: '{column1}'"));
+        }
+        if !is_valid_row(row1) {
+            return Err(format!("Invalid row: '{row1}'"));
+        }
+        if !is_valid_column_number(column1 + width1 - 1) {
+            return Err(format!("Invalid column: '{}'", column1 + width1 - 1));
+        }
+        if !is_valid_row(row1 + height1 - 1) {
+            return Err(format!("Invalid row: '{}'", row1 + height1 - 1));
+        }
+
+        if !is_valid_row(to_column) {
+            return Err(format!("Invalid row: '{to_column}'"));
+        }
+
+        // anchor_column is the first column that repeats in each case.
+        let anchor_column;
+        let sign;
+        // this is the range of columns we are going to fill
+        let column_range: Vec<i32>;
+
+        if to_column >= column1 + width1 {
+            // we go right, we start from `1 + width` to `to_column`,
+            anchor_column = column1;
+            sign = 1;
+            column_range = (column1 + width1..to_column + 1).collect();
+        } else if to_column < column1 {
+            // we go left, starting from `column1 - `` all the way to `to_column`
+            anchor_column = column1 + width1 - 1;
+            sign = -1;
+            column_range = (to_column..column1).rev().collect();
+        } else {
+            return Err("Invalid parameters for autofill".to_string());
+        }
+
+        for row in row1..row1 + height1 {
+            let mut index = 0;
+            for column_ref in &column_range {
+                let column = *column_ref;
+                // Save value and style first
+                let old_value = self
+                    .model
+                    .workbook
+                    .worksheet(sheet)?
+                    .cell(row, column)
+                    .cloned();
+                let old_style = self.model.get_style_for_cell(sheet, row, column);
+
+                // compute the new value and set it
+                let source_column = anchor_column + index;
+                let target_value = self
+                    .model
+                    .extend_to(sheet, row, source_column, row, column)?;
+                self.model
+                    .set_user_input(sheet, row, column, target_value.to_string());
+
+                // Compute the new style and set it
+                let new_style = self.model.get_style_for_cell(sheet, row, source_column);
+                self.model.set_cell_style(sheet, row, column, &new_style)?;
+
+                // Add the diffs
+                diff_list.push(Diff::SetCellStyle {
+                    sheet,
+                    row,
+                    column,
+                    old_value: Box::new(old_style),
+                    new_value: Box::new(new_style),
+                });
+                diff_list.push(Diff::SetCellValue {
+                    sheet,
+                    row,
+                    column,
+                    new_value: target_value.to_string(),
+                    old_value: Box::new(old_value),
+                });
+
+                index = (index + sign) % width1;
+            }
+        }
+        self.push_diff_list(diff_list);
+        self.evaluate();
+        Ok(())
+    }
+
     /// Returns information about the sheets
     ///
     /// See also:

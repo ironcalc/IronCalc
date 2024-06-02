@@ -63,15 +63,69 @@ style_types = r"""
   getCellStyle(sheet: number, row: number, column: number): CellStyle;
 """.strip()
 
+view = r"""
+* @returns {any}
+*/
+  getSelectedView(): any;
+""".strip()
+
+view_types = r"""
+* @returns {CellStyle}
+*/
+  getSelectedView(): SelectedView;
+""".strip()
+
+autofill_rows = r"""
+/**
+* @param {any} source_area
+* @param {number} to_row
+*/
+  autoFillRows(source_area: any, to_row: number): void;
+}
+"""
+
+autofill_rows_types = r"""
+/**
+* @param {Area} source_area
+* @param {number} to_row
+*/
+  autoFillRows(source_area: Area, to_row: number): void;
+}
+"""
+
+autofill_columns = r"""
+/**
+* @param {any} source_area
+* @param {number} to_column
+*/
+  autoFillColumns(source_area: any, to_column: number): void;
+}
+"""
+
+autofill_columns_types = r"""
+/**
+* @param {Area} source_area
+* @param {number} to_column
+*/
+  autoFillColumns(source_area: Area, to_column: number): void;
+}
+"""
+
 def fix_types(text):
     text = text.replace(get_tokens_str, get_tokens_str_types)
     text = text.replace(update_style_str, update_style_str_types)
     text = text.replace(properties, properties_types)
     text = text.replace(style, style_types)
+    text = text.replace(view, view_types)
+    text = text.replace(autofill_rows, autofill_rows_types)
+    text = text.replace(autofill_columns, autofill_columns_types)
     with open("types.ts") as f:
         types_str = f.read()
         header_types = "{}\n\n{}".format(header, types_str)
     text = text.replace(header, header_types)
+    if text.find("any") != -1:
+        print("There are 'unfixed' types. Please check.")
+        exit(1)
     return text
     
 
