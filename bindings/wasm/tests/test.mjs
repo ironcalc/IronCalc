@@ -119,5 +119,14 @@ test("floating column numbers get truncated", () => {
     assert.strictEqual(model.getRowHeight(0, 5), 100.5);
 });
 
+test("autofill", () => {
+    const model = new Model('en', 'UTC');
+    model.setUserInput(0, 1, 1, "23");
+    model.autoFillRows({sheet: 0, row: 1, column: 1, width: 1, height: 1}, 2);
+
+    const result = model.getFormattedCellValue(0, 2, 1);
+    assert.strictEqual(result, "23");
+});
+
 
 
