@@ -81,7 +81,6 @@ autofill_rows = r"""
 * @param {number} to_row
 */
   autoFillRows(source_area: any, to_row: number): void;
-}
 """
 
 autofill_rows_types = r"""
@@ -90,7 +89,6 @@ autofill_rows_types = r"""
 * @param {number} to_row
 */
   autoFillRows(source_area: Area, to_row: number): void;
-}
 """
 
 autofill_columns = r"""
@@ -99,7 +97,6 @@ autofill_columns = r"""
 * @param {number} to_column
 */
   autoFillColumns(source_area: any, to_column: number): void;
-}
 """
 
 autofill_columns_types = r"""
@@ -108,7 +105,6 @@ autofill_columns_types = r"""
 * @param {number} to_column
 */
   autoFillColumns(source_area: Area, to_column: number): void;
-}
 """
 
 def fix_types(text):
