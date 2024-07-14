@@ -243,11 +243,10 @@ pub(crate) fn get_worksheet_xml(
     }
     let sheet_data = sheet_data_str.join("");
 
-    for (_ind, merge_cell_ref) in worksheet.merge_cells.iter().enumerate() {
+    for merge_cell_ref in worksheet.merge_cells.clone() {
         merged_cells_str.push(format!("<mergeCell ref=\"{merge_cell_ref}\"/>"))
     }
     let merged_cells_count = merged_cells_str.len();
-    let merged_cells = merged_cells_str.join("");
 
     let cols = cols_str.join("");
     let cols = if cols.is_empty() {
@@ -290,12 +289,12 @@ pub(crate) fn get_worksheet_xml(
 
     let merge_cells_section = if merged_cells_count > 0 {
         format!(
-            "<mergeCells count=\"{merged_cells_count}\">{merged_cells}</mergeCells>",
-            merged_cells_count = merged_cells_count,
-            merged_cells = merged_cells
+            "<mergeCells count=\"{}\">{}</mergeCells>",
+            merged_cells_count,
+            merged_cells_str.join("")
         )
     } else {
-        String::new()
+        "".to_string()
     };
 
     format!(

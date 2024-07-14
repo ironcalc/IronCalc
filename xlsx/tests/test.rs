@@ -335,13 +335,9 @@ fn no_export() {
     fs::remove_dir_all(&dir).unwrap();
 }
 
-// This test verifies whether exporting the
-// merged cells functionality is happening
-// properly or not.
-// it first loads the excell
-// having the merged cell and exports it to
-// anothe xlsx and verifies whether merged
-// cell node is same in both of the xlsx file
+// This test verifies whether exporting the merged cells functionality is happening properly or not.
+// It first loads the excell having the merged cell and exports it to another xlsx and verifies whether merged
+// cell node is same in both of the xlsx file or not.
 #[test]
 fn test_exporting_merged_cells() {
     let temp_file_name = "temp_file_test_export_merged_cells.xlsx";
@@ -352,7 +348,7 @@ fn test_exporting_merged_cells() {
         let expected_merge_cell_ref = model
             .workbook
             .worksheets
-            .get(0)
+            .first()
             .unwrap()
             .merge_cells
             .clone();
@@ -364,12 +360,12 @@ fn test_exporting_merged_cells() {
     {
         let mut temp_model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
         {
-            //loading the previous file back and verifying whether
-            //merged cells got exported properly or not
+            // loading the previous file back and verifying whether
+            // merged cells got exported properly or not
             let got_merge_cell_ref = &temp_model
                 .workbook
                 .worksheets
-                .get(0)
+                .first()
                 .unwrap()
                 .merge_cells
                 .clone();
@@ -393,7 +389,7 @@ fn test_exporting_merged_cells() {
             let got_merge_cell_ref_cnt = &temp_model2
                 .workbook
                 .worksheets
-                .get(0)
+                .first()
                 .unwrap()
                 .merge_cells
                 .len();
