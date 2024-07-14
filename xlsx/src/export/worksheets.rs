@@ -13,7 +13,7 @@
 //!   <v>1</v>
 //! </c>
 //! Formula in F6 would then be 'A6+C6'
-use std::{collections::HashMap, fmt::format};
+use std::collections::HashMap;
 
 use itertools::Itertools;
 
@@ -243,10 +243,8 @@ pub(crate) fn get_worksheet_xml(
     }
     let sheet_data = sheet_data_str.join("");
 
-    for (_ind,merge_cell_ref) in worksheet.merge_cells.iter().enumerate(){
-        merged_cells_str.push(format!(
-            "<mergeCell ref=\"{merge_cell_ref}\"/>"
-        ))
+    for (_ind, merge_cell_ref) in worksheet.merge_cells.iter().enumerate() {
+        merged_cells_str.push(format!("<mergeCell ref=\"{merge_cell_ref}\"/>"))
     }
     let merged_cells_count = merged_cells_str.len();
     let merged_cells = merged_cells_str.join("");
@@ -290,6 +288,16 @@ pub(crate) fn get_worksheet_xml(
         }
     }
 
+    let merge_cells_section = if merged_cells_count > 0 {
+        format!(
+            "<mergeCells count=\"{merged_cells_count}\">{merged_cells}</mergeCells>",
+            merged_cells_count = merged_cells_count,
+            merged_cells = merged_cells
+        )
+    } else {
+        String::new()
+    };
+
     format!(
         "{XML_DECLARATION}
 <worksheet \
@@ -305,9 +313,7 @@ xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">
   <sheetData>\
   {sheet_data}\
   </sheetData>\
-  <mergeCells count=\"{merged_cells_count}\">\
-  {merged_cells}\
-  </mergeCells>\
+  {merge_cells_section}\
 </worksheet>"
     )
 }

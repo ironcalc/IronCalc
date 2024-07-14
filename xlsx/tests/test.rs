@@ -334,3 +334,72 @@ fn no_export() {
     }
     fs::remove_dir_all(&dir).unwrap();
 }
+
+// This test verifies whether exporting the
+// merged cells functionality is happening
+// properly or not.
+// it first loads the excell
+// having the merged cell and exports it to
+// anothe xlsx and verifies whether merged
+// cell node is same in both of the xlsx file
+#[test]
+fn test_exporting_merged_cells() {
+    let temp_file_name = "temp_file_test_export_merged_cells.xlsx";
+    let expected_merge_cell_ref = {
+        // loading the xlsx file containing merged cells
+        let example_file_name = "tests/example.xlsx";
+        let mut model = load_from_xlsx(example_file_name, "en", "UTC").unwrap();
+        let expected_merge_cell_ref = model
+            .workbook
+            .worksheets
+            .get(0)
+            .unwrap()
+            .merge_cells
+            .clone();
+        // exporting and saving it in another xlsx
+        model.evaluate();
+        save_to_xlsx(&model, temp_file_name).unwrap();
+        expected_merge_cell_ref
+    };
+    {
+        let mut temp_model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
+        {
+            //loading the previous file back and verifying whether
+            //merged cells got exported properly or not
+            let got_merge_cell_ref = &temp_model
+                .workbook
+                .worksheets
+                .get(0)
+                .unwrap()
+                .merge_cells
+                .clone();
+            assert_eq!(expected_merge_cell_ref, *got_merge_cell_ref);
+            fs::remove_file(temp_file_name).unwrap();
+        }
+        {
+            // this block is to verify that if there are no
+            // merged cells, exported xml should not have the
+            // <mergeCells/> xml node
+            temp_model
+                .workbook
+                .worksheets
+                .get_mut(0)
+                .unwrap()
+                .merge_cells
+                .clear();
+
+            save_to_xlsx(&temp_model, temp_file_name).unwrap();
+            let temp_model2 = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
+            let got_merge_cell_ref_cnt = &temp_model2
+                .workbook
+                .worksheets
+                .get(0)
+                .unwrap()
+                .merge_cells
+                .len();
+            assert!(*got_merge_cell_ref_cnt == 0);
+        }
+    }
+
+    fs::remove_file(temp_file_name).unwrap();
+}

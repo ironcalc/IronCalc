@@ -78,38 +78,6 @@ fn test_values() {
     }
 }
 
-// This test verifies whether exporting the
-// merged cells functionality is happening
-// properly or not.
-
-// This test is bit unconventional from the 
-// other tests as it first loads the excell
-// having the merged cell and exports it to 
-// anothe xlsx and verifies whether merged
-// cell node is same in both of the xlsx file
-#[test]
-fn test_exporting_merged_cells(){
-    let expected_merge_cell_ref;
-    let got_merge_cell_ref;
-    let temp_file_name = "temp_file_test_export_merged_cells.xlsx";
-    {
-        // loading the xlsx file containing merged cells
-        let example_file_name = "tests/example.xlsx";
-        let mut model = load_from_xlsx(example_file_name, "en", "UTC").unwrap();
-        expected_merge_cell_ref = model.workbook.worksheets.get(0).unwrap().merge_cells.clone();
-        // exporting and saving it in another xlsx
-        model.evaluate();
-        save_to_xlsx(&model, temp_file_name).unwrap();
-    }
-    //loading the previous file back and verifying whether
-    //merged cells got exported properly or not
-    let temp_model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
-    got_merge_cell_ref = temp_model.workbook.worksheets.get(0).unwrap().merge_cells.clone();
-    assert_eq!(expected_merge_cell_ref, got_merge_cell_ref);
-
-    fs::remove_file(temp_file_name).unwrap();
-}
-
 #[test]
 fn test_formulas() {
     let mut model = new_empty_model();
