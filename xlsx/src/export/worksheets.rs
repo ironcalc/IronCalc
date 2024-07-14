@@ -13,7 +13,7 @@
 //!   <v>1</v>
 //! </c>
 //! Formula in F6 would then be 'A6+C6'
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::format};
 
 use itertools::Itertools;
 
@@ -59,6 +59,7 @@ pub(crate) fn get_worksheet_xml(
 ) -> String {
     let mut sheet_data_str: Vec<String> = vec![];
     let mut cols_str: Vec<String> = vec![];
+    let mut merged_cells_str: Vec<String> = vec![];
 
     for col in &worksheet.cols {
         // <col min="4" max="4" width="12" customWidth="1"/>
@@ -241,6 +242,15 @@ pub(crate) fn get_worksheet_xml(
         ))
     }
     let sheet_data = sheet_data_str.join("");
+
+    for (_ind,merge_cell_ref) in worksheet.merge_cells.iter().enumerate(){
+        merged_cells_str.push(format!(
+            "<mergeCell ref=\"{merge_cell_ref}\"/>"
+        ))
+    }
+    let merged_cells_count = merged_cells_str.len();
+    let merged_cells = merged_cells_str.join("");
+
     let cols = cols_str.join("");
     let cols = if cols.is_empty() {
         "".to_string()
@@ -295,6 +305,9 @@ xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">
   <sheetData>\
   {sheet_data}\
   </sheetData>\
+  <mergeCells count=\"{merged_cells_count}\">\
+  {merged_cells}\
+  </mergeCells>\
 </worksheet>"
     )
 }
