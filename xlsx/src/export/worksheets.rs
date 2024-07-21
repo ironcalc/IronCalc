@@ -59,6 +59,7 @@ pub(crate) fn get_worksheet_xml(
 ) -> String {
     let mut sheet_data_str: Vec<String> = vec![];
     let mut cols_str: Vec<String> = vec![];
+    let mut merged_cells_str: Vec<String> = vec![];
 
     for col in &worksheet.cols {
         // <col min="4" max="4" width="12" customWidth="1"/>
@@ -241,6 +242,12 @@ pub(crate) fn get_worksheet_xml(
         ))
     }
     let sheet_data = sheet_data_str.join("");
+
+    for merge_cell_ref in &worksheet.merge_cells {
+        merged_cells_str.push(format!("<mergeCell ref=\"{merge_cell_ref}\"/>"))
+    }
+    let merged_cells_count = merged_cells_str.len();
+
     let cols = cols_str.join("");
     let cols = if cols.is_empty() {
         "".to_string()
@@ -280,6 +287,16 @@ pub(crate) fn get_worksheet_xml(
         }
     }
 
+    let merge_cells_section = if merged_cells_count > 0 {
+        format!(
+            "<mergeCells count=\"{}\">{}</mergeCells>",
+            merged_cells_count,
+            merged_cells_str.join("")
+        )
+    } else {
+        "".to_string()
+    };
+
     format!(
         "{XML_DECLARATION}
 <worksheet \
@@ -295,6 +312,7 @@ xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">
   <sheetData>\
   {sheet_data}\
   </sheetData>\
+  {merge_cells_section}\
 </worksheet>"
     )
 }
