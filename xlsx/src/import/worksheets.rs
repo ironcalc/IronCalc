@@ -8,9 +8,9 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        Cell, Col, Comment, DefinedName, Row, SheetData, SheetState, Table, Worksheet,
-        WorksheetView,
+        Cell, Col, Comment, DefinedName, MergeCell, Row, SheetData, SheetState, Table, Worksheet, WorksheetView
     },
+    cell::*
 };
 use roxmltree::Node;
 use thiserror::Error;
@@ -160,6 +160,28 @@ fn load_merge_cells(ws: Node) -> Result<Vec<String>, XlsxError> {
         for merge_cell in merge_cells_nodes[0].children() {
             let reference = get_attribute(&merge_cell, "ref")?.to_string();
             merge_cells.push(reference);
+        }
+    }
+    Ok(merge_cells)
+}
+
+fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergeCell>, XlsxError> {
+    // 18.3.1.55 Merge Cells
+    // <mergeCells count="1">
+    //    <mergeCell ref="K7:L10"/>
+    // </mergeCells>
+    let mut merge_cells: Vec<MergeCell> = Vec::new();
+    let merge_cells_nodes = ws
+        .children()
+        .filter(|n| n.has_tag_name("mergeCells"))
+        .collect::<Vec<Node>>();
+    if merge_cells_nodes.len() == 1 {
+        for merge_cell in merge_cells_nodes[0].children() {
+            let reference = get_attribute(&merge_cell, "ref")?.to_string();
+            let merge_cell_st = reference.split(":").nth(0).unwrap();
+            let merge_cell_ed = reference.split(":").nth(1).unwrap();
+            let merge_cell_node = MergeCell::new(merge_cell_st, merge_cell_ed, reference.clone());
+            merge_cells.push(merge_cell_node);
         }
     }
     Ok(merge_cells)
@@ -942,6 +964,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     }
 
     let merge_cells = load_merge_cells(ws)?;
+    let merge_cells_nodes = load_merge_cells_nodes(ws)?;
 
     // Conditional Formatting
     // <conditionalFormatting sqref="B1:B9">

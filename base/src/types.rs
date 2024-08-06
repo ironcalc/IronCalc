@@ -347,6 +347,17 @@ pub enum FontScheme {
     None,
 }
 
+// Merge Cell type
+// There will be one MergeCell maintained for every Merge cells that we load
+// It will consist of range_ref : its range reference in String representation ( ex : A1-C2 )
+// merge_col_range : Its tuple having start and end values of columns ( ex: A1-C2 => (1,3))
+// merge row_range : Its tuple having start and end values of rows (ex: A1-C2 => (1,2))
+pub struct MergeCell{
+    pub merge_col_range : (u32,u32),
+    pub merge_row_range : (u32,u32),
+    pub range_ref : String
+}
+
 impl Display for FontScheme {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {

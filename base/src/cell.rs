@@ -1,5 +1,5 @@
 use crate::{
-    expressions::token::Error, language::Language, number_format::to_excel_precision_str, types::*,
+    expressions::token::Error, language::Language, number_format::to_excel_precision_str, types::*, utils::{get_column_from_reference, get_column_number, get_row_from_reference}
 };
 
 /// A CellValue is the representation of the cell content.
@@ -174,5 +174,21 @@ impl Cell {
             CellValue::Boolean(value) => value.to_string().to_uppercase(),
             CellValue::Number(value) => format_number(value),
         }
+    }
+}
+
+// Implementing methods for MergeCell struct
+
+impl MergeCell {
+
+    pub fn new(start_range:&str, end_range:&str, range_ref: String) -> Self {
+        let col_range_start = get_column_from_reference(start_range);
+        let col_range_end = get_column_from_reference(end_range);
+        let row_st : u32 = get_row_from_reference(start_range);
+        let row_ed: u32 = get_row_from_reference(end_range);
+        Self { merge_col_range: (get_column_number(&col_range_start, col_range_start.len()),
+            get_column_number(&col_range_end, col_range_end.len())), 
+            merge_row_range: (row_st,row_ed),
+            range_ref: range_ref }
     }
 }
