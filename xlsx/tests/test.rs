@@ -399,3 +399,30 @@ fn test_exporting_merged_cells() {
 
     fs::remove_file(temp_file_name).unwrap();
 }
+
+#[test]
+fn test_merged_cell_behaviors() {
+    // loading the xlsx file containing merged cells
+    let example_file_name = "tests/merged_cells.xlsx";
+    let mut model = load_from_xlsx(example_file_name, "en", "UTC").unwrap();
+    let expected_merge_cell_ref = model
+        .workbook
+        .worksheets
+        .first()
+        .unwrap()
+        .merge_cells
+        .clone();
+
+    
+    model.set_user_input(0, 1, 5, "Hello".to_string());
+    model.evaluate();
+    dbg!(model.get_cell_type(0, 1, 4).unwrap());
+    dbg!(model.get_cell_content(0, 1, 4).unwrap());
+
+    // assert_ne!(model.get_cell_content(0, 1, 5).unwrap(),"Hello");
+    // assert_ne!(model.get_cell_type(0, 1, 5).unwrap(),CellType::Text);
+
+    dbg!(model.get_cell_content(0, 1, 5).unwrap());
+    dbg!(model.get_cell_type(0, 1, 5).unwrap());
+
+}
