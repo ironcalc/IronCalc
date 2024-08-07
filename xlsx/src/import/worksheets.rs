@@ -10,7 +10,6 @@ use ironcalc_base::{
     types::{
         Cell, Col, Comment, DefinedName, MergeCell, Row, SheetData, SheetState, Table, Worksheet, WorksheetView
     },
-    cell::*
 };
 use roxmltree::Node;
 use thiserror::Error;
@@ -144,25 +143,6 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
         }
     }
     Ok(cols)
-}
-
-fn load_merge_cells(ws: Node) -> Result<Vec<String>, XlsxError> {
-    // 18.3.1.55 Merge Cells
-    // <mergeCells count="1">
-    //    <mergeCell ref="K7:L10"/>
-    // </mergeCells>
-    let mut merge_cells = Vec::new();
-    let merge_cells_nodes = ws
-        .children()
-        .filter(|n| n.has_tag_name("mergeCells"))
-        .collect::<Vec<Node>>();
-    if merge_cells_nodes.len() == 1 {
-        for merge_cell in merge_cells_nodes[0].children() {
-            let reference = get_attribute(&merge_cell, "ref")?.to_string();
-            merge_cells.push(reference);
-        }
-    }
-    Ok(merge_cells)
 }
 
 fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergeCell>, XlsxError> {
@@ -963,7 +943,6 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         sheet_data.insert(row_index, data_row);
     }
 
-    let merge_cells = load_merge_cells(ws)?;
     let merge_cells_nodes = load_merge_cells_nodes(ws)?;
 
     // Conditional Formatting
@@ -1003,7 +982,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             sheet_id,
             state: state.to_owned(),
             color,
-            merge_cells,
+            merge_cells: merge_cells_nodes,
             comments: settings.comments,
             frozen_rows: sheet_view.frozen_rows,
             frozen_columns: sheet_view.frozen_columns,

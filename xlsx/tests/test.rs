@@ -4,7 +4,7 @@ use uuid::Uuid;
 use ironcalc::compare::{test_file, test_load_and_saving};
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::{load_from_icalc, load_from_xlsx};
-use ironcalc_base::types::{HorizontalAlignment, VerticalAlignment};
+use ironcalc_base::types::{CellType, HorizontalAlignment, VerticalAlignment};
 use ironcalc_base::Model;
 
 // This is a functional test.
@@ -405,24 +405,23 @@ fn test_merged_cell_behaviors() {
     // loading the xlsx file containing merged cells
     let example_file_name = "tests/merged_cells.xlsx";
     let mut model = load_from_xlsx(example_file_name, "en", "UTC").unwrap();
-    let expected_merge_cell_ref = model
-        .workbook
-        .worksheets
-        .first()
-        .unwrap()
-        .merge_cells
-        .clone();
-
     
     model.set_user_input(0, 1, 5, "Hello".to_string());
-    model.evaluate();
-    dbg!(model.get_cell_type(0, 1, 4).unwrap());
-    dbg!(model.get_cell_content(0, 1, 4).unwrap());
 
-    // assert_ne!(model.get_cell_content(0, 1, 5).unwrap(),"Hello");
-    // assert_ne!(model.get_cell_type(0, 1, 5).unwrap(),CellType::Text);
+    // making sure that merge cell should not get updated
+    assert_ne!(model.get_cell_content(0, 1, 5).unwrap(),"Hello");
+    assert_ne!(model.get_cell_type(0, 1, 5).unwrap(),CellType::Text);
 
-    dbg!(model.get_cell_content(0, 1, 5).unwrap());
-    dbg!(model.get_cell_type(0, 1, 5).unwrap());
+    model.update_cell_with_bool(0, 1, 5, true);
+    assert_ne!(model.get_cell_content(0, 1, 5).unwrap(), "true");
+    assert_ne!(model.get_cell_type(0, 1, 5).unwrap(),CellType::LogicalValue);
+
+    assert_eq!(model.update_cell_with_formula(0, 1, 5, "=SUM(A1+A2)".to_string()).err().unwrap(),"Cell row : 1, col : 5 is part of merged cell block, so update is not possible");
+    assert_ne!(model.get_cell_content(0, 1, 5).unwrap(), "=SUM(A1+A2)");
+
+    // updating merged Mother cell and verifying whether that got updated or not
+    model.set_user_input(0, 1, 4, "Hello".to_string());
+    assert_eq!(model.get_cell_content(0, 1, 4).unwrap(),"Hello");
+    assert_eq!(model.get_cell_type(0, 1, 4).unwrap(),CellType::Text);
 
 }

@@ -181,6 +181,27 @@ impl Cell {
 
 impl MergeCell {
 
+    pub fn is_cell_part_of_merge_cell(&self, row:i32, col:i32) -> bool {
+
+        // This is merge Mother cell so include this cell as part of Merge Cell
+        if row as u32 == self.merge_row_range.0 && col as u32 == self.merge_col_range.0 {
+            return false
+        }
+
+        let result : bool = if (row as u32 >= self.merge_row_range.0 && row as u32 <= self.merge_row_range.1)
+         && (col as u32 >= self.merge_col_range.0 && col as u32 <= self.merge_col_range.1) {
+            true
+        } else {
+            false
+        };
+
+        result
+    }
+
+    pub fn get_range_ref(&self) -> String {
+        self.range_ref.clone()
+    }
+
     pub fn new(start_range:&str, end_range:&str, range_ref: String) -> Self {
         let col_range_start = get_column_from_reference(start_range);
         let col_range_end = get_column_from_reference(end_range);
