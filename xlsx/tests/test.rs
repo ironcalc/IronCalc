@@ -405,23 +405,31 @@ fn test_merged_cell_behaviors() {
     // loading the xlsx file containing merged cells
     let example_file_name = "tests/merged_cells.xlsx";
     let mut model = load_from_xlsx(example_file_name, "en", "UTC").unwrap();
-    
+
     model.set_user_input(0, 1, 5, "Hello".to_string());
 
     // making sure that merge cell should not get updated
-    assert_ne!(model.get_cell_content(0, 1, 5).unwrap(),"Hello");
-    assert_ne!(model.get_cell_type(0, 1, 5).unwrap(),CellType::Text);
+    assert_ne!(model.get_cell_content(0, 1, 5).unwrap(), "Hello");
+    assert_ne!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Text);
 
     model.update_cell_with_bool(0, 1, 5, true);
     assert_ne!(model.get_cell_content(0, 1, 5).unwrap(), "true");
-    assert_ne!(model.get_cell_type(0, 1, 5).unwrap(),CellType::LogicalValue);
+    assert_ne!(
+        model.get_cell_type(0, 1, 5).unwrap(),
+        CellType::LogicalValue
+    );
 
-    assert_eq!(model.update_cell_with_formula(0, 1, 5, "=SUM(A1+A2)".to_string()).err().unwrap(),"Cell row : 1, col : 5 is part of merged cell block, so update is not possible");
+    assert_eq!(
+        model
+            .update_cell_with_formula(0, 1, 5, "=SUM(A1+A2)".to_string())
+            .err()
+            .unwrap(),
+        "Cell row : 1, col : 5 is part of merged cell block, so update is not possible"
+    );
     assert_ne!(model.get_cell_content(0, 1, 5).unwrap(), "=SUM(A1+A2)");
 
     // updating merged Mother cell and verifying whether that got updated or not
     model.set_user_input(0, 1, 4, "Hello".to_string());
-    assert_eq!(model.get_cell_content(0, 1, 4).unwrap(),"Hello");
-    assert_eq!(model.get_cell_type(0, 1, 4).unwrap(),CellType::Text);
-
+    assert_eq!(model.get_cell_content(0, 1, 4).unwrap(), "Hello");
+    assert_eq!(model.get_cell_type(0, 1, 4).unwrap(), CellType::Text);
 }

@@ -8,7 +8,8 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        Cell, Col, Comment, DefinedName, MergeCell, Row, SheetData, SheetState, Table, Worksheet, WorksheetView
+        Cell, Col, Comment, DefinedName, MergeCell, Row, SheetData, SheetState, Table, Worksheet,
+        WorksheetView,
     },
 };
 use roxmltree::Node;

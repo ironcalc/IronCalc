@@ -1,5 +1,9 @@
 use crate::{
-    expressions::token::Error, language::Language, number_format::to_excel_precision_str, types::*, utils::{get_column_from_reference, get_column_number, get_row_from_reference}
+    expressions::token::Error,
+    language::Language,
+    number_format::to_excel_precision_str,
+    types::*,
+    utils::{get_column_from_reference, get_column_number, get_row_from_reference},
 };
 
 /// A CellValue is the representation of the cell content.
@@ -180,16 +184,16 @@ impl Cell {
 // Implementing methods for MergeCell struct
 
 impl MergeCell {
-
-    pub fn is_cell_part_of_merge_cell(&self, row:i32, col:i32) -> bool {
-
+    pub fn is_cell_part_of_merge_cell(&self, row: i32, col: i32) -> bool {
         // This is merge Mother cell so include this cell as part of Merge Cell
         if row as u32 == self.merge_row_range.0 && col as u32 == self.merge_col_range.0 {
-            return false
+            return false;
         }
 
-        let result : bool = if (row as u32 >= self.merge_row_range.0 && row as u32 <= self.merge_row_range.1)
-         && (col as u32 >= self.merge_col_range.0 && col as u32 <= self.merge_col_range.1) {
+        let result: bool = if (row as u32 >= self.merge_row_range.0
+            && row as u32 <= self.merge_row_range.1)
+            && (col as u32 >= self.merge_col_range.0 && col as u32 <= self.merge_col_range.1)
+        {
             true
         } else {
             false
@@ -202,14 +206,18 @@ impl MergeCell {
         self.range_ref.clone()
     }
 
-    pub fn new(start_range:&str, end_range:&str, range_ref: String) -> Self {
+    pub fn new(start_range: &str, end_range: &str, range_ref: String) -> Self {
         let col_range_start = get_column_from_reference(start_range);
         let col_range_end = get_column_from_reference(end_range);
-        let row_st : u32 = get_row_from_reference(start_range);
+        let row_st: u32 = get_row_from_reference(start_range);
         let row_ed: u32 = get_row_from_reference(end_range);
-        Self { merge_col_range: (get_column_number(&col_range_start, col_range_start.len()),
-            get_column_number(&col_range_end, col_range_end.len())), 
-            merge_row_range: (row_st,row_ed),
-            range_ref: range_ref }
+        Self {
+            merge_col_range: (
+                get_column_number(&col_range_start, col_range_start.len()),
+                get_column_number(&col_range_end, col_range_end.len()),
+            ),
+            merge_row_range: (row_st, row_ed),
+            range_ref: range_ref,
+        }
     }
 }

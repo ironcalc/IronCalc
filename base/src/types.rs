@@ -353,10 +353,10 @@ pub enum FontScheme {
 // merge_col_range : Its tuple having start and end values of columns ( ex: A1-C2 => (1,3))
 // merge row_range : Its tuple having start and end values of rows (ex: A1-C2 => (1,2))
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct MergeCell{
-    pub merge_col_range : (u32,u32),
-    pub merge_row_range : (u32,u32),
-    pub range_ref : String
+pub struct MergeCell {
+    pub merge_col_range: (u32, u32),
+    pub merge_row_range: (u32, u32),
+    pub range_ref: String,
 }
 
 impl Display for FontScheme {

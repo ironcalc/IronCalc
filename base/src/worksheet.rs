@@ -478,14 +478,13 @@ impl Worksheet {
         }
 
         //traverse through Vector of Merged Cells and return (linear search)
-        for merge_cell in &self.merge_cells{
+        for merge_cell in &self.merge_cells {
             if merge_cell.is_cell_part_of_merge_cell(row, column) {
                 return Ok(true);
             }
         }
         Ok(false)
     }
-
 
     /// It provides convenient method for user navigation in the spreadsheet by jumping to edges.
     /// Spreadsheet engines usually allow this method of navigation by using CTRL+arrows.

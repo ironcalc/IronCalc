@@ -748,9 +748,11 @@ impl Model {
         self.workbook.worksheet(sheet)?.is_empty_cell(row, column)
     }
 
-    /// Returns 'true' if the cell belongs to Merge cell 
+    /// Returns 'true' if the cell belongs to Merge cell
     pub fn is_part_of_merge_cell(&self, sheet: u32, row: i32, column: i32) -> Result<bool, String> {
-        self.workbook.worksheet(sheet)?.is_part_of_merge_cell(row, column)
+        self.workbook
+            .worksheet(sheet)?
+            .is_part_of_merge_cell(row, column)
     }
 
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
@@ -1224,12 +1226,14 @@ impl Model {
     /// * [Model::update_cell_with_bool()]
     /// * [Model::update_cell_with_formula()]
     pub fn update_cell_with_text(&mut self, sheet: u32, row: i32, column: i32, value: &str) {
-
         // Checking first whether cell we are updating is part of Merged cells
         // If so, returning with print message
         // TODO : Any better error handling ? ==> Should we start returning Result<> op ?
         if self.is_part_of_merge_cell(sheet, row, column).unwrap() {
-            print!("Cell row : {}, col : {} is part of merged cell block, so update is not possible", row, column);
+            print!(
+                "Cell row : {}, col : {} is part of merged cell block, so update is not possible",
+                row, column
+            );
             return;
         }
 
@@ -1276,12 +1280,14 @@ impl Model {
     /// * [Model::update_cell_with_text()]
     /// * [Model::update_cell_with_formula()]
     pub fn update_cell_with_bool(&mut self, sheet: u32, row: i32, column: i32, value: bool) {
-
         // Checking first whether cell we are updating is part of Merged cells
         // If so, returning with print message
         // TODO : Any better error handling ? ==> Should we start returning Result<> op ?
         if self.is_part_of_merge_cell(sheet, row, column).unwrap() {
-            print!("Cell row : {}, col : {} is part of merged cell block, so update is not possible", row, column);
+            print!(
+                "Cell row : {}, col : {} is part of merged cell block, so update is not possible",
+                row, column
+            );
             return;
         }
 
@@ -1322,15 +1328,17 @@ impl Model {
     /// * [Model::update_cell_with_bool()]
     /// * [Model::update_cell_with_formula()]
     pub fn update_cell_with_number(&mut self, sheet: u32, row: i32, column: i32, value: f64) {
-
         // Checking first whether cell we are updating is part of Merged cells
         // If so, returning with print message
         // TODO : Any better error handling ? ==> Should we start returning Result<> op ?
         if self.is_part_of_merge_cell(sheet, row, column).unwrap() {
-            print!("Cell row : {}, col : {} is part of merged cell block, so update is not possible", row, column);
+            print!(
+                "Cell row : {}, col : {} is part of merged cell block, so update is not possible",
+                row, column
+            );
             return;
         }
-    
+
         let style_index = self.get_cell_style_index(sheet, row, column);
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
             self.workbook
@@ -1377,13 +1385,18 @@ impl Model {
         column: i32,
         formula: String,
     ) -> Result<(), String> {
-    
         // Checking first whether cell we are updating is part of Merged cells
         // If so, returning with print message
         // TODO : Any better error handling ? ==> Should we start returning Result<> op ?
         if self.is_part_of_merge_cell(sheet, row, column).unwrap() {
-            print!("Cell row : {}, col : {} is part of merged cell block, so update is not possible", row, column);
-            return Err(format!("Cell row : {}, col : {} is part of merged cell block, so update is not possible", row, column));
+            print!(
+                "Cell row : {}, col : {} is part of merged cell block, so update is not possible",
+                row, column
+            );
+            return Err(format!(
+                "Cell row : {}, col : {} is part of merged cell block, so update is not possible",
+                row, column
+            ));
         }
 
         let mut style_index = self.get_cell_style_index(sheet, row, column);
@@ -1432,15 +1445,16 @@ impl Model {
     /// * [Model::update_cell_with_bool()]
     /// * [Model::update_cell_with_text()]
     pub fn set_user_input(&mut self, sheet: u32, row: i32, column: i32, value: String) {
-
         // Checking first whether cell we are updating is part of Merged cells
         // If so, returning with print message
         // TODO : Any better error handling ? ==> Should we start returning Result<> op ?
         if self.is_part_of_merge_cell(sheet, row, column).unwrap() {
-            print!("Cell row : {}, col : {} is part of merged cell block, so update is not possible", row, column);
+            print!(
+                "Cell row : {}, col : {} is part of merged cell block, so update is not possible",
+                row, column
+            );
             return;
         }
-
 
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column);
