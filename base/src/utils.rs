@@ -367,3 +367,40 @@ mod tests {
         assert!(!is_valid_hex_color("#ffffff00")); // with alpha channel
     }
 }
+
+pub(super) fn get_column_number(s: &str, str_len: usize) -> u32 {
+    // base condition
+    if str_len == 0 {
+        return 0;
+    }
+
+    let exponent = s.len() - str_len;
+    return get_column_number(s, str_len - 1)
+        + ((s.chars().nth(str_len - 1).unwrap() as u8 - 64 as u8) as u32)
+            * (26 as u32).pow(exponent as u32);
+}
+
+pub(super) fn get_column_from_reference(s: &str) -> String {
+    let characters = s.chars();
+    let mut column_vec = Vec::<char>::new();
+    for c in characters {
+        if !c.is_ascii_digit() {
+            column_vec.push(c);
+        }
+    }
+    column_vec.into_iter().collect()
+}
+
+pub(super) fn get_row_from_reference(s: &str) -> u32 {
+    let characters = s.chars();
+    let mut row_vec = Vec::<char>::new();
+    for c in characters {
+        if c.is_digit(10) {
+            row_vec.push(c);
+        }
+    }
+    let num_str: String = row_vec.into_iter().collect();
+
+    //TODO : error handling will have to be done wherever unwrap has been used
+    num_str.parse::<u32>().unwrap()
+}
