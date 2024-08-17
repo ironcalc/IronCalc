@@ -82,3 +82,15 @@ fn delete_sheet_propagates() {
     let sheets_info = model2.get_worksheets_properties();
     assert_eq!(sheets_info.len(), 1);
 }
+
+#[test]
+fn delete_last_sheet() {
+    // Deleting the last sheet, selects the previous
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.new_sheet();
+    model.new_sheet();
+    model.set_selected_sheet(2).unwrap();
+    model.delete_sheet(2).unwrap();
+
+    assert_eq!(model.get_selected_sheet(), 1);
+}
