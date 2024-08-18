@@ -1,0 +1,378 @@
+import type { BorderOptions, Model, WorksheetProperties } from "@ironcalc/wasm";
+import { styled } from "@mui/material/styles";
+import { useEffect, useRef, useState } from "react";
+import { LAST_COLUMN } from "./WorksheetCanvas/constants";
+import FormulaBar from "./formulabar";
+import Navigation from "./navigation/navigation";
+import Toolbar from "./toolbar";
+import useKeyboardNavigation from "./useKeyboardNavigation";
+import { type NavigationKey, getCellAddress } from "./util";
+import type { WorkbookState } from "./workbookState";
+import Worksheet from "./worksheet";
+
+const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
+  const { model, workbookState } = props;
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Calling `setRedrawId((id) => id + 1);` forces a redraw
+  // This is needed because `model` can change without React being aware of it
+  const setRedrawId = useState(0)[1];
+  const info = model
+    .getWorksheetsProperties()
+    .map(({ name, color, sheet_id }: WorksheetProperties) => {
+      return { name, color: color ? color : "#FFF", sheetId: sheet_id };
+    });
+
+  const onRedo = () => {
+    model.redo();
+    setRedrawId((id) => id + 1);
+  };
+
+  const onUndo = () => {
+    model.undo();
+    setRedrawId((id) => id + 1);
+  };
+
+  const updateRangeStyle = (stylePath: string, value: string) => {
+    const {
+      sheet,
+      range: [rowStart, columnStart, rowEnd, columnEnd],
+    } = model.getSelectedView();
+    const row = Math.min(rowStart, rowEnd);
+    const column = Math.min(columnStart, columnEnd);
+    const range = {
+      sheet,
+      row,
+      column,
+      width: Math.abs(columnEnd - columnStart) + 1,
+      height: Math.abs(rowEnd - rowStart) + 1,
+    };
+    model.updateRangeStyle(range, stylePath, value);
+    setRedrawId((id) => id + 1);
+  };
+
+  const onToggleUnderline = (value: boolean) => {
+    updateRangeStyle("font.u", `${value}`);
+  };
+
+  const onToggleItalic = (value: boolean) => {
+    updateRangeStyle("font.i", `${value}`);
+  };
+
+  const onToggleBold = (value: boolean) => {
+    updateRangeStyle("font.b", `${value}`);
+  };
+
+  const onToggleStrike = (value: boolean) => {
+    updateRangeStyle("font.strike", `${value}`);
+  };
+
+  const onToggleHorizontalAlign = (value: string) => {
+    updateRangeStyle("alignment.horizontal", value);
+  };
+
+  const onToggleVerticalAlign = (value: string) => {
+    updateRangeStyle("alignment.vertical", value);
+  };
+
+  const onTextColorPicked = (hex: string) => {
+    updateRangeStyle("font.color", hex);
+  };
+
+  const onFillColorPicked = (hex: string) => {
+    updateRangeStyle("fill.fg_color", hex);
+  };
+
+  const onNumberFormatPicked = (numberFmt: string) => {
+    updateRangeStyle("num_fmt", numberFmt);
+  };
+
+  const onCopyStyles = () => {
+    const {
+      sheet,
+      range: [rowStart, columnStart, rowEnd, columnEnd],
+    } = model.getSelectedView();
+    const row1 = Math.min(rowStart, rowEnd);
+    const column1 = Math.min(columnStart, columnEnd);
+    const row2 = Math.max(rowStart, rowEnd);
+    const column2 = Math.max(columnStart, columnEnd);
+
+    const styles = [];
+    for (let row = row1; row <= row2; row++) {
+      const styleRow = [];
+      for (let column = column1; column <= column2; column++) {
+        styleRow.push(model.getCellStyle(sheet, row, column));
+      }
+      styles.push(styleRow);
+    }
+    workbookState.setCopyStyles(styles);
+    // FIXME: This is so that the cursor indicates there are styles to be pasted
+    const el = rootRef.current?.getElementsByClassName("sheet-container")[0];
+    if (el) {
+      (el as HTMLElement).style.cursor =
+        `url('data:image/svg+xml;utf8,<svg data-v-56bd7dfc="" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paintbrush-vertical"><path d="M10 2v2"></path><path d="M14 2v4"></path><path d="M17 2a1 1 0 0 1 1 1v9H6V3a1 1 0 0 1 1-1z"></path><path d="M6 12a1 1 0 0 0-1 1v1a2 2 0 0 0 2 2h2a1 1 0 0 1 1 1v2.9a2 2 0 1 0 4 0V17a1 1 0 0 1 1-1h2a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1"></path></svg>'), auto`;
+    }
+  };
+
+  // FIXME: I *think* we should have only one on onKeyPressed function that goes to
+  // the Rust end
+  const { onKeyDown } = useKeyboardNavigation({
+    onCellsDeleted: (): void => {
+      const {
+        sheet,
+        range: [rowStart, columnStart, rowEnd, columnEnd],
+      } = model.getSelectedView();
+      const row = Math.min(rowStart, rowEnd);
+      const column = Math.min(columnStart, columnEnd);
+
+      const width = Math.abs(columnEnd - columnStart) + 1;
+      const height = Math.abs(rowEnd - rowStart) + 1;
+      model.rangeClearContents(
+        sheet,
+        row,
+        column,
+        row + height,
+        column + width,
+      );
+      setRedrawId((id) => id + 1);
+    },
+    onExpandAreaSelectedKeyboard: (
+      key: "ArrowRight" | "ArrowLeft" | "ArrowUp" | "ArrowDown",
+    ): void => {
+      model.onExpandSelectedRange(key);
+      setRedrawId((id) => id + 1);
+    },
+    onEditKeyPressStart: (initText: string): void => {
+      console.log(initText);
+      throw new Error("Function not implemented.");
+    },
+    onCellEditStart: (): void => {
+      throw new Error("Function not implemented.");
+    },
+    onBold: () => {
+      const { sheet, row, column } = model.getSelectedView();
+      const value = !model.getCellStyle(sheet, row, column).font.b;
+      onToggleBold(!value);
+    },
+    onItalic: () => {
+      const { sheet, row, column } = model.getSelectedView();
+      const value = !model.getCellStyle(sheet, row, column).font.i;
+      onToggleItalic(!value);
+    },
+    onUnderline: () => {
+      const { sheet, row, column } = model.getSelectedView();
+      const value = !model.getCellStyle(sheet, row, column).font.u;
+      onToggleUnderline(!value);
+    },
+    onNavigationToEdge: (direction: NavigationKey): void => {
+      console.log(direction);
+      throw new Error("Function not implemented.");
+    },
+    onPageDown: (): void => {
+      model.onPageDown();
+      setRedrawId((id) => id + 1);
+    },
+    onPageUp: (): void => {
+      model.onPageUp();
+      setRedrawId((id) => id + 1);
+    },
+    onArrowDown: (): void => {
+      model.onArrowDown();
+      setRedrawId((id) => id + 1);
+    },
+    onArrowUp: (): void => {
+      model.onArrowUp();
+      setRedrawId((id) => id + 1);
+    },
+    onArrowLeft: (): void => {
+      model.onArrowLeft();
+      setRedrawId((id) => id + 1);
+    },
+    onArrowRight: (): void => {
+      model.onArrowRight();
+      setRedrawId((id) => id + 1);
+    },
+    onKeyHome: (): void => {
+      const view = model.getSelectedView();
+      const cell = model.getSelectedCell();
+      model.setSelectedCell(cell[1], 1);
+      model.setTopLeftVisibleCell(view.top_row, 1);
+      setRedrawId((id) => id + 1);
+    },
+    onKeyEnd: (): void => {
+      const view = model.getSelectedView();
+      const cell = model.getSelectedCell();
+      model.setSelectedCell(cell[1], LAST_COLUMN);
+      model.setTopLeftVisibleCell(view.top_row, LAST_COLUMN - 5);
+      setRedrawId((id) => id + 1);
+    },
+    onUndo: (): void => {
+      model.undo();
+      setRedrawId((id) => id + 1);
+    },
+    onRedo: (): void => {
+      model.redo();
+      setRedrawId((id) => id + 1);
+    },
+    onNextSheet: (): void => {
+      const nextSheet = model.getSelectedSheet() + 1;
+      if (nextSheet >= model.getWorksheetsProperties().length) {
+        model.setSelectedSheet(0);
+      } else {
+        model.setSelectedSheet(nextSheet);
+      }
+    },
+    onPreviousSheet: (): void => {
+      const nextSheet = model.getSelectedSheet() - 1;
+      if (nextSheet < 0) {
+        model.setSelectedSheet(model.getWorksheetsProperties().length - 1);
+      } else {
+        model.setSelectedSheet(nextSheet);
+      }
+    },
+    root: rootRef,
+  });
+
+  useEffect(() => {
+    if (!rootRef.current) {
+      return;
+    }
+    rootRef.current.focus();
+  });
+
+  const {
+    sheet,
+    row,
+    column,
+    range: [rowStart, columnStart, rowEnd, columnEnd],
+  } = model.getSelectedView();
+
+  const cellAddress = getCellAddress(
+    { rowStart, rowEnd, columnStart, columnEnd },
+    { row, column },
+  );
+  const formulaValue = model.getCellContent(sheet, row, column);
+
+  const style = model.getCellStyle(sheet, row, column);
+
+  return (
+    <Container ref={rootRef} onKeyDown={onKeyDown} tabIndex={0}>
+      <Toolbar
+        canUndo={model.canUndo()}
+        canRedo={model.canRedo()}
+        onRedo={onRedo}
+        onUndo={onUndo}
+        onToggleUnderline={onToggleUnderline}
+        onToggleBold={onToggleBold}
+        onToggleItalic={onToggleItalic}
+        onToggleStrike={onToggleStrike}
+        onToggleHorizontalAlign={onToggleHorizontalAlign}
+        onToggleVerticalAlign={onToggleVerticalAlign}
+        onCopyStyles={onCopyStyles}
+        onTextColorPicked={onTextColorPicked}
+        onFillColorPicked={onFillColorPicked}
+        onNumberFormatPicked={onNumberFormatPicked}
+        onBorderChanged={(border: BorderOptions): void => {
+          const {
+            sheet,
+            range: [rowStart, columnStart, rowEnd, columnEnd],
+          } = model.getSelectedView();
+          const row = Math.min(rowStart, rowEnd);
+          const column = Math.min(columnStart, columnEnd);
+
+          const width = Math.abs(columnEnd - columnStart) + 1;
+          const height = Math.abs(rowEnd - rowStart) + 1;
+          const borderArea = {
+            type: border.border,
+            item: border,
+          };
+          model.setAreaWithBorder(
+            { sheet, row, column, width, height },
+            borderArea,
+          );
+          setRedrawId((id) => id + 1);
+        }}
+        fillColor={style.fill.fg_color || "#FFF"}
+        fontColor={style.font.color}
+        bold={style.font.b}
+        underline={style.font.u}
+        italic={style.font.i}
+        strike={style.font.strike}
+        horizontalAlign={
+          style.alignment ? style.alignment.horizontal : "general"
+        }
+        verticalAlign={style.alignment ? style.alignment.vertical : "center"}
+        canEdit={true}
+        numFmt={style.num_fmt}
+        showGridLines={model.getShowGridLines(sheet)}
+        onToggleShowGridLines={(show) => {
+          model.setShowGridLines(sheet, show);
+          setRedrawId((id) => id + 1);
+        }}
+      />
+      <FormulaBar
+        cellAddress={cellAddress}
+        formulaValue={formulaValue}
+        onChange={(value) => {
+          model.setUserInput(sheet, row, column, value);
+          setRedrawId((id) => id + 1);
+        }}
+      />
+      <Worksheet
+        model={model}
+        workbookState={workbookState}
+        refresh={(): void => {
+          setRedrawId((id) => id + 1);
+        }}
+      />
+      <Navigation
+        sheets={info}
+        selectedIndex={model.getSelectedSheet()}
+        onSheetSelected={(sheet: number): void => {
+          model.setSelectedSheet(sheet);
+          setRedrawId((value) => value + 1);
+        }}
+        onAddBlankSheet={(): void => {
+          model.newSheet();
+          setRedrawId((value) => value + 1);
+        }}
+        onSheetColorChanged={(hex: string): void => {
+          try {
+            model.setSheetColor(model.getSelectedSheet(), hex);
+            setRedrawId((value) => value + 1);
+          } catch (e) {
+            // TODO: Show a proper modal dialog
+            alert(`${e}`);
+          }
+        }}
+        onSheetRenamed={(name: string): void => {
+          try {
+            model.renameSheet(model.getSelectedSheet(), name);
+            setRedrawId((value) => value + 1);
+          } catch (e) {
+            // TODO: Show a proper modal dialog
+            alert(`${e}`);
+          }
+        }}
+        onSheetDeleted={(): void => {
+          const selectedSheet = model.getSelectedSheet();
+          model.deleteSheet(selectedSheet);
+          setRedrawId((value) => value + 1);
+        }}
+      />
+    </Container>
+  );
+};
+
+const Container = styled("div")`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: ${({ theme }) => theme.typography.fontFamily};
+
+  &:focus {
+    outline: none;
+  }
+`;
+
+export default Workbook;

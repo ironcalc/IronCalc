@@ -93,6 +93,8 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         0,
         WorkbookView {
             sheet: selected_sheet,
+            window_width: 800,
+            window_height: 600,
         },
     );
     Ok(Workbook {
@@ -110,8 +112,6 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         views,
     })
 }
-
-// Public methods
 
 /// Imports a file from disk into an internal representation
 fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, XlsxError> {
@@ -134,6 +134,7 @@ pub fn load_from_xlsx(file_name: &str, locale: &str, tz: &str) -> Result<Model, 
 pub fn load_from_icalc(file_name: &str) -> Result<Model, XlsxError> {
     let contents = fs::read(file_name)
         .map_err(|e| XlsxError::IO(format!("Could not extract workbook name: {}", e)))?;
-    let workbook: Workbook = bitcode::decode(&contents).unwrap();
+    let workbook: Workbook = bitcode::decode(&contents)
+        .map_err(|e| XlsxError::IO(format!("Failed to decode file: {}", e)))?;
     Model::from_workbook(workbook).map_err(XlsxError::Workbook)
 }

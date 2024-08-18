@@ -6,6 +6,24 @@ export interface Area {
   height: number;
 }
 
+export enum BorderType {
+  All = "All",
+  Inner = "Inner",
+  Outer = "Outer",
+  Top = "Top",
+  Right = "Right",
+  Bottom = "Bottom",
+  Left = "Left",
+  CenterH = "CenterH",
+  CenterV = "CenterV",
+  None = "None",
+}
+
+export interface BorderArea {
+  item: BorderItem;
+  type: BorderType;
+}
+
 type ErrorType =
   | "REF"
   | "NAME"
@@ -115,20 +133,6 @@ interface CellStyleFont {
   scheme: string;
 }
 
-export enum BorderType {
-  BorderAll,
-  BorderInner,
-  BorderCenterH,
-  BorderCenterV,
-  BorderOuter,
-  BorderNone,
-  BorderTop,
-  BorderRight,
-  BorderBottom,
-  BorderLeft,
-  None,
-}
-
 export interface BorderOptions {
   color: string;
   style: BorderStyle;
@@ -191,4 +195,13 @@ export interface CellStyle {
   border: CellStyleBorder;
   num_fmt: string;
   alignment?: Alignment;
+}
+
+export interface SelectedView {
+  sheet: number;
+  row: number;
+  column: number;
+  range: [number, number, number, number];
+  top_row: number;
+  left_column: number;
 }
