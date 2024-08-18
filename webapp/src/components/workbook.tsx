@@ -303,7 +303,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }
         verticalAlign={style.alignment ? style.alignment.vertical : "center"}
         canEdit={true}
-        numFmt={""}
+        numFmt={style.num_fmt}
         showGridLines={model.getShowGridLines(sheet)}
         onToggleShowGridLines={(show) => {
           model.setShowGridLines(sheet, show);
