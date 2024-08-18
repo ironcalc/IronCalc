@@ -128,7 +128,7 @@ https://playground.ironcalc.com
 
 # Collaborators needed!. Call to action
 
-We don't have a vibrant community just yet. This is the very stages of the project. But if you are passionate about code with high standards and no compromises, if you are looking for a project with high impact, if you are interested in a better, more open infrastructure for spreadsheets, whether you are a developer (rust, python, TypeScript, electron/tauri/anything else native app, React, you name it), a designer (we need a logo desperately!), an Excel power user who wants features, a business looking to integrate a MIT/Apache licensed spreadsheet in your own SaaS application join us!
+We don't have a vibrant community just yet. This is the very stages of the project. But if you are passionate about code with high standards and no compromises, if you are looking for a project with high impact, if you are interested in a better, more open infrastructure for spreadsheets, whether you are a developer (rust, python, TypeScript, electron/tauri/anything else native app, React, you name it), a designer, an Excel power user who wants features, a business looking to integrate a MIT/Apache licensed spreadsheet in your own SaaS application join us!
 
 The best place to start will be to join or [discord channel](https://discord.gg/zZYWfh3RHJ) or send us an email at hello@ironcalc.com.
 
