@@ -24,20 +24,17 @@ function App() {
           const model_bytes = new Uint8Array(
             await (await fetch(`./${modelName}`)).arrayBuffer(),
           );
-          const _model = Model.from_bytes(model_bytes);
-          if (!model) setModel(_model);
+          setModel(Model.from_bytes(model_bytes));
         } catch (e) {
-          const _model = new Model("en", "UTC");
-          if (!model) setModel(_model);
+          setModel(new Model("en", "UTC"));
         }
       } else {
-        const _model = new Model("en", "UTC");
-        if (!model) setModel(_model);
+        setModel(new Model("en", "UTC"));
       }
-      if (!workbookState) setWorkbookState(new WorkbookState());
+      setWorkbookState(new WorkbookState());
     }
     start();
-  }, [model, workbookState]);
+  }, []);
 
   if (!model || !workbookState) {
     return <Loading>Loading</Loading>;
