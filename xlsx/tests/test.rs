@@ -1,9 +1,10 @@
+use std::io::Read;
 use std::{env, fs, io};
 use uuid::Uuid;
 
 use ironcalc::compare::{test_file, test_load_and_saving};
 use ironcalc::export::save_to_xlsx;
-use ironcalc::import::{load_from_icalc, load_from_xlsx};
+use ironcalc::import::{load_from_icalc, load_from_xlsx, load_from_xlsx_bytes};
 use ironcalc_base::types::{HorizontalAlignment, VerticalAlignment};
 use ironcalc_base::Model;
 
@@ -46,6 +47,16 @@ fn test_example() {
     let model2 = load_from_icalc("tests/example.ic").unwrap();
     let s = bitcode::encode(&model2.workbook);
     assert_eq!(workbook, model2.workbook, "{:?}", s);
+}
+
+#[test]
+fn test_load_from_xlsx_bytes() {
+    let file_path = std::path::Path::new("tests/example.xlsx");
+    let mut file = fs::File::open(file_path).unwrap();
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes).unwrap();
+    let workbook = load_from_xlsx_bytes(&bytes, "home", "en", "UTC").unwrap();
+    assert_eq!(workbook.views[&0].sheet, 7);
 }
 
 #[test]

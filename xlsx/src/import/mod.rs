@@ -10,7 +10,7 @@ mod worksheets;
 use std::{
     collections::HashMap,
     fs,
-    io::{BufReader, Read},
+    io::{BufReader, Cursor, Read},
 };
 
 use roxmltree::Node;
@@ -113,7 +113,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     })
 }
 
-/// Imports a file from disk into an internal representation
+// Imports a file from disk into an internal representation
 fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, XlsxError> {
     let file_path = std::path::Path::new(file_name);
     let file = fs::File::open(file_path)?;
@@ -126,11 +126,26 @@ fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, 
     load_xlsx_from_reader(name, reader, locale, tz)
 }
 
+/// Loads a [Workbook] from the bytes of an xlsx file.
+/// This is useful, for instance, when bytes are transferred over the network
+pub fn load_from_xlsx_bytes(
+    bytes: &[u8],
+    name: &str,
+    locale: &str,
+    tz: &str,
+) -> Result<Workbook, XlsxError> {
+    let cursor = Cursor::new(bytes);
+    let reader = BufReader::new(cursor);
+    load_xlsx_from_reader(name.to_string(), reader, locale, tz)
+}
+
+/// Loads a [Model] from an xlsx file
 pub fn load_from_xlsx(file_name: &str, locale: &str, tz: &str) -> Result<Model, XlsxError> {
     let workbook = load_from_excel(file_name, locale, tz)?;
     Model::from_workbook(workbook).map_err(XlsxError::Workbook)
 }
 
+/// Loads a [Model] from an `ic` file (a file in the IronCalc internal representation)
 pub fn load_from_icalc(file_name: &str) -> Result<Model, XlsxError> {
     let contents = fs::read(file_name)
         .map_err(|e| XlsxError::IO(format!("Could not extract workbook name: {}", e)))?;
