@@ -1,6 +1,7 @@
 #root {
   position: absolute;
-  inset: 10px;
+  inset: 0px;
+  margin: 10px;
   border: 1px solid #aaa;
   border-radius: 4px;
 }

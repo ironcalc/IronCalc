@@ -11,6 +11,7 @@ function App() {
   const [workbookState, setWorkbookState] = useState<WorkbookState | null>(
     null,
   );
+
   useEffect(() => {
     async function start() {
       await init();
@@ -42,6 +43,7 @@ function App() {
 
   // We could use context for model, but the problem is that it should initialized to null.
   // Passing the property down makes sure it is always defined.
+
   return <Workbook model={model} workbookState={workbookState} />;
 }
 

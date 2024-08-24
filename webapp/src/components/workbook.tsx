@@ -143,11 +143,31 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       setRedrawId((id) => id + 1);
     },
     onEditKeyPressStart: (initText: string): void => {
-      console.log(initText);
-      throw new Error("Function not implemented.");
+      const { sheet, row, column } = model.getSelectedView();
+      workbookState.setEditingCell({
+        sheet,
+        row,
+        column,
+        text: initText,
+        cursor: 0,
+        focus: "cell",
+        activeRanges: [],
+      });
+      setRedrawId((id) => id + 1);
     },
     onCellEditStart: (): void => {
-      throw new Error("Function not implemented.");
+      const { sheet, row, column } = model.getSelectedView();
+      const text = model.getCellContent(sheet, row, column);
+      workbookState.setEditingCell({
+        sheet,
+        row,
+        column,
+        text,
+        cursor: text.length,
+        focus: "cell",
+        activeRanges: [],
+      });
+      setRedrawId((id) => id + 1);
     },
     onBold: () => {
       const { sheet, row, column } = model.getSelectedView();
@@ -237,7 +257,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     if (!rootRef.current) {
       return;
     }
-    rootRef.current.focus();
+    if (!workbookState.getEditingCell()) {
+      rootRef.current.focus();
+    }
   });
 
   const {
@@ -251,12 +273,25 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     { rowStart, rowEnd, columnStart, columnEnd },
     { row, column },
   );
-  const formulaValue = model.getCellContent(sheet, row, column);
+  const formulaValue = (() => {
+    const cell = workbookState.getEditingCell();
+    if (cell) {
+      return cell.text;
+    }
+    return model.getCellContent(sheet, row, column);
+  })();
 
   const style = model.getCellStyle(sheet, row, column);
 
   return (
-    <Container ref={rootRef} onKeyDown={onKeyDown} tabIndex={0}>
+    <Container
+      ref={rootRef}
+      onKeyDown={onKeyDown}
+      tabIndex={0}
+      onClick={() => {
+        rootRef.current?.focus();
+      }}
+    >
       <Toolbar
         canUndo={model.canUndo()}
         canRedo={model.canRedo()}
@@ -313,10 +348,15 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       <FormulaBar
         cellAddress={cellAddress}
         formulaValue={formulaValue}
-        onChange={(value) => {
-          model.setUserInput(sheet, row, column, value);
+        onChange={() => {
+          setRedrawId((id) => id + 1);
+          rootRef.current?.focus();
+        }}
+        onTextUpdated={() => {
           setRedrawId((id) => id + 1);
         }}
+        model={model}
+        workbookState={workbookState}
       />
       <Worksheet
         model={model}
@@ -325,6 +365,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setRedrawId((id) => id + 1);
         }}
       />
+
       <Navigation
         sheets={info}
         selectedIndex={model.getSelectedSheet()}

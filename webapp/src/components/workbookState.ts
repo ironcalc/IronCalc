@@ -1,3 +1,18 @@
+// This are properties of the workbook that are not permanently stored
+// They only happen at 'runtime' while the workbook is being used:
+//
+// * What are we editing
+// * Are we copying styles?
+// * Are we extending a cell? (by pulling the cell outline handle down, for instance)
+//
+// Editing the cell is the most complex operation.
+//
+// * What cell are we editing?
+// * Are we doing that from the cell editor or the formula editor?
+// * What is the text content of the cell right now
+// * The active ranges can technically be computed from the text.
+//   Those are the ranges or cells that appear in the formula
+
 import type { CellStyle } from "@ironcalc/wasm";
 
 export enum AreaType {
@@ -15,15 +30,44 @@ export interface Area {
   columnEnd: number;
 }
 
+// Active ranges are ranges in the sheet that are highlighted when editing a formula
+export interface ActiveRange {
+  sheet: number;
+  rowStart: number;
+  rowEnd: number;
+  columnStart: number;
+  columnEnd: number;
+  color: string;
+}
+
+type Focus = "cell" | "formula-bar";
+
+// The cell that we are editing
+export interface EditingCell {
+  sheet: number;
+  row: number;
+  column: number;
+  // raw text in the editor
+  text: string;
+  // position of the cursor
+  cursor: number;
+  focus: Focus;
+  activeRanges: ActiveRange[];
+}
+
+// Those are styles that are copied
 type AreaStyles = CellStyle[][];
 
 export class WorkbookState {
   private extendToArea: Area | null;
   private copyStyles: AreaStyles | null;
+  private cell: EditingCell | null;
 
   constructor() {
+    // the extendTo area is the area we are covering
     this.extendToArea = null;
     this.copyStyles = null;
+    this.cell = null;
   }
 
   getExtendToArea(): Area | null {
@@ -44,5 +88,42 @@ export class WorkbookState {
 
   getCopyStyles(): AreaStyles | null {
     return this.copyStyles;
+  }
+
+  setActiveRanges(activeRanges: ActiveRange[]) {
+    if (!this.cell) {
+      return;
+    }
+    this.cell.activeRanges = activeRanges;
+  }
+
+  getActiveRanges(): ActiveRange[] {
+    return this.cell?.activeRanges || [];
+  }
+
+  getEditingCell(): EditingCell | null {
+    return this.cell;
+  }
+
+  setEditingCell(cell: EditingCell) {
+    this.cell = cell;
+  }
+
+  clearEditingCell() {
+    this.cell = null;
+  }
+
+  isCellEditorActive(): boolean {
+    if (this.cell) {
+      return this.cell.focus === "cell";
+    }
+    return false;
+  }
+
+  isFormulaEditorActive(): boolean {
+    if (this.cell) {
+      return this.cell.focus === "formula-bar";
+    }
+    return false;
   }
 }
