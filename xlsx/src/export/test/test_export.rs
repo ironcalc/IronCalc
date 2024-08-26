@@ -132,7 +132,7 @@ fn test_named_styles() {
     style.font.b = true;
     style.font.i = true;
     assert!(model.set_cell_style(0, 1, 1, &style).is_ok());
-    let bold_style_index = model.get_cell_style_index(0, 1, 1);
+    let bold_style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let e = model
         .workbook
         .styles

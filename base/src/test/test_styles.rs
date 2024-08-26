@@ -30,18 +30,21 @@ fn test_named_styles() {
     let mut style = model.get_style_for_cell(0, 1, 1);
     style.font.b = true;
     assert!(model.set_cell_style(0, 1, 1, &style).is_ok());
-    let bold_style_index = model.get_cell_style_index(0, 1, 1);
+    let bold_style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let e = model
         .workbook
         .styles
         .add_named_cell_style("bold", bold_style_index);
     assert!(e.is_ok());
     model._set("A2", "420");
-    let a2_style_index = model.get_cell_style_index(0, 2, 1);
+    let a2_style_index = model.get_cell_style_index(0, 2, 1).unwrap();
     assert!(a2_style_index != bold_style_index);
     let e = model.set_cell_style_by_name(0, 2, 1, "bold");
     assert!(e.is_ok());
-    assert_eq!(model.get_cell_style_index(0, 2, 1), bold_style_index);
+    assert_eq!(
+        model.get_cell_style_index(0, 2, 1).unwrap(),
+        bold_style_index
+    );
 }
 
 #[test]

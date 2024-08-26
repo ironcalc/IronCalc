@@ -13,6 +13,7 @@ mod test_on_expand_selected_range;
 mod test_on_paste_styles;
 mod test_rename_sheet;
 mod test_row_column;
+mod test_set_functions_error_handling;
 mod test_styles;
 mod test_to_from_bytes;
 mod test_undo_redo;

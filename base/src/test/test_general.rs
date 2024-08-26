@@ -235,14 +235,14 @@ fn test_get_cell_style_index() {
     let mut model = new_empty_model();
 
     let mut style = model.get_style_for_cell(0, 1, 1);
-    let style_index = model.get_cell_style_index(0, 1, 1);
+    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     assert_eq!(style_index, 0);
     assert!(!style.font.b);
 
     style.font.b = true;
     assert!(model.set_cell_style(0, 1, 1, &style).is_ok());
 
-    let style_index = model.get_cell_style_index(0, 1, 1);
+    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     assert_eq!(style_index, 1);
 }
 
@@ -253,15 +253,15 @@ fn test_model_set_cells_with_values_styles() {
     model.set_user_input(0, 1, 1, "21".to_string()); // A1
     model.set_user_input(0, 2, 1, "2".to_string()); // A2
 
-    let style_index = model.get_cell_style_index(0, 1, 1);
+    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     assert_eq!(style_index, 0);
     let mut style = model.get_style_for_cell(0, 1, 1);
     style.font.b = true;
     assert!(model.set_cell_style(0, 1, 1, &style).is_ok());
     assert!(model.set_cell_style(0, 2, 1, &style).is_ok());
-    let style_index = model.get_cell_style_index(0, 1, 1);
+    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     assert_eq!(style_index, 1);
-    let style_index = model.get_cell_style_index(0, 2, 1);
+    let style_index = model.get_cell_style_index(0, 2, 1).unwrap();
     assert_eq!(style_index, 1);
 
     model.update_cell_with_number(0, 1, 2, 1.0);
@@ -270,9 +270,9 @@ fn test_model_set_cells_with_values_styles() {
     model.evaluate();
 
     // Styles are not modified
-    let style_index = model.get_cell_style_index(0, 1, 1);
+    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     assert_eq!(style_index, 1);
-    let style_index = model.get_cell_style_index(0, 2, 1);
+    let style_index = model.get_cell_style_index(0, 2, 1).unwrap();
     assert_eq!(style_index, 1);
 }
 

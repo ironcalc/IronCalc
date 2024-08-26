@@ -27,4 +27,11 @@ impl Workbook {
             .get_mut(worksheet_index as usize)
             .ok_or_else(|| "Invalid sheet index".to_string())
     }
+
+    pub fn is_valid_worksheet_index(&self, worksheet_index: u32) -> bool {
+        match self.worksheet(worksheet_index) {
+            Ok(worksheet_inst) => true,
+            Err(err) => false,
+        }
+    }
 }
