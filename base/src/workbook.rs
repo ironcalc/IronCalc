@@ -30,8 +30,8 @@ impl Workbook {
 
     pub fn is_valid_worksheet_index(&self, worksheet_index: u32) -> bool {
         match self.worksheet(worksheet_index) {
-            Ok(worksheet_inst) => true,
-            Err(err) => false,
+            Ok(_) => true,
+            Err(_) => false,
         }
     }
 }

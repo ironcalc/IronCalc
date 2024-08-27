@@ -1,7 +1,7 @@
 #![deny(missing_docs)]
 
+use std::collections::HashMap;
 use std::vec::Vec;
-use std::{collections::HashMap, fmt::format};
 
 use crate::{
     calc_result::{CalcResult, Range},
@@ -1285,12 +1285,7 @@ impl Model {
         } else {
             style_index
         };
-        let worksheet = &mut self.workbook.worksheets[sheet as usize];
-        // validate row and column arg
-        if !is_valid_row(row) || !is_valid_column_number(column) {
-            return Err(format!("incorrect row or column"));
-        }
-        worksheet.set_cell_with_boolean(row, column, value, new_style_index);
+        self.set_cell_with_boolean(sheet, row, column, value, new_style_index)?;
         return Ok(());
     }
 
@@ -1577,6 +1572,28 @@ impl Model {
                 worksheet.set_cell_with_string(row, column, string_index as i32, style);
             }
         }
+        Ok(())
+    }
+
+    fn set_cell_with_boolean(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: bool,
+        style: i32,
+    ) -> Result<(), String> {
+        // validate worksheet
+        if !self.workbook.is_valid_worksheet_index(sheet) {
+            return Err(format!("Incorrect sheet value"));
+        }
+        // validate row and column arg
+        if !is_valid_row(row) || !is_valid_column_number(column) {
+            return Err(format!("incorrect row or column"));
+        }
+        let worksheets = &mut self.workbook.worksheets;
+        let worksheet = &mut worksheets[sheet as usize];
+        worksheet.set_cell_with_boolean(row, column, value, style);
         Ok(())
     }
 
