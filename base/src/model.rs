@@ -7,19 +7,15 @@ use crate::{
     calc_result::{CalcResult, Range},
     cell::CellValue,
     constants::{self, LAST_COLUMN, LAST_ROW},
-    expressions::token::{Error, OpCompare, OpProduct, OpSum, OpUnary},
-    expressions::{
-        parser::move_formula::{move_formula, MoveContext},
-        token::get_error_by_name,
-        types::*,
-        utils::{self, is_valid_row},
-    },
     expressions::{
         parser::{
+            move_formula::{move_formula, MoveContext},
             stringify::{to_rc_format, to_string},
             Node, Parser,
         },
-        utils::is_valid_column_number,
+        token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
+        types::*,
+        utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
         format::{format_number, parse_formatted_number},
@@ -1453,9 +1449,6 @@ impl Model {
                     self.set_cell_style(sheet, row, column, &style)?
                 }
             } else {
-                let worksheets = &mut self.workbook.worksheets;
-                let worksheet = &mut worksheets[sheet as usize]; // can this panic ?
-
                 // The list of currencies is '$', '€' and the local currency
                 let mut currencies = vec!["$", "€"];
                 let currency = &self.locale.currency.symbol;
@@ -1477,19 +1470,22 @@ impl Model {
                                 .get_style_with_format(new_style_index, &num_fmt);
                         }
                     }
-                    worksheet.set_cell_with_number(row, column, v, new_style_index);
+                    let worksheet = self.workbook.worksheet_mut(sheet)?;
+                    worksheet.set_cell_with_number(row, column, v, new_style_index)?;
                     return Ok(());
                 }
                 // We try to parse as boolean
                 if let Ok(v) = value.to_lowercase().parse::<bool>() {
-                    worksheet.set_cell_with_boolean(row, column, v, new_style_index);
+                    let worksheet = self.workbook.worksheet_mut(sheet)?;
+                    worksheet.set_cell_with_boolean(row, column, v, new_style_index)?;
                     return Ok(());
                 }
                 // Check is it is error value
                 let upper = value.to_uppercase();
+                let worksheet = self.workbook.worksheet_mut(sheet)?;
                 match get_error_by_name(&upper, &self.language) {
                     Some(error) => {
-                        worksheet.set_cell_with_error(row, column, error, new_style_index);
+                        worksheet.set_cell_with_error(row, column, error, new_style_index)?;
                     }
                     None => {
                         self.set_cell_with_string(sheet, row, column, &value, new_style_index)?;
@@ -1538,7 +1534,7 @@ impl Model {
             self.parsed_formulas[sheet as usize].push(parsed_formula);
             formula_index = (shared_formulas.len() as i32) - 1;
         }
-        worksheet.set_cell_with_formula(row, column, formula_index, style);
+        worksheet.set_cell_with_formula(row, column, formula_index, style)?;
         Ok(formula_index)
     }
 
@@ -1550,26 +1546,25 @@ impl Model {
         value: &str,
         style: i32,
     ) -> Result<(), String> {
-        // validate worksheet
-        if !self.workbook.is_valid_worksheet_index(sheet) {
-            return Err(format!("Incorrect sheet value"));
-        }
-
-        // validate row and column arg
-        if !is_valid_row(row) || !is_valid_column_number(column) {
-            return Err(format!("Incorrect row or column"));
-        }
-        let worksheets = &mut self.workbook.worksheets;
-        let worksheet = &mut worksheets[sheet as usize];
         match self.shared_strings.get(value) {
             Some(string_index) => {
-                worksheet.set_cell_with_string(row, column, *string_index as i32, style);
+                self.workbook.worksheet_mut(sheet)?.set_cell_with_string(
+                    row,
+                    column,
+                    *string_index as i32,
+                    style,
+                )?;
             }
             None => {
                 let string_index = self.workbook.shared_strings.len();
                 self.workbook.shared_strings.push(value.to_string());
                 self.shared_strings.insert(value.to_string(), string_index);
-                worksheet.set_cell_with_string(row, column, string_index as i32, style);
+                self.workbook.worksheet_mut(sheet)?.set_cell_with_string(
+                    row,
+                    column,
+                    string_index as i32,
+                    style,
+                )?;
             }
         }
         Ok(())
@@ -1583,17 +1578,10 @@ impl Model {
         value: bool,
         style: i32,
     ) -> Result<(), String> {
-        // validate worksheet
-        if !self.workbook.is_valid_worksheet_index(sheet) {
-            return Err(format!("Incorrect sheet value"));
-        }
-        // validate row and column arg
-        if !is_valid_row(row) || !is_valid_column_number(column) {
-            return Err(format!("incorrect row or column"));
-        }
-        let worksheets = &mut self.workbook.worksheets;
-        let worksheet = &mut worksheets[sheet as usize];
-        worksheet.set_cell_with_boolean(row, column, value, style);
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_cell_with_boolean(row, column, value, style)?;
+
         Ok(())
     }
 
@@ -1605,17 +1593,9 @@ impl Model {
         value: f64,
         style: i32,
     ) -> Result<(), String> {
-        // validate worksheet
-        if !self.workbook.is_valid_worksheet_index(sheet) {
-            return Err(format!("Incorrect sheet value"));
-        }
-        // validate row and column arg
-        if !is_valid_row(row) || !is_valid_column_number(column) {
-            return Err(format!("incorrect row or column"));
-        }
-        let worksheets = &mut self.workbook.worksheets;
-        let worksheet = &mut worksheets[sheet as usize];
-        worksheet.set_cell_with_number(row, column, value, style);
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_cell_with_number(row, column, value, style)?;
         Ok(())
     }
 
@@ -1786,7 +1766,7 @@ impl Model {
     pub fn cell_clear_contents(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
         self.workbook
             .worksheet_mut(sheet)?
-            .cell_clear_contents(row, column);
+            .cell_clear_contents(row, column)?;
         Ok(())
     }
 
@@ -1825,15 +1805,10 @@ impl Model {
         // First check the cell, then row, the column
         let cell = self.workbook.worksheet(sheet)?.cell(row, column);
 
-        // validate row and column arg
-        if !is_valid_row(row) || !is_valid_column_number(column) {
-            return Err(format!("Incorrect row or column"));
-        }
-
         match cell {
             Some(cell) => Ok(cell.get_style()),
             None => {
-                let rows = &self.workbook.worksheets[sheet as usize].rows;
+                let rows = &self.workbook.worksheet(sheet)?.rows;
                 for r in rows {
                     if r.r == row {
                         if r.custom_format {
@@ -1842,7 +1817,7 @@ impl Model {
                         break;
                     }
                 }
-                let cols = &self.workbook.worksheets[sheet as usize].cols;
+                let cols = &self.workbook.worksheet(sheet)?.cols;
                 for c in cols.iter() {
                     let min = c.min;
                     let max = c.max;

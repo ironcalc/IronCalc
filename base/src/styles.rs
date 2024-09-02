@@ -221,7 +221,7 @@ impl Model {
         let style_index = self.workbook.styles.get_style_index_or_create(style);
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_style(row, column, style_index);
+            .set_cell_style(row, column, style_index)?;
         Ok(())
     }
 
@@ -237,7 +237,7 @@ impl Model {
 
         self.workbook
             .worksheet_mut(destination_cell.0)?
-            .set_cell_style(destination_cell.1, destination_cell.2, source_style_index);
+            .set_cell_style(destination_cell.1, destination_cell.2, source_style_index)?;
 
         Ok(())
     }
@@ -253,7 +253,7 @@ impl Model {
         let style_index = self.workbook.styles.get_style_index_by_name(style_name)?;
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_style(row, column, style_index);
+            .set_cell_style(row, column, style_index)?;
         Ok(())
     }
 

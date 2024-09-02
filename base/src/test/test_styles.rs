@@ -7,8 +7,8 @@ use crate::types::Style;
 fn test_model_set_cells_with_values_styles() {
     let mut model = new_empty_model();
     // Inputs
-    model.set_user_input(0, 1, 1, "21".to_string()); // A1
-    model.set_user_input(0, 2, 1, "42".to_string()); // A2
+    model.set_user_input(0, 1, 1, "21".to_string()).unwrap(); // A1
+    model.set_user_input(0, 2, 1, "42".to_string()).unwrap(); // A2
 
     let style_base = model.get_style_for_cell(0, 1, 1);
     let mut style = style_base.clone();
@@ -21,6 +21,27 @@ fn test_model_set_cells_with_values_styles() {
     assert!(model.set_cell_style(0, 2, 1, &style).is_ok());
     let style: Style = model.get_style_for_cell(0, 2, 1);
     assert_eq!(style.num_fmt, "#,##0.00".to_string());
+
+    // Error scenarios
+
+    // Case 1: Invalid sheet
+    assert_eq!(
+        model.set_cell_style(1, 1, 1, &style),
+        Err("Invalid sheet index".to_string())
+    );
+
+    // Case 2: Invalid column
+
+    assert_eq!(
+        model.set_cell_style(0, 1, 1048579, &style),
+        Err("Incorrect row or column".to_string())
+    );
+
+    // Case 3: Invalid row
+    assert_eq!(
+        model.set_cell_style(0, 0, 10, &style),
+        Err("Incorrect row or column".to_string())
+    );
 }
 
 #[test]

@@ -331,7 +331,7 @@ impl UserModel {
             .cell(row, column)
             .cloned();
         self.model
-            .set_user_input(sheet, row, column, value.to_string());
+            .set_user_input(sheet, row, column, value.to_string())?;
 
         self.evaluate_if_not_paused();
 
@@ -1025,7 +1025,7 @@ impl UserModel {
                     .model
                     .extend_to(sheet, source_row, column, row, column)?;
                 self.model
-                    .set_user_input(sheet, row, column, target_value.to_string());
+                    .set_user_input(sheet, row, column, target_value.to_string())?;
 
                 // Compute the new style and set it
                 let new_style = self.model.get_style_for_cell(sheet, source_row, column);
@@ -1126,7 +1126,7 @@ impl UserModel {
                     .model
                     .extend_to(sheet, row, source_column, row, column)?;
                 self.model
-                    .set_user_input(sheet, row, column, target_value.to_string());
+                    .set_user_input(sheet, row, column, target_value.to_string())?;
 
                 // Compute the new style and set it
                 let new_style = self.model.get_style_for_cell(sheet, row, source_column);
@@ -1216,7 +1216,7 @@ impl UserModel {
                             self.model
                                 .workbook
                                 .worksheet_mut(*sheet)?
-                                .update_cell(*row, *column, value);
+                                .update_cell(*row, *column, value)?;
                         }
                         None => {
                             self.model.cell_clear_all(*sheet, *row, *column)?;
@@ -1246,7 +1246,7 @@ impl UserModel {
                         self.model
                             .workbook
                             .worksheet_mut(*sheet)?
-                            .update_cell(*row, *column, value);
+                            .update_cell(*row, *column, value)?;
                     }
                 }
                 Diff::CellClearAll {
@@ -1261,7 +1261,7 @@ impl UserModel {
                         self.model
                             .workbook
                             .worksheet_mut(*sheet)?
-                            .update_cell(*row, *column, value);
+                            .update_cell(*row, *column, value)?;
                         self.model
                             .set_cell_style(*sheet, *row, *column, old_style)?;
                     }
@@ -1307,7 +1307,7 @@ impl UserModel {
                     // puts all the data back
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     for (row, cell) in &old_data.data {
-                        worksheet.update_cell(*row, *column, cell.clone());
+                        worksheet.update_cell(*row, *column, cell.clone())?;
                     }
                     // makes sure that the width and style is correct
                     if let Some(col) = &old_data.column {
@@ -1375,7 +1375,7 @@ impl UserModel {
                 } => {
                     needs_evaluation = true;
                     self.model
-                        .set_user_input(*sheet, *row, *column, new_value.to_string());
+                        .set_user_input(*sheet, *row, *column, new_value.to_string())?;
                 }
                 Diff::SetColumnWidth {
                     sheet,

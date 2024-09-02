@@ -42,7 +42,17 @@ impl Worksheet {
         self.sheet_data.get_mut(&row)?.get_mut(&column)
     }
 
-    pub(crate) fn update_cell(&mut self, row: i32, column: i32, new_cell: Cell) {
+    pub(crate) fn update_cell(
+        &mut self,
+        row: i32,
+        column: i32,
+        new_cell: Cell,
+    ) -> Result<(), String> {
+        // validate row and column arg before updating cell of worksheet
+        if !is_valid_row(row) || !is_valid_column_number(column) {
+            return Err(format!("Incorrect row or column"));
+        }
+
         match self.sheet_data.get_mut(&row) {
             Some(column_data) => match column_data.get(&column) {
                 Some(_cell) => {
@@ -58,6 +68,7 @@ impl Worksheet {
                 self.sheet_data.insert(row, column_data);
             }
         }
+        Ok(())
     }
 
     // TODO [MVP]: Pass the cell style from the model
@@ -128,53 +139,101 @@ impl Worksheet {
         Ok(())
     }
 
-    pub fn set_cell_style(&mut self, row: i32, column: i32, style_index: i32) {
+    pub fn set_cell_style(
+        &mut self,
+        row: i32,
+        column: i32,
+        style_index: i32,
+    ) -> Result<(), String> {
         match self.cell_mut(row, column) {
             Some(cell) => {
                 cell.set_style(style_index);
             }
             None => {
-                self.cell_clear_contents_with_style(row, column, style_index);
+                self.cell_clear_contents_with_style(row, column, style_index)?;
             }
         }
+        Ok(())
 
         // TODO: cleanup check if the old cell style is still in use
     }
 
-    pub fn set_cell_with_formula(&mut self, row: i32, column: i32, index: i32, style: i32) {
+    pub fn set_cell_with_formula(
+        &mut self,
+        row: i32,
+        column: i32,
+        index: i32,
+        style: i32,
+    ) -> Result<(), String> {
         let cell = Cell::new_formula(index, style);
-        self.update_cell(row, column, cell);
+        self.update_cell(row, column, cell)?;
+        Ok(())
     }
 
-    pub fn set_cell_with_number(&mut self, row: i32, column: i32, value: f64, style: i32) {
+    pub fn set_cell_with_number(
+        &mut self,
+        row: i32,
+        column: i32,
+        value: f64,
+        style: i32,
+    ) -> Result<(), String> {
         let cell = Cell::new_number(value, style);
-        self.update_cell(row, column, cell);
+        self.update_cell(row, column, cell)?;
+        Ok(())
     }
 
-    pub fn set_cell_with_string(&mut self, row: i32, column: i32, index: i32, style: i32) {
+    pub fn set_cell_with_string(
+        &mut self,
+        row: i32,
+        column: i32,
+        index: i32,
+        style: i32,
+    ) -> Result<(), String> {
         let cell = Cell::new_string(index, style);
-        self.update_cell(row, column, cell);
+        self.update_cell(row, column, cell)?;
+        Ok(())
     }
 
-    pub fn set_cell_with_boolean(&mut self, row: i32, column: i32, value: bool, style: i32) {
+    pub fn set_cell_with_boolean(
+        &mut self,
+        row: i32,
+        column: i32,
+        value: bool,
+        style: i32,
+    ) -> Result<(), String> {
         let cell = Cell::new_boolean(value, style);
-        self.update_cell(row, column, cell);
+        self.update_cell(row, column, cell)?;
+        Ok(())
     }
 
-    pub fn set_cell_with_error(&mut self, row: i32, column: i32, error: Error, style: i32) {
+    pub fn set_cell_with_error(
+        &mut self,
+        row: i32,
+        column: i32,
+        error: Error,
+        style: i32,
+    ) -> Result<(), String> {
         let cell = Cell::new_error(error, style);
-        self.update_cell(row, column, cell);
+        self.update_cell(row, column, cell)?;
+        Ok(())
     }
 
-    pub fn cell_clear_contents(&mut self, row: i32, column: i32) {
+    pub fn cell_clear_contents(&mut self, row: i32, column: i32) -> Result<(), String> {
         let s = self.get_style(row, column);
         let cell = Cell::EmptyCell { s };
-        self.update_cell(row, column, cell);
+        self.update_cell(row, column, cell)?;
+        Ok(())
     }
 
-    pub fn cell_clear_contents_with_style(&mut self, row: i32, column: i32, style: i32) {
+    pub fn cell_clear_contents_with_style(
+        &mut self,
+        row: i32,
+        column: i32,
+        style: i32,
+    ) -> Result<(), String> {
         let cell = Cell::EmptyCell { s: style };
-        self.update_cell(row, column, cell);
+        self.update_cell(row, column, cell)?;
+        Ok(())
     }
 
     pub fn set_frozen_rows(&mut self, frozen_rows: i32) -> Result<(), String> {

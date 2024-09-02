@@ -82,7 +82,7 @@ impl Model {
         self.set_user_input(sheet, target_row, target_column, formula_or_value)?;
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_style(target_row, target_column, style);
+            .set_cell_style(target_row, target_column, style)?;
         self.cell_clear_all(sheet, source_row, source_column)?;
         Ok(())
     }
