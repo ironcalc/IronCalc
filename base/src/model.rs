@@ -1227,12 +1227,12 @@ impl Model {
             new_style_index = self
                 .workbook
                 .styles
-                .get_style_with_quote_prefix(style_index);
+                .get_style_with_quote_prefix(style_index)?;
         } else if self.workbook.styles.style_is_quote_prefix(style_index) {
             new_style_index = self
                 .workbook
                 .styles
-                .get_style_without_quote_prefix(style_index);
+                .get_style_without_quote_prefix(style_index)?;
         } else {
             new_style_index = style_index;
         }
@@ -1277,7 +1277,7 @@ impl Model {
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
             self.workbook
                 .styles
-                .get_style_without_quote_prefix(style_index)
+                .get_style_without_quote_prefix(style_index)?
         } else {
             style_index
         };
@@ -1320,7 +1320,7 @@ impl Model {
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
             self.workbook
                 .styles
-                .get_style_without_quote_prefix(style_index)
+                .get_style_without_quote_prefix(style_index)?
         } else {
             style_index
         };
@@ -1367,7 +1367,7 @@ impl Model {
             style_index = self
                 .workbook
                 .styles
-                .get_style_without_quote_prefix(style_index);
+                .get_style_without_quote_prefix(style_index)?;
         }
         let formula = formula
             .strip_prefix('=')
@@ -1421,7 +1421,7 @@ impl Model {
             let new_style = if common::value_needs_quoting(new_value, &self.language) {
                 self.workbook
                     .styles
-                    .get_style_with_quote_prefix(style_index)
+                    .get_style_with_quote_prefix(style_index)?
             } else {
                 style_index
             };
@@ -1432,7 +1432,7 @@ impl Model {
                 new_style_index = self
                     .workbook
                     .styles
-                    .get_style_without_quote_prefix(style_index);
+                    .get_style_without_quote_prefix(style_index)?;
             }
             if let Some(formula) = value.strip_prefix('=') {
                 let formula_index =
@@ -1444,8 +1444,8 @@ impl Model {
                     let new_style_index = self
                         .workbook
                         .styles
-                        .get_style_with_format(new_style_index, &units.get_num_fmt());
-                    let style = self.workbook.styles.get_style(new_style_index);
+                        .get_style_with_format(new_style_index, &units.get_num_fmt())?;
+                    let style = self.workbook.styles.get_style(new_style_index)?;
                     self.set_cell_style(sheet, row, column, &style)?
                 }
             } else {
@@ -1461,13 +1461,13 @@ impl Model {
                         // Should not apply the format in the following cases:
                         // - we assign a date to already date-formatted cell
                         let should_apply_format = !(is_likely_date_number_format(
-                            &self.workbook.styles.get_style(new_style_index).num_fmt,
+                            &self.workbook.styles.get_style(new_style_index)?.num_fmt,
                         ) && is_likely_date_number_format(&num_fmt));
                         if should_apply_format {
                             new_style_index = self
                                 .workbook
                                 .styles
-                                .get_style_with_format(new_style_index, &num_fmt);
+                                .get_style_with_format(new_style_index, &num_fmt)?;
                         }
                     }
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
@@ -1663,7 +1663,7 @@ impl Model {
     ) -> Result<String, String> {
         match self.workbook.worksheet(sheet_index)?.cell(row, column) {
             Some(cell) => {
-                let format = self.get_style_for_cell(sheet_index, row, column).num_fmt;
+                let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, &self.language, |value| {
                         format_number(value, &format, &self.locale).text
@@ -1831,12 +1831,11 @@ impl Model {
     }
 
     /// Returns the style for cell (`sheet`, `row`, `column`)
-    pub fn get_style_for_cell(&self, sheet: u32, row: i32, column: i32) -> Style {
+    pub fn get_style_for_cell(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
         // TODO: This routine needs to error handlded
-        self.workbook.styles.get_style(
-            self.get_cell_style_index(sheet, row, column)
-                .expect("Error while getting cell style index"),
-        )
+        let style_index = self.get_cell_style_index(sheet, row, column)?;
+        let style = self.workbook.styles.get_style(style_index)?;
+        Ok(style)
     }
 
     /// Returns an internal binary representation of the workbook
@@ -1876,7 +1875,7 @@ impl Model {
                     Some(formula) => formula,
                     None => self.get_formatted_cell_value(sheet, row, column)?,
                 };
-                let style = self.get_style_for_cell(sheet, row, column);
+                let style = self.get_style_for_cell(sheet, row, column)?;
                 if style.font.b {
                     cell_markup = format!("**{cell_markup}**")
                 }

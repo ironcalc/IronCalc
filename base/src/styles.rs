@@ -165,22 +165,26 @@ impl Styles {
         Ok(())
     }
 
-    pub(crate) fn get_style_with_quote_prefix(&mut self, index: i32) -> i32 {
-        let mut style = self.get_style(index);
+    pub(crate) fn get_style_with_quote_prefix(&mut self, index: i32) -> Result<i32, String> {
+        let mut style = self.get_style(index)?;
         style.quote_prefix = true;
-        self.get_style_index_or_create(&style)
+        Ok(self.get_style_index_or_create(&style))
     }
 
-    pub(crate) fn get_style_with_format(&mut self, index: i32, num_fmt: &str) -> i32 {
-        let mut style = self.get_style(index);
+    pub(crate) fn get_style_with_format(
+        &mut self,
+        index: i32,
+        num_fmt: &str,
+    ) -> Result<i32, String> {
+        let mut style = self.get_style(index)?;
         style.num_fmt = num_fmt.to_string();
-        self.get_style_index_or_create(&style)
+        Ok(self.get_style_index_or_create(&style))
     }
 
-    pub(crate) fn get_style_without_quote_prefix(&mut self, index: i32) -> i32 {
-        let mut style = self.get_style(index);
+    pub(crate) fn get_style_without_quote_prefix(&mut self, index: i32) -> Result<i32, String> {
+        let mut style = self.get_style(index)?;
         style.quote_prefix = false;
-        self.get_style_index_or_create(&style)
+        Ok(self.get_style_index_or_create(&style))
     }
 
     pub(crate) fn style_is_quote_prefix(&self, index: i32) -> bool {
@@ -188,23 +192,28 @@ impl Styles {
         cell_xf.quote_prefix
     }
 
-    pub(crate) fn get_style(&self, index: i32) -> Style {
-        let cell_xf = &self.cell_xfs[index as usize];
+    pub(crate) fn get_style(&self, index: i32) -> Result<Style, String> {
+        let cell_xf_data = &self.cell_xfs.get(index as usize);
 
-        let border_id = cell_xf.border_id as usize;
-        let fill_id = cell_xf.fill_id as usize;
-        let font_id = cell_xf.font_id as usize;
-        let num_fmt_id = cell_xf.num_fmt_id;
-        let quote_prefix = cell_xf.quote_prefix;
-        let alignment = cell_xf.alignment.clone();
+        match cell_xf_data {
+            Some(cell_xf) => {
+                let border_id = cell_xf.border_id as usize;
+                let fill_id = cell_xf.fill_id as usize;
+                let font_id = cell_xf.font_id as usize;
+                let num_fmt_id = cell_xf.num_fmt_id;
+                let quote_prefix = cell_xf.quote_prefix;
+                let alignment = cell_xf.alignment.clone();
 
-        Style {
-            alignment,
-            num_fmt: get_num_fmt(num_fmt_id, &self.num_fmts),
-            fill: self.fills[fill_id].clone(),
-            font: self.fonts[font_id].clone(),
-            border: self.borders[border_id].clone(),
-            quote_prefix,
+                return Ok(Style {
+                    alignment,
+                    num_fmt: get_num_fmt(num_fmt_id, &self.num_fmts),
+                    fill: self.fills[fill_id].clone(),
+                    font: self.fonts[font_id].clone(),
+                    border: self.borders[border_id].clone(),
+                    quote_prefix,
+                });
+            }
+            None => Err("wrong index provided".to_string()),
         }
     }
 }

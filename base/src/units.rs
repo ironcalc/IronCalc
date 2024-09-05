@@ -86,12 +86,15 @@ fn get_units_from_format_string(num_fmt: &str) -> Option<Units> {
 
 impl Model {
     fn compute_cell_units(&self, cell_reference: &CellReferenceIndex) -> Option<Units> {
-        let style = &self.get_style_for_cell(
+        let cell_style_res = &self.get_style_for_cell(
             cell_reference.sheet,
             cell_reference.row,
             cell_reference.column,
         );
-        get_units_from_format_string(&style.num_fmt)
+        match cell_style_res {
+            Ok(style) => get_units_from_format_string(&style.num_fmt),
+            Err(_) => None,
+        }
     }
 
     pub(crate) fn compute_node_units(

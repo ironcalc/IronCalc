@@ -14,7 +14,7 @@ fn test_sheet_markup() {
     model._set("A4", "Total");
     model._set("B4", "=SUM(B2:B3)");
 
-    let mut style = model.get_style_for_cell(0, 1, 1);
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
     style.font.b = true;
     model.set_cell_style(0, 1, 1, &style).unwrap();
     model.set_cell_style(0, 1, 2, &style).unwrap();

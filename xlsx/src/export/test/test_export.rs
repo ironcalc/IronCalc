@@ -128,7 +128,7 @@ fn test_sheets() {
 fn test_named_styles() {
     let mut model = new_empty_model();
     model.set_user_input(0, 1, 1, "5.5".to_string());
-    let mut style = model.get_style_for_cell(0, 1, 1);
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
     style.font.b = true;
     style.font.i = true;
     assert!(model.set_cell_style(0, 1, 1, &style).is_ok());

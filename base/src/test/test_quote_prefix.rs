@@ -122,12 +122,12 @@ fn test_update_quote_prefix_reenter_text() {
     model._set("A2", "=ISTEXT(A1)");
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
-    assert!(model.get_style_for_cell(0, 1, 1).quote_prefix);
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
     // We enter a string
     model.update_cell_with_text(0, 1, 1, "Hello");
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
-    assert!(!model.get_style_for_cell(0, 1, 1).quote_prefix);
+    assert!(!model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
 }
 
 #[test]
@@ -137,10 +137,10 @@ fn test_update_quote_prefix_reenter_text_2() {
     model._set("A2", "=ISTEXT(A1)");
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
-    assert!(model.get_style_for_cell(0, 1, 1).quote_prefix);
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
     // We enter another number
     model.update_cell_with_text(0, 1, 1, "42");
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
-    assert!(model.get_style_for_cell(0, 1, 1).quote_prefix);
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
 }
