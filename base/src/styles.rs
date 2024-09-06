@@ -213,7 +213,7 @@ impl Styles {
                     quote_prefix,
                 });
             }
-            None => Err("wrong index provided".to_string()),
+            None => Err("Invalid index provided".to_string()),
         }
     }
 }
