@@ -15,16 +15,26 @@ pub fn new_empty_model() -> Model {
 fn test_values() {
     let mut model = new_empty_model();
     // numbers
-    model.set_user_input(0, 1, 1, "123.456".to_string()).unwrap();
+    model
+        .set_user_input(0, 1, 1, "123.456".to_string())
+        .unwrap();
     // strings
-    model.set_user_input(0, 2, 1, "Hello world!".to_string()).unwrap();
-    model.set_user_input(0, 3, 1, "Hello world!".to_string()).unwrap();
-    model.set_user_input(0, 4, 1, "你好世界！".to_string()).unwrap();
+    model
+        .set_user_input(0, 2, 1, "Hello world!".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 3, 1, "Hello world!".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 4, 1, "你好世界！".to_string())
+        .unwrap();
     // booleans
     model.set_user_input(0, 5, 1, "TRUE".to_string()).unwrap();
     model.set_user_input(0, 6, 1, "FALSE".to_string()).unwrap();
     // errors
-    model.set_user_input(0, 7, 1, "#VALUE!".to_string()).unwrap();
+    model
+        .set_user_input(0, 7, 1, "#VALUE!".to_string())
+        .unwrap();
 
     // noop
     model.evaluate();
@@ -88,7 +98,9 @@ fn test_formulas() {
     model.set_user_input(0, 1, 2, "=A1*2".to_string()).unwrap();
     model.set_user_input(0, 2, 2, "=A2*2".to_string()).unwrap();
     model.set_user_input(0, 3, 2, "=A3*2".to_string()).unwrap();
-    model.set_user_input(0, 4, 2, "=SUM(A1:B3)".to_string()).unwrap();
+    model
+        .set_user_input(0, 4, 2, "=SUM(A1:B3)".to_string())
+        .unwrap();
 
     model.evaluate();
     let temp_file_name = "temp_file_test_formulas.xlsx";

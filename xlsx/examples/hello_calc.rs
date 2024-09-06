@@ -9,7 +9,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for row in 1..100 {
         for column in 1..100 {
             let value = row * column;
-            model.set_user_input(0, row, column, format!("{}", value)).unwrap();
+            model
+                .set_user_input(0, row, column, format!("{}", value))
+                .unwrap();
         }
     }
     // Adds a new sheet
