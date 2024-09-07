@@ -1200,10 +1200,10 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
-    /// model.set_user_input(sheet, row, column, "Hello!".to_string());
+    /// model.set_user_input(sheet, row, column, "Hello!".to_string())?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "Hello!".to_string());
     ///
-    /// model.update_cell_with_text(sheet, row, column, "Goodbye!");
+    /// model.update_cell_with_text(sheet, row, column, "Goodbye!")?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "Goodbye!".to_string());
     /// # Ok(())
     /// # }
@@ -1252,10 +1252,10 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
-    /// model.set_user_input(sheet, row, column, "TRUE".to_string());
+    /// model.set_user_input(sheet, row, column, "TRUE".to_string())?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "TRUE".to_string());
     ///
-    /// model.update_cell_with_bool(sheet, row, column, false);
+    /// model.update_cell_with_bool(sheet, row, column, false)?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "FALSE".to_string());
     /// # Ok(())
     /// # }
@@ -1295,10 +1295,10 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
-    /// model.set_user_input(sheet, row, column, "42".to_string());
+    /// model.set_user_input(sheet, row, column, "42".to_string())?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "42".to_string());
     ///
-    /// model.update_cell_with_number(sheet, row, column, 23.0);
+    /// model.update_cell_with_number(sheet, row, column, 23.0)?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "23".to_string());
     /// # Ok(())
     /// # }
@@ -1339,11 +1339,11 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
-    /// model.set_user_input(sheet, row, column, "=A2*2".to_string());
+    /// model.set_user_input(sheet, row, column, "=A2*2".to_string())?;
     /// model.evaluate();
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "=A2*2".to_string());
     ///
-    /// model.update_cell_with_formula(sheet, row, column, "=A3*2".to_string());
+    /// model.update_cell_with_formula(sheet, row, column, "=A3*2".to_string())?;
     /// model.evaluate();
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "=A3*2".to_string());
     /// # Ok(())
