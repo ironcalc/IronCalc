@@ -100,7 +100,9 @@ fn test_worksheet_dimension_progressive() {
         }
     );
 
-    model.set_user_input(0, 30, 50, "Hello World".to_string());
+    model
+        .set_user_input(0, 30, 50, "Hello World".to_string())
+        .unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {
@@ -111,7 +113,9 @@ fn test_worksheet_dimension_progressive() {
         }
     );
 
-    model.set_user_input(0, 10, 15, "Hello World".to_string());
+    model
+        .set_user_input(0, 10, 15, "Hello World".to_string())
+        .unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {
@@ -122,7 +126,9 @@ fn test_worksheet_dimension_progressive() {
         }
     );
 
-    model.set_user_input(0, 5, 25, "Hello World".to_string());
+    model
+        .set_user_input(0, 5, 25, "Hello World".to_string())
+        .unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {
@@ -133,7 +139,9 @@ fn test_worksheet_dimension_progressive() {
         }
     );
 
-    model.set_user_input(0, 10, 250, "Hello World".to_string());
+    model
+        .set_user_input(0, 10, 250, "Hello World".to_string())
+        .unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {
@@ -162,12 +170,14 @@ fn test_worksheet_navigate_to_edge_in_direction() {
     for (row_index, row) in inline_spreadsheet.into_iter().enumerate() {
         for (column_index, value) in row.into_iter().enumerate() {
             if value != 0 {
-                model.update_cell_with_number(
-                    0,
-                    (row_index as i32) + 1,
-                    (column_index as i32) + 1,
-                    value.into(),
-                );
+                model
+                    .update_cell_with_number(
+                        0,
+                        (row_index as i32) + 1,
+                        (column_index as i32) + 1,
+                        value.into(),
+                    )
+                    .unwrap();
             }
         }
     }

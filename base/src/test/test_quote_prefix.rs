@@ -57,12 +57,12 @@ fn test_quote_prefix_enter() {
     model._set("A2", "=ISTEXT(A1)");
     model.evaluate();
     // We introduce a value with a "quote prefix" index
-    model.set_user_input(0, 1, 3, "'=A1".to_string());
+    model.set_user_input(0, 1, 3, "'=A1".to_string()).unwrap();
     model.evaluate();
     assert_eq!(model._get_text("C1"), *"=A1");
 
     // But if we enter with a quote_prefix but without the "'" it won't be quote_prefix
-    model.set_user_input(0, 1, 4, "=A1".to_string());
+    model.set_user_input(0, 1, 4, "=A1".to_string()).unwrap();
     model.evaluate();
     assert_eq!(model._get_text("D1"), *"123");
 }
@@ -75,7 +75,7 @@ fn test_quote_prefix_reenter() {
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
     // We introduce a value with a "quote prefix" index
-    model.set_user_input(0, 1, 1, "123".to_string());
+    model.set_user_input(0, 1, 1, "123".to_string()).unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"FALSE");
 }
@@ -83,7 +83,7 @@ fn test_quote_prefix_reenter() {
 #[test]
 fn test_update_cell_quote() {
     let mut model = new_empty_model();
-    model.update_cell_with_text(0, 1, 1, "= 1 + 3");
+    model.update_cell_with_text(0, 1, 1, "= 1 + 3").unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"= 1 + 3");
     assert!(!model._has_formula("A1"));
@@ -92,12 +92,12 @@ fn test_update_cell_quote() {
 #[test]
 fn test_update_quote_prefix_reenter() {
     let mut model = new_empty_model();
-    model.update_cell_with_text(0, 1, 1, "123");
+    model.update_cell_with_text(0, 1, 1, "123").unwrap();
     model._set("A2", "=ISTEXT(A1)");
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
     // We reenter as a number
-    model.update_cell_with_number(0, 1, 1, 123.0);
+    model.update_cell_with_number(0, 1, 1, 123.0).unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"FALSE");
 }
@@ -105,12 +105,12 @@ fn test_update_quote_prefix_reenter() {
 #[test]
 fn test_update_quote_prefix_reenter_bool() {
     let mut model = new_empty_model();
-    model.update_cell_with_text(0, 1, 1, "TRUE");
+    model.update_cell_with_text(0, 1, 1, "TRUE").unwrap();
     model._set("A2", "=ISTEXT(A1)");
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
     // We enter a bool
-    model.update_cell_with_bool(0, 1, 1, true);
+    model.update_cell_with_bool(0, 1, 1, true).unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"FALSE");
 }
@@ -118,13 +118,13 @@ fn test_update_quote_prefix_reenter_bool() {
 #[test]
 fn test_update_quote_prefix_reenter_text() {
     let mut model = new_empty_model();
-    model.update_cell_with_text(0, 1, 1, "123");
+    model.update_cell_with_text(0, 1, 1, "123").unwrap();
     model._set("A2", "=ISTEXT(A1)");
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
     assert!(model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
     // We enter a string
-    model.update_cell_with_text(0, 1, 1, "Hello");
+    model.update_cell_with_text(0, 1, 1, "Hello").unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
     assert!(!model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
@@ -133,13 +133,13 @@ fn test_update_quote_prefix_reenter_text() {
 #[test]
 fn test_update_quote_prefix_reenter_text_2() {
     let mut model = new_empty_model();
-    model.update_cell_with_text(0, 1, 1, "123");
+    model.update_cell_with_text(0, 1, 1, "123").unwrap();
     model._set("A2", "=ISTEXT(A1)");
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
     assert!(model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);
     // We enter another number
-    model.update_cell_with_text(0, 1, 1, "42");
+    model.update_cell_with_text(0, 1, 1, "42").unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A2"), *"TRUE");
     assert!(model.get_style_for_cell(0, 1, 1).unwrap().quote_prefix);

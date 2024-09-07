@@ -3,7 +3,7 @@ use crate::test::util::new_empty_model;
 #[test]
 fn test_metadata_new_model() {
     let mut model = new_empty_model();
-    model.set_user_input(0, 1, 1, "5.5".to_string());
+    model.set_user_input(0, 1, 1, "5.5".to_string()).unwrap();
     model.evaluate();
     let metadata = &model.workbook.metadata;
     assert_eq!(metadata.application, "IronCalc Sheets");

@@ -138,14 +138,14 @@ fn test_insert_sheet() {
 
     // Insert the sheet at the end and check the formula
     assert!(model.insert_sheet("Bacchus", 1, None).is_ok());
-    model.set_user_input(1, 3, 1, "42".to_string());
+    model.set_user_input(1, 3, 1, "42".to_string()).unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A1"), "42");
     assert_eq!(model._get_text("A2"), "#REF!");
 
     // Insert a sheet in between the other two
     assert!(model.insert_sheet("Dionysus", 1, None).is_ok());
-    model.set_user_input(1, 3, 1, "111".to_string());
+    model.set_user_input(1, 3, 1, "111".to_string()).unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A1"), "42");
     assert_eq!(model._get_text("A2"), "111");
@@ -176,7 +176,7 @@ fn test_rename_sheet() {
     let mut model = new_empty_model();
     model.new_sheet();
     model._set("A1", "=NewSheet!A3");
-    model.set_user_input(1, 3, 1, "25".to_string());
+    model.set_user_input(1, 3, 1, "25".to_string()).unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#REF!");
     assert!(model.rename_sheet("Sheet2", "NewSheet").is_ok());
@@ -189,7 +189,7 @@ fn test_rename_sheet_by_index() {
     let mut model = new_empty_model();
     model.new_sheet();
     model._set("A1", "=NewSheet!A1");
-    model.set_user_input(1, 1, 1, "25".to_string());
+    model.set_user_input(1, 1, 1, "25".to_string()).unwrap();
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#REF!");
     assert!(model.rename_sheet_by_index(1, "NewSheet").is_ok());
