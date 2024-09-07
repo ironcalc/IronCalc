@@ -91,3 +91,36 @@ fn test_update_cell_with_formula() {
     let update_result = model.update_cell_with_formula(0, 1, 1048579, "=A1*2".to_string());
     assert_eq!(update_result, Err("Incorrect row or column".to_string()));
 }
+
+#[test]
+fn test_set_user_input() {
+    let mut model = new_empty_model();
+
+    // Below are safe inputs
+    model.update_cell_with_number(0, 1, 1, 10.0).unwrap();
+    model.evaluate();
+    // Now testing all the possible error scenarios
+
+    // Case1 : Invalid sheet
+    let update_result = model.set_user_input(1, 1, 2, "20.0".to_string());
+    assert_eq!(update_result, Err("Invalid sheet index".to_string()));
+
+    // Case2 : Invalid Row
+    let update_result = model.set_user_input(0, 0, 2, "20.0".to_string());
+    assert_eq!(update_result, Err("Incorrect row or column".to_string()));
+
+    // Case3 : Invalid Column
+    let update_result = model.set_user_input(0, 1, 1048579, "20.0".to_string());
+    assert_eq!(update_result, Err("Incorrect row or column".to_string()));
+}
+
+#[test]
+fn workbook_styles_get_style_error_handling() {
+    let model = new_empty_model();
+
+    // case 1 : Invalid index
+    assert_eq!(
+        model.workbook.styles.get_style(15),
+        Err("Invalid index provided".to_string())
+    );
+}

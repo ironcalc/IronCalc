@@ -951,7 +951,7 @@ impl UserModel {
     /// * [Model::get_style_for_cell]
     #[inline]
     pub fn get_cell_style(&mut self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
-        Ok(self.model.get_style_for_cell(sheet, row, column)?)
+        self.model.get_style_for_cell(sheet, row, column)
     }
 
     /// Fills the cells from `source_area` until `to_row`.

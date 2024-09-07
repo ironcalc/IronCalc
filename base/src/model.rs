@@ -1239,7 +1239,7 @@ impl Model {
 
         self.set_cell_with_string(sheet, row, column, value, new_style_index)?;
 
-        return Ok(());
+        Ok(())
     }
 
     /// Updates the value of a cell with a boolean value
@@ -1282,7 +1282,7 @@ impl Model {
             style_index
         };
         self.set_cell_with_boolean(sheet, row, column, value, new_style_index)?;
-        return Ok(());
+        Ok(())
     }
 
     /// Updates the value of a cell with a number
@@ -1325,7 +1325,7 @@ impl Model {
             style_index
         };
         self.set_cell_with_number(sheet, row, column, value, new_style_index)?;
-        return Ok(());
+        Ok(())
     }
 
     /// Updates the formula of given cell
@@ -1832,7 +1832,6 @@ impl Model {
 
     /// Returns the style for cell (`sheet`, `row`, `column`)
     pub fn get_style_for_cell(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
-        // TODO: This routine needs to error handlded
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         let style = self.workbook.styles.get_style(style_index)?;
         Ok(style)

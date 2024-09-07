@@ -50,7 +50,7 @@ impl Worksheet {
     ) -> Result<(), String> {
         // validate row and column arg before updating cell of worksheet
         if !is_valid_row(row) || !is_valid_column_number(column) {
-            return Err(format!("Incorrect row or column"));
+            return Err("Incorrect row or column".to_string());
         }
 
         match self.sheet_data.get_mut(&row) {
