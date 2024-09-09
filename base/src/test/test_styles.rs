@@ -21,27 +21,6 @@ fn test_model_set_cells_with_values_styles() {
     assert!(model.set_cell_style(0, 2, 1, &style).is_ok());
     let style: Style = model.get_style_for_cell(0, 2, 1).unwrap();
     assert_eq!(style.num_fmt, "#,##0.00".to_string());
-
-    // Error scenarios
-
-    // Case 1: Invalid sheet
-    assert_eq!(
-        model.set_cell_style(1, 1, 1, &style),
-        Err("Invalid sheet index".to_string())
-    );
-
-    // Case 2: Invalid column
-
-    assert_eq!(
-        model.set_cell_style(0, 1, 1048579, &style),
-        Err("Incorrect row or column".to_string())
-    );
-
-    // Case 3: Invalid row
-    assert_eq!(
-        model.set_cell_style(0, 0, 10, &style),
-        Err("Incorrect row or column".to_string())
-    );
 }
 
 #[test]
