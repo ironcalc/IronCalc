@@ -177,8 +177,7 @@ impl Worksheet {
         style: i32,
     ) -> Result<(), String> {
         let cell = Cell::new_number(value, style);
-        self.update_cell(row, column, cell)?;
-        Ok(())
+        self.update_cell(row, column, cell)
     }
 
     pub fn set_cell_with_string(
