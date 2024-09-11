@@ -53,7 +53,7 @@ fn test_column_width_lower_edge() {
     assert!(
         (worksheet.get_column_width(6).unwrap() - 10.0 * COLUMN_WIDTH_FACTOR).abs() < f64::EPSILON
     );
-    assert_eq!(model.get_cell_style_index(0, 23, 5).unwrap(), 1);
+    assert_eq!(model.get_cell_style_index(0, 23, 5), Ok(1));
 }
 
 #[test]
@@ -80,5 +80,5 @@ fn test_column_width_higher_edge() {
     );
     assert!((worksheet.get_column_width(16).unwrap() - 30.0).abs() < f64::EPSILON);
     assert!((worksheet.get_column_width(17).unwrap() - DEFAULT_COLUMN_WIDTH).abs() < f64::EPSILON);
-    assert_eq!(model.get_cell_style_index(0, 23, 16).unwrap(), 1);
+    assert_eq!(model.get_cell_style_index(0, 23, 16), Ok(1));
 }

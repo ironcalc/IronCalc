@@ -41,10 +41,7 @@ fn test_named_styles() {
     assert!(a2_style_index != bold_style_index);
     let e = model.set_cell_style_by_name(0, 2, 1, "bold");
     assert!(e.is_ok());
-    assert_eq!(
-        model.get_cell_style_index(0, 2, 1).unwrap(),
-        bold_style_index
-    );
+    assert_eq!(model.get_cell_style_index(0, 2, 1), Ok(bold_style_index));
 }
 
 #[test]
