@@ -83,8 +83,7 @@ impl Model {
         self.workbook
             .worksheet_mut(sheet)?
             .set_cell_style(target_row, target_column, style)?;
-        self.cell_clear_all(sheet, source_row, source_column)?;
-        Ok(())
+        self.cell_clear_all(sheet, source_row, source_column)
     }
 
     /// Inserts one or more new columns into the model at the specified index.

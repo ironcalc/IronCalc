@@ -166,8 +166,7 @@ impl Worksheet {
         style: i32,
     ) -> Result<(), String> {
         let cell = Cell::new_formula(index, style);
-        self.update_cell(row, column, cell)?;
-        Ok(())
+        self.update_cell(row, column, cell)
     }
 
     pub fn set_cell_with_number(
@@ -190,8 +189,7 @@ impl Worksheet {
         style: i32,
     ) -> Result<(), String> {
         let cell = Cell::new_string(index, style);
-        self.update_cell(row, column, cell)?;
-        Ok(())
+        self.update_cell(row, column, cell)
     }
 
     pub fn set_cell_with_boolean(
@@ -202,8 +200,7 @@ impl Worksheet {
         style: i32,
     ) -> Result<(), String> {
         let cell = Cell::new_boolean(value, style);
-        self.update_cell(row, column, cell)?;
-        Ok(())
+        self.update_cell(row, column, cell)
     }
 
     pub fn set_cell_with_error(
@@ -214,15 +211,13 @@ impl Worksheet {
         style: i32,
     ) -> Result<(), String> {
         let cell = Cell::new_error(error, style);
-        self.update_cell(row, column, cell)?;
-        Ok(())
+        self.update_cell(row, column, cell)
     }
 
     pub fn cell_clear_contents(&mut self, row: i32, column: i32) -> Result<(), String> {
         let s = self.get_style(row, column);
         let cell = Cell::EmptyCell { s };
-        self.update_cell(row, column, cell)?;
-        Ok(())
+        self.update_cell(row, column, cell)
     }
 
     pub fn cell_clear_contents_with_style(
@@ -232,8 +227,7 @@ impl Worksheet {
         style: i32,
     ) -> Result<(), String> {
         let cell = Cell::EmptyCell { s: style };
-        self.update_cell(row, column, cell)?;
-        Ok(())
+        self.update_cell(row, column, cell)
     }
 
     pub fn set_frozen_rows(&mut self, frozen_rows: i32) -> Result<(), String> {

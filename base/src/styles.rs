@@ -161,8 +161,7 @@ impl Styles {
 
     pub fn create_named_style(&mut self, style_name: &str, style: &Style) -> Result<(), String> {
         let style_index = self.create_new_style(style);
-        self.add_named_cell_style(style_name, style_index)?;
-        Ok(())
+        self.add_named_cell_style(style_name, style_index)
     }
 
     pub(crate) fn get_style_with_quote_prefix(&mut self, index: i32) -> Result<i32, String> {
@@ -227,8 +226,7 @@ impl Model {
         let style_index = self.workbook.styles.get_style_index_or_create(style);
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_style(row, column, style_index)?;
-        Ok(())
+            .set_cell_style(row, column, style_index)
     }
 
     pub fn copy_cell_style(
@@ -243,9 +241,7 @@ impl Model {
 
         self.workbook
             .worksheet_mut(destination_cell.0)?
-            .set_cell_style(destination_cell.1, destination_cell.2, source_style_index)?;
-
-        Ok(())
+            .set_cell_style(destination_cell.1, destination_cell.2, source_style_index)
     }
 
     /// Sets the style "style_name" in cell
@@ -259,8 +255,7 @@ impl Model {
         let style_index = self.workbook.styles.get_style_index_by_name(style_name)?;
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_style(row, column, style_index)?;
-        Ok(())
+            .set_cell_style(row, column, style_index)
     }
 
     pub fn set_sheet_style(&mut self, sheet: u32, style_name: &str) -> Result<(), String> {

@@ -26,7 +26,7 @@ fn test_column_width() {
     assert!((worksheet.get_column_width(1).unwrap() - DEFAULT_COLUMN_WIDTH).abs() < f64::EPSILON);
     assert!((worksheet.get_column_width(2).unwrap() - 30.0).abs() < f64::EPSILON);
     assert!((worksheet.get_column_width(3).unwrap() - DEFAULT_COLUMN_WIDTH).abs() < f64::EPSILON);
-    assert_eq!(model.get_cell_style_index(0, 23, 2).unwrap(), 6);
+    assert_eq!(model.get_cell_style_index(0, 23, 2), Ok(6));
 }
 
 #[test]
