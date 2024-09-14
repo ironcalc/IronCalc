@@ -9,7 +9,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for row in 1..100 {
         for column in 1..100 {
             let value = row * column;
-            model.set_user_input(0, row, column, format!("{}", value));
+            model
+                .set_user_input(0, row, column, format!("{}", value))
+                .unwrap();
         }
     }
     // Adds a new sheet
@@ -17,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // column 100 is CV
     let last_column = number_to_column(100).unwrap();
     let formula = format!("=SUM(Sheet1!A1:{}100)", last_column);
-    model.set_user_input(1, 1, 1, formula);
+    model.set_user_input(1, 1, 1, formula).unwrap();
 
     // evaluates
     model.evaluate();

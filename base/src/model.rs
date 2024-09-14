@@ -7,19 +7,15 @@ use crate::{
     calc_result::{CalcResult, Range},
     cell::CellValue,
     constants::{self, LAST_COLUMN, LAST_ROW},
-    expressions::token::{Error, OpCompare, OpProduct, OpSum, OpUnary},
-    expressions::{
-        parser::move_formula::{move_formula, MoveContext},
-        token::get_error_by_name,
-        types::*,
-        utils::{self, is_valid_row},
-    },
     expressions::{
         parser::{
+            move_formula::{move_formula, MoveContext},
             stringify::{to_rc_format, to_string},
             Node, Parser,
         },
-        utils::is_valid_column_number,
+        token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
+        types::*,
+        utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
         format::{format_number, parse_formatted_number},
@@ -1204,10 +1200,10 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
-    /// model.set_user_input(sheet, row, column, "Hello!".to_string());
+    /// model.set_user_input(sheet, row, column, "Hello!".to_string())?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "Hello!".to_string());
     ///
-    /// model.update_cell_with_text(sheet, row, column, "Goodbye!");
+    /// model.update_cell_with_text(sheet, row, column, "Goodbye!")?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "Goodbye!".to_string());
     /// # Ok(())
     /// # }
@@ -1218,23 +1214,30 @@ impl Model {
     /// * [Model::update_cell_with_number()]
     /// * [Model::update_cell_with_bool()]
     /// * [Model::update_cell_with_formula()]
-    pub fn update_cell_with_text(&mut self, sheet: u32, row: i32, column: i32, value: &str) {
-        let style_index = self.get_cell_style_index(sheet, row, column);
+    pub fn update_cell_with_text(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+    ) -> Result<(), String> {
+        let style_index = self.get_cell_style_index(sheet, row, column)?;
         let new_style_index;
         if common::value_needs_quoting(value, &self.language) {
             new_style_index = self
                 .workbook
                 .styles
-                .get_style_with_quote_prefix(style_index);
+                .get_style_with_quote_prefix(style_index)?;
         } else if self.workbook.styles.style_is_quote_prefix(style_index) {
             new_style_index = self
                 .workbook
                 .styles
-                .get_style_without_quote_prefix(style_index);
+                .get_style_without_quote_prefix(style_index)?;
         } else {
             new_style_index = style_index;
         }
-        self.set_cell_with_string(sheet, row, column, value, new_style_index);
+
+        self.set_cell_with_string(sheet, row, column, value, new_style_index)
     }
 
     /// Updates the value of a cell with a boolean value
@@ -1247,10 +1250,10 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
-    /// model.set_user_input(sheet, row, column, "TRUE".to_string());
+    /// model.set_user_input(sheet, row, column, "TRUE".to_string())?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "TRUE".to_string());
     ///
-    /// model.update_cell_with_bool(sheet, row, column, false);
+    /// model.update_cell_with_bool(sheet, row, column, false)?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "FALSE".to_string());
     /// # Ok(())
     /// # }
@@ -1261,17 +1264,22 @@ impl Model {
     /// * [Model::update_cell_with_number()]
     /// * [Model::update_cell_with_text()]
     /// * [Model::update_cell_with_formula()]
-    pub fn update_cell_with_bool(&mut self, sheet: u32, row: i32, column: i32, value: bool) {
-        let style_index = self.get_cell_style_index(sheet, row, column);
+    pub fn update_cell_with_bool(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: bool,
+    ) -> Result<(), String> {
+        let style_index = self.get_cell_style_index(sheet, row, column)?;
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
             self.workbook
                 .styles
-                .get_style_without_quote_prefix(style_index)
+                .get_style_without_quote_prefix(style_index)?
         } else {
             style_index
         };
-        let worksheet = &mut self.workbook.worksheets[sheet as usize];
-        worksheet.set_cell_with_boolean(row, column, value, new_style_index);
+        self.set_cell_with_boolean(sheet, row, column, value, new_style_index)
     }
 
     /// Updates the value of a cell with a number
@@ -1284,10 +1292,10 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
-    /// model.set_user_input(sheet, row, column, "42".to_string());
+    /// model.set_user_input(sheet, row, column, "42".to_string())?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "42".to_string());
     ///
-    /// model.update_cell_with_number(sheet, row, column, 23.0);
+    /// model.update_cell_with_number(sheet, row, column, 23.0)?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "23".to_string());
     /// # Ok(())
     /// # }
@@ -1298,17 +1306,22 @@ impl Model {
     /// * [Model::update_cell_with_text()]
     /// * [Model::update_cell_with_bool()]
     /// * [Model::update_cell_with_formula()]
-    pub fn update_cell_with_number(&mut self, sheet: u32, row: i32, column: i32, value: f64) {
-        let style_index = self.get_cell_style_index(sheet, row, column);
+    pub fn update_cell_with_number(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: f64,
+    ) -> Result<(), String> {
+        let style_index = self.get_cell_style_index(sheet, row, column)?;
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
             self.workbook
                 .styles
-                .get_style_without_quote_prefix(style_index)
+                .get_style_without_quote_prefix(style_index)?
         } else {
             style_index
         };
-        let worksheet = &mut self.workbook.worksheets[sheet as usize];
-        worksheet.set_cell_with_number(row, column, value, new_style_index);
+        self.set_cell_with_number(sheet, row, column, value, new_style_index)
     }
 
     /// Updates the formula of given cell
@@ -1322,11 +1335,11 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// let (sheet, row, column) = (0, 1, 1);
-    /// model.set_user_input(sheet, row, column, "=A2*2".to_string());
+    /// model.set_user_input(sheet, row, column, "=A2*2".to_string())?;
     /// model.evaluate();
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "=A2*2".to_string());
     ///
-    /// model.update_cell_with_formula(sheet, row, column, "=A3*2".to_string());
+    /// model.update_cell_with_formula(sheet, row, column, "=A3*2".to_string())?;
     /// model.evaluate();
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "=A3*2".to_string());
     /// # Ok(())
@@ -1345,12 +1358,12 @@ impl Model {
         column: i32,
         formula: String,
     ) -> Result<(), String> {
-        let mut style_index = self.get_cell_style_index(sheet, row, column);
+        let mut style_index = self.get_cell_style_index(sheet, row, column)?;
         if self.workbook.styles.style_is_quote_prefix(style_index) {
             style_index = self
                 .workbook
                 .styles
-                .get_style_without_quote_prefix(style_index);
+                .get_style_without_quote_prefix(style_index)?;
         }
         let formula = formula
             .strip_prefix('=')
@@ -1390,31 +1403,36 @@ impl Model {
     /// * [Model::update_cell_with_number()]
     /// * [Model::update_cell_with_bool()]
     /// * [Model::update_cell_with_text()]
-    pub fn set_user_input(&mut self, sheet: u32, row: i32, column: i32, value: String) {
+    pub fn set_user_input(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: String,
+    ) -> Result<(), String> {
         // If value starts with "'" then we force the style to be quote_prefix
-        let style_index = self.get_cell_style_index(sheet, row, column);
+        let style_index = self.get_cell_style_index(sheet, row, column)?;
         if let Some(new_value) = value.strip_prefix('\'') {
             // First check if it needs quoting
             let new_style = if common::value_needs_quoting(new_value, &self.language) {
                 self.workbook
                     .styles
-                    .get_style_with_quote_prefix(style_index)
+                    .get_style_with_quote_prefix(style_index)?
             } else {
                 style_index
             };
-            self.set_cell_with_string(sheet, row, column, new_value, new_style);
+            self.set_cell_with_string(sheet, row, column, new_value, new_style)?;
         } else {
             let mut new_style_index = style_index;
             if self.workbook.styles.style_is_quote_prefix(style_index) {
                 new_style_index = self
                     .workbook
                     .styles
-                    .get_style_without_quote_prefix(style_index);
+                    .get_style_without_quote_prefix(style_index)?;
             }
             if let Some(formula) = value.strip_prefix('=') {
-                let formula_index = self
-                    .set_cell_with_formula(sheet, row, column, formula, new_style_index)
-                    .expect("could not set the cell formula");
+                let formula_index =
+                    self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
                 // Update the style if needed
                 let cell = CellReferenceIndex { sheet, row, column };
                 let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
@@ -1422,15 +1440,11 @@ impl Model {
                     let new_style_index = self
                         .workbook
                         .styles
-                        .get_style_with_format(new_style_index, &units.get_num_fmt());
-                    let style = self.workbook.styles.get_style(new_style_index);
-                    self.set_cell_style(sheet, row, column, &style)
-                        .expect("Failed setting the style");
+                        .get_style_with_format(new_style_index, &units.get_num_fmt())?;
+                    let style = self.workbook.styles.get_style(new_style_index)?;
+                    self.set_cell_style(sheet, row, column, &style)?
                 }
             } else {
-                let worksheets = &mut self.workbook.worksheets;
-                let worksheet = &mut worksheets[sheet as usize];
-
                 // The list of currencies is '$', '€' and the local currency
                 let mut currencies = vec!["$", "€"];
                 let currency = &self.locale.currency.symbol;
@@ -1443,35 +1457,39 @@ impl Model {
                         // Should not apply the format in the following cases:
                         // - we assign a date to already date-formatted cell
                         let should_apply_format = !(is_likely_date_number_format(
-                            &self.workbook.styles.get_style(new_style_index).num_fmt,
+                            &self.workbook.styles.get_style(new_style_index)?.num_fmt,
                         ) && is_likely_date_number_format(&num_fmt));
                         if should_apply_format {
                             new_style_index = self
                                 .workbook
                                 .styles
-                                .get_style_with_format(new_style_index, &num_fmt);
+                                .get_style_with_format(new_style_index, &num_fmt)?;
                         }
                     }
-                    worksheet.set_cell_with_number(row, column, v, new_style_index);
-                    return;
+                    let worksheet = self.workbook.worksheet_mut(sheet)?;
+                    worksheet.set_cell_with_number(row, column, v, new_style_index)?;
+                    return Ok(());
                 }
                 // We try to parse as boolean
                 if let Ok(v) = value.to_lowercase().parse::<bool>() {
-                    worksheet.set_cell_with_boolean(row, column, v, new_style_index);
-                    return;
+                    let worksheet = self.workbook.worksheet_mut(sheet)?;
+                    worksheet.set_cell_with_boolean(row, column, v, new_style_index)?;
+                    return Ok(());
                 }
                 // Check is it is error value
                 let upper = value.to_uppercase();
+                let worksheet = self.workbook.worksheet_mut(sheet)?;
                 match get_error_by_name(&upper, &self.language) {
                     Some(error) => {
-                        worksheet.set_cell_with_error(row, column, error, new_style_index);
+                        worksheet.set_cell_with_error(row, column, error, new_style_index)?;
                     }
                     None => {
-                        self.set_cell_with_string(sheet, row, column, &value, new_style_index);
+                        self.set_cell_with_string(sheet, row, column, &value, new_style_index)?;
                     }
                 }
             }
         }
+        Ok(())
     }
 
     fn set_cell_with_formula(
@@ -1512,24 +1530,66 @@ impl Model {
             self.parsed_formulas[sheet as usize].push(parsed_formula);
             formula_index = (shared_formulas.len() as i32) - 1;
         }
-        worksheet.set_cell_with_formula(row, column, formula_index, style);
+        worksheet.set_cell_with_formula(row, column, formula_index, style)?;
         Ok(formula_index)
     }
 
-    fn set_cell_with_string(&mut self, sheet: u32, row: i32, column: i32, value: &str, style: i32) {
-        let worksheets = &mut self.workbook.worksheets;
-        let worksheet = &mut worksheets[sheet as usize];
+    fn set_cell_with_string(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+        style: i32,
+    ) -> Result<(), String> {
         match self.shared_strings.get(value) {
             Some(string_index) => {
-                worksheet.set_cell_with_string(row, column, *string_index as i32, style);
+                self.workbook.worksheet_mut(sheet)?.set_cell_with_string(
+                    row,
+                    column,
+                    *string_index as i32,
+                    style,
+                )?;
             }
             None => {
                 let string_index = self.workbook.shared_strings.len();
                 self.workbook.shared_strings.push(value.to_string());
                 self.shared_strings.insert(value.to_string(), string_index);
-                worksheet.set_cell_with_string(row, column, string_index as i32, style);
+                self.workbook.worksheet_mut(sheet)?.set_cell_with_string(
+                    row,
+                    column,
+                    string_index as i32,
+                    style,
+                )?;
             }
         }
+        Ok(())
+    }
+
+    fn set_cell_with_boolean(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: bool,
+        style: i32,
+    ) -> Result<(), String> {
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_cell_with_boolean(row, column, value, style)
+    }
+
+    fn set_cell_with_number(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: f64,
+        style: i32,
+    ) -> Result<(), String> {
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_cell_with_number(row, column, value, style)
     }
 
     /// Gets the Excel Value (Bool, Number, String) of a cell
@@ -1596,7 +1656,7 @@ impl Model {
     ) -> Result<String, String> {
         match self.workbook.worksheet(sheet_index)?.cell(row, column) {
             Some(cell) => {
-                let format = self.get_style_for_cell(sheet_index, row, column).num_fmt;
+                let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, &self.language, |value| {
                         format_number(value, &format, &self.locale).text
@@ -1699,7 +1759,7 @@ impl Model {
     pub fn cell_clear_contents(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
         self.workbook
             .worksheet_mut(sheet)?
-            .cell_clear_contents(row, column);
+            .cell_clear_contents(row, column)?;
         Ok(())
     }
 
@@ -1734,43 +1794,40 @@ impl Model {
     }
 
     /// Returns the style index for cell (`sheet`, `row`, `column`)
-    pub fn get_cell_style_index(&self, sheet: u32, row: i32, column: i32) -> i32 {
+    pub fn get_cell_style_index(&self, sheet: u32, row: i32, column: i32) -> Result<i32, String> {
         // First check the cell, then row, the column
-        let cell = self
-            .workbook
-            .worksheet(sheet)
-            .expect("Invalid sheet")
-            .cell(row, column);
+        let cell = self.workbook.worksheet(sheet)?.cell(row, column);
+
         match cell {
-            Some(cell) => cell.get_style(),
+            Some(cell) => Ok(cell.get_style()),
             None => {
-                let rows = &self.workbook.worksheets[sheet as usize].rows;
+                let rows = &self.workbook.worksheet(sheet)?.rows;
                 for r in rows {
                     if r.r == row {
                         if r.custom_format {
-                            return r.s;
+                            return Ok(r.s);
                         }
                         break;
                     }
                 }
-                let cols = &self.workbook.worksheets[sheet as usize].cols;
+                let cols = &self.workbook.worksheet(sheet)?.cols;
                 for c in cols.iter() {
                     let min = c.min;
                     let max = c.max;
                     if column >= min && column <= max {
-                        return c.style.unwrap_or(0);
+                        return Ok(c.style.unwrap_or(0));
                     }
                 }
-                0
+                Ok(0)
             }
         }
     }
 
     /// Returns the style for cell (`sheet`, `row`, `column`)
-    pub fn get_style_for_cell(&self, sheet: u32, row: i32, column: i32) -> Style {
-        self.workbook
-            .styles
-            .get_style(self.get_cell_style_index(sheet, row, column))
+    pub fn get_style_for_cell(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
+        let style_index = self.get_cell_style_index(sheet, row, column)?;
+        let style = self.workbook.styles.get_style(style_index)?;
+        Ok(style)
     }
 
     /// Returns an internal binary representation of the workbook
@@ -1810,7 +1867,7 @@ impl Model {
                     Some(formula) => formula,
                     None => self.get_formatted_cell_value(sheet, row, column)?,
                 };
-                let style = self.get_style_for_cell(sheet, row, column);
+                let style = self.get_style_for_cell(sheet, row, column)?;
                 if style.font.b {
                     cell_markup = format!("**{cell_markup}**")
                 }

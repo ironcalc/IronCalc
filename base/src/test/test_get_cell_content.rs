@@ -5,8 +5,12 @@ use crate::test::util::new_empty_model;
 #[test]
 fn test_formulas() {
     let mut model = new_empty_model();
-    model.set_user_input(0, 1, 1, "$100.348".to_string());
-    model.set_user_input(0, 1, 2, "=ISNUMBER(A1)".to_string());
+    model
+        .set_user_input(0, 1, 1, "$100.348".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 1, 2, "=ISNUMBER(A1)".to_string())
+        .unwrap();
 
     model.evaluate();
 

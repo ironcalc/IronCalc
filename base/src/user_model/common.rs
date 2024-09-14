@@ -331,7 +331,7 @@ impl UserModel {
             .cell(row, column)
             .cloned();
         self.model
-            .set_user_input(sheet, row, column, value.to_string());
+            .set_user_input(sheet, row, column, value.to_string())?;
 
         self.evaluate_if_not_paused();
 
@@ -457,7 +457,7 @@ impl UserModel {
                     .worksheet(sheet)?
                     .cell(row, column)
                     .cloned();
-                let old_style = self.model.get_style_for_cell(sheet, row, column);
+                let old_style = self.model.get_style_for_cell(sheet, row, column)?;
                 self.model.cell_clear_all(sheet, row, column)?;
                 diff_list.push(Diff::CellClearAll {
                     sheet,
@@ -720,7 +720,7 @@ impl UserModel {
                 let row_index = ((row - row_start) % styles_heigh) as usize;
                 let column_index = ((column - column_start) % styles_width) as usize;
                 let style = &styles[row_index][column_index];
-                let old_value = self.model.get_style_for_cell(sheet, row, column);
+                let old_value = self.model.get_style_for_cell(sheet, row, column)?;
                 self.model.set_cell_style(sheet, row, column, style)?;
                 diff_list.push(Diff::SetCellStyle {
                     sheet,
@@ -755,7 +755,7 @@ impl UserModel {
         let last_column = range.column + range.width - 1;
         for row in range.row..=last_row {
             for column in range.column..=last_column {
-                let old_value = self.model.get_style_for_cell(sheet, row, column);
+                let old_value = self.model.get_style_for_cell(sheet, row, column)?;
                 let mut style = old_value.clone();
 
                 // First remove all existing borders
@@ -852,7 +852,7 @@ impl UserModel {
         let mut diff_list = Vec::new();
         for row in range.row..range.row + range.height {
             for column in range.column..range.column + range.width {
-                let old_value = self.model.get_style_for_cell(sheet, row, column);
+                let old_value = self.model.get_style_for_cell(sheet, row, column)?;
                 let mut style = old_value.clone();
                 match style_path {
                     "font.b" => {
@@ -951,7 +951,7 @@ impl UserModel {
     /// * [Model::get_style_for_cell]
     #[inline]
     pub fn get_cell_style(&mut self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
-        Ok(self.model.get_style_for_cell(sheet, row, column))
+        self.model.get_style_for_cell(sheet, row, column)
     }
 
     /// Fills the cells from `source_area` until `to_row`.
@@ -1017,7 +1017,7 @@ impl UserModel {
                     .worksheet(sheet)?
                     .cell(row, column)
                     .cloned();
-                let old_style = self.model.get_style_for_cell(sheet, row, column);
+                let old_style = self.model.get_style_for_cell(sheet, row, column)?;
 
                 // compute the new value and set it
                 let source_row = anchor_row + index;
@@ -1025,10 +1025,10 @@ impl UserModel {
                     .model
                     .extend_to(sheet, source_row, column, row, column)?;
                 self.model
-                    .set_user_input(sheet, row, column, target_value.to_string());
+                    .set_user_input(sheet, row, column, target_value.to_string())?;
 
                 // Compute the new style and set it
-                let new_style = self.model.get_style_for_cell(sheet, source_row, column);
+                let new_style = self.model.get_style_for_cell(sheet, source_row, column)?;
                 self.model.set_cell_style(sheet, row, column, &new_style)?;
 
                 // Add the diffs
@@ -1118,7 +1118,7 @@ impl UserModel {
                     .worksheet(sheet)?
                     .cell(row, column)
                     .cloned();
-                let old_style = self.model.get_style_for_cell(sheet, row, column);
+                let old_style = self.model.get_style_for_cell(sheet, row, column)?;
 
                 // compute the new value and set it
                 let source_column = anchor_column + index;
@@ -1126,10 +1126,10 @@ impl UserModel {
                     .model
                     .extend_to(sheet, row, source_column, row, column)?;
                 self.model
-                    .set_user_input(sheet, row, column, target_value.to_string());
+                    .set_user_input(sheet, row, column, target_value.to_string())?;
 
                 // Compute the new style and set it
-                let new_style = self.model.get_style_for_cell(sheet, row, source_column);
+                let new_style = self.model.get_style_for_cell(sheet, row, source_column)?;
                 self.model.set_cell_style(sheet, row, column, &new_style)?;
 
                 // Add the diffs
@@ -1216,7 +1216,7 @@ impl UserModel {
                             self.model
                                 .workbook
                                 .worksheet_mut(*sheet)?
-                                .update_cell(*row, *column, value);
+                                .update_cell(*row, *column, value)?;
                         }
                         None => {
                             self.model.cell_clear_all(*sheet, *row, *column)?;
@@ -1246,7 +1246,7 @@ impl UserModel {
                         self.model
                             .workbook
                             .worksheet_mut(*sheet)?
-                            .update_cell(*row, *column, value);
+                            .update_cell(*row, *column, value)?;
                     }
                 }
                 Diff::CellClearAll {
@@ -1261,7 +1261,7 @@ impl UserModel {
                         self.model
                             .workbook
                             .worksheet_mut(*sheet)?
-                            .update_cell(*row, *column, value);
+                            .update_cell(*row, *column, value)?;
                         self.model
                             .set_cell_style(*sheet, *row, *column, old_style)?;
                     }
@@ -1307,7 +1307,7 @@ impl UserModel {
                     // puts all the data back
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     for (row, cell) in &old_data.data {
-                        worksheet.update_cell(*row, *column, cell.clone());
+                        worksheet.update_cell(*row, *column, cell.clone())?;
                     }
                     // makes sure that the width and style is correct
                     if let Some(col) = &old_data.column {
@@ -1375,7 +1375,7 @@ impl UserModel {
                 } => {
                     needs_evaluation = true;
                     self.model
-                        .set_user_input(*sheet, *row, *column, new_value.to_string());
+                        .set_user_input(*sheet, *row, *column, new_value.to_string())?;
                 }
                 Diff::SetColumnWidth {
                     sheet,

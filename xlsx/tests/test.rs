@@ -158,42 +158,42 @@ fn test_split() {
 
 fn test_model_has_correct_styles(model: &Model) {
     // A1 is bold
-    let style_a1 = model.get_style_for_cell(0, 1, 1);
+    let style_a1 = model.get_style_for_cell(0, 1, 1).unwrap();
     assert!(style_a1.font.b);
     assert!(!style_a1.font.i);
     assert!(!style_a1.font.u);
 
     // B1 is Italics
-    let style_b1 = model.get_style_for_cell(0, 1, 2);
+    let style_b1 = model.get_style_for_cell(0, 1, 2).unwrap();
     assert!(style_b1.font.i);
     assert!(!style_b1.font.b);
     assert!(!style_b1.font.u);
 
     // C1 Underlined
-    let style_c1 = model.get_style_for_cell(0, 1, 3);
+    let style_c1 = model.get_style_for_cell(0, 1, 3).unwrap();
     assert!(style_c1.font.u);
     assert!(!style_c1.font.b);
     assert!(!style_c1.font.i);
 
     // D1 Bold and Italics
-    let style_d1 = model.get_style_for_cell(0, 1, 4);
+    let style_d1 = model.get_style_for_cell(0, 1, 4).unwrap();
     assert!(style_d1.font.b);
     assert!(style_d1.font.i);
     assert!(!style_d1.font.u);
 
     // E1 Bold, italics and underlined
-    let style_e1 = model.get_style_for_cell(0, 1, 5);
+    let style_e1 = model.get_style_for_cell(0, 1, 5).unwrap();
     assert!(style_e1.font.b);
     assert!(style_e1.font.i);
     assert!(style_e1.font.u);
     assert!(!style_e1.font.strike);
 
     // F1 strikethrough
-    let style_f1 = model.get_style_for_cell(0, 1, 6);
+    let style_f1 = model.get_style_for_cell(0, 1, 6).unwrap();
     assert!(style_f1.font.strike);
 
     // G1 Double underlined just get simple underlined
-    let style_g1 = model.get_style_for_cell(0, 1, 7);
+    let style_g1 = model.get_style_for_cell(0, 1, 7).unwrap();
     assert!(style_g1.font.u);
 
     let height_row_3 = model.workbook.worksheet(0).unwrap().row_height(3).unwrap();
@@ -204,44 +204,84 @@ fn test_model_has_correct_styles(model: &Model) {
 
     // Second sheet has alignment
     // Horizontal
-    let alignment = model.get_style_for_cell(1, 2, 1).alignment;
+    let alignment = model.get_style_for_cell(1, 2, 1).unwrap().alignment;
     assert_eq!(alignment, None);
 
-    let alignment = model.get_style_for_cell(1, 3, 1).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 3, 1)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.horizontal, HorizontalAlignment::Left);
 
-    let alignment = model.get_style_for_cell(1, 4, 1).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 4, 1)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.horizontal, HorizontalAlignment::Distributed);
 
-    let alignment = model.get_style_for_cell(1, 5, 1).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 5, 1)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.horizontal, HorizontalAlignment::Right);
 
-    let alignment = model.get_style_for_cell(1, 6, 1).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 6, 1)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.horizontal, HorizontalAlignment::Center);
 
-    let alignment = model.get_style_for_cell(1, 7, 1).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 7, 1)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.horizontal, HorizontalAlignment::Fill);
 
-    let alignment = model.get_style_for_cell(1, 8, 1).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 8, 1)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.horizontal, HorizontalAlignment::Justify);
 
     // Vertical
-    let alignment = model.get_style_for_cell(1, 2, 2).alignment;
+    let alignment = model.get_style_for_cell(1, 2, 2).unwrap().alignment;
     assert_eq!(alignment, None);
 
-    let alignment = model.get_style_for_cell(1, 3, 2).alignment;
+    let alignment = model.get_style_for_cell(1, 3, 2).unwrap().alignment;
     assert_eq!(alignment, None);
 
-    let alignment = model.get_style_for_cell(1, 4, 2).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 4, 2)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.vertical, VerticalAlignment::Top);
 
-    let alignment = model.get_style_for_cell(1, 5, 2).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 5, 2)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.vertical, VerticalAlignment::Center);
 
-    let alignment = model.get_style_for_cell(1, 6, 2).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 6, 2)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.vertical, VerticalAlignment::Justify);
 
-    let alignment = model.get_style_for_cell(1, 7, 2).alignment.unwrap();
+    let alignment = model
+        .get_style_for_cell(1, 7, 2)
+        .unwrap()
+        .alignment
+        .unwrap();
     assert_eq!(alignment.vertical, VerticalAlignment::Distributed);
 }
 
@@ -280,7 +320,9 @@ fn test_defined_names_casing() {
         ("=NaMeD3", "33"),
     ];
     for (formula, expected_value) in test_cases {
-        model.set_user_input(0, row, column, formula.to_string());
+        model
+            .set_user_input(0, row, column, formula.to_string())
+            .unwrap();
         model.evaluate();
         assert_eq!(
             model.get_formatted_cell_value(0, row, column).unwrap(),

@@ -79,12 +79,11 @@ impl Model {
         let formula_or_value = self
             .get_cell_formula(sheet, source_row, source_column)?
             .unwrap_or_else(|| source_cell.get_text(&self.workbook.shared_strings, &self.language));
-        self.set_user_input(sheet, target_row, target_column, formula_or_value);
+        self.set_user_input(sheet, target_row, target_column, formula_or_value)?;
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_style(target_row, target_column, style);
-        self.cell_clear_all(sheet, source_row, source_column)?;
-        Ok(())
+            .set_cell_style(target_row, target_column, style)?;
+        self.cell_clear_all(sheet, source_row, source_column)
     }
 
     /// Inserts one or more new columns into the model at the specified index.

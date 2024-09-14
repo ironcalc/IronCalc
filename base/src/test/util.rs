@@ -20,7 +20,8 @@ impl Model {
         let cell_reference = self._parse_reference(cell);
         let column = cell_reference.column;
         let row = cell_reference.row;
-        self.set_user_input(cell_reference.sheet, row, column, value.to_string());
+        self.set_user_input(cell_reference.sheet, row, column, value.to_string())
+            .unwrap();
     }
     pub fn _has_formula(&self, cell: &str) -> bool {
         self._get_formula_opt(cell).is_some()

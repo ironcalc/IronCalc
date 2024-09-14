@@ -161,26 +161,29 @@ impl Styles {
 
     pub fn create_named_style(&mut self, style_name: &str, style: &Style) -> Result<(), String> {
         let style_index = self.create_new_style(style);
-        self.add_named_cell_style(style_name, style_index)?;
-        Ok(())
+        self.add_named_cell_style(style_name, style_index)
     }
 
-    pub(crate) fn get_style_with_quote_prefix(&mut self, index: i32) -> i32 {
-        let mut style = self.get_style(index);
+    pub(crate) fn get_style_with_quote_prefix(&mut self, index: i32) -> Result<i32, String> {
+        let mut style = self.get_style(index)?;
         style.quote_prefix = true;
-        self.get_style_index_or_create(&style)
+        Ok(self.get_style_index_or_create(&style))
     }
 
-    pub(crate) fn get_style_with_format(&mut self, index: i32, num_fmt: &str) -> i32 {
-        let mut style = self.get_style(index);
+    pub(crate) fn get_style_with_format(
+        &mut self,
+        index: i32,
+        num_fmt: &str,
+    ) -> Result<i32, String> {
+        let mut style = self.get_style(index)?;
         style.num_fmt = num_fmt.to_string();
-        self.get_style_index_or_create(&style)
+        Ok(self.get_style_index_or_create(&style))
     }
 
-    pub(crate) fn get_style_without_quote_prefix(&mut self, index: i32) -> i32 {
-        let mut style = self.get_style(index);
+    pub(crate) fn get_style_without_quote_prefix(&mut self, index: i32) -> Result<i32, String> {
+        let mut style = self.get_style(index)?;
         style.quote_prefix = false;
-        self.get_style_index_or_create(&style)
+        Ok(self.get_style_index_or_create(&style))
     }
 
     pub(crate) fn style_is_quote_prefix(&self, index: i32) -> bool {
@@ -188,9 +191,11 @@ impl Styles {
         cell_xf.quote_prefix
     }
 
-    pub(crate) fn get_style(&self, index: i32) -> Style {
-        let cell_xf = &self.cell_xfs[index as usize];
-
+    pub(crate) fn get_style(&self, index: i32) -> Result<Style, String> {
+        let cell_xf = &self
+            .cell_xfs
+            .get(index as usize)
+            .ok_or("Invalid index provided".to_string())?;
         let border_id = cell_xf.border_id as usize;
         let fill_id = cell_xf.fill_id as usize;
         let font_id = cell_xf.font_id as usize;
@@ -198,14 +203,14 @@ impl Styles {
         let quote_prefix = cell_xf.quote_prefix;
         let alignment = cell_xf.alignment.clone();
 
-        Style {
+        Ok(Style {
             alignment,
             num_fmt: get_num_fmt(num_fmt_id, &self.num_fmts),
             fill: self.fills[fill_id].clone(),
             font: self.fonts[font_id].clone(),
             border: self.borders[border_id].clone(),
             quote_prefix,
-        }
+        })
     }
 }
 
@@ -221,8 +226,7 @@ impl Model {
         let style_index = self.workbook.styles.get_style_index_or_create(style);
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_style(row, column, style_index);
-        Ok(())
+            .set_cell_style(row, column, style_index)
     }
 
     pub fn copy_cell_style(
@@ -237,9 +241,7 @@ impl Model {
 
         self.workbook
             .worksheet_mut(destination_cell.0)?
-            .set_cell_style(destination_cell.1, destination_cell.2, source_style_index);
-
-        Ok(())
+            .set_cell_style(destination_cell.1, destination_cell.2, source_style_index)
     }
 
     /// Sets the style "style_name" in cell
@@ -253,8 +255,7 @@ impl Model {
         let style_index = self.workbook.styles.get_style_index_by_name(style_name)?;
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_style(row, column, style_index);
-        Ok(())
+            .set_cell_style(row, column, style_index)
     }
 
     pub fn set_sheet_style(&mut self, sheet: u32, style_name: &str) -> Result<(), String> {
