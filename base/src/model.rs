@@ -1237,9 +1237,7 @@ impl Model {
             new_style_index = style_index;
         }
 
-        self.set_cell_with_string(sheet, row, column, value, new_style_index)?;
-
-        Ok(())
+        self.set_cell_with_string(sheet, row, column, value, new_style_index)
     }
 
     /// Updates the value of a cell with a boolean value
@@ -1281,8 +1279,7 @@ impl Model {
         } else {
             style_index
         };
-        self.set_cell_with_boolean(sheet, row, column, value, new_style_index)?;
-        Ok(())
+        self.set_cell_with_boolean(sheet, row, column, value, new_style_index)
     }
 
     /// Updates the value of a cell with a number
@@ -1324,8 +1321,7 @@ impl Model {
         } else {
             style_index
         };
-        self.set_cell_with_number(sheet, row, column, value, new_style_index)?;
-        Ok(())
+        self.set_cell_with_number(sheet, row, column, value, new_style_index)
     }
 
     /// Updates the formula of given cell
