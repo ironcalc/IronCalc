@@ -1576,9 +1576,7 @@ impl Model {
     ) -> Result<(), String> {
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_with_boolean(row, column, value, style)?;
-
-        Ok(())
+            .set_cell_with_boolean(row, column, value, style)
     }
 
     fn set_cell_with_number(
@@ -1591,8 +1589,7 @@ impl Model {
     ) -> Result<(), String> {
         self.workbook
             .worksheet_mut(sheet)?
-            .set_cell_with_number(row, column, value, style)?;
-        Ok(())
+            .set_cell_with_number(row, column, value, style)
     }
 
     /// Gets the Excel Value (Bool, Number, String) of a cell
