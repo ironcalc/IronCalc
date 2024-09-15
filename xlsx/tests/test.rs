@@ -465,9 +465,9 @@ fn test_merged_cell_behaviors() {
     assert_eq!(model.get_cell_type(0, 1, 4).unwrap(), CellType::Text);
 
     // Updating cell which is not in Merge cell block
-    assert_eq!(model.set_user_input(0, 1, 4, "Hello".to_string()), Ok(()));
-    assert_eq!(model.get_cell_content(0, 1, 4), Ok("Hello".to_string()));
-    assert_eq!(model.get_cell_type(0, 1, 4), Ok(CellType::Text));
+    assert_eq!(model.set_user_input(0, 1, 3, "Hello".to_string()), Ok(()));
+    assert_eq!(model.get_cell_content(0, 1, 3), Ok("Hello".to_string()));
+    assert_eq!(model.get_cell_type(0, 1, 3), Ok(CellType::Text));
 
     // 1: testing with set_user_input()
     assert_eq!(
