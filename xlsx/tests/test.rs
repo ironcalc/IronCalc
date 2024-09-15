@@ -519,5 +519,4 @@ fn test_merged_cell_behaviors() {
     );
     assert_eq!(model.get_cell_content(0, 1, 5).unwrap(), "");
     assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
-
 }

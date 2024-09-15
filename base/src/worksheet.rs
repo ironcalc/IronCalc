@@ -521,7 +521,7 @@ impl Worksheet {
 
         Ok(is_empty)
     }
-    
+
     /// Returns true if cell part of Merged Cells.
     /// First cell of Merge block is not considered as part of Merge cell
     /// Ex : if Merge cells were A1-C3, A1 is not considered as part of Merge cell
