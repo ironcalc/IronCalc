@@ -527,7 +527,7 @@ impl Worksheet {
     /// Ex : if Merge cells were A1-C3, A1 is not considered as part of Merge cell
     pub fn is_part_of_merge_cell(&self, row: i32, column: i32) -> Result<bool, String> {
         if !is_valid_column_number(column) || !is_valid_row(row) {
-            return Err("Row or column is outside valid range.".to_string());
+            return Err("Incorrect row or column".to_string());
         }
 
         //traverse through Vector of Merged Cells and return (linear search)
