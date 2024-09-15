@@ -464,59 +464,52 @@ fn test_merged_cell_behaviors() {
     assert_eq!(model.get_cell_content(0, 1, 4).unwrap(), "Hello");
     assert_eq!(model.get_cell_type(0, 1, 4).unwrap(), CellType::Text);
 
-    //Updating the daughter cell of Merge cells block and expecting it not to go through
+    // Updating cell which is not in Merge cell block
+    assert_eq!(model.set_user_input(0, 1, 4, "Hello".to_string()), Ok(()));
+    assert_eq!(model.get_cell_content(0, 1, 4), Ok("Hello".to_string()));
+    assert_eq!(model.get_cell_type(0, 1, 4), Ok(CellType::Text));
 
     // 1: testing with set_user_input()
     assert_eq!(
         model
-            .set_user_input(0, 1, 5, "Hello".to_string())
-            .err()
-            .unwrap(),
-        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+            .set_user_input(0, 1, 5, "Hello".to_string()),
+        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
     );
-    assert_eq!(model.get_cell_content(0, 1, 5).unwrap(), "");
-    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+    assert_eq!(model.get_cell_content(0, 1, 5), Ok("".to_string()));
+    assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
 
     // 2: testing with update_cell_with_bool()
     assert_eq!(
         model
-            .update_cell_with_bool(0, 1, 5, true)
-            .err()
-            .unwrap(),
-        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+            .update_cell_with_bool(0, 1, 5, true),
+        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
     );
-    assert_eq!(model.get_cell_content(0, 1, 5).unwrap(), "");
-    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+    assert_eq!(model.get_cell_content(0, 1, 5), Ok("".to_string()));
+    assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
 
     // 3: testing with update_cell_with_formula()
     assert_eq!(
         model
-            .update_cell_with_formula(0, 1, 5, "=SUM(A1+A2)".to_string())
-            .err()
-            .unwrap(),
-        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+            .update_cell_with_formula(0, 1, 5, "=SUM(A1+A2)".to_string()),
+        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
     );
-    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+    assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
 
     // 4: testing with update_cell_with_number()
     assert_eq!(
         model
-            .update_cell_with_number(0, 1, 5, 10.0)
-            .err()
-            .unwrap(),
-        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+            .update_cell_with_number(0, 1, 5, 10.0),
+        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
     );
-    assert_eq!(model.get_cell_content(0, 1, 5).unwrap(), "");
-    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+    assert_eq!(model.get_cell_content(0, 1, 5), Ok("".to_string()));
+    assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
 
     // 5: testing with update_cell_with_text()
     assert_eq!(
         model
-            .update_cell_with_text(0, 1, 5, "new text")
-            .err()
-            .unwrap(),
-        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+            .update_cell_with_text(0, 1, 5, "new text"),
+        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
     );
-    assert_eq!(model.get_cell_content(0, 1, 5).unwrap(), "");
-    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+    assert_eq!(model.get_cell_content(0, 1, 5), Ok("".to_string()));
+    assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
 }
