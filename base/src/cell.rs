@@ -176,3 +176,35 @@ impl Cell {
         }
     }
 }
+
+// Implementing methods for MergeCell struct
+
+impl MergeCell {
+    pub fn is_cell_part_of_merge_cell(&self, row: i32, col: i32) -> bool {
+        // This is merge Mother cell so do not include this cell as part of Merge Cell
+        if row == self.merge_cell_range.0 && col == self.merge_cell_range.1 {
+            return false;
+        }
+
+        let result: bool = if (row >= self.merge_cell_range.0 && row <= self.merge_cell_range.2)
+            && (col >= self.merge_cell_range.1 && col <= self.merge_cell_range.3)
+        {
+            true
+        } else {
+            false
+        };
+
+        result
+    }
+
+    pub fn get_range_ref(&self) -> String {
+        self.range_ref.clone()
+    }
+
+    pub fn new(merge_cell_parsed_range: (i32, i32, i32, i32), range_ref: String) -> Self {
+        Self {
+            merge_cell_range: merge_cell_parsed_range,
+            range_ref: range_ref,
+        }
+    }
+}

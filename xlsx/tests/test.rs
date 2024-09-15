@@ -5,7 +5,7 @@ use uuid::Uuid;
 use ironcalc::compare::{test_file, test_load_and_saving};
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::{load_from_icalc, load_from_xlsx, load_from_xlsx_bytes};
-use ironcalc_base::types::{HorizontalAlignment, VerticalAlignment};
+use ironcalc_base::types::{CellType, HorizontalAlignment, VerticalAlignment};
 use ironcalc_base::Model;
 
 // This is a functional test.
@@ -451,4 +451,73 @@ fn test_exporting_merged_cells() {
     }
 
     fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
+fn test_merged_cell_behaviors() {
+    // loading the xlsx file containing merged cells
+    let example_file_name = "tests/Merged_cells.xlsx";
+    let mut model = load_from_xlsx(example_file_name, "en", "UTC").unwrap();
+
+    //Updating the mother cell of Merge cells and expecting the update to go through
+    model.set_user_input(0, 1, 4, "Hello".to_string()).unwrap();
+    assert_eq!(model.get_cell_content(0, 1, 4).unwrap(), "Hello");
+    assert_eq!(model.get_cell_type(0, 1, 4).unwrap(), CellType::Text);
+
+    //Updating the daughter cell of Merge cells block and expecting it not to go through
+
+    // 1: testing with set_user_input()
+    assert_eq!(
+        model
+            .set_user_input(0, 1, 5, "Hello".to_string())
+            .err()
+            .unwrap(),
+        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+    );
+    assert_eq!(model.get_cell_content(0, 1, 5).unwrap(), "");
+    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+
+    // 2: testing with update_cell_with_bool()
+    assert_eq!(
+        model
+            .update_cell_with_bool(0, 1, 5, true)
+            .err()
+            .unwrap(),
+        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+    );
+    assert_eq!(model.get_cell_content(0, 1, 5).unwrap(), "");
+    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+
+    // 3: testing with update_cell_with_formula()
+    assert_eq!(
+        model
+            .update_cell_with_formula(0, 1, 5, "=SUM(A1+A2)".to_string())
+            .err()
+            .unwrap(),
+        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+    );
+    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+
+    // 4: testing with update_cell_with_number()
+    assert_eq!(
+        model
+            .update_cell_with_number(0, 1, 5, 10.0)
+            .err()
+            .unwrap(),
+        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+    );
+    assert_eq!(model.get_cell_content(0, 1, 5).unwrap(), "");
+    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+
+    // 5: testing with update_cell_with_text()
+    assert_eq!(
+        model
+            .update_cell_with_text(0, 1, 5, "new text")
+            .err()
+            .unwrap(),
+        "Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible"
+    );
+    assert_eq!(model.get_cell_content(0, 1, 5).unwrap(), "");
+    assert_eq!(model.get_cell_type(0, 1, 5).unwrap(), CellType::Number);
+
 }

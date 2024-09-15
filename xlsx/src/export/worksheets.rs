@@ -244,7 +244,8 @@ pub(crate) fn get_worksheet_xml(
     let sheet_data = sheet_data_str.join("");
 
     for merge_cell_ref in &worksheet.merge_cells {
-        merged_cells_str.push(format!("<mergeCell ref=\"{merge_cell_ref}\"/>"))
+        let merge_cell_range_ref: String = merge_cell_ref.get_range_ref();
+        merged_cells_str.push(format!("<mergeCell ref=\"{merge_cell_range_ref}\"/>"))
     }
     let merged_cells_count = merged_cells_str.len();
 

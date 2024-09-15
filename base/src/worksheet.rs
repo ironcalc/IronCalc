@@ -521,6 +521,23 @@ impl Worksheet {
 
         Ok(is_empty)
     }
+    
+    /// Returns true if cell part of Merged Cells.
+    /// First cell of Merge block is not considered as part of Merge cell
+    /// Ex : if Merge cells were A1-C3, A1 is not considered as part of Merge cell
+    pub fn is_part_of_merge_cell(&self, row: i32, column: i32) -> Result<bool, String> {
+        if !is_valid_column_number(column) || !is_valid_row(row) {
+            return Err("Row or column is outside valid range.".to_string());
+        }
+
+        //traverse through Vector of Merged Cells and return (linear search)
+        for merge_cell in &self.merge_cells {
+            if merge_cell.is_cell_part_of_merge_cell(row, column) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
 
     /// It provides convenient method for user navigation in the spreadsheet by jumping to edges.
     /// Spreadsheet engines usually allow this method of navigation by using CTRL+arrows.
