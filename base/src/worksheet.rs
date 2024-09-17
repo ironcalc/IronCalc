@@ -592,6 +592,13 @@ impl Worksheet {
             }
         }
     }
+
+    pub fn get_merge_cell_vec_mut(&mut self) -> &mut Vec<MergeCell> {
+        &mut self.merge_cells
+    }
+    pub fn get_merge_cell_vec(&self) -> &Vec<MergeCell> {
+        &self.merge_cells
+    }
 }
 
 struct WalkFoundCells {

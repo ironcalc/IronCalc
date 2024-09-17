@@ -512,4 +512,23 @@ fn test_merged_cell_behaviors() {
     );
     assert_eq!(model.get_cell_content(0, 1, 5), Ok("".to_string()));
     assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
+
+    // CRUD APIS testing on Merge Cells
+
+    // Case1: Creating a new merge cell without overlapping
+    assert_eq!(model.update_merge_cell(0, "A1:B1"), Ok(()));
+    assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 2);
+
+    // Case2: Creating a new merge cell with overlapping with other 2 merged cell
+    assert_eq!(model.update_merge_cell(0, "B1:E1"), Ok(()));
+    assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 1);
+
+    // Case3: Giving wrong merge_ref, which would resulting in error (Merge cell to be deleted is not found)
+    assert_eq!(
+        model.unmerge_merged_cells(0, "C1:E1"),
+        Err("Invalid merge_cell_ref, Merge cell to be deleted is not found".to_string())
+    );
+
+    // Case3: unmerge scenario
+    assert_eq!(model.unmerge_merged_cells(0, "B1:E1"), Ok(()));
 }

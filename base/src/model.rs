@@ -10,6 +10,7 @@ use crate::{
     expressions::{
         parser::{
             move_formula::{move_formula, MoveContext},
+            parse_range,
             stringify::{to_rc_format, to_string},
             Node, Parser,
         },
@@ -2065,6 +2066,115 @@ impl Model {
         self.workbook
             .worksheet_mut(sheet)?
             .set_row_height(column, height)
+    }
+
+    // Implementing public APIS related to Merge cell handling
+
+    /// Creates or updates Merge cell block
+    /// If no overlap, it will create that merge cell with left most top cell value representing the whole merge cell
+    /// If new merge cell creation overlaps with any of the existing merge cell, Overlapped merge cells gets unmerged
+    /// and new merge cell gets added
+    pub fn update_merge_cell(&mut self, sheet: u32, range_ref: &str) -> Result<(), String> {
+        // ATTENTION : below parse_range implementation gives (col start, row_start, col_end, row_end)
+        match parse_range(&range_ref) {
+            Ok(parsed_merge_cell_range) => {
+                let mut merge_cells_overlap: Vec<bool> = Vec::new();
+                // checking whether our new range overlaps with any of the already existing merge cells
+                // if so, need to unmerge those and create this new one
+                {
+                    let worksheet = self.workbook.worksheet(sheet)?;
+                    let merged_cells = worksheet.get_merge_cell_vec();
+
+                    for merge_node in merged_cells {
+                        let merge_block_parsed_range = merge_node.merge_cell_range;
+
+                        // checking whether any overlapping exist with this merge cell
+                        if (!(parsed_merge_cell_range.0 > merge_block_parsed_range.3
+                            || parsed_merge_cell_range.2 < merge_block_parsed_range.1))
+                            && !(parsed_merge_cell_range.1 > merge_block_parsed_range.2
+                                || parsed_merge_cell_range.3 < merge_block_parsed_range.0)
+                        {
+                            // overlap has happened
+                            merge_cells_overlap.push(true);
+                        } else {
+                            merge_cells_overlap.push(false);
+                        }
+                    }
+                }
+
+                if !merge_cells_overlap.is_empty() {
+                    // Lets take Mutable ref to Merge cell and deletes all those nodes which has overlapped
+                    let worksheet = self.workbook.worksheet_mut(sheet)?;
+                    let merged_cells = worksheet.get_merge_cell_vec_mut();
+                    let mut merge_cells_overlap_iter = merge_cells_overlap.iter();
+                    merged_cells.retain(|_| !(*merge_cells_overlap_iter.next().unwrap()))
+                }
+
+                // Now need to update (n*m - 1) cells with empty cell ( except the Mother cell )
+                for row_index in parsed_merge_cell_range.1..=parsed_merge_cell_range.3 {
+                    for col_index in parsed_merge_cell_range.0..=parsed_merge_cell_range.2 {
+                        // skip Mother cell
+                        if row_index == parsed_merge_cell_range.1
+                            && col_index == parsed_merge_cell_range.3
+                        {
+                            continue;
+                        }
+
+                        //update the node with empty cell
+                        {
+                            self.workbook.worksheet_mut(sheet)?.update_cell(
+                                row_index,
+                                col_index,
+                                Cell::EmptyCell { s: 0 },
+                            )?;
+                        }
+                    }
+                }
+
+                // Now create Merge cell Node and push to Merge Cell vector
+                // Rearranging range tuple as Merge cell Node requires to be in row first format
+                let re_arranged_merge_cell_range: (i32, i32, i32, i32) = (
+                    parsed_merge_cell_range.1,
+                    parsed_merge_cell_range.0,
+                    parsed_merge_cell_range.3,
+                    parsed_merge_cell_range.2,
+                );
+                let new_merge_cell = MergeCell {
+                    merge_cell_range: re_arranged_merge_cell_range,
+                    range_ref: range_ref.to_string(),
+                };
+                {
+                    self.workbook
+                        .worksheet_mut(sheet)?
+                        .merge_cells
+                        .push(new_merge_cell);
+                }
+            }
+            Err(err) => {
+                println!("encountered error while parsing merge cell ref : {}", err);
+            }
+        }
+        Ok(())
+    }
+
+    /// Unmerges a given merge cells
+    /// Once unmerged, only top most left corner value gets retained and all the others will have empty cell
+    pub fn unmerge_merged_cells(&mut self, sheet: u32, range_ref: &str) -> Result<(), String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        let merged_cells = worksheet.get_merge_cell_vec();
+        for (index, merge_node) in merged_cells.iter().enumerate() {
+            let merge_block_range_ref = merge_node.range_ref.as_str();
+            // finding the merge cell node to be deleted
+            if merge_block_range_ref == range_ref {
+                // Merge cell to be deleted is found
+                self.workbook
+                    .worksheet_mut(sheet)?
+                    .merge_cells
+                    .remove(index);
+                return Ok(());
+            }
+        }
+        Err("Invalid merge_cell_ref, Merge cell to be deleted is not found".to_string())
     }
 }
 
