@@ -64,7 +64,7 @@ fn test_values() {
     }
     {
         let temp_file_name = "temp_file_test_values.ic";
-        save_to_icalc(model.workbook, temp_file_name);
+        save_to_icalc(&model, temp_file_name).unwrap();
 
         let model = load_from_icalc(temp_file_name).unwrap();
         assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "123.456");

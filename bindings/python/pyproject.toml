@@ -1,0 +1,36 @@
+[project]
+name = "ironcalc"
+version = "0.1.2"
+description = "Create, edit and evaluate Excel spreadsheets"
+requires-python = ">=3.10"
+keywords = [
+  "xlsx",
+  "spreadsheet",
+]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "License :: OSI Approved :: Apache Software License",
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Office/Business :: Financial :: Spreadsheet",
+]
+authors = [
+  { name = "Nicolás Hatcher", email = "nicolas@theuniverse.today" },
+]
+
+[project.urls]
+Homepage = "https://www.ironcalc.com/"
+Source = "https://github.com/ironcalc/ironcalc"
+Tracker = "https://github.com/ironcalc/ironcalc/issues"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
