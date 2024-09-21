@@ -107,7 +107,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.add_directory("xl/worksheets", options)?;
     for (sheet_index, worksheet) in workbook.worksheets.iter().enumerate() {
         let id = sheet_index + 1;
-        zip.start_file(&format!("xl/worksheets/sheet{id}.xml"), options)?;
+        zip.start_file(format!("xl/worksheets/sheet{id}.xml"), options)?;
         let dimension = model
             .workbook
             .worksheet(sheet_index as u32)
@@ -134,10 +134,15 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     Ok(writer)
 }
 
-/// Exports an internal representation of a workbook into an equivalent IronCalc json format
-pub fn save_to_icalc(workbook: Workbook, output: &str) {
-    let s = bitcode::encode(&workbook);
-    let file_path = std::path::Path::new(output);
-    let mut file = fs::File::create(file_path).unwrap();
-    file.write_all(&s).unwrap();
+/// Exports a model to an icalc file
+pub fn save_to_icalc(model: &Model, file_name: &str) -> Result<(), XlsxError> {
+    let file_path = std::path::Path::new(&file_name);
+    if file_path.exists() {
+        return Err(XlsxError::IO(format!("file {} already exists", file_name)));
+    }
+    let s = bitcode::encode(&model.workbook);
+    let mut file = fs::File::create(file_path)?;
+    file.write_all(&s)?;
+
+    Ok(())
 }

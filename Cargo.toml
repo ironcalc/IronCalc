@@ -5,6 +5,7 @@ members = [
   "base",
   "xlsx",
   "bindings/wasm",
+  "bindings/python",
 ]
 
 exclude = [
