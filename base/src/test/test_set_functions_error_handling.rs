@@ -132,11 +132,11 @@ fn test_get_style_for_cell() {
 
     // Case2 : Invalid Row
     let update_result = model.get_style_for_cell(0, 0, 2);
-    assert_eq!(update_result.is_ok(), true);
+    assert!(update_result.is_ok());
 
     // Case3 : Invalid Column
     let update_result = model.get_style_for_cell(0, 1, 1048579);
-    assert_eq!(update_result.is_ok(), true);
+    assert!(update_result.is_ok());
 }
 
 #[test]
