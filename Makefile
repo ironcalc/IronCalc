@@ -18,7 +18,7 @@ tests: lint
 	# and a second one for the vitest.
 	cd bindings/wasm/ && wasm-pack build --target nodejs && node tests/test.mjs && make
 	cd webapp && npm run test
-	cd bindings/python && ./run_tests.sh && ./run_examples
+	cd bindings/python && ./run_tests.sh && ./run_examples.sh
 
 .PHONY: remove-artifacts
 remove-artifacts:
