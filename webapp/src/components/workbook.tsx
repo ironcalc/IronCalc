@@ -1,6 +1,6 @@
 import type { BorderOptions, Model, WorksheetProperties } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LAST_COLUMN } from "./WorksheetCanvas/constants";
 import FormulaBar from "./formulabar";
 import Navigation from "./navigation/navigation";
@@ -262,26 +262,33 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     }
   });
 
-  const {
-    sheet,
-    row,
-    column,
-    range: [rowStart, columnStart, rowEnd, columnEnd],
-  } = model.getSelectedView();
+  const cellAddress = useCallback(() => {
+    const {
+      row,
+      column,
+      range: [rowStart, columnStart, rowEnd, columnEnd],
+    } = model.getSelectedView();
+    return getCellAddress(
+      { rowStart, rowEnd, columnStart, columnEnd },
+      { row, column },
+    );
+  }, [model]);
 
-  const cellAddress = getCellAddress(
-    { rowStart, rowEnd, columnStart, columnEnd },
-    { row, column },
-  );
-  const formulaValue = (() => {
+  const formulaValue = () => {
     const cell = workbookState.getEditingCell();
     if (cell) {
       return cell.text;
     }
+    const { sheet, row, column } = model.getSelectedView();
     return model.getCellContent(sheet, row, column);
-  })();
+  };
 
-  const style = model.getCellStyle(sheet, row, column);
+  const getCellStyle = useCallback(() => {
+    const { sheet, row, column } = model.getSelectedView();
+    return model.getCellStyle(sheet, row, column);
+  }, [model]);
+
+  const style = getCellStyle();
 
   return (
     <Container
@@ -339,15 +346,16 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         verticalAlign={style.alignment ? style.alignment.vertical : "center"}
         canEdit={true}
         numFmt={style.num_fmt}
-        showGridLines={model.getShowGridLines(sheet)}
+        showGridLines={model.getShowGridLines(model.getSelectedSheet())}
         onToggleShowGridLines={(show) => {
+          const sheet = model.getSelectedSheet();
           model.setShowGridLines(sheet, show);
           setRedrawId((id) => id + 1);
         }}
       />
       <FormulaBar
-        cellAddress={cellAddress}
-        formulaValue={formulaValue}
+        cellAddress={cellAddress()}
+        formulaValue={formulaValue()}
         onChange={() => {
           setRedrawId((id) => id + 1);
           rootRef.current?.focus();

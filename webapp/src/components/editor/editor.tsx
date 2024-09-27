@@ -193,7 +193,7 @@ const Editor = (options: EditorOptions) => {
   const isCellEditing = workbookState.getEditingCell() !== null;
 
   const showEditor =
-    isCellEditing && (display || type === "formula-bar") ? "block" : "none";
+    (isCellEditing && display) || type === "formula-bar" ? "block" : "none";
 
   return (
     <div
@@ -229,13 +229,18 @@ const Editor = (options: EditorOptions) => {
           resize: "none",
           border: "none",
           height,
-          display: display ? "block" : "none",
           overflow: "hidden",
         }}
         defaultValue={text}
         spellCheck="false"
         onKeyDown={onKeyDown}
         onBlur={onChange}
+        onClick={(event) => {
+          // Prevents this from bubbling up and focusing on the spreadsheet
+          if (isCellEditing && type === "cell") {
+            event.stopPropagation();
+          }
+        }}
       />
     </div>
   );

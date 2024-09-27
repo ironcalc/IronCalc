@@ -1,3 +1,4 @@
+import type { Model } from "@ironcalc/wasm";
 import { type PointerEvent, type RefObject, useCallback, useRef } from "react";
 import type WorksheetCanvas from "./WorksheetCanvas/worksheetCanvas";
 import {
@@ -5,6 +6,7 @@ import {
   headerRowHeight,
 } from "./WorksheetCanvas/worksheetCanvas";
 import type { Cell } from "./types";
+import type { WorkbookState } from "./workbookState";
 
 interface PointerSettings {
   canvasElement: RefObject<HTMLCanvasElement>;
@@ -15,6 +17,8 @@ interface PointerSettings {
   onAreaSelected: () => void;
   onExtendToCell: (cell: Cell) => void;
   onExtendToEnd: () => void;
+  model: Model;
+  workbookState: WorkbookState;
 }
 
 interface PointerEvents {
@@ -99,7 +103,13 @@ const usePointer = (options: PointerSettings): PointerEvents => {
     (event: PointerEvent) => {
       let x = event.clientX;
       let y = event.clientY;
-      const { canvasElement, worksheetElement, worksheetCanvas } = options;
+      const {
+        canvasElement,
+        model,
+        worksheetElement,
+        worksheetCanvas,
+        workbookState,
+      } = options;
       const worksheet = worksheetCanvas.current;
       const canvas = canvasElement.current;
       const worksheetWrapper = worksheetElement.current;
@@ -132,8 +142,28 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         }
         return;
       }
+      // if we are editing a cell finish that
+      const editingCell = workbookState.getEditingCell();
+
       const cell = worksheet.getCellByCoordinates(x, y);
       if (cell) {
+        if (editingCell) {
+          if (
+            cell.row === editingCell.row &&
+            cell.column === editingCell.column
+          ) {
+            // We are clicking on the cell we are editing
+            // we do nothing
+            return;
+          }
+          workbookState.clearEditingCell();
+          model.setUserInput(
+            editingCell.sheet,
+            editingCell.row,
+            editingCell.column,
+            editingCell.text,
+          );
+        }
         options.onCellSelected(cell, event);
         isSelecting.current = true;
         worksheetWrapper.setPointerCapture(event.pointerId);

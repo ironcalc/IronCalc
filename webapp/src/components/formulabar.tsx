@@ -1,7 +1,6 @@
 import type { Model } from "@ironcalc/wasm";
 import { Button, styled } from "@mui/material";
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
 import { Fx } from "../icons";
 import Editor from "./editor/editor";
 import type { WorkbookState } from "./workbookState";
@@ -27,9 +26,6 @@ function FormulaBar(properties: FormulaBarProps) {
     onTextUpdated,
     workbookState,
   } = properties;
-
-  const [display, setDisplay] = useState(false);
-
   return (
     <Container>
       <AddressContainer>
@@ -55,7 +51,6 @@ function FormulaBar(properties: FormulaBarProps) {
               focus: "formula-bar",
               activeRanges: [],
             });
-            setDisplay(true);
             event.stopPropagation();
             event.preventDefault();
           }}
@@ -63,13 +58,12 @@ function FormulaBar(properties: FormulaBarProps) {
           <Editor
             minimalWidth={"100%"}
             minimalHeight={"100%"}
-            display={display}
+            display={true}
             expand={false}
             originalText={formulaValue}
             model={model}
             workbookState={workbookState}
             onEditEnd={() => {
-              setDisplay(false);
               onChange();
             }}
             onTextUpdated={onTextUpdated}

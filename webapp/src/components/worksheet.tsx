@@ -47,7 +47,6 @@ function Worksheet(props: {
 
   const ignoreScrollEventRef = useRef(false);
 
-  const [display, setDisplay] = useState(false);
   const [originalText, setOriginalText] = useState("");
 
   const { model, workbookState, refresh } = props;
@@ -143,6 +142,8 @@ function Worksheet(props: {
     onPointerUp,
     // onContextMenu,
   } = usePointer({
+    model,
+    workbookState,
     onCellSelected: (cell: Cell, event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
@@ -315,18 +316,11 @@ function Worksheet(props: {
       <SheetContainer
         className="sheet-container"
         ref={worksheetElement}
-        onPointerDown={(event) => {
-          // if we are editing a cell finish that
-          const cell = workbookState.getEditingCell();
-          if (cell) {
-            workbookState.clearEditingCell();
-            model.setUserInput(cell.sheet, cell.row, cell.column, cell.text);
-          }
-          onPointerDown(event);
-        }}
+        onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onDoubleClick={(event) => {
+          // Starts editing cell
           const { sheet, row, column } = model.getSelectedView();
           const text = model.getCellContent(sheet, row, column) || "";
           workbookState.setEditingCell({
@@ -334,11 +328,10 @@ function Worksheet(props: {
             row,
             column,
             text,
-            cursor: 0,
+            cursor: text.length,
             focus: "cell",
             activeRanges: [],
           });
-          setDisplay(true);
           setOriginalText(text);
           event.stopPropagation();
           event.preventDefault();
@@ -354,7 +347,6 @@ function Worksheet(props: {
             expand={true}
             originalText={workbookState.getEditingCell()?.text || originalText}
             onEditEnd={(): void => {
-              setDisplay(false);
               props.refresh();
             }}
             onTextUpdated={(): void => {
