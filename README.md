@@ -123,7 +123,7 @@ See https://github.com/ironcalc
 
 An early preview of the technology running entirely in your browser:
 
-https://playground.ironcalc.com
+https://app.ironcalc.com
 
 
 # Collaborators needed!. Call to action
