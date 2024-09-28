@@ -118,7 +118,6 @@ const Editor = (options: EditorOptions) => {
           setTimeout(() => {
             const cell = workbookState.getEditingCell();
             if (cell) {
-              workbookState.clearEditingCell();
               model.setUserInput(
                 cell.sheet,
                 cell.row,
@@ -126,7 +125,9 @@ const Editor = (options: EditorOptions) => {
                 cell.text + (cell.referencedRange?.str || ""),
               );
               const sign = shiftKey ? -1 : 1;
+              model.setSelectedSheet(cell.sheet);
               model.setSelectedCell(cell.row + sign, cell.column);
+              workbookState.clearEditingCell();
             }
             onEditEnd();
           }, 0);
@@ -145,6 +146,7 @@ const Editor = (options: EditorOptions) => {
               cell.text + (cell.referencedRange?.str || ""),
             );
             const sign = shiftKey ? -1 : 1;
+            model.setSelectedSheet(cell.sheet);
             model.setSelectedCell(cell.row, cell.column + sign);
             if (textareaRef.current) {
               textareaRef.current.value = "";
@@ -158,6 +160,10 @@ const Editor = (options: EditorOptions) => {
         }
         case "Escape": {
           // quit editing without modifying the cell
+          const cell = workbookState.getEditingCell();
+          if (cell) {
+            model.setSelectedSheet(cell.sheet);
+          }
           workbookState.clearEditingCell();
           onEditEnd();
           return;

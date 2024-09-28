@@ -50,9 +50,10 @@ export function rangeToStr(
     columnEnd: number;
   },
   referenceSheet: number,
+  referenceName: string,
 ): string {
   const { sheet, rowStart, rowEnd, columnStart, columnEnd } = range;
-  const sheetName = sheet === referenceSheet ? "" : "other!";
+  const sheetName = sheet === referenceSheet ? "" : `${referenceName}!`;
   if (rowStart === rowEnd && columnStart === columnEnd) {
     return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}`;
   }

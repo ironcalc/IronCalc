@@ -385,6 +385,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       <Navigation
         sheets={info}
         selectedIndex={model.getSelectedSheet()}
+        workbookState={workbookState}
         onSheetSelected={(sheet: number): void => {
           model.setSelectedSheet(sheet);
           setRedrawId((value) => value + 1);

@@ -1126,8 +1126,16 @@ export default class WorksheetCanvas {
       cellOutlineHandle.style.visibility = "hidden";
     }
 
-    editor.style.left = `${x + 3}px`;
-    editor.style.top = `${y + 3}px`;
+    if (this.workbookState.getEditingCell()?.sheet === selectedSheet) {
+      editor.style.left = `${x + 3}px`;
+      editor.style.top = `${y + 3}px`;
+    } else {
+      // If the editing cell is not in the same sheet as the selected sheet
+      // we take the editor out of view
+      editor.style.left = "-9999px";
+      editor.style.top = "-9999px";
+    }
+
     editor.style.width = `${width - 1}px`;
     editor.style.height = `${height - 1}px`;
 

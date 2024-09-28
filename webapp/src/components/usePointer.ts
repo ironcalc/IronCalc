@@ -49,7 +49,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       ) {
         return;
       }
-      const { canvasElement, worksheetCanvas } = options;
+      const { canvasElement, model, worksheetCanvas } = options;
       const canvas = canvasElement.current;
       const worksheet = worksheetCanvas.current;
       // Silence the linter
@@ -78,7 +78,14 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         const range = editingCell.referencedRange.range;
         range.rowEnd = cell.row;
         range.columnEnd = cell.column;
-        editingCell.referencedRange.str = rangeToStr(range, 0);
+
+        const sheetNames = model.getWorksheetsProperties().map((s) => s.name);
+
+        editingCell.referencedRange.str = rangeToStr(
+          range,
+          editingCell.sheet,
+          sheetNames[range.sheet],
+        );
         workbookState.setEditingCell(editingCell);
         refresh();
       }
@@ -169,15 +176,22 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           const text = editingCell.text;
           if (isInReferenceMode(text, editingCell.cursorEnd)) {
             const range = {
-              sheet: 0,
+              sheet: model.getSelectedSheet(),
               rowStart: cell.row,
               rowEnd: cell.row,
               columnStart: cell.column,
               columnEnd: cell.column,
             };
+            const sheetNames = model
+              .getWorksheetsProperties()
+              .map((s) => s.name);
             editingCell.referencedRange = {
               range,
-              str: rangeToStr(range, 0),
+              str: rangeToStr(
+                range,
+                editingCell.sheet,
+                sheetNames[range.sheet],
+              ),
             };
             workbookState.setEditingCell(editingCell);
             event.stopPropagation();
