@@ -149,8 +149,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         row,
         column,
         text: initText,
-        cursor: 0,
+        cursorStart: initText.length,
+        cursorEnd: initText.length,
         focus: "cell",
+        referencedRange: null,
         activeRanges: [],
       });
       setRedrawId((id) => id + 1);
@@ -163,7 +165,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         row,
         column,
         text,
-        cursor: text.length,
+        cursorStart: text.length,
+        cursorEnd: text.length,
+        referencedRange: null,
         focus: "cell",
         activeRanges: [],
       });
@@ -277,7 +281,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const formulaValue = () => {
     const cell = workbookState.getEditingCell();
     if (cell) {
-      return cell.text;
+      return workbookState.getEditingText();
     }
     const { sheet, row, column } = model.getSelectedView();
     return model.getCellContent(sheet, row, column);
@@ -295,8 +299,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       ref={rootRef}
       onKeyDown={onKeyDown}
       tabIndex={0}
-      onClick={() => {
-        rootRef.current?.focus();
+      onClick={(event) => {
+        if (!workbookState.getEditingCell()) {
+          rootRef.current?.focus();
+        } else {
+          event.stopPropagation();
+        }
       }}
     >
       <Toolbar

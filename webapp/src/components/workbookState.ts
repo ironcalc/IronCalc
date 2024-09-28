@@ -40,6 +40,17 @@ export interface ActiveRange {
   color: string;
 }
 
+export interface ReferencedRange {
+  range: {
+    sheet: number;
+    rowStart: number;
+    rowEnd: number;
+    columnStart: number;
+    columnEnd: number;
+  };
+  str: string;
+}
+
 type Focus = "cell" | "formula-bar";
 
 // The cell that we are editing
@@ -50,7 +61,10 @@ export interface EditingCell {
   // raw text in the editor
   text: string;
   // position of the cursor
-  cursor: number;
+  cursorStart: number;
+  cursorEnd: number;
+  // referenced range
+  referencedRange: ReferencedRange | null;
   focus: Focus;
   activeRanges: ActiveRange[];
 }
@@ -125,5 +139,13 @@ export class WorkbookState {
       return this.cell.focus === "formula-bar";
     }
     return false;
+  }
+
+  getEditingText(): string {
+    const cell = this.cell;
+    if (cell) {
+      return cell.text + (cell.referencedRange?.str || "");
+    }
+    return "";
   }
 }

@@ -144,6 +144,7 @@ function Worksheet(props: {
   } = usePointer({
     model,
     workbookState,
+    refresh,
     onCellSelected: (cell: Cell, event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
@@ -328,8 +329,10 @@ function Worksheet(props: {
             row,
             column,
             text,
-            cursor: text.length,
+            cursorStart: text.length,
+            cursorEnd: text.length,
             focus: "cell",
+            referencedRange: null,
             activeRanges: [],
           });
           setOriginalText(text);
@@ -345,7 +348,7 @@ function Worksheet(props: {
             minimalHeight={"100%"}
             display={workbookState.getEditingCell()?.focus === "cell"}
             expand={true}
-            originalText={workbookState.getEditingCell()?.text || originalText}
+            originalText={workbookState.getEditingText() || originalText}
             onEditEnd={(): void => {
               props.refresh();
             }}

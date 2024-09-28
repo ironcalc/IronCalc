@@ -5,7 +5,9 @@ import {
   headerColumnWidth,
   headerRowHeight,
 } from "./WorksheetCanvas/worksheetCanvas";
+import { isInReferenceMode } from "./editor/util";
 import type { Cell } from "./types";
+import { rangeToStr } from "./util";
 import type { WorkbookState } from "./workbookState";
 
 interface PointerSettings {
@@ -19,6 +21,7 @@ interface PointerSettings {
   onExtendToEnd: () => void;
   model: Model;
   workbookState: WorkbookState;
+  refresh: () => void;
 }
 
 interface PointerEvents {
@@ -31,6 +34,7 @@ interface PointerEvents {
 const usePointer = (options: PointerSettings): PointerEvents => {
   const isSelecting = useRef(false);
   const isExtending = useRef(false);
+  const isInsertingRef = useRef(false);
 
   const onPointerMove = useCallback(
     (event: PointerEvent): void => {
@@ -40,43 +44,43 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         return;
       }
 
+      if (
+        !(isSelecting.current || isExtending.current || isInsertingRef.current)
+      ) {
+        return;
+      }
+      const { canvasElement, worksheetCanvas } = options;
+      const canvas = canvasElement.current;
+      const worksheet = worksheetCanvas.current;
+      // Silence the linter
+      if (!worksheet || !canvas) {
+        return;
+      }
+      const canvasRect = canvas.getBoundingClientRect();
+      const x = event.clientX - canvasRect.x;
+      const y = event.clientY - canvasRect.y;
+
+      const cell = worksheet.getCellByCoordinates(x, y);
+      if (!cell) {
+        return;
+      }
+
       if (isSelecting.current) {
-        const { canvasElement, worksheetCanvas } = options;
-        const canvas = canvasElement.current;
-        const worksheet = worksheetCanvas.current;
-        // Silence the linter
-        if (!worksheet || !canvas) {
-          return;
-        }
-        let x = event.clientX;
-        let y = event.clientY;
-        const canvasRect = canvas.getBoundingClientRect();
-        x -= canvasRect.x;
-        y -= canvasRect.y;
-        const cell = worksheet.getCellByCoordinates(x, y);
-        if (cell) {
-          options.onAreaSelecting(cell);
-        } else {
-          console.log("Failed");
-        }
+        options.onAreaSelecting(cell);
       } else if (isExtending.current) {
-        const { canvasElement, worksheetCanvas } = options;
-        const canvas = canvasElement.current;
-        const worksheet = worksheetCanvas.current;
-        // Silence the linter
-        if (!worksheet || !canvas) {
-          return;
-        }
-        let x = event.clientX;
-        let y = event.clientY;
-        const canvasRect = canvas.getBoundingClientRect();
-        x -= canvasRect.x;
-        y -= canvasRect.y;
-        const cell = worksheet.getCellByCoordinates(x, y);
-        if (!cell) {
-          return;
-        }
         options.onExtendToCell(cell);
+      } else if (isInsertingRef.current) {
+        const { refresh, workbookState } = options;
+        const editingCell = workbookState.getEditingCell();
+        if (!editingCell || !editingCell.referencedRange) {
+          return;
+        }
+        const range = editingCell.referencedRange.range;
+        range.rowEnd = cell.row;
+        range.columnEnd = cell.column;
+        editingCell.referencedRange.str = rangeToStr(range, 0);
+        workbookState.setEditingCell(editingCell);
+        refresh();
       }
     },
     [options],
@@ -94,6 +98,10 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         isExtending.current = false;
         worksheetElement.current?.releasePointerCapture(event.pointerId);
         options.onExtendToEnd();
+      } else if (isInsertingRef.current) {
+        const { worksheetElement } = options;
+        isInsertingRef.current = false;
+        worksheetElement.current?.releasePointerCapture(event.pointerId);
       }
     },
     [options],
@@ -106,6 +114,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       const {
         canvasElement,
         model,
+        refresh,
         worksheetElement,
         worksheetCanvas,
         workbookState,
@@ -142,9 +151,8 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         }
         return;
       }
-      // if we are editing a cell finish that
-      const editingCell = workbookState.getEditingCell();
 
+      const editingCell = workbookState.getEditingCell();
       const cell = worksheet.getCellByCoordinates(x, y);
       if (cell) {
         if (editingCell) {
@@ -156,6 +164,31 @@ const usePointer = (options: PointerSettings): PointerEvents => {
             // we do nothing
             return;
           }
+          // now we are editing one cell and we click in another one
+          // If we can insert a range we do that
+          const text = editingCell.text;
+          if (isInReferenceMode(text, editingCell.cursorEnd)) {
+            const range = {
+              sheet: 0,
+              rowStart: cell.row,
+              rowEnd: cell.row,
+              columnStart: cell.column,
+              columnEnd: cell.column,
+            };
+            editingCell.referencedRange = {
+              range,
+              str: rangeToStr(range, 0),
+            };
+            workbookState.setEditingCell(editingCell);
+            event.stopPropagation();
+            event.preventDefault();
+            isInsertingRef.current = true;
+            worksheetWrapper.setPointerCapture(event.pointerId);
+            refresh();
+            return;
+          }
+          // We are clicking away but we are not in reference mode
+          // We finish the editing
           workbookState.clearEditingCell();
           model.setUserInput(
             editingCell.sheet,
@@ -163,6 +196,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
             editingCell.column,
             editingCell.text,
           );
+          // we continue to select the new cell
         }
         options.onCellSelected(cell, event);
         isSelecting.current = true;

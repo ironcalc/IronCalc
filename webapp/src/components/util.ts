@@ -40,3 +40,21 @@ export const getCellAddress = (selectedArea: Area, selectedCell?: Cell) => {
         selectedArea.rowStart
       }:${columnNameFromNumber(selectedArea.columnEnd)}${selectedArea.rowEnd}`;
 };
+
+export function rangeToStr(
+  range: {
+    sheet: number;
+    rowStart: number;
+    rowEnd: number;
+    columnStart: number;
+    columnEnd: number;
+  },
+  referenceSheet: number,
+): string {
+  const { sheet, rowStart, rowEnd, columnStart, columnEnd } = range;
+  const sheetName = sheet === referenceSheet ? "" : "other!";
+  if (rowStart === rowEnd && columnStart === columnEnd) {
+    return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}`;
+  }
+  return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}:${columnNameFromNumber(columnEnd)}${rowEnd}`;
+}

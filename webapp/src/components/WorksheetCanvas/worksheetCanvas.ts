@@ -1241,10 +1241,20 @@ export default class WorksheetCanvas {
   }
 
   private drawActiveRanges(topLeftCell: Cell, bottomRightCell: Cell): void {
-    const activeRanges = this.workbookState.getActiveRanges();
-    const activeRangesCount = activeRanges.length;
+    let activeRanges = this.workbookState.getActiveRanges();
     const ctx = this.ctx;
     ctx.setLineDash([2, 2]);
+    const referencedRange =
+      this.workbookState.getEditingCell()?.referencedRange || null;
+    if (referencedRange) {
+      activeRanges = activeRanges.concat([
+        {
+          ...referencedRange.range,
+          color: "#343423",
+        },
+      ]);
+    }
+    const activeRangesCount = activeRanges.length;
     for (let rangeIndex = 0; rangeIndex < activeRangesCount; rangeIndex += 1) {
       const range = activeRanges[rangeIndex];
 

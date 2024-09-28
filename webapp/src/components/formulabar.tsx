@@ -47,7 +47,9 @@ function FormulaBar(properties: FormulaBarProps) {
               row,
               column,
               text: formulaValue,
-              cursor: 0,
+              referencedRange: null,
+              cursorStart: formulaValue.length,
+              cursorEnd: formulaValue.length,
               focus: "formula-bar",
               activeRanges: [],
             });

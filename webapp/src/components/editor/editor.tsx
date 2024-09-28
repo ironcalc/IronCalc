@@ -6,6 +6,18 @@
 // For those cases we capture the keydown event and stop its propagation.
 // As the editor changes content we need to propagate those changes so the spreadsheet can
 // mark with colors the active ranges or update the formula in the formula bar
+//
+// Events outside the editor might influence the editor
+// 1. Clicking on a different cell:
+//    * might either terminate the editing
+//    * or add the external cell to the formula
+// 2. Clicking on a sheet tab would open the new sheet or terminate editing
+// 3. Clicking somewhere else will finish editing
+//
+// Keyboard navigation is also fairly complex. For instance RightArrow might:
+// 1. End editing and navigate to the cell on the right
+// 2. Move the cursor to the right
+// 3. Insert in the formula the cell name on the right
 
 import type { Model } from "@ironcalc/wasm";
 import {
@@ -65,7 +77,7 @@ const Editor = (options: EditorOptions) => {
   const [height, setHeight] = useState(minimalHeight);
   const [text, setText] = useState(originalText);
   const [styledFormula, setStyledFormula] = useState(
-    getFormulaHTML(model, text).html,
+    getFormulaHTML(model, text, "").html,
   );
 
   const formulaRef = useRef<HTMLDivElement>(null);
@@ -74,7 +86,7 @@ const Editor = (options: EditorOptions) => {
 
   useEffect(() => {
     setText(originalText);
-    setStyledFormula(getFormulaHTML(model, originalText).html);
+    setStyledFormula(getFormulaHTML(model, originalText, "").html);
     if (textareaRef.current) {
       textareaRef.current.value = originalText;
     }
@@ -107,7 +119,12 @@ const Editor = (options: EditorOptions) => {
             const cell = workbookState.getEditingCell();
             if (cell) {
               workbookState.clearEditingCell();
-              model.setUserInput(cell.sheet, cell.row, cell.column, cell.text);
+              model.setUserInput(
+                cell.sheet,
+                cell.row,
+                cell.column,
+                cell.text + (cell.referencedRange?.str || ""),
+              );
               const sign = shiftKey ? -1 : 1;
               model.setSelectedCell(cell.row + sign, cell.column);
             }
@@ -121,12 +138,17 @@ const Editor = (options: EditorOptions) => {
           const cell = workbookState.getEditingCell();
           if (cell) {
             workbookState.clearEditingCell();
-            model.setUserInput(cell.sheet, cell.row, cell.column, cell.text);
+            model.setUserInput(
+              cell.sheet,
+              cell.row,
+              cell.column,
+              cell.text + (cell.referencedRange?.str || ""),
+            );
             const sign = shiftKey ? -1 : 1;
             model.setSelectedCell(cell.row, cell.column + sign);
             if (textareaRef.current) {
               textareaRef.current.value = "";
-              setStyledFormula(getFormulaHTML(model, "").html);
+              setStyledFormula(getFormulaHTML(model, "", "").html);
             }
             event.stopPropagation();
             event.preventDefault();
@@ -148,11 +170,16 @@ const Editor = (options: EditorOptions) => {
           // We run this in a timeout because the value is not yet in the textarea
           // since we are capturing the keydown event
           setTimeout(() => {
-            const value = textarea.value;
-            const styledFormula = getFormulaHTML(model, value);
             const cell = workbookState.getEditingCell();
             if (cell) {
+              // accept whatever is in the referenced range
+              const value = textarea.value;
+              const styledFormula = getFormulaHTML(model, value, "");
+
               cell.text = value;
+              cell.referencedRange = null;
+              cell.cursorStart = textarea.selectionStart;
+              cell.cursorEnd = textarea.selectionEnd;
               workbookState.setEditingCell(cell);
 
               workbookState.setActiveRanges(styledFormula.activeRanges);
@@ -176,7 +203,7 @@ const Editor = (options: EditorOptions) => {
   const onChange = useCallback(() => {
     if (textareaRef.current) {
       textareaRef.current.value = "";
-      setStyledFormula(getFormulaHTML(model, "").html);
+      setStyledFormula(getFormulaHTML(model, "", "").html);
     }
 
     // This happens if the blur hasn't been taken care before by
@@ -184,8 +211,13 @@ const Editor = (options: EditorOptions) => {
     // If we are editing a cell finish that
     const cell = workbookState.getEditingCell();
     if (cell) {
+      model.setUserInput(
+        cell.sheet,
+        cell.row,
+        cell.column,
+        workbookState.getEditingText(),
+      );
       workbookState.clearEditingCell();
-      model.setUserInput(cell.sheet, cell.row, cell.column, cell.text);
     }
     onEditEnd();
   }, [model, workbookState, onEditEnd]);

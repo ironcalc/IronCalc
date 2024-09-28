@@ -15,7 +15,7 @@ export function tokenIsRangeType(token: TokenType): token is Range {
   return typeof token === "object" && "Range" in token;
 }
 
-function isInReferenceMode(text: string, cursor: number): boolean {
+export function isInReferenceMode(text: string, cursor: number): boolean {
   // FIXME
   // This is a gross oversimplification
   // Returns true if both are true:
@@ -102,6 +102,7 @@ export function getColor(index: number, alpha = 1): string {
 function getFormulaHTML(
   model: Model,
   text: string,
+  referenceRange: string,
 ): { html: JSX.Element[]; activeRanges: ActiveRange[] } {
   let html: JSX.Element[] = [];
   const activeRanges: ActiveRange[] = [];
@@ -178,6 +179,10 @@ function getFormulaHTML(
       } else {
         html.push(<span key={index}>{formula.slice(start, end)}</span>);
       }
+    }
+    // If there is a reference range add it at the end
+    if (referenceRange !== "") {
+      html.push(<span key="reference">{referenceRange}</span>);
     }
     html = [<span key="equals">=</span>].concat(html);
   } else {
