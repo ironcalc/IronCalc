@@ -205,6 +205,16 @@ impl UserModel {
         self.model.to_bytes()
     }
 
+    /// Returns the workbook name
+    pub fn get_name(&self) -> String {
+        self.model.workbook.name.clone()
+    }
+
+    /// Sets the name of a workbook
+    pub fn set_name(&mut self, name: &str) {
+        self.model.workbook.name = name.to_string();
+    }
+
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
     ///
     /// See also:

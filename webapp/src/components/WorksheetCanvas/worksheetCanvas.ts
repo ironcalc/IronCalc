@@ -1304,6 +1304,7 @@ export default class WorksheetCanvas {
 
     ctx.setLineDash([]);
   }
+
   renderSheet(): void {
     console.time("renderSheet");
     this._renderSheet();

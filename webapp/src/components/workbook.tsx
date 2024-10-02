@@ -426,6 +426,7 @@ const Container = styled("div")`
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
   font-family: ${({ theme }) => theme.typography.fontFamily};
 
   &:focus {
