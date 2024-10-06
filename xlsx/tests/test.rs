@@ -5,7 +5,7 @@ use uuid::Uuid;
 use ironcalc::compare::{test_file, test_load_and_saving};
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::{load_from_icalc, load_from_xlsx, load_from_xlsx_bytes};
-use ironcalc_base::types::{CellType, HorizontalAlignment, VerticalAlignment};
+use ironcalc_base::types::{HorizontalAlignment, VerticalAlignment};
 use ironcalc_base::Model;
 
 // This is a functional test.
@@ -451,4 +451,62 @@ fn test_exporting_merged_cells() {
     }
 
     fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
+fn test_merge_cell_import_export_behaviors() {
+    // loading the xlsx file containing merged cells
+    let example_file_name = "tests/Merged_cells.xlsx";
+    let mut model = load_from_xlsx(example_file_name, "en", "UTC").unwrap();
+
+    // Case1 : To check whether Merge cells structures got imported properly or not
+    let imported_merge_cell_vec = model.workbook.worksheet(0).unwrap().get_merge_cell_vec();
+
+    assert_eq!(imported_merge_cell_vec.len(), 5);
+    let range_refs_of_merge_cell: Vec<String> = imported_merge_cell_vec
+        .iter()
+        .map(|cell| cell.get_range_ref())
+        .collect();
+    assert_eq!(
+        range_refs_of_merge_cell,
+        [
+            "C1:D3".to_string(),
+            "A1:B4".to_string(),
+            "G1:H7".to_string(),
+            "D8:E9".to_string(),
+            "D4:F6".to_string()
+        ]
+    );
+
+    // Create one More Merge cell which Overlaps with 3 More
+    model.update_merge_cell(0, "A1:D5").unwrap();
+
+    //Lets export to different Excell
+    let exported_merge_cell_xlsx = "temporary_exported_mergecells.xlsx";
+    save_to_xlsx(&model, exported_merge_cell_xlsx).unwrap();
+
+    {
+        let temp_model = load_from_xlsx(exported_merge_cell_xlsx, "en", "UTC").unwrap();
+        // Loading the exported sheet back and verifying whether it got exported properly or not
+        let imported_merge_cell_vec = temp_model
+            .workbook
+            .worksheet(0)
+            .unwrap()
+            .get_merge_cell_vec();
+
+        assert_eq!(imported_merge_cell_vec.len(), 3);
+        let range_refs_of_merge_cell: Vec<String> = imported_merge_cell_vec
+            .iter()
+            .map(|cell| cell.get_range_ref())
+            .collect();
+        assert_eq!(
+            range_refs_of_merge_cell,
+            [
+                "G1:H7".to_string(),
+                "D8:E9".to_string(),
+                "A1:D5".to_string()
+            ]
+        );
+    }
+    fs::remove_file(exported_merge_cell_xlsx).unwrap();
 }
