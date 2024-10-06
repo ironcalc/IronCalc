@@ -295,37 +295,28 @@ fn test_merge_cell_fns_worksheet() {
 
     // Lets check whether D1 (Mother Merge cell) is part of Merge block or not
     // It should not be considered as part of Merge cell
-    assert_eq!(
-        model
-            .workbook
-            .worksheet(0)
-            .unwrap()
-            .is_part_of_merge_cell(1, 4)
-            .unwrap(),
-        false
-    );
+    assert!(!model
+        .workbook
+        .worksheet(0)
+        .unwrap()
+        .is_part_of_merge_cell(1, 4)
+        .unwrap(),);
 
     // Lets give cell which is actually part of Merge block and expect true from fn
-    assert_eq!(
-        model
-            .workbook
-            .worksheet(0)
-            .unwrap()
-            .is_part_of_merge_cell(2, 4)
-            .unwrap(),
-        true
-    );
+    assert!(model
+        .workbook
+        .worksheet(0)
+        .unwrap()
+        .is_part_of_merge_cell(2, 4)
+        .unwrap());
 
     // Lets give cell which is not a part of Merge block and expect false from fn
-    assert_eq!(
-        model
-            .workbook
-            .worksheet(0)
-            .unwrap()
-            .is_part_of_merge_cell(2, 6)
-            .unwrap(),
-        false
-    );
+    assert!(!model
+        .workbook
+        .worksheet(0)
+        .unwrap()
+        .is_part_of_merge_cell(2, 6)
+        .unwrap());
 
     // Lets give an Invalid row
     assert_eq!(

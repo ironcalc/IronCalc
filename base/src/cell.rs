@@ -186,13 +186,8 @@ impl MergeCell {
             return false;
         }
 
-        let result: bool = if (row >= self.merge_cell_range.0 && row <= self.merge_cell_range.2)
-            && (col >= self.merge_cell_range.1 && col <= self.merge_cell_range.3)
-        {
-            true
-        } else {
-            false
-        };
+        let result: bool = (row >= self.merge_cell_range.0 && row <= self.merge_cell_range.2)
+            && (col >= self.merge_cell_range.1 && col <= self.merge_cell_range.3);
 
         result
     }
@@ -204,7 +199,7 @@ impl MergeCell {
     pub fn new(merge_cell_parsed_range: (i32, i32, i32, i32), range_ref: String) -> Self {
         Self {
             merge_cell_range: merge_cell_parsed_range,
-            range_ref: range_ref,
+            range_ref,
         }
     }
 }

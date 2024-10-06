@@ -2113,10 +2113,10 @@ impl Model {
                         let merge_block_parsed_range = merge_node.merge_cell_range;
 
                         // checking whether any overlapping exist with this merge cell
-                        if (!(parsed_merge_cell_range.1 > merge_block_parsed_range.3
-                            || parsed_merge_cell_range.3 < merge_block_parsed_range.1))
-                            && !(parsed_merge_cell_range.0 > merge_block_parsed_range.2
-                                || parsed_merge_cell_range.2 < merge_block_parsed_range.0)
+                        if !(parsed_merge_cell_range.1 > merge_block_parsed_range.3
+                            || parsed_merge_cell_range.3 < merge_block_parsed_range.1
+                            || parsed_merge_cell_range.0 > merge_block_parsed_range.2
+                            || parsed_merge_cell_range.2 < merge_block_parsed_range.0)
                         {
                             // overlap has happened
                             merge_cells_overlap.push(true);
@@ -2182,8 +2182,8 @@ impl Model {
     /// # use ironcalc_base::cell::CellValue;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
-    /// model.update_merge_cell(0, "D4:F6")
-    /// model.unmerge_merged_cells(0, "D4:F6")
+    /// model.update_merge_cell(0, "D4:F6");
+    /// model.unmerge_merged_cells(0, "D4:F6");
     /// # Ok(())
     /// # }
     /// ```
