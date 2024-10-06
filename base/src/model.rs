@@ -10,13 +10,12 @@ use crate::{
     expressions::{
         parser::{
             move_formula::{move_formula, MoveContext},
-            parse_range,
             stringify::{to_rc_format, to_string},
             Node, Parser,
         },
         token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
         types::*,
-        utils::{self, is_valid_column_number, is_valid_row},
+        utils::{self, is_valid_column_number, is_valid_row, parse_reference_a1},
     },
     formatter::{
         format::{format_number, parse_formatted_number},
@@ -1231,18 +1230,11 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        match self.is_part_of_merge_cell(sheet, row, column) {
-            Ok(is_part_of_merge_block) => {
-                if is_part_of_merge_block {
-                    return Err(format!(
-                        "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
-                        row, column
-                    ));
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
+        if self.is_part_of_merge_cell(sheet, row, column)? {
+            return Err(format!(
+                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                row, column
+            ));
         }
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         let new_style_index;
@@ -1296,18 +1288,11 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        match self.is_part_of_merge_cell(sheet, row, column) {
-            Ok(is_part_of_merge_block) => {
-                if is_part_of_merge_block {
-                    return Err(format!(
-                        "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
-                        row, column
-                    ));
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
+        if self.is_part_of_merge_cell(sheet, row, column)? {
+            return Err(format!(
+                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                row, column
+            ));
         }
 
         let style_index = self.get_cell_style_index(sheet, row, column)?;
@@ -1354,20 +1339,12 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        match self.is_part_of_merge_cell(sheet, row, column) {
-            Ok(is_part_of_merge_block) => {
-                if is_part_of_merge_block {
-                    return Err(format!(
-                        "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
-                        row, column
-                    ));
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
+        if self.is_part_of_merge_cell(sheet, row, column)? {
+            return Err(format!(
+                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                row, column
+            ));
         }
-
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
             self.workbook
@@ -1413,18 +1390,11 @@ impl Model {
         column: i32,
         formula: String,
     ) -> Result<(), String> {
-        match self.is_part_of_merge_cell(sheet, row, column) {
-            Ok(is_part_of_merge_block) => {
-                if is_part_of_merge_block {
-                    return Err(format!(
-                        "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
-                        row, column
-                    ));
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
+        if self.is_part_of_merge_cell(sheet, row, column)? {
+            return Err(format!(
+                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                row, column
+            ));
         }
         let mut style_index = self.get_cell_style_index(sheet, row, column)?;
         if self.workbook.styles.style_is_quote_prefix(style_index) {
@@ -1480,18 +1450,11 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        match self.is_part_of_merge_cell(sheet, row, column) {
-            Ok(is_part_of_merge_block) => {
-                if is_part_of_merge_block {
-                    return Err(format!(
-                        "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
-                        row, column
-                    ));
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
+        if self.is_part_of_merge_cell(sheet, row, column)? {
+            return Err(format!(
+                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                row, column
+            ));
         }
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column)?;
@@ -2068,6 +2031,22 @@ impl Model {
             .set_row_height(column, height)
     }
 
+    fn parse_merged_range(&mut self, range: &str) -> Result<(i32, i32, i32, i32), String> {
+        let parts: Vec<&str> = range.split(':').collect();
+        if parts.len() == 1 {
+            Err(format!("Invalid range: '{}'", range))
+        } else if parts.len() == 2 {
+            match (parse_reference_a1(parts[0]), parse_reference_a1(parts[1])) {
+                (Some(left), Some(right)) => {
+                    return Ok((left.row, left.column, right.row, right.column));
+                }
+                _ => return Err(format!("Invalid range: '{}'", range)),
+            }
+        } else {
+            return Err(format!("Invalid range: '{}'", range));
+        }
+    }
+
     // Implementing public APIS related to Merge cell handling
 
     /// Creates or updates Merge cell block
@@ -2075,9 +2054,23 @@ impl Model {
     /// If new merge cell creation overlaps with any of the existing merge cell, Overlapped merge cells gets unmerged
     /// and new merge cell gets added
     pub fn update_merge_cell(&mut self, sheet: u32, range_ref: &str) -> Result<(), String> {
-        // ATTENTION : below parse_range implementation gives (col start, row_start, col_end, row_end)
-        match parse_range(&range_ref) {
+        // ATTENTION : below parse_range implementation gives (col_start, row_start, col_end, row_end)
+        match self.parse_merged_range(range_ref) {
             Ok(parsed_merge_cell_range) => {
+                // ATTENTION 2: Below thing we can support here but keeping it simple
+                // Web or different client needs to keep this in mind
+                // User can give errored parse ranges like C3:A1
+                // Where col_start and row_start and is greated then col_end and row_end
+                // Return error in these scenario
+                if parsed_merge_cell_range.0 > parsed_merge_cell_range.2
+                    || parsed_merge_cell_range.1 > parsed_merge_cell_range.3
+                {
+                    return Err(
+                        "Invalid parse range. Merge Mother cell always be top left cell"
+                            .to_string(),
+                    );
+                }
+
                 let mut merge_cells_overlap: Vec<bool> = Vec::new();
                 // checking whether our new range overlaps with any of the already existing merge cells
                 // if so, need to unmerge those and create this new one
@@ -2089,10 +2082,10 @@ impl Model {
                         let merge_block_parsed_range = merge_node.merge_cell_range;
 
                         // checking whether any overlapping exist with this merge cell
-                        if (!(parsed_merge_cell_range.0 > merge_block_parsed_range.3
-                            || parsed_merge_cell_range.2 < merge_block_parsed_range.1))
-                            && !(parsed_merge_cell_range.1 > merge_block_parsed_range.2
-                                || parsed_merge_cell_range.3 < merge_block_parsed_range.0)
+                        if (!(parsed_merge_cell_range.1 > merge_block_parsed_range.3
+                            || parsed_merge_cell_range.3 < merge_block_parsed_range.1))
+                            && !(parsed_merge_cell_range.0 > merge_block_parsed_range.2
+                                || parsed_merge_cell_range.2 < merge_block_parsed_range.0)
                         {
                             // overlap has happened
                             merge_cells_overlap.push(true);
@@ -2111,11 +2104,11 @@ impl Model {
                 }
 
                 // Now need to update (n*m - 1) cells with empty cell ( except the Mother cell )
-                for row_index in parsed_merge_cell_range.1..=parsed_merge_cell_range.3 {
-                    for col_index in parsed_merge_cell_range.0..=parsed_merge_cell_range.2 {
+                for row_index in parsed_merge_cell_range.0..=parsed_merge_cell_range.2 {
+                    for col_index in parsed_merge_cell_range.1..=parsed_merge_cell_range.3 {
                         // skip Mother cell
-                        if row_index == parsed_merge_cell_range.1
-                            && col_index == parsed_merge_cell_range.3
+                        if row_index == parsed_merge_cell_range.0
+                            && col_index == parsed_merge_cell_range.2
                         {
                             continue;
                         }
@@ -2131,16 +2124,8 @@ impl Model {
                     }
                 }
 
-                // Now create Merge cell Node and push to Merge Cell vector
-                // Rearranging range tuple as Merge cell Node requires to be in row first format
-                let re_arranged_merge_cell_range: (i32, i32, i32, i32) = (
-                    parsed_merge_cell_range.1,
-                    parsed_merge_cell_range.0,
-                    parsed_merge_cell_range.3,
-                    parsed_merge_cell_range.2,
-                );
                 let new_merge_cell = MergeCell {
-                    merge_cell_range: re_arranged_merge_cell_range,
+                    merge_cell_range: parsed_merge_cell_range,
                     range_ref: range_ref.to_string(),
                 };
                 {
@@ -2151,7 +2136,7 @@ impl Model {
                 }
             }
             Err(err) => {
-                println!("encountered error while parsing merge cell ref : {}", err);
+                return Err(err);
             }
         }
         Ok(())

@@ -283,3 +283,96 @@ fn test_worksheet_navigate_to_edge_in_direction() {
     assert_eq!(navigate(8, 3, NavigationDirection::Up), (6, 3));
     assert_eq!(navigate(9, 3, NavigationDirection::Up), (6, 3));
 }
+
+// Tests Merge cells related functions of worksheet
+
+#[test]
+fn test_merge_cell_fns_worksheet() {
+    let mut model = new_empty_model();
+
+    // Adding one Merge cell
+    model.update_merge_cell(0, "D1:E3").unwrap();
+
+    // Lets check whether D1 (Mother Merge cell) is part of Merge block or not
+    // It should not be considered as part of Merge cell
+    assert_eq!(
+        model
+            .workbook
+            .worksheet(0)
+            .unwrap()
+            .is_part_of_merge_cell(1, 4)
+            .unwrap(),
+        false
+    );
+
+    // Lets give cell which is actually part of Merge block and expect true from fn
+    assert_eq!(
+        model
+            .workbook
+            .worksheet(0)
+            .unwrap()
+            .is_part_of_merge_cell(2, 4)
+            .unwrap(),
+        true
+    );
+
+    // Lets give cell which is not a part of Merge block and expect false from fn
+    assert_eq!(
+        model
+            .workbook
+            .worksheet(0)
+            .unwrap()
+            .is_part_of_merge_cell(2, 6)
+            .unwrap(),
+        false
+    );
+
+    // Lets give an Invalid row
+    assert_eq!(
+        model
+            .workbook
+            .worksheet(0)
+            .unwrap()
+            .is_part_of_merge_cell(0, 1),
+        Err("Incorrect row or column".to_string())
+    );
+
+    //Lets give Invalid column
+    assert_eq!(
+        model
+            .workbook
+            .worksheet(0)
+            .unwrap()
+            .is_part_of_merge_cell(1, 0),
+        Err("Incorrect row or column".to_string())
+    );
+
+    //Verifying get fns of worksheet
+    assert_eq!(
+        model
+            .workbook
+            .worksheet(0)
+            .unwrap()
+            .get_merge_cell_vec()
+            .len(),
+        1
+    );
+    {
+        let merge_cell_vec = model
+            .workbook
+            .worksheet_mut(0)
+            .unwrap()
+            .get_merge_cell_vec_mut();
+        merge_cell_vec.remove(0);
+
+        assert_eq!(
+            model
+                .workbook
+                .worksheet(0)
+                .unwrap()
+                .get_merge_cell_vec()
+                .len(),
+            0
+        );
+    }
+}

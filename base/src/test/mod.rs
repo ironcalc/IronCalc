@@ -51,6 +51,7 @@ mod test_extend;
 mod test_fn_type;
 mod test_frozen_rows_and_columns;
 mod test_get_cell_content;
+mod test_model_merge_cell_fns;
 mod test_percentage;
 mod test_set_functions_error_handling;
 mod test_today;
