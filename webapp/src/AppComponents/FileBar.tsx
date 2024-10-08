@@ -97,7 +97,7 @@ const FileBarWrapper = styled("div")`
   background: #fff;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid grey;
+  border-bottom: 1px solid #E0E0E0;
   position: relative;
   justify-content: space-between;
 `;
