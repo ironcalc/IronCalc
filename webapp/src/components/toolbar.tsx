@@ -224,7 +224,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={properties.strike}
         onClick={() => properties.onToggleStrike(!properties.strike)}
         disabled={!canEdit}
-        title={t("toolbar.strike_trough")}
+        title={t("toolbar.strike_through")}
       >
         <Strikethrough />
       </StyledButton>
@@ -313,7 +313,7 @@ function Toolbar(properties: ToolbarProperties) {
           )
         }
         disabled={!canEdit}
-        title={t("toolbar.vertical_align_center")}
+        title={t("toolbar.vertical_align_middle")}
       >
         <ArrowMiddleFromLine />
       </StyledButton>
