@@ -3,7 +3,7 @@ import assert from 'node:assert'
 import { Model } from "../pkg/wasm.js";
 
 test('Frozen rows and columns', () => {
-    let model = new Model('en', 'UTC');
+    let model = new Model('Workbook1', 'en', 'UTC');
     assert.strictEqual(model.getFrozenRowsCount(0), 0);
     assert.strictEqual(model.getFrozenColumnsCount(0), 0);
 
@@ -15,7 +15,7 @@ test('Frozen rows and columns', () => {
 });
 
 test('Row height', () => {
-    let model = new Model('en', 'UTC');
+    let model = new Model('Workbook1', 'en', 'UTC');
     assert.strictEqual(model.getRowHeight(0, 3), 21);
 
     model.setRowHeight(0, 3, 32);
@@ -32,7 +32,7 @@ test('Row height', () => {
 });
 
 test('Evaluates correctly', (t) => {
-    const model = new Model('en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC');
     model.setUserInput(0, 1, 1, "23");
     model.setUserInput(0, 1, 2, "=A1*3+1");
 
@@ -41,7 +41,7 @@ test('Evaluates correctly', (t) => {
 });
 
 test('Styles work', () => {
-    const model = new Model('en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC');
     let style = model.getCellStyle(0, 1, 1);
     assert.deepEqual(style, {
         num_fmt: 'general',
@@ -74,7 +74,7 @@ test('Styles work', () => {
 });
 
 test("Add sheets", (t) => {
-    const model = new Model('en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC');
     model.newSheet();
     model.renameSheet(1, "NewName");
     let props = model.getWorksheetsProperties();
@@ -92,7 +92,7 @@ test("Add sheets", (t) => {
 });
 
 test("invalid sheet index throws an exception", () => {
-    const model = new Model('en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC');
     assert.throws(() => {
         model.setRowHeight(1, 1, 100);
     }, {
@@ -102,7 +102,7 @@ test("invalid sheet index throws an exception", () => {
 });
 
 test("invalid column throws an exception", () => {
-    const model = new Model('en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC');
     assert.throws(() => {
         model.setRowHeight(0, -1, 100);
     }, {
@@ -112,7 +112,7 @@ test("invalid column throws an exception", () => {
 });
 
 test("floating column numbers get truncated", () => {
-    const model = new Model('en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC');
     model.setRowHeight(0.8, 5.2, 100.5);
 
     assert.strictEqual(model.getRowHeight(0.11, 5.99), 100.5);
@@ -120,7 +120,7 @@ test("floating column numbers get truncated", () => {
 });
 
 test("autofill", () => {
-    const model = new Model('en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC');
     model.setUserInput(0, 1, 1, "23");
     model.autoFillRows({sheet: 0, row: 1, column: 1, width: 1, height: 1}, 2);
 
