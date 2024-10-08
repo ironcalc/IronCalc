@@ -42,6 +42,7 @@ import {
   decreaseDecimalPlaces,
   increaseDecimalPlaces,
 } from "./formatUtil";
+import { TOOLBAR_HEIGH } from "./constants";
 
 type ToolbarProperties = {
   canUndo: boolean;
@@ -384,15 +385,14 @@ function Toolbar(properties: ToolbarProperties) {
     </ToolbarContainer>
   );
 }
-const toolbarHeight = 40;
 
 const ToolbarContainer = styled("div")`
   display: flex;
   flex-shrink: 0;
   align-items: center;
   background: ${({ theme }) => theme.palette.background.paper};
-  height: ${toolbarHeight}px;
-  line-height: ${toolbarHeight}px;
+  height: ${TOOLBAR_HEIGH}px;
+  line-height: ${TOOLBAR_HEIGH}px;
   border-bottom: 1px solid ${({ theme }) => theme.palette.grey["300"]};
   font-family: Inter;
   border-radius: 4px 4px 0px 0px;

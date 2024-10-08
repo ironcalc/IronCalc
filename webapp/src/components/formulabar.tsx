@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { Fx } from "../icons";
 import Editor from "./editor/editor";
 import type { WorkbookState } from "./workbookState";
+import { FORMULA_BAR_HEIGH } from "./constants";
 
 type FormulaBarProps = {
   cellAddress: string;
@@ -14,7 +15,6 @@ type FormulaBarProps = {
   onTextUpdated: () => void;
 };
 
-const formulaBarHeight = 30;
 const headerColumnWidth = 35;
 
 function FormulaBar(properties: FormulaBarProps) {
@@ -117,7 +117,7 @@ const Container = styled("div")`
   align-items: center;
   background: ${(properties): string =>
     properties.theme.palette.background.default};
-  height: ${formulaBarHeight}px;
+  height: ${FORMULA_BAR_HEIGH}px;
 `;
 
 const AddressContainer = styled("div")`

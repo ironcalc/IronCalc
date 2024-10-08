@@ -10,6 +10,7 @@ import Editor from "./editor/editor";
 import type { Cell } from "./types";
 import usePointer from "./usePointer";
 import { AreaType, type WorkbookState } from "./workbookState";
+import { FORMULA_BAR_HEIGH, NAVIGATION_HEIGH, TOOLBAR_HEIGH } from "./constants";
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -417,10 +418,10 @@ const SheetContainer = styled("div")`
 const Wrapper = styled("div")({
   position: "absolute",
   overflow: "scroll",
-  top: 71,
+  top: TOOLBAR_HEIGH + FORMULA_BAR_HEIGH + 1,
   left: 0,
   right: 0,
-  bottom: 41,
+  bottom: NAVIGATION_HEIGH + 1,
 });
 
 const SheetCanvas = styled("canvas")`
