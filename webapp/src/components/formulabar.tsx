@@ -102,7 +102,7 @@ const Divider = styled("div")`
 `;
 
 const FormulaContainer = styled("div")`
-  margin-left: 10px;
+  margin-left: 0px;
   line-height: 22px;
   font-weight: normal;
   width: 100%;
