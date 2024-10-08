@@ -115,7 +115,7 @@ const ItemColor = styled("div")`
 `;
 
 const ItemName = styled("div")`
-  font-size: 13px;
+  font-size: 12px;
   color: #333;
 `;
 
