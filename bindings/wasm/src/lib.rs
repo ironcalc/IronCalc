@@ -37,8 +37,8 @@ pub struct Model {
 #[wasm_bindgen]
 impl Model {
     #[wasm_bindgen(constructor)]
-    pub fn new(locale: &str, timezone: &str) -> Result<Model, JsError> {
-        let model = BaseModel::new_empty("workbook", locale, timezone).map_err(to_js_error)?;
+    pub fn new(name: &str, locale: &str, timezone: &str) -> Result<Model, JsError> {
+        let model = BaseModel::new_empty(name, locale, timezone).map_err(to_js_error)?;
         Ok(Model { model })
     }
 
@@ -481,5 +481,20 @@ impl Model {
             .set_area_with_border(&range, &border)
             .map_err(|e| to_js_error(e.to_string()))?;
         Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "toBytes")]
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.model.to_bytes()
+    }
+
+    #[wasm_bindgen(js_name = "getName")]
+    pub fn get_name(&self) -> String {
+        self.model.get_name()
+    }
+
+    #[wasm_bindgen(js_name = "setName")]
+    pub fn set_name(&mut self, name: &str) {
+        self.model.set_name(name);
     }
 }

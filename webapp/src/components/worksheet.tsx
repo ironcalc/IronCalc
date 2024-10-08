@@ -6,6 +6,7 @@ import {
   outlineColor,
 } from "./WorksheetCanvas/constants";
 import WorksheetCanvas from "./WorksheetCanvas/worksheetCanvas";
+import Editor from "./editor/editor";
 import type { Cell } from "./types";
 import usePointer from "./usePointer";
 import { AreaType, type WorkbookState } from "./workbookState";
@@ -32,7 +33,8 @@ function Worksheet(props: {
 
   const worksheetElement = useRef<HTMLDivElement>(null);
   const scrollElement = useRef<HTMLDivElement>(null);
-  // const rootElement = useRef<HTMLDivElement>(null);
+
+  const editorElement = useRef<HTMLDivElement>(null);
   const spacerElement = useRef<HTMLDivElement>(null);
   const cellOutline = useRef<HTMLDivElement>(null);
   const areaOutline = useRef<HTMLDivElement>(null);
@@ -45,8 +47,11 @@ function Worksheet(props: {
 
   const ignoreScrollEventRef = useRef(false);
 
+  const [originalText, setOriginalText] = useState("");
+
   const { model, workbookState, refresh } = props;
   const [clientWidth, clientHeight] = useWindowSize();
+
   useEffect(() => {
     const canvasRef = canvasElement.current;
     const columnGuideRef = columnResizeGuide.current;
@@ -58,6 +63,7 @@ function Worksheet(props: {
     const handle = cellOutlineHandle.current;
     const area = areaOutline.current;
     const extendTo = extendToOutline.current;
+    const editor = editorElement.current;
 
     if (
       !canvasRef ||
@@ -69,7 +75,8 @@ function Worksheet(props: {
       !handle ||
       !area ||
       !extendTo ||
-      !scrollElement.current
+      !scrollElement.current ||
+      !editor
     )
       return;
     model.setWindowWidth(clientWidth - 37);
@@ -88,6 +95,7 @@ function Worksheet(props: {
         cellOutlineHandle: handle,
         areaOutline: area,
         extendToOutline: extendTo,
+        editor: editor,
       },
       onColumnWidthChanges(sheet, column, width) {
         model.setColumnWidth(sheet, column, width);
@@ -100,7 +108,7 @@ function Worksheet(props: {
     });
     const scrollX = model.getScrollX();
     const scrollY = model.getScrollY();
-    const [sheetWidth, sheetHeight] = [scrollX + 100_000, scrollY + 500_000]; //canvas.getSheetDimensions();
+    const [sheetWidth, sheetHeight] = [scrollX + 100_000, scrollY + 500_000];
     if (spacerElement.current) {
       spacerElement.current.style.height = `${sheetHeight}px`;
       spacerElement.current.style.width = `${sheetWidth}px`;
@@ -127,10 +135,6 @@ function Worksheet(props: {
     worksheetCanvas.current = canvas;
   });
 
-  const sheetNames = model
-    .getWorksheetsProperties()
-    .map((s: { name: string }) => s.name);
-
   const {
     onPointerMove,
     onPointerDown,
@@ -138,6 +142,9 @@ function Worksheet(props: {
     onPointerUp,
     // onContextMenu,
   } = usePointer({
+    model,
+    workbookState,
+    refresh,
     onCellSelected: (cell: Cell, event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
@@ -310,21 +317,49 @@ function Worksheet(props: {
       <SheetContainer
         className="sheet-container"
         ref={worksheetElement}
-        onPointerDown={(event) => {
-          onPointerDown(event);
-        }}
+        onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onDoubleClick={(event) => {
+          // Starts editing cell
           const { sheet, row, column } = model.getSelectedView();
-          const _text = model.getCellContent(sheet, row, column) || "";
-          // TODO
+          const text = model.getCellContent(sheet, row, column) || "";
+          workbookState.setEditingCell({
+            sheet,
+            row,
+            column,
+            text,
+            cursorStart: text.length,
+            cursorEnd: text.length,
+            focus: "cell",
+            referencedRange: null,
+            activeRanges: [],
+          });
+          setOriginalText(text);
           event.stopPropagation();
           event.preventDefault();
         }}
       >
         <SheetCanvas ref={canvasElement} />
         <CellOutline ref={cellOutline} />
+        <EditorWrapper ref={editorElement}>
+          <Editor
+            minimalWidth={"100%"}
+            minimalHeight={"100%"}
+            display={workbookState.getEditingCell()?.focus === "cell"}
+            expand={true}
+            originalText={workbookState.getEditingText() || originalText}
+            onEditEnd={(): void => {
+              props.refresh();
+            }}
+            onTextUpdated={(): void => {
+              props.refresh();
+            }}
+            model={model}
+            workbookState={workbookState}
+            type={"cell"}
+          />
+        </EditorWrapper>
         <AreaOutline ref={areaOutline} />
         <ExtendToOutline ref={extendToOutline} />
         <CellOutlineHandle
@@ -459,6 +494,23 @@ const ExtendToOutline = styled("div")`
   position: absolute;
   border: 1px dashed ${outlineColor};
   border-radius: 3px;
+`;
+
+const EditorWrapper = styled("div")`
+  position: absolute;
+  width: 100%;
+  padding: 0px;
+  border-width: 0px;
+  outline: none;
+  resize: none;
+  white-space: pre-wrap;
+  vertical-align: bottom;
+  overflow: hidden;
+  text-align: left;
+  span {
+    min-width: 1px;
+  }
+  font-family: monospace;
 `;
 
 export default Worksheet;

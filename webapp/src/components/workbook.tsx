@@ -1,6 +1,6 @@
 import type { BorderOptions, Model, WorksheetProperties } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LAST_COLUMN } from "./WorksheetCanvas/constants";
 import FormulaBar from "./formulabar";
 import Navigation from "./navigation/navigation";
@@ -143,11 +143,35 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       setRedrawId((id) => id + 1);
     },
     onEditKeyPressStart: (initText: string): void => {
-      console.log(initText);
-      throw new Error("Function not implemented.");
+      const { sheet, row, column } = model.getSelectedView();
+      workbookState.setEditingCell({
+        sheet,
+        row,
+        column,
+        text: initText,
+        cursorStart: initText.length,
+        cursorEnd: initText.length,
+        focus: "cell",
+        referencedRange: null,
+        activeRanges: [],
+      });
+      setRedrawId((id) => id + 1);
     },
     onCellEditStart: (): void => {
-      throw new Error("Function not implemented.");
+      const { sheet, row, column } = model.getSelectedView();
+      const text = model.getCellContent(sheet, row, column);
+      workbookState.setEditingCell({
+        sheet,
+        row,
+        column,
+        text,
+        cursorStart: text.length,
+        cursorEnd: text.length,
+        referencedRange: null,
+        focus: "cell",
+        activeRanges: [],
+      });
+      setRedrawId((id) => id + 1);
     },
     onBold: () => {
       const { sheet, row, column } = model.getSelectedView();
@@ -237,26 +261,52 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     if (!rootRef.current) {
       return;
     }
-    rootRef.current.focus();
+    if (!workbookState.getEditingCell()) {
+      rootRef.current.focus();
+    }
   });
 
-  const {
-    sheet,
-    row,
-    column,
-    range: [rowStart, columnStart, rowEnd, columnEnd],
-  } = model.getSelectedView();
+  const cellAddress = useCallback(() => {
+    const {
+      row,
+      column,
+      range: [rowStart, columnStart, rowEnd, columnEnd],
+    } = model.getSelectedView();
+    return getCellAddress(
+      { rowStart, rowEnd, columnStart, columnEnd },
+      { row, column },
+    );
+  }, [model]);
 
-  const cellAddress = getCellAddress(
-    { rowStart, rowEnd, columnStart, columnEnd },
-    { row, column },
-  );
-  const formulaValue = model.getCellContent(sheet, row, column);
+  const formulaValue = () => {
+    const cell = workbookState.getEditingCell();
+    if (cell) {
+      return workbookState.getEditingText();
+    }
+    const { sheet, row, column } = model.getSelectedView();
+    return model.getCellContent(sheet, row, column);
+  };
 
-  const style = model.getCellStyle(sheet, row, column);
+  const getCellStyle = useCallback(() => {
+    const { sheet, row, column } = model.getSelectedView();
+    return model.getCellStyle(sheet, row, column);
+  }, [model]);
+
+  const style = getCellStyle();
 
   return (
-    <Container ref={rootRef} onKeyDown={onKeyDown} tabIndex={0}>
+    <Container
+      ref={rootRef}
+      onKeyDown={onKeyDown}
+      tabIndex={0}
+      onClick={(event) => {
+        if (!workbookState.getEditingCell()) {
+          rootRef.current?.focus();
+        } else {
+          event.stopPropagation();
+        }
+      }}
+    >
       <Toolbar
         canUndo={model.canUndo()}
         canRedo={model.canRedo()}
@@ -304,19 +354,25 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         verticalAlign={style.alignment ? style.alignment.vertical : "center"}
         canEdit={true}
         numFmt={style.num_fmt}
-        showGridLines={model.getShowGridLines(sheet)}
+        showGridLines={model.getShowGridLines(model.getSelectedSheet())}
         onToggleShowGridLines={(show) => {
+          const sheet = model.getSelectedSheet();
           model.setShowGridLines(sheet, show);
           setRedrawId((id) => id + 1);
         }}
       />
       <FormulaBar
-        cellAddress={cellAddress}
-        formulaValue={formulaValue}
-        onChange={(value) => {
-          model.setUserInput(sheet, row, column, value);
+        cellAddress={cellAddress()}
+        formulaValue={formulaValue()}
+        onChange={() => {
+          setRedrawId((id) => id + 1);
+          rootRef.current?.focus();
+        }}
+        onTextUpdated={() => {
           setRedrawId((id) => id + 1);
         }}
+        model={model}
+        workbookState={workbookState}
       />
       <Worksheet
         model={model}
@@ -325,9 +381,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setRedrawId((id) => id + 1);
         }}
       />
+
       <Navigation
         sheets={info}
         selectedIndex={model.getSelectedSheet()}
+        workbookState={workbookState}
         onSheetSelected={(sheet: number): void => {
           model.setSelectedSheet(sheet);
           setRedrawId((value) => value + 1);
@@ -368,6 +426,7 @@ const Container = styled("div")`
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
   font-family: ${({ theme }) => theme.typography.fontFamily};
 
   &:focus {

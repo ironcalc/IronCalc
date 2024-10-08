@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyledButton } from "../toolbar";
+import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./menus";
 import Sheet from "./sheet";
 import type { SheetOptions } from "./types";
@@ -10,6 +11,7 @@ import type { SheetOptions } from "./types";
 export interface NavigationProps {
   sheets: SheetOptions[];
   selectedIndex: number;
+  workbookState: WorkbookState;
   onSheetSelected: (index: number) => void;
   onAddBlankSheet: () => void;
   onSheetColorChanged: (hex: string) => void;
@@ -19,7 +21,7 @@ export interface NavigationProps {
 
 function Navigation(props: NavigationProps) {
   const { t } = useTranslation();
-  const { onSheetSelected, sheets, selectedIndex } = props;
+  const { workbookState, onSheetSelected, sheets, selectedIndex } = props;
   const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
   const open = Boolean(anchorEl);
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -63,6 +65,7 @@ function Navigation(props: NavigationProps) {
               onDeleted={(): void => {
                 props.onSheetDeleted();
               }}
+              workbookState={workbookState}
             />
           ))}
         </SheetInner>

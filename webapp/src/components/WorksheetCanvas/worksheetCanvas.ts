@@ -30,6 +30,7 @@ export interface CanvasSettings {
     columnGuide: HTMLDivElement;
     rowGuide: HTMLDivElement;
     columnHeaders: HTMLDivElement;
+    editor: HTMLDivElement;
   };
   onColumnWidthChanges: (sheet: number, column: number, width: number) => void;
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
@@ -48,6 +49,23 @@ export const defaultCellFontFamily = fonts.regular;
 export const headerFontFamily = fonts.regular;
 export const frozenSeparatorWidth = 3;
 
+// Get a 10% transparency of an hex color
+function hexToRGBA10Percent(colorHex: string): string {
+  // Remove the leading hash (#) if present
+  const hex = colorHex.replace(/^#/, "");
+
+  // Parse the hex color
+  const red = Number.parseInt(hex.substring(0, 2), 16);
+  const green = Number.parseInt(hex.substring(2, 4), 16);
+  const blue = Number.parseInt(hex.substring(4, 6), 16);
+
+  // Set the alpha (opacity) to 0.1 (10%)
+  const alpha = 0.1;
+
+  // Return the RGBA color string
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 export default class WorksheetCanvas {
   sheetWidth: number;
 
@@ -60,6 +78,8 @@ export default class WorksheetCanvas {
   ctx: CanvasRenderingContext2D;
 
   canvas: HTMLCanvasElement;
+
+  editor: HTMLDivElement;
 
   areaOutline: HTMLDivElement;
 
@@ -92,6 +112,7 @@ export default class WorksheetCanvas {
     this.height = options.height;
     this.ctx = this.setContext();
     this.workbookState = options.workbookState;
+    this.editor = options.elements.editor;
 
     this.cellOutline = options.elements.cellOutline;
     this.cellOutlineHandle = options.elements.cellOutlineHandle;
@@ -1092,7 +1113,7 @@ export default class WorksheetCanvas {
       this.getColumnWidth(selectedSheet, selectedColumn) + 2 * padding;
     const height = this.getRowHeight(selectedSheet, selectedRow) + 2 * padding;
 
-    const { cellOutline, areaOutline, cellOutlineHandle } = this;
+    const { cellOutline, editor, areaOutline, cellOutlineHandle } = this;
     const cellEditing = null;
 
     cellOutline.style.visibility = "visible";
@@ -1104,6 +1125,19 @@ export default class WorksheetCanvas {
       cellOutline.style.visibility = "hidden";
       cellOutlineHandle.style.visibility = "hidden";
     }
+
+    if (this.workbookState.getEditingCell()?.sheet === selectedSheet) {
+      editor.style.left = `${x + 3}px`;
+      editor.style.top = `${y + 3}px`;
+    } else {
+      // If the editing cell is not in the same sheet as the selected sheet
+      // we take the editor out of view
+      editor.style.left = "-9999px";
+      editor.style.top = "-9999px";
+    }
+
+    editor.style.width = `${width - 1}px`;
+    editor.style.height = `${height - 1}px`;
 
     // Position the cell outline and clip it
     cellOutline.style.left = `${x - padding}px`;
@@ -1212,6 +1246,63 @@ export default class WorksheetCanvas {
     const handleHeight = handleBBox.height;
     cellOutlineHandle.style.left = `${handleX - handleWidth / 2}px`;
     cellOutlineHandle.style.top = `${handleY - handleHeight / 2}px`;
+  }
+
+  private drawActiveRanges(topLeftCell: Cell, bottomRightCell: Cell): void {
+    let activeRanges = this.workbookState.getActiveRanges();
+    const ctx = this.ctx;
+    ctx.setLineDash([2, 2]);
+    const referencedRange =
+      this.workbookState.getEditingCell()?.referencedRange || null;
+    if (referencedRange) {
+      activeRanges = activeRanges.concat([
+        {
+          ...referencedRange.range,
+          color: "#343423",
+        },
+      ]);
+    }
+    const activeRangesCount = activeRanges.length;
+    for (let rangeIndex = 0; rangeIndex < activeRangesCount; rangeIndex += 1) {
+      const range = activeRanges[rangeIndex];
+
+      const allowedOffset = 1; // to make borders look nicer
+      const minRow = topLeftCell.row - allowedOffset;
+      const maxRow = bottomRightCell.row + allowedOffset;
+      const minColumn = topLeftCell.column - allowedOffset;
+      const maxColumn = bottomRightCell.column + allowedOffset;
+
+      if (
+        minRow <= range.rowEnd &&
+        range.rowStart <= maxRow &&
+        minColumn <= range.columnEnd &&
+        range.columnStart < maxColumn
+      ) {
+        // Range in the viewport.
+        const displayRange: typeof range = {
+          ...range,
+          rowStart: Math.max(minRow, range.rowStart),
+          rowEnd: Math.min(maxRow, range.rowEnd),
+          columnStart: Math.max(minColumn, range.columnStart),
+          columnEnd: Math.min(maxColumn, range.columnEnd),
+        };
+        const [xStart, yStart] = this.getCoordinatesByCell(
+          displayRange.rowStart,
+          displayRange.columnStart,
+        );
+        const [xEnd, yEnd] = this.getCoordinatesByCell(
+          displayRange.rowEnd + 1,
+          displayRange.columnEnd + 1,
+        );
+        ctx.strokeStyle = range.color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
+        ctx.fillStyle = hexToRGBA10Percent(range.color);
+        ctx.fillRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
+      }
+    }
+
+    ctx.setLineDash([]);
   }
 
   renderSheet(): void {
@@ -1352,5 +1443,6 @@ export default class WorksheetCanvas {
 
     this.drawCellOutline();
     this.drawExtendToArea();
+    this.drawActiveRanges(topLeftCell, bottomRightCell);
   }
 }

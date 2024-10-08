@@ -2,7 +2,10 @@ import { Button, Menu, MenuItem, styled } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
 import ColorPicker from "../colorPicker";
+import { isInReferenceMode } from "../editor/util";
+import type { WorkbookState } from "../workbookState";
 import { SheetRenameDialog } from "./menus";
+
 interface SheetProps {
   name: string;
   color: string;
@@ -11,9 +14,11 @@ interface SheetProps {
   onColorChanged: (hex: string) => void;
   onRenamed: (name: string) => void;
   onDeleted: () => void;
+  workbookState: WorkbookState;
 }
+
 function Sheet(props: SheetProps) {
-  const { name, color, selected, onSelected } = props;
+  const { name, color, selected, workbookState, onSelected } = props;
   const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const colorButton = useRef(null);
@@ -35,8 +40,18 @@ function Sheet(props: SheetProps) {
     <>
       <Wrapper
         style={{ borderBottomColor: color, fontWeight: selected ? 600 : 400 }}
-        onClick={() => {
+        onClick={(event) => {
           onSelected();
+          event.stopPropagation();
+          event.preventDefault();
+        }}
+        onPointerDown={(event) => {
+          // If it is in browse mode stop he event
+          const cell = workbookState.getEditingCell();
+          if (cell && isInReferenceMode(cell.text, cell.cursorStart)) {
+            event.stopPropagation();
+            event.preventDefault();
+          }
         }}
         ref={colorButton}
       >

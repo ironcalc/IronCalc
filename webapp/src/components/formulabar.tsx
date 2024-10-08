@@ -1,28 +1,35 @@
+import type { Model } from "@ironcalc/wasm";
 import { Button, styled } from "@mui/material";
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
 import { Fx } from "../icons";
-import { FormulaDialog } from "./formulaDialog";
+import Editor from "./editor/editor";
+import type { WorkbookState } from "./workbookState";
 
 type FormulaBarProps = {
   cellAddress: string;
   formulaValue: string;
-  onChange: (value: string) => void;
+  model: Model;
+  workbookState: WorkbookState;
+  onChange: () => void;
+  onTextUpdated: () => void;
 };
 
 const formulaBarHeight = 30;
-const headerColumnWidth = 30;
+const headerColumnWidth = 35;
 
 function FormulaBar(properties: FormulaBarProps) {
-  const [formulaDialogOpen, setFormulaDialogOpen] = useState(false);
-  const handleCloseFormulaDialog = () => {
-    setFormulaDialogOpen(false);
-  };
-
+  const {
+    cellAddress,
+    formulaValue,
+    model,
+    onChange,
+    onTextUpdated,
+    workbookState,
+  } = properties;
   return (
     <Container>
       <AddressContainer>
-        <CellBarAddress>{properties.cellAddress}</CellBarAddress>
+        <CellBarAddress>{cellAddress}</CellBarAddress>
         <StyledButton>
           <ChevronDown />
         </StyledButton>
@@ -32,23 +39,40 @@ function FormulaBar(properties: FormulaBarProps) {
         <FormulaSymbolButton>
           <Fx />
         </FormulaSymbolButton>
-        <Editor
-          onClick={() => {
-            setFormulaDialogOpen(true);
+        <EditorWrapper
+          onClick={(event) => {
+            const [sheet, row, column] = model.getSelectedCell();
+            workbookState.setEditingCell({
+              sheet,
+              row,
+              column,
+              text: formulaValue,
+              referencedRange: null,
+              cursorStart: formulaValue.length,
+              cursorEnd: formulaValue.length,
+              focus: "formula-bar",
+              activeRanges: [],
+            });
+            event.stopPropagation();
+            event.preventDefault();
           }}
         >
-          {properties.formulaValue}
-        </Editor>
+          <Editor
+            minimalWidth={"100%"}
+            minimalHeight={"100%"}
+            display={true}
+            expand={false}
+            originalText={formulaValue}
+            model={model}
+            workbookState={workbookState}
+            onEditEnd={() => {
+              onChange();
+            }}
+            onTextUpdated={onTextUpdated}
+            type="formula-bar"
+          />
+        </EditorWrapper>
       </FormulaContainer>
-      <FormulaDialog
-        isOpen={formulaDialogOpen}
-        close={handleCloseFormulaDialog}
-        defaultFormula={properties.formulaValue}
-        onFormulaChanged={(newName) => {
-          properties.onChange(newName);
-          setFormulaDialogOpen(false);
-        }}
-      />
     </Container>
   );
 }
@@ -113,7 +137,7 @@ const CellBarAddress = styled("div")`
   text-align: "center";
 `;
 
-const Editor = styled("div")`
+const EditorWrapper = styled("div")`
   position: relative;
   width: 100%;
   padding: 0px;
@@ -127,6 +151,7 @@ const Editor = styled("div")`
   span {
     min-width: 1px;
   }
+  font-family: monospace;
 `;
 
 export default FormulaBar;
