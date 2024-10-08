@@ -7,6 +7,7 @@ import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./menus";
 import Sheet from "./sheet";
 import type { SheetOptions } from "./types";
+import { NAVIGATION_HEIGH } from "../constants";
 
 export interface NavigationProps {
   sheets: SheetOptions[];
@@ -109,7 +110,7 @@ const Container = styled("div")`
   left: 0px;
   right: 0px;
   display: flex;
-  height: 40px;
+  height: ${NAVIGATION_HEIGH}px;
   align-items: center;
   padding-left: 12px;
   font-family: Inter;
