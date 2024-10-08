@@ -1089,11 +1089,11 @@ export default class WorksheetCanvas {
   }
 
   private getColumnWidth(sheet: number, column: number): number {
-    return Math.round(this.model.getColumnWidth(sheet, column));
+    return Math.round(this.model.getColumnWidth(sheet, column) * 1.25);
   }
 
   private getRowHeight(sheet: number, row: number): number {
-    return Math.round(this.model.getRowHeight(sheet, row));
+    return Math.round(this.model.getRowHeight(sheet, row) * 1.25);
   }
 
   private drawCellOutline(): void {
