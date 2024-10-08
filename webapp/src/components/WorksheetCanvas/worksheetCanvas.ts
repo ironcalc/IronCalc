@@ -1140,8 +1140,8 @@ export default class WorksheetCanvas {
     editor.style.height = `${height - 1}px`;
 
     // Position the cell outline and clip it
-    cellOutline.style.left = `${x - padding}px`;
-    cellOutline.style.top = `${y - padding}px`;
+    cellOutline.style.left = `${x - padding - 1}px`;
+    cellOutline.style.top = `${y - padding - 1}px`;
     // Reset CSS properties
     cellOutline.style.minWidth = "";
     cellOutline.style.minHeight = "";
@@ -1244,8 +1244,8 @@ export default class WorksheetCanvas {
     const handleBBox = cellOutlineHandle.getBoundingClientRect();
     const handleWidth = handleBBox.width;
     const handleHeight = handleBBox.height;
-    cellOutlineHandle.style.left = `${handleX - handleWidth / 2}px`;
-    cellOutlineHandle.style.top = `${handleY - handleHeight / 2}px`;
+    cellOutlineHandle.style.left = `${handleX - handleWidth / 2 - 1}px`;
+    cellOutlineHandle.style.top = `${handleY - handleHeight / 2 - 1}px`;
   }
 
   private drawActiveRanges(topLeftCell: Cell, bottomRightCell: Cell): void {
