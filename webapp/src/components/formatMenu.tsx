@@ -115,7 +115,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
 const MenuItemWrapper = styled(MenuItem)`
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: 12px;
   width: 100%;
 `;
 
