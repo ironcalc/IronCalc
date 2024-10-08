@@ -674,15 +674,15 @@ export default class WorksheetCanvas {
       const rowHeight = this.getRowHeight(selectedSheet, row);
       const selected = row >= rowStart && row <= rowEnd;
       context.fillStyle = headerBorderColor;
-      context.fillRect(0, topLeftCornerY, headerColumnWidth, rowHeight);
+      context.fillRect(0.5, topLeftCornerY, headerColumnWidth, rowHeight);
       context.fillStyle = selected
         ? headerSelectedBackground
         : headerBackground;
       context.fillRect(
-        1,
-        topLeftCornerY + 1,
-        headerColumnWidth - 2,
-        rowHeight - 2,
+        0.5,
+        topLeftCornerY + 0.5,
+        headerColumnWidth,
+        rowHeight - 1,
       );
       if (selected) {
         context.fillStyle = outlineColor;
