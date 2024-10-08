@@ -393,7 +393,7 @@ const ToolbarContainer = styled("div")`
   background: ${({ theme }) => theme.palette.background.paper};
   height: ${toolbarHeight}px;
   line-height: ${toolbarHeight}px;
-  border-bottom: 1px solid ${({ theme }) => theme.palette.grey["600"]};
+  border-bottom: 1px solid ${({ theme }) => theme.palette.grey["300"]};
   font-family: Inter;
   border-radius: 4px 4px 0px 0px;
   overflow-x: auto;
