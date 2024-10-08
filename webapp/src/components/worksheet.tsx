@@ -6,11 +6,15 @@ import {
   outlineColor,
 } from "./WorksheetCanvas/constants";
 import WorksheetCanvas from "./WorksheetCanvas/worksheetCanvas";
+import {
+  FORMULA_BAR_HEIGH,
+  NAVIGATION_HEIGH,
+  TOOLBAR_HEIGH,
+} from "./constants";
 import Editor from "./editor/editor";
 import type { Cell } from "./types";
 import usePointer from "./usePointer";
 import { AreaType, type WorkbookState } from "./workbookState";
-import { FORMULA_BAR_HEIGH, NAVIGATION_HEIGH, TOOLBAR_HEIGH } from "./constants";
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);

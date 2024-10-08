@@ -2,9 +2,9 @@ import type { Model } from "@ironcalc/wasm";
 import { Button, styled } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { Fx } from "../icons";
+import { FORMULA_BAR_HEIGH } from "./constants";
 import Editor from "./editor/editor";
 import type { WorkbookState } from "./workbookState";
-import { FORMULA_BAR_HEIGH } from "./constants";
 
 type FormulaBarProps = {
   cellAddress: string;
