@@ -36,13 +36,13 @@ import {
 import { theme } from "../theme";
 import BorderPicker from "./borderPicker";
 import ColorPicker from "./colorPicker";
+import { TOOLBAR_HEIGH } from "./constants";
 import FormatMenu from "./formatMenu";
 import {
   NumberFormats,
   decreaseDecimalPlaces,
   increaseDecimalPlaces,
 } from "./formatUtil";
-import { TOOLBAR_HEIGH } from "./constants";
 
 type ToolbarProperties = {
   canUndo: boolean;

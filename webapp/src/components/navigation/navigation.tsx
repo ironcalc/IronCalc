@@ -2,12 +2,12 @@ import { styled } from "@mui/material";
 import { ChevronLeft, ChevronRight, Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NAVIGATION_HEIGH } from "../constants";
 import { StyledButton } from "../toolbar";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./menus";
 import Sheet from "./sheet";
 import type { SheetOptions } from "./types";
-import { NAVIGATION_HEIGH } from "../constants";
 
 export interface NavigationProps {
   sheets: SheetOptions[];
