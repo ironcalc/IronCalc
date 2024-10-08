@@ -73,23 +73,23 @@ function Sheet(props: SheetProps) {
           horizontal: 6,
         }}
       >
-        <MenuItem
+        <StyledMenuItem
           onClick={() => {
             handleOpenRenameDialog();
             handleClose();
           }}
         >
           Rename
-        </MenuItem>
-        <MenuItem
+        </StyledMenuItem>
+        <StyledMenuItem
           onClick={() => {
             setColorPickerOpen(true);
             handleClose();
           }}
         >
           Change Color
-        </MenuItem>
-        <MenuItem
+        </StyledMenuItem>
+        <StyledMenuItem
           onClick={() => {
             props.onDeleted();
             handleClose();
@@ -97,7 +97,7 @@ function Sheet(props: SheetProps) {
         >
           {" "}
           Delete
-        </MenuItem>
+        </StyledMenuItem>
       </StyledMenu>
       <SheetRenameDialog
         isOpen={renameDialogOpen}
@@ -125,6 +125,10 @@ function Sheet(props: SheetProps) {
 }
 
 const StyledMenu = styled(Menu)``;
+
+const StyledMenuItem = styled(MenuItem)`
+font-size: 12px;
+`;
 
 const StyledButton = styled(Button)`
   width: 15px;
