@@ -8,7 +8,7 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        Cell, Col, Comment, DefinedName, Row, SheetData, SheetState, Table, Worksheet,
+        Cell, Col, Comment, DefinedName, MergeCell, Row, SheetData, SheetState, Table, Worksheet,
         WorksheetView,
     },
 };
@@ -39,7 +39,7 @@ pub(crate) struct Relationship {
     pub(crate) rel_type: String,
 }
 
-fn get_column_from_ref(s: &str) -> String {
+pub fn get_column_from_ref(s: &str) -> String {
     let cs = s.chars();
     let mut column = Vec::<char>::new();
     for c in cs {
@@ -146,12 +146,12 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
     Ok(cols)
 }
 
-fn load_merge_cells(ws: Node) -> Result<Vec<String>, XlsxError> {
+fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergeCell>, XlsxError> {
     // 18.3.1.55 Merge Cells
     // <mergeCells count="1">
     //    <mergeCell ref="K7:L10"/>
     // </mergeCells>
-    let mut merge_cells = Vec::new();
+    let mut merge_cells: Vec<MergeCell> = Vec::new();
     let merge_cells_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("mergeCells"))
@@ -159,7 +159,16 @@ fn load_merge_cells(ws: Node) -> Result<Vec<String>, XlsxError> {
     if merge_cells_nodes.len() == 1 {
         for merge_cell in merge_cells_nodes[0].children() {
             let reference = get_attribute(&merge_cell, "ref")?.to_string();
-            merge_cells.push(reference);
+            match parse_range(&reference) {
+                Ok(parsed_merge_cell_range) => {
+                    let merge_cell_node =
+                        MergeCell::new(parsed_merge_cell_range, reference.clone());
+                    merge_cells.push(merge_cell_node);
+                }
+                Err(err) => {
+                    println!("encountered error while parsing merge cell ref : {}", err);
+                }
+            }
         }
     }
     Ok(merge_cells)
@@ -941,7 +950,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         sheet_data.insert(row_index, data_row);
     }
 
-    let merge_cells = load_merge_cells(ws)?;
+    let merge_cells_nodes = load_merge_cells_nodes(ws)?;
 
     // Conditional Formatting
     // <conditionalFormatting sqref="B1:B9">
@@ -980,7 +989,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             sheet_id,
             state: state.to_owned(),
             color,
-            merge_cells,
+            merge_cells: merge_cells_nodes,
             comments: settings.comments,
             frozen_rows: sheet_view.frozen_rows,
             frozen_columns: sheet_view.frozen_columns,

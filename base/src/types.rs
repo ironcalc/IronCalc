@@ -110,7 +110,7 @@ pub struct Worksheet {
     pub sheet_id: u32,
     pub state: SheetState,
     pub color: Option<String>,
-    pub merge_cells: Vec<String>,
+    pub merge_cells: Vec<MergeCell>,
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
@@ -349,6 +349,16 @@ pub enum FontScheme {
     Minor,
     Major,
     None,
+}
+
+// Merge Cell type
+// There will be one MergeCell maintained for every Merge cells that we load
+// It will consist of range_ref : its range reference in String representation
+// merge_cell_range : Its tuple having [row_start, column_start, row_end, column_end]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct MergeCell {
+    pub merge_cell_range: (i32, i32, i32, i32),
+    pub range_ref: String,
 }
 
 impl Display for FontScheme {
