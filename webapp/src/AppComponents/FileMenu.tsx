@@ -147,7 +147,6 @@ const FileMenuWrapper = styled("div")`
   padding: 10px;
   height: 20px;
   border-radius: 4px;
-  margin: 10px;
   &:hover {
     background-color: #f2f2f2;
   }

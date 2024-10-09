@@ -397,6 +397,7 @@ const ToolbarContainer = styled("div")`
   font-family: Inter;
   border-radius: 4px 4px 0px 0px;
   overflow-x: auto;
+  padding-left: 11px;
 `;
 
 type TypeButtonProperties = { $pressed: boolean; $underlinedColor?: string };
