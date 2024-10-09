@@ -127,7 +127,7 @@ function Sheet(props: SheetProps) {
 const StyledMenu = styled(Menu)``;
 
 const StyledMenuItem = styled(MenuItem)`
-font-size: 12px;
+  font-size: 12px;
 `;
 
 const StyledButton = styled(Button)`

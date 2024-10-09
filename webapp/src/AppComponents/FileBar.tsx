@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/wasm";
 import { CircleCheck } from "lucide-react";
 import { useRef, useState } from "react";
-import { IronCalcLogo } from "./../icons";
+import { IronCalcIcon, IronCalcLogo } from "./../icons";
 import { FileMenu } from "./FileMenu";
 import { ShareButton } from "./ShareButton";
 import { WorkbookTitle } from "./WorkbookTitle";
@@ -19,7 +19,8 @@ export function FileBar(properties: {
   const [toast, setToast] = useState(false);
   return (
     <FileBarWrapper>
-      <IronCalcLogo style={{ width: "120px", marginLeft: "10px" }} />
+      <StyledDesktopLogo />
+      <StyledIronCalcIcon />
       <Divider />
       <FileMenu
         newModel={properties.newModel}
@@ -77,6 +78,22 @@ export function FileBar(properties: {
   );
 }
 
+const StyledDesktopLogo = styled(IronCalcLogo)`
+  width: 120px;
+  margin-left: 10px;
+  @media (max-width: 769px) {
+    display: none;
+  }
+`;
+
+const StyledIronCalcIcon = styled(IronCalcIcon)`
+  width: 36px;
+  margin-left: 10px;
+  @media (min-width: 769px) {
+    display: none;
+  }
+`;
+
 const Toast = styled("div")`
   font-weight: 400;
   font-size: 12px;
@@ -97,7 +114,7 @@ const FileBarWrapper = styled("div")`
   background: #fff;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #E0E0E0;
+  border-bottom: 1px solid #e0e0e0;
   position: relative;
   justify-content: space-between;
 `;
