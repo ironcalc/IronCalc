@@ -480,6 +480,18 @@ fn test_merge_cell_import_export_behaviors() {
 
     // Create one More Merge cell which Overlaps with 3 More
     model.update_merge_cell(0, "A1:D5").unwrap();
+    model
+        .set_user_input(0, 1, 1, "New overlapped Merge cell".to_string())
+        .unwrap();
+
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    assert_eq!(
+        model.workbook.styles.create_named_style("bold", &style),
+        Ok(())
+    );
+
+    model.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
 
     //Lets export to different Excell
     let exported_merge_cell_xlsx = "temporary_exported_mergecells.xlsx";
