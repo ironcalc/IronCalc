@@ -52,6 +52,7 @@ function FormulaBar(properties: FormulaBarProps) {
               cursorEnd: formulaValue.length,
               focus: "formula-bar",
               activeRanges: [],
+              mode: "accept",
             });
             event.stopPropagation();
             event.preventDefault();

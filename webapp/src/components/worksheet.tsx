@@ -339,6 +339,7 @@ function Worksheet(props: {
             focus: "cell",
             referencedRange: null,
             activeRanges: [],
+            mode: "accept",
           });
           setOriginalText(text);
           event.stopPropagation();

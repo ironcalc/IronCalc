@@ -154,10 +154,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         focus: "cell",
         referencedRange: null,
         activeRanges: [],
+        mode: "accept",
       });
       setRedrawId((id) => id + 1);
     },
     onCellEditStart: (): void => {
+      // User presses F2, we start editing at the edn of the text
       const { sheet, row, column } = model.getSelectedView();
       const text = model.getCellContent(sheet, row, column);
       workbookState.setEditingCell({
@@ -170,6 +172,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         referencedRange: null,
         focus: "cell",
         activeRanges: [],
+        mode: "edit",
       });
       setRedrawId((id) => id + 1);
     },
