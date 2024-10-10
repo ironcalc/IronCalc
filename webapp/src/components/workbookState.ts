@@ -52,6 +52,10 @@ export interface ReferencedRange {
 }
 
 type Focus = "cell" | "formula-bar";
+type EditorMode = "accept" | "edit";
+
+// In "edit" mode arrow keys will move you around the text in the editor
+// In "accept" mode arrow keys will accept the content and move to the next cell or select another cell
 
 // The cell that we are editing
 export interface EditingCell {
@@ -67,6 +71,7 @@ export interface EditingCell {
   referencedRange: ReferencedRange | null;
   focus: Focus;
   activeRanges: ActiveRange[];
+  mode: EditorMode;
 }
 
 // Those are styles that are copied

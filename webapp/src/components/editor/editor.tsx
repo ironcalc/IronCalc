@@ -19,16 +19,32 @@
 // 2. Move the cursor to the right
 // 3. Insert in the formula the cell name on the right
 
+// You can either be editing a formula or content.
+// When editing content (behaviour is common to Excel and Google Sheets):
+// * If you start editing by typing you are in *accept* mode
+// * If you start editing by F2 you are in *cruise* mode
+// * If you start editing by double click you are in *cruise* mode
+// In Google Sheets "Enter" starts editing and puts you in *cruise* mode. We do not do that
+// Once you are in cruise mode it is not possible to switch to accept mode
+// The only way to go from accept mode to cruise mode is clicking in the content somewhere
+
+// When editing a formula.
+// In Google Sheets you are either in insert mode or cruise mode.
+// You can get back to accept mode if you delete the whole formula
+// In Excel you can be either in insert or accept but if you click in the formula body
+// you switch to cruise mode. Once in cruise mode you can go to insert mode by selecting a range.
+// Then you are back in accept/insert modes
+
 import type { Model } from "@ironcalc/wasm";
 import {
   type CSSProperties,
-  type KeyboardEvent,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import type { WorkbookState } from "../workbookState";
+import useKeyDown from "./useKeyDown";
 import getFormulaHTML from "./util";
 
 const commonCSS: CSSProperties = {
@@ -92,113 +108,16 @@ const Editor = (options: EditorOptions) => {
     }
   }, [originalText, model]);
 
-  const onKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      const { key, shiftKey, altKey } = event;
-      const textarea = textareaRef.current;
-      if (!textarea) {
-        return;
-      }
-      switch (key) {
-        case "Enter": {
-          if (altKey) {
-            // new line
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            const newText = `${text.slice(0, start)}\n${text.slice(end)}`;
-            setText(newText);
-            setTimeout(() => {
-              textarea.setSelectionRange(start + 1, start + 1);
-            }, 0);
-            event.stopPropagation();
-            event.preventDefault();
-            return;
-          }
-          // end edit and select cell bellow
-          setTimeout(() => {
-            const cell = workbookState.getEditingCell();
-            if (cell) {
-              model.setUserInput(
-                cell.sheet,
-                cell.row,
-                cell.column,
-                cell.text + (cell.referencedRange?.str || ""),
-              );
-              const sign = shiftKey ? -1 : 1;
-              model.setSelectedSheet(cell.sheet);
-              model.setSelectedCell(cell.row + sign, cell.column);
-              workbookState.clearEditingCell();
-            }
-            onEditEnd();
-          }, 0);
-          // event bubbles up
-          return;
-        }
-        case "Tab": {
-          // end edit and select cell to the right
-          const cell = workbookState.getEditingCell();
-          if (cell) {
-            workbookState.clearEditingCell();
-            model.setUserInput(
-              cell.sheet,
-              cell.row,
-              cell.column,
-              cell.text + (cell.referencedRange?.str || ""),
-            );
-            const sign = shiftKey ? -1 : 1;
-            model.setSelectedSheet(cell.sheet);
-            model.setSelectedCell(cell.row, cell.column + sign);
-            if (textareaRef.current) {
-              textareaRef.current.value = "";
-              setStyledFormula(getFormulaHTML(model, "", "").html);
-            }
-            event.stopPropagation();
-            event.preventDefault();
-          }
-          onEditEnd();
-          return;
-        }
-        case "Escape": {
-          // quit editing without modifying the cell
-          const cell = workbookState.getEditingCell();
-          if (cell) {
-            model.setSelectedSheet(cell.sheet);
-          }
-          workbookState.clearEditingCell();
-          onEditEnd();
-          return;
-        }
-        // TODO: Arrow keys navigate in Excel
-        case "ArrowRight": {
-          return;
-        }
-        default: {
-          // We run this in a timeout because the value is not yet in the textarea
-          // since we are capturing the keydown event
-          setTimeout(() => {
-            const cell = workbookState.getEditingCell();
-            if (cell) {
-              // accept whatever is in the referenced range
-              const value = textarea.value;
-              const styledFormula = getFormulaHTML(model, value, "");
-
-              cell.text = value;
-              cell.referencedRange = null;
-              cell.cursorStart = textarea.selectionStart;
-              cell.cursorEnd = textarea.selectionEnd;
-              workbookState.setEditingCell(cell);
-
-              workbookState.setActiveRanges(styledFormula.activeRanges);
-              setStyledFormula(styledFormula.html);
-
-              onTextUpdated();
-            }
-          }, 0);
-        }
-      }
-    },
-    [model, text, onEditEnd, onTextUpdated, workbookState],
-  );
+  const { onKeyDown } = useKeyDown({
+    model,
+    text,
+    onEditEnd,
+    onTextUpdated,
+    workbookState,
+    textareaRef,
+    setStyledFormula,
+    setText,
+  });
 
   useEffect(() => {
     if (display) {
@@ -207,6 +126,35 @@ const Editor = (options: EditorOptions) => {
   }, [display]);
 
   const onChange = useCallback(() => {
+    const textarea = textareaRef.current;
+    const cell = workbookState.getEditingCell();
+    if (!textarea || !cell) {
+      return;
+    }
+    const value = textarea.value;
+    cell.text = value;
+    cell.referencedRange = null;
+    cell.cursorStart = textarea.selectionStart;
+    cell.cursorEnd = textarea.selectionEnd;
+    const styledFormula = getFormulaHTML(model, cell.text, "");
+    if (value === "") {
+      // When we delete the content of a cell we jump to accept mode
+      cell.mode = "accept";
+    }
+    workbookState.setEditingCell(cell);
+
+    workbookState.setActiveRanges(styledFormula.activeRanges);
+    setText(cell.text);
+    setStyledFormula(styledFormula.html);
+
+    onTextUpdated();
+
+    // Should we stop propagations?
+    // event.stopPropagation();
+    // event.preventDefault();
+  }, [workbookState, model, onTextUpdated]);
+
+  const onBlur = useCallback(() => {
     if (textareaRef.current) {
       textareaRef.current.value = "";
       setStyledFormula(getFormulaHTML(model, "", "").html);
@@ -272,10 +220,16 @@ const Editor = (options: EditorOptions) => {
         defaultValue={text}
         spellCheck="false"
         onKeyDown={onKeyDown}
-        onBlur={onChange}
+        onChange={onChange}
+        onBlur={onBlur}
         onClick={(event) => {
           // Prevents this from bubbling up and focusing on the spreadsheet
           if (isCellEditing && type === "cell") {
+            const cell = workbookState.getEditingCell();
+            if (cell) {
+              cell.mode = "edit";
+              workbookState.setEditingCell(cell);
+            }
             event.stopPropagation();
           }
         }}

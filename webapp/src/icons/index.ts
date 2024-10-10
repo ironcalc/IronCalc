@@ -20,8 +20,8 @@ import InsertColumnRightIcon from "./insert-column-right.svg?react";
 import InsertRowAboveIcon from "./insert-row-above.svg?react";
 import InsertRowBelow from "./insert-row-below.svg?react";
 
-import IronCalcLogo from "./orange+black.svg?react";
 import IronCalcIcon from "./ironcalc_icon.svg?react";
+import IronCalcLogo from "./orange+black.svg?react";
 
 import Fx from "./fx.svg?react";
 
