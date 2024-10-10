@@ -882,9 +882,11 @@ impl UserModel {
                     }
                     "fill.bg_color" => {
                         style.fill.bg_color = color(value)?;
+                        style.fill.pattern_type = "solid".to_string();
                     }
                     "fill.fg_color" => {
                         style.fill.fg_color = color(value)?;
+                        style.fill.pattern_type = "solid".to_string();
                     }
                     "num_fmt" => {
                         value.clone_into(&mut style.num_fmt);
