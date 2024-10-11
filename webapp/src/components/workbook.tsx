@@ -125,8 +125,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       const row = Math.min(rowStart, rowEnd);
       const column = Math.min(columnStart, columnEnd);
 
-      const width = Math.abs(columnEnd - columnStart) + 1;
-      const height = Math.abs(rowEnd - rowStart) + 1;
+      const width = Math.abs(columnEnd - columnStart);
+      const height = Math.abs(rowEnd - rowStart);
       model.rangeClearContents(
         sheet,
         row,
