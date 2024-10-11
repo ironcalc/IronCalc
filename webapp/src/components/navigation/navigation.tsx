@@ -81,7 +81,10 @@ function Navigation(props: NavigationProps) {
         isOpen={open}
         close={handleClose}
         sheetOptionsList={sheets}
-        onSheetSelected={onSheetSelected}
+        onSheetSelected={(index) => {
+          onSheetSelected(index);
+          handleClose();
+        }}
       />
     </Container>
   );
