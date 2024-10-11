@@ -18,10 +18,13 @@ const FormatMenu = (properties: FormatMenuProps) => {
   const [isPickerOpen, setPickerOpen] = useState(false);
   const anchorElement = useRef<HTMLDivElement>(null);
 
-  const onSelect = useCallback((s: string) => {
-    properties.onChange(s);
-    setMenuOpen(false);
-  }, [properties.onChange]);
+  const onSelect = useCallback(
+    (s: string) => {
+      properties.onChange(s);
+      setMenuOpen(false);
+    },
+    [properties.onChange],
+  );
 
   return (
     <>
