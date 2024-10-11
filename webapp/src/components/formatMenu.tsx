@@ -1,5 +1,5 @@
 import { Menu, MenuItem, styled } from "@mui/material";
-import { type ComponentProps, useRef, useState } from "react";
+import { type ComponentProps, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import FormatPicker from "./formatPicker";
 import { NumberFormats } from "./formatUtil";
@@ -14,10 +14,14 @@ type FormatMenuProps = {
 
 const FormatMenu = (properties: FormatMenuProps) => {
   const { t } = useTranslation();
-  const { onChange } = properties;
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isPickerOpen, setPickerOpen] = useState(false);
   const anchorElement = useRef<HTMLDivElement>(null);
+
+  const onSelect = useCallback((s: string) => {
+    properties.onChange(s);
+    setMenuOpen(false);
+  }, [properties.onChange]);
 
   return (
     <>
@@ -33,18 +37,18 @@ const FormatMenu = (properties: FormatMenuProps) => {
         anchorEl={anchorElement.current}
         anchorOrigin={properties.anchorOrigin}
       >
-        <MenuItemWrapper onClick={(): void => onChange(NumberFormats.AUTO)}>
+        <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.AUTO)}>
           <MenuItemText>{t("toolbar.format_menu.auto")}</MenuItemText>
         </MenuItemWrapper>
         <MenuDivider />
-        <MenuItemWrapper onClick={(): void => onChange(NumberFormats.NUMBER)}>
+        <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.NUMBER)}>
           <MenuItemText>{t("toolbar.format_menu.number")}</MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.number_example")}
           </MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
-          onClick={(): void => onChange(NumberFormats.PERCENTAGE)}
+          onClick={(): void => onSelect(NumberFormats.PERCENTAGE)}
         >
           <MenuItemText>{t("toolbar.format_menu.percentage")}</MenuItemText>
           <MenuItemExample>
@@ -54,7 +58,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
 
         <MenuDivider />
         <MenuItemWrapper
-          onClick={(): void => onChange(NumberFormats.CURRENCY_EUR)}
+          onClick={(): void => onSelect(NumberFormats.CURRENCY_EUR)}
         >
           <MenuItemText>{t("toolbar.format_menu.currency_eur")}</MenuItemText>
           <MenuItemExample>
@@ -62,7 +66,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
           </MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
-          onClick={(): void => onChange(NumberFormats.CURRENCY_USD)}
+          onClick={(): void => onSelect(NumberFormats.CURRENCY_USD)}
         >
           <MenuItemText>{t("toolbar.format_menu.currency_usd")}</MenuItemText>
           <MenuItemExample>
@@ -70,7 +74,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
           </MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
-          onClick={(): void => onChange(NumberFormats.CURRENCY_GBP)}
+          onClick={(): void => onSelect(NumberFormats.CURRENCY_GBP)}
         >
           <MenuItemText>{t("toolbar.format_menu.currency_gbp")}</MenuItemText>
           <MenuItemExample>
@@ -80,7 +84,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
 
         <MenuDivider />
         <MenuItemWrapper
-          onClick={(): void => onChange(NumberFormats.DATE_SHORT)}
+          onClick={(): void => onSelect(NumberFormats.DATE_SHORT)}
         >
           <MenuItemText>{t("toolbar.format_menu.date_short")}</MenuItemText>
           <MenuItemExample>
@@ -88,7 +92,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
           </MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
-          onClick={(): void => onChange(NumberFormats.DATE_LONG)}
+          onClick={(): void => onSelect(NumberFormats.DATE_LONG)}
         >
           <MenuItemText>{t("toolbar.format_menu.date_long")}</MenuItemText>
           <MenuItemExample>
@@ -103,7 +107,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
       </Menu>
       <FormatPicker
         numFmt={properties.numFmt}
-        onChange={properties.onChange}
+        onChange={onSelect}
         open={isPickerOpen}
         onClose={(): void => setPickerOpen(false)}
         onExited={properties.onExited}
