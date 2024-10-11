@@ -82,7 +82,7 @@ const SheetListMenu = (properties: SheetListMenuProps) => {
       {sheetOptionsList.map((tab, index) => (
         <StyledMenuItem
           key={tab.sheetId}
-          onClick={(): void => onSheetSelected(index)}
+          onClick={() => onSheetSelected(index)}
         >
           <ItemColor style={{ backgroundColor: tab.color }} />
           <ItemName>{tab.name}</ItemName>
