@@ -3,8 +3,10 @@ import { columnNameFromNumber } from "@ironcalc/wasm";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
 import {
+  COLUMN_WIDTH_SCALE,
   LAST_COLUMN,
   LAST_ROW,
+  ROW_HEIGH_SCALE,
   defaultTextColor,
   gridColor,
   gridSeparatorColor,
@@ -1089,35 +1091,76 @@ export default class WorksheetCanvas {
   }
 
   private getColumnWidth(sheet: number, column: number): number {
-    return Math.round(this.model.getColumnWidth(sheet, column) * 1.25);
+    return Math.round(
+      this.model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE,
+    );
   }
 
   private getRowHeight(sheet: number, row: number): number {
-    return Math.round(this.model.getRowHeight(sheet, row) * 1.25);
+    return Math.round(this.model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE);
+  }
+
+  private drawCellEditor(): void {
+    const cell = this.workbookState.getEditingCell();
+    const [selectedSheet, selectedRow, selectedColumn] =
+      this.model.getSelectedCell();
+    const { editor } = this;
+    if (!cell || cell.sheet !== selectedSheet) {
+      // If the editing cell is not in the same sheet as the selected sheet
+      // we take the editor out of view
+      editor.style.left = "-9999px";
+      editor.style.top = "-9999px";
+      return;
+    }
+    const { sheet, row, column } = cell;
+    // const style = this.model.getCellStyle(
+    //   selectedSheet,
+    //   selectedRow,
+    //   selectedColumn
+    // );
+    // cellOutline.style.fontWeight = style.font.b ? "bold" : "normal";
+    // cellOutline.style.fontStyle = style.font.i ? "italic" : "normal";
+    // cellOutline.style.backgroundColor = style.fill.fg_color;
+    // TODO: Should we add the same color as the text?
+    // Only if it is not a formula?
+    // cellOutline.style.color = style.font.color;
+    const [x, y] = this.getCoordinatesByCell(row, column);
+    const padding = -1;
+    const width = cell.editorWidth + 2 * padding;
+    const height = cell.editorHeight + 2 * padding;
+    // const width =
+    //   this.getColumnWidth(sheet, column) + 2 * padding;
+    // const height = this.getRowHeight(sheet, row) + 2 * padding;
+    editor.style.left = `${x}px`;
+    editor.style.top = `${y}px`;
+    editor.style.width = `${width - 1}px`;
+    editor.style.height = `${height - 1}px`;
   }
 
   private drawCellOutline(): void {
+    const { cellOutline, areaOutline, cellOutlineHandle } = this;
+    if (this.workbookState.getEditingCell()) {
+      cellOutline.style.visibility = "hidden";
+      cellOutlineHandle.style.visibility = "hidden";
+      areaOutline.style.visibility = "hidden";
+      return;
+    }
+    cellOutline.style.visibility = "visible";
+    cellOutlineHandle.style.visibility = "visible";
+    areaOutline.style.visibility = "visible";
+
     const [selectedSheet, selectedRow, selectedColumn] =
       this.model.getSelectedCell();
     const { topLeftCell } = this.getVisibleCells();
     const frozenRows = this.model.getFrozenRowsCount(selectedSheet);
     const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
     const [x, y] = this.getCoordinatesByCell(selectedRow, selectedColumn);
-    const style = this.model.getCellStyle(
-      selectedSheet,
-      selectedRow,
-      selectedColumn,
-    );
+
     const padding = -1;
     const width =
       this.getColumnWidth(selectedSheet, selectedColumn) + 2 * padding;
     const height = this.getRowHeight(selectedSheet, selectedRow) + 2 * padding;
 
-    const { cellOutline, editor, areaOutline, cellOutlineHandle } = this;
-    const cellEditing = null;
-
-    cellOutline.style.visibility = "visible";
-    cellOutlineHandle.style.visibility = "visible";
     if (
       (selectedRow < topLeftCell.row && selectedRow > frozenRows) ||
       (selectedColumn < topLeftCell.column && selectedColumn > frozenColumns)
@@ -1125,19 +1168,6 @@ export default class WorksheetCanvas {
       cellOutline.style.visibility = "hidden";
       cellOutlineHandle.style.visibility = "hidden";
     }
-
-    if (this.workbookState.getEditingCell()?.sheet === selectedSheet) {
-      editor.style.left = `${x + 3}px`;
-      editor.style.top = `${y + 3}px`;
-    } else {
-      // If the editing cell is not in the same sheet as the selected sheet
-      // we take the editor out of view
-      editor.style.left = "-9999px";
-      editor.style.top = "-9999px";
-    }
-
-    editor.style.width = `${width - 1}px`;
-    editor.style.height = `${height - 1}px`;
 
     // Position the cell outline and clip it
     cellOutline.style.left = `${x - padding - 1}px`;
@@ -1151,16 +1181,9 @@ export default class WorksheetCanvas {
     // New properties
     cellOutline.style.width = `${width}px`;
     cellOutline.style.height = `${height}px`;
-    if (cellEditing) {
-      cellOutline.style.fontWeight = style.font.b ? "bold" : "normal";
-      cellOutline.style.fontStyle = style.font.i ? "italic" : "normal";
-      // cellOutline.style.backgroundColor = style.fill.fg_color;
-      // TODO: Should we add the same color as the text?
-      // Only if it is not a formula?
-      // cellOutline.style.color = style.font.color;
-    } else {
-      cellOutline.style.background = "none";
-    }
+
+    cellOutline.style.background = "none";
+
     // border is 2px so line-height must be height - 4
     cellOutline.style.lineHeight = `${height - 4}px`;
     let {
@@ -1236,11 +1259,6 @@ export default class WorksheetCanvas {
       }
     }
 
-    // draw the handle
-    if (cellEditing !== null) {
-      cellOutlineHandle.style.visibility = "hidden";
-      return;
-    }
     const handleBBox = cellOutlineHandle.getBoundingClientRect();
     const handleWidth = handleBBox.width;
     const handleHeight = handleBBox.height;
@@ -1442,6 +1460,7 @@ export default class WorksheetCanvas {
     context.fillRect(0, 0, headerColumnWidth, headerRowHeight);
 
     this.drawCellOutline();
+    this.drawCellEditor();
     this.drawExtendToArea();
     this.drawActiveRanges(topLeftCell, bottomRightCell);
   }

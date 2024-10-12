@@ -2,6 +2,10 @@ import type { Model } from "@ironcalc/wasm";
 import { Button, styled } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { Fx } from "../icons";
+import {
+  COLUMN_WIDTH_SCALE,
+  ROW_HEIGH_SCALE,
+} from "./WorksheetCanvas/constants";
 import { FORMULA_BAR_HEIGH } from "./constants";
 import Editor from "./editor/editor";
 import type { WorkbookState } from "./workbookState";
@@ -42,6 +46,10 @@ function FormulaBar(properties: FormulaBarProps) {
         <EditorWrapper
           onClick={(event) => {
             const [sheet, row, column] = model.getSelectedCell();
+            const editorWidth =
+              model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
+            const editorHeight =
+              model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
             workbookState.setEditingCell({
               sheet,
               row,
@@ -52,17 +60,15 @@ function FormulaBar(properties: FormulaBarProps) {
               cursorEnd: formulaValue.length,
               focus: "formula-bar",
               activeRanges: [],
-              mode: "accept",
+              mode: "edit",
+              editorWidth,
+              editorHeight,
             });
             event.stopPropagation();
             event.preventDefault();
           }}
         >
           <Editor
-            minimalWidth={"100%"}
-            minimalHeight={"100%"}
-            display={true}
-            expand={false}
             originalText={formulaValue}
             model={model}
             workbookState={workbookState}

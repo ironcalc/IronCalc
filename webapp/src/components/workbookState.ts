@@ -72,6 +72,8 @@ export interface EditingCell {
   focus: Focus;
   activeRanges: ActiveRange[];
   mode: EditorMode;
+  editorWidth: number;
+  editorHeight: number;
 }
 
 // Those are styles that are copied
