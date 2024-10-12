@@ -345,13 +345,27 @@ impl UserModel {
 
         self.evaluate_if_not_paused();
 
-        let diff_list = vec![Diff::SetCellValue {
+        let mut diff_list = vec![Diff::SetCellValue {
             sheet,
             row,
             column,
             new_value: value.to_string(),
             old_value: Box::new(old_value),
         }];
+
+        let line_count = value.split("\n").count();
+        let row_height = self.model.get_row_height(sheet, row)?;
+        let cell_height = (line_count * 22) as f64;
+        if cell_height > row_height {
+            diff_list.push(Diff::SetRowHeight {
+                sheet,
+                row,
+                new_value: cell_height,
+                old_value: row_height,
+            });
+            self.model.set_row_height(sheet, row, cell_height)?;
+        }
+
         self.push_diff_list(diff_list);
         Ok(())
     }
