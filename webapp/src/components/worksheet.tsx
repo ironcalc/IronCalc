@@ -2,6 +2,8 @@ import type { Model } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
+  COLUMN_WIDTH_SCALE,
+  ROW_HEIGH_SCALE,
   outlineBackgroundColor,
   outlineColor,
 } from "./WorksheetCanvas/constants";
@@ -329,6 +331,9 @@ function Worksheet(props: {
           // Starts editing cell
           const { sheet, row, column } = model.getSelectedView();
           const text = model.getCellContent(sheet, row, column) || "";
+          const editorWidth =
+            model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
+          const editorHeight = model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
           workbookState.setEditingCell({
             sheet,
             row,
@@ -340,20 +345,19 @@ function Worksheet(props: {
             referencedRange: null,
             activeRanges: [],
             mode: "accept",
+            editorWidth,
+            editorHeight,
           });
           setOriginalText(text);
           event.stopPropagation();
           event.preventDefault();
+          props.refresh();
         }}
       >
         <SheetCanvas ref={canvasElement} />
         <CellOutline ref={cellOutline} />
         <EditorWrapper ref={editorElement}>
           <Editor
-            minimalWidth={"100%"}
-            minimalHeight={"100%"}
-            display={workbookState.getEditingCell()?.focus === "cell"}
-            expand={true}
             originalText={workbookState.getEditingText() || originalText}
             onEditEnd={(): void => {
               props.refresh();
@@ -492,7 +496,6 @@ const CellOutlineHandle = styled("div")`
   height: 5px;
   background: ${outlineColor};
   cursor: crosshair;
-  // border: 1px solid white;
   border-radius: 1px;
 `;
 
@@ -517,6 +520,7 @@ const EditorWrapper = styled("div")`
     min-width: 1px;
   }
   font-family: monospace;
+  border: 2px solid ${outlineColor};
 `;
 
 export default Worksheet;

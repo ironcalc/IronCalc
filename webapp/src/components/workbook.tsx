@@ -1,7 +1,11 @@
 import type { BorderOptions, Model, WorksheetProperties } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LAST_COLUMN } from "./WorksheetCanvas/constants";
+import {
+  COLUMN_WIDTH_SCALE,
+  LAST_COLUMN,
+  ROW_HEIGH_SCALE,
+} from "./WorksheetCanvas/constants";
 import FormulaBar from "./formulabar";
 import Navigation from "./navigation/navigation";
 import Toolbar from "./toolbar";
@@ -144,6 +148,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     },
     onEditKeyPressStart: (initText: string): void => {
       const { sheet, row, column } = model.getSelectedView();
+      const editorWidth =
+        model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
+      const editorHeight = model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
       workbookState.setEditingCell({
         sheet,
         row,
@@ -155,6 +162,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         referencedRange: null,
         activeRanges: [],
         mode: "accept",
+        editorWidth,
+        editorHeight,
       });
       setRedrawId((id) => id + 1);
     },
@@ -162,6 +171,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       // User presses F2, we start editing at the edn of the text
       const { sheet, row, column } = model.getSelectedView();
       const text = model.getCellContent(sheet, row, column);
+      const editorWidth =
+        model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
+      const editorHeight = model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
       workbookState.setEditingCell({
         sheet,
         row,
@@ -173,6 +185,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         focus: "cell",
         activeRanges: [],
         mode: "edit",
+        editorWidth,
+        editorHeight,
       });
       setRedrawId((id) => id + 1);
     },

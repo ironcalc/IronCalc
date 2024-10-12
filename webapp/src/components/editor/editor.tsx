@@ -1,5 +1,6 @@
 // This is the cell editor for IronCalc
-// It is also the most difficult part of the UX. It is based on an idea of Mateusz Kopec.
+// It is also the single most difficult part of the UX. It is based on an idea of the
+// celebrated Polish developer Mateusz Kopec.
 // There is a hidden texarea and we only show the caret. What we see is a div with the same text content
 // but in HTML so we can have different colors.
 // Some keystrokes have different behaviour than a raw HTML text area.
@@ -63,10 +64,6 @@ const commonCSS: CSSProperties = {
 const caretColor = "#FF8899";
 
 interface EditorOptions {
-  minimalWidth: number | string;
-  minimalHeight: number | string;
-  display: boolean;
-  expand: boolean;
   originalText: string;
   onEditEnd: () => void;
   onTextUpdated: () => void;
@@ -76,21 +73,9 @@ interface EditorOptions {
 }
 
 const Editor = (options: EditorOptions) => {
-  const {
-    display,
-    expand,
-    minimalHeight,
-    minimalWidth,
-    model,
-    onEditEnd,
-    onTextUpdated,
-    originalText,
-    workbookState,
-    type,
-  } = options;
+  const { model, onEditEnd, onTextUpdated, originalText, workbookState, type } =
+    options;
 
-  const [width, setWidth] = useState(minimalWidth);
-  const [height, setHeight] = useState(minimalHeight);
   const [text, setText] = useState(originalText);
   const [styledFormula, setStyledFormula] = useState(
     getFormulaHTML(model, text, "").html,
@@ -120,10 +105,27 @@ const Editor = (options: EditorOptions) => {
   });
 
   useEffect(() => {
-    if (display) {
-      textareaRef.current?.focus();
+    if (text.length === 0) {
+      // noop
     }
-  }, [display]);
+  }, [text]);
+
+  useEffect(() => {
+    const cell = workbookState.getEditingCell();
+    if (text.length === 0) {
+      // noop, just to keep the linter happy
+    }
+    if (!cell) {
+      return;
+    }
+    const { editorWidth, editorHeight } = cell;
+    if (formulaRef.current) {
+      const scrollWidth = formulaRef.current.scrollWidth;
+      if (scrollWidth > editorWidth - 5) {
+        cell.editorWidth = scrollWidth + 10;
+      }
+    }
+  }, [text, workbookState]);
 
   const onChange = useCallback(() => {
     const textarea = textareaRef.current;
@@ -137,7 +139,7 @@ const Editor = (options: EditorOptions) => {
     cell.cursorStart = textarea.selectionStart;
     cell.cursorEnd = textarea.selectionEnd;
     const styledFormula = getFormulaHTML(model, cell.text, "");
-    if (value === "") {
+    if (value === "" && type === "cell") {
       // When we delete the content of a cell we jump to accept mode
       cell.mode = "accept";
     }
@@ -152,9 +154,15 @@ const Editor = (options: EditorOptions) => {
     // Should we stop propagations?
     // event.stopPropagation();
     // event.preventDefault();
-  }, [workbookState, model, onTextUpdated]);
+  }, [workbookState, model, onTextUpdated, type]);
 
   const onBlur = useCallback(() => {
+    const cell = workbookState.getEditingCell();
+    if (type !== cell?.focus) {
+      // If the onBlur event is called because we switch from the cell editor to the formula editor
+      // or vice versa, do nothing
+      return;
+    }
     if (textareaRef.current) {
       textareaRef.current.value = "";
       setStyledFormula(getFormulaHTML(model, "", "").html);
@@ -163,7 +171,6 @@ const Editor = (options: EditorOptions) => {
     // This happens if the blur hasn't been taken care before by
     // onclick or onpointerdown events
     // If we are editing a cell finish that
-    const cell = workbookState.getEditingCell();
     if (cell) {
       model.setUserInput(
         cell.sheet,
@@ -174,19 +181,25 @@ const Editor = (options: EditorOptions) => {
       workbookState.clearEditingCell();
     }
     onEditEnd();
-  }, [model, workbookState, onEditEnd]);
+  }, [model, workbookState, onEditEnd, type]);
 
-  const isCellEditing = workbookState.getEditingCell() !== null;
+  const cell = workbookState.getEditingCell();
 
-  const showEditor =
-    (isCellEditing && display) || type === "formula-bar" ? "block" : "none";
+  // If we are the focus, the get it
+  if (cell) {
+    if (type === cell.focus) {
+      textareaRef.current?.focus();
+    }
+  }
+
+  const showEditor = cell !== null || type === "formula-bar" ? "block" : "none";
 
   return (
     <div
       style={{
         position: "relative",
-        width,
-        height,
+        width: "100%",
+        height: "100%",
         overflow: "hidden",
         display: showEditor,
         background: "#FFF",
@@ -198,10 +211,17 @@ const Editor = (options: EditorOptions) => {
           ...commonCSS,
           textAlign: "left",
           pointerEvents: "none",
-          height,
+          height: "100%",
         }}
       >
-        <div ref={formulaRef}>{styledFormula}</div>
+        <div
+          style={{
+            display: "inline-block",
+          }}
+          ref={formulaRef}
+        >
+          {styledFormula}
+        </div>
       </div>
       <textarea
         ref={textareaRef}
@@ -214,23 +234,32 @@ const Editor = (options: EditorOptions) => {
           outline: "none",
           resize: "none",
           border: "none",
-          height,
+          height: "100%",
           overflow: "hidden",
+          alignContent: "baseline",
         }}
         defaultValue={text}
         spellCheck="false"
         onKeyDown={onKeyDown}
         onChange={onChange}
         onBlur={onBlur}
-        onClick={(event) => {
-          // Prevents this from bubbling up and focusing on the spreadsheet
-          if (isCellEditing && type === "cell") {
-            const cell = workbookState.getEditingCell();
-            if (cell) {
-              cell.mode = "edit";
-              workbookState.setEditingCell(cell);
-            }
+        onPointerDown={(event) => {
+          // We are either clicking in the same cell we are editing,
+          // in which case we just change the mode to edit, or we click
+          // in a different editor, in which case we switch the focus
+          const cell = workbookState.getEditingCell();
+          if (cell) {
+            // We make sure the mode is edit
+            cell.mode = "edit";
+            cell.focus = type;
+            workbookState.setEditingCell(cell);
             event.stopPropagation();
+          }
+        }}
+        onScroll={() => {
+          if (maskRef.current && textareaRef.current) {
+            maskRef.current.style.left = `-${textareaRef.current.scrollLeft}px`;
+            maskRef.current.style.top = `-${textareaRef.current.scrollTop}px`;
           }
         }}
       />
