@@ -95,13 +95,11 @@ const Editor = (options: EditorOptions) => {
 
   const { onKeyDown } = useKeyDown({
     model,
-    text,
     onEditEnd,
     onTextUpdated,
     workbookState,
     textareaRef,
     setStyledFormula,
-    setText,
   });
 
   useEffect(() => {
@@ -123,6 +121,10 @@ const Editor = (options: EditorOptions) => {
       const scrollWidth = formulaRef.current.scrollWidth;
       if (scrollWidth > editorWidth - 5) {
         cell.editorWidth = scrollWidth + 10;
+      }
+      const scrollHeight = formulaRef.current.scrollHeight;
+      if (scrollHeight > editorHeight) {
+        cell.editorHeight = scrollHeight;
       }
     }
   }, [text, workbookState]);
@@ -203,6 +205,8 @@ const Editor = (options: EditorOptions) => {
         overflow: "hidden",
         display: showEditor,
         background: "#FFF",
+        fontFamily: "Inter",
+        fontSize: "13px"
       }}
     >
       <div

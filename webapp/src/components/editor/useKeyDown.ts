@@ -6,12 +6,10 @@ import getFormulaHTML, { isInReferenceMode } from "./util";
 
 interface Options {
   model: Model;
-  text: string;
   onEditEnd: () => void;
   onTextUpdated: () => void;
   workbookState: WorkbookState;
   textareaRef: RefObject<HTMLTextAreaElement>;
-  setText: (s: string) => void;
   setStyledFormula: (html: JSX.Element[]) => void;
 }
 
@@ -20,12 +18,10 @@ export const useKeyDown = (
 ): { onKeyDown: (event: KeyboardEvent) => void } => {
   const {
     model,
-    text,
     onEditEnd,
     onTextUpdated,
     workbookState,
     textareaRef,
-    setText,
     setStyledFormula,
   } = options;
   const onKeyDown = useCallback(
@@ -42,13 +38,16 @@ export const useKeyDown = (
             // new line
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
-            const newText = `${text.slice(0, start)}\n${text.slice(end)}`;
-            setText(newText);
+            const value = textarea.value;
+            const newText = `${value.slice(0, start)}\n${value.slice(end)}`;
+            cell.text = newText;
+            workbookState.setEditingCell(cell);
             setTimeout(() => {
               textarea.setSelectionRange(start + 1, start + 1);
             }, 0);
             event.stopPropagation();
             event.preventDefault();
+            onTextUpdated();
             return;
           }
           event.stopPropagation();
@@ -408,8 +407,6 @@ export const useKeyDown = (
     },
     [
       model,
-      text,
-      setText,
       setStyledFormula,
       onEditEnd,
       onTextUpdated,

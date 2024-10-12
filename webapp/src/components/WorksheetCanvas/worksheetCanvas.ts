@@ -492,9 +492,11 @@ export default class WorksheetCanvas {
     context.clip();
 
     // Is there any better parameter?
-    const lineHeight = fontSize;
+    const lineHeight = 22;
+    const lines = fullText.split("\n");
+    const lineCount = lines.length;
 
-    fullText.split("\n").forEach((text, line) => {
+    lines.forEach((text, line) => {
       const textWidth = context.measureText(text).width;
       let textX: number;
       let textY: number;
@@ -510,14 +512,18 @@ export default class WorksheetCanvas {
         textX = padding + x + textWidth / 2;
       }
       if (verticalAlign === "bottom") {
-        textY = y + height - fontSize / 2 - verticalPadding;
+        textY =
+          y +
+          height -
+          fontSize / 2 -
+          verticalPadding +
+          (line - lineCount + 1) * lineHeight;
       } else if (verticalAlign === "center") {
-        textY = y + height / 2;
+        textY = y + height / 2 + (line + (1 - lineCount) / 2) * lineHeight;
       } else {
         // aligned top
-        textY = y + fontSize / 2 + verticalPadding;
+        textY = y + fontSize / 2 + verticalPadding + line * lineHeight;
       }
-      textY += line * lineHeight;
       context.fillText(text, textX, textY);
       if (style.font) {
         if (style.font.u) {
@@ -1102,8 +1108,7 @@ export default class WorksheetCanvas {
 
   private drawCellEditor(): void {
     const cell = this.workbookState.getEditingCell();
-    const [selectedSheet, selectedRow, selectedColumn] =
-      this.model.getSelectedCell();
+    const selectedSheet = this.model.getSelectedSheet();
     const { editor } = this;
     if (!cell || cell.sheet !== selectedSheet) {
       // If the editing cell is not in the same sheet as the selected sheet
@@ -1112,7 +1117,7 @@ export default class WorksheetCanvas {
       editor.style.top = "-9999px";
       return;
     }
-    const { sheet, row, column } = cell;
+    const { row, column } = cell;
     // const style = this.model.getCellStyle(
     //   selectedSheet,
     //   selectedRow,
