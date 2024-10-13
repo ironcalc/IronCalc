@@ -144,7 +144,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={false}
         onClick={(): void => {
           properties.onNumberFormatPicked(
-            decreaseDecimalPlaces(properties.numFmt)
+            decreaseDecimalPlaces(properties.numFmt),
           );
         }}
         disabled={!canEdit}
@@ -157,7 +157,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={false}
         onClick={(): void => {
           properties.onNumberFormatPicked(
-            increaseDecimalPlaces(properties.numFmt)
+            increaseDecimalPlaces(properties.numFmt),
           );
         }}
         disabled={!canEdit}
@@ -257,7 +257,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={properties.horizontalAlign === "left"}
         onClick={() =>
           properties.onToggleHorizontalAlign(
-            properties.horizontalAlign === "left" ? "general" : "left"
+            properties.horizontalAlign === "left" ? "general" : "left",
           )
         }
         disabled={!canEdit}
@@ -270,7 +270,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={properties.horizontalAlign === "center"}
         onClick={() =>
           properties.onToggleHorizontalAlign(
-            properties.horizontalAlign === "center" ? "general" : "center"
+            properties.horizontalAlign === "center" ? "general" : "center",
           )
         }
         disabled={!canEdit}
@@ -283,7 +283,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={properties.horizontalAlign === "right"}
         onClick={() =>
           properties.onToggleHorizontalAlign(
-            properties.horizontalAlign === "right" ? "general" : "right"
+            properties.horizontalAlign === "right" ? "general" : "right",
           )
         }
         disabled={!canEdit}
@@ -303,9 +303,7 @@ function Toolbar(properties: ToolbarProperties) {
       <StyledButton
         type="button"
         $pressed={properties.verticalAlign === "center"}
-        onClick={() =>
-          properties.onToggleVerticalAlign("center")
-        }
+        onClick={() => properties.onToggleVerticalAlign("center")}
         disabled={!canEdit}
         title={t("toolbar.vertical_align_middle")}
       >
@@ -434,7 +432,7 @@ export const StyledButton = styled("button")<TypeButtonProperties>(
         borderTopColor: "#F1F2F8",
       },
     };
-  }
+  },
 );
 
 const Divider = styled("div")({
