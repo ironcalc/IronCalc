@@ -14,6 +14,7 @@ export function FileBar(properties: {
   newModel: () => void;
   setModel: (key: string) => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
+  onDelete: () => void;
 }) {
   const hiddenInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState(false);
@@ -32,6 +33,7 @@ export function FileBar(properties: {
           const fileName = model.getName();
           await downloadModel(bytes, fileName);
         }}
+        onDelete={properties.onDelete}
       />
       <WorkbookTitle
         name={properties.model.getName()}

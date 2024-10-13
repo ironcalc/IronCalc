@@ -8,6 +8,7 @@ import { FileBar } from "./AppComponents/FileBar";
 import { get_model, uploadFile } from "./AppComponents/rpc";
 import {
   createNewModel,
+  deleteSelectedModel,
   loadModelFromStorageOrCreate,
   saveModelToStorage,
   saveSelectedModelInStorage,
@@ -82,6 +83,12 @@ function App() {
         }}
         setModel={(uuid: string) => {
           const newModel = selectModelFromStorage(uuid);
+          if (newModel) {
+            setModel(newModel);
+          }
+        }}
+        onDelete={() => {
+          const newModel = deleteSelectedModel();
           if (newModel) {
             setModel(newModel);
           }
