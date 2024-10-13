@@ -99,14 +99,31 @@ export function saveModelToStorage(model: Model) {
   localStorage.setItem("models", JSON.stringify(models));
 }
 
-export function selectModelFromStorage(uuid: string): Model | undefined {
+export function selectModelFromStorage(uuid: string): Model | null {
   localStorage.setItem("selected", uuid);
   const modelBytesString = localStorage.getItem(uuid);
   if (modelBytesString) {
     return Model.from_bytes(base64ToBytes(modelBytesString));
   }
+  return null;
 }
 
 export function getSelectedUuuid(): string | null {
   return localStorage.getItem("selected");
+}
+
+export function deleteSelectedModel(): Model | null {
+  const uuid = localStorage.getItem("selected");
+  if (!uuid) {
+    return null;
+  }
+  localStorage.removeItem(uuid);
+  const metadata = getModelsMetadata();
+  delete metadata[uuid];
+  localStorage.setItem("models", JSON.stringify(metadata));
+  const uuids = Object.keys(metadata);
+  if (uuids.length === 0) {
+    return createNewModel();
+  }
+  return selectModelFromStorage(uuids[0]);
 }

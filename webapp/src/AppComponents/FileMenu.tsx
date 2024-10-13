@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
-import { FileDown, FileUp, Plus } from "lucide-react";
+import { FileDown, FileUp, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { UploadFileDialog } from "./UploadFileDialog";
 import { getModelsMetadata, getSelectedUuuid } from "./storage";
@@ -10,6 +10,7 @@ export function FileMenu(props: {
   setModel: (key: string) => void;
   onDownload: () => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
+  onDelete: () => void;
 }) {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isImportMenuOpen, setImportMenuOpen] = useState(false);
@@ -69,6 +70,17 @@ export function FileMenu(props: {
             Download (.xlsx)
           </MenuItemText>
         </MenuItemWrapper>
+        <MenuItemWrapper>
+          <StyledTrash />
+          <MenuItemText
+            onClick={() => {
+              props.onDelete();
+              setMenuOpen(false);
+            }}
+          >
+            Delete workbook
+          </MenuItemText>
+        </MenuItemWrapper>
         <MenuDivider />
         {elements}
       </Menu>
@@ -116,6 +128,13 @@ const StyledFileDown = styled(FileDown)`
 `;
 
 const StyledFileUp = styled(FileUp)`
+  width: 16px;
+  height: 16px;
+  color: #333333;
+  padding-right: 10px;
+`;
+
+const StyledTrash = styled(Trash2)`
   width: 16px;
   height: 16px;
   color: #333333;
