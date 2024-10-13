@@ -206,7 +206,7 @@ const Editor = (options: EditorOptions) => {
         display: showEditor,
         background: "#FFF",
         fontFamily: "Inter",
-        fontSize: "13px"
+        fontSize: "13px",
       }}
     >
       <div
