@@ -368,7 +368,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         horizontalAlign={
           style.alignment ? style.alignment.horizontal : "general"
         }
-        verticalAlign={style.alignment ? style.alignment.vertical : "bottom"}
+        verticalAlign={(style.alignment?.vertical) ? style.alignment.vertical: "bottom"}
         canEdit={true}
         numFmt={style.num_fmt}
         showGridLines={model.getShowGridLines(model.getSelectedSheet())}
