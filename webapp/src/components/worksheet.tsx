@@ -54,8 +54,6 @@ function Worksheet(props: {
 
   const ignoreScrollEventRef = useRef(false);
 
-  const [originalText, setOriginalText] = useState("");
-
   const { model, workbookState, refresh } = props;
   const [clientWidth, clientHeight] = useWindowSize();
 
@@ -330,7 +328,7 @@ function Worksheet(props: {
         onDoubleClick={(event) => {
           // Starts editing cell
           const { sheet, row, column } = model.getSelectedView();
-          const text = model.getCellContent(sheet, row, column) || "";
+          const text = model.getCellContent(sheet, row, column);
           const editorWidth =
             model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
           const editorHeight = model.getRowHeight(sheet, row) * ROW_HEIGH_SCALE;
@@ -348,9 +346,8 @@ function Worksheet(props: {
             editorWidth,
             editorHeight,
           });
-          setOriginalText(text);
           event.stopPropagation();
-          event.preventDefault();
+          // event.preventDefault();
           props.refresh();
         }}
       >
@@ -358,7 +355,7 @@ function Worksheet(props: {
         <CellOutline ref={cellOutline} />
         <EditorWrapper ref={editorElement}>
           <Editor
-            originalText={workbookState.getEditingText() || originalText}
+            originalText={workbookState.getEditingText()}
             onEditEnd={(): void => {
               props.refresh();
             }}

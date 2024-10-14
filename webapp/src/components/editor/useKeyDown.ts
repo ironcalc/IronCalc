@@ -2,7 +2,7 @@ import type { Model } from "@ironcalc/wasm";
 import { type KeyboardEvent, type RefObject, useCallback } from "react";
 import { rangeToStr } from "../util";
 import type { WorkbookState } from "../workbookState";
-import getFormulaHTML, { isInReferenceMode } from "./util";
+import { isInReferenceMode } from "./util";
 
 interface Options {
   model: Model;
@@ -10,20 +10,13 @@ interface Options {
   onTextUpdated: () => void;
   workbookState: WorkbookState;
   textareaRef: RefObject<HTMLTextAreaElement>;
-  setStyledFormula: (html: JSX.Element[]) => void;
 }
 
 export const useKeyDown = (
   options: Options,
 ): { onKeyDown: (event: KeyboardEvent) => void } => {
-  const {
-    model,
-    onEditEnd,
-    onTextUpdated,
-    workbookState,
-    textareaRef,
-    setStyledFormula,
-  } = options;
+  const { model, onEditEnd, onTextUpdated, workbookState, textareaRef } =
+    options;
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
       const { key, shiftKey, altKey } = event;
@@ -80,7 +73,6 @@ export const useKeyDown = (
           model.setSelectedCell(cell.row, cell.column + sign);
           if (textareaRef.current) {
             textareaRef.current.value = "";
-            setStyledFormula(getFormulaHTML(model, "", "").html);
           }
           event.stopPropagation();
           event.preventDefault();
@@ -164,7 +156,6 @@ export const useKeyDown = (
           }
           if (textareaRef.current) {
             textareaRef.current.value = "";
-            setStyledFormula(getFormulaHTML(model, "", "").html);
           }
 
           onEditEnd();
@@ -233,7 +224,6 @@ export const useKeyDown = (
           }
           if (textareaRef.current) {
             textareaRef.current.value = "";
-            setStyledFormula(getFormulaHTML(model, "", "").html);
           }
 
           onEditEnd();
@@ -307,7 +297,6 @@ export const useKeyDown = (
           }
           if (textareaRef.current) {
             textareaRef.current.value = "";
-            setStyledFormula(getFormulaHTML(model, "", "").html);
           }
 
           onEditEnd();
@@ -377,7 +366,6 @@ export const useKeyDown = (
           }
           if (textareaRef.current) {
             textareaRef.current.value = "";
-            setStyledFormula(getFormulaHTML(model, "", "").html);
           }
 
           onEditEnd();
@@ -405,14 +393,7 @@ export const useKeyDown = (
         }
       }
     },
-    [
-      model,
-      setStyledFormula,
-      onEditEnd,
-      onTextUpdated,
-      workbookState,
-      textareaRef.current,
-    ],
+    [model, onEditEnd, onTextUpdated, workbookState, textareaRef.current],
   );
   return { onKeyDown };
 };

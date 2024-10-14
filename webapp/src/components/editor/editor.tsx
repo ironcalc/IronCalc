@@ -77,9 +77,6 @@ const Editor = (options: EditorOptions) => {
     options;
 
   const [text, setText] = useState(originalText);
-  const [styledFormula, setStyledFormula] = useState(
-    getFormulaHTML(model, text, "").html,
-  );
 
   const formulaRef = useRef<HTMLDivElement>(null);
   const maskRef = useRef<HTMLDivElement>(null);
@@ -87,11 +84,10 @@ const Editor = (options: EditorOptions) => {
 
   useEffect(() => {
     setText(originalText);
-    setStyledFormula(getFormulaHTML(model, originalText, "").html);
     if (textareaRef.current) {
       textareaRef.current.value = originalText;
     }
-  }, [originalText, model]);
+  }, [originalText]);
 
   const { onKeyDown } = useKeyDown({
     model,
@@ -99,20 +95,10 @@ const Editor = (options: EditorOptions) => {
     onTextUpdated,
     workbookState,
     textareaRef,
-    setStyledFormula,
   });
 
   useEffect(() => {
-    if (text.length === 0) {
-      // noop
-    }
-  }, [text]);
-
-  useEffect(() => {
     const cell = workbookState.getEditingCell();
-    if (text.length === 0) {
-      // noop, just to keep the linter happy
-    }
     if (!cell) {
       return;
     }
@@ -127,7 +113,10 @@ const Editor = (options: EditorOptions) => {
         cell.editorHeight = scrollHeight;
       }
     }
-  }, [text, workbookState]);
+    if (type === cell.focus) {
+      textareaRef.current?.focus();
+    }
+  });
 
   const onChange = useCallback(() => {
     const textarea = textareaRef.current;
@@ -140,7 +129,7 @@ const Editor = (options: EditorOptions) => {
     cell.referencedRange = null;
     cell.cursorStart = textarea.selectionStart;
     cell.cursorEnd = textarea.selectionEnd;
-    const styledFormula = getFormulaHTML(model, cell.text, "");
+    const styledFormula = getFormulaHTML(model, value);
     if (value === "" && type === "cell") {
       // When we delete the content of a cell we jump to accept mode
       cell.mode = "accept";
@@ -149,7 +138,6 @@ const Editor = (options: EditorOptions) => {
 
     workbookState.setActiveRanges(styledFormula.activeRanges);
     setText(cell.text);
-    setStyledFormula(styledFormula.html);
 
     onTextUpdated();
 
@@ -167,7 +155,6 @@ const Editor = (options: EditorOptions) => {
     }
     if (textareaRef.current) {
       textareaRef.current.value = "";
-      setStyledFormula(getFormulaHTML(model, "", "").html);
     }
 
     // This happens if the blur hasn't been taken care before by
@@ -187,14 +174,9 @@ const Editor = (options: EditorOptions) => {
 
   const cell = workbookState.getEditingCell();
 
-  // If we are the focus, the get it
-  if (cell) {
-    if (type === cell.focus) {
-      textareaRef.current?.focus();
-    }
-  }
-
   const showEditor = cell !== null || type === "formula-bar" ? "block" : "none";
+  const mtext = cell ? workbookState.getEditingText() : originalText;
+  const styledFormula = getFormulaHTML(model, mtext).html;
 
   return (
     <div
