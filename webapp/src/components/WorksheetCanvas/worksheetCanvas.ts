@@ -17,6 +17,7 @@ import {
   headerTextColor,
   outlineColor,
 } from "./constants";
+import { getColor } from "../editor/util";
 
 export interface CanvasSettings {
   model: Model;
@@ -1281,7 +1282,7 @@ export default class WorksheetCanvas {
       activeRanges = activeRanges.concat([
         {
           ...referencedRange.range,
-          color: "#343423",
+          color: getColor(activeRanges.length),
         },
       ]);
     }
