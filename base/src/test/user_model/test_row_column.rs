@@ -154,3 +154,21 @@ fn simple_delete_row_no_style() {
 
     assert_eq!(model.get_formatted_cell_value(0, 15, 6), Ok("".to_string()));
 }
+
+#[test]
+fn row_heigh_increases_automatically() {
+    let mut model = UserModel::new_empty("Workbook1", "en", "UTC").unwrap();
+    assert_eq!(model.get_row_height(0, 1), Ok(DEFAULT_ROW_HEIGHT));
+
+    // Entering a single line does not change the height
+    model
+        .set_user_input(0, 1, 1, "My home in Canada had horses")
+        .unwrap();
+    assert_eq!(model.get_row_height(0, 1), Ok(DEFAULT_ROW_HEIGHT));
+
+    // entering a two liner does:
+    model
+        .set_user_input(0, 1, 1, "My home in Canada had horses\nAnd monkeys!")
+        .unwrap();
+    assert_eq!(model.get_row_height(0, 1), Ok(2.0 * DEFAULT_ROW_HEIGHT));
+}

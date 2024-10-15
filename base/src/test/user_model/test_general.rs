@@ -129,3 +129,12 @@ fn delete_remove_cell() {
     let (sheet, row, column) = (0, 1, 1);
     model.set_user_input(sheet, row, column, "100$").unwrap();
 }
+
+#[test]
+fn get_and_set_name() {
+    let mut model = UserModel::new_empty("MyWorkbook123", "en", "UTC").unwrap();
+    assert_eq!(model.get_name(), "MyWorkbook123");
+
+    model.set_name("Another name");
+    assert_eq!(model.get_name(), "Another name");
+}
