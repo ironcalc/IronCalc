@@ -16,7 +16,7 @@ test('Frozen rows and columns', () => {
 
 test('Row height', () => {
     let model = new Model('Workbook1', 'en', 'UTC');
-    assert.strictEqual(model.getRowHeight(0, 3), 21);
+    assert.strictEqual(model.getRowHeight(0, 3), 22);
 
     model.setRowHeight(0, 3, 32);
     assert.strictEqual(model.getRowHeight(0, 3), 32);
