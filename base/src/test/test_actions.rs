@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::constants::LAST_COLUMN;
+use crate::constants::{DEFAULT_ROW_HEIGHT, LAST_COLUMN};
 use crate::model::Model;
 use crate::test::util::new_empty_model;
 use crate::types::Col;
@@ -87,7 +87,8 @@ fn test_insert_rows_styles() {
     let mut model = new_empty_model();
 
     assert!(
-        (21.0 - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs() < f64::EPSILON
+        (DEFAULT_ROW_HEIGHT - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs()
+            < f64::EPSILON
     );
     // sets height 42 in row 10
     model
@@ -106,7 +107,8 @@ fn test_insert_rows_styles() {
 
     // Row 10 has the default height
     assert!(
-        (21.0 - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs() < f64::EPSILON
+        (DEFAULT_ROW_HEIGHT - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs()
+            < f64::EPSILON
     );
 
     // Row 10 is now row 15
@@ -120,7 +122,8 @@ fn test_delete_rows_styles() {
     let mut model = new_empty_model();
 
     assert!(
-        (21.0 - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs() < f64::EPSILON
+        (DEFAULT_ROW_HEIGHT - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs()
+            < f64::EPSILON
     );
     // sets height 42 in row 10
     model
@@ -139,7 +142,8 @@ fn test_delete_rows_styles() {
 
     // Row 10 has the default height
     assert!(
-        (21.0 - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs() < f64::EPSILON
+        (DEFAULT_ROW_HEIGHT - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs()
+            < f64::EPSILON
     );
 
     // Row 10 is now row 5
