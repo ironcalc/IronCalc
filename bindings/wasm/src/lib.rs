@@ -6,7 +6,7 @@ use wasm_bindgen::{
 use ironcalc_base::{
     expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
     types::{CellType, Style},
-    BorderArea, UserModel as BaseModel,
+    BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
 fn to_js_error(error: String) -> JsError {
@@ -496,5 +496,38 @@ impl Model {
     #[wasm_bindgen(js_name = "setName")]
     pub fn set_name(&mut self, name: &str) {
         self.model.set_name(name);
+    }
+
+    #[wasm_bindgen(js_name = "copyToClipboard")]
+    pub fn copy_to_clipboard(&self) -> Result<JsValue, JsError> {
+        let data = self
+            .model
+            .copy_to_clipboard()
+            .map_err(|e| to_js_error(e.to_string()));
+        data.map(|x| serde_wasm_bindgen::to_value(&x).unwrap())
+    }
+
+    #[wasm_bindgen(js_name = "pasteFromClipboard")]
+    pub fn paste_from_clipboard(
+        &mut self,
+        source_range: JsValue,
+        clipboard: JsValue,
+    ) -> Result<(), JsError> {
+        let source_range: (i32, i32, i32, i32) =
+            serde_wasm_bindgen::from_value(source_range).map_err(|e| to_js_error(e.to_string()))?;
+        let clipboard: ClipboardData =
+            serde_wasm_bindgen::from_value(clipboard).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .paste_from_clipboard(source_range, &clipboard)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "pasteCsvText")]
+    pub fn paste_csv_string(&mut self, area: JsValue, csv: &str) -> Result<(), JsError> {
+        let range: Area =
+            serde_wasm_bindgen::from_value(area).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .paste_csv_string(&range, csv)
+            .map_err(|e| to_js_error(e.to_string()))
     }
 }

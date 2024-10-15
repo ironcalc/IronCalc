@@ -137,6 +137,52 @@ set_area_border_types = r"""
   setAreaWithBorder(area: Area, border_area: BorderArea): void;
 """
 
+paste_csv_string = r"""
+/**
+* @param {any} area
+* @param {string} csv
+*/
+  pasteCsvText(area: any, csv: string): void;
+"""
+
+paste_csv_string_types = r"""
+/**
+* @param {Area} area
+* @param {string} csv
+*/
+  pasteCsvText(area: Area, csv: string): void;
+"""
+
+clipboard = r"""
+/**
+* @returns {any}
+*/
+  copyToClipboard(): any;
+"""
+
+clipboard_types = r"""
+/**
+* @returns {Clipboard}
+*/
+  copyToClipboard(): Clipboard;
+"""
+
+paste_from_clipboard = r"""
+/**
+* @param {any} source_range
+* @param {any} clipboard
+*/
+  pasteFromClipboard(source_range: any, clipboard: any): void;
+"""
+
+paste_from_clipboard_types = r"""
+/**
+* @param {[number, number, number, number]} source_range
+* @param {ClipboardData} clipboard
+*/
+  pasteFromClipboard(source_range: [number, number, number, number], clipboard: ClipboardData): void;
+"""
+
 def fix_types(text):
     text = text.replace(get_tokens_str, get_tokens_str_types)
     text = text.replace(update_style_str, update_style_str_types)
@@ -147,6 +193,9 @@ def fix_types(text):
     text = text.replace(autofill_columns, autofill_columns_types)
     text = text.replace(set_cell_style, set_cell_style_types)
     text = text.replace(set_area_border, set_area_border_types)
+    text = text.replace(paste_csv_string, paste_csv_string_types)
+    text = text.replace(clipboard, clipboard_types)
+    text = text.replace(paste_from_clipboard, paste_from_clipboard_types)
     with open("types.ts") as f:
         types_str = f.read()
         header_types = "{}\n\n{}".format(header, types_str)

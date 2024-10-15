@@ -10,3 +10,4 @@ pub use common::UserModel;
 pub use ui::SelectedView;
 
 pub use common::BorderArea;
+pub use common::ClipboardData;

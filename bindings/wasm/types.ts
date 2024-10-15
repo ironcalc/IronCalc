@@ -205,3 +205,23 @@ export interface SelectedView {
   top_row: number;
   left_column: number;
 }
+
+// type ClipboardData = {
+//   [row: number]: {
+//       [column: number]: ClipboardCell;
+//   };
+// };
+
+// type ClipboardData = Record<string, Record <string, ClipboardCell>>;
+type ClipboardData = Map<number, Map <number, ClipboardCell>>;
+
+export interface ClipboardCell {
+  text: string;
+  style: CellStyle;
+}
+
+export interface Clipboard {
+  csv: string;
+  data: ClipboardData;
+  range: [number, number, number, number];
+}
