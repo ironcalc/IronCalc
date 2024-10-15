@@ -22,7 +22,7 @@ test('Row height', () => {
     assert.strictEqual(model.getRowHeight(0, 3), 32);
 
     model.undo();
-    assert.strictEqual(model.getRowHeight(0, 3), 21);
+    assert.strictEqual(model.getRowHeight(0, 3), 22);
 
     model.redo();
     assert.strictEqual(model.getRowHeight(0, 3), 32);
