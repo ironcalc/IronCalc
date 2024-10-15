@@ -1,4 +1,9 @@
-import type { BorderOptions, Model, WorksheetProperties } from "@ironcalc/wasm";
+import type {
+  BorderOptions,
+  ClipboardCell,
+  Model,
+  WorksheetProperties,
+} from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -6,6 +11,10 @@ import {
   LAST_COLUMN,
   ROW_HEIGH_SCALE,
 } from "./WorksheetCanvas/constants";
+import {
+  CLIPBOARD_ID_SESSION_STORAGE_KEY,
+  getNewClipboardId,
+} from "./clipboard";
 import FormulaBar from "./formulabar";
 import Navigation from "./navigation/navigation";
 import Toolbar from "./toolbar";
@@ -26,7 +35,20 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     .map(({ name, color, sheet_id }: WorksheetProperties) => {
       return { name, color: color ? color : "#FFF", sheetId: sheet_id };
     });
-
+  const focusWorkbook = useCallback(() => {
+    if (rootRef.current) {
+      rootRef.current.focus();
+      // HACK: We need to select something inside the root for onCopy to work
+      const selection = window.getSelection();
+      if (selection) {
+        selection.empty();
+        const range = new Range();
+        range.setStart(rootRef.current.firstChild as Node, 0);
+        range.setEnd(rootRef.current.firstChild as Node, 0);
+        selection.addRange(range);
+      }
+    }
+  }, []);
   const onRedo = () => {
     model.redo();
     setRedrawId((id) => id + 1);
@@ -279,7 +301,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       return;
     }
     if (!workbookState.getEditingCell()) {
-      rootRef.current.focus();
+      focusWorkbook();
     }
   });
 
@@ -318,11 +340,112 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       tabIndex={0}
       onClick={(event) => {
         if (!workbookState.getEditingCell()) {
-          rootRef.current?.focus();
+          focusWorkbook();
         } else {
           event.stopPropagation();
         }
       }}
+      onPaste={(event: React.ClipboardEvent) => {
+        const { items } = event.clipboardData;
+        if (!items) {
+          return;
+        }
+        const mimeTypes = [
+          "application/json",
+          "text/plain",
+          "text/csv",
+          "text/html",
+        ];
+        let mimeType = null;
+        let value = null;
+        for (let index = 0; index < mimeTypes.length; index += 1) {
+          mimeType = mimeTypes[index];
+          value = event.clipboardData.getData(mimeType);
+          if (value) {
+            break;
+          }
+        }
+        if (!mimeType || !value) {
+          // No clipboard data to paste
+          return;
+        }
+        if (mimeType === "application/json") {
+          // We are copying from within the application
+          const source = JSON.parse(value);
+          // const clipboardId = sessionStorage.getItem(
+          //   CLIPBOARD_ID_SESSION_STORAGE_KEY
+          // );
+          const data: Map<number, Map<number, ClipboardCell>> = new Map();
+          const sheetData = source.sheetData;
+          for (const row of Object.keys(sheetData)) {
+            const dataRow = sheetData[row];
+            const rowMap = new Map();
+            for (const column of Object.keys(dataRow)) {
+              rowMap.set(Number.parseInt(column, 10), dataRow[column]);
+            }
+            data.set(Number.parseInt(row, 10), rowMap);
+          }
+          model.pasteFromClipboard(source.area, data);
+          setRedrawId((id) => id + 1);
+        } else if (mimeType === "text/plain") {
+          const {
+            sheet,
+            range: [rowStart, columnStart, rowEnd, columnEnd],
+          } = model.getSelectedView();
+          const row = Math.min(rowStart, rowEnd);
+          const column = Math.min(columnStart, columnEnd);
+          const range = {
+            sheet,
+            row,
+            column,
+            width: Math.abs(columnEnd - columnStart) + 1,
+            height: Math.abs(rowEnd - rowStart) + 1,
+          };
+          model.pasteCsvText(range, value);
+          setRedrawId((id) => id + 1);
+        } else {
+          // NOT IMPLEMENTED
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onCopy={(event: React.ClipboardEvent) => {
+        const data = model.copyToClipboard();
+        // '2024-10-18T14:07:37.599Z'
+
+        let clipboardId = sessionStorage.getItem(
+          CLIPBOARD_ID_SESSION_STORAGE_KEY,
+        );
+        if (!clipboardId) {
+          clipboardId = getNewClipboardId();
+          sessionStorage.setItem(CLIPBOARD_ID_SESSION_STORAGE_KEY, clipboardId);
+        }
+        const sheetData: {
+          [row: number]: {
+            [column: number]: ClipboardCell;
+          };
+        } = {};
+        data.data.forEach((value, row) => {
+          const rowData: {
+            [column: number]: ClipboardCell;
+          } = {};
+          value.forEach((val, column) => {
+            rowData[column] = val;
+          });
+          sheetData[row] = rowData;
+        });
+        const clipboardJsonStr = JSON.stringify({
+          type: "copy",
+          area: data.range,
+          sheetData,
+          clipboardId,
+        });
+        event.clipboardData.setData("text/plain", data.csv);
+        event.clipboardData.setData("application/json", clipboardJsonStr);
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onCut={() => {}}
     >
       <Toolbar
         canUndo={model.canUndo()}
@@ -385,7 +508,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         formulaValue={formulaValue()}
         onChange={() => {
           setRedrawId((id) => id + 1);
-          rootRef.current?.focus();
+          focusWorkbook();
         }}
         onTextUpdated={() => {
           setRedrawId((id) => id + 1);

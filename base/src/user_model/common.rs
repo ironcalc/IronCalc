@@ -1,13 +1,15 @@
 #![deny(missing_docs)]
 
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, io::Cursor};
 
+use csv::{ReaderBuilder, WriterBuilder};
+use csv_sniffer::Sniffer;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     constants,
     expressions::{
-        types::Area,
+        types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
     },
     model::Model,
@@ -21,6 +23,23 @@ use crate::{
 use crate::user_model::history::{
     ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
 };
+/// Data for the clipboard
+pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
+
+pub type ClipboardTuple = (i32, i32, i32, i32);
+
+#[derive(Serialize, Deserialize)]
+pub struct ClipboardCell {
+    text: String,
+    style: Style,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Clipboard {
+    pub(crate) csv: String,
+    pub(crate) data: ClipboardData,
+    pub(crate) range: (i32, i32, i32, i32),
+}
 
 #[derive(Serialize, Deserialize)]
 pub enum BorderType {
@@ -976,7 +995,7 @@ impl UserModel {
     /// See also:
     /// * [Model::get_style_for_cell]
     #[inline]
-    pub fn get_cell_style(&mut self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
+    pub fn get_cell_style(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
         self.model.get_style_for_cell(sheet, row, column)
     }
 
@@ -1207,6 +1226,174 @@ impl UserModel {
     /// Returns true in the grid lines for
     pub fn get_show_grid_lines(&self, sheet: u32) -> Result<bool, String> {
         Ok(self.model.workbook.worksheet(sheet)?.show_grid_lines)
+    }
+
+    /// Returns a copy of the selected area
+    pub fn copy_to_clipboard(&self) -> Result<Clipboard, String> {
+        let selected_area = self.get_selected_view();
+        let sheet = selected_area.sheet;
+        let mut wtr = WriterBuilder::new().from_writer(vec![]);
+
+        let mut data = HashMap::new();
+        let [row_start, column_start, row_end, column_end] = selected_area.range;
+        for row in row_start..=row_end {
+            let mut data_row = HashMap::new();
+            let mut text_row = Vec::new();
+            for column in column_start..=column_end {
+                let text = self.get_formatted_cell_value(sheet, row, column)?;
+                let content = self.get_cell_content(sheet, row, column)?;
+                let style = self.get_cell_style(sheet, row, column)?;
+                data_row.insert(
+                    column,
+                    ClipboardCell {
+                        text: content,
+                        style,
+                    },
+                );
+                text_row.push(text);
+            }
+            wtr.write_record(text_row).unwrap();
+            data.insert(row, data_row);
+        }
+
+        let csv = String::from_utf8(wtr.into_inner().unwrap()).unwrap();
+
+        Ok(Clipboard {
+            csv,
+            data,
+            range: (row_start, column_start, row_end, column_end),
+        })
+    }
+
+    /// Paste text that we copied
+    pub fn paste_from_clipboard(
+        &mut self,
+        source_range: ClipboardTuple,
+        clipboard: &ClipboardData,
+    ) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        let view = self.get_selected_view();
+        let (source_first_row, source_first_column, _, _) = source_range;
+        let sheet = view.sheet;
+        let [selected_row, selected_column, _, _] = view.range;
+        for (source_row, data_row) in clipboard {
+            let delta_row = source_row - source_first_row;
+            let target_row = selected_row + delta_row;
+            for (source_column, value) in data_row {
+                let delta_column = source_column - source_first_column;
+                let target_column = selected_column + delta_column;
+
+                // We are copying the value in
+                // (source_row, source_column) to (target_row , target_column)
+                // References in formulas are displaced
+
+                // remain in the copied area
+                let source = &CellReferenceIndex {
+                    sheet,
+                    column: *source_column,
+                    row: *source_row,
+                };
+                let target = &CellReferenceIndex {
+                    sheet,
+                    column: target_column,
+                    row: target_row,
+                };
+                let new_value = self
+                    .model
+                    .extend_copied_value(&value.text, source, target)?;
+
+                let old_value = self
+                    .model
+                    .workbook
+                    .worksheet(sheet)?
+                    .cell(target_row, target_column)
+                    .cloned();
+
+                let old_style = self
+                    .model
+                    .get_style_for_cell(sheet, target_row, target_column)?;
+
+                self.model
+                    .set_user_input(sheet, target_row, target_column, new_value.clone())?;
+                self.model
+                    .set_cell_style(sheet, target_row, target_column, &value.style)?;
+
+                diff_list.push(Diff::SetCellValue {
+                    sheet,
+                    row: target_row,
+                    column: target_column,
+                    new_value,
+                    old_value: Box::new(old_value),
+                });
+
+                diff_list.push(Diff::SetCellStyle {
+                    sheet,
+                    row: target_row,
+                    column: target_column,
+                    old_value: Box::new(old_style),
+                    new_value: Box::new(value.style.clone()),
+                });
+            }
+        }
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Paste a csv-string into the model
+    pub fn paste_csv_string(&mut self, area: &Area, csv: &str) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        let sheet = area.sheet;
+        let mut row = area.row;
+        // Create a sniffer with default settings
+        let mut sniffer = Sniffer::new();
+        let mut csv_reader = Cursor::new(csv);
+
+        // Sniff the CSV metadata
+        let metadata = sniffer
+            .sniff_reader(&mut csv_reader)
+            .map_err(|_| "Failed")?;
+        // Reset the cursor to the beginning after sniffing
+        csv_reader.set_position(0);
+        let mut reader = ReaderBuilder::new()
+            .delimiter(metadata.dialect.delimiter)
+            .has_headers(false)
+            .from_reader(csv_reader);
+        for record in reader.records() {
+            match record {
+                Ok(r) => {
+                    let mut column = area.column;
+                    for value in &r {
+                        let old_value = self
+                            .model
+                            .workbook
+                            .worksheet(sheet)?
+                            .cell(row, column)
+                            .cloned();
+                        // let old_style = self.model.get_style_for_cell(sheet, row, column)?;
+                        self.model
+                            .set_user_input(sheet, row, column, value.to_string())?;
+
+                        diff_list.push(Diff::SetCellValue {
+                            sheet,
+                            row,
+                            column,
+                            new_value: value.to_string(),
+                            old_value: Box::new(old_value),
+                        });
+                        column += 1;
+                    }
+                }
+                Err(_) => {
+                    // skip
+                    continue;
+                }
+            };
+            row += 1;
+        }
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     // **** Private methods ****** //
