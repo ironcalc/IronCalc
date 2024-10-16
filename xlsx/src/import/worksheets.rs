@@ -39,7 +39,7 @@ pub(crate) struct Relationship {
     pub(crate) rel_type: String,
 }
 
-pub fn get_column_from_ref(s: &str) -> String {
+fn get_column_from_ref(s: &str) -> String {
     let cs = s.chars();
     let mut column = Vec::<char>::new();
     for c in cs {
