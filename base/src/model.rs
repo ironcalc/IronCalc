@@ -2110,13 +2110,11 @@ impl Model {
                     let merged_cells = worksheet.get_merge_cell_vec();
 
                     for merge_node in merged_cells {
-                        let merge_block_parsed_range = merge_node.merge_cell_range;
-
                         // checking whether any overlapping exist with this merge cell
-                        if !(parsed_merge_cell_range.1 > merge_block_parsed_range.3
-                            || parsed_merge_cell_range.3 < merge_block_parsed_range.1
-                            || parsed_merge_cell_range.0 > merge_block_parsed_range.2
-                            || parsed_merge_cell_range.2 < merge_block_parsed_range.0)
+                        if !(parsed_merge_cell_range.1 > merge_node.get_col_end()
+                            || parsed_merge_cell_range.3 < merge_node.get_col_start()
+                            || parsed_merge_cell_range.0 > merge_node.get_row_end()
+                            || parsed_merge_cell_range.2 < merge_node.get_row_start())
                         {
                             // overlap has happened
                             merge_cells_overlap.push(true);
@@ -2155,15 +2153,12 @@ impl Model {
                     }
                 }
 
-                let new_merge_cell = MergeCell {
-                    merge_cell_range: parsed_merge_cell_range,
-                    range_ref: range_ref.to_string(),
-                };
+                let new_merge_range = MergedRange::new(parsed_merge_cell_range);
                 {
                     self.workbook
                         .worksheet_mut(sheet)?
                         .merge_cells
-                        .push(new_merge_cell);
+                        .push(new_merge_range);
                 }
             }
             Err(err) => {
@@ -2191,9 +2186,9 @@ impl Model {
         let worksheet = self.workbook.worksheet(sheet)?;
         let merged_cells = worksheet.get_merge_cell_vec();
         for (index, merge_node) in merged_cells.iter().enumerate() {
-            let merge_block_range_ref = merge_node.range_ref.as_str();
+            let merge_block_range_ref = merge_node.get_merge_range_as_str();
             // finding the merge cell node to be deleted
-            if merge_block_range_ref == range_ref {
+            if merge_block_range_ref.as_str() == range_ref {
                 // Merge cell to be deleted is found
                 self.workbook
                     .worksheet_mut(sheet)?

@@ -465,7 +465,7 @@ fn test_merge_cell_import_export_behaviors() {
     assert_eq!(imported_merge_cell_vec.len(), 5);
     let range_refs_of_merge_cell: Vec<String> = imported_merge_cell_vec
         .iter()
-        .map(|cell| cell.get_range_ref())
+        .map(|cell| cell.get_merge_range_as_str())
         .collect();
     assert_eq!(
         range_refs_of_merge_cell,
@@ -509,7 +509,7 @@ fn test_merge_cell_import_export_behaviors() {
         assert_eq!(imported_merge_cell_vec.len(), 3);
         let range_refs_of_merge_cell: Vec<String> = imported_merge_cell_vec
             .iter()
-            .map(|cell| cell.get_range_ref())
+            .map(|cell| cell.get_merge_range_as_str())
             .collect();
         assert_eq!(
             range_refs_of_merge_cell,

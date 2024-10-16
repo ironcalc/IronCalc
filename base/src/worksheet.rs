@@ -530,7 +530,7 @@ impl Worksheet {
             return Err("Incorrect row or column".to_string());
         }
 
-        //traverse through Vector of Merged Cells and return (linear search)
+        // traverse through Vector of Merged Cells and return (linear search)
         for merge_cell in &self.merge_cells {
             if merge_cell.is_cell_part_of_merge_cell(row, column) {
                 return Ok(true);
@@ -594,12 +594,12 @@ impl Worksheet {
     }
 
     /// Returns mutable reference to Vector of Merge cells
-    pub fn get_merge_cell_vec_mut(&mut self) -> &mut Vec<MergeCell> {
+    pub fn get_merge_cell_vec_mut(&mut self) -> &mut Vec<MergedRange> {
         &mut self.merge_cells
     }
 
     /// Returns reference to Vector of Merge cells
-    pub fn get_merge_cell_vec(&self) -> &Vec<MergeCell> {
+    pub fn get_merge_cell_vec(&self) -> &Vec<MergedRange> {
         &self.merge_cells
     }
 }

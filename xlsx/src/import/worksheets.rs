@@ -8,7 +8,7 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        Cell, Col, Comment, DefinedName, MergeCell, Row, SheetData, SheetState, Table, Worksheet,
+        Cell, Col, Comment, DefinedName, MergedRange, Row, SheetData, SheetState, Table, Worksheet,
         WorksheetView,
     },
 };
@@ -146,12 +146,12 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
     Ok(cols)
 }
 
-fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergeCell>, XlsxError> {
+fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergedRange>, XlsxError> {
     // 18.3.1.55 Merge Cells
     // <mergeCells count="1">
     //    <mergeCell ref="K7:L10"/>
     // </mergeCells>
-    let mut merge_cells: Vec<MergeCell> = Vec::new();
+    let mut merge_cells: Vec<MergedRange> = Vec::new();
     let merge_cells_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("mergeCells"))
@@ -161,8 +161,7 @@ fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergeCell>, XlsxError> {
             let reference = get_attribute(&merge_cell, "ref")?.to_string();
             match parse_range(&reference) {
                 Ok(parsed_merge_cell_range) => {
-                    let merge_cell_node =
-                        MergeCell::new(parsed_merge_cell_range, reference.clone());
+                    let merge_cell_node = MergedRange::new(parsed_merge_cell_range);
                     merge_cells.push(merge_cell_node);
                 }
                 Err(err) => {

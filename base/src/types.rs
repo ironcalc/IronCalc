@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 use crate::expressions::token::Error;
+use crate::expressions::utils::number_to_column;
 
 fn default_as_false() -> bool {
     false
@@ -110,7 +111,7 @@ pub struct Worksheet {
     pub sheet_id: u32,
     pub state: SheetState,
     pub color: Option<String>,
-    pub merge_cells: Vec<MergeCell>,
+    pub merge_cells: Vec<MergedRange>,
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
@@ -351,14 +352,62 @@ pub enum FontScheme {
     None,
 }
 
-// Merge Cell type
-// There will be one MergeCell maintained for every Merge cells that we load
-// It will consist of range_ref : its range reference in String representation
+// MergedRange type
+// There will be one MergedRange struct maintained for every Merge cells that we load
 // merge_cell_range : Its tuple having [row_start, column_start, row_end, column_end]
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
-pub struct MergeCell {
-    pub merge_cell_range: (i32, i32, i32, i32),
-    pub range_ref: String,
+pub struct MergedRange(i32, i32, i32, i32);
+
+// implementing accessor function
+impl MergedRange {
+    // Accessor methods
+    pub fn get_row_start(&self) -> i32 {
+        self.0
+    }
+
+    pub fn get_col_start(&self) -> i32 {
+        self.1
+    }
+
+    pub fn get_row_end(&self) -> i32 {
+        self.2
+    }
+
+    pub fn get_col_end(&self) -> i32 {
+        self.3
+    }
+
+    // Method which returns range_ref from the tuple
+    // ex : (3,1,4,2) is interpreted as A3:B4
+    // This public method does not return the output wrapped in Result
+    // idea is, once MergedRange struct gets created, there shoud not be any problem in converting
+    // the tuple in to the range_ref string. so purposefully number_to_column fn is not handled
+    // if it panics here, then it will be a bug as in corner scenario which we had not thought while creating Merge cell
+    pub fn get_merge_range_as_str(&self) -> String {
+        let st_col = number_to_column(self.get_col_start()).expect(&format!(
+            "system panicked while converting col_start {} number to column string ref",
+            self.get_col_start()
+        ));
+        let end_col = number_to_column(self.get_col_end()).expect(&format!(
+            "system panicked while converting col_end {} number to column string ref",
+            self.get_col_end()
+        ));
+        return st_col
+            + &self.get_row_start().to_string()
+            + &":".to_string()
+            + &end_col
+            + &self.get_row_end().to_string();
+    }
+
+    // Only Public function where Merge cell can be created
+    pub fn new(merge_cell_parsed_range: (i32, i32, i32, i32)) -> Self {
+        Self(
+            merge_cell_parsed_range.0,
+            merge_cell_parsed_range.1,
+            merge_cell_parsed_range.2,
+            merge_cell_parsed_range.3,
+        )
+    }
 }
 
 impl Display for FontScheme {
