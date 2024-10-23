@@ -150,6 +150,7 @@ const Wrapper = styled("div")`
   border-top: 3px solid white;
   line-height: 34px;
   align-items: center;
+  cursor: pointer;
 `;
 
 const Name = styled("div")`

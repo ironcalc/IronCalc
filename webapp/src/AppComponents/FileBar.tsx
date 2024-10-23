@@ -51,7 +51,9 @@ export function FileBar(properties: {
         {toast ? (
           <Toast>
             <CircleCheck style={{ width: 12 }} />
-            <span style={{ marginLeft: 8, marginRight: 12 }}>
+            <span
+              style={{ marginLeft: 8, marginRight: 12, fontFamily: "Inter" }}
+            >
               URL copied to clipboard
             </span>
           </Toast>

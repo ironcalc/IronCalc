@@ -1,5 +1,5 @@
 import { styled } from "@mui/material";
-import { ChevronLeft, ChevronRight, Menu, Plus } from "lucide-react";
+import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NAVIGATION_HEIGH } from "../constants";
@@ -71,11 +71,9 @@ function Navigation(props: NavigationProps) {
           ))}
         </SheetInner>
       </Sheets>
-      <LeftDivider />
-      <ChevronLeftStyled />
-      <ChevronRightStyled />
-      <RightDivider />
-      <Advert>ironcalc.com</Advert>
+      <Advert href="https://www.ironcalc.com" target="_blank">
+        ironcalc.com
+      </Advert>
       <SheetListMenu
         anchorEl={anchorEl}
         isOpen={open}
@@ -85,26 +83,11 @@ function Navigation(props: NavigationProps) {
           onSheetSelected(index);
           handleClose();
         }}
+        selectedIndex={selectedIndex}
       />
     </Container>
   );
 }
-
-const ChevronLeftStyled = styled(ChevronLeft)`
-  color: #333333;
-  width: 16px;
-  height: 16px;
-  padding: 4px;
-  cursor: pointer;
-`;
-
-const ChevronRightStyled = styled(ChevronRight)`
-  color: #333333;
-  width: 16px;
-  height: 16px;
-  padding: 4px;
-  cursor: pointer;
-`;
 
 // Note I have to specify the font-family in every component that can be considered stand-alone
 const Container = styled("div")`
@@ -129,24 +112,11 @@ const SheetInner = styled("div")`
   display: flex;
 `;
 
-const LeftDivider = styled("div")`
-  height: 10px;
-  width: 1px;
-  background-color: #eee;
-  margin: 0px 10px 0px 0px;
-`;
-
-const RightDivider = styled("div")`
-  height: 10px;
-  width: 1px;
-  background-color: #eee;
-  margin: 0px 20px 0px 10px;
-`;
-
-const Advert = styled("div")`
+const Advert = styled("a")`
   color: #f2994a;
   margin-right: 12px;
   font-size: 12px;
+  text-decoration: none;
 `;
 
 export default Navigation;
