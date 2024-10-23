@@ -44,7 +44,7 @@ export const fonts = {
   mono: '"Fira Mono", "Adjusted Courier New Fallback", serif',
 };
 
-export const headerRowHeight = 24;
+export const headerRowHeight = 28;
 export const headerColumnWidth = 30;
 export const devicePixelRatio = window.devicePixelRatio || 1;
 
