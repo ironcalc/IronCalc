@@ -7,7 +7,7 @@ use crate::UserModel;
 fn basic_tests() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    model.new_sheet();
+    model.new_sheet().unwrap();
 
     // default sheet has show_grid_lines = true
     assert_eq!(model.get_show_grid_lines(0), Ok(true));

@@ -138,7 +138,7 @@ fn queue_undo_redo_multiple() {
 #[test]
 fn new_sheet() {
     let mut model1 = UserModel::from_model(new_empty_model());
-    model1.new_sheet();
+    model1.new_sheet().unwrap();
     model1.set_user_input(0, 1, 1, "42").unwrap();
     model1.set_user_input(1, 1, 1, "=Sheet1!A1*2").unwrap();
 

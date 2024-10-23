@@ -97,8 +97,8 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "newSheet")]
-    pub fn new_sheet(&mut self) {
-        self.model.new_sheet()
+    pub fn new_sheet(&mut self) -> Result<(), JsError> {
+        self.model.new_sheet().map_err(to_js_error)
     }
 
     #[wasm_bindgen(js_name = "deleteSheet")]
