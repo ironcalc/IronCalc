@@ -7,17 +7,20 @@ use crate::{
 
 pub enum Units {
     Number {
+        #[allow(dead_code)]
         group_separator: bool,
         precision: i32,
         num_fmt: String,
     },
     Currency {
+        #[allow(dead_code)]
         group_separator: bool,
         precision: i32,
         num_fmt: String,
         currency: String,
     },
     Percentage {
+        #[allow(dead_code)]
         group_separator: bool,
         precision: i32,
         num_fmt: String,
