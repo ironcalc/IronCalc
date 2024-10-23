@@ -7,8 +7,6 @@ export function ShareButton(properties: { onClick: () => void }) {
       onClick={onClick}
       onKeyDown={() => {}}
       style={{
-        // position: "absolute",
-        // right: "0px",
         cursor: "pointer",
         color: "#FFFFFF",
         background: "#F2994A",
@@ -19,6 +17,8 @@ export function ShareButton(properties: { onClick: () => void }) {
         marginRight: "10px",
         display: "flex",
         alignItems: "center",
+        fontFamily: "Inter",
+        fontSize: "14px",
       }}
     >
       <Share2 style={{ width: "16px", height: "16px", marginRight: "10px" }} />

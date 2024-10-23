@@ -9,9 +9,14 @@ import {
 } from "@mui/material";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import { Check } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SheetOptions } from "./types";
+
+function isWhiteColor(color: string): boolean {
+  return ["#FFF", "#FFFFFF"].includes(color);
+}
 
 interface SheetRenameDialogProps {
   isOpen: boolean;
@@ -59,11 +64,20 @@ interface SheetListMenuProps {
   anchorEl: HTMLButtonElement | null;
   onSheetSelected: (index: number) => void;
   sheetOptionsList: SheetOptions[];
+  selectedIndex: number;
 }
 
 const SheetListMenu = (properties: SheetListMenuProps) => {
-  const { isOpen, close, anchorEl, onSheetSelected, sheetOptionsList } =
-    properties;
+  const {
+    isOpen,
+    close,
+    anchorEl,
+    onSheetSelected,
+    sheetOptionsList,
+    selectedIndex,
+  } = properties;
+
+  const hasColors = sheetOptionsList.some((tab) => !isWhiteColor(tab.color));
 
   return (
     <StyledMenu
@@ -84,7 +98,16 @@ const SheetListMenu = (properties: SheetListMenuProps) => {
           key={tab.sheetId}
           onClick={() => onSheetSelected(index)}
         >
-          <ItemColor style={{ backgroundColor: tab.color }} />
+          {index === selectedIndex ? (
+            <Check
+              style={{ width: "16px", height: "16px", marginRight: "8px" }}
+            />
+          ) : (
+            <div
+              style={{ width: "16px", height: "16px", marginRight: "8px" }}
+            />
+          )}
+          {hasColors && <ItemColor style={{ backgroundColor: tab.color }} />}
           <ItemName>{tab.name}</ItemName>
         </StyledMenuItem>
       ))}

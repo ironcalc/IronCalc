@@ -371,22 +371,6 @@ const LineWrapper = styled("div")<LineWrapperProperties>`
   border: 1px solid white;
 `;
 
-const CheckIconWrapper = styled("div")`
-  width: 12px;
-`;
-
-type CheckIconProperties = { $checked: boolean };
-const CheckIcon = styled("div")<CheckIconProperties>`
-  width: 2px;
-  background-color: #eee;
-  height: 28px;
-  visibility: ${({ $checked }): string => {
-    if ($checked) {
-      return "visible";
-    }
-    return "hidden";
-  }};
-`;
 const NoneLine = styled("div")`
   width: 68px;
   border-top: 1px solid #e0e0e0;
