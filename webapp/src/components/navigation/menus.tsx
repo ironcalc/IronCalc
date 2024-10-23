@@ -33,7 +33,7 @@ export const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
       <DialogTitle>{t("sheet_rename.title")}</DialogTitle>
       <DialogContent dividers>
         <TextField
-          defaultValue={name}
+          defaultValue={properties.defaultName}
           label={t("sheet_rename.label")}
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => {
