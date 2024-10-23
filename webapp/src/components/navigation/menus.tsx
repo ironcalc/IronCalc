@@ -108,7 +108,11 @@ const SheetListMenu = (properties: SheetListMenuProps) => {
             />
           )}
           {hasColors && <ItemColor style={{ backgroundColor: tab.color }} />}
-          <ItemName style={{fontWeight: index === selectedIndex ?"bold": "normal" }}>{tab.name}</ItemName>
+          <ItemName
+            style={{ fontWeight: index === selectedIndex ? "bold" : "normal" }}
+          >
+            {tab.name}
+          </ItemName>
         </StyledMenuItem>
       ))}
     </StyledMenu>
