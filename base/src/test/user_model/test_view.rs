@@ -65,13 +65,13 @@ fn set_the_range_does_not_set_the_cell() {
 fn add_new_sheet_and_back() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    model.new_sheet();
-    assert_eq!(model.get_selected_sheet(), 0);
+    model.new_sheet().unwrap();
+    assert_eq!(model.get_selected_sheet(), 1);
     model.set_selected_cell(5, 4).unwrap();
-    model.set_selected_sheet(1).unwrap();
-    assert_eq!(model.get_selected_cell(), (1, 1, 1));
     model.set_selected_sheet(0).unwrap();
-    assert_eq!(model.get_selected_cell(), (0, 5, 4));
+    assert_eq!(model.get_selected_cell(), (0, 1, 1));
+    model.set_selected_sheet(1).unwrap();
+    assert_eq!(model.get_selected_cell(), (1, 5, 4));
 }
 
 #[test]

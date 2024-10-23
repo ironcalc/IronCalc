@@ -5,13 +5,13 @@ use crate::{constants::DEFAULT_COLUMN_WIDTH, UserModel};
 #[test]
 fn add_undo_redo() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
-    model.new_sheet();
+    model.new_sheet().unwrap();
     model.set_user_input(1, 1, 1, "=1 + 1").unwrap();
     model.set_user_input(1, 1, 2, "=A1*3").unwrap();
     model
         .set_column_width(1, 5, 5.0 * DEFAULT_COLUMN_WIDTH)
         .unwrap();
-    model.new_sheet();
+    model.new_sheet().unwrap();
     model.set_user_input(2, 1, 1, "=Sheet2!B1").unwrap();
 
     model.undo().unwrap();
@@ -59,7 +59,7 @@ fn set_sheet_color() {
 #[test]
 fn new_sheet_propagates() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
-    model.new_sheet();
+    model.new_sheet().unwrap();
 
     let send_queue = model.flush_send_queue();
 
@@ -72,7 +72,7 @@ fn new_sheet_propagates() {
 #[test]
 fn delete_sheet_propagates() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
-    model.new_sheet();
+    model.new_sheet().unwrap();
     model.delete_sheet(0).unwrap();
 
     let send_queue = model.flush_send_queue();
@@ -87,10 +87,18 @@ fn delete_sheet_propagates() {
 fn delete_last_sheet() {
     // Deleting the last sheet, selects the previous
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
-    model.new_sheet();
-    model.new_sheet();
+    model.new_sheet().unwrap();
+    model.new_sheet().unwrap();
     model.set_selected_sheet(2).unwrap();
     model.delete_sheet(2).unwrap();
 
+    assert_eq!(model.get_selected_sheet(), 1);
+}
+
+#[test]
+fn new_sheet_selects_it() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    assert_eq!(model.get_selected_sheet(), 0);
+    model.new_sheet().unwrap();
     assert_eq!(model.get_selected_sheet(), 1);
 }
