@@ -35,6 +35,11 @@ const FormatPicker = (properties: FormatPickerProps) => {
           label={t("num_fmt.label")}
           name="format_code"
           onChange={(event) => setFormatCode(event.target.value)}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+          }}
+          spellCheck="false"
+          onClick={(event) => event.stopPropagation()}
         />
       </DialogContent>
       <DialogActions>
