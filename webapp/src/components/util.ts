@@ -29,12 +29,12 @@ export const isNavigationKey = (key: string): key is NavigationKey =>
     key,
   );
 
-export const getCellAddress = (selectedArea: Area, selectedCell?: Cell) => {
+export const getCellAddress = (selectedArea: Area, selectedCell: Cell) => {
   const isSingleCell =
     selectedArea.rowStart === selectedArea.rowEnd &&
     selectedArea.columnEnd === selectedArea.columnStart;
 
-  return isSingleCell && selectedCell
+  return isSingleCell
     ? `${columnNameFromNumber(selectedCell.column)}${selectedCell.row}`
     : `${columnNameFromNumber(selectedArea.columnStart)}${
         selectedArea.rowStart
@@ -57,5 +57,7 @@ export function rangeToStr(
   if (rowStart === rowEnd && columnStart === columnEnd) {
     return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}`;
   }
-  return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}:${columnNameFromNumber(columnEnd)}${rowEnd}`;
+  return `${sheetName}${columnNameFromNumber(
+    columnStart,
+  )}${rowStart}:${columnNameFromNumber(columnEnd)}${rowEnd}`;
 }
