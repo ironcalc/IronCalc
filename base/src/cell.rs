@@ -176,3 +176,19 @@ impl Cell {
         }
     }
 }
+
+// Implementing methods for MergedRange struct
+
+impl MergedRange {
+    pub fn is_cell_part_of_merge_cell(&self, row: i32, col: i32) -> bool {
+        // This is merge Mother cell so do not include this cell as part of Merge Cell
+        if row == self.get_row_start() && col == self.get_col_start() {
+            return false;
+        }
+
+        let result: bool = (row >= self.get_row_start() && row <= self.get_row_end())
+            && (col >= self.get_col_start() && col <= self.get_col_end());
+
+        result
+    }
+}
