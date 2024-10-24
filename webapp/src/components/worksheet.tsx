@@ -293,6 +293,12 @@ function Worksheet(props: {
           break;
         }
       }
+      model.setSelectedRange(
+        Math.min(rowStart, extendedArea.rowStart),
+        Math.min(columnStart, extendedArea.columnStart),
+        Math.max(rowStart + height - 1, extendedArea.rowEnd),
+        Math.max(columnStart + width - 1, extendedArea.columnEnd),
+      );
       workbookState.clearExtendToArea();
       canvas.renderSheet();
     },
