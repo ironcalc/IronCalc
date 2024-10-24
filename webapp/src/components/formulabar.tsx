@@ -1,6 +1,5 @@
 import type { Model } from "@ironcalc/wasm";
-import { Button, styled } from "@mui/material";
-import { ChevronDown } from "lucide-react";
+import { styled } from "@mui/material";
 import { Fx } from "../icons";
 import {
   COLUMN_WIDTH_SCALE,
@@ -34,9 +33,6 @@ function FormulaBar(properties: FormulaBarProps) {
     <Container>
       <AddressContainer>
         <CellBarAddress>{cellAddress}</CellBarAddress>
-        <StyledButton>
-          <ChevronDown />
-        </StyledButton>
       </AddressContainer>
       <Divider />
       <FormulaContainer>
@@ -84,7 +80,9 @@ function FormulaBar(properties: FormulaBarProps) {
   );
 }
 
-const StyledButton = styled(Button)`
+const StyledButton = styled("div")`
+  display: inline-flex;
+  align-items: center;
   width: 15px;
   min-width: 0px;
   padding: 0px;

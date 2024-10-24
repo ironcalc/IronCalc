@@ -164,6 +164,7 @@ function Worksheet(props: {
       const { row, column } = cell;
       model.onAreaSelecting(row, column);
       canvas.renderSheet();
+      refresh();
     },
     onAreaSelected: () => {
       const styles = workbookState.getCopyStyles();
@@ -179,6 +180,7 @@ function Worksheet(props: {
       if (worksheetElement.current) {
         worksheetElement.current.style.cursor = "auto";
       }
+      refresh();
     },
     onExtendToCell: (cell) => {
       const canvas = worksheetCanvas.current;
