@@ -457,6 +457,9 @@ impl UserModel {
     /// * [Model::rename_sheet_by_index]
     pub fn rename_sheet(&mut self, sheet: u32, new_name: &str) -> Result<(), String> {
         let old_value = self.model.workbook.worksheet(sheet)?.name.clone();
+        if old_value == new_name {
+            return Ok(());
+        }
         self.model.rename_sheet_by_index(sheet, new_name)?;
         self.push_diff_list(vec![Diff::RenameSheet {
             index: sheet,

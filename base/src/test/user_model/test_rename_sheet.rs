@@ -10,6 +10,13 @@ fn basic_rename() {
 }
 
 #[test]
+fn rename_with_same_name() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.rename_sheet(0, "Sheet1").unwrap();
+    assert_eq!(model.get_worksheets_properties()[0].name, "Sheet1");
+}
+
+#[test]
 fn undo_redo() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
     model.rename_sheet(0, "NewSheet").unwrap();
