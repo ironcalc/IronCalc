@@ -1286,9 +1286,13 @@ export default class WorksheetCanvas {
         },
       ]);
     }
+    const selectedSheet = this.model.getSelectedSheet();
     const activeRangesCount = activeRanges.length;
     for (let rangeIndex = 0; rangeIndex < activeRangesCount; rangeIndex += 1) {
       const range = activeRanges[rangeIndex];
+      if (range.sheet !== selectedSheet) {
+        continue;
+      }
 
       const allowedOffset = 1; // to make borders look nicer
       const minRow = topLeftCell.row - allowedOffset;
