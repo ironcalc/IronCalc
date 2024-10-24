@@ -3,7 +3,7 @@ export async function uploadFile(
   fileName: string,
 ): Promise<Blob> {
   // Fetch request to upload the file
-  const response = await fetch("/api/upload", {
+  const response = await fetch(`/api/upload/${fileName}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/octet-stream",
