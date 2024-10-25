@@ -4,3 +4,6 @@
   margin: 0px;
   border: none;
 }
+html, body {
+  overscroll-behavior: none;
+}

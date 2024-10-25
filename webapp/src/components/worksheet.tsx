@@ -436,6 +436,7 @@ const Wrapper = styled("div")({
   left: 0,
   right: 0,
   bottom: NAVIGATION_HEIGH + 1,
+  overscrollBehavior: "none"
 });
 
 const SheetCanvas = styled("canvas")`
