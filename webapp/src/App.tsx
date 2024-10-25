@@ -15,11 +15,12 @@ import {
   selectModelFromStorage,
 } from "./AppComponents/storage";
 import { WorkbookState } from "./components/workbookState";
+import { IronCalcIcon } from "./icons";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
   const [workbookState, setWorkbookState] = useState<WorkbookState | null>(
-    null,
+    null
   );
 
   useEffect(() => {
@@ -51,7 +52,12 @@ function App() {
   }, []);
 
   if (!model || !workbookState) {
-    return <Loading>Loading</Loading>;
+    return (
+      <Loading>
+        <IronCalcIcon style={{width: 24, height: 24, marginBottom: 16}} />
+        <div>Loading IronCalc</div>
+      </Loading>
+    );
   }
 
   // We try to save the model every second
@@ -112,9 +118,11 @@ const Wrapper = styled("div")`
 const Loading = styled("div")`
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
+  font-family: 'Inter';
+  font-size: 14px;
 `;
 
 export default App;
