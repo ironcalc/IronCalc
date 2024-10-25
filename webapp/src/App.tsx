@@ -20,7 +20,7 @@ import { IronCalcIcon } from "./icons";
 function App() {
   const [model, setModel] = useState<Model | null>(null);
   const [workbookState, setWorkbookState] = useState<WorkbookState | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -54,7 +54,7 @@ function App() {
   if (!model || !workbookState) {
     return (
       <Loading>
-        <IronCalcIcon style={{width: 24, height: 24, marginBottom: 16}} />
+        <IronCalcIcon style={{ width: 24, height: 24, marginBottom: 16 }} />
         <div>Loading IronCalc</div>
       </Loading>
     );

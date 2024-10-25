@@ -4,6 +4,7 @@
   margin: 0px;
   border: none;
 }
-html, body {
+html,
+body {
   overscroll-behavior: none;
 }
