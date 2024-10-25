@@ -1,6 +1,12 @@
+// FIXME: These two should be done in the back end and thoroughly tested
+// * Dates shouldn't change
+// * General depends on the value. Increase(General, 0.5) => 0.50 and so on
+
 export function increaseDecimalPlaces(numberFormat: string): string {
-  // FIXME: Should it be done in the Rust? How should it work?
   // Increase decimal places for existing numbers with decimals
+  if (numberFormat === "general") {
+    return "#,##0.000";
+  }
   const newNumberFormat = numberFormat.replace(/\.0/g, ".00");
   // If no decimal places declared, add 0.0
   if (!newNumberFormat.includes(".")) {
@@ -10,13 +16,15 @@ export function increaseDecimalPlaces(numberFormat: string): string {
     if (newNumberFormat.includes("#")) {
       return newNumberFormat.replace(/#([^#,]|$)/g, "0.0$1");
     }
-    return "0.0";
+    return numberFormat;
   }
   return newNumberFormat;
 }
 
 export function decreaseDecimalPlaces(numberFormat: string): string {
-  // FIXME: Should it be done in the Rust? How should it work?
+  if (numberFormat === "general") {
+    return "#,##0.0";
+  }
   // Decrease decimal places for existing numbers with decimals
   let newNumberFormat = numberFormat.replace(/\.0/g, ".");
   // Fix leftover dots
