@@ -149,6 +149,7 @@ const MenuDivider = styled("div")`
 
 const MenuItemText = styled("div")`
   color: #000;
+  font-size: 12px;
 `;
 
 const MenuItemWrapper = styled(MenuItem)`
