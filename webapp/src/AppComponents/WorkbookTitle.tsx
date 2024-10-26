@@ -77,24 +77,28 @@ export function WorkbookTitle(props: {
 }
 
 const TitleWrapper = styled("textarea")`
-    vertical-align: middle;
-    text-align: center;
-    height: 20px;
-    line-height: 20px;
-    border-radius: 4px;
-    padding: inherit;
-    overflow: hidden;
-    outline: none;
-    resize: none;
-    text-wrap: nowrap;
-    border: none;
-    &:hover {
-      background-color: #f2f2f2;
-    }
-    &:focus {
-      border: 1px solid grey;
-    }
-    font-weight: inherit;
-    font-family: inherit;
-    font-size: inherit;
-  `;
+  vertical-align: middle;
+  text-align: center;
+  height: 20px;
+  line-height: 20px;
+  border-radius: 4px;
+  padding: inherit;
+  overflow: hidden;
+  outline: none;
+  resize: none;
+  text-wrap: nowrap;
+  border: none;
+  &:hover {
+    background-color: #f2f2f2;
+  }
+  &:focus {
+    border: 1px solid grey;
+  }
+  font-weight: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  max-width: 520px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+`;

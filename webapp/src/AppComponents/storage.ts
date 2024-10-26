@@ -108,7 +108,7 @@ export function selectModelFromStorage(uuid: string): Model | null {
   return null;
 }
 
-export function getSelectedUuuid(): string | null {
+export function getSelectedUuid(): string | null {
   return localStorage.getItem("selected");
 }
 

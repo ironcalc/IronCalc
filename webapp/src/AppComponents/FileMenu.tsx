@@ -3,7 +3,7 @@ import { Menu, MenuItem, Modal } from "@mui/material";
 import { FileDown, FileUp, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { UploadFileDialog } from "./UploadFileDialog";
-import { getModelsMetadata, getSelectedUuuid } from "./storage";
+import { getModelsMetadata, getSelectedUuid } from "./storage";
 
 export function FileMenu(props: {
   newModel: () => void;
@@ -17,7 +17,7 @@ export function FileMenu(props: {
   const anchorElement = useRef<HTMLDivElement>(null);
   const models = getModelsMetadata();
   const uuids = Object.keys(models);
-  const selectedUuid = getSelectedUuuid();
+  const selectedUuid = getSelectedUuid();
 
   const elements = [];
   for (const uuid of uuids) {
@@ -32,7 +32,15 @@ export function FileMenu(props: {
         <span style={{ width: "20px" }}>
           {uuid === selectedUuid ? "•" : ""}
         </span>
-        <MenuItemText>{models[uuid]}</MenuItemText>
+        <MenuItemText
+          style={{
+            maxWidth: "240px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {models[uuid]}
+        </MenuItemText>
       </MenuItemWrapper>,
     );
   }
@@ -144,6 +152,8 @@ const StyledTrash = styled(Trash2)`
 const MenuDivider = styled("div")`
   width: 80%;
   margin: auto;
+  margin-top: 8px;
+  margin-bottom: 8px;
   border-top: 1px solid #e0e0e0;
 `;
 
@@ -167,6 +177,7 @@ const FileMenuWrapper = styled("div")`
   padding: 10px;
   height: 20px;
   border-radius: 4px;
+  cursor: pointer;
   &:hover {
     background-color: #f2f2f2;
   }

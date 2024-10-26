@@ -101,6 +101,7 @@ const Container = styled("div")`
   padding-left: 12px;
   font-family: Inter;
   background-color: #fff;
+  border-top: 1px solid #E0E0E0;
 `;
 
 const Sheets = styled("div")`

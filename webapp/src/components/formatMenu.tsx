@@ -137,6 +137,7 @@ const MenuItemText = styled("div")`
 `;
 
 const MenuItemExample = styled("div")`
+  color: #bdbdbd;
   margin-left: 20px;
 `;
 

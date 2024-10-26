@@ -1055,46 +1055,13 @@ export default class WorksheetCanvas {
       rowEnd,
       columnEnd,
     );
-    // const { border } = extendToArea;
     extendToOutline.style.border = `1px dashed ${outlineColor}`;
     extendToOutline.style.borderRadius = "3px";
-    // switch (border) {
-    //   case 'left': {
-    //     extendToOutline.style.borderLeft = 'none';
-    //     extendToOutline.style.borderTopLeftRadius = '0px';
-    //     extendToOutline.style.borderBottomLeftRadius = '0px';
 
-    //     break;
-    //   }
-    //   case 'right': {
-    //     extendToOutline.style.borderRight = 'none';
-    //     extendToOutline.style.borderTopRightRadius = '0px';
-    //     extendToOutline.style.borderBottomRightRadius = '0px';
-
-    //     break;
-    //   }
-    //   case 'top': {
-    //     extendToOutline.style.borderTop = 'none';
-    //     extendToOutline.style.borderTopRightRadius = '0px';
-    //     extendToOutline.style.borderTopLeftRadius = '0px';
-
-    //     break;
-    //   }
-    //   case 'bottom': {
-    //     extendToOutline.style.borderBottom = 'none';
-    //     extendToOutline.style.borderBottomRightRadius = '0px';
-    //     extendToOutline.style.borderBottomLeftRadius = '0px';
-
-    //     break;
-    //   }
-    //   default:
-    //     break;
-    // }
-    const padding = 1;
-    extendToOutline.style.left = `${areaX - padding}px`;
-    extendToOutline.style.top = `${areaY - padding}px`;
-    extendToOutline.style.width = `${areaWidth + 2 * padding}px`;
-    extendToOutline.style.height = `${areaHeight + 2 * padding}px`;
+    extendToOutline.style.left = `${areaX}px`;
+    extendToOutline.style.top = `${areaY}px`;
+    extendToOutline.style.width = `${areaWidth - 1}px`;
+    extendToOutline.style.height = `${areaHeight - 1}px`;
   }
 
   private getColumnWidth(sheet: number, column: number): number {
@@ -1176,8 +1143,8 @@ export default class WorksheetCanvas {
     }
 
     // Position the cell outline and clip it
-    cellOutline.style.left = `${x - padding - 1}px`;
-    cellOutline.style.top = `${y - padding - 1}px`;
+    cellOutline.style.left = `${x - padding - 2}px`;
+    cellOutline.style.top = `${y - padding - 2}px`;
     // Reset CSS properties
     cellOutline.style.minWidth = "";
     cellOutline.style.minHeight = "";
@@ -1185,8 +1152,8 @@ export default class WorksheetCanvas {
     cellOutline.style.maxHeight = "";
     cellOutline.style.overflow = "hidden";
     // New properties
-    cellOutline.style.width = `${width}px`;
-    cellOutline.style.height = `${height}px`;
+    cellOutline.style.width = `${width + 1}px`;
+    cellOutline.style.height = `${height + 1}px`;
 
     cellOutline.style.background = "none";
 
@@ -1221,10 +1188,10 @@ export default class WorksheetCanvas {
       );
       handleX = areaX + areaWidth;
       handleY = areaY + areaHeight;
-      areaOutline.style.left = `${areaX - padding}px`;
-      areaOutline.style.top = `${areaY - padding}px`;
-      areaOutline.style.width = `${areaWidth + 2 * padding}px`;
-      areaOutline.style.height = `${areaHeight + 2 * padding}px`;
+      areaOutline.style.left = `${areaX - padding - 1}px`;
+      areaOutline.style.top = `${areaY - padding - 1}px`;
+      areaOutline.style.width = `${areaWidth + 2 * padding + 1}px`;
+      areaOutline.style.height = `${areaHeight + 2 * padding + 1}px`;
       const clipLeft = rowStart < topLeftCell.row && rowStart > frozenRows;
       const clipTop =
         columnStart < topLeftCell.column && columnStart > frozenColumns;
@@ -1334,12 +1301,6 @@ export default class WorksheetCanvas {
   }
 
   renderSheet(): void {
-    console.time("renderSheet");
-    this._renderSheet();
-    console.timeEnd("renderSheet");
-  }
-
-  private _renderSheet(): void {
     const context = this.ctx;
     const { canvas } = this;
     const selectedSheet = this.model.getSelectedSheet();
@@ -1466,8 +1427,11 @@ export default class WorksheetCanvas {
     this.renderRowHeaders(frozenRows, topLeftCell, bottomRightCell);
 
     // square in the top left corner
-    context.fillStyle = headerBorderColor;
-    context.fillRect(0, 0, headerColumnWidth, headerRowHeight);
+    context.beginPath();
+    context.strokeStyle = gridSeparatorColor;
+    context.moveTo(0, 0.5);
+    context.lineTo(x + headerColumnWidth, 0.5);
+    context.stroke();
 
     this.drawCellOutline();
     this.drawCellEditor();
