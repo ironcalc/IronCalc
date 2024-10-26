@@ -458,7 +458,7 @@ const StyledPopover = styled(Popover)`
     padding: 0px;
   }
   font-family: ${({ theme }) => theme.typography.fontFamily};
-  font-size: 13px;
+  font-size: 12px;
 `;
 
 const BorderPickerDialog = styled("div")`
@@ -483,7 +483,7 @@ const Button = styled("button")<TypeButtonProperties>(
       justifyContent: "center",
       // fontSize: "26px",
       border: "0px solid #fff",
-      borderRadius: "2px",
+      borderRadius: "4px",
       marginRight: "5px",
       transition: "all 0.2s",
       cursor: "pointer",
@@ -501,7 +501,7 @@ const Button = styled("button")<TypeButtonProperties>(
       borderTop: $underlinedColor ? "3px solid #FFF" : "none",
       borderBottom: $underlinedColor ? `3px solid ${$underlinedColor}` : "none",
       color: "#21243A",
-      backgroundColor: $pressed ? theme.palette.grey["600"] : "inherit",
+      backgroundColor: $pressed ? theme.palette.grey["200"] : "inherit",
       "&:hover": {
         backgroundColor: "#F1F2F8",
         borderTopColor: "#F1F2F8",
