@@ -8,7 +8,7 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        Cell, Col, Comment, DefinedName, MergedRange, Row, SheetData, SheetState, Table, Worksheet,
+        Cell, Col, Comment, DefinedName, MergedCells, Row, SheetData, SheetState, Table, Worksheet,
         WorksheetView,
     },
 };
@@ -146,12 +146,12 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
     Ok(cols)
 }
 
-fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergedRange>, XlsxError> {
+fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergedCells>, XlsxError> {
     // 18.3.1.55 Merge Cells
     // <mergeCells count="1">
     //    <mergeCell ref="K7:L10"/>
     // </mergeCells>
-    let mut merge_cells: Vec<MergedRange> = Vec::new();
+    let mut merged_cells_list: Vec<MergedCells> = Vec::new();
     let merge_cells_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("mergeCells"))
@@ -161,8 +161,8 @@ fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergedRange>, XlsxError> {
             let reference = get_attribute(&merge_cell, "ref")?.to_string();
             match parse_range(&reference) {
                 Ok(parsed_merge_cell_range) => {
-                    let merge_cell_node = MergedRange::new(parsed_merge_cell_range);
-                    merge_cells.push(merge_cell_node);
+                    let merge_cell_node = MergedCells::new(parsed_merge_cell_range);
+                    merged_cells_list.push(merge_cell_node);
                 }
                 Err(err) => {
                     println!("encountered error while parsing merge cell ref : {}", err);
@@ -170,7 +170,7 @@ fn load_merge_cells_nodes(ws: Node) -> Result<Vec<MergedRange>, XlsxError> {
             }
         }
     }
-    Ok(merge_cells)
+    Ok(merged_cells_list)
 }
 
 fn load_sheet_color(ws: Node) -> Result<Option<String>, XlsxError> {
@@ -988,7 +988,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             sheet_id,
             state: state.to_owned(),
             color,
-            merge_cells: merge_cells_nodes,
+            merged_cells_list: merge_cells_nodes,
             comments: settings.comments,
             frozen_rows: sheet_view.frozen_rows,
             frozen_columns: sheet_view.frozen_columns,

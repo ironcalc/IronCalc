@@ -403,7 +403,7 @@ fn test_exporting_merged_cells() {
             .worksheets
             .first()
             .unwrap()
-            .merge_cells
+            .merged_cells_list
             .clone();
         // exporting and saving it in another xlsx
         model.evaluate();
@@ -420,7 +420,7 @@ fn test_exporting_merged_cells() {
                 .worksheets
                 .first()
                 .unwrap()
-                .merge_cells
+                .merged_cells_list
                 .clone();
             assert_eq!(expected_merge_cell_ref, *got_merge_cell_ref);
             fs::remove_file(temp_file_name).unwrap();
@@ -434,7 +434,7 @@ fn test_exporting_merged_cells() {
                 .worksheets
                 .get_mut(0)
                 .unwrap()
-                .merge_cells
+                .merged_cells_list
                 .clear();
 
             save_to_xlsx(&temp_model, temp_file_name).unwrap();
@@ -444,7 +444,7 @@ fn test_exporting_merged_cells() {
                 .worksheets
                 .first()
                 .unwrap()
-                .merge_cells
+                .merged_cells_list
                 .len();
             assert!(*got_merge_cell_ref_cnt == 0);
         }
@@ -460,12 +460,12 @@ fn test_merge_cell_import_export_behaviors() {
     let mut model = load_from_xlsx(example_file_name, "en", "UTC").unwrap();
 
     // Case1 : To check whether Merge cells structures got imported properly or not
-    let imported_merge_cell_vec = model.workbook.worksheet(0).unwrap().get_merge_cell_vec();
+    let imported_merge_cell_vec = model.workbook.worksheet(0).unwrap().get_merged_cells_list();
 
     assert_eq!(imported_merge_cell_vec.len(), 5);
     let range_refs_of_merge_cell: Vec<String> = imported_merge_cell_vec
         .iter()
-        .map(|cell| cell.get_merge_range_as_str())
+        .map(|cell| cell.get_merged_cells_str_ref().unwrap())
         .collect();
     assert_eq!(
         range_refs_of_merge_cell,
@@ -504,12 +504,12 @@ fn test_merge_cell_import_export_behaviors() {
             .workbook
             .worksheet(0)
             .unwrap()
-            .get_merge_cell_vec();
+            .get_merged_cells_list();
 
         assert_eq!(imported_merge_cell_vec.len(), 3);
         let range_refs_of_merge_cell: Vec<String> = imported_merge_cell_vec
             .iter()
-            .map(|cell| cell.get_merge_range_as_str())
+            .map(|cell| cell.get_merged_cells_str_ref().unwrap())
             .collect();
         assert_eq!(
             range_refs_of_merge_cell,

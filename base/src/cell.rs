@@ -177,17 +177,16 @@ impl Cell {
     }
 }
 
-// Implementing methods for MergedRange struct
+// Implementing methods for MergedCells struct
 
-impl MergedRange {
-    pub fn is_cell_part_of_merge_cell(&self, row: i32, col: i32) -> bool {
-        // This is merge Mother cell so do not include this cell as part of Merge Cell
-        if row == self.get_row_start() && col == self.get_col_start() {
+impl MergedCells {
+    pub fn is_cell_part_of_merged_cells(&self, row: i32, col: i32) -> bool {
+        // This is merge Mother cell so do not include this cell as part of Merged Cells
+        if row == self.0 && col == self.1 {
             return false;
         }
 
-        let result: bool = (row >= self.get_row_start() && row <= self.get_row_end())
-            && (col >= self.get_col_start() && col <= self.get_col_end());
+        let result: bool = (row >= self.0 && row <= self.2) && (col >= self.1 && col <= self.3);
 
         result
     }

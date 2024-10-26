@@ -23,7 +23,7 @@ fn test_model_set_fns_related_to_merge_cells() {
     assert_eq!(
         model
             .set_user_input(0, 1, 5, "Hello".to_string()),
-        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
+        Err("Cell row : 1, col : 5 is part of merged cells block, so singular update to the cell is not possible".to_string())
     );
     assert_eq!(model.get_cell_content(0, 1, 5), Ok("".to_string()));
     assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
@@ -32,7 +32,7 @@ fn test_model_set_fns_related_to_merge_cells() {
     assert_eq!(
         model
             .update_cell_with_bool(0, 1, 5, true),
-        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
+        Err("Cell row : 1, col : 5 is part of merged cells block, so singular update to the cell is not possible".to_string())
     );
     assert_eq!(model.get_cell_content(0, 1, 5), Ok("".to_string()));
     assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
@@ -41,7 +41,7 @@ fn test_model_set_fns_related_to_merge_cells() {
     assert_eq!(
         model
             .update_cell_with_formula(0, 1, 5, "=SUM(A1+A2)".to_string()),
-        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
+        Err("Cell row : 1, col : 5 is part of merged cells block, so singular update to the cell is not possible".to_string())
     );
     assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
 
@@ -49,7 +49,7 @@ fn test_model_set_fns_related_to_merge_cells() {
     assert_eq!(
         model
             .update_cell_with_number(0, 1, 5, 10.0),
-        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
+        Err("Cell row : 1, col : 5 is part of merged cells block, so singular update to the cell is not possible".to_string())
     );
     assert_eq!(model.get_cell_content(0, 1, 5), Ok("".to_string()));
     assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
@@ -58,7 +58,7 @@ fn test_model_set_fns_related_to_merge_cells() {
     assert_eq!(
         model
             .update_cell_with_text(0, 1, 5, "new text"),
-        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
+        Err("Cell row : 1, col : 5 is part of merged cells block, so singular update to the cell is not possible".to_string())
     );
     assert_eq!(model.get_cell_content(0, 1, 5), Ok("".to_string()));
     assert_eq!(model.get_cell_type(0, 1, 5), Ok(CellType::Number));
@@ -78,27 +78,42 @@ fn test_model_merge_cells_crud_api() {
     // Case1: Creating a new merge cell without overlapping
     // Newly created Merge block is left to D4:F6
     assert_eq!(model.merge_cells(0, "A1:B4"), Ok(()));
-    assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 2);
+    assert_eq!(
+        model.workbook.worksheet(0).unwrap().merged_cells_list.len(),
+        2
+    );
     model.set_user_input(0, 1, 1, "left".to_string()).unwrap();
 
     // Newly created Merge block is right to D4:F6
     assert_eq!(model.merge_cells(0, "G1:H7"), Ok(()));
-    assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 3);
+    assert_eq!(
+        model.workbook.worksheet(0).unwrap().merged_cells_list.len(),
+        3
+    );
     model.set_user_input(0, 1, 7, "right".to_string()).unwrap();
 
     // Newly created Merge block is above to D4:F6
     assert_eq!(model.merge_cells(0, "C1:D3"), Ok(()));
-    assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 4);
+    assert_eq!(
+        model.workbook.worksheet(0).unwrap().merged_cells_list.len(),
+        4
+    );
     model.set_user_input(0, 1, 3, "top".to_string()).unwrap();
 
     // Newly created Merge block is down to D4:F6
     assert_eq!(model.merge_cells(0, "D8:E9"), Ok(()));
-    assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 5);
+    assert_eq!(
+        model.workbook.worksheet(0).unwrap().merged_cells_list.len(),
+        5
+    );
     model.set_user_input(0, 8, 4, "down".to_string()).unwrap();
 
     //Case2: Creating a new merge cell with overlapping with other 3 merged cell
     assert_eq!(model.merge_cells(0, "C1:G4"), Ok(()));
-    assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 3);
+    assert_eq!(
+        model.workbook.worksheet(0).unwrap().merged_cells_list.len(),
+        3
+    );
     model
         .set_user_input(0, 1, 3, "overlapped_new_merge_block".to_string())
         .unwrap();
@@ -132,7 +147,7 @@ fn test_model_merge_cells_crud_api() {
     // Case3: Giving wrong merge_ref, which would resulting in error (Merge cell to be deleted is not found)
     assert_eq!(
         model.unmerge_cells(0, "C1:E1"),
-        Err("Invalid merge_cell_ref, Merge cell to be deleted is not found".to_string())
+        Err("Invalid merge_cell_ref, Merged cells to be deleted is not found".to_string())
     );
 
     // Case4: unmerge scenario

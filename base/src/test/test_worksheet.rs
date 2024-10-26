@@ -299,7 +299,7 @@ fn test_merge_cell_fns_worksheet() {
         .workbook
         .worksheet(0)
         .unwrap()
-        .is_part_of_merge_cell(1, 4)
+        .is_part_of_merged_cells(1, 4)
         .unwrap(),);
 
     // Lets give cell which is actually part of Merge block and expect true from fn
@@ -307,7 +307,7 @@ fn test_merge_cell_fns_worksheet() {
         .workbook
         .worksheet(0)
         .unwrap()
-        .is_part_of_merge_cell(2, 4)
+        .is_part_of_merged_cells(2, 4)
         .unwrap());
 
     // Lets give cell which is not a part of Merge block and expect false from fn
@@ -315,7 +315,7 @@ fn test_merge_cell_fns_worksheet() {
         .workbook
         .worksheet(0)
         .unwrap()
-        .is_part_of_merge_cell(2, 6)
+        .is_part_of_merged_cells(2, 6)
         .unwrap());
 
     // Lets give an Invalid row
@@ -324,7 +324,7 @@ fn test_merge_cell_fns_worksheet() {
             .workbook
             .worksheet(0)
             .unwrap()
-            .is_part_of_merge_cell(0, 1),
+            .is_part_of_merged_cells(0, 1),
         Err("Incorrect row or column".to_string())
     );
 
@@ -334,7 +334,7 @@ fn test_merge_cell_fns_worksheet() {
             .workbook
             .worksheet(0)
             .unwrap()
-            .is_part_of_merge_cell(1, 0),
+            .is_part_of_merged_cells(1, 0),
         Err("Incorrect row or column".to_string())
     );
 
@@ -344,7 +344,7 @@ fn test_merge_cell_fns_worksheet() {
             .workbook
             .worksheet(0)
             .unwrap()
-            .get_merge_cell_vec()
+            .get_merged_cells_list()
             .len(),
         1
     );
@@ -353,7 +353,7 @@ fn test_merge_cell_fns_worksheet() {
             .workbook
             .worksheet_mut(0)
             .unwrap()
-            .get_merge_cell_vec_mut();
+            .get_merged_cells_list_mut();
         merge_cell_vec.remove(0);
 
         assert_eq!(
@@ -361,7 +361,7 @@ fn test_merge_cell_fns_worksheet() {
                 .workbook
                 .worksheet(0)
                 .unwrap()
-                .get_merge_cell_vec()
+                .get_merged_cells_list()
                 .len(),
             0
         );

@@ -84,7 +84,7 @@ fn test_model_style_set_fns_in_merge_cell_context() {
     assert_eq!(
         model
             .set_cell_style(0, 1, 5, &style),
-        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
+        Err("Cell row : 1, col : 5 is part of merged cells block, so singular update to the cell is not possible".to_string())
     );
     assert_eq!(model.get_style_for_cell(0, 1, 5), Ok(original_style));
 
@@ -100,7 +100,7 @@ fn test_model_style_set_fns_in_merge_cell_context() {
     assert_eq!(
         model
             .set_cell_style_by_name(0, 1, 5, "bold"),
-        Err("Cell row : 1, col : 5 is part of merged cell block, so singular update to the cell is not possible".to_string())
+        Err("Cell row : 1, col : 5 is part of merged cells block, so singular update to the cell is not possible".to_string())
     );
     assert_eq!(model.get_style_for_cell(0, 1, 5), Ok(original_style));
 }

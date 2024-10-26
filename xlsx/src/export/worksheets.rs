@@ -243,9 +243,18 @@ pub(crate) fn get_worksheet_xml(
     }
     let sheet_data = sheet_data_str.join("");
 
-    for merge_cell_ref in &worksheet.merge_cells {
-        let merge_cell_range_ref: String = merge_cell_ref.get_merge_range_as_str();
-        merged_cells_str.push(format!("<mergeCell ref=\"{merge_cell_range_ref}\"/>"))
+    for merged_cells_ref in &worksheet.merged_cells_list {
+        let merged_cells_range_str_ref: String = match merged_cells_ref.get_merged_cells_str_ref() {
+            Ok(merged_cells_ref) => merged_cells_ref,
+            Err(err) => {
+                // ATTENTION : This should not happen. There should not be error while exporting
+                // already imported/created Mergedcells structure
+                // Currently, this function does not return any error. so logging the error and skipping this errored one
+                println!("{}", err);
+                continue;
+            }
+        };
+        merged_cells_str.push(format!("<mergeCell ref=\"{merged_cells_range_str_ref}\"/>"))
     }
     let merged_cells_count = merged_cells_str.len();
 

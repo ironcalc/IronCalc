@@ -744,7 +744,7 @@ impl Model {
         self.workbook.worksheet(sheet)?.is_empty_cell(row, column)
     }
 
-    /// Returns 'true' if the cell belongs to Merge cell
+    /// Returns 'true' if the cell belongs to any Merged cells
     /// # Examples
     ///
     /// ```rust
@@ -752,14 +752,19 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// model.merge_cells(0, "A1:D5");
-    /// assert_eq!(model.is_part_of_merge_cell(0, 1, 2)?, true);
+    /// assert_eq!(model.is_part_of_merged_cells(0, 1, 2)?, true);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn is_part_of_merge_cell(&self, sheet: u32, row: i32, column: i32) -> Result<bool, String> {
+    pub fn is_part_of_merged_cells(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<bool, String> {
         self.workbook
             .worksheet(sheet)?
-            .is_part_of_merge_cell(row, column)
+            .is_part_of_merged_cells(row, column)
     }
 
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
@@ -1241,9 +1246,9 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        if self.is_part_of_merge_cell(sheet, row, column)? {
+        if self.is_part_of_merged_cells(sheet, row, column)? {
             return Err(format!(
-                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                "Cell row : {}, col : {} is part of merged cells block, so singular update to the cell is not possible",
                 row, column
             ));
         }
@@ -1299,9 +1304,9 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        if self.is_part_of_merge_cell(sheet, row, column)? {
+        if self.is_part_of_merged_cells(sheet, row, column)? {
             return Err(format!(
-                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                "Cell row : {}, col : {} is part of merged cells block, so singular update to the cell is not possible",
                 row, column
             ));
         }
@@ -1350,9 +1355,9 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        if self.is_part_of_merge_cell(sheet, row, column)? {
+        if self.is_part_of_merged_cells(sheet, row, column)? {
             return Err(format!(
-                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                "Cell row : {}, col : {} is part of merged cells block, so singular update to the cell is not possible",
                 row, column
             ));
         }
@@ -1401,9 +1406,9 @@ impl Model {
         column: i32,
         formula: String,
     ) -> Result<(), String> {
-        if self.is_part_of_merge_cell(sheet, row, column)? {
+        if self.is_part_of_merged_cells(sheet, row, column)? {
             return Err(format!(
-                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                "Cell row : {}, col : {} is part of merged cells block, so singular update to the cell is not possible",
                 row, column
             ));
         }
@@ -1461,9 +1466,9 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        if self.is_part_of_merge_cell(sheet, row, column)? {
+        if self.is_part_of_merged_cells(sheet, row, column)? {
             return Err(format!(
-                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                "Cell row : {}, col : {} is part of merged cells block, so singular update to the cell is not possible",
                 row, column
             ));
         }
@@ -2058,12 +2063,12 @@ impl Model {
         }
     }
 
-    // Implementing public APIS related to Merge cell handling
+    // Implementing public APIS related to Merge cells handling
 
-    /// Creates or updates Merge cell block
-    /// If no overlap, it will create that merge cell with left most top cell value representing the whole merge cell
-    /// If new merge cell creation overlaps with any of the existing merge cell, Overlapped merge cells gets unmerged
-    /// and new merge cell gets added
+    /// Merges given selected cells
+    /// If no overlap, it will create that merged cells with left most top cell value representing the whole merged cells
+    /// If new merge cells creation overlaps with any of the existing merged cells, Overlapped merged cells gets unmerged
+    /// and new merge cells gets added
     ///
     /// # Examples
     ///
@@ -2074,7 +2079,7 @@ impl Model {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// model.merge_cells(0, "D4:F6").unwrap();
     /// model.merge_cells(0, "A1:B4").unwrap();
-    /// assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 2);
+    /// assert_eq!(model.workbook.worksheet(0).unwrap().merged_cells_list.len(), 2);
     /// # Ok(())
     /// # }
     /// ```
@@ -2085,7 +2090,6 @@ impl Model {
     /// * [Model::update_cell_with_bool()]
     /// * [Model::update_cell_with_text()]
     pub fn merge_cells(&mut self, sheet: u32, range_ref: &str) -> Result<(), String> {
-        // ATTENTION : below parse_range implementation gives (col_start, row_start, col_end, row_end)
         match self.parse_merged_range(range_ref) {
             Ok(parsed_merge_cell_range) => {
                 // ATTENTION 2: Below thing we can support here but keeping it simple
@@ -2102,34 +2106,35 @@ impl Model {
                     );
                 }
 
-                let mut merge_cells_overlap: Vec<bool> = Vec::new();
-                // checking whether our new range overlaps with any of the already existing merge cells
+                let mut merged_cells_overlaped_list: Vec<bool> = Vec::new();
+                // checking whether our new range overlaps with any of the already existing merged cells
                 // if so, need to unmerge those and create this new one
                 {
                     let worksheet = self.workbook.worksheet(sheet)?;
-                    let merged_cells = worksheet.get_merge_cell_vec();
+                    let merged_cells = worksheet.get_merged_cells_list();
 
                     for merge_node in merged_cells {
                         // checking whether any overlapping exist with this merge cell
-                        if !(parsed_merge_cell_range.1 > merge_node.get_col_end()
-                            || parsed_merge_cell_range.3 < merge_node.get_col_start()
-                            || parsed_merge_cell_range.0 > merge_node.get_row_end()
-                            || parsed_merge_cell_range.2 < merge_node.get_row_start())
+                        if !(parsed_merge_cell_range.1 > merge_node.3
+                            || parsed_merge_cell_range.3 < merge_node.1
+                            || parsed_merge_cell_range.0 > merge_node.2
+                            || parsed_merge_cell_range.2 < merge_node.0)
                         {
                             // overlap has happened
-                            merge_cells_overlap.push(true);
+                            merged_cells_overlaped_list.push(true);
                         } else {
-                            merge_cells_overlap.push(false);
+                            merged_cells_overlaped_list.push(false);
                         }
                     }
                 }
 
-                if !merge_cells_overlap.is_empty() {
+                if !merged_cells_overlaped_list.is_empty() {
                     // Lets take Mutable ref to Merge cell and deletes all those nodes which has overlapped
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
-                    let merged_cells = worksheet.get_merge_cell_vec_mut();
-                    let mut merge_cells_overlap_iter = merge_cells_overlap.iter();
-                    merged_cells.retain(|_| !(*merge_cells_overlap_iter.next().unwrap()))
+                    let merged_cells_list_mut = worksheet.get_merged_cells_list_mut();
+                    let mut merged_cells_overlaped_list_iter = merged_cells_overlaped_list.iter();
+                    merged_cells_list_mut
+                        .retain(|_| !(*merged_cells_overlaped_list_iter.next().unwrap()))
                 }
 
                 // Now need to update (n*m - 1) cells with empty cell ( except the Mother cell )
@@ -2153,12 +2158,12 @@ impl Model {
                     }
                 }
 
-                let new_merge_range = MergedRange::new(parsed_merge_cell_range);
+                let new_merged_cells = MergedCells::new(parsed_merge_cell_range);
                 {
                     self.workbook
                         .worksheet_mut(sheet)?
-                        .merge_cells
-                        .push(new_merge_range);
+                        .merged_cells_list
+                        .push(new_merged_cells);
                 }
             }
             Err(err) => {
@@ -2168,7 +2173,7 @@ impl Model {
         Ok(())
     }
 
-    /// Unmerges a given merge cells
+    /// Unmerges a given/selected merged cells
     /// Once unmerged, only top most left corner value gets retained and all the others will have empty cell
     /// # Examples
     ///
@@ -2184,20 +2189,20 @@ impl Model {
     /// ```
     pub fn unmerge_cells(&mut self, sheet: u32, range_ref: &str) -> Result<(), String> {
         let worksheet = self.workbook.worksheet(sheet)?;
-        let merged_cells = worksheet.get_merge_cell_vec();
+        let merged_cells = worksheet.get_merged_cells_list();
         for (index, merge_node) in merged_cells.iter().enumerate() {
-            let merge_block_range_ref = merge_node.get_merge_range_as_str();
+            let merge_block_range_ref = merge_node.get_merged_cells_str_ref()?;
             // finding the merge cell node to be deleted
             if merge_block_range_ref.as_str() == range_ref {
                 // Merge cell to be deleted is found
                 self.workbook
                     .worksheet_mut(sheet)?
-                    .merge_cells
+                    .merged_cells_list
                     .remove(index);
                 return Ok(());
             }
         }
-        Err("Invalid merge_cell_ref, Merge cell to be deleted is not found".to_string())
+        Err("Invalid merge_cell_ref, Merged cells to be deleted is not found".to_string())
     }
 }
 

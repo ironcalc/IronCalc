@@ -225,9 +225,9 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        if self.is_part_of_merge_cell(sheet, row, column)? {
+        if self.is_part_of_merged_cells(sheet, row, column)? {
             return Err(format!(
-                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                "Cell row : {}, col : {} is part of merged cells block, so singular update to the cell is not possible",
                 row, column
             ));
         }
@@ -262,9 +262,9 @@ impl Model {
     ) -> Result<(), String> {
         // Checking first whether cell we are updating is part of Merged cells
         // if so returning with Err
-        if self.is_part_of_merge_cell(sheet, row, column)? {
+        if self.is_part_of_merged_cells(sheet, row, column)? {
             return Err(format!(
-                "Cell row : {}, col : {} is part of merged cell block, so singular update to the cell is not possible",
+                "Cell row : {}, col : {} is part of merged cells block, so singular update to the cell is not possible",
                 row, column
             ));
         }

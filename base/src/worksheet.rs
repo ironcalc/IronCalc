@@ -523,16 +523,16 @@ impl Worksheet {
     }
 
     /// Returns true if cell part of Merged Cells.
-    /// First cell of Merge block is not considered as part of Merge cell
-    /// Ex : if Merge cells were A1-C3, A1 is not considered as part of Merge cell
-    pub fn is_part_of_merge_cell(&self, row: i32, column: i32) -> Result<bool, String> {
+    /// First cell of Merged cells block is not considered as part of Merged cells
+    /// Ex : if Merged cells were A1-C3, A1 is not considered as part of Merged cells block
+    pub fn is_part_of_merged_cells(&self, row: i32, column: i32) -> Result<bool, String> {
         if !is_valid_column_number(column) || !is_valid_row(row) {
             return Err("Incorrect row or column".to_string());
         }
 
         // traverse through Vector of Merged Cells and return (linear search)
-        for merge_cell in &self.merge_cells {
-            if merge_cell.is_cell_part_of_merge_cell(row, column) {
+        for merged_cells in &self.merged_cells_list {
+            if merged_cells.is_cell_part_of_merged_cells(row, column) {
                 return Ok(true);
             }
         }
@@ -593,14 +593,14 @@ impl Worksheet {
         }
     }
 
-    /// Returns mutable reference to Vector of Merge cells
-    pub fn get_merge_cell_vec_mut(&mut self) -> &mut Vec<MergedRange> {
-        &mut self.merge_cells
+    /// Returns mutable reference to Vector of Merged cells list
+    pub fn get_merged_cells_list_mut(&mut self) -> &mut Vec<MergedCells> {
+        &mut self.merged_cells_list
     }
 
-    /// Returns reference to Vector of Merge cells
-    pub fn get_merge_cell_vec(&self) -> &Vec<MergedRange> {
-        &self.merge_cells
+    /// Returns reference to Vector of Merged cells list
+    pub fn get_merged_cells_list(&self) -> &Vec<MergedCells> {
+        &self.merged_cells_list
     }
 }
 
