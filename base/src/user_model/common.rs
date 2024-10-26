@@ -1275,18 +1275,31 @@ impl UserModel {
         &mut self,
         source_range: ClipboardTuple,
         clipboard: &ClipboardData,
+        is_cut: bool,
     ) -> Result<(), String> {
         let mut diff_list = Vec::new();
         let view = self.get_selected_view();
-        let (source_first_row, source_first_column, _, _) = source_range;
+        let (source_first_row, source_first_column, source_last_row, source_last_column) =
+            source_range;
         let sheet = view.sheet;
         let [selected_row, selected_column, _, _] = view.range;
+        let mut max_row = selected_row;
+        let mut max_column = selected_column;
+        let area = &Area {
+            sheet,
+            row: source_first_row,
+            column: source_first_column,
+            width: source_last_column - source_first_column + 1,
+            height: source_last_row - source_first_row + 1,
+        };
         for (source_row, data_row) in clipboard {
             let delta_row = source_row - source_first_row;
             let target_row = selected_row + delta_row;
+            max_row = max_row.max(target_row);
             for (source_column, value) in data_row {
                 let delta_column = source_column - source_first_column;
                 let target_column = selected_column + delta_column;
+                max_column = max_column.max(target_column);
 
                 // We are copying the value in
                 // (source_row, source_column) to (target_row , target_column)
@@ -1303,9 +1316,13 @@ impl UserModel {
                     column: target_column,
                     row: target_row,
                 };
-                let new_value = self
-                    .model
-                    .extend_copied_value(&value.text, source, target)?;
+                let new_value = if is_cut {
+                    self.model
+                        .move_cell_value_to_area(&value.text, source, target, area)?
+                } else {
+                    self.model
+                        .extend_copied_value(&value.text, source, target)?
+                };
 
                 let old_value = self
                     .model
@@ -1340,7 +1357,28 @@ impl UserModel {
                 });
             }
         }
+        if is_cut {
+            for row in source_first_row..=source_last_row {
+                for column in source_first_column..=source_last_column {
+                    let old_value = self
+                        .model
+                        .workbook
+                        .worksheet(sheet)?
+                        .cell(row, column)
+                        .cloned();
+                    diff_list.push(Diff::CellClearContents {
+                        sheet,
+                        row,
+                        column,
+                        old_value: Box::new(old_value),
+                    });
+                    self.model.cell_clear_contents(sheet, row, column)?;
+                }
+            }
+        }
         self.push_diff_list(diff_list);
+        // select the pasted area
+        self.set_selected_range(selected_row, selected_column, max_row, max_column)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -1350,6 +1388,7 @@ impl UserModel {
         let mut diff_list = Vec::new();
         let sheet = area.sheet;
         let mut row = area.row;
+        let mut column = area.column;
         // Create a sniffer with default settings
         let mut sniffer = Sniffer::new();
         let mut csv_reader = Cursor::new(csv);
@@ -1367,7 +1406,7 @@ impl UserModel {
         for record in reader.records() {
             match record {
                 Ok(r) => {
-                    let mut column = area.column;
+                    column = area.column;
                     for value in &r {
                         let old_value = self
                             .model
@@ -1397,6 +1436,8 @@ impl UserModel {
             row += 1;
         }
         self.push_diff_list(diff_list);
+        // select the pasted area
+        self.set_selected_range(area.row, area.column, row, column)?;
         self.evaluate_if_not_paused();
         Ok(())
     }

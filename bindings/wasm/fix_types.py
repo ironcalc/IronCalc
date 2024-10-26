@@ -171,16 +171,18 @@ paste_from_clipboard = r"""
 /**
 * @param {any} source_range
 * @param {any} clipboard
+* @param {boolean} is_cut
 */
-  pasteFromClipboard(source_range: any, clipboard: any): void;
+  pasteFromClipboard(source_range: any, clipboard: any, is_cut: boolean): void;
 """
 
 paste_from_clipboard_types = r"""
 /**
 * @param {[number, number, number, number]} source_range
 * @param {ClipboardData} clipboard
+* @param {boolean} is_cut
 */
-  pasteFromClipboard(source_range: [number, number, number, number], clipboard: ClipboardData): void;
+  pasteFromClipboard(source_range: [number, number, number, number], clipboard: ClipboardData, is_cut: boolean): void;
 """
 
 def fix_types(text):

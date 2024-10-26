@@ -15,6 +15,14 @@
 
 import type { CellStyle } from "@ironcalc/wasm";
 
+export interface CutRange {
+  sheet: number;
+  rowStart: number;
+  rowEnd: number;
+  columnStart: number;
+  columnEnd: number;
+}
+
 export enum AreaType {
   rowsDown = 0,
   columnsRight = 1,
@@ -83,12 +91,14 @@ export class WorkbookState {
   private extendToArea: Area | null;
   private copyStyles: AreaStyles | null;
   private cell: EditingCell | null;
+  private cutRange: CutRange | null;
 
   constructor() {
     // the extendTo area is the area we are covering
     this.extendToArea = null;
     this.copyStyles = null;
     this.cell = null;
+    this.cutRange = null;
   }
 
   getExtendToArea(): Area | null {
@@ -154,5 +164,17 @@ export class WorkbookState {
       return cell.text + (cell.referencedRange?.str || "");
     }
     return "";
+  }
+
+  setCutRange(range: CutRange): void {
+    this.cutRange = range;
+  }
+
+  clearCutRange(): void {
+    this.cutRange = null;
+  }
+
+  getCutRange(): CutRange | null {
+    return this.cutRange;
   }
 }

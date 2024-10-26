@@ -512,13 +512,14 @@ impl Model {
         &mut self,
         source_range: JsValue,
         clipboard: JsValue,
+        is_cut: bool,
     ) -> Result<(), JsError> {
         let source_range: (i32, i32, i32, i32) =
             serde_wasm_bindgen::from_value(source_range).map_err(|e| to_js_error(e.to_string()))?;
         let clipboard: ClipboardData =
             serde_wasm_bindgen::from_value(clipboard).map_err(|e| to_js_error(e.to_string()))?;
         self.model
-            .paste_from_clipboard(source_range, &clipboard)
+            .paste_from_clipboard(source_range, &clipboard, is_cut)
             .map_err(|e| to_js_error(e.to_string()))
     }
 
