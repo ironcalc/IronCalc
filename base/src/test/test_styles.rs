@@ -68,7 +68,7 @@ fn test_model_style_set_fns_in_merge_cell_context() {
     let mut model = new_empty_model();
 
     //creating a merge cell of D1:F2
-    model.update_merge_cell(0, "D1:F2").unwrap();
+    model.merge_cells(0, "D1:F2").unwrap();
     model.set_user_input(0, 1, 4, "Hello".to_string()).unwrap();
 
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();

@@ -751,7 +751,7 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
-    /// model.update_merge_cell(0, "A1:D5");
+    /// model.merge_cells(0, "A1:D5");
     /// assert_eq!(model.is_part_of_merge_cell(0, 1, 2)?, true);
     /// # Ok(())
     /// # }
@@ -2072,8 +2072,8 @@ impl Model {
     /// # use ironcalc_base::cell::CellValue;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
-    /// model.update_merge_cell(0, "D4:F6").unwrap();
-    /// model.update_merge_cell(0, "A1:B4").unwrap();
+    /// model.merge_cells(0, "D4:F6").unwrap();
+    /// model.merge_cells(0, "A1:B4").unwrap();
     /// assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 2);
     /// # Ok(())
     /// # }
@@ -2084,7 +2084,7 @@ impl Model {
     /// * [Model::update_cell_with_number()]
     /// * [Model::update_cell_with_bool()]
     /// * [Model::update_cell_with_text()]
-    pub fn update_merge_cell(&mut self, sheet: u32, range_ref: &str) -> Result<(), String> {
+    pub fn merge_cells(&mut self, sheet: u32, range_ref: &str) -> Result<(), String> {
         // ATTENTION : below parse_range implementation gives (col_start, row_start, col_end, row_end)
         match self.parse_merged_range(range_ref) {
             Ok(parsed_merge_cell_range) => {
@@ -2177,7 +2177,7 @@ impl Model {
     /// # use ironcalc_base::cell::CellValue;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
-    /// model.update_merge_cell(0, "D4:F6");
+    /// model.merge_cells(0, "D4:F6");
     /// model.unmerge_merged_cells(0, "D4:F6");
     /// # Ok(())
     /// # }

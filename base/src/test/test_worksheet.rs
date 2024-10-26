@@ -291,7 +291,7 @@ fn test_merge_cell_fns_worksheet() {
     let mut model = new_empty_model();
 
     // Adding one Merge cell
-    model.update_merge_cell(0, "D1:E3").unwrap();
+    model.merge_cells(0, "D1:E3").unwrap();
 
     // Lets check whether D1 (Mother Merge cell) is part of Merge block or not
     // It should not be considered as part of Merge cell

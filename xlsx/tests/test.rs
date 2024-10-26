@@ -479,7 +479,7 @@ fn test_merge_cell_import_export_behaviors() {
     );
 
     // Create one More Merge cell which Overlaps with 3 More
-    model.update_merge_cell(0, "A1:D5").unwrap();
+    model.merge_cells(0, "A1:D5").unwrap();
     model
         .set_user_input(0, 1, 1, "New overlapped Merge cell".to_string())
         .unwrap();

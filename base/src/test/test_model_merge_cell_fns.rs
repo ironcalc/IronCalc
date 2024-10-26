@@ -7,7 +7,7 @@ fn test_model_set_fns_related_to_merge_cells() {
     let mut model = new_empty_model();
 
     //creating a merge cell of D1:F2
-    model.update_merge_cell(0, "D1:F2").unwrap();
+    model.merge_cells(0, "D1:F2").unwrap();
 
     //Updating the mother cell of Merge cells and expecting the update to go through
     model.set_user_input(0, 1, 4, "Hello".to_string()).unwrap();
@@ -69,7 +69,7 @@ fn test_model_merge_cells_crud_api() {
     let mut model = new_empty_model();
 
     //creating a merge cell of D4:F6
-    model.update_merge_cell(0, "D4:F6").unwrap();
+    model.merge_cells(0, "D4:F6").unwrap();
     model
         .set_user_input(0, 4, 4, "Merge Block".to_string())
         .unwrap();
@@ -77,27 +77,27 @@ fn test_model_merge_cells_crud_api() {
 
     // Case1: Creating a new merge cell without overlapping
     // Newly created Merge block is left to D4:F6
-    assert_eq!(model.update_merge_cell(0, "A1:B4"), Ok(()));
+    assert_eq!(model.merge_cells(0, "A1:B4"), Ok(()));
     assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 2);
     model.set_user_input(0, 1, 1, "left".to_string()).unwrap();
 
     // Newly created Merge block is right to D4:F6
-    assert_eq!(model.update_merge_cell(0, "G1:H7"), Ok(()));
+    assert_eq!(model.merge_cells(0, "G1:H7"), Ok(()));
     assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 3);
     model.set_user_input(0, 1, 7, "right".to_string()).unwrap();
 
     // Newly created Merge block is above to D4:F6
-    assert_eq!(model.update_merge_cell(0, "C1:D3"), Ok(()));
+    assert_eq!(model.merge_cells(0, "C1:D3"), Ok(()));
     assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 4);
     model.set_user_input(0, 1, 3, "top".to_string()).unwrap();
 
     // Newly created Merge block is down to D4:F6
-    assert_eq!(model.update_merge_cell(0, "D8:E9"), Ok(()));
+    assert_eq!(model.merge_cells(0, "D8:E9"), Ok(()));
     assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 5);
     model.set_user_input(0, 8, 4, "down".to_string()).unwrap();
 
     //Case2: Creating a new merge cell with overlapping with other 3 merged cell
-    assert_eq!(model.update_merge_cell(0, "C1:G4"), Ok(()));
+    assert_eq!(model.merge_cells(0, "C1:G4"), Ok(()));
     assert_eq!(model.workbook.worksheet(0).unwrap().merge_cells.len(), 3);
     model
         .set_user_input(0, 1, 3, "overlapped_new_merge_block".to_string())
@@ -105,27 +105,27 @@ fn test_model_merge_cells_crud_api() {
 
     // Case3: Giving wrong parsing range
     assert_eq!(
-        model.update_merge_cell(0, "C3:A1"),
+        model.merge_cells(0, "C3:A1"),
         Err("Invalid parse range. Merge Mother cell always be top left cell".to_string())
     );
     assert_eq!(
-        model.update_merge_cell(0, "CA:A1"),
+        model.merge_cells(0, "CA:A1"),
         Err("Invalid range: 'CA:A1'".to_string())
     );
     assert_eq!(
-        model.update_merge_cell(0, "C0:A1"),
+        model.merge_cells(0, "C0:A1"),
         Err("Invalid range: 'C0:A1'".to_string())
     );
     assert_eq!(
-        model.update_merge_cell(0, "C1:A0"),
+        model.merge_cells(0, "C1:A0"),
         Err("Invalid range: 'C1:A0'".to_string())
     );
     assert_eq!(
-        model.update_merge_cell(0, "C1"),
+        model.merge_cells(0, "C1"),
         Err("Invalid range: 'C1'".to_string())
     );
     assert_eq!(
-        model.update_merge_cell(0, "C1:A1:B1"),
+        model.merge_cells(0, "C1:A1:B1"),
         Err("Invalid range: 'C1:A1:B1'".to_string())
     );
 
