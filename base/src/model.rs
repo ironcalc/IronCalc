@@ -2178,11 +2178,11 @@ impl Model {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC")?;
     /// model.merge_cells(0, "D4:F6");
-    /// model.unmerge_merged_cells(0, "D4:F6");
+    /// model.unmerge_cells(0, "D4:F6");
     /// # Ok(())
     /// # }
     /// ```
-    pub fn unmerge_merged_cells(&mut self, sheet: u32, range_ref: &str) -> Result<(), String> {
+    pub fn unmerge_cells(&mut self, sheet: u32, range_ref: &str) -> Result<(), String> {
         let worksheet = self.workbook.worksheet(sheet)?;
         let merged_cells = worksheet.get_merge_cell_vec();
         for (index, merge_node) in merged_cells.iter().enumerate() {

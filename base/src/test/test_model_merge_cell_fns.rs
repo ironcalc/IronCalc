@@ -131,10 +131,10 @@ fn test_model_merge_cells_crud_api() {
 
     // Case3: Giving wrong merge_ref, which would resulting in error (Merge cell to be deleted is not found)
     assert_eq!(
-        model.unmerge_merged_cells(0, "C1:E1"),
+        model.unmerge_cells(0, "C1:E1"),
         Err("Invalid merge_cell_ref, Merge cell to be deleted is not found".to_string())
     );
 
     // Case4: unmerge scenario
-    assert_eq!(model.unmerge_merged_cells(0, "C1:G4"), Ok(()));
+    assert_eq!(model.unmerge_cells(0, "C1:G4"), Ok(()));
 }
