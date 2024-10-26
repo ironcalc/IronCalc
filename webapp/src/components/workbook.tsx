@@ -28,7 +28,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
-  // This is needed because `model` can change without React being aware of it
+  // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
   const info = model
     .getWorksheetsProperties()
@@ -293,6 +293,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         model.setSelectedSheet(nextSheet);
       }
     },
+    onEscape: (): void => {
+      workbookState.clearCutRange();
+      setRedrawId((id) => id + 1);
+    },
     root: rootRef,
   });
 
@@ -346,6 +350,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }
       }}
       onPaste={(event: React.ClipboardEvent) => {
+        workbookState.clearCutRange();
         const { items } = event.clipboardData;
         if (!items) {
           return;
@@ -385,7 +390,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             }
             data.set(Number.parseInt(row, 10), rowMap);
           }
-          model.pasteFromClipboard(source.area, data);
+          model.pasteFromClipboard(source.area, data, source.type === "cut");
           setRedrawId((id) => id + 1);
         } else if (mimeType === "text/plain") {
           const {
@@ -445,7 +450,50 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         event.preventDefault();
         event.stopPropagation();
       }}
-      onCut={() => {}}
+      onCut={(event: React.ClipboardEvent) => {
+        const data = model.copyToClipboard();
+        // '2024-10-18T14:07:37.599Z'
+
+        let clipboardId = sessionStorage.getItem(
+          CLIPBOARD_ID_SESSION_STORAGE_KEY,
+        );
+        if (!clipboardId) {
+          clipboardId = getNewClipboardId();
+          sessionStorage.setItem(CLIPBOARD_ID_SESSION_STORAGE_KEY, clipboardId);
+        }
+        const sheetData: {
+          [row: number]: {
+            [column: number]: ClipboardCell;
+          };
+        } = {};
+        data.data.forEach((value, row) => {
+          const rowData: {
+            [column: number]: ClipboardCell;
+          } = {};
+          value.forEach((val, column) => {
+            rowData[column] = val;
+          });
+          sheetData[row] = rowData;
+        });
+        const clipboardJsonStr = JSON.stringify({
+          type: "cut",
+          area: data.range,
+          sheetData,
+          clipboardId,
+        });
+        event.clipboardData.setData("text/plain", data.csv);
+        event.clipboardData.setData("application/json", clipboardJsonStr);
+        workbookState.setCutRange({
+          sheet: model.getSelectedSheet(),
+          rowStart: data.range[0],
+          rowEnd: data.range[2],
+          columnStart: data.range[1],
+          columnEnd: data.range[3],
+        });
+        event.preventDefault();
+        event.stopPropagation();
+        setRedrawId((id) => id + 1);
+      }}
     >
       <Toolbar
         canUndo={model.canUndo()}

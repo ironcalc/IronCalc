@@ -1239,6 +1239,35 @@ export default class WorksheetCanvas {
     cellOutlineHandle.style.top = `${handleY - handleHeight / 2 - 1}px`;
   }
 
+  private drawCutRange(): void {
+    const range = this.workbookState.getCutRange() || null;
+    if (!range) {
+      return;
+    }
+    const selectedSheet = this.model.getSelectedSheet();
+    if (range.sheet !== selectedSheet) {
+      return;
+    }
+    const ctx = this.ctx;
+    ctx.setLineDash([2, 2]);
+
+    const [xStart, yStart] = this.getCoordinatesByCell(
+      range.rowStart,
+      range.columnStart,
+    );
+    const [xEnd, yEnd] = this.getCoordinatesByCell(
+      range.rowEnd + 1,
+      range.columnEnd + 1,
+    );
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
+    // ctx.fillStyle = hexToRGBA10Percent(range.color);
+    // ctx.fillRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
+
+    ctx.setLineDash([]);
+  }
+
   private drawActiveRanges(topLeftCell: Cell, bottomRightCell: Cell): void {
     let activeRanges = this.workbookState.getActiveRanges();
     const ctx = this.ctx;
@@ -1437,5 +1466,6 @@ export default class WorksheetCanvas {
     this.drawCellEditor();
     this.drawExtendToArea();
     this.drawActiveRanges(topLeftCell, bottomRightCell);
+    this.drawCutRange();
   }
 }

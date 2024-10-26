@@ -15,6 +15,7 @@ fn csv_paste() {
         width: 1,
         height: 1,
     };
+    model.set_selected_cell(4, 2).unwrap();
     model.paste_csv_string(&area, csv).unwrap();
 
     assert_eq!(
@@ -38,6 +39,7 @@ fn tsv_crlf_paste() {
         width: 1,
         height: 1,
     };
+    model.set_selected_cell(4, 2).unwrap();
     model.paste_csv_string(&area, csv).unwrap();
 
     assert_eq!(
@@ -79,7 +81,7 @@ fn copy_paste_internal() {
 
     // paste in cell D4 (4, 4)
     model
-        .paste_from_clipboard((1, 1, 2, 2), &copy.data)
+        .paste_from_clipboard((1, 1, 2, 2), &copy.data, false)
         .unwrap();
 
     assert_eq!(model.get_cell_content(0, 4, 4), Ok("42".to_string()));

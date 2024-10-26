@@ -31,6 +31,7 @@ interface Options {
   onRedo: () => void;
   onNextSheet: () => void;
   onPreviousSheet: () => void;
+  onEscape: () => void;
   root: RefObject<HTMLDivElement>;
 }
 
@@ -211,6 +212,9 @@ const useKeyboardNavigation = (
           options.onPageUp();
 
           break;
+        }
+        case "Escape": {
+          options.onEscape();
         }
         // No default
       }
