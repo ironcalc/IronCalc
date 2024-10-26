@@ -438,7 +438,7 @@ export const StyledButton = styled("button")<TypeButtonProperties>(
 const Divider = styled("div")({
   width: "0px",
   height: "10px",
-  borderLeft: "1px solid #D3D6E9",
+  borderLeft: "1px solid #E0E0E0",
   marginLeft: "5px",
   marginRight: "10px",
 });
