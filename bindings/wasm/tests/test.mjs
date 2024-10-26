@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert'
 import { Model } from "../pkg/wasm.js";
 
+const DEFAULT_ROW_HEIGHT = 28;
+
 test('Frozen rows and columns', () => {
     let model = new Model('Workbook1', 'en', 'UTC');
     assert.strictEqual(model.getFrozenRowsCount(0), 0);
@@ -16,13 +18,13 @@ test('Frozen rows and columns', () => {
 
 test('Row height', () => {
     let model = new Model('Workbook1', 'en', 'UTC');
-    assert.strictEqual(model.getRowHeight(0, 3), 22);
+    assert.strictEqual(model.getRowHeight(0, 3), DEFAULT_ROW_HEIGHT);
 
     model.setRowHeight(0, 3, 32);
     assert.strictEqual(model.getRowHeight(0, 3), 32);
 
     model.undo();
-    assert.strictEqual(model.getRowHeight(0, 3), 22);
+    assert.strictEqual(model.getRowHeight(0, 3), DEFAULT_ROW_HEIGHT);
 
     model.redo();
     assert.strictEqual(model.getRowHeight(0, 3), 32);

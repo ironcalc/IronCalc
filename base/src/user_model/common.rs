@@ -7,7 +7,7 @@ use csv_sniffer::Sniffer;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    constants,
+    constants::{self, DEFAULT_ROW_HEIGHT},
     expressions::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
@@ -374,7 +374,7 @@ impl UserModel {
 
         let line_count = value.split("\n").count();
         let row_height = self.model.get_row_height(sheet, row)?;
-        let cell_height = (line_count * 22) as f64;
+        let cell_height = (line_count as f64) * DEFAULT_ROW_HEIGHT;
         if cell_height > row_height {
             diff_list.push(Diff::SetRowHeight {
                 sheet,
