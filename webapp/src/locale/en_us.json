@@ -15,7 +15,6 @@
     "format_number": "Format number",
     "font_color": "Font color",
     "fill_color": "Fill color",
-    "borders": "Borders",
     "decimal_places_increase": "Increase decimal places",
     "decimal_places_decrease": "Decrease decimal places",
     "show_hide_grid_lines": "Show/hide grid lines",
@@ -39,6 +38,21 @@
       "currency_gbp_example": "£",
       "date_short_example": "09/24/2024",
       "date_long_example": "Tuesday, September 24, 2024"
+    },
+    "borders": {
+      "title": "Borders",
+      "all": "All borders",
+      "inner": "Inner borders",
+      "outer": "Outer borders",
+      "top": "Top borders",
+      "bottom": "Bottom borders",
+      "clear": "Clear borders",
+      "left": "Left borders",
+      "right": "Right borders",
+      "horizontal": "Horizontal borders",
+      "vertical": "Vertical borders",
+      "color": "Border color",
+      "style": "Border style"
     }
   },
   "num_fmt": {

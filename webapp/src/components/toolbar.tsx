@@ -325,7 +325,7 @@ function Toolbar(properties: ToolbarProperties) {
         onClick={() => setBorderPickerOpen(true)}
         ref={borderButton}
         disabled={!canEdit}
-        title={t("toolbar.borders")}
+        title={t("toolbar.borders.title")}
       >
         <Grid2X2 />
       </StyledButton>
@@ -369,6 +369,8 @@ function Toolbar(properties: ToolbarProperties) {
       <BorderPicker
         onChange={(border): void => {
           properties.onBorderChanged(border);
+        }}
+        onClose={() => {
           setBorderPickerOpen(false);
         }}
         anchorEl={borderButton}
