@@ -51,6 +51,84 @@ fn borders_all() {
         }
     }
 
+    // let's check the borders around
+    {
+        let row = 4;
+        for column in 6..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let border_item = BorderItem {
+                style: BorderStyle::Thin,
+                color: Some("#FF5566".to_string()),
+            };
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: None,
+                top: None,
+                bottom: Some(border_item.clone()),
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+        let row = 9;
+        for column in 6..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let border_item = BorderItem {
+                style: BorderStyle::Thin,
+                color: Some("#FF5566".to_string()),
+            };
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: None,
+                top: Some(border_item.clone()),
+                bottom: None,
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+    }
+    {
+        let column = 5;
+        for row in 5..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let border_item = BorderItem {
+                style: BorderStyle::Thin,
+                color: Some("#FF5566".to_string()),
+            };
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: Some(border_item.clone()),
+                top: None,
+                bottom: None,
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+        let column = 9;
+        for row in 5..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let border_item = BorderItem {
+                style: BorderStyle::Thin,
+                color: Some("#FF5566".to_string()),
+            };
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: Some(border_item.clone()),
+                right: None,
+                top: None,
+                bottom: None,
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+    }
+
     // Lets remove all of them:
     let border_area: BorderArea = serde_json::from_str(
         r##"{
@@ -63,8 +141,8 @@ fn borders_all() {
     )
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
-    for row in 5..9 {
-        for column in 6..9 {
+    for row in 4..10 {
+        for column in 5..10 {
             let style = model.get_cell_style(0, row, column).unwrap();
             let expected_border = Border {
                 diagonal_up: false,
@@ -229,6 +307,84 @@ fn borders_outer() {
         };
         assert_eq!(style.border, expected_border);
     }
+
+    // let's check the borders around
+    {
+        let row = 4;
+        for column in 6..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let border_item = BorderItem {
+                style: BorderStyle::Thin,
+                color: Some("#FF5566".to_string()),
+            };
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: None,
+                top: None,
+                bottom: Some(border_item.clone()),
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+        let row = 9;
+        for column in 6..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let border_item = BorderItem {
+                style: BorderStyle::Thin,
+                color: Some("#FF5566".to_string()),
+            };
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: None,
+                top: Some(border_item.clone()),
+                bottom: None,
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+    }
+    {
+        let column = 5;
+        for row in 5..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let border_item = BorderItem {
+                style: BorderStyle::Thin,
+                color: Some("#FF5566".to_string()),
+            };
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: Some(border_item.clone()),
+                top: None,
+                bottom: None,
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+        let column = 9;
+        for row in 5..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let border_item = BorderItem {
+                style: BorderStyle::Thin,
+                color: Some("#FF5566".to_string()),
+            };
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: Some(border_item.clone()),
+                right: None,
+                top: None,
+                bottom: None,
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+    }
 }
 
 #[test]
@@ -269,6 +425,72 @@ fn borders_top() {
                 left: None,
                 right: None,
                 top: Some(border_item.clone()),
+                bottom: None,
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+    }
+
+    // let's check the borders around
+    {
+        let row = 4;
+        for column in 6..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let border_item = BorderItem {
+                style: BorderStyle::Thin,
+                color: Some("#FF5566".to_string()),
+            };
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: None,
+                top: None,
+                bottom: Some(border_item.clone()),
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+        let row = 9;
+        for column in 6..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: None,
+                top: None,
+                bottom: None,
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+    }
+    {
+        let column = 5;
+        for row in 5..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: None,
+                top: None,
+                bottom: None,
+                diagonal: None,
+            };
+            assert_eq!(style.border, expected_border);
+        }
+        let column = 9;
+        for row in 5..9 {
+            let style = model.get_cell_style(0, row, column).unwrap();
+            let expected_border = Border {
+                diagonal_up: false,
+                diagonal_down: false,
+                left: None,
+                right: None,
+                top: None,
                 bottom: None,
                 diagonal: None,
             };

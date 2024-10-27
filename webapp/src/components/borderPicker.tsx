@@ -7,7 +7,7 @@ import {
   PencilLine,
 } from "lucide-react";
 import type React from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BorderBottomIcon,
@@ -27,6 +27,7 @@ import ColorPicker from "./colorPicker";
 type BorderPickerProps = {
   className?: string;
   onChange: (border: BorderOptions) => void;
+  onClose: () => void;
   anchorEl: React.RefObject<HTMLElement>;
   anchorOrigin?: PopoverOrigin;
   transformOrigin?: PopoverOrigin;
@@ -36,25 +37,33 @@ type BorderPickerProps = {
 const BorderPicker = (properties: BorderPickerProps) => {
   const { t } = useTranslation();
 
-  const [borderSelected, setBorderSelected] = useState(BorderType.None);
+  const [borderSelected, setBorderSelected] = useState<BorderType | null>(null);
   const [borderColor, setBorderColor] = useState("#000000");
   const [borderStyle, setBorderStyle] = useState(BorderStyle.Thin);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [stylePickerOpen, setStylePickerOpen] = useState(false);
-  const closePicker = (): void => {
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    if (!borderSelected) {
+      return;
+    }
     properties.onChange({
       color: borderColor,
       style: borderStyle,
       border: borderSelected,
     });
-  };
+  }, [borderColor, borderStyle, borderSelected]);
+
+  const onClose = properties.onClose;
+
   const borderColorButton = useRef(null);
   const borderStyleButton = useRef(null);
   return (
     <>
       <StyledPopover
         open={properties.open}
-        onClose={(): void => closePicker()}
+        onClose={onClose}
         anchorEl={properties.anchorEl.current}
         anchorOrigin={
           properties.anchorOrigin || { vertical: "bottom", horizontal: "left" }
@@ -71,13 +80,13 @@ const BorderPicker = (properties: BorderPickerProps) => {
                 $pressed={borderSelected === BorderType.All}
                 onClick={() => {
                   if (borderSelected === BorderType.All) {
-                    setBorderSelected(BorderType.None);
+                    setBorderSelected(null);
                   } else {
                     setBorderSelected(BorderType.All);
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.all")}
               >
                 <BorderAllIcon />
               </Button>
@@ -86,13 +95,13 @@ const BorderPicker = (properties: BorderPickerProps) => {
                 $pressed={borderSelected === BorderType.Inner}
                 onClick={() => {
                   if (borderSelected === BorderType.Inner) {
-                    setBorderSelected(BorderType.None);
+                    setBorderSelected(null);
                   } else {
                     setBorderSelected(BorderType.Inner);
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.inner")}
               >
                 <BorderInnerIcon />
               </Button>
@@ -101,13 +110,13 @@ const BorderPicker = (properties: BorderPickerProps) => {
                 $pressed={borderSelected === BorderType.CenterH}
                 onClick={() => {
                   if (borderSelected === BorderType.CenterH) {
-                    setBorderSelected(BorderType.None);
+                    setBorderSelected(null);
                   } else {
                     setBorderSelected(BorderType.CenterH);
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.horizontal")}
               >
                 <BorderCenterHIcon />
               </Button>
@@ -116,13 +125,13 @@ const BorderPicker = (properties: BorderPickerProps) => {
                 $pressed={borderSelected === BorderType.CenterV}
                 onClick={() => {
                   if (borderSelected === BorderType.CenterV) {
-                    setBorderSelected(BorderType.None);
+                    setBorderSelected(null);
                   } else {
                     setBorderSelected(BorderType.CenterV);
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.vertical")}
               >
                 <BorderCenterVIcon />
               </Button>
@@ -137,7 +146,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.outer")}
               >
                 <BorderOuterIcon />
               </Button>
@@ -154,7 +163,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.clear")}
               >
                 <BorderNoneIcon />
               </Button>
@@ -169,7 +178,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.top")}
               >
                 <BorderTopIcon />
               </Button>
@@ -184,7 +193,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.right")}
               >
                 <BorderRightIcon />
               </Button>
@@ -199,7 +208,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.bottom")}
               >
                 <BorderBottomIcon />
               </Button>
@@ -214,7 +223,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   }
                 }}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.left")}
               >
                 <BorderLeftIcon />
               </Button>
@@ -228,7 +237,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                 $pressed={false}
                 disabled={false}
                 ref={borderColorButton}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.color")}
               >
                 <PencilLine />
               </Button>
@@ -243,7 +252,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                 type="button"
                 $pressed={false}
                 disabled={false}
-                title={t("workbook.toolbar.borders_button_title")}
+                title={t("toolbar.borders.style")}
               >
                 <BorderStyleIcon />
               </Button>
