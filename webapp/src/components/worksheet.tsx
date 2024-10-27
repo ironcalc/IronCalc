@@ -84,8 +84,9 @@ function Worksheet(props: {
       !editor
     )
       return;
+    // FIXME: This two need to be computed.
     model.setWindowWidth(clientWidth - 37);
-    model.setWindowHeight(clientHeight - 149);
+    model.setWindowHeight(clientHeight - 190);
     const canvas = new WorksheetCanvas({
       width: worksheetRef.clientWidth,
       height: worksheetRef.clientHeight,

@@ -1262,8 +1262,6 @@ export default class WorksheetCanvas {
     ctx.strokeStyle = "red";
     ctx.lineWidth = 1;
     ctx.strokeRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
-    // ctx.fillStyle = hexToRGBA10Percent(range.color);
-    // ctx.fillRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
 
     ctx.setLineDash([]);
   }
