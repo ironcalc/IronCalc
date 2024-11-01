@@ -1219,6 +1219,42 @@ impl UserModel {
                 let new_style = self.model.get_style_for_cell(sheet, source_row, column)?;
                 self.model.set_cell_style(sheet, row, column, &new_style)?;
 
+                if column == column1 && column > 1 {
+                    // Fix the right border of the cell to the left
+                    let old_left_style = self.model.get_style_for_cell(sheet, row, column - 1)?;
+                    if old_left_style.border.right != new_style.border.left {
+                        let mut new_left_style = old_left_style.clone();
+                        new_left_style.border.right = new_style.border.left.clone();
+                        self.model
+                            .set_cell_style(sheet, row, column - 1, &new_left_style)?;
+                        // Add the diff
+                        diff_list.push(Diff::SetCellStyle {
+                            sheet,
+                            row,
+                            column: column - 1,
+                            old_value: Box::new(old_left_style),
+                            new_value: Box::new(new_left_style),
+                        });
+                    }
+                } else if column == column1 + width1 - 1 && column < LAST_COLUMN {
+                    // Fix the left border of the cell to the right
+                    let old_right_style = self.model.get_style_for_cell(sheet, row, column + 1)?;
+                    if old_right_style.border.left != new_style.border.right {
+                        let mut new_right_style = old_right_style.clone();
+                        new_right_style.border.left = new_style.border.right.clone();
+                        self.model
+                            .set_cell_style(sheet, row, column + 1, &new_right_style)?;
+                        // Add the diff
+                        diff_list.push(Diff::SetCellStyle {
+                            sheet,
+                            row,
+                            column: column + 1,
+                            old_value: Box::new(old_right_style),
+                            new_value: Box::new(new_right_style),
+                        });
+                    }
+                }
+
                 // Add the diffs
                 diff_list.push(Diff::SetCellStyle {
                     sheet,
@@ -1248,27 +1284,27 @@ impl UserModel {
     pub fn auto_fill_columns(&mut self, source_area: &Area, to_column: i32) -> Result<(), String> {
         let mut diff_list = Vec::new();
         let sheet = source_area.sheet;
-        let row1 = source_area.row;
-        let column1 = source_area.column;
-        let width1 = source_area.width;
-        let height1 = source_area.height;
+        let first_row = source_area.row;
+        let first_column = source_area.column;
+        let last_column = first_column + source_area.width - 1;
+        let last_row = first_row + source_area.height - 1;
 
         // Check first all parameters are valid
         if self.model.workbook.worksheet(sheet).is_err() {
             return Err(format!("Invalid worksheet index: '{sheet}'"));
         }
 
-        if !is_valid_column_number(column1) {
-            return Err(format!("Invalid column: '{column1}'"));
+        if !is_valid_column_number(first_column) {
+            return Err(format!("Invalid column: '{first_column}'"));
         }
-        if !is_valid_row(row1) {
-            return Err(format!("Invalid row: '{row1}'"));
+        if !is_valid_row(first_row) {
+            return Err(format!("Invalid row: '{first_row}'"));
         }
-        if !is_valid_column_number(column1 + width1 - 1) {
-            return Err(format!("Invalid column: '{}'", column1 + width1 - 1));
+        if !is_valid_column_number(last_column) {
+            return Err(format!("Invalid column: '{}'", last_column));
         }
-        if !is_valid_row(row1 + height1 - 1) {
-            return Err(format!("Invalid row: '{}'", row1 + height1 - 1));
+        if !is_valid_row(last_row) {
+            return Err(format!("Invalid row: '{}'", last_row));
         }
 
         if !is_valid_row(to_column) {
@@ -1281,21 +1317,21 @@ impl UserModel {
         // this is the range of columns we are going to fill
         let column_range: Vec<i32>;
 
-        if to_column >= column1 + width1 {
+        if to_column > last_column {
             // we go right, we start from `1 + width` to `to_column`,
-            anchor_column = column1;
+            anchor_column = first_column;
             sign = 1;
-            column_range = (column1 + width1..to_column + 1).collect();
-        } else if to_column < column1 {
+            column_range = (last_column + 1..to_column + 1).collect();
+        } else if to_column < first_column {
             // we go left, starting from `column1 - `` all the way to `to_column`
-            anchor_column = column1 + width1 - 1;
+            anchor_column = last_column;
             sign = -1;
-            column_range = (to_column..column1).rev().collect();
+            column_range = (to_column..first_column).rev().collect();
         } else {
             return Err("Invalid parameters for autofill".to_string());
         }
 
-        for row in row1..row1 + height1 {
+        for row in first_row..=last_row {
             let mut index = 0;
             for column_ref in &column_range {
                 let column = *column_ref;
@@ -1316,8 +1352,46 @@ impl UserModel {
                 self.model
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
-                // Compute the new style and set it
                 let new_style = self.model.get_style_for_cell(sheet, row, source_column)?;
+
+                if row == first_row && row > 1 {
+                    // Fix the lower border of the upper cell
+                    let old_upper_style = self.model.get_style_for_cell(sheet, row - 1, column)?;
+                    if old_upper_style.border.bottom != new_style.border.top {
+                        let mut new_upper_style = old_upper_style.clone();
+                        new_upper_style.border.bottom = new_style.border.top.clone();
+                        self.model
+                            .set_cell_style(sheet, row - 1, column, &new_upper_style)?;
+                        // Add the diffs
+                        diff_list.push(Diff::SetCellStyle {
+                            sheet,
+                            row: row - 1,
+                            column,
+                            old_value: Box::new(old_upper_style),
+                            new_value: Box::new(new_upper_style),
+                        });
+                    }
+                } else if row == last_row && row < LAST_ROW {
+                    // Fix the upper border of the lower cell
+                    let old_lower_style = self.model.get_style_for_cell(sheet, row + 1, column)?;
+                    if old_lower_style.border.top != new_style.border.bottom {
+                        let mut new_lower_style = old_lower_style.clone();
+                        new_lower_style.border.top = new_style.border.bottom.clone();
+                        self.model
+                            .set_cell_style(sheet, row + 1, column, &new_lower_style)?;
+                        // Add the diffs
+                        diff_list.push(Diff::SetCellStyle {
+                            sheet,
+                            row: row + 1,
+                            column,
+                            old_value: Box::new(old_lower_style),
+                            new_value: Box::new(new_lower_style),
+                        });
+                    }
+                }
+
+                // Compute the new style and set it
+
                 self.model.set_cell_style(sheet, row, column, &new_style)?;
 
                 // Add the diffs
@@ -1336,7 +1410,7 @@ impl UserModel {
                     old_value: Box::new(old_value),
                 });
 
-                index = (index + sign) % width1;
+                index = (index + sign) % source_area.width;
             }
         }
         self.push_diff_list(diff_list);
@@ -1478,6 +1552,76 @@ impl UserModel {
                     .model
                     .get_style_for_cell(sheet, target_row, target_column)?;
 
+                let new_style = value.style.clone();
+
+                // Fix borders
+                if target_row == source_first_row && target_row > 1 {
+                    // Bottom border of the top cell
+                    let old_top_style =
+                        self.model
+                            .get_style_for_cell(sheet, target_row - 1, target_column)?;
+                    if new_style.border.top != old_top_style.border.bottom {
+                        let mut new_top_style = old_top_style.clone();
+                        new_top_style.border.bottom = new_style.border.top.clone();
+                        diff_list.push(Diff::SetCellStyle {
+                            sheet,
+                            row: target_row - 1,
+                            column: target_column,
+                            old_value: Box::new(old_top_style),
+                            new_value: Box::new(new_top_style),
+                        });
+                    }
+                } else if target_row == source_last_row && target_row < LAST_ROW {
+                    // Top border of the lower cell
+                    let old_bottom_style =
+                        self.model
+                            .get_style_for_cell(sheet, target_row + 1, target_column)?;
+                    if new_style.border.bottom != old_bottom_style.border.top {
+                        let mut new_top_style = old_bottom_style.clone();
+                        new_top_style.border.top = new_style.border.bottom.clone();
+                        diff_list.push(Diff::SetCellStyle {
+                            sheet,
+                            row: target_row + 1,
+                            column: target_column,
+                            old_value: Box::new(old_bottom_style),
+                            new_value: Box::new(new_top_style),
+                        });
+                    }
+                }
+                if target_column == source_first_column && target_column > 1 {
+                    // Right border of the cell to the left
+                    let old_left_style =
+                        self.model
+                            .get_style_for_cell(sheet, target_row, target_column - 1)?;
+                    if new_style.border.left != old_left_style.border.bottom {
+                        let mut new_left_style = old_left_style.clone();
+                        new_left_style.border.right = new_style.border.left.clone();
+                        diff_list.push(Diff::SetCellStyle {
+                            sheet,
+                            row: target_row,
+                            column: target_column - 1,
+                            old_value: Box::new(old_left_style),
+                            new_value: Box::new(new_left_style),
+                        });
+                    }
+                } else if target_column == source_last_column && target_column < LAST_COLUMN {
+                    // Left border of the cell to the right
+                    let old_right_style =
+                        self.model
+                            .get_style_for_cell(sheet, target_row, target_column + 1)?;
+                    if new_style.border.right != old_right_style.border.left {
+                        let mut new_right_style = old_right_style.clone();
+                        new_right_style.border.left = new_style.border.right.clone();
+                        diff_list.push(Diff::SetCellStyle {
+                            sheet,
+                            row: target_row,
+                            column: target_column + 1,
+                            old_value: Box::new(old_right_style),
+                            new_value: Box::new(new_right_style),
+                        });
+                    }
+                }
+
                 self.model
                     .set_user_input(sheet, target_row, target_column, new_value.clone())?;
                 self.model
@@ -1509,6 +1653,7 @@ impl UserModel {
                         .worksheet(sheet)?
                         .cell(row, column)
                         .cloned();
+                    // TODO: also clear the styles and adjacent borders
                     diff_list.push(Diff::CellClearContents {
                         sheet,
                         row,

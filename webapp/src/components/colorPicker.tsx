@@ -103,25 +103,33 @@ const ColorPicker = (properties: ColorPickerProps) => {
             />
           ))}
         </ColorList>
-        <HorizontalDivider />
-        <RecentLabel>{"Recent"}</RecentLabel>
-        <ColorList>
-          {recentColors.current.map((recentColor) => (
-            <Button
-              key={recentColor}
-              $color={recentColor}
-              onClick={(): void => {
-                closePicker(recentColor);
-              }}
-            />
-          ))}
-        </ColorList>
+
+        {recentColors.current.length > 0 ? (
+          <>
+            <HorizontalDivider />
+            <RecentLabel>{"Recent"}</RecentLabel>
+            <ColorList>
+              {recentColors.current.map((recentColor) => (
+                <Button
+                  key={recentColor}
+                  $color={recentColor}
+                  onClick={(): void => {
+                    closePicker(recentColor);
+                  }}
+                />
+              ))}
+            </ColorList>
+          </>
+        ) : (
+          <div />
+        )}
       </ColorPickerDialog>
     </Popover>
   );
 };
 
 const RecentLabel = styled.div`
+  font-family: "Inter";
   font-size: 12px;
   color: ${theme.palette.text.secondary};
 `;
