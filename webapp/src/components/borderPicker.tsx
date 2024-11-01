@@ -43,7 +43,8 @@ const BorderPicker = (properties: BorderPickerProps) => {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [stylePickerOpen, setStylePickerOpen] = useState(false);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // FIXME
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We don't want updating the function every time the properties.onChange
   useEffect(() => {
     if (!borderSelected) {
       return;
@@ -57,21 +58,29 @@ const BorderPicker = (properties: BorderPickerProps) => {
 
   const onClose = properties.onClose;
 
+  // The reason is that the border picker doesn't start with the properties of the selected area
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We reset the styles, every time we open (or close) the widget
+  useEffect(() => {
+    setBorderSelected(null);
+    setBorderColor("#000000");
+    setBorderStyle(BorderStyle.Thin);
+  }, [properties.open]);
+
   const borderColorButton = useRef(null);
   const borderStyleButton = useRef(null);
   return (
-    <>
-      <StyledPopover
-        open={properties.open}
-        onClose={onClose}
-        anchorEl={properties.anchorEl.current}
-        anchorOrigin={
-          properties.anchorOrigin || { vertical: "bottom", horizontal: "left" }
-        }
-        transformOrigin={
-          properties.transformOrigin || { vertical: "top", horizontal: "left" }
-        }
-      >
+    <StyledPopover
+      open={properties.open}
+      onClose={onClose}
+      anchorEl={properties.anchorEl.current}
+      anchorOrigin={
+        properties.anchorOrigin || { vertical: "bottom", horizontal: "left" }
+      }
+      transformOrigin={
+        properties.transformOrigin || { vertical: "top", horizontal: "left" }
+      }
+    >
+      <div>
         <BorderPickerDialog>
           <Borders>
             <Line>
@@ -285,16 +294,6 @@ const BorderPicker = (properties: BorderPickerProps) => {
           <BorderStyleDialog>
             <LineWrapper
               onClick={() => {
-                setBorderStyle(BorderStyle.Dashed);
-                setStylePickerOpen(false);
-              }}
-              $checked={borderStyle === BorderStyle.None}
-            >
-              <BorderDescription>None</BorderDescription>
-              <NoneLine />
-            </LineWrapper>
-            <LineWrapper
-              onClick={() => {
                 setBorderStyle(BorderStyle.Thin);
                 setStylePickerOpen(false);
               }}
@@ -323,40 +322,10 @@ const BorderPicker = (properties: BorderPickerProps) => {
               <BorderDescription>Thick</BorderDescription>
               <ThickLine />
             </LineWrapper>
-            <LineWrapper
-              onClick={() => {
-                setBorderStyle(BorderStyle.Dotted);
-                setStylePickerOpen(false);
-              }}
-              $checked={borderStyle === BorderStyle.Dotted}
-            >
-              <BorderDescription>Dotted</BorderDescription>
-              <DottedLine />
-            </LineWrapper>
-            <LineWrapper
-              onClick={() => {
-                setBorderStyle(BorderStyle.Dashed);
-                setStylePickerOpen(false);
-              }}
-              $checked={borderStyle === BorderStyle.Dashed}
-            >
-              <BorderDescription>Dashed</BorderDescription>
-              <DashedLine />
-            </LineWrapper>
-            <LineWrapper
-              onClick={() => {
-                setBorderStyle(BorderStyle.Dashed);
-                setStylePickerOpen(false);
-              }}
-              $checked={borderStyle === BorderStyle.Double}
-            >
-              <BorderDescription>Double</BorderDescription>
-              <DoubleLine />
-            </LineWrapper>
           </BorderStyleDialog>
         </StyledPopover>
-      </StyledPopover>
-    </>
+      </div>
+    </StyledPopover>
   );
 };
 
@@ -380,10 +349,6 @@ const LineWrapper = styled("div")<LineWrapperProperties>`
   border: 1px solid white;
 `;
 
-const NoneLine = styled("div")`
-  width: 68px;
-  border-top: 1px solid #e0e0e0;
-`;
 const SolidLine = styled("div")`
   width: 68px;
   border-top: 1px solid #333333;
@@ -395,18 +360,6 @@ const MediumLine = styled("div")`
 const ThickLine = styled("div")`
   width: 68px;
   border-top: 3px solid #333333;
-`;
-const DashedLine = styled("div")`
-  width: 68px;
-  border-top: 1px dashed #333333;
-`;
-const DottedLine = styled("div")`
-  width: 68px;
-  border-top: 1px dotted #333333;
-`;
-const DoubleLine = styled("div")`
-  width: 68px;
-  border-top: 3px double #333333;
 `;
 
 const Divider = styled("div")`

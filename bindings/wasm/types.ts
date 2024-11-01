@@ -143,10 +143,12 @@ export enum BorderStyle {
   Thin = "thin",
   Medium = "medium",
   Thick = "thick",
-  Dashed = "dashed",
-  Dotted = "dotted",
   Double = "double",
-  None = "none",
+  Dotted = "dotted",
+  SlantDashDot = "slantdashdot",
+  MediumDashed = "mediumdashed",
+  MediumDashDotDot = "mediumdashdotdot",
+  MediumDashDot = "mediumdashdot",
 }
 
 interface BorderItem {
