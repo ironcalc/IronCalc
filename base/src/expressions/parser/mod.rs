@@ -58,6 +58,7 @@ mod test_ranges;
 mod test_move_formula;
 #[cfg(test)]
 mod test_tables;
+mod test_stringify;
 
 pub(crate) fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String> {
     let mut lexer = lexer::Lexer::new(

@@ -44,8 +44,11 @@ fn test_parser_absolute_column() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("$A1", &Some(cell_reference));
+    let t = parser.parse("$A1", &Some(cell_reference.clone()));
     assert_eq!(to_rc_format(&t), "R[0]C1");
+
+    let t = parser.parse("SIN($A1)", &Some(cell_reference.clone()));
+    assert_eq!(to_rc_format(&t), "SIN(R[0]C1)");
 }
 
 #[test]

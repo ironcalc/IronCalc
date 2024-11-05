@@ -3,10 +3,14 @@ use crate::expressions::parser::stringify::*;
 use crate::expressions::types::CellReferenceRC;
 use std::collections::HashMap;
 
+fn make_parser() -> Parser {
+    let worksheets = vec!["Sheet1".to_string()];
+    Parser::new(worksheets, HashMap::new())
+}
+
 #[test]
 fn test_to_rc_format() {
-    let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = make_parser();
 
     // with no context
     let node = parser.parse("$C$5", &None);
@@ -37,8 +41,7 @@ fn test_to_rc_format() {
 
 #[test]
 fn test_to_string_displaced() {
-    let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = make_parser();
 
     // Reference cell is Sheet1!A1
     let cell_reference: CellReferenceRC = CellReferenceRC {
@@ -89,8 +92,7 @@ fn test_to_string_displaced() {
 #[test]
 
 fn test_to_string() {
-    let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = make_parser();
 
     // Reference cell is Sheet1!A1
     let context: Option<CellReferenceRC> = Some(CellReferenceRC {
@@ -116,8 +118,7 @@ fn test_to_string() {
 #[test]
 
 fn test_to_excel_string() {
-    let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = make_parser();
 
     // Reference cell is Sheet1!A1
     let context: Option<CellReferenceRC> = Some(CellReferenceRC {
