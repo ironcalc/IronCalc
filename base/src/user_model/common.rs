@@ -13,8 +13,8 @@ use crate::{
     },
     model::Model,
     types::{
-        Alignment, BorderItem, BorderStyle, CellType, Col, HorizontalAlignment, SheetProperties,
-        Style, VerticalAlignment,
+        Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, Style,
+        VerticalAlignment,
     },
     utils::is_valid_hex_color,
 };
@@ -101,37 +101,6 @@ fn color(value: &str) -> Result<Option<String>, String> {
         return Err(format!("Invalid color: '{value}'."));
     }
     Ok(Some(value.to_owned()))
-}
-
-fn border(value: &str) -> Result<Option<BorderItem>, String> {
-    if value.is_empty() {
-        return Ok(None);
-    }
-    let parts = value.split(',');
-    let values = parts.collect::<Vec<&str>>();
-    match values[..] {
-        [border_style, color_str] => {
-            let style = match border_style {
-                "thin" => BorderStyle::Thin,
-                "medium" => BorderStyle::Medium,
-                "thick" => BorderStyle::Thick,
-                "double" => BorderStyle::Double,
-                "dotted" => BorderStyle::Dotted,
-                "slantDashDot" => BorderStyle::SlantDashDot,
-                "mediumDashed" => BorderStyle::MediumDashed,
-                "mediumDashDotDot" => BorderStyle::MediumDashDotDot,
-                "mediumDashDot" => BorderStyle::MediumDashDot,
-                _ => {
-                    return Err(format!("Invalid border style: '{border_style}'."));
-                }
-            };
-            Ok(Some(BorderItem {
-                style,
-                color: color(color_str)?,
-            }))
-        }
-        _ => Err(format!("Invalid border value: '{value}'.")),
-    }
 }
 
 fn horizontal(value: &str) -> Result<HorizontalAlignment, String> {
@@ -1066,18 +1035,6 @@ impl UserModel {
                     }
                     "num_fmt" => {
                         value.clone_into(&mut style.num_fmt);
-                    }
-                    "border.left" => {
-                        style.border.left = border(value)?;
-                    }
-                    "border.right" => {
-                        style.border.right = border(value)?;
-                    }
-                    "border.top" => {
-                        style.border.top = border(value)?;
-                    }
-                    "border.bottom" => {
-                        style.border.bottom = border(value)?;
                     }
                     "alignment" => {
                         if !value.is_empty() {
