@@ -112,7 +112,10 @@ pub enum Node {
     },
     RangeKind {
         sheet_name: Option<String>,
+        // index into vector (0-based)
         sheet_index: u32,
+        // coordinates of opposite corners of the range, e.g. A1:C4.
+        // true if cell 1 is anchored
         absolute_row1: bool,
         absolute_column1: bool,
         row1: i32,
@@ -159,6 +162,7 @@ pub enum Node {
         right: Box<Node>,
     },
     OpPowerKind {
+        // why is there no kind?
         left: Box<Node>,
         right: Box<Node>,
     },
@@ -194,7 +198,9 @@ pub enum Node {
 pub struct Parser {
     lexer: lexer::Lexer,
     worksheets: Vec<String>,
+    // Cell in which parsing is happening.
     context: Option<CellReferenceRC>,
+    // Map of table name to tables.
     tables: HashMap<String, Table>,
 }
 
@@ -203,8 +209,8 @@ impl Parser {
         let lexer = lexer::Lexer::new(
             "",
             lexer::LexerMode::A1,
-            get_locale("en").expect(""),
-            get_language("en").expect(""),
+            get_locale("en").expect("Failed to get locale"),
+            get_language("en").expect("Failed to get language"),
         );
         Parser {
             lexer,
@@ -213,6 +219,7 @@ impl Parser {
             tables,
         }
     }
+
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
         self.lexer.set_lexer_mode(mode)
     }
@@ -220,7 +227,8 @@ impl Parser {
     pub fn set_worksheets(&mut self, worksheets: Vec<String>) {
         self.worksheets = worksheets;
     }
-
+    
+    // Convert the cell referred to in context into an Abstract Syntax Tree, and return the head node.
     pub fn parse(&mut self, formula: &str, context: &Option<CellReferenceRC>) -> Node {
         self.lexer.set_formula(formula);
         self.context.clone_from(context);
@@ -419,6 +427,7 @@ impl Parser {
             }
             TokenType::Number(s) => Node::NumberKind(s),
             TokenType::String(s) => Node::StringKind(s),
+            // semicolon-delimited list of array entries
             TokenType::LeftBrace => {
                 let t = self.parse_expr();
                 if let Node::ParseErrorKind { .. } = t {
@@ -465,6 +474,7 @@ impl Parser {
                     Some(name) => self.get_sheet_index_by_name(name),
                     None => self.get_sheet_index_by_name(&context.sheet),
                 };
+                // todo: bust out helper function for this calculation
                 let a1_mode = self.lexer.is_a1_mode();
                 let row = if absolute_row || !a1_mode {
                     row
@@ -509,6 +519,8 @@ impl Parser {
                     Some(name) => self.get_sheet_index_by_name(name),
                     None => self.get_sheet_index_by_name(&context.sheet),
                 };
+                // 1-based indices. These values will be adjusted by the context unless
+                // they  are absolute.
                 let mut row1 = left.row;
                 let mut column1 = left.column;
                 let mut row2 = right.row;
@@ -533,6 +545,7 @@ impl Parser {
                         column2 -= context.column
                     };
                 }
+                // Swap corners if necessary.
                 if row1 > row2 {
                     (row2, row1) = (row1, row2);
                     (absolute_row2, absolute_row1) = (absolute_row1, absolute_row2);
@@ -541,6 +554,7 @@ impl Parser {
                     (column2, column1) = (column1, column2);
                     (absolute_column2, absolute_column1) = (absolute_column1, absolute_column2);
                 }
+                // 0-based index
                 match sheet_index {
                     Some(index) => Node::RangeKind {
                         sheet_name: sheet,

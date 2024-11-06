@@ -28,7 +28,7 @@ pub struct Errors {
 #[derive(Encode, Decode, Clone)]
 pub struct Language {
     pub booleans: Booleans,
-    pub errors: Errors,
+pub errors: Errors,
 }
 
 static LANGUAGES: Lazy<HashMap<String, Language>> = Lazy::new(|| {

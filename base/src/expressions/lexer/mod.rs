@@ -149,16 +149,17 @@ impl Lexer {
 
     /// Checks the next token without advancing position
     /// See also [advance_token](Self::advance_token)
+    /// TODO: is there not a way to do this without mutating `self`?
     pub fn peek_token(&mut self) -> TokenType {
-        let position = self.position;
+        let orig_position = self.position;
         let tk = self.next_token();
         self.next_token_position = Some(self.position);
-        self.position = position;
+        self.position = orig_position;
         tk
     }
 
     /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
-    /// It is a noop if the has not been a previous peek_token
+    /// It is a noop if there has not been a previous peek_token
     pub fn advance_token(&mut self) {
         if let Some(position) = self.next_token_position {
             self.position = position;
@@ -446,6 +447,7 @@ impl Lexer {
 
     // Private methods
 
+    // Move position to the end of input and return a `LexerError` value.
     fn set_error(&mut self, message: &str, position: usize) -> LexerError {
         self.position = self.len;
         LexerError {
@@ -454,6 +456,7 @@ impl Lexer {
         }
     }
 
+    // Show the next char without advancing, if there is a next char.
     fn peek_char(&mut self) -> Option<char> {
         let position = self.position;
         if position < self.len {
@@ -463,6 +466,7 @@ impl Lexer {
         }
     }
 
+    // Returns an error unless `ch_expected` matches the char at the current position.
     fn expect_char(&mut self, ch_expected: char) -> Result<()> {
         let position = self.position;
         if position >= self.len {
@@ -483,17 +487,18 @@ impl Lexer {
         Ok(())
     }
 
+    // Consume (read) the character at the curent position.
     fn read_next_char(&mut self) -> Option<char> {
-        let position = self.position;
-        if position < self.len {
-            self.position = position + 1;
-            Some(self.chars[position])
+        let orig_position = self.position;
+        if orig_position < self.len {
+            self.position = orig_position + 1;
+            Some(self.chars[orig_position])
         } else {
             None
         }
     }
 
-    // Consumes an integer from the input stream
+    // Consumes an integer from the input stream. Does not support thousands separator or sign.
     fn consume_integer(&mut self, first: char) -> Result<i32> {
         let mut position = self.position;
         let len = self.len;
@@ -581,6 +586,7 @@ impl Lexer {
     // Consumes an identifier from the input stream
     fn consume_identifier(&mut self) -> String {
         let mut position = self.position;
+        // Advance to the final character in the identifier.
         while position < self.len {
             let next_char = self.chars[position];
             if next_char.is_alphanumeric() || next_char == '_' || next_char == '.' {
@@ -594,6 +600,7 @@ impl Lexer {
         chars
     }
 
+    // Consumes a double-quote delimited string value.
     fn consume_string(&mut self) -> String {
         let mut position = self.position;
         let len = self.len;
@@ -602,12 +609,15 @@ impl Lexer {
             let x = self.chars[position];
             position += 1;
             if x != '"' {
+                // regular character inside string
                 chars.push(x);
             } else if position < len && self.chars[position] == '"' {
+                // found a double quote before the end of input
                 chars.push(x);
-                chars.push(self.chars[position]);
+                chars.push(self.chars[position]);  // '"', character after `x`
                 position += 1;
             } else {
+                // We are no longer inside the string.
                 break;
             }
         }
@@ -656,7 +666,7 @@ impl Lexer {
         Ok(chars)
     }
 
-    // Reads an error from the input stream
+    // Reads an error from the input stream. Precondition: char at current position is '#'.
     fn consume_error(&mut self) -> TokenType {
         let errors = &self.language.errors;
         let rest_of_formula: String = self.chars[self.position - 1..self.len].iter().collect();
@@ -699,7 +709,8 @@ impl Lexer {
         }
         TokenType::Illegal(self.set_error("Invalid error.", self.position))
     }
-
+    
+    // Consume (and discard) whitespace starting at current position.
     fn consume_whitespace(&mut self) {
         let mut position = self.position;
         let len = self.len;
@@ -740,6 +751,7 @@ impl Lexer {
         self.consume_range(Some(sheet_name))
     }
 
+    // Read a range, which may be a single cell or a multi-cell range.
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {
         let m = if self.mode == LexerMode::A1 {
             self.consume_range_a1()
@@ -749,8 +761,10 @@ impl Lexer {
         match m {
             Ok(ParsedRange { left, right }) => {
                 if let Some(right) = right {
+                    // Two-sided range
                     TokenType::Range { sheet, left, right }
                 } else {
+                    // Single-cell reference
                     TokenType::Reference {
                         sheet,
                         column: left.column,

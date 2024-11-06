@@ -10,6 +10,7 @@ use crate::expressions::{
     types::ParsedReference,
 };
 
+// TODO: why not jsut pass in a `LexerMode`? It's more expressive than a bool arg.
 fn new_lexer(formula: &str, a1_mode: bool) -> Lexer {
     let locale = get_locale("en").unwrap();
     let language = get_language("en").unwrap();
@@ -35,8 +36,8 @@ fn test_number_integer() {
 }
 #[test]
 fn test_number_pi() {
-    let mut lx = new_lexer("3.415", true);
-    assert_eq!(lx.next_token(), Number(3.415));
+    let mut lx = new_lexer("3.14159", true);
+    assert_eq!(lx.next_token(), Number(3.14159));
     assert_eq!(lx.next_token(), EOF);
 }
 #[test]
@@ -683,5 +684,23 @@ fn test_comparisons() {
     assert_eq!(lx.next_token(), Number(6.0));
     assert_eq!(lx.next_token(), Compare(OpCompare::NonEqual));
     assert_eq!(lx.next_token(), Number(7.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_whitespace() {
+    let mut lx = new_lexer("   ", true);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_empty() {
+    let mut lx = new_lexer("", true);
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_zero_width_space() {
+    let mut lx = new_lexer("A\u{FEFF}BC", true);
     assert_eq!(lx.next_token(), EOF);
 }
