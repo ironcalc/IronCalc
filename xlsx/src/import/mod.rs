@@ -176,13 +176,15 @@ fn load_csv_from_reader<R: Read + std::io::Seek>(
     locale: &str,
     tz: &str,
 ) -> Result<UserModel, CsvError> {
+    println!("trying to load csv from reader");
     let model = Model::new_empty(name, locale, tz).map_err(CsvError::General)?;
     let mut model = UserModel::from_model(model);
 
+    // TODO: consider using unonzero types for indexes that are not allowed to be zero?
     let area = Area {
         sheet: 0,
-        row: 0,
-        column: 0,
+        row: 1,
+        column: 1,
         width: 1,
         height: 1,
     };
