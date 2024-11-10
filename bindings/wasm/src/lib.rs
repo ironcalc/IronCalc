@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use wasm_bindgen::{
     prelude::{wasm_bindgen, JsError},
     JsValue,
@@ -527,8 +529,9 @@ impl Model {
     pub fn paste_csv_string(&mut self, area: JsValue, csv: &str) -> Result<(), JsError> {
         let range: Area =
             serde_wasm_bindgen::from_value(area).map_err(|e| to_js_error(e.to_string()))?;
+        let mut csv_cursor = Cursor::new(csv);
         self.model
-            .paste_csv_string(&range, csv)
+            .paste_csv_string(&range, &mut csv_cursor)
             .map_err(|e| to_js_error(e.to_string()))
     }
 }

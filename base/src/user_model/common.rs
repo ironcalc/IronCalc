@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-use std::{collections::HashMap, fmt::Debug, io::Cursor};
+use std::{collections::HashMap, fmt::Debug, io::Read};
 
 use csv::{ReaderBuilder, WriterBuilder};
 use csv_sniffer::Sniffer;
@@ -1496,25 +1496,28 @@ impl UserModel {
     }
 
     /// Paste a csv-string into the model
-    pub fn paste_csv_string(&mut self, area: &Area, csv: &str) -> Result<(), String> {
+    pub fn paste_csv_string<R: Read + std::io::Seek>(
+        &mut self,
+        area: &Area,
+        csv: &mut R,
+    ) -> Result<(), String> {
         let mut diff_list = Vec::new();
         let sheet = area.sheet;
         let mut row = area.row;
         let mut column = area.column;
         // Create a sniffer with default settings
         let mut sniffer = Sniffer::new();
-        let mut csv_reader = Cursor::new(csv);
+        csv.rewind().map_err(|e| format!("{e}"))?;
 
         // Sniff the CSV metadata
-        let metadata = sniffer
-            .sniff_reader(&mut csv_reader)
-            .map_err(|_| "Failed")?;
+        let metadata = sniffer.sniff_reader(&mut *csv).map_err(|_| "Failed")?;
         // Reset the cursor to the beginning after sniffing
-        csv_reader.set_position(0);
+        csv.rewind().map_err(|e| format!("{e}"))?;
+
         let mut reader = ReaderBuilder::new()
             .delimiter(metadata.dialect.delimiter)
             .has_headers(false)
-            .from_reader(csv_reader);
+            .from_reader(csv);
         for record in reader.records() {
             match record {
                 Ok(r) => {

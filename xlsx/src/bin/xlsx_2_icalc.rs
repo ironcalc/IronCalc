@@ -8,8 +8,10 @@
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
-use ironcalc::{export::save_to_icalc, import::load_from_xlsx};
-use ironcalc_base::Model;
+use ironcalc::{
+    export::{save_to_icalc, ModelType},
+    import::{load_from_csv, load_from_xlsx},
+};
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
@@ -43,30 +45,36 @@ fn main() -> anyhow::Result<()> {
         None => get_file_kind(&path)?,
     };
 
+    let output_path = create_output_path(args.output, &path)?;
+
     let model = match kind {
         FileKind::Xlsx => handle_xlsx(&path),
         FileKind::Csv => handle_csv(&path),
     }?;
 
-    let output_path = if let Some(out) = args.output {
+    save_to_icalc(&model, &output_path).with_context(|| "Failed to sasve file as .icalc")?;
+    Ok(())
+}
+
+fn create_output_path(out_path: Option<PathBuf>, in_path: &Path) -> Result<String> {
+    let output_path: PathBuf = if let Some(out) = out_path {
         out
     } else {
-        let base_name = path.file_stem();
+        let base_name = in_path.file_stem();
+
         match base_name {
             Some(base_name) => PathBuf::from(base_name).with_extension("ic"),
             None => {
-                bail!("Issue finding file stem of path: {}", path.display())
+                bail!("Issue finding file stem of path: {}", in_path.display())
             }
         }
     };
 
-    let output_file_name = output_path
+    let output_file_name: String = output_path
         .to_str()
-        .context(format!("Issue with path: {output_path:?}"))?;
-
-    save_to_icalc(&model, output_file_name).unwrap();
-
-    Ok(())
+        .context(format!("Issue with path: {output_path:?}"))?
+        .to_owned();
+    Ok(output_file_name)
 }
 
 fn get_file_kind(path: &Path) -> anyhow::Result<FileKind> {
@@ -98,13 +106,16 @@ fn get_file_kind(path: &Path) -> anyhow::Result<FileKind> {
     Ok(kind)
 }
 
-fn handle_xlsx(path: &Path) -> Result<Model> {
+fn handle_xlsx(path: &Path) -> Result<ModelType> {
     let Some(path) = path.to_str() else {
         bail!("Could not parse provided path: {}", path.display())
     };
-    Ok(load_from_xlsx(path, "en", "UTC")?)
+    let model = load_from_xlsx(path, "en", "UTC")?;
+    Ok(ModelType::Model(model))
 }
 
-fn handle_csv(_path: &Path) -> Result<Model> {
-    todo!("handle CSV parsing")
+fn handle_csv(path: &Path) -> Result<ModelType> {
+    // TODO: add support for manual CSV parsing settings instead of automatic
+    let model = load_from_csv(path)?;
+    Ok(ModelType::UserModel(model))
 }

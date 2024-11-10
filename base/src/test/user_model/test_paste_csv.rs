@@ -1,4 +1,5 @@
 use crate::{expressions::types::Area, UserModel};
+use std::io::Cursor;
 
 #[test]
 fn csv_paste() {
@@ -8,6 +9,7 @@ fn csv_paste() {
 
     // paste some numbers in B4:C7
     let csv = "1,2,3\n4,5,6";
+    let mut csv = Cursor::new(csv);
     let area = Area {
         sheet: 0,
         row: 4,
@@ -16,7 +18,7 @@ fn csv_paste() {
         height: 1,
     };
     model.set_selected_cell(4, 2).unwrap();
-    model.paste_csv_string(&area, csv).unwrap();
+    model.paste_csv_string(&area, &mut csv).unwrap();
 
     assert_eq!(
         model.get_formatted_cell_value(0, 7, 7),
@@ -32,6 +34,7 @@ fn tsv_crlf_paste() {
 
     // paste some numbers in B4:C7
     let csv = "1\t2\t3\r\n4\t5\t6";
+    let mut csv = Cursor::new(csv);
     let area = Area {
         sheet: 0,
         row: 4,
@@ -40,7 +43,7 @@ fn tsv_crlf_paste() {
         height: 1,
     };
     model.set_selected_cell(4, 2).unwrap();
-    model.paste_csv_string(&area, csv).unwrap();
+    model.paste_csv_string(&area, &mut csv).unwrap();
 
     assert_eq!(
         model.get_formatted_cell_value(0, 7, 7),

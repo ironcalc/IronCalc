@@ -16,11 +16,11 @@ use std::{
 
 use ironcalc_base::expressions::utils::number_to_column;
 use ironcalc_base::types::Workbook;
-use ironcalc_base::{get_milliseconds_since_epoch, Model};
+use ironcalc_base::{get_milliseconds_since_epoch, Model, UserModel};
 
 use self::xml_constants::XML_DECLARATION;
 
-use crate::error::XlsxError;
+use crate::error::{CsvError, XlsxError};
 
 #[cfg(test)]
 mod test;
@@ -134,13 +134,38 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     Ok(writer)
 }
 
+pub enum ModelType<'a> {
+    UserModel(UserModel),
+    Model(Model),
+    UserModelRef(&'a UserModel),
+    ModelRef(&'a Model),
+}
+
 /// Exports a model to an icalc file
-pub fn save_to_icalc(model: &Model, file_name: &str) -> Result<(), XlsxError> {
+pub fn save_to_icalc(model: &ModelType, file_name: &str) -> Result<(), XlsxError> {
     let file_path = std::path::Path::new(&file_name);
     if file_path.exists() {
         return Err(XlsxError::IO(format!("file {} already exists", file_name)));
     }
-    let s = bitcode::encode(&model.workbook);
+    let s = match model {
+        ModelType::UserModel(m) => m.to_bytes(),
+        ModelType::Model(m) => m.to_bytes(),
+        ModelType::UserModelRef(m) => m.to_bytes(),
+        ModelType::ModelRef(m) => m.to_bytes(),
+    };
+    let mut file = fs::File::create(file_path)?;
+    file.write_all(&s)?;
+
+    Ok(())
+}
+
+/// Exports a `UserModel` to an icalc file
+pub fn save_usermodel_to_icalc(model: &UserModel, file_name: &str) -> Result<(), CsvError> {
+    let file_path = std::path::Path::new(&file_name);
+    if file_path.exists() {
+        return Err(CsvError::IO(format!("file {} already exists", file_name)));
+    }
+    let s = model.to_bytes();
     let mut file = fs::File::create(file_path)?;
     file.write_all(&s)?;
 

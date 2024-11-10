@@ -11,16 +11,18 @@ use std::{
     collections::HashMap,
     fs,
     io::{BufReader, Cursor, Read},
+    path::Path,
 };
 
 use roxmltree::Node;
 
 use ironcalc_base::{
+    expressions::types::Area,
     types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
-    Model,
+    Model, UserModel,
 };
 
-use crate::error::XlsxError;
+use crate::error::{CsvError, XlsxError};
 
 use shared_strings::read_shared_strings;
 
@@ -152,4 +154,41 @@ pub fn load_from_icalc(file_name: &str) -> Result<Model, XlsxError> {
     let workbook: Workbook = bitcode::decode(&contents)
         .map_err(|e| XlsxError::IO(format!("Failed to decode file: {}", e)))?;
     Model::from_workbook(workbook).map_err(XlsxError::Workbook)
+}
+
+/// Loads a [Model] from csv file
+pub fn load_from_csv(path: &Path) -> Result<UserModel, CsvError> {
+    let file = fs::File::open(path)?;
+    let mut reader = BufReader::new(file);
+    let name = path
+        .file_stem()
+        .ok_or_else(|| CsvError::IO("Could not extract workbook name".to_string()))?
+        .to_string_lossy()
+        .to_string();
+
+    // TODO: impl from or into trait for more rusty function chaining
+    load_csv_from_reader(&name, &mut reader, "en", "UTC")
+}
+
+fn load_csv_from_reader<R: Read + std::io::Seek>(
+    name: &str,
+    reader: &mut R,
+    locale: &str,
+    tz: &str,
+) -> Result<UserModel, CsvError> {
+    let model = Model::new_empty(name, locale, tz).map_err(CsvError::General)?;
+    let mut model = UserModel::from_model(model);
+
+    let area = Area {
+        sheet: 0,
+        row: 0,
+        column: 0,
+        width: 1,
+        height: 1,
+    };
+
+    model
+        .paste_csv_string(&area, reader)
+        .map_err(CsvError::General)?;
+    Ok(model)
 }

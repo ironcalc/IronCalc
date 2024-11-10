@@ -5,7 +5,7 @@ use types::{PySheetProperty, PyStyle};
 use xlsx::base::types::Style;
 use xlsx::base::Model;
 
-use xlsx::export::{save_to_icalc, save_to_xlsx};
+use xlsx::export::{save_to_icalc, save_to_xlsx, ModelType};
 use xlsx::import;
 
 mod types;
@@ -27,7 +27,8 @@ impl PyModel {
 
     /// Saves the model to file in the internal binary ic format
     pub fn save_to_icalc(&self, file: &str) -> PyResult<()> {
-        save_to_icalc(&self.model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
+        save_to_icalc(&ModelType::ModelRef(&self.model), file)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 
     /// Evaluates the workbook
