@@ -24,6 +24,7 @@ mod test_fn_sum;
 mod test_fn_sumifs;
 mod test_fn_textbefore;
 mod test_fn_textjoin;
+mod test_fn_unicode;
 mod test_forward_references;
 mod test_frozen_rows_columns;
 mod test_general;

@@ -342,6 +342,51 @@ impl Model {
         CalcResult::new_args_number_error(cell)
     }
 
+    pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() == 1 {
+            let s = match self.evaluate_node_in_context(&args[0], cell) {
+                CalcResult::Number(v) => format!("{}", v),
+                CalcResult::String(v) => v,
+                CalcResult::Boolean(b) => {
+                    if b {
+                        "TRUE".to_string()
+                    } else {
+                        "FALSE".to_string()
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                CalcResult::Range { .. } => {
+                    // Implicit Intersection not implemented
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Implicit Intersection not implemented".to_string(),
+                    };
+                }
+                CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Empty cell".to_string(),
+                    }
+                }
+            };
+
+            // TODO: Needed?
+            if s.len() == 0 {
+                return CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Empty cell".to_string(),
+                };
+            }
+
+            let unicode_number = s.chars().nth(0).unwrap() as u32;
+            return CalcResult::String(unicode_number.to_string());
+        }
+        CalcResult::new_args_number_error(cell)
+    }
+
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
