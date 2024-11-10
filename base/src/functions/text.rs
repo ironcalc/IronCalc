@@ -381,7 +381,7 @@ impl Model {
             }
 
             let unicode_number = s.chars().nth(0).unwrap() as u32;
-            return CalcResult::String(unicode_number.to_string());
+            return CalcResult::Number(unicode_number as f64);
         }
         CalcResult::new_args_number_error(cell)
     }
