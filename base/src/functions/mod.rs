@@ -569,7 +569,7 @@ impl Function {
             "SEARCH" => Some(Function::Search),
             "TEXT" => Some(Function::Text),
             "TRIM" => Some(Function::Trim),
-            "UNICODE" => Some(Function::Unicode),
+            "UNICODE" | "_XLFN.UNICODE" => Some(Function::Unicode),
             "UPPER" => Some(Function::Upper),
 
             "REPT" => Some(Function::Rept),

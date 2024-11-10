@@ -15,6 +15,8 @@ fn simple_cases() {
     model._set("A8", "=UNICODE(\"の\")");
     model._set("A9", "=UNICODE(\" \")");
 
+    model._set("A10", "=_xlfn.UNICODE(\"T\")");
+
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"49");
@@ -26,6 +28,7 @@ fn simple_cases() {
     assert_eq!(model._get_text("A7"), *"70");
     assert_eq!(model._get_text("A8"), *"12398");
     assert_eq!(model._get_text("A9"), *"32");
+    assert_eq!(model._get_text("A10"), *"84");
 }
 
 #[test]
