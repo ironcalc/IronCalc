@@ -372,7 +372,6 @@ impl Model {
                 }
             };
 
-            // TODO: Needed?
             if s.len() == 0 {
                 return CalcResult::Error {
                     error: Error::VALUE,
