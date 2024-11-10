@@ -205,7 +205,7 @@ const Editor = (options: EditorOptions) => {
             display: "inline-block",
           }}
           ref={formulaRef}
-        >
+          >
           {styledFormula}
         </div>
       </div>

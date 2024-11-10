@@ -369,9 +369,11 @@ pub struct Font {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
     pub u: bool, // seems that Excel supports a bit more - double underline / account underline etc.
+    // Bold
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
     pub b: bool,
+    // Italic
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
     pub i: bool,

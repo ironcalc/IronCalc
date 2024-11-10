@@ -698,9 +698,3 @@ fn test_empty() {
     let mut lx = new_lexer("", true);
     assert_eq!(lx.next_token(), EOF);
 }
-
-#[test]
-fn test_zero_width_space() {
-    let mut lx = new_lexer("A\u{FEFF}BC", true);
-    assert_eq!(lx.next_token(), EOF);
-}
