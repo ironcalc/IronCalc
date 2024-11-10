@@ -122,6 +122,7 @@ pub enum Function {
     Textbefore,
     Textjoin,
     Trim,
+    Unicode,
     Upper,
     Value,
     Valuetotext,
@@ -246,7 +247,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 192> {
+    pub fn into_iter() -> IntoIter<Function, 193> {
         [
             Function::And,
             Function::False,
@@ -316,6 +317,7 @@ impl Function {
             Function::Search,
             Function::Text,
             Function::Trim,
+            Function::Unicode,
             Function::Upper,
             Function::Isnumber,
             Function::Isnontext,
@@ -567,6 +569,7 @@ impl Function {
             "SEARCH" => Some(Function::Search),
             "TEXT" => Some(Function::Text),
             "TRIM" => Some(Function::Trim),
+            "UNICODE" => Some(Function::Unicode),
             "UPPER" => Some(Function::Upper),
 
             "REPT" => Some(Function::Rept),
@@ -779,6 +782,7 @@ impl fmt::Display for Function {
             Function::Search => write!(f, "SEARCH"),
             Function::Text => write!(f, "TEXT"),
             Function::Trim => write!(f, "TRIM"),
+            Function::Unicode => write!(f, "UNICODE"),
             Function::Upper => write!(f, "UPPER"),
             Function::Isnumber => write!(f, "ISNUMBER"),
             Function::Isnontext => write!(f, "ISNONTEXT"),
@@ -1012,6 +1016,7 @@ impl Model {
             Function::Search => self.fn_search(args, cell),
             Function::Text => self.fn_text(args, cell),
             Function::Trim => self.fn_trim(args, cell),
+            Function::Unicode => self.fn_unicode(args, cell),
             Function::Upper => self.fn_upper(args, cell),
             // Information
             Function::Isnumber => self.fn_isnumber(args, cell),
