@@ -462,6 +462,7 @@ impl Function {
             Function::Textbefore => "_xlfn.TEXTBEFORE".to_string(),
             Function::Textafter => "_xlfn.TEXTAFTER".to_string(),
             Function::Textjoin => "_xlfn.TEXTJOIN".to_string(),
+            Function::Unicode => "_xlfn.UNICODE".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),
