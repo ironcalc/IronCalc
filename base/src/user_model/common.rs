@@ -22,6 +22,8 @@ use crate::{
 use crate::user_model::history::{
     ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
 };
+
+use super::border_utils::is_max_border;
 /// Data for the clipboard
 pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
 
@@ -785,7 +787,9 @@ impl UserModel {
         Ok(())
     }
 
-    /// Sets the border
+    /// Sets the border in an area of cells.
+    /// When setting the border we need to check if the adjacent cells have a "heavier" border
+    /// If that is the case we need to change it
     pub fn set_area_with_border(
         &mut self,
         range: &Area,
@@ -835,9 +839,13 @@ impl UserModel {
                             style.border.right = Some(border_area.item.clone());
                         }
                     }
-                    BorderType::Top => style.border.top = Some(border_area.item.clone()),
+                    BorderType::Top => {
+                        style.border.top = Some(border_area.item.clone());
+                    }
                     BorderType::Right => style.border.right = Some(border_area.item.clone()),
-                    BorderType::Bottom => style.border.bottom = Some(border_area.item.clone()),
+                    BorderType::Bottom => {
+                        style.border.bottom = Some(border_area.item.clone());
+                    }
                     BorderType::Left => style.border.left = Some(border_area.item.clone()),
                     BorderType::CenterH => {
                         if row != range.row {
@@ -863,122 +871,6 @@ impl UserModel {
                     }
                 }
 
-                self.model.set_cell_style(sheet, row, column, &style)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(style),
-                });
-            }
-        }
-        // bottom of the cells above the first
-        if range.row > 1
-            && [
-                BorderType::Top,
-                BorderType::All,
-                BorderType::None,
-                BorderType::Outer,
-            ]
-            .contains(&border_area.r#type)
-        {
-            let row = range.row - 1;
-            for column in range.column..=last_column {
-                let old_value = self.model.get_style_for_cell(sheet, row, column)?;
-                let mut style = old_value.clone();
-                if border_area.r#type == BorderType::None {
-                    style.border.bottom = None;
-                } else {
-                    style.border.bottom = Some(border_area.item.clone());
-                }
-                self.model.set_cell_style(sheet, row, column, &style)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(style),
-                });
-            }
-        }
-        // Cells to the right
-        if last_column < LAST_COLUMN
-            && [
-                BorderType::Right,
-                BorderType::All,
-                BorderType::None,
-                BorderType::Outer,
-            ]
-            .contains(&border_area.r#type)
-        {
-            let column = last_column + 1;
-            for row in range.row..=last_row {
-                let old_value = self.model.get_style_for_cell(sheet, row, column)?;
-                let mut style = old_value.clone();
-                if border_area.r#type == BorderType::None {
-                    style.border.left = None;
-                } else {
-                    style.border.left = Some(border_area.item.clone());
-                }
-                self.model.set_cell_style(sheet, row, column, &style)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(style),
-                });
-            }
-        }
-        // Cells bellow
-        if last_row < LAST_ROW
-            && [
-                BorderType::Bottom,
-                BorderType::All,
-                BorderType::None,
-                BorderType::Outer,
-            ]
-            .contains(&border_area.r#type)
-        {
-            let row = last_row + 1;
-            for column in range.column..=last_column {
-                let old_value = self.model.get_style_for_cell(sheet, row, column)?;
-                let mut style = old_value.clone();
-                if border_area.r#type == BorderType::None {
-                    style.border.top = None;
-                } else {
-                    style.border.top = Some(border_area.item.clone());
-                }
-                self.model.set_cell_style(sheet, row, column, &style)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(style),
-                });
-            }
-        }
-        // Cells to the left
-        if range.column > 1
-            && [
-                BorderType::Left,
-                BorderType::All,
-                BorderType::None,
-                BorderType::Outer,
-            ]
-            .contains(&border_area.r#type)
-        {
-            let column = range.column - 1;
-            for row in range.row..=last_row {
-                let old_value = self.model.get_style_for_cell(sheet, row, column)?;
-                let mut style = old_value.clone();
-                if border_area.r#type == BorderType::None {
-                    style.border.right = None;
-                } else {
-                    style.border.right = Some(border_area.item.clone());
-                }
                 self.model.set_cell_style(sheet, row, column, &style)?;
                 diff_list.push(Diff::SetCellStyle {
                     sheet,
@@ -1096,7 +988,62 @@ impl UserModel {
     /// * [Model::get_style_for_cell]
     #[inline]
     pub fn get_cell_style(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
-        self.model.get_style_for_cell(sheet, row, column)
+        let mut style = self.model.get_style_for_cell(sheet, row, column)?;
+
+        // We need to check if the adjacent cells have a "heavier" border 
+        let border_top = if row > 1 {
+            self.model
+                .get_style_for_cell(sheet, row - 1, column)?
+                .border
+                .bottom
+        } else {
+            None
+        };
+
+        let border_right = if column < LAST_COLUMN {
+            self.model
+                .get_style_for_cell(sheet, row, column + 1)?
+                .border
+                .left
+        } else {
+            None
+        };
+
+        let border_bottom = if row < LAST_ROW {
+            self.model
+                .get_style_for_cell(sheet, row + 1, column)?
+                .border
+                .top
+        } else {
+            None
+        };
+
+        let border_left = if column > 1 {
+            self.model
+                .get_style_for_cell(sheet, row, column - 1)?
+                .border
+                .right
+        } else {
+            None
+        };
+
+        if is_max_border(&style.border.top, &border_top) {
+            style.border.top = border_top;
+        }
+
+        if is_max_border(&style.border.right, &border_right) {
+            style.border.right = border_right;
+        }
+
+        if is_max_border(&style.border.bottom, &border_bottom) {
+            style.border.bottom = border_bottom;
+        }
+
+        if is_max_border(&style.border.left, &border_left) {
+            style.border.left = border_left;
+        }
+
+        Ok(style)
     }
 
     /// Fills the cells from `source_area` until `to_row`.
@@ -1175,42 +1122,6 @@ impl UserModel {
                 // Compute the new style and set it
                 let new_style = self.model.get_style_for_cell(sheet, source_row, column)?;
                 self.model.set_cell_style(sheet, row, column, &new_style)?;
-
-                if column == column1 && column > 1 {
-                    // Fix the right border of the cell to the left
-                    let old_left_style = self.model.get_style_for_cell(sheet, row, column - 1)?;
-                    if old_left_style.border.right != new_style.border.left {
-                        let mut new_left_style = old_left_style.clone();
-                        new_left_style.border.right = new_style.border.left.clone();
-                        self.model
-                            .set_cell_style(sheet, row, column - 1, &new_left_style)?;
-                        // Add the diff
-                        diff_list.push(Diff::SetCellStyle {
-                            sheet,
-                            row,
-                            column: column - 1,
-                            old_value: Box::new(old_left_style),
-                            new_value: Box::new(new_left_style),
-                        });
-                    }
-                } else if column == column1 + width1 - 1 && column < LAST_COLUMN {
-                    // Fix the left border of the cell to the right
-                    let old_right_style = self.model.get_style_for_cell(sheet, row, column + 1)?;
-                    if old_right_style.border.left != new_style.border.right {
-                        let mut new_right_style = old_right_style.clone();
-                        new_right_style.border.left = new_style.border.right.clone();
-                        self.model
-                            .set_cell_style(sheet, row, column + 1, &new_right_style)?;
-                        // Add the diff
-                        diff_list.push(Diff::SetCellStyle {
-                            sheet,
-                            row,
-                            column: column + 1,
-                            old_value: Box::new(old_right_style),
-                            new_value: Box::new(new_right_style),
-                        });
-                    }
-                }
 
                 // Add the diffs
                 diff_list.push(Diff::SetCellStyle {
@@ -1310,43 +1221,6 @@ impl UserModel {
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
                 let new_style = self.model.get_style_for_cell(sheet, row, source_column)?;
-
-                if row == first_row && row > 1 {
-                    // Fix the lower border of the upper cell
-                    let old_upper_style = self.model.get_style_for_cell(sheet, row - 1, column)?;
-                    if old_upper_style.border.bottom != new_style.border.top {
-                        let mut new_upper_style = old_upper_style.clone();
-                        new_upper_style.border.bottom = new_style.border.top.clone();
-                        self.model
-                            .set_cell_style(sheet, row - 1, column, &new_upper_style)?;
-                        // Add the diffs
-                        diff_list.push(Diff::SetCellStyle {
-                            sheet,
-                            row: row - 1,
-                            column,
-                            old_value: Box::new(old_upper_style),
-                            new_value: Box::new(new_upper_style),
-                        });
-                    }
-                } else if row == last_row && row < LAST_ROW {
-                    // Fix the upper border of the lower cell
-                    let old_lower_style = self.model.get_style_for_cell(sheet, row + 1, column)?;
-                    if old_lower_style.border.top != new_style.border.bottom {
-                        let mut new_lower_style = old_lower_style.clone();
-                        new_lower_style.border.top = new_style.border.bottom.clone();
-                        self.model
-                            .set_cell_style(sheet, row + 1, column, &new_lower_style)?;
-                        // Add the diffs
-                        diff_list.push(Diff::SetCellStyle {
-                            sheet,
-                            row: row + 1,
-                            column,
-                            old_value: Box::new(old_lower_style),
-                            new_value: Box::new(new_lower_style),
-                        });
-                    }
-                }
-
                 // Compute the new style and set it
 
                 self.model.set_cell_style(sheet, row, column, &new_style)?;
@@ -1359,6 +1233,7 @@ impl UserModel {
                     old_value: Box::new(old_style),
                     new_value: Box::new(new_style),
                 });
+
                 diff_list.push(Diff::SetCellValue {
                     sheet,
                     row,
@@ -1509,76 +1384,6 @@ impl UserModel {
                     .model
                     .get_style_for_cell(sheet, target_row, target_column)?;
 
-                let new_style = value.style.clone();
-
-                // Fix borders
-                if target_row == source_first_row && target_row > 1 {
-                    // Bottom border of the top cell
-                    let old_top_style =
-                        self.model
-                            .get_style_for_cell(sheet, target_row - 1, target_column)?;
-                    if new_style.border.top != old_top_style.border.bottom {
-                        let mut new_top_style = old_top_style.clone();
-                        new_top_style.border.bottom = new_style.border.top.clone();
-                        diff_list.push(Diff::SetCellStyle {
-                            sheet,
-                            row: target_row - 1,
-                            column: target_column,
-                            old_value: Box::new(old_top_style),
-                            new_value: Box::new(new_top_style),
-                        });
-                    }
-                } else if target_row == source_last_row && target_row < LAST_ROW {
-                    // Top border of the lower cell
-                    let old_bottom_style =
-                        self.model
-                            .get_style_for_cell(sheet, target_row + 1, target_column)?;
-                    if new_style.border.bottom != old_bottom_style.border.top {
-                        let mut new_top_style = old_bottom_style.clone();
-                        new_top_style.border.top = new_style.border.bottom.clone();
-                        diff_list.push(Diff::SetCellStyle {
-                            sheet,
-                            row: target_row + 1,
-                            column: target_column,
-                            old_value: Box::new(old_bottom_style),
-                            new_value: Box::new(new_top_style),
-                        });
-                    }
-                }
-                if target_column == source_first_column && target_column > 1 {
-                    // Right border of the cell to the left
-                    let old_left_style =
-                        self.model
-                            .get_style_for_cell(sheet, target_row, target_column - 1)?;
-                    if new_style.border.left != old_left_style.border.bottom {
-                        let mut new_left_style = old_left_style.clone();
-                        new_left_style.border.right = new_style.border.left.clone();
-                        diff_list.push(Diff::SetCellStyle {
-                            sheet,
-                            row: target_row,
-                            column: target_column - 1,
-                            old_value: Box::new(old_left_style),
-                            new_value: Box::new(new_left_style),
-                        });
-                    }
-                } else if target_column == source_last_column && target_column < LAST_COLUMN {
-                    // Left border of the cell to the right
-                    let old_right_style =
-                        self.model
-                            .get_style_for_cell(sheet, target_row, target_column + 1)?;
-                    if new_style.border.right != old_right_style.border.left {
-                        let mut new_right_style = old_right_style.clone();
-                        new_right_style.border.left = new_style.border.right.clone();
-                        diff_list.push(Diff::SetCellStyle {
-                            sheet,
-                            row: target_row,
-                            column: target_column + 1,
-                            old_value: Box::new(old_right_style),
-                            new_value: Box::new(new_right_style),
-                        });
-                    }
-                }
-
                 self.model
                     .set_user_input(sheet, target_row, target_column, new_value.clone())?;
                 self.model
@@ -1610,7 +1415,7 @@ impl UserModel {
                         .worksheet(sheet)?
                         .cell(row, column)
                         .cloned();
-                    // TODO: also clear the styles and adjacent borders
+
                     diff_list.push(Diff::CellClearContents {
                         sheet,
                         row,
