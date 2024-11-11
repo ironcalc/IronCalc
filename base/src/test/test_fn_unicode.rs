@@ -32,12 +32,23 @@ fn simple_cases() {
 }
 
 #[test]
-fn value_errors() {
+fn test_error_cases() {
     let mut model = new_empty_model();
     model._set("A1", "=UNICODE(\"\")");
+    model._set("A2", "=UNICODE(#CALC!)");
+    model._set("A3", "=UNICODE(#NAME?)");
+    model._set("A4", "=UNICODE(#VALUE!)");
+    model._set("A5", "=UNICODE(#REF!)");
+    model._set("A6", "=UNICODE(#DIV/0!)");
+
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#CALC!");
+    assert_eq!(model._get_text("A3"), *"#NAME?");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"#REF!");
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
 }
 
 #[test]
