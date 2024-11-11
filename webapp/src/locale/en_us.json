@@ -69,5 +69,9 @@
     "update": "Update",
     "label": "Formula",
     "title": "Update formula"
+  },
+  "navigation": {
+    "add_sheet": "Add sheet",
+    "sheet_list": "Sheet list"
   }
 }
