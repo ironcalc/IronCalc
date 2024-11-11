@@ -1,10 +1,110 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
+    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{types::Area, utils::number_to_column},
     types::{Border, BorderItem, BorderStyle},
     BorderArea, UserModel,
 };
+
+// checks there are no borders in the sheet
+#[track_caller]
+fn check_no_borders(model: &UserModel) {
+    let workbook = &model.model.workbook;
+    for ws in &workbook.worksheets {
+        for data_row in ws.sheet_data.values() {
+            for cell in data_row.values() {
+                let style_index = cell.get_style();
+                let style = workbook.styles.get_style(style_index).unwrap();
+                assert_eq!(
+                    style.border,
+                    Border {
+                        diagonal_up: false,
+                        diagonal_down: false,
+                        left: None,
+                        right: None,
+                        top: None,
+                        bottom: None,
+                        diagonal: None
+                    }
+                )
+            }
+        }
+    }
+}
+
+// checks that all the borders are consistent
+#[track_caller]
+fn check_borders(model: &UserModel) {
+    let workbook = &model.model.workbook;
+    for (sheet_index, ws) in workbook.worksheets.iter().enumerate() {
+        let sheet = sheet_index as u32;
+        for (&row, data_row) in &ws.sheet_data {
+            for (&column, cell) in data_row {
+                let style_index = cell.get_style();
+                let style = workbook.styles.get_style(style_index).unwrap();
+                // Top border:
+                if let Some(top_border) = style.border.top {
+                    if row > 1 {
+                        let top_cell_style = model.get_cell_style(sheet, row - 1, column).unwrap();
+                        assert_eq!(
+                            Some(top_border),
+                            top_cell_style.border.bottom,
+                            "(Top). Sheet: {}, row: {}, column: {}",
+                            sheet,
+                            row,
+                            column
+                        );
+                    }
+                }
+                // Border to the right
+                if let Some(right_border) = style.border.right {
+                    if column < LAST_COLUMN {
+                        let right_cell_style =
+                            model.get_cell_style(sheet, row, column + 1).unwrap();
+                        assert_eq!(
+                            Some(right_border),
+                            right_cell_style.border.left,
+                            "(Right). Sheet: {}, row: {}, column: {}",
+                            sheet,
+                            row,
+                            column
+                        );
+                    }
+                }
+                // Bottom border:
+                if let Some(bottom_border) = style.border.bottom {
+                    if row < LAST_ROW {
+                        let bottom_cell_style =
+                            model.get_cell_style(sheet, row + 1, column).unwrap();
+                        assert_eq!(
+                            Some(bottom_border),
+                            bottom_cell_style.border.top,
+                            "(Bottom). Sheet: {}, row: {}, column: {}",
+                            sheet,
+                            row,
+                            column
+                        );
+                    }
+                }
+                // Left Border
+                if let Some(left_border) = style.border.left {
+                    if column > 1 {
+                        let left_cell_style = model.get_cell_style(sheet, row, column - 1).unwrap();
+                        assert_eq!(
+                            Some(left_border),
+                            left_cell_style.border.right,
+                            "(Left). Sheet: {}, row: {}, column: {}",
+                            sheet,
+                            row,
+                            column
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
 
 #[test]
 fn borders_all() {
@@ -129,6 +229,8 @@ fn borders_all() {
         }
     }
 
+    check_borders(&model);
+
     // Lets remove all of them:
     let border_area: BorderArea = serde_json::from_str(
         r##"{
@@ -156,11 +258,14 @@ fn borders_all() {
             assert_eq!(style.border, expected_border);
         }
     }
+
+    check_borders(&model);
 }
 
 #[test]
 fn borders_inner() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    check_borders(&model);
     // We set an outer border in cells F5:H9
     let range = &Area {
         sheet: 0,
@@ -183,6 +288,7 @@ fn borders_inner() {
     )
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
+    check_borders(&model);
     // The inner part all have borders
     for row in 6..8 {
         for column in 7..8 {
@@ -269,6 +375,7 @@ fn borders_outer() {
     )
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
+    check_borders(&model);
     {
         // We check the border on F5
         let style = model.get_cell_style(0, 5, 6).unwrap();
@@ -412,6 +519,7 @@ fn borders_top() {
     )
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
+    check_borders(&model);
     for row in 5..9 {
         for column in 6..9 {
             let style = model.get_cell_style(0, row, column).unwrap();
@@ -419,13 +527,18 @@ fn borders_top() {
                 style: BorderStyle::Thin,
                 color: Some("#FF5566".to_string()),
             };
+            let bottom = if row == 8 {
+                None
+            } else {
+                Some(border_item.clone())
+            };
             let expected_border = Border {
                 diagonal_up: false,
                 diagonal_down: false,
                 left: None,
                 right: None,
                 top: Some(border_item.clone()),
-                bottom: None,
+                bottom,
                 diagonal: None,
             };
             assert_eq!(style.border, expected_border);
@@ -497,6 +610,8 @@ fn borders_top() {
             assert_eq!(style.border, expected_border);
         }
     }
+    assert!(model.undo().is_ok());
+    check_no_borders(&model);
 }
 
 #[test]
@@ -524,6 +639,7 @@ fn borders_right() {
     )
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
+    check_borders(&model);
     for row in 5..9 {
         for column in 6..9 {
             let style = model.get_cell_style(0, row, column).unwrap();
@@ -570,6 +686,7 @@ fn borders_bottom() {
     )
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
+    check_borders(&model);
     for row in 5..9 {
         for column in 6..9 {
             let style = model.get_cell_style(0, row, column).unwrap();
@@ -577,12 +694,18 @@ fn borders_bottom() {
                 style: BorderStyle::Thin,
                 color: Some("#FF5566".to_string()),
             };
+            // The top will also have a value for all but the first one
+            let top = if row == 5 {
+                None
+            } else {
+                Some(border_item.clone())
+            };
             let expected_border = Border {
                 diagonal_up: false,
                 diagonal_down: false,
                 left: None,
                 right: None,
-                top: None,
+                top,
                 bottom: Some(border_item.clone()),
                 diagonal: None,
             };
@@ -616,6 +739,7 @@ fn borders_left() {
     )
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
+    check_borders(&model);
     for row in 5..9 {
         for column in 6..9 {
             let style = model.get_cell_style(0, row, column).unwrap();

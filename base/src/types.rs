@@ -578,7 +578,7 @@ impl Default for CellStyles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, PartialOrd, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum BorderStyle {
     Thin,
