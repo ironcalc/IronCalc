@@ -666,7 +666,7 @@ impl Lexer {
         Ok(chars)
     }
 
-    // Reads an error from the input stream. Precondition: char at current position is '#'.
+    // Reads an error from the input stream.    
     fn consume_error(&mut self) -> TokenType {
         let errors = &self.language.errors;
         let rest_of_formula: String = self.chars[self.position - 1..self.len].iter().collect();

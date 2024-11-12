@@ -34,9 +34,13 @@ fn test_to_rc_format() {
         column: 101,
     };
 
-    let node3 = parser.parse("$C$5", &Some(cell_reference_2));
+    let node3 = parser.parse("$C$5", &Some(cell_reference_2.clone()));
     let formatted3 = to_rc_format(&node3);
     assert_eq!(formatted3, "R5C3");
+
+    let node3 = parser.parse("C5", &Some(cell_reference_2));
+    let formatted3 = to_rc_format(&node3);
+    assert_eq!(formatted3, "R[-94]C[-98]");
 }
 
 #[test]
@@ -101,18 +105,18 @@ fn test_to_string() {
         column: 1,
     });
 
-    let node = parser.parse("$C$5", &context);
+    let node = parser.parse("C5", &context);
 
-    assert_eq!(to_string(&node, &context.clone().unwrap()), "$C$5");
+    assert_eq!(to_string(&node, &context.clone().unwrap()), "C5");
 
     let cell_reference: CellReferenceRC = CellReferenceRC {
         sheet: "Sheet1".to_string(),
         row: 9,
         column: 9,
     };
-    let node = parser.parse("$C$5", &Some(cell_reference.clone()));
+    let node = parser.parse("SIN(C5)/2 + D$4 * 3", &Some(cell_reference.clone()));
    
-    assert_eq!(to_string(&node, &cell_reference.clone()), "$C$5");
+    assert_eq!(to_string(&node, &cell_reference.clone()), "SIN(C5)/2+D$4*3");
 }
 
 #[test]
@@ -123,8 +127,8 @@ fn test_to_excel_string() {
     // Reference cell is Sheet1!A1
     let context: Option<CellReferenceRC> = Some(CellReferenceRC {
         sheet: "Sheet1".to_string(),
-        row: 1,
-        column: 1,
+        row: 3,
+        column: 4,
     });
 
     let node = parser.parse("$C$5", &context);
