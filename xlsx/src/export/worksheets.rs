@@ -13,7 +13,7 @@
 //!   <v>1</v>
 //! </c>
 //! Formula in F6 would then be 'A6+C6'
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write};
 
 use itertools::Itertools;
 
@@ -25,6 +25,8 @@ use ironcalc_base::{
     },
     types::{Cell, Worksheet},
 };
+
+use crate::error::XlsxError;
 
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
 
@@ -51,15 +53,60 @@ fn get_formula_attribute(
     escape_xml(formula).to_string()
 }
 
-pub(crate) fn get_worksheet_xml(
+pub(crate) fn write_worksheet_xml<W: Write>(
     worksheet: &Worksheet,
     parsed_formulas: &[Node],
     dimension: &str,
     is_sheet_selected: bool,
-) -> String {
-    let mut sheet_data_str: Vec<String> = vec![];
+    writer: &mut W,
+) -> Result<(), XlsxError> {
+    let tab_selected = if is_sheet_selected {
+        " tabSelected=\"1\""
+    } else {
+        ""
+    };
+
+    let show_grid_lines = if !worksheet.show_grid_lines {
+        " showGridLines=\"0\""
+    } else {
+        ""
+    };
+
+    let mut active_cell = "A1".to_string();
+    let mut sqref = "A1".to_string();
+
+    let views = &worksheet.views;
+    if let Some(view) = views.get(&0) {
+        let range = view.range;
+        let row = view.row;
+        let column = view.column;
+        let column_name = number_to_column(column).unwrap_or("A".to_string());
+        active_cell = format!("{column_name}{row}");
+
+        let column_start = number_to_column(range[1]).unwrap_or("A".to_string());
+        let column_end = number_to_column(range[3]).unwrap_or("A".to_string());
+        if range[0] == range[2] && range[1] == range[3] {
+            sqref = format!("{column_start}{}", range[0]);
+        } else {
+            sqref = format!("{}{}:{}{}", column_start, range[0], column_end, range[2]);
+        }
+    }
+
+    write!(
+        writer,
+        "{XML_DECLARATION}
+<worksheet \
+xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" \
+xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
+  <dimension ref=\"{dimension}\"/>\
+  <sheetViews>\
+    <sheetView workbookViewId=\"0\"{show_grid_lines}{tab_selected}>\
+        <selection activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>\
+    </sheetView>\
+  </sheetViews>"
+    )?;
+
     let mut cols_str: Vec<String> = vec![];
-    let mut merged_cells_str: Vec<String> = vec![];
 
     for col in &worksheet.cols {
         // <col min="4" max="4" width="12" customWidth="1"/>
@@ -76,6 +123,17 @@ pub(crate) fn get_worksheet_xml(
         ));
     }
 
+    let cols = cols_str.join("");
+    let cols = if cols.is_empty() {
+        "".to_string()
+    } else {
+        format!("<cols>{cols}</cols>")
+    };
+
+    write!(writer, "{cols}")?;
+
+    write!(writer, "<sheetData>")?;
+
     // this is a bit of an overkill. A dictionary of the row styles by row_index
     let mut row_style_dict = HashMap::new();
     for row in &worksheet.rows {
@@ -91,7 +149,7 @@ pub(crate) fn get_worksheet_xml(
     }
 
     for (row_index, row_data) in worksheet.sheet_data.iter().sorted_by_key(|x| x.0) {
-        let mut row_data_str: Vec<String> = vec![];
+        let mut row_data_str: Vec<String> = Vec::with_capacity(row_data.len());
         for (column_index, cell) in row_data.iter().sorted_by_key(|x| x.0) {
             let column_name = number_to_column(*column_index).unwrap();
             let cell_name = format!("{column_name}{row_index}");
@@ -236,56 +294,20 @@ pub(crate) fn get_worksheet_xml(
             }
             None => "".to_string(),
         };
-        sheet_data_str.push(format!(
+
+        write!(
+            writer,
             "<row r=\"{row_index}\"{row_style_str}>{}</row>",
             row_data_str.join("")
-        ))
+        )?;
     }
-    let sheet_data = sheet_data_str.join("");
+    write!(writer, "</sheetData>")?;
 
+    let mut merged_cells_str: Vec<String> = vec![];
     for merge_cell_ref in &worksheet.merge_cells {
         merged_cells_str.push(format!("<mergeCell ref=\"{merge_cell_ref}\"/>"))
     }
     let merged_cells_count = merged_cells_str.len();
-
-    let cols = cols_str.join("");
-    let cols = if cols.is_empty() {
-        "".to_string()
-    } else {
-        format!("<cols>{cols}</cols>")
-    };
-
-    let tab_selected = if is_sheet_selected {
-        " tabSelected=\"1\""
-    } else {
-        ""
-    };
-
-    let show_grid_lines = if !worksheet.show_grid_lines {
-        " showGridLines=\"0\""
-    } else {
-        ""
-    };
-
-    let mut active_cell = "A1".to_string();
-    let mut sqref = "A1".to_string();
-
-    let views = &worksheet.views;
-    if let Some(view) = views.get(&0) {
-        let range = view.range;
-        let row = view.row;
-        let column = view.column;
-        let column_name = number_to_column(column).unwrap_or("A".to_string());
-        active_cell = format!("{column_name}{row}");
-
-        let column_start = number_to_column(range[1]).unwrap_or("A".to_string());
-        let column_end = number_to_column(range[3]).unwrap_or("A".to_string());
-        if range[0] == range[2] && range[1] == range[3] {
-            sqref = format!("{column_start}{}", range[0]);
-        } else {
-            sqref = format!("{}{}:{}{}", column_start, range[0], column_end, range[2]);
-        }
-    }
 
     let merge_cells_section = if merged_cells_count > 0 {
         format!(
@@ -297,22 +319,7 @@ pub(crate) fn get_worksheet_xml(
         "".to_string()
     };
 
-    format!(
-        "{XML_DECLARATION}
-<worksheet \
-xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" \
-xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
-  <dimension ref=\"{dimension}\"/>\
-  <sheetViews>\
-    <sheetView workbookViewId=\"0\"{show_grid_lines}{tab_selected}>\
-        <selection activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>\
-    </sheetView>\
-  </sheetViews>\
-  {cols}\
-  <sheetData>\
-  {sheet_data}\
-  </sheetData>\
-  {merge_cells_section}\
-</worksheet>"
-    )
+    write!(writer, "{merge_cells_section}/</worksheet>")?;
+
+    Ok(())
 }

@@ -24,6 +24,7 @@ ironcalc_base = { path = "../base", version = "0.2" }
 itertools = "0.12"
 chrono = "0.4"
 bitcode = "0.6.0"
+quick-xml = "0.37"
 
 [dev-dependencies]
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
@@ -35,7 +36,6 @@ path = "src/lib.rs"
 [[bin]]
 name = "test"
 path = "src/bin/test.rs"
-
 
 [[bin]]
 name = "documentation"
