@@ -6,10 +6,10 @@ use crate::{test::util::new_empty_model, types::CellType};
 fn test_model_set_fns_related_to_merge_cells() {
     let mut model = new_empty_model();
 
-    //creating a merge cell of D1:F2
+    // creating a merge cell of D1:F2
     model.merge_cells(0, "D1:F2").unwrap();
 
-    //Updating the mother cell of Merge cells and expecting the update to go through
+    // Updating the mother cell of Merge cells and expecting the update to go through
     model.set_user_input(0, 1, 4, "Hello".to_string()).unwrap();
     assert_eq!(model.get_cell_content(0, 1, 4).unwrap(), "Hello");
     assert_eq!(model.get_cell_type(0, 1, 4).unwrap(), CellType::Text);
@@ -68,7 +68,7 @@ fn test_model_set_fns_related_to_merge_cells() {
 fn test_model_merge_cells_crud_api() {
     let mut model = new_empty_model();
 
-    //creating a merge cell of D4:F6
+    // creating a merge cell of D4:F6
     model.merge_cells(0, "D4:F6").unwrap();
     model
         .set_user_input(0, 4, 4, "Merge Block".to_string())
@@ -108,7 +108,7 @@ fn test_model_merge_cells_crud_api() {
     );
     model.set_user_input(0, 8, 4, "down".to_string()).unwrap();
 
-    //Case2: Creating a new merge cell with overlapping with other 3 merged cell
+    // Case2: Creating a new merge cell with overlapping with other 3 merged cell
     assert_eq!(model.merge_cells(0, "C1:G4"), Ok(()));
     assert_eq!(
         model.workbook.worksheet(0).unwrap().merged_cells_list.len(),

@@ -67,7 +67,7 @@ fn test_create_named_style() {
 fn test_model_style_set_fns_in_merge_cell_context() {
     let mut model = new_empty_model();
 
-    //creating a merge cell of D1:F2
+    // creating a merge cell of D1:F2
     model.merge_cells(0, "D1:F2").unwrap();
     model.set_user_input(0, 1, 4, "Hello".to_string()).unwrap();
 
@@ -75,7 +75,7 @@ fn test_model_style_set_fns_in_merge_cell_context() {
     assert!(!style.font.b);
     style.font.b = true;
 
-    //Updating the mother cell of Merge cells and expecting the update to go through
+    // Updating the mother cell of Merge cells and expecting the update to go through
     // This should make the text "Hello" in bold format
     assert_eq!(model.set_cell_style(0, 1, 4, &style), Ok(()));
 

@@ -338,7 +338,7 @@ fn test_merge_cell_fns_worksheet() {
         Err("Incorrect row or column".to_string())
     );
 
-    //Verifying get fns of worksheet
+    // Verifying get fns of worksheet
     assert_eq!(
         model
             .workbook

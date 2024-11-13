@@ -493,7 +493,7 @@ fn test_merge_cell_import_export_behaviors() {
 
     model.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
 
-    //Lets export to different Excell
+    // Lets export to different Excell
     let exported_merge_cell_xlsx = "temporary_exported_mergecells.xlsx";
     save_to_xlsx(&model, exported_merge_cell_xlsx).unwrap();
 
