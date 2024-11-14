@@ -319,7 +319,7 @@ xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">
         "".to_string()
     };
 
-    write!(writer, "{merge_cells_section}/</worksheet>")?;
+    write!(writer, "{merge_cells_section}</worksheet>")?;
 
     Ok(())
 }
