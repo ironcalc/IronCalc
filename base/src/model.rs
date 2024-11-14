@@ -90,11 +90,11 @@ pub(crate) enum ParsedDefinedName {
 /// * The Locale: a parsed version of the Workbook's locale
 /// * The Timezone: an object representing the Workbook's timezone
 /// * The language. Note that the timezone and the locale belong to the workbook while
-/// the language can be different for different users looking _at the same_ workbook.
+///   the language can be different for different users looking _at the same_ workbook.
 /// * Parsed Formulas: All the formulas in the workbook are parsed here (runtime only)
 /// * A list of cells with its status (evaluating, evaluated, not evaluated)
 /// * A dictionary with the shared strings and their indices.
-/// This is an optimization for large files (~1 million rows)
+///   This is an optimization for large files (~1 million rows)
 pub struct Model {
     /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook,

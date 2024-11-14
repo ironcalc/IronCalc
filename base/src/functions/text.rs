@@ -151,6 +151,7 @@ impl Model {
     ///  * If find_text does not appear in within_text, FIND and FINDB return the #VALUE! error value.
     ///  * If start_num is not greater than zero, FIND and FINDB return the #VALUE! error value.
     ///  * If start_num is greater than the length of within_text, FIND and FINDB return the #VALUE! error value.
+    /// 
     /// NB: FINDB is not implemented. It is the same as FIND function unless locale is a DBCS (Double Byte Character Set)
     pub(crate) fn fn_find(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 3 {
@@ -203,6 +204,7 @@ impl Model {
     /// Same API as FIND but:
     ///  * Allows wildcards
     ///  * It is case insensitive
+    /// 
     /// SEARCH(find_text, within_text, [start_num])
     pub(crate) fn fn_search(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 3 {

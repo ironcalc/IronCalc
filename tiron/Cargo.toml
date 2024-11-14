@@ -1,0 +1,12 @@
+[package]
+name = "tiron"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+crossterm = "0.28.0"
+xlsx = { package= "ironcalc", path = "../xlsx", version = "0.2.0" }
+ratatui = "0.29.0"
+tui-input = "0.11.0"
