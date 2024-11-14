@@ -148,6 +148,9 @@ xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">
         row_style_dict.insert(row.r, row.clone());
     }
 
+    const ROW_STRING_COUNT_BEFORE_WRITE: usize = 10;
+    let mut row_strings: Vec<String> = Vec::with_capacity(ROW_STRING_COUNT_BEFORE_WRITE);
+
     for (row_index, row_data) in worksheet.sheet_data.iter().sorted_by_key(|x| x.0) {
         let mut row_data_str: Vec<String> = Vec::with_capacity(row_data.len());
         for (column_index, cell) in row_data.iter().sorted_by_key(|x| x.0) {
@@ -295,12 +298,19 @@ xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">
             None => "".to_string(),
         };
 
-        write!(
-            writer,
+        row_strings.push(format!(
             "<row r=\"{row_index}\"{row_style_str}>{}</row>",
             row_data_str.join("")
-        )?;
+        ));
+
+        if row_strings.len() == ROW_STRING_COUNT_BEFORE_WRITE {
+            write!(writer, "{}", row_strings.join(""))?;
+            row_strings.clear();
+        }
     }
+
+    // Since we write in batches above, we may have a not-full batch still left to write.
+    write!(writer, "{}", row_strings.join(""))?;
     write!(writer, "</sheetData>")?;
 
     let mut merged_cells_str: Vec<String> = vec![];
