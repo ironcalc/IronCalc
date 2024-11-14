@@ -533,3 +533,20 @@ fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
         return Err(format!("Invalid range: '{}'", range));
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_parse_range() {
+        assert!(parse_range("3Aw").is_err());
+        assert_eq!(parse_range("A1"), Ok((1, 1, 1, 1)));
+        assert_eq!(parse_range("B5:C6"), Ok((5, 2, 6, 3)));
+        assert!(parse_range("A1:A2:A3").is_err());
+        assert!(parse_range("A1:34").is_err());
+        assert!(parse_range("A").is_err());
+        assert!(parse_range("12").is_err());
+    }
+}
+

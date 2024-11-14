@@ -359,9 +359,6 @@ impl<'a> SheetParser<'a> {
                     self.current_row_index = value.parse()?;
                 }
                 attr_name @ b"ht" => {
-                    // Performance optimization: converting directly from_utf8 here is faster than calling
-                    // attribute.unescape_value(), which does this then unescapes. There is nothing to unescape
-                    // in the attribute values for XLSX, so skip that.
                     let value = std::str::from_utf8(&attribute.value).map_err(|e| {
                         XlsxError::Xml(format!(
                             "Unable to decode attribute: \"{:?}\": {:?}",
@@ -373,9 +370,6 @@ impl<'a> SheetParser<'a> {
                     height_attribute = Some(value.parse().unwrap_or(default_row_height));
                 }
                 attr_name @ b"customHeight" => {
-                    // Performance optimization: converting directly from_utf8 here is faster than calling
-                    // attribute.unescape_value(), which does this then unescapes. There is nothing to unescape
-                    // in the attribute values for XLSX, so skip that.
                     let value = std::str::from_utf8(&attribute.value).map_err(|e| {
                         XlsxError::Xml(format!(
                             "Unable to decode attribute: \"{:?}\": {:?}",
@@ -387,9 +381,6 @@ impl<'a> SheetParser<'a> {
                     custom_height = value == "1";
                 }
                 attr_name @ b"s" => {
-                    // Performance optimization: converting directly from_utf8 here is faster than calling
-                    // attribute.unescape_value(), which does this then unescapes. There is nothing to unescape
-                    // in the attribute values for XLSX, so skip that.
                     let value = std::str::from_utf8(&attribute.value).map_err(|e| {
                         XlsxError::Xml(format!(
                             "Unable to decode attribute: \"{:?}\": {:?}",
@@ -401,9 +392,6 @@ impl<'a> SheetParser<'a> {
                     row_style = value.parse().unwrap_or(0);
                 }
                 attr_name @ b"customFormat" => {
-                    // Performance optimization: converting directly from_utf8 here is faster than calling
-                    // attribute.unescape_value(), which does this then unescapes. There is nothing to unescape
-                    // in the attribute values for XLSX, so skip that.
                     let value = std::str::from_utf8(&attribute.value).map_err(|e| {
                         XlsxError::Xml(format!(
                             "Unable to decode attribute: \"{:?}\": {:?}",
@@ -415,9 +403,6 @@ impl<'a> SheetParser<'a> {
                     custom_format = value == "1";
                 }
                 attr_name @ b"hidden" => {
-                    // Performance optimization: converting directly from_utf8 here is faster than calling
-                    // attribute.unescape_value(), which does this then unescapes. There is nothing to unescape
-                    // in the attribute values for XLSX, so skip that.
                     let value = std::str::from_utf8(&attribute.value).map_err(|e| {
                         XlsxError::Xml(format!(
                             "Unable to decode attribute: \"{:?}\": {:?}",
