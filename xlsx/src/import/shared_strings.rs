@@ -1,8 +1,68 @@
-use std::io::Read;
+use std::io::{BufReader, Read};
 
+use quick_xml::events::Event;
 use roxmltree::Node;
 
 use crate::error::XlsxError;
+
+struct SSParser {
+    state: ParserState,
+    current_string: String,
+    strings: Vec<String>,
+}
+
+impl SSParser {
+    fn new() -> Self {
+        Self {
+            state: ParserState::OutsideSi,
+            current_string: String::new(),
+            strings: vec![],
+        }
+    }
+
+    fn process(&mut self, ev: Event) -> Result<(), XlsxError> {
+        self.state = match self.state {
+            ParserState::OutsideSi => match ev {
+                Event::Start(e) if e.local_name().into_inner() == b"si" => ParserState::InsideSi,
+                _ => ParserState::OutsideSi,
+            },
+            ParserState::InsideSi => match ev {
+                Event::Start(e) if e.local_name().into_inner() == b"t" => ParserState::T,
+                Event::End(e) if e.local_name().into_inner() == b"si" => {
+                    self.strings.push(self.current_string.clone());
+                    self.current_string.clear();
+                    ParserState::OutsideSi
+                }
+                _ => ParserState::InsideSi,
+            },
+            ParserState::T => match ev {
+                Event::Text(t) => {
+                    self.current_string
+                        .push_str(t.unescape().unwrap_or("".into()).as_ref());
+                    ParserState::T
+                }
+                Event::End(e) if e.local_name().into_inner() == b"t" => ParserState::InsideSi,
+                _ => ParserState::T,
+            },
+        };
+
+        Ok(())
+    }
+
+    fn strings(self) -> Result<Vec<String>, XlsxError> {
+        if self.state != ParserState::OutsideSi {
+            return Err(XlsxError::Xml("Corrupt XML structure".to_string()));
+        }
+        Ok(self.strings)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum ParserState {
+    OutsideSi,
+    InsideSi,
+    T,
+}
 
 /// Reads the list of shared strings in an Excel workbook
 /// Note than in IronCalc we lose _internal_ styling of a string
@@ -11,29 +71,51 @@ pub(crate) fn read_shared_strings<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
 ) -> Result<Vec<String>, XlsxError> {
     match archive.by_name("xl/sharedStrings.xml") {
-        Ok(mut file) => {
-            let mut text = String::new();
-            file.read_to_string(&mut text)?;
-            read_shared_strings_from_string(&text)
-        }
+        Ok(mut file) => read_shared_strings_from_reader(&mut file),
         Err(_e) => Ok(Vec::new()),
     }
 }
 
-fn read_shared_strings_from_string(text: &str) -> Result<Vec<String>, XlsxError> {
-    let doc = roxmltree::Document::parse(text)?;
-    let mut shared_strings = Vec::new();
-    let nodes: Vec<Node> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
-    for node in nodes {
-        let text = node
-            .descendants()
-            .filter(|n| n.has_tag_name("t"))
-            .map(|n| n.text().unwrap_or("").to_string())
-            .collect::<Vec<String>>()
-            .join("");
-        shared_strings.push(text);
+fn read_shared_strings_from_reader<R: Read>(reader: &mut R) -> Result<Vec<String>, XlsxError> {
+    let streaming = true;
+    if streaming {
+        let mut parser = SSParser::new();
+
+        let xmlfile = BufReader::new(reader);
+        let mut xmlfile = quick_xml::Reader::from_reader(xmlfile);
+
+        const BUF_SIZE: usize = 900;
+        let mut buf = Vec::with_capacity(BUF_SIZE);
+        loop {
+            match xmlfile
+                .read_event_into(&mut buf)
+                .map_err(|e| XlsxError::Xml(e.to_string()))?
+            {
+                Event::Eof => break,
+                event => parser.process(event)?,
+            };
+            buf.clear();
+        }
+
+        parser.strings()
+    } else {
+        let mut text = String::new();
+        reader.read_to_string(&mut text)?;
+
+        let doc = roxmltree::Document::parse(&text)?;
+        let mut shared_strings = Vec::new();
+        let nodes: Vec<Node> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
+        for node in nodes {
+            let text = node
+                .descendants()
+                .filter(|n| n.has_tag_name("t"))
+                .map(|n| n.text().unwrap_or("").to_string())
+                .collect::<Vec<String>>()
+                .join("");
+            shared_strings.push(text);
+        }
+        Ok(shared_strings)
     }
-    Ok(shared_strings)
 }
 
 #[cfg(test)]
@@ -67,7 +149,8 @@ mod tests {
         </r>
     </si>
 </sst>"#;
-        let shared_strings = read_shared_strings_from_string(xml_string.trim()).unwrap();
+        let shared_strings =
+            read_shared_strings_from_reader(&mut xml_string.trim().as_bytes()).unwrap();
         assert_eq!(
             shared_strings,
             [
