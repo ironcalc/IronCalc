@@ -12,4 +12,4 @@
 - JavaScript bindings
 - React WebApp
 
-[0.0.2]: https://github.com/IronCalc/ironcalc/releases/tag/v0.0.2
+[0.2.0]: https://github.com/IronCalc/ironcalc/releases/tag/v0.2.0
