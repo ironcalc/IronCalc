@@ -5,6 +5,7 @@ use chrono::NaiveDate;
 use crate::constants::EXCEL_DATE_BASE;
 
 pub fn from_excel_date(days: i64) -> NaiveDate {
+    #[allow(clippy::expect_used)]
     let dt = NaiveDate::from_ymd_opt(1900, 1, 1).expect("problem with chrono::NaiveDate");
     dt + Duration::days(days - 2)
 }

@@ -1,7 +1,7 @@
 .PHONY: lint
 lint:
 	cargo fmt -- --check
-	cargo clippy --all-targets --all-features
+	cargo clippy --all-targets --all-features -- -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings
 	cd webapp && npm install && npm run check
 
 .PHONY: format

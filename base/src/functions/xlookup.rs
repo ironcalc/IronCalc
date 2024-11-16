@@ -251,20 +251,28 @@ impl Model {
                         let column1 = left.column;
 
                         if row1 == 1 && row2 == LAST_ROW {
-                            row2 = self
-                                .workbook
-                                .worksheet(left.sheet)
-                                .expect("Sheet expected during evaluation.")
-                                .dimension()
-                                .max_row;
+                            row2 = match self.workbook.worksheet(left.sheet) {
+                                Ok(s) => s.dimension().max_row,
+                                Err(_) => {
+                                    return CalcResult::new_error(
+                                        Error::ERROR,
+                                        cell,
+                                        format!("Invalid worksheet index: '{}'", left.sheet),
+                                    );
+                                }
+                            };
                         }
                         if column1 == 1 && column2 == LAST_COLUMN {
-                            column2 = self
-                                .workbook
-                                .worksheet(left.sheet)
-                                .expect("Sheet expected during evaluation.")
-                                .dimension()
-                                .max_column;
+                            column2 = match self.workbook.worksheet(left.sheet) {
+                                Ok(s) => s.dimension().max_column,
+                                Err(_) => {
+                                    return CalcResult::new_error(
+                                        Error::ERROR,
+                                        cell,
+                                        format!("Invalid worksheet index: '{}'", left.sheet),
+                                    );
+                                }
+                            };
                         }
                         let left = CellReferenceIndex {
                             sheet: left.sheet,

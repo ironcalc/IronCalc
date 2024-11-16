@@ -208,6 +208,7 @@ impl PyModel {
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 
+    #[allow(clippy::panic)]
     pub fn test_panic(&self) -> PyResult<()> {
         panic!("This function panics for testing panic handling");
     }
@@ -240,6 +241,7 @@ pub fn create(name: &str, locale: &str, tz: &str) -> PyResult<PyModel> {
 }
 
 #[pyfunction]
+#[allow(clippy::panic)]
 pub fn test_panic() {
     panic!("This function panics for testing panic handling");
 }

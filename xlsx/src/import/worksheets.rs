@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use ironcalc_base::{
@@ -1037,7 +1039,10 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 name: sheet_name.to_string(),
                 id: sheet.sheet_id,
                 state: state.clone(),
-                comments: comments.get(rel_id).expect("").to_vec(),
+                comments: comments
+                    .get(rel_id)
+                    .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?
+                    .to_vec(),
             };
             let (s, is_selected) =
                 load_sheet(archive, &path, settings, worksheets, tables, shared_strings)?;

@@ -31,6 +31,7 @@ pub struct Language {
     pub errors: Errors,
 }
 
+#[allow(clippy::expect_used)]
 static LANGUAGES: Lazy<HashMap<String, Language>> = Lazy::new(|| {
     bitcode::decode(include_bytes!("language.bin")).expect("Failed parsing language file")
 });

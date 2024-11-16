@@ -41,29 +41,35 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
     // They also need to be different from any defined name
     let name = table
         .attribute("name")
-        .expect("Missing table name")
+        .ok_or_else(|| XlsxError::Xml("Corrupt XML structure: missing table name".to_string()))?
         .to_string();
 
     let display_name = table
         .attribute("name")
-        .expect("Missing table display name")
+        .ok_or_else(|| {
+            XlsxError::Xml("Corrupt XML structure: missing table display name".to_string())
+        })?
         .to_string();
 
     // Range of the table, including the totals if any and headers.
     let reference = table
         .attribute("ref")
-        .expect("Missing table ref")
+        .ok_or_else(|| XlsxError::Xml("Corrupt XML structure: missing table ref".to_string()))?
         .to_string();
 
     // Either 0 or 1, indicates if the table has a formula for totals at the bottom of the table
     let totals_row_count = match table.attribute("totalsRowCount") {
-        Some(s) => s.parse::<u32>().expect("Invalid totalsRowCount"),
+        Some(s) => s.parse::<u32>().map_err(|_| {
+            XlsxError::Xml("Corrupt XML structure: Invalid totalsRowCount".to_string())
+        })?,
         None => 0,
     };
 
     // Either 0 or 1, indicates if the table has headers at the top of the table
     let header_row_count = match table.attribute("headerRowCount") {
-        Some(s) => s.parse::<u32>().expect("Invalid headerRowCount"),
+        Some(s) => s.parse::<u32>().map_err(|_| {
+            XlsxError::Xml("Corrupt XML structure: Invalid headerRowCount".to_string())
+        })?,
         None => 1,
     };
 
@@ -125,9 +131,15 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
         .collect::<Vec<Node>>();
     let mut columns = Vec::new();
     for table_column in table_column {
-        let column_name = table_column.attribute("name").expect("Missing column name");
-        let id = table_column.attribute("id").expect("Missing column id");
-        let id = id.parse::<u32>().expect("Invalid id");
+        let column_name = table_column.attribute("name").ok_or_else(|| {
+            XlsxError::Xml("Corrupt XML structure: missing column name".to_string())
+        })?;
+        let id = table_column.attribute("id").ok_or_else(|| {
+            XlsxError::Xml("Corrupt XML structure: missing column id".to_string())
+        })?;
+        let id = id
+            .parse::<u32>()
+            .map_err(|_| XlsxError::Xml("Corrupt XML structure: invalid id".to_string()))?;
 
         // style index of the header row of the table
         let header_row_dxf_id = if let Some(index_str) = table_column.attribute("headerRowDxfId") {

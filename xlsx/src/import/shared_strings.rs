@@ -38,6 +38,7 @@ fn read_shared_strings_from_string(text: &str) -> Result<Vec<String>, XlsxError>
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     #[test]

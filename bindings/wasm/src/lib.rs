@@ -274,15 +274,18 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<JsValue, JsError> {
-        self.model
+        let style = self
+            .model
             .get_cell_style(sheet, row, column)
-            .map_err(to_js_error)
-            .map(|x| serde_wasm_bindgen::to_value(&x).unwrap())
+            .map_err(to_js_error)?;
+
+        serde_wasm_bindgen::to_value(&style).map_err(|e| to_js_error(e.to_string()))
     }
 
     #[wasm_bindgen(js_name = "onPasteStyles")]
     pub fn on_paste_styles(&mut self, styles: JsValue) -> Result<(), JsError> {
-        let styles: &Vec<Vec<Style>> = &serde_wasm_bindgen::from_value(styles).unwrap();
+        let styles: &Vec<Vec<Style>> =
+            &serde_wasm_bindgen::from_value(styles).map_err(|e| to_js_error(e.to_string()))?;
         self.model.on_paste_styles(styles).map_err(to_js_error)
     }
 
@@ -304,7 +307,10 @@ impl Model {
         )
     }
 
+    // I don't _think_ serializing to JsValue can't fail
+    // FIXME: Remove this clippy directive
     #[wasm_bindgen(js_name = "getWorksheetsProperties")]
+    #[allow(clippy::unwrap_used)]
     pub fn get_worksheets_properties(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.model.get_worksheets_properties()).unwrap()
     }
@@ -320,7 +326,10 @@ impl Model {
         vec![sheet as i32, row, column]
     }
 
+    // I don't _think_ serializing to JsValue can't fail
+    // FIXME: Remove this clippy directive
     #[wasm_bindgen(js_name = "getSelectedView")]
+    #[allow(clippy::unwrap_used)]
     pub fn get_selected_view(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.model.get_selected_view()).unwrap()
     }
@@ -503,8 +512,9 @@ impl Model {
         let data = self
             .model
             .copy_to_clipboard()
-            .map_err(|e| to_js_error(e.to_string()));
-        data.map(|x| serde_wasm_bindgen::to_value(&x).unwrap())
+            .map_err(|e| to_js_error(e.to_string()))?;
+
+        serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
     }
 
     #[wasm_bindgen(js_name = "pasteFromClipboard")]

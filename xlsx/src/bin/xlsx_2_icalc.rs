@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::panic)]
+
 //! Tests an Excel xlsx file.
 //! Returns a list of differences in json format.
 //! Saves an IronCalc version

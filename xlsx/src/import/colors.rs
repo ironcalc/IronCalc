@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use core::cmp::max;
 use core::cmp::min;
 

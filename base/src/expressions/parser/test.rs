@@ -1,3 +1,5 @@
+#![allow(clippy::panic)]
+
 use std::collections::HashMap;
 
 use crate::expressions::lexer::LexerMode;

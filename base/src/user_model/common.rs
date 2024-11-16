@@ -571,7 +571,10 @@ impl UserModel {
                 break;
             }
         }
-        let data = worksheet.sheet_data.get(&row).unwrap().clone();
+        let data = match worksheet.sheet_data.get(&row) {
+            Some(s) => s.clone(),
+            None => return Err(format!("Row number '{row}' is not valid.")),
+        };
         let old_data = Box::new(RowData {
             row: row_data,
             data,
@@ -1369,11 +1372,16 @@ impl UserModel {
                 );
                 text_row.push(text);
             }
-            wtr.write_record(text_row).unwrap();
+            wtr.write_record(text_row)
+                .map_err(|e| format!("Error while processing csv: {}", e))?;
             data.insert(row, data_row);
         }
 
-        let csv = String::from_utf8(wtr.into_inner().unwrap()).unwrap();
+        let csv = String::from_utf8(
+            wtr.into_inner()
+                .map_err(|e| format!("Processing error: '{}'", e))?,
+        )
+        .map_err(|e| format!("Error converting from utf8: '{}'", e))?;
 
         Ok(Clipboard {
             csv,

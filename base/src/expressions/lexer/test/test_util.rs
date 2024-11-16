@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+
 use crate::expressions::{
     lexer::util::get_tokens,
     token::{OpCompare, OpSum, TokenType},

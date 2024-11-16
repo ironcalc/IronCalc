@@ -34,6 +34,7 @@ impl ParsedReference {
         locale: &Locale,
         get_sheet_index_by_name: F,
     ) -> Result<ParsedReference, String> {
+        #[allow(clippy::expect_used)]
         let language = get_language("en").expect("");
         let mut lexer = Lexer::new(reference, LexerMode::A1, locale, language);
 
@@ -151,6 +152,8 @@ pub(crate) fn is_valid_hex_color(color: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
+
     use super::*;
     use crate::language::get_language;
     use crate::locale::{get_locale, Locale};

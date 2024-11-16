@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::panic)]
+
 use std::io::Read;
 use std::{env, fs, io};
 use uuid::Uuid;
