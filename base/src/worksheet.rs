@@ -513,6 +513,7 @@ impl Worksheet {
             if let Some(cell) = data_row.get(&column) {
                 matches!(cell, Cell::EmptyCell { .. })
             } else {
+                // Not in the map, and all such cells are empty by default.
                 true
             }
         } else {

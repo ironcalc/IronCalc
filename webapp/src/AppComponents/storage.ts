@@ -18,8 +18,8 @@ export function updateNameSelectedWorkbook(model: Model, newName: string) {
         console.warn("Failed saving new name");
       }
     }
-    const modeBytes = model.toBytes();
-    localStorage.setItem(uuid, bytesToBase64(modeBytes));
+    const modelBytes = model.toBytes();
+    localStorage.setItem(uuid, bytesToBase64(modelBytes));
   }
 }
 

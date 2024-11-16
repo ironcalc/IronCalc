@@ -42,6 +42,7 @@ pub(crate) fn move_formula(node: &Node, move_context: &MoveContext) -> String {
     to_string_moved(node, move_context)
 }
 
+// Move the named function by `move_context`, updating its parsed argument nodes.
 fn move_function(name: &str, args: &Vec<Node>, move_context: &MoveContext) -> String {
     let mut first = true;
     let mut arguments = "".to_string();

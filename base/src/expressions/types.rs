@@ -30,6 +30,7 @@ pub struct CellReference {
 #[derive(Clone)]
 pub struct CellReferenceRC {
     pub sheet: String,
+    // 1-based index
     pub column: i32,
     pub row: i32,
 }
@@ -43,8 +44,11 @@ pub struct CellReferenceIndex {
 
 #[derive(Serialize, Deserialize)]
 pub struct Area {
+    // 0-based index
     pub sheet: u32,
+    // top of area
     pub row: i32,
+    // left side of area
     pub column: i32,
     pub width: i32,
     pub height: i32,

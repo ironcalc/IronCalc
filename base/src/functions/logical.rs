@@ -106,6 +106,7 @@ impl Model {
                                     true_count += 1;
                                 }
                                 CalcResult::Number(value) => {
+                                    // TODO: should we check epsilon around zero?
                                     if value == 0.0 {
                                         return CalcResult::Boolean(false);
                                     }
