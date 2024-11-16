@@ -383,11 +383,11 @@ impl Model {
     ///    * All cell references to initial_column will go to target_column
     ///    * All cell references to columns in between (initial_column, target_column] will be displaced one to the left
     ///    * All other cell references are left unchanged
-    /// Ranges. This is the tricky bit:
+    ///      Ranges. This is the tricky bit:
     ///    * Column is one of the extremes of the range. The new extreme would be target_column.
     ///      Range is then normalized
     ///    * Any other case, range is left unchanged.
-    /// NOTE: This does NOT move the data in the columns or move the colum styles
+    ///      NOTE: This does NOT move the data in the columns or move the colum styles
     pub fn move_column_action(
         &mut self,
         sheet: u32,

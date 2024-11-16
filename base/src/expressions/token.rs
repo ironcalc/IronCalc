@@ -79,7 +79,7 @@ impl fmt::Display for OpProduct {
 /// Note that "#ERROR!" and "#N/IMPL!" are not part of the xlsx standard
 ///  * "#ERROR!" means there was an error processing the formula (for instance "=A1+")
 ///  * "#N/IMPL!" means the formula or feature in Excel but has not been implemented in IronCalc
-/// Note that they are serialized/deserialized by index
+///    Note that they are serialized/deserialized by index
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub enum Error {
     REF,
