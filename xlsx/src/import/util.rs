@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use colors::{get_indexed_color, get_themed_color};
 use roxmltree::{ExpandedName, Node};
 

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use crate::{expressions::types::Area, UserModel};
 
 #[test]

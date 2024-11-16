@@ -1148,6 +1148,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use std::{
         fs::File,
         io::{BufRead, BufReader},

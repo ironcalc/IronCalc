@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use crate::{expressions::token, test::util::new_empty_model, types::Cell};
 
 #[test]

@@ -1,3 +1,6 @@
+#![allow(clippy::panic)]
+#![allow(clippy::expect_used)]
+
 //! Produces documentation of all the implemented IronCalc functions
 //! and saves the result to functions.md
 //!

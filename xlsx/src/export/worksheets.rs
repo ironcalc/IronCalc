@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::panic)]
+
 //! # A note on shared formulas
 //! Although both Excel and IronCalc uses shared formulas they are used in a slightly different way that cannot be mapped 1-1
 //! In IronCalc _all_ formulas are shared and there is a list of shared formulas much like there is a list of shared strings.

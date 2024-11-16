@@ -63,7 +63,9 @@ pub(crate) fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String>
     let mut lexer = lexer::Lexer::new(
         formula,
         lexer::LexerMode::A1,
+        #[allow(clippy::expect_used)]
         get_locale("en").expect(""),
+        #[allow(clippy::expect_used)]
         get_language("en").expect(""),
     );
     if let TokenType::Range {
@@ -202,7 +204,9 @@ impl Parser {
         let lexer = lexer::Lexer::new(
             "",
             lexer::LexerMode::A1,
+            #[allow(clippy::expect_used)]
             get_locale("en").expect(""),
+            #[allow(clippy::expect_used)]
             get_language("en").expect(""),
         );
         Parser {
@@ -675,14 +679,23 @@ impl Parser {
                         }
                     };
                     // table-name => table
-                    let table = self.tables.get(&table_name).unwrap_or_else(|| {
-                        panic!(
-                            "Table not found: '{table_name}' at '{}!{}{}'",
-                            context.sheet,
-                            number_to_column(context.column).expect(""),
-                            context.row
-                        )
-                    });
+                    let table = match self.tables.get(&table_name) {
+                        Some(t) => t,
+                        None => {
+                            let message = format!(
+                                "Table not found: '{table_name}' at '{}!{}{}'",
+                                context.sheet,
+                                number_to_column(context.column)
+                                    .unwrap_or(format!("{}", context.column)),
+                                context.row
+                            );
+                            return Node::ParseErrorKind {
+                                formula: self.lexer.get_formula(),
+                                position: 0,
+                                message,
+                            };
+                        }
+                    };
                     let table_sheet_index = match self.get_sheet_index_by_name(&table.sheet_name) {
                         Some(i) => i,
                         None => {
@@ -701,6 +714,7 @@ impl Parser {
                     };
 
                     // context must be with tables.reference
+                    #[allow(clippy::expect_used)]
                     let (column_start, mut row_start, column_end, mut row_end) =
                         parse_range(&table.reference).expect("Failed parsing range");
 

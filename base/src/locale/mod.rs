@@ -65,6 +65,7 @@ pub struct DecimalFormats {
     pub standard: String,
 }
 
+#[allow(clippy::expect_used)]
 static LOCALES: Lazy<HashMap<String, Locale>> =
     Lazy::new(|| bitcode::decode(include_bytes!("locales.bin")).expect("Failed parsing locale"));
 

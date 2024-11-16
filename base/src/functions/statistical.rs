@@ -381,11 +381,16 @@ impl Model {
         let right_row = first_range.right.row;
         let right_column = first_range.right.column;
 
-        let dimension = self
-            .workbook
-            .worksheet(first_range.left.sheet)
-            .expect("Sheet expected during evaluation.")
-            .dimension();
+        let dimension = match self.workbook.worksheet(first_range.left.sheet) {
+            Ok(s) => s.dimension(),
+            Err(_) => {
+                return CalcResult::new_error(
+                    Error::ERROR,
+                    cell,
+                    format!("Invalid worksheet index: '{}'", first_range.left.sheet),
+                )
+            }
+        };
         let max_row = dimension.max_row;
         let max_column = dimension.max_column;
 
@@ -526,20 +531,28 @@ impl Model {
         let mut right_column = sum_range.right.column;
 
         if left_row == 1 && right_row == LAST_ROW {
-            right_row = self
-                .workbook
-                .worksheet(sum_range.left.sheet)
-                .expect("Sheet expected during evaluation.")
-                .dimension()
-                .max_row;
+            right_row = match self.workbook.worksheet(sum_range.left.sheet) {
+                Ok(s) => s.dimension().max_row,
+                Err(_) => {
+                    return Err(CalcResult::new_error(
+                        Error::ERROR,
+                        cell,
+                        format!("Invalid worksheet index: '{}'", sum_range.left.sheet),
+                    ));
+                }
+            };
         }
         if left_column == 1 && right_column == LAST_COLUMN {
-            right_column = self
-                .workbook
-                .worksheet(sum_range.left.sheet)
-                .expect("Sheet expected during evaluation.")
-                .dimension()
-                .max_column;
+            right_column = match self.workbook.worksheet(sum_range.left.sheet) {
+                Ok(s) => s.dimension().max_column,
+                Err(_) => {
+                    return Err(CalcResult::new_error(
+                        Error::ERROR,
+                        cell,
+                        format!("Invalid worksheet index: '{}'", sum_range.left.sheet),
+                    ));
+                }
+            };
         }
 
         for row in left_row..right_row + 1 {

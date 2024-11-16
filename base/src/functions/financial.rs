@@ -220,7 +220,13 @@ impl Model {
                     row2 = self
                         .workbook
                         .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                *cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
                         .dimension()
                         .max_row;
                 }
@@ -228,7 +234,13 @@ impl Model {
                     column2 = self
                         .workbook
                         .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                *cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
                         .dimension()
                         .max_column;
                 }
@@ -283,7 +295,13 @@ impl Model {
                     row2 = self
                         .workbook
                         .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                *cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
                         .dimension()
                         .max_row;
                 }
@@ -291,7 +309,13 @@ impl Model {
                     column2 = self
                         .workbook
                         .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                *cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
                         .dimension()
                         .max_column;
                 }
@@ -359,7 +383,13 @@ impl Model {
                     row2 = self
                         .workbook
                         .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                *cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
                         .dimension()
                         .max_row;
                 }
@@ -367,7 +397,13 @@ impl Model {
                     column2 = self
                         .workbook
                         .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                *cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
                         .dimension()
                         .max_column;
                 }
@@ -862,20 +898,28 @@ impl Model {
                     let column1 = left.column;
                     let mut column2 = right.column;
                     if row1 == 1 && row2 == LAST_ROW {
-                        row2 = self
-                            .workbook
-                            .worksheet(left.sheet)
-                            .expect("Sheet expected during evaluation.")
-                            .dimension()
-                            .max_row;
+                        row2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_row,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
                     }
                     if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = self
-                            .workbook
-                            .worksheet(left.sheet)
-                            .expect("Sheet expected during evaluation.")
-                            .dimension()
-                            .max_column;
+                        column2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_column,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {

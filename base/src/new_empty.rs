@@ -392,6 +392,7 @@ impl Model {
         let cells = HashMap::new();
 
         // FIXME: Add support for display languages
+        #[allow(clippy::expect_used)]
         let language = get_language("en").expect("").clone();
 
         let mut model = Model {
