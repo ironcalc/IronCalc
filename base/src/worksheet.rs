@@ -254,6 +254,7 @@ impl Worksheet {
     /// Changes the height of a row.
     ///   * If the row does not a have a style we add it.
     ///   * If it has we modify the height and make sure it is applied.
+    /// 
     /// Fails if column index is outside allowed range.
     pub fn set_row_height(&mut self, row: i32, height: f64) -> Result<(), String> {
         if !is_valid_row(row) {
@@ -282,6 +283,7 @@ impl Worksheet {
     /// Changes the width of a column.
     ///   * If the column does not a have a width we simply add it
     ///   * If it has, it might be part of a range and we ned to split the range.
+    /// 
     /// Fails if column index is outside allowed range.
     pub fn set_column_width(&mut self, column: i32, width: f64) -> Result<(), String> {
         self.set_column_width_and_style(column, width, None)
