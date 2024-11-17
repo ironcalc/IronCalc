@@ -1,6 +1,10 @@
 # CHANGELOG
 
-## [Unreleased]
+## Unreleased
+
+### Added
+
+- New function UNICODE ([#128](https://github.com/ironcalc/IronCalc/pull/128))
 
 ## [0.2.0] - 2024-11-06 (The HN release)
 
