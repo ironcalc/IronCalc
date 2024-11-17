@@ -372,16 +372,19 @@ impl Model {
                 }
             };
 
-            if s.len() == 0 {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Empty cell".to_string(),
-                };
+            match s.chars().next() {
+                Some(c) => {
+                    let unicode_number = c as u32;
+                    return CalcResult::Number(unicode_number as f64);
+                }
+                None => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Empty cell".to_string(),
+                    };
+                }
             }
-
-            let unicode_number = s.chars().nth(0).unwrap() as u32;
-            return CalcResult::Number(unicode_number as f64);
         }
         CalcResult::new_args_number_error(cell)
     }
