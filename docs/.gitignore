@@ -1,0 +1,2 @@
+src/.vitepress/cache/*
+node_modules/*
