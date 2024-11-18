@@ -51,8 +51,12 @@ impl From<roxmltree::Error> for XlsxError {
     }
 }
 
-impl XlsxError {
-    pub fn user_message(&self) -> String {
+pub trait UserErrorMessage {
+    fn user_message(&self) -> String;
+}
+
+impl UserErrorMessage for XlsxError {
+    fn user_message(&self) -> String {
         match &self {
             XlsxError::IO(_) | XlsxError::Workbook(_) => self.to_string(),
             XlsxError::Zip(_) | XlsxError::Xml(_) => {
@@ -84,6 +88,33 @@ impl XlsxError {
                 workbook, and we will work with you to resolve the issue. \
                 Detailed error message:\n{error}"
             ),
+        }
+    }
+}
+
+#[derive(Error, Debug, PartialEq, Eq)]
+pub enum CsvError {
+    #[error("I/O Error: {0}")]
+    IO(String),
+    #[error("General CSV Error: {0}")]
+    General(String),
+    #[error("{0}")]
+    Workbook(String),
+}
+
+impl From<io::Error> for CsvError {
+    fn from(error: io::Error) -> Self {
+        CsvError::IO(error.to_string())
+    }
+}
+
+impl UserErrorMessage for CsvError {
+    fn user_message(&self) -> String {
+        use CsvError::*;
+
+        match &self {
+            IO(_) | Workbook(_) => self.to_string(),
+            General(message) => format!("General Error message for CSV: {message}"),
         }
     }
 }

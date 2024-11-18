@@ -3,7 +3,7 @@ use std::fs;
 use ironcalc_base::Model;
 
 use crate::error::XlsxError;
-use crate::export::save_to_icalc;
+use crate::export::{save_to_icalc, ModelType};
 use crate::import::load_from_icalc;
 use crate::{export::save_to_xlsx, import::load_from_xlsx};
 
@@ -64,7 +64,7 @@ fn test_values() {
     }
     {
         let temp_file_name = "temp_file_test_values.ic";
-        save_to_icalc(&model, temp_file_name).unwrap();
+        save_to_icalc(&ModelType::ModelRef(&model), temp_file_name).unwrap();
 
         let model = load_from_icalc(temp_file_name).unwrap();
         assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "123.456");
