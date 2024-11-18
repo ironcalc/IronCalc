@@ -223,6 +223,14 @@ impl Model {
         column: i32,
         style: &Style,
     ) -> Result<(), String> {
+        // Checking first whether cell we are updating is part of Merged cells
+        // if so returning with Err
+        if self.is_part_of_merged_cells(sheet, row, column)? {
+            return Err(format!(
+                "Cell row : {}, col : {} is part of merged cells block, so singular update to the cell is not possible",
+                row, column
+            ));
+        }
         let style_index = self.workbook.styles.get_style_index_or_create(style);
         self.workbook
             .worksheet_mut(sheet)?
@@ -252,6 +260,14 @@ impl Model {
         column: i32,
         style_name: &str,
     ) -> Result<(), String> {
+        // Checking first whether cell we are updating is part of Merged cells
+        // if so returning with Err
+        if self.is_part_of_merged_cells(sheet, row, column)? {
+            return Err(format!(
+                "Cell row : {}, col : {} is part of merged cells block, so singular update to the cell is not possible",
+                row, column
+            ));
+        }
         let style_index = self.workbook.styles.get_style_index_by_name(style_name)?;
         self.workbook
             .worksheet_mut(sheet)?

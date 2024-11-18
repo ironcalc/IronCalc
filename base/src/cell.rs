@@ -176,3 +176,18 @@ impl Cell {
         }
     }
 }
+
+// Implementing methods for MergedCells struct
+
+impl MergedCells {
+    pub fn is_cell_part_of_merged_cells(&self, row: i32, col: i32) -> bool {
+        // This is merge Mother cell so do not include this cell as part of Merged Cells
+        if row == self.0 && col == self.1 {
+            return false;
+        }
+
+        let result: bool = (row >= self.0 && row <= self.2) && (col >= self.1 && col <= self.3);
+
+        result
+    }
+}

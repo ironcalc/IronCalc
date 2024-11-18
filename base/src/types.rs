@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 use crate::expressions::token::Error;
+use crate::expressions::utils::number_to_column;
 
 fn default_as_false() -> bool {
     false
@@ -110,7 +111,7 @@ pub struct Worksheet {
     pub sheet_id: u32,
     pub state: SheetState,
     pub color: Option<String>,
-    pub merge_cells: Vec<String>,
+    pub merged_cells_list: Vec<MergedCells>,
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
@@ -349,6 +350,43 @@ pub enum FontScheme {
     Minor,
     Major,
     None,
+}
+
+// MergedCells type
+// There will be one MergedCells struct maintained for every Merged cells that we load
+// merge_cell_range : Its tuple having [row_start, column_start, row_end, column_end]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct MergedCells(pub i32, pub i32, pub i32, pub i32);
+
+// implementing accessor function
+impl MergedCells {
+    // Method which returns range_ref from the tuple
+    // ex : (3,1,4,2) is interpreted as A3:B4
+    pub fn get_merged_cells_str_ref(&self) -> Result<String, String> {
+        let start_column = number_to_column(self.1).ok_or(format!(
+            "Error while converting column start {} number to column string ref",
+            self.1
+        ))?;
+        let end_column = number_to_column(self.3).ok_or(format!(
+            "Error while converting column end {} number to column string ref",
+            self.3
+        ))?;
+        return Ok(start_column
+            + &self.0.to_string()
+            + &":".to_string()
+            + &end_column
+            + &self.2.to_string());
+    }
+
+    // Only Public function where Merge cell can be created
+    pub fn new(merge_cell_parsed_range: (i32, i32, i32, i32)) -> Self {
+        Self(
+            merge_cell_parsed_range.0,
+            merge_cell_parsed_range.1,
+            merge_cell_parsed_range.2,
+            merge_cell_parsed_range.3,
+        )
+    }
 }
 
 impl Display for FontScheme {

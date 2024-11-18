@@ -524,6 +524,23 @@ impl Worksheet {
         Ok(is_empty)
     }
 
+    /// Returns true if cell part of Merged Cells.
+    /// First cell of Merged cells block is not considered as part of Merged cells
+    /// Ex : if Merged cells were A1-C3, A1 is not considered as part of Merged cells block
+    pub fn is_part_of_merged_cells(&self, row: i32, column: i32) -> Result<bool, String> {
+        if !is_valid_column_number(column) || !is_valid_row(row) {
+            return Err("Incorrect row or column".to_string());
+        }
+
+        // traverse through Vector of Merged Cells and return (linear search)
+        for merged_cells in &self.merged_cells_list {
+            if merged_cells.is_cell_part_of_merged_cells(row, column) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
     /// It provides convenient method for user navigation in the spreadsheet by jumping to edges.
     /// Spreadsheet engines usually allow this method of navigation by using CTRL+arrows.
     /// Behaviour summary:
@@ -576,6 +593,16 @@ impl Worksheet {
                 Ok(found_cells.previous_cell)
             }
         }
+    }
+
+    /// Returns mutable reference to Vector of Merged cells list
+    pub fn get_merged_cells_list_mut(&mut self) -> &mut Vec<MergedCells> {
+        &mut self.merged_cells_list
+    }
+
+    /// Returns reference to Vector of Merged cells list
+    pub fn get_merged_cells_list(&self) -> &Vec<MergedCells> {
+        &self.merged_cells_list
     }
 }
 
