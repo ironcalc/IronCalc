@@ -375,7 +375,7 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             }
             format!("{{{}}}", arguments)
         }
-        DefinedNameKind((name, _)) => name.to_string(),
+        DefinedNameKind((name, ..)) => name.to_string(),
         TableNameKind(name) => name.to_string(),
         WrongVariableKind(name) => name.to_string(),
         CompareKind { kind, left, right } => format!(
@@ -395,5 +395,11 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             position: _,
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
+        ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            format!("@{}", to_string_moved(child, move_context))
+        }
     }
 }

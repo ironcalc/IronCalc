@@ -48,8 +48,8 @@ fn test_example() {
     assert_eq!(ws[0].views[&0].range, [13, 5, 20, 14]);
 
     let model2 = load_from_icalc("tests/example.ic").unwrap();
-    let s = bitcode::encode(&model2.workbook);
-    assert_eq!(workbook, model2.workbook, "{:?}", s);
+    let _ = bitcode::encode(&model2.workbook);
+    assert_eq!(workbook, model2.workbook);
 }
 
 #[test]
@@ -346,21 +346,31 @@ fn test_xlsx() {
     let path = format!("{}", Uuid::new_v4());
     let dir = temp_folder.join(path);
     fs::create_dir(&dir).unwrap();
+    let mut is_error = false;
     for file_path in entries {
         let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
         let file_path_str = file_path.to_str().unwrap();
         println!("Testing file: {}", file_path_str);
         if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
             if let Err(message) = test_file(file_path_str) {
+                println!("Error with file: '{file_path_str}'");
                 println!("{}", message);
-                panic!("Model was evaluated inconsistently with XLSX data.")
+                is_error = true;
             }
-            assert!(test_load_and_saving(file_path_str, &dir).is_ok());
+            let t = test_load_and_saving(file_path_str, &dir);
+            if t.is_err() {
+                println!("Error while load and saving file: {file_path_str}");
+                is_error = true;
+            }
         } else {
             println!("skipping");
         }
     }
     fs::remove_dir_all(&dir).unwrap();
+    assert!(
+        !is_error,
+        "Models were evaluated inconsistently with XLSX data."
+    );
 }
 
 #[test]
@@ -375,20 +385,26 @@ fn no_export() {
     let path = format!("{}", Uuid::new_v4());
     let dir = temp_folder.join(path);
     fs::create_dir(&dir).unwrap();
+    let mut is_error = false;
     for file_path in entries {
         let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
         let file_path_str = file_path.to_str().unwrap();
         println!("Testing file: {}", file_path_str);
         if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
             if let Err(message) = test_file(file_path_str) {
+                println!("Error with file: '{file_path_str}'");
                 println!("{}", message);
-                panic!("Model was evaluated inconsistently with XLSX data.")
+                is_error = true;
             }
         } else {
             println!("skipping");
         }
     }
     fs::remove_dir_all(&dir).unwrap();
+    assert!(
+        !is_error,
+        "Models were evaluated inconsistently with XLSX data."
+    );
 }
 
 // This test verifies whether exporting the merged cells functionality is happening properly or not.
@@ -476,6 +492,7 @@ fn test_documentation_xlsx() {
     let path = format!("{}", Uuid::new_v4());
     let dir = temp_folder.join(path);
     fs::create_dir(&dir).unwrap();
+    let mut is_error = false;
     for file_path in entries {
         let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
         let file_path_str = file_path.to_str().unwrap();
@@ -487,7 +504,7 @@ fn test_documentation_xlsx() {
         if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
             if let Err(message) = test_file(file_path_str) {
                 println!("{}", message);
-                panic!("Model was evaluated inconsistently with XLSX data.")
+                is_error = true;
             }
             assert!(test_load_and_saving(file_path_str, &dir).is_ok());
         } else {
@@ -495,6 +512,10 @@ fn test_documentation_xlsx() {
         }
     }
     fs::remove_dir_all(&dir).unwrap();
+    assert!(
+        !is_error,
+        "Models were evaluated inconsistently with XLSX data."
+    )
 }
 
 #[test]
