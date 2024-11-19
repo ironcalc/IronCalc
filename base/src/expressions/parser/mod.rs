@@ -1,5 +1,5 @@
 /*!
-# GRAMAR
+# GRAMMAR
 
 <pre class="rust">
 opComp   => '=' | '<' | '>' | '<=' } '>=' | '<>'
@@ -22,6 +22,7 @@ primary => '(' expr ')'
         => bool
         => bool()
         => error
+        => '@' expr
 
 f_args  => e (',' e)*
 </pre>
@@ -44,7 +45,10 @@ use super::utils::number_to_column;
 
 use token::OpCompare;
 
+// pub mod static_analysis;
+
 pub mod move_formula;
+pub mod static_analysis;
 pub mod stringify;
 pub mod walk;
 
@@ -164,6 +168,10 @@ pub enum Node {
         args: Vec<Node>,
     },
     ArrayKind(Vec<Node>),
+    ImplicitIntersection {
+        automatic: bool,
+        child: Box<Node>,
+    },
     VariableKind(String),
     CompareKind {
         kind: OpCompare,
@@ -842,6 +850,16 @@ impl Parser {
                     formula: self.lexer.get_formula(),
                     position: 0,
                     message: "Structured references not supported in R1C1 mode".to_string(),
+                }
+            }
+            TokenType::At => {
+                let child = self.parse_expr();
+                if let Node::ParseErrorKind { .. } = child {
+                    return child;
+                }
+                Node::ImplicitIntersection {
+                    automatic: false,
+                    child: Box::new(child),
                 }
             }
         }

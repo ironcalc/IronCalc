@@ -296,6 +296,7 @@ impl Model {
             Node::VariableKind(_) => None,
             Node::CompareKind { .. } => None,
             Node::OpPowerKind { .. } => None,
+            Node::ImplicitIntersection { .. } => None,
         }
     }
 
