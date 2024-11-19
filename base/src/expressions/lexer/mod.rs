@@ -187,6 +187,7 @@ impl Lexer {
                     ']' => TokenType::RightBracket,
                     ':' => TokenType::Colon,
                     ';' => TokenType::Semicolon,
+                    '@' => TokenType::At,
                     ',' => {
                         if self.locale.numbers.symbols.decimal == "," {
                             match self.consume_number(',') {

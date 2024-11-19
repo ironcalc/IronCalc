@@ -240,6 +240,7 @@ pub enum TokenType {
     Bang,               // !
     Percent,            // %
     And,                // &
+    At,                 // @
     Reference {
         sheet: Option<String>,
         row: i32,
