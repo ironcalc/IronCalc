@@ -187,8 +187,10 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
                 new_column1 = column1 + move_context.column_delta;
                 new_row2 = row2 + move_context.row_delta;
                 new_column2 = column2 + move_context.column_delta;
+                println!("Yesssir");
             } else {
                 // If the reference is not in the area we are moving the context remains unchanged
+                println!("Do not");
                 new_row1 = *row1;
                 new_column1 = *column1;
                 new_row2 = *row2;
@@ -393,5 +395,11 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             position: _,
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
+        ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            format!("@{}", to_string_moved(child, move_context))
+        }
     }
 }

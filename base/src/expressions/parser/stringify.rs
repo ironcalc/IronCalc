@@ -511,6 +511,13 @@ fn stringify(
             message: _,
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
+        ImplicitIntersection {
+            automatic: _,
+            child,
+        } => format!(
+            "@{}",
+            stringify(child, context, displace_data, use_original_name)
+        ),
     }
 }
 
@@ -608,5 +615,6 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ArrayKind(_) => {}
         Node::VariableKind(_) => {}
         Node::EmptyArgKind => {}
+        Node::ImplicitIntersection { automatic, child } => todo!(),
     }
 }

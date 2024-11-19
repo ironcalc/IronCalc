@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use crate::expressions::parser::move_formula::{move_formula, MoveContext};
-use crate::expressions::types::Area;
+use crate::expressions::types::{Area, CellReferenceRC};
 
-use super::super::types::CellReferenceRC;
-use super::Parser;
+use crate::expressions::parser::Parser;
 
 #[test]
 fn test_move_formula() {
@@ -389,7 +388,7 @@ fn test_move_formula_misc() {
         width: 4,
         height: 5,
     };
-    let node = parser.parse("X9^C2-F4*H2", &Some(context.clone()));
+    let node = parser.parse("X9^C2-F4*H2+SUM(F2:H4)+SUM(C2:F6)", &Some(context.clone()));
     let t = move_formula(
         &node,
         &MoveContext {
@@ -402,7 +401,7 @@ fn test_move_formula_misc() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "X9^M12-P14*H2");
+    assert_eq!(t, "X9^M12-P14*H2+SUM(F2:H4)+SUM(M12:P16)");
 
     let node = parser.parse("F5*(-D5)*SUM(A1, X9, $D$5)", &Some(context.clone()));
     let t = move_formula(
@@ -479,4 +478,41 @@ fn test_move_formula_another_sheet() {
         t,
         "Sheet1!AB31*SUM(Sheet1!JJ3:JJ4)+SUM(Sheet2!C2:F6)*SUM(M12:P16)"
     );
+}
+
+#[test]
+fn move_formula_implicit_intersetion() {
+    // context is E4
+    let row = 4;
+    let column = 5;
+    let context = &CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = Parser::new(worksheets, HashMap::new());
+
+    // Area is C2:F6
+    let area = &Area {
+        sheet: 0,
+        row: 2,
+        column: 3,
+        width: 4,
+        height: 5,
+    };
+    let node = parser.parse("SUM(@F2:H4)+SUM(@C2:F6)", &Some(context.clone()));
+    let t = move_formula(
+        &node,
+        &MoveContext {
+            source_sheet_name: "Sheet1",
+            row,
+            column,
+            area,
+            target_sheet_name: "Sheet1",
+            row_delta: 10,
+            column_delta: 10,
+        },
+    );
+    assert_eq!(t, "SUM(@F2:H4)+SUM(@M12:P16)");
 }

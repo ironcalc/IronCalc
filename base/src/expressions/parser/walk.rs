@@ -272,5 +272,6 @@ pub(crate) fn forward_references(
         Node::StringKind(_) => {}
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
+        Node::ImplicitIntersection { automatic, child } => todo!(),
     }
 }

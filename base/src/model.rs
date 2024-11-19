@@ -208,6 +208,17 @@ impl Model {
                     },
                 }
             }
+            Node::ImplicitIntersection {
+                automatic: _,
+                child,
+            } => match self.evaluate_node_with_reference(child, cell) {
+                CalcResult::Range { left, right } => CalcResult::Range { left, right },
+                _ => CalcResult::new_error(
+                    Error::ERROR,
+                    cell,
+                    format!("Error with Implicit Intersection in cell {:?}", cell),
+                ),
+            },
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -527,6 +538,22 @@ impl Model {
                 format!("Error parsing {}: {}", formula, message),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
+            ImplicitIntersection {
+                automatic: _,
+                child,
+            } => match self.evaluate_node_with_reference(child, cell) {
+                CalcResult::Range { left, right } => {
+                    match implicit_intersection(&cell, &Range { left, right }) {
+                        Some(cell_reference) => self.evaluate_cell(cell_reference),
+                        None => CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            format!("Error with Implicit Intersection in cell {:?}", cell),
+                        ),
+                    }
+                }
+                _ => self.evaluate_node_in_context(child, cell),
+            },
         }
     }
 
@@ -616,12 +643,15 @@ impl Model {
                     };
                 }
                 CalcResult::Range { left, right } => {
-                    let range = Range {
-                        left: *left,
-                        right: *right,
-                    };
-                    if let Some(intersection_cell) = implicit_intersection(&cell_reference, &range)
+                    if left.sheet == right.sheet
+                        && left.row == right.row
+                        && left.column == right.column
                     {
+                        let intersection_cell = CellReferenceIndex {
+                            sheet: left.sheet,
+                            column: left.column,
+                            row: left.row,
+                        };
                         let v = self.evaluate_cell(intersection_cell);
                         self.set_cell_value(cell_reference, &v);
                     } else {
@@ -638,10 +668,32 @@ impl Model {
                             f,
                             s,
                             o,
-                            m: "Invalid reference".to_string(),
-                            ei: Error::VALUE,
+                            m: "Implicit Intersection not implemented".to_string(),
+                            ei: Error::NIMPL,
                         };
                     }
+                    // if let Some(intersection_cell) = implicit_intersection(&cell_reference, &range)
+                    // {
+                    //     let v = self.evaluate_cell(intersection_cell);
+                    //     self.set_cell_value(cell_reference, &v);
+                    // } else {
+                    //     let o = match self.cell_reference_to_string(&cell_reference) {
+                    //         Ok(s) => s,
+                    //         Err(_) => "".to_string(),
+                    //     };
+                    //     *self.workbook.worksheets[sheet as usize]
+                    //         .sheet_data
+                    //         .get_mut(&row)
+                    //         .expect("expected a row")
+                    //         .get_mut(&column)
+                    //         .expect("expected a column") = Cell::CellFormulaError {
+                    //         f,
+                    //         s,
+                    //         o,
+                    //         m: "Invalid reference".to_string(),
+                    //         ei: Error::VALUE,
+                    //     };
+                    // }
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {
                     *self.workbook.worksheets[sheet as usize]
