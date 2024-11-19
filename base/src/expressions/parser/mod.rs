@@ -1,5 +1,5 @@
 /*!
-# GRAMAR
+# GRAMMAR
 
 <pre class="rust">
 opComp   => '=' | '<' | '>' | '<=' } '>=' | '<>'
@@ -12,7 +12,8 @@ term    => factor (opFactor factor)*
 factor  => prod (opProd prod)*
 prod    => power ('^' power)*
 power   => (unaryOp)* range '%'*
-range   => primary (':' primary)?
+range   => implicit (':' primary)?
+implicit=> '@' primary | primary
 primary => '(' expr ')'
         => number
         => function '(' f_args ')'
@@ -45,8 +46,8 @@ use super::utils::number_to_column;
 use token::OpCompare;
 
 pub mod move_formula;
+pub mod static_analysis;
 pub mod stringify;
-pub mod walk;
 
 #[cfg(test)]
 mod tests;
@@ -80,6 +81,9 @@ fn get_table_column_by_name(table_column_name: &str, table: &Table) -> Option<i3
     }
     None
 }
+
+// DefinedNameS is a tuple with the name of the defined name, the index of the sheet and the formula
+pub type DefinedNameS = (String, Option<u32>, String);
 
 pub(crate) struct Reference<'a> {
     sheet_name: &'a Option<String>,
@@ -164,9 +168,13 @@ pub enum Node {
         args: Vec<Node>,
     },
     ArrayKind(Vec<Node>),
-    DefinedNameKind((String, Option<u32>)),
+    DefinedNameKind(DefinedNameS),
     TableNameKind(String),
     WrongVariableKind(String),
+    ImplicitIntersection {
+        automatic: bool,
+        child: Box<Node>,
+    },
     CompareKind {
         kind: OpCompare,
         left: Box<Node>,
@@ -189,7 +197,7 @@ pub enum Node {
 pub struct Parser {
     lexer: lexer::Lexer,
     worksheets: Vec<String>,
-    defined_names: Vec<(String, Option<u32>)>,
+    defined_names: Vec<DefinedNameS>,
     context: CellReferenceRC,
     tables: HashMap<String, Table>,
 }
@@ -197,7 +205,7 @@ pub struct Parser {
 impl Parser {
     pub fn new(
         worksheets: Vec<String>,
-        defined_names: Vec<(String, Option<u32>)>,
+        defined_names: Vec<DefinedNameS>,
         tables: HashMap<String, Table>,
     ) -> Parser {
         let lexer = lexer::Lexer::new(
@@ -228,7 +236,7 @@ impl Parser {
     pub fn set_worksheets_and_names(
         &mut self,
         worksheets: Vec<String>,
-        defined_names: Vec<(String, Option<u32>)>,
+        defined_names: Vec<DefinedNameS>,
     ) {
         self.worksheets = worksheets;
         self.defined_names = defined_names;
@@ -252,17 +260,17 @@ impl Parser {
 
     // Returns:
     //  * None: If there is no defined name by that name
-    //  * Some(Some(index)): If there is a defined name local to that sheet
+    //  * Some((Some(index), formula)): If there is a defined name local to that sheet
     //  * Some(None): If there is a global defined name
-    fn get_defined_name(&self, name: &str, sheet: u32) -> Option<Option<u32>> {
-        for (df_name, df_scope) in &self.defined_names {
+    fn get_defined_name(&self, name: &str, sheet: u32) -> Option<(Option<u32>, String)> {
+        for (df_name, df_scope, df_formula) in &self.defined_names {
             if name.to_lowercase() == df_name.to_lowercase() && df_scope == &Some(sheet) {
-                return Some(*df_scope);
+                return Some((*df_scope, df_formula.to_owned()));
             }
         }
-        for (df_name, df_scope) in &self.defined_names {
+        for (df_name, df_scope, df_formula) in &self.defined_names {
             if name.to_lowercase() == df_name.to_lowercase() && df_scope.is_none() {
-                return Some(None);
+                return Some((None, df_formula.to_owned()));
             }
         }
         None
@@ -411,7 +419,7 @@ impl Parser {
     }
 
     fn parse_range(&mut self) -> Node {
-        let t = self.parse_primary();
+        let t = self.parse_implicit();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
@@ -428,6 +436,22 @@ impl Parser {
             };
         }
         t
+    }
+
+    fn parse_implicit(&mut self) -> Node {
+        let next_token = self.lexer.peek_token();
+        if next_token == TokenType::At {
+            self.lexer.advance_token();
+            let t = self.parse_primary();
+            if let Node::ParseErrorKind { .. } = t {
+                return t;
+            }
+            return Node::ImplicitIntersection {
+                automatic: false,
+                child: Box::new(t),
+            };
+        }
+        self.parse_primary()
     }
 
     fn parse_primary(&mut self) -> Node {
@@ -604,6 +628,20 @@ impl Parser {
                             args,
                         };
                     }
+                    if &name == "_xlfn.SINGLE" {
+                        if args.len() != 1 {
+                            return Node::ParseErrorKind {
+                                formula: self.lexer.get_formula(),
+                                position: self.lexer.get_position() as usize,
+                                message: "Implicit Intersection requires just one argument"
+                                    .to_string(),
+                            };
+                        }
+                        return Node::ImplicitIntersection {
+                            automatic: false,
+                            child: Box::new(args[0].clone()),
+                        };
+                    }
                     return Node::InvalidFunctionKind { name, args };
                 }
                 let context = &self.context;
@@ -620,8 +658,8 @@ impl Parser {
                 };
 
                 // Could be a defined name or a table
-                if let Some(scope) = self.get_defined_name(&name, context_sheet_index) {
-                    return Node::DefinedNameKind((name, scope));
+                if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
+                    return Node::DefinedNameKind((name, scope, formula));
                 }
                 let name_lower = name.to_lowercase();
                 for table_name in self.tables.keys() {
@@ -704,6 +742,14 @@ impl Parser {
                     formula: self.lexer.get_formula(),
                     position: 0,
                     message: "Unexpected token: 'POWER'".to_string(),
+                }
+            }
+            TokenType::At => {
+                // A primary Node cannot start with an operator
+                Node::ParseErrorKind {
+                    formula: self.lexer.get_formula(),
+                    position: 0,
+                    message: "Unexpected token: '@'".to_string(),
                 }
             }
             TokenType::RightParenthesis

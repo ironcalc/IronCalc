@@ -22,13 +22,14 @@ fn fn_concatenate() {
     model._set("B1", r#"=CONCATENATE(A1, A2, A3, "!")"#);
     // This will break once we implement the implicit intersection operator
     // It should be:
-    // model._set("B2", r#"=CONCATENATE(@A1:A3, "!")"#);
+    model._set("C2", r#"=CONCATENATE(@A1:A3, "!")"#);
     model._set("B2", r#"=CONCATENATE(A1:A3, "!")"#);
     model._set("B3", r#"=CONCAT(A1:A3, "!")"#);
 
     model.evaluate();
 
     assert_eq!(model._get_text("B1"), *"Hello my World!");
-    assert_eq!(model._get_text("B2"), *" my !");
+    assert_eq!(model._get_text("B2"), *"#N/IMPL!");
     assert_eq!(model._get_text("B3"), *"Hello my World!");
+    assert_eq!(model._get_text("C2"), *" my !");
 }

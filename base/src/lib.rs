@@ -41,7 +41,6 @@ pub mod worksheet;
 mod actions;
 mod cast;
 mod constants;
-mod diffs;
 mod functions;
 mod implicit_intersection;
 mod model;

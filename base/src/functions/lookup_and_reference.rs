@@ -855,7 +855,7 @@ impl Model {
             if left.row != right.row || left.column != right.column {
                 // FIXME: Implicit intersection or dynamic arrays
                 return CalcResult::Error {
-                    error: Error::ERROR,
+                    error: Error::NIMPL,
                     origin: cell,
                     message: "argument must be a reference to a single cell".to_string(),
                 };

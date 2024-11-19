@@ -3,11 +3,10 @@
 use std::collections::HashMap;
 
 use crate::expressions::parser::stringify::to_string;
-use crate::expressions::utils::{number_to_column, parse_reference_a1};
-use crate::types::{Table, TableColumn, TableStyleInfo};
-
 use crate::expressions::parser::Parser;
 use crate::expressions::types::CellReferenceRC;
+use crate::expressions::utils::{number_to_column, parse_reference_a1};
+use crate::types::{Table, TableColumn, TableStyleInfo};
 
 fn create_test_table(
     table_name: &str,

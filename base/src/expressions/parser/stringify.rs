@@ -1,5 +1,6 @@
 use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::parser::static_analysis::add_implicit_intersection;
 use crate::expressions::token::OpUnary;
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 
@@ -34,8 +35,19 @@ pub enum DisplaceData {
     None,
 }
 
+/// This is the internal mode in IronCalc
 pub fn to_rc_format(node: &Node) -> String {
     stringify(node, None, &DisplaceData::None, false)
+}
+
+/// This is the mode used to display the formula in the UI
+pub fn to_string(node: &Node, context: &CellReferenceRC) -> String {
+    stringify(node, Some(context), &DisplaceData::None, false)
+}
+
+/// This is the mode used to export the formula to Excel
+pub fn to_excel_string(node: &Node, context: &CellReferenceRC) -> String {
+    stringify(node, Some(context), &DisplaceData::None, true)
 }
 
 pub fn to_string_displaced(
@@ -46,18 +58,10 @@ pub fn to_string_displaced(
     stringify(node, Some(context), displace_data, false)
 }
 
-pub fn to_string(node: &Node, context: &CellReferenceRC) -> String {
-    stringify(node, Some(context), &DisplaceData::None, false)
-}
-
-pub fn to_excel_string(node: &Node, context: &CellReferenceRC) -> String {
-    stringify(node, Some(context), &DisplaceData::None, true)
-}
-
 /// Converts a local reference to a string applying some displacement if needed.
 /// It uses A1 style if context is not None. If context is None it uses R1C1 style
 /// If full_row is true then the row details will be omitted in the A1 case
-/// If full_colum is true then column details will be omitted.
+/// If full_column is true then column details will be omitted.
 pub(crate) fn stringify_reference(
     context: Option<&CellReferenceRC>,
     displace_data: &DisplaceData,
@@ -235,7 +239,7 @@ fn format_function(
     args: &Vec<Node>,
     context: Option<&CellReferenceRC>,
     displace_data: &DisplaceData,
-    use_original_name: bool,
+    export_to_excel: bool,
 ) -> String {
     let mut first = true;
     let mut arguments = "".to_string();
@@ -244,11 +248,11 @@ fn format_function(
             arguments = format!(
                 "{},{}",
                 arguments,
-                stringify(el, context, displace_data, use_original_name)
+                stringify(el, context, displace_data, export_to_excel)
             );
         } else {
             first = false;
-            arguments = stringify(el, context, displace_data, use_original_name);
+            arguments = stringify(el, context, displace_data, export_to_excel);
         }
     }
     format!("{}({})", name, arguments)
@@ -258,7 +262,7 @@ fn stringify(
     node: &Node,
     context: Option<&CellReferenceRC>,
     displace_data: &DisplaceData,
-    use_original_name: bool,
+    export_to_excel: bool,
 ) -> String {
     use self::Node::*;
     match node {
@@ -407,52 +411,52 @@ fn stringify(
         }
         OpRangeKind { left, right } => format!(
             "{}:{}",
-            stringify(left, context, displace_data, use_original_name),
-            stringify(right, context, displace_data, use_original_name)
+            stringify(left, context, displace_data, export_to_excel),
+            stringify(right, context, displace_data, export_to_excel)
         ),
         OpConcatenateKind { left, right } => format!(
             "{}&{}",
-            stringify(left, context, displace_data, use_original_name),
-            stringify(right, context, displace_data, use_original_name)
+            stringify(left, context, displace_data, export_to_excel),
+            stringify(right, context, displace_data, export_to_excel)
         ),
         CompareKind { kind, left, right } => format!(
             "{}{}{}",
-            stringify(left, context, displace_data, use_original_name),
+            stringify(left, context, displace_data, export_to_excel),
             kind,
-            stringify(right, context, displace_data, use_original_name)
+            stringify(right, context, displace_data, export_to_excel)
         ),
         OpSumKind { kind, left, right } => format!(
             "{}{}{}",
-            stringify(left, context, displace_data, use_original_name),
+            stringify(left, context, displace_data, export_to_excel),
             kind,
-            stringify(right, context, displace_data, use_original_name)
+            stringify(right, context, displace_data, export_to_excel)
         ),
         OpProductKind { kind, left, right } => {
             let x = match **left {
                 OpSumKind { .. } => format!(
                     "({})",
-                    stringify(left, context, displace_data, use_original_name)
+                    stringify(left, context, displace_data, export_to_excel)
                 ),
                 CompareKind { .. } => format!(
                     "({})",
-                    stringify(left, context, displace_data, use_original_name)
+                    stringify(left, context, displace_data, export_to_excel)
                 ),
-                _ => stringify(left, context, displace_data, use_original_name),
+                _ => stringify(left, context, displace_data, export_to_excel),
             };
             let y = match **right {
                 OpSumKind { .. } => format!(
                     "({})",
-                    stringify(right, context, displace_data, use_original_name)
+                    stringify(right, context, displace_data, export_to_excel)
                 ),
                 CompareKind { .. } => format!(
                     "({})",
-                    stringify(right, context, displace_data, use_original_name)
+                    stringify(right, context, displace_data, export_to_excel)
                 ),
                 OpProductKind { .. } => format!(
                     "({})",
-                    stringify(right, context, displace_data, use_original_name)
+                    stringify(right, context, displace_data, export_to_excel)
                 ),
-                _ => stringify(right, context, displace_data, use_original_name),
+                _ => stringify(right, context, displace_data, export_to_excel),
             };
             format!("{}{}{}", x, kind, y)
         }
@@ -467,9 +471,7 @@ fn stringify(
                 | DefinedNameKind(_)
                 | TableNameKind(_)
                 | WrongVariableKind(_)
-                | WrongRangeKind { .. } => {
-                    stringify(left, context, displace_data, use_original_name)
-                }
+                | WrongRangeKind { .. } => stringify(left, context, displace_data, export_to_excel),
                 OpRangeKind { .. }
                 | OpConcatenateKind { .. }
                 | OpProductKind { .. }
@@ -482,9 +484,10 @@ fn stringify(
                 | ParseErrorKind { .. }
                 | OpSumKind { .. }
                 | CompareKind { .. }
+                | ImplicitIntersection { .. }
                 | EmptyArgKind => format!(
                     "({})",
-                    stringify(left, context, displace_data, use_original_name)
+                    stringify(left, context, displace_data, export_to_excel)
                 ),
             };
             let y = match **right {
@@ -498,7 +501,7 @@ fn stringify(
                 | TableNameKind(_)
                 | WrongVariableKind(_)
                 | WrongRangeKind { .. } => {
-                    stringify(right, context, displace_data, use_original_name)
+                    stringify(right, context, displace_data, export_to_excel)
                 }
                 OpRangeKind { .. }
                 | OpConcatenateKind { .. }
@@ -512,23 +515,24 @@ fn stringify(
                 | ParseErrorKind { .. }
                 | OpSumKind { .. }
                 | CompareKind { .. }
+                | ImplicitIntersection { .. }
                 | EmptyArgKind => format!(
                     "({})",
-                    stringify(right, context, displace_data, use_original_name)
+                    stringify(right, context, displace_data, export_to_excel)
                 ),
             };
             format!("{}^{}", x, y)
         }
         InvalidFunctionKind { name, args } => {
-            format_function(name, args, context, displace_data, use_original_name)
+            format_function(name, args, context, displace_data, export_to_excel)
         }
         FunctionKind { kind, args } => {
-            let name = if use_original_name {
+            let name = if export_to_excel {
                 kind.to_xlsx_string()
             } else {
                 kind.to_string()
             };
-            format_function(&name, args, context, displace_data, use_original_name)
+            format_function(&name, args, context, displace_data, export_to_excel)
         }
         ArrayKind(args) => {
             let mut first = true;
@@ -538,29 +542,29 @@ fn stringify(
                     arguments = format!(
                         "{},{}",
                         arguments,
-                        stringify(el, context, displace_data, use_original_name)
+                        stringify(el, context, displace_data, export_to_excel)
                     );
                 } else {
                     first = false;
-                    arguments = stringify(el, context, displace_data, use_original_name);
+                    arguments = stringify(el, context, displace_data, export_to_excel);
                 }
             }
             format!("{{{}}}", arguments)
         }
         TableNameKind(value) => value.to_string(),
-        DefinedNameKind((name, _)) => name.to_string(),
+        DefinedNameKind((name, ..)) => name.to_string(),
         WrongVariableKind(name) => name.to_string(),
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
                 format!(
                     "-{}",
-                    stringify(right, context, displace_data, use_original_name)
+                    stringify(right, context, displace_data, export_to_excel)
                 )
             }
             OpUnary::Percentage => {
                 format!(
                     "{}%",
-                    stringify(right, context, displace_data, use_original_name)
+                    stringify(right, context, displace_data, export_to_excel)
                 )
             }
         },
@@ -571,6 +575,29 @@ fn stringify(
             message: _,
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
+        ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            if export_to_excel {
+                // We need to check wether the II can be automatic or not
+                let mut new_node = child.as_ref().clone();
+
+                add_implicit_intersection(&mut new_node, true);
+                if matches!(&new_node, Node::ImplicitIntersection { .. }) {
+                    return stringify(child, context, displace_data, export_to_excel);
+                }
+
+                return format!(
+                    "_xlfn.SINGLE({})",
+                    stringify(child, context, displace_data, export_to_excel)
+                );
+            }
+            format!(
+                "@{}",
+                stringify(child, context, displace_data, export_to_excel)
+            )
+        }
     }
 }
 
@@ -658,6 +685,12 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::UnaryKind { kind: _, right } => {
             rename_sheet_in_node(right, sheet_index, new_name);
         }
+        Node::ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            rename_sheet_in_node(child, sheet_index, new_name);
+        }
 
         // Do nothing
         Node::BooleanKind(_) => {}
@@ -681,7 +714,7 @@ pub(crate) fn rename_defined_name_in_node(
 ) {
     match node {
         // Rename
-        Node::DefinedNameKind((n, s)) => {
+        Node::DefinedNameKind((n, s, _)) => {
             if name.to_lowercase() == n.to_lowercase() && *s == scope {
                 *n = new_name.to_string();
             }
@@ -735,6 +768,12 @@ pub(crate) fn rename_defined_name_in_node(
         }
         Node::UnaryKind { kind: _, right } => {
             rename_defined_name_in_node(right, name, scope, new_name);
+        }
+        Node::ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            rename_defined_name_in_node(child, name, scope, new_name);
         }
 
         // Do nothing
