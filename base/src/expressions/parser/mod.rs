@@ -1,5 +1,5 @@
 /*!
-# GRAMAR
+# GRAMMAR
 
 <pre class="rust">
 opComp   => '=' | '<' | '>' | '<=' } '>=' | '<>'
@@ -22,6 +22,7 @@ primary => '(' expr ')'
         => bool
         => bool()
         => error
+        => '@' expr
 
 f_args  => e (',' e)*
 </pre>
@@ -45,8 +46,8 @@ use super::utils::number_to_column;
 use token::OpCompare;
 
 pub mod move_formula;
+pub mod static_analysis;
 pub mod stringify;
-pub mod walk;
 
 #[cfg(test)]
 mod tests;
@@ -167,6 +168,10 @@ pub enum Node {
     DefinedNameKind((String, Option<u32>)),
     TableNameKind(String),
     WrongVariableKind(String),
+    ImplicitIntersection {
+        automatic: bool,
+        child: Box<Node>,
+    },
     CompareKind {
         kind: OpCompare,
         left: Box<Node>,
@@ -872,6 +877,16 @@ impl Parser {
                             column2: right_column_index,
                         }
                     }
+                }
+            }
+            TokenType::At => {
+                let child = self.parse_expr();
+                if let Node::ParseErrorKind { .. } = child {
+                    return child;
+                }
+                Node::ImplicitIntersection {
+                    automatic: false,
+                    child: Box::new(child),
                 }
             }
         }

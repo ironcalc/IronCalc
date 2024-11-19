@@ -395,5 +395,11 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             position: _,
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
+        ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            format!("@{}", to_string_moved(child, move_context))
+        }
     }
 }

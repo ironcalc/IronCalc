@@ -1,5 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
+use ironcalc_base::expressions::{
+    parser::static_analysis::add_implicit_intersection, types::CellReferenceIndex,
+};
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use ironcalc_base::{
@@ -309,7 +312,28 @@ fn from_a1_to_rc(
     let mut parser = Parser::new(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
-    let t = parser.parse(&formula, &cell_reference);
+
+    let sheet_name = &cell_reference.sheet;
+    let sheet_index = match worksheets.iter().position(|s| s == sheet_name) {
+        Some(i) => i,
+        None => {
+            return Err(XlsxError::Workbook(format!(
+                "Invalid sheet name: '{}'",
+                sheet_name
+            )))
+        }
+    };
+    let mut t = parser.parse(&formula, &cell_reference);
+    add_implicit_intersection(
+        &mut t,
+        &CellReferenceIndex {
+            sheet: sheet_index as u32,
+            column: cell_reference.column,
+            row: cell_reference.row,
+        },
+        true,
+    );
+
     Ok(to_rc_format(&t))
 }
 

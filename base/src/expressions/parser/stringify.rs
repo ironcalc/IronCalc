@@ -482,6 +482,7 @@ fn stringify(
                 | ParseErrorKind { .. }
                 | OpSumKind { .. }
                 | CompareKind { .. }
+                | ImplicitIntersection { .. }
                 | EmptyArgKind => format!(
                     "({})",
                     stringify(left, context, displace_data, use_original_name)
@@ -512,6 +513,7 @@ fn stringify(
                 | ParseErrorKind { .. }
                 | OpSumKind { .. }
                 | CompareKind { .. }
+                | ImplicitIntersection { .. }
                 | EmptyArgKind => format!(
                     "({})",
                     stringify(right, context, displace_data, use_original_name)
@@ -571,6 +573,13 @@ fn stringify(
             message: _,
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
+        ImplicitIntersection {
+            automatic: _,
+            child,
+        } => format!(
+            "@{}",
+            stringify(child, context, displace_data, use_original_name)
+        ),
     }
 }
 
@@ -658,6 +667,12 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::UnaryKind { kind: _, right } => {
             rename_sheet_in_node(right, sheet_index, new_name);
         }
+        Node::ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            rename_sheet_in_node(child, sheet_index, new_name);
+        }
 
         // Do nothing
         Node::BooleanKind(_) => {}
@@ -735,6 +750,12 @@ pub(crate) fn rename_defined_name_in_node(
         }
         Node::UnaryKind { kind: _, right } => {
             rename_defined_name_in_node(right, name, scope, new_name);
+        }
+        Node::ImplicitIntersection {
+            automatic: _,
+            child,
+        } => {
+            rename_defined_name_in_node(child, name, scope, new_name);
         }
 
         // Do nothing

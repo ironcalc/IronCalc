@@ -1,5 +1,6 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::parser::stringify::DisplaceData;
+use crate::expressions::parser::stringify::{to_string, to_string_displaced, DisplaceData};
+use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
 
 // NOTE: There is a difference with Excel behaviour when deleting cells/rows/columns
@@ -8,6 +9,36 @@ use crate::model::Model;
 // I feel this is unimportant for now.
 
 impl Model {
+    fn shift_cell_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        displace_data: &DisplaceData,
+    ) {
+        if let Some(f) = self
+            .workbook
+            .worksheet(sheet)
+            .expect("Worksheet must exist")
+            .cell(row, column)
+            .expect("Cell must exist")
+            .get_formula()
+        {
+            let node = &self.parsed_formulas[sheet as usize][f as usize].clone();
+            let cell_reference = CellReferenceRC {
+                sheet: self.workbook.worksheets[sheet as usize].get_name(),
+                row,
+                column,
+            };
+            // FIXME: This is not a very performant way if the formula has changed :S.
+            let formula = to_string(node, &cell_reference);
+            let formula_displaced = to_string_displaced(node, &cell_reference, displace_data);
+            if formula != formula_displaced {
+                self.update_cell_with_formula(sheet, row, column, format!("={formula_displaced}"))
+                    .expect("Failed to shift cell formula");
+            }
+        }
+    }
     /// This function iterates over all cells in the model and shifts their formulas according to the displacement data.
     ///
     /// # Arguments
