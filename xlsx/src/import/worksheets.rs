@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
+use ironcalc_base::expressions::parser::static_analysis::add_implicit_intersection;
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use ironcalc_base::{
     expressions::{
-        parser::{stringify::to_rc_format, Parser},
+        parser::{stringify::to_rc_format, DefinedNameS, Parser},
         token::{get_error_by_english_name, Error},
         types::CellReferenceRC,
         utils::{column_to_number, parse_reference_a1},
@@ -42,7 +43,7 @@ pub(crate) struct Relationship {
 }
 
 impl WorkbookXML {
-    fn get_defined_names_with_scope(&self) -> Vec<(String, Option<u32>)> {
+    fn get_defined_names_with_scope(&self) -> Vec<DefinedNameS> {
         let sheet_id_index: Vec<u32> = self.worksheets.iter().map(|s| s.sheet_id).collect();
 
         let defined_names = self
@@ -58,7 +59,7 @@ impl WorkbookXML {
                     // convert Option<usize> to Option<u32>
                     .map(|pos| pos as u32);
 
-                (dn.name.clone(), index)
+                (dn.name.clone(), index, dn.formula.clone())
             })
             .collect::<Vec<_>>();
         defined_names
@@ -304,12 +305,14 @@ fn from_a1_to_rc(
     worksheets: &[String],
     context: String,
     tables: HashMap<String, Table>,
-    defined_names: Vec<(String, Option<u32>)>,
+    defined_names: Vec<DefinedNameS>,
 ) -> Result<String, XlsxError> {
     let mut parser = Parser::new(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
-    let t = parser.parse(&formula, &cell_reference);
+    let mut t = parser.parse(&formula, &cell_reference);
+    add_implicit_intersection(&mut t, true);
+
     Ok(to_rc_format(&t))
 }
 
@@ -706,7 +709,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     worksheets: &[String],
     tables: &HashMap<String, Table>,
     shared_strings: &mut Vec<String>,
-    defined_names: Vec<(String, Option<u32>)>,
+    defined_names: Vec<DefinedNameS>,
 ) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;

@@ -1,6 +1,6 @@
 use std::vec::Vec;
 
-use crate::types::*;
+use crate::{expressions::parser::DefinedNameS, types::*};
 
 impl Workbook {
     pub fn get_worksheet_names(&self) -> Vec<String> {
@@ -29,7 +29,7 @@ impl Workbook {
     }
 
     /// Returns the a list of defined names in the workbook with their scope
-    pub fn get_defined_names_with_scope(&self) -> Vec<(String, Option<u32>, String)> {
+    pub fn get_defined_names_with_scope(&self) -> Vec<DefinedNameS> {
         let sheet_id_index: Vec<u32> = self.worksheets.iter().map(|s| s.sheet_id).collect();
 
         let defined_names = self
