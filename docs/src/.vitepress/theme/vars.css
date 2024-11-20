@@ -362,7 +362,7 @@
   --vp-code-color: var(--vp-c-brand-1);
   --vp-code-link-color: var(--vp-c-brand-1);
   --vp-code-link-hover-color: var(--vp-c-brand-2);
-  --vp-code-bg: var(--vp-c-default-soft);
+  --vp-code-bg: var(--vp-c-gray-3);
 
   --vp-code-block-color: var(--vp-c-text-2);
   --vp-code-block-bg: var(--vp-c-bg-alt);
@@ -443,7 +443,7 @@
 
   --vp-custom-block-info-border: transparent;
   --vp-custom-block-info-text: var(--vp-c-text-1);
-  --vp-custom-block-info-bg: var(--vp-c-default-soft);
+  --vp-custom-block-info-bg: var(--vp-c-gray-3);
   --vp-custom-block-info-code-bg: var(--vp-c-default-soft);
 
   --vp-custom-block-note-border: transparent;

@@ -21,8 +21,8 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
 
     logo: {
-      light: "/ironcalc-logo.svg",
-      dark: "/ironcalc-logo-dark.svg",
+      light: "/ironcalc-docs-logo.svg",
+      dark: "/ironcalc-docs-logo-dark.svg",
       alt: "IronCalc Logo",
     },
     siteTitle: false,
@@ -31,10 +31,13 @@ export default defineConfig({
       provider: "local",
     },
 
-    sidebar: [
-      { text: "About IronCalc", link: "/index.md" },
+    nav: [
       { text: "Blog", link: "https://blog.ironcalc.com/" },
       { text: "App", link: "https://app.ironcalc.com/" },
+    ],
+
+    sidebar: [
+      { text: "About IronCalc", link: "/index.md" },
       {
         text: "Features",
         collapsed: false,
@@ -42,52 +45,63 @@ export default defineConfig({
           { text: "Formatting Values", link: "/features/formatting-values" },
           { text: "Using Styles", link: "/features/using-styles" },
           { text: "Keyboard Shortcuts", link: "/features/keyboard-shortcuts" },
+          { text: "Importing Files", link: "/features/importing-files" },
         ],
       },
       {
         text: "Functions",
         collapsed: false,
         items: [
-          { text: "Database", link: "/database" },
-          { text: "Date and Time", link: "/date-and-time" },
-          { text: "Engineering", link: "/engineering" },
+          { text: "Database", link: "functions/database" },
+          { text: "Date and Time", link: "functions/date-and-time" },
+          { text: "Engineering", link: "functions/engineering" },
           {
             text: "Financial",
             collapsed: true,
             link: "functions/financial",
-            items: [
-              { text: "EFFECT" },
-              { text: "FV", link: "functions/financial/FV" },
-              { text: "FVSCHEDULE" },
-            ],
+            items: [{ text: "FV", link: "functions/financial/FV" }],
           },
-          { text: "Information", link: "/information" },
-          { text: "Logical", link: "/logical" },
-          { text: "Lookup and Reference", link: "/lookup-and-reference" },
-          { text: "Math and Trigonometry", link: "/math-and-trigonometry" },
-          { text: "Statistical", link: "/statistical" },
-          { text: "Text", link: "/text" },
+          { text: "Information", link: "functions/information" },
+          { text: "Logical", link: "functions/logical" },
+          {
+            text: "Lookup and Reference",
+            link: "functions/lookup-and-reference",
+          },
+          {
+            text: "Math and Trigonometry",
+            link: "functions/math-and-trigonometry",
+          },
+          { text: "Statistical", link: "functions/statistical" },
+          { text: "Text", link: "functions/text" },
         ],
       },
       {
         text: "Python bindings",
         collapsed: true,
-        items: [{ text: "Practical Guide", link: "/python-bindings" }],
+        items: [
+          {
+            text: "Practical Guide",
+            link: "python-bindings/python-bindings-practical-guide",
+          },
+        ],
       },
       {
         text: "More",
         collapsed: true,
         items: [
-          { text: "Unsupported Features", link: "/unsupported-features" },
-          { text: "How to contribute", link: "/how-to-contribute" },
-          { text: "Examples", link: "/examples" },
+          { text: "Unsupported Features", link: "more/unsupported-features" },
+          { text: "How to contribute", link: "more/how-to-contribute" },
+          {
+            text: "Understanding Error Types",
+            link: "more/understanding-error-types",
+          },
         ],
       },
     ],
 
     editLink: {
-      pattern: "https://github.com/vuejs/vitepress/edit/main/docs/:path",
-      text: "Edit this page on GitHub",
+      pattern: "https://github.com/ironcalc/ironcalc/edit/main/docs/:path",
+      text: "Edit on GitHub",
     },
 
     lastUpdated: {
