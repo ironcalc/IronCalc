@@ -4,7 +4,7 @@ outline: deep
 lang: en-US
 ---
 
-# FV function
+# FV
 
 ## Overview
 
@@ -12,7 +12,7 @@ FV (<u>F</u>uture <u>V</u>alue) is a function in the Financial category that can
 
 FV can be used to calculate future value over a specified number of compounding periods. A fixed interest rate or yield is assumed over all periods, and a fixed payment or deposit can be applied at the start or end of every period.
 
-If your interest rate varies between periods, use the FVSCHEDULE function (<span style="color:orange">link when page written</span>) instead of FV.
+If your interest rate varies between periods, use the **FVSCHEDULE** function instead of FV.
 
 ## Parameters
 
@@ -51,7 +51,7 @@ If your interest rate varies between periods, use the FVSCHEDULE function (<span
 
 ## Examples
 
-<span style="color:orange">Embed file - FV function examples.xlsx</span>.
+[See this example in IronCalc](https://app.ironcalc.com/?model=h30aj-o2HyK-1jUR8)
 
 ## Links
 

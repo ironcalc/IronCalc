@@ -186,3 +186,24 @@ li::marker {
 table {
   width: 100%;
 }
+
+.VPSidebarItem.level-0[data-v-3db96182] {
+  padding-bottom: 10px;
+}
+
+.VPBadge.info {
+  background-color: var(--vp-c-gray-3);
+}
+
+.custom-block {
+  padding: 8px 16px;
+}
+
+.vp-doc ul,
+.vp-doc ol {
+  font-size: 14px;
+}
+
+.vp-doc h2 > .VPBadge {
+  vertical-align: middle;
+}
