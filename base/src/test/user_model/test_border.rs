@@ -639,19 +639,29 @@ fn borders_right() {
     )
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
-    check_borders(&model);
+
     for row in 5..9 {
-        for column in 6..9 {
+        for column in 6..10 {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
                 color: Some("#FF5566".to_string()),
             };
+            let left = if column == 6 {
+                None
+            } else {
+                Some(border_item.clone())
+            };
+            let right = if column == 9 {
+                None
+            } else {
+                Some(border_item.clone())
+            };
             let expected_border = Border {
                 diagonal_up: false,
                 diagonal_down: false,
-                left: None,
-                right: Some(border_item.clone()),
+                left,
+                right,
                 top: None,
                 bottom: None,
                 diagonal: None,
@@ -739,24 +749,136 @@ fn borders_left() {
     )
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
-    check_borders(&model);
+
     for row in 5..9 {
-        for column in 6..9 {
+        for column in 5..9 {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
                 color: Some("#FF5566".to_string()),
             };
+            let left = if column == 5 {
+                None
+            } else {
+                Some(border_item.clone())
+            };
+            let right = if column == 8 {
+                None
+            } else {
+                Some(border_item.clone())
+            };
             let expected_border = Border {
                 diagonal_up: false,
                 diagonal_down: false,
-                left: Some(border_item.clone()),
-                right: None,
+                left,
+                right,
                 top: None,
                 bottom: None,
                 diagonal: None,
             };
             assert_eq!(style.border, expected_border);
         }
+    }
+}
+
+#[test]
+fn heavier_side() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    // We set an outer border in cells F5:
+    let range = &Area {
+        sheet: 0,
+        row: 5,
+        column: 6,
+        width: 1,
+        height: 1,
+    };
+    let border_area: BorderArea = serde_json::from_str(
+        r##"{
+      "item": {
+        "style": "thin",
+        "color": "#FF5566"
+      },
+      "type": "All"
+    }"##,
+    )
+    .unwrap();
+    model.set_area_with_border(range, &border_area).unwrap();
+
+    // Get adjacent cells
+    {
+        // F4
+        let style = model.get_cell_style(0, 4, 6).unwrap();
+        let border_item = BorderItem {
+            style: BorderStyle::Thin,
+            color: Some("#FF5566".to_string()),
+        };
+
+        let expected_border = Border {
+            diagonal_up: false,
+            diagonal_down: false,
+            left: None,
+            right: None,
+            top: None,
+            bottom: Some(border_item),
+            diagonal: None,
+        };
+        assert_eq!(style.border, expected_border);
+    }
+    {
+        // G5
+        let style = model.get_cell_style(0, 5, 7).unwrap();
+        let border_item = BorderItem {
+            style: BorderStyle::Thin,
+            color: Some("#FF5566".to_string()),
+        };
+
+        let expected_border = Border {
+            diagonal_up: false,
+            diagonal_down: false,
+            left: Some(border_item),
+            right: None,
+            top: None,
+            bottom: None,
+            diagonal: None,
+        };
+        assert_eq!(style.border, expected_border);
+    }
+    {
+        // F6
+        let style = model.get_cell_style(0, 6, 6).unwrap();
+        let border_item = BorderItem {
+            style: BorderStyle::Thin,
+            color: Some("#FF5566".to_string()),
+        };
+
+        let expected_border = Border {
+            diagonal_up: false,
+            diagonal_down: false,
+            left: None,
+            right: None,
+            top: Some(border_item),
+            bottom: None,
+            diagonal: None,
+        };
+        assert_eq!(style.border, expected_border);
+    }
+    {
+        // E5
+        let style = model.get_cell_style(0, 5, 5).unwrap();
+        let border_item = BorderItem {
+            style: BorderStyle::Thin,
+            color: Some("#FF5566".to_string()),
+        };
+
+        let expected_border = Border {
+            diagonal_up: false,
+            diagonal_down: false,
+            left: None,
+            right: Some(border_item),
+            top: None,
+            bottom: None,
+            diagonal: None,
+        };
+        assert_eq!(style.border, expected_border);
     }
 }
