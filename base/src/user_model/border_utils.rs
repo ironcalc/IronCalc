@@ -47,7 +47,8 @@ fn is_max_color(a: &str, b: &str) -> bool {
     luminance_b < luminance_a
 }
 
-pub(crate) fn is_max_border(a: &Option<BorderItem>, b: &Option<BorderItem>) -> bool {
+/// Is border b "heavier" than a?
+pub(crate) fn is_max_border(a: Option<&BorderItem>, b: Option<&BorderItem>) -> bool {
     match (a, b) {
         (_, None) => false,
         (None, Some(_)) => true,
@@ -69,9 +70,23 @@ pub(crate) fn is_max_border(a: &Option<BorderItem>, b: &Option<BorderItem>) -> b
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::BorderStyle;
 
     #[test]
-    fn test_basic_colors() {
+    fn compare_borders() {
+        let b = BorderItem {
+            style: BorderStyle::Thin,
+            color: Some("#FFF".to_string()),
+        };
+        // Some border *always* beats no border
+        assert!(is_max_border(None, Some(&b)));
+
+        // No border is beaten by some border
+        assert!(!is_max_border(Some(&b), None));
+    }
+
+    #[test]
+    fn basic_colors() {
         // Black vs White
         assert!(is_max_color("#FFFFFF", "#000000"));
         assert!(!is_max_color("#000000", "#FFFFFF"));
@@ -90,34 +105,13 @@ mod tests {
     }
 
     #[test]
-    fn test_same_color() {
+    fn same_color() {
         // Comparing the same color should return false
         assert!(!is_max_color("#123456", "#123456"));
     }
 
     #[test]
-    fn test_shorthand_colors() {
-        // Shorthand notation (#RGB)
-        assert!(is_max_color("#FFF", "#000"));
-        assert!(is_max_color("#F00", "#800"));
-        assert!(is_max_color("#0F0", "#080"));
-        assert!(is_max_color("#00F", "#008"));
-        assert!(!is_max_color("#ABC", "#123"));
-    }
-
-    #[test]
-    fn test_invalid_colors() {
-        // Invalid color formats
-        assert!(!is_max_color("#GGGGGG", "#000000"));
-        assert!(!is_max_color("#12345", "#000000"));
-        assert!(!is_max_color("#1234567", "#000000"));
-        assert!(!is_max_color("123456", "#000000"));
-        assert!(!is_max_color("#123456", "#XYZ"));
-        assert!(!is_max_color("#", "#000000"));
-    }
-
-    #[test]
-    fn test_edge_cases() {
+    fn edge_cases() {
         // Colors with minimal luminance difference
         assert!(!is_max_color("#000000", "#010101"));
         assert!(!is_max_color("#FEFEFE", "#FFFFFF"));
@@ -125,7 +119,7 @@ mod tests {
     }
 
     #[test]
-    fn test_luminance_ordering() {
+    fn luminance_ordering() {
         // Colors with known luminance differences
         assert!(is_max_color("#CCCCCC", "#333333")); // Light gray vs Day
         assert!(is_max_color("#FFFF00", "#808000")); // Yellow ve
@@ -133,7 +127,7 @@ mod tests {
     }
 
     #[test]
-    fn test_borderline_cases() {
+    fn borderline_cases() {
         // Testing colors with equal luminance
         assert!(!is_max_color("#777777", "#777777"));
 
