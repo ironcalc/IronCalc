@@ -3,25 +3,25 @@
 layout: doc
 outline: deep
 
-hero:
-  name: "IronCalc Documentation"
-  text: "The documentation of IronCalc"
-  tagline: My great project tagline
-  actions:
-    - theme: brand
-      text: Markdown Examples
-      link: /features/markdown-examples
-    - theme: alt
-      text: API Examples
-      link: /features/api-examples
+# hero:
+#   name: "IronCalc Documentation"
+#   text: "The documentation of IronCalc"
+#   tagline: My great project tagline
+#   actions:
+#     - theme: brand
+#       text: Markdown Examples
+#       link: /features/markdown-examples
+#     - theme: alt
+#       text: API Examples
+#       link: /features/api-examples
 
-features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+# features:
+#   - title: Feature A
+#     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+#   - title: Feature B
+#     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+#   - title: Feature C
+#     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
 ---
 
 # About IronCalc

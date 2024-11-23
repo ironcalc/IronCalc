@@ -4,7 +4,7 @@ outline: deep
 lang: en-US
 ---
 
-# Understanding Excel Error Types
+# Error Types
 
 ::: warning
 **Note:** This page is in construction 🚧
@@ -65,6 +65,13 @@ When working with formulas, you may encounter these common errors:
 
 **Cause:** Incorrect range operator in a formula (e.g., missing a colon between cell references).  
 **Fix:** Use correct range operators (e.g., A1:A10).
+
+
+### **`#CIRC!`**
+
+**Cause:** Circular reference.  
+**Fix:** Remove the circular reference.
+
 
 ### **`#####`**
 

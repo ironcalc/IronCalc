@@ -39,62 +39,92 @@ export default defineConfig({
     sidebar: [
       { text: "About IronCalc", link: "/index.md" },
       {
+        text: "Web Application",
+        collapsed: true,
+        items: [
+          { text: "About the web application", link: "/web-application/about" },
+          { text: "Importing Files", link: "/web-application/importing-files" },
+          { text: "Sharing Files", link: "/web-application/sharing-files" },
+        ],
+      },
+      {
         text: "Features",
-        collapsed: false,
+        collapsed: true,
         items: [
           { text: "Formatting Values", link: "/features/formatting-values" },
           { text: "Using Styles", link: "/features/using-styles" },
           { text: "Keyboard Shortcuts", link: "/features/keyboard-shortcuts" },
-          { text: "Importing Files", link: "/features/importing-files" },
+          {
+            text: "Error Types",
+            link: "/features/error-types",
+          },
+          { text: "Unsupported Features", link: "/features/unsupported-features" },
         ],
       },
       {
         text: "Functions",
-        collapsed: false,
+        collapsed: true,
         items: [
-          { text: "Database", link: "functions/database" },
-          { text: "Date and Time", link: "functions/date-and-time" },
-          { text: "Engineering", link: "functions/engineering" },
+          { text: "Database", link: "/functions/database" },
+          { text: "Date and Time", link: "/functions/date-and-time" },
+          { text: "Engineering", link: "/functions/engineering" },
           {
             text: "Financial",
             collapsed: true,
-            link: "functions/financial",
-            items: [{ text: "FV", link: "functions/financial/FV" }],
+            link: "/functions/financial",
+            items: [{ text: "FV", link: "/functions/financial/fv" }],
           },
-          { text: "Information", link: "functions/information" },
-          { text: "Logical", link: "functions/logical" },
+          { text: "Information", link: "/functions/information" },
+          { text: "Logical", link: "/functions/logical" },
           {
             text: "Lookup and Reference",
-            link: "functions/lookup-and-reference",
+            link: "/functions/lookup-and-reference",
           },
           {
             text: "Math and Trigonometry",
-            link: "functions/math-and-trigonometry",
+            link: "/functions/math-and-trigonometry",
           },
-          { text: "Statistical", link: "functions/statistical" },
-          { text: "Text", link: "functions/text" },
+          { text: "Statistical", link: "/functions/statistical" },
+          { text: "Text", link: "/functions/text" },
         ],
       },
       {
-        text: "Python bindings",
+        text: "Programming",
         collapsed: true,
         items: [
           {
-            text: "Practical Guide",
-            link: "python-bindings/python-bindings-practical-guide",
+            text: "Rust",
+            link: "/programming/rust",
+          },
+          {
+            text: "Python",
+            link: "/programming/python-bindings",
+          },
+          {
+            text: "JavScript",
+            link: "/programming/javascript-bindings",
           },
         ],
       },
       {
-        text: "More",
+        text: "TUI Application: Tironcalc",
         collapsed: true,
         items: [
-          { text: "Unsupported Features", link: "more/unsupported-features" },
-          { text: "How to contribute", link: "more/how-to-contribute" },
           {
-            text: "Understanding Error Types",
-            link: "more/understanding-error-types",
+            text: "About Tironcalc",
+            link: "/tironcalc/about",
           },
+          {
+            text: "Installing and basic usage",
+            link: "/tironcalc/installing",
+          },
+        ],
+      },
+      {
+        text: "Contributing",
+        collapsed: true,
+        items: [
+          { text: "How to contribute", link: "/contributing/how-to-contribute" },
         ],
       },
     ],

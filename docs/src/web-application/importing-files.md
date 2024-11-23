@@ -16,5 +16,5 @@ You can upload files using one of the following methods:
 - **Click to Upload**: Click on the central upload area and select your file from your device.
 
 ::: info
-The maximum file size allowed is **1 MB**.
+The maximum file size allowed is **10 MB**.
 :::
