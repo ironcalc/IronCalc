@@ -4,7 +4,7 @@ outline: deep
 lang: en-US
 ---
 
-# Python Bindings, a practical guide
+# JavaScript Bindings
 
 ::: warning
 **Note:** This page is in construction 🚧
