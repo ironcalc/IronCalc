@@ -11,46 +11,46 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 
 | Function    | Status                                         | Documentation |
 | ----------- | ---------------------------------------------- | ------------- |
-| ASC         | <Badge type="info" text="Not available yet" /> | –             |
-| ARRAYTOTEXT | <Badge type="info" text="Not available yet" /> | –             |
-| BAHTTEXT    | <Badge type="info" text="Not available yet" /> | –             |
-| CHAR        | <Badge type="info" text="Not available yet" /> | –             |
-| CLEAN       | <Badge type="info" text="Not available yet" /> | –             |
-| CODE        | <Badge type="info" text="Not available yet" /> | –             |
+| ASC         | <Badge type="info" text="Not implemented yet" /> | –             |
+| ARRAYTOTEXT | <Badge type="info" text="Not implemented yet" /> | –             |
+| BAHTTEXT    | <Badge type="info" text="Not implemented yet" /> | –             |
+| CHAR        | <Badge type="info" text="Not implemented yet" /> | –             |
+| CLEAN       | <Badge type="info" text="Not implemented yet" /> | –             |
+| CODE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | CONCAT      | <Badge type="tip" text="Available" />          | –             |
 | CONCATENATE | <Badge type="tip" text="Available" />          | –             |
-| DBCS        | <Badge type="info" text="Not available yet" /> | –             |
-| DOLLAR      | <Badge type="info" text="Not available yet" /> | –             |
+| DBCS        | <Badge type="info" text="Not implemented yet" /> | –             |
+| DOLLAR      | <Badge type="info" text="Not implemented yet" /> | –             |
 | EXACT       | <Badge type="tip" text="Available" />          | –             |
 | FIND        | <Badge type="tip" text="Available" />          | –             |
-| FINDB       | <Badge type="info" text="Not available yet" /> | –             |
-| FIXED       | <Badge type="info" text="Not available yet" /> | –             |
+| FINDB       | <Badge type="info" text="Not implemented yet" /> | –             |
+| FIXED       | <Badge type="info" text="Not implemented yet" /> | –             |
 | LEFT        | <Badge type="tip" text="Available" />          | –             |
-| LEFTB       | <Badge type="info" text="Not available yet" /> | –             |
+| LEFTB       | <Badge type="info" text="Not implemented yet" /> | –             |
 | LEN         | <Badge type="tip" text="Available" />          | –             |
-| LENB        | <Badge type="info" text="Not available yet" /> | –             |
-| LOWER       | <Badge type="info" text="Not available yet" /> | –             |
-| MID         | <Badge type="info" text="Not available yet" /> | –             |
-| MIDB        | <Badge type="info" text="Not available yet" /> | –             |
-| NUMBERVALUE | <Badge type="info" text="Not available yet" /> | –             |
-| PHONETIC    | <Badge type="info" text="Not available yet" /> | –             |
-| PROPER      | <Badge type="info" text="Not available yet" /> | –             |
-| REPLACE     | <Badge type="info" text="Not available yet" /> | –             |
-| REPLACEB    | <Badge type="info" text="Not available yet" /> | –             |
+| LENB        | <Badge type="info" text="Not implemented yet" /> | –             |
+| LOWER       | <Badge type="info" text="Not implemented yet" /> | –             |
+| MID         | <Badge type="info" text="Not implemented yet" /> | –             |
+| MIDB        | <Badge type="info" text="Not implemented yet" /> | –             |
+| NUMBERVALUE | <Badge type="info" text="Not implemented yet" /> | –             |
+| PHONETIC    | <Badge type="info" text="Not implemented yet" /> | –             |
+| PROPER      | <Badge type="info" text="Not implemented yet" /> | –             |
+| REPLACE     | <Badge type="info" text="Not implemented yet" /> | –             |
+| REPLACEB    | <Badge type="info" text="Not implemented yet" /> | –             |
 | REPT        | <Badge type="tip" text="Available" />          | –             |
 | RIGHT       | <Badge type="tip" text="Available" />          | –             |
-| RIGHTB      | <Badge type="info" text="Not available yet" /> | –             |
+| RIGHTB      | <Badge type="info" text="Not implemented yet" /> | –             |
 | SEARCH      | <Badge type="tip" text="Available" />          | –             |
-| SEARCHB     | <Badge type="info" text="Not available yet" /> | –             |
+| SEARCHB     | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUBSTITUTE  | <Badge type="tip" text="Available" />          | –             |
 | T           | <Badge type="tip" text="Available" />          | –             |
 | TEXT        | <Badge type="tip" text="Available" />          | –             |
 | TEXTAFTER   | <Badge type="tip" text="Available" />          | –             |
 | TEXTBEFORE  | <Badge type="tip" text="Available" />          | –             |
 | TEXTJOIN    | <Badge type="tip" text="Available" />          | –             |
-| TEXTSPLIT   | <Badge type="info" text="Not available yet" /> | –             |
+| TEXTSPLIT   | <Badge type="info" text="Not implemented yet" /> | –             |
 | TRIM        | <Badge type="tip" text="Available" />          | –             |
-| UNICHAR     | <Badge type="info" text="Not available yet" /> | –             |
+| UNICHAR     | <Badge type="info" text="Not implemented yet" /> | –             |
 | UNICODE     | <Badge type="tip" text="Available" />          | –             |
 | UPPER       | <Badge type="tip" text="Available" />          | –             |
 | VALUE       | <Badge type="tip" text="Available" />          | –             |

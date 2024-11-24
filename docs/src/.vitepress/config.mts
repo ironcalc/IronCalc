@@ -71,7 +71,7 @@ export default defineConfig({
           {
             text: "Lookup and reference",
             collapsed: true,
-            link: "/functions/lookup_and_reference",
+            link: "/functions/lookup-and-reference",
             items: [
               {
                 text: "ADDRESS",
@@ -1215,29 +1215,6 @@ export default defineConfig({
             ],
           },
           {
-            text: "Uncatogorized",
-            collapsed: true,
-            link: "/functions/uncatogorized",
-            items: [
-              {
-                text: "REGEXTEST",
-                link: "/functions/uncatogorized/regextest",
-              },
-              {
-                text: "REGEXEXTRACT",
-                link: "/functions/uncatogorized/regexextract",
-              },
-              {
-                text: "REGEXREPLACE:",
-                link: "/functions/uncatogorized/regexreplace:",
-              },
-              {
-                text: "TRIMRANGE",
-                link: "/functions/uncatogorized/trimrange",
-              },
-            ],
-          },
-          {
             text: "Text",
             collapsed: true,
             link: "/functions/text",
@@ -1345,9 +1322,9 @@ export default defineConfig({
             ],
           },
           {
-            text: "Math andtrigonometry",
+            text: "Math and trigonometry",
             collapsed: true,
-            link: "/functions/math_and_trigonometry",
+            link: "/functions/math-and-trigonometry",
             items: [
               {
                 text: "ABS",
@@ -1765,7 +1742,7 @@ export default defineConfig({
           {
             text: "Date and time",
             collapsed: true,
-            link: "/functions/date_and_time",
+            link: "/functions/date-and-time",
             items: [
               {
                 text: "DATE",
@@ -1957,6 +1934,29 @@ export default defineConfig({
               {
                 text: "TYPE",
                 link: "/functions/information/type",
+              },
+            ],
+          },
+          {
+            text: "Uncatogorized",
+            collapsed: true,
+            link: "/functions/uncatogorized",
+            items: [
+              {
+                text: "REGEXTEST",
+                link: "/functions/uncatogorized/regextest",
+              },
+              {
+                text: "REGEXEXTRACT",
+                link: "/functions/uncatogorized/regexextract",
+              },
+              {
+                text: "REGEXREPLACE:",
+                link: "/functions/uncatogorized/regexreplace:",
+              },
+              {
+                text: "TRIMRANGE",
+                link: "/functions/uncatogorized/trimrange",
               },
             ],
           },

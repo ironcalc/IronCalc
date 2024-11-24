@@ -11,40 +11,40 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 
 | Function     | Status                                         | Documentation |
 | ------------ | ---------------------------------------------- | ------------- |
-| ADDRESS      | <Badge type="info" text="Not available yet" /> | –             |
-| AREAS        | <Badge type="info" text="Not available yet" /> | –             |
+| ADDRESS      | <Badge type="info" text="Not implemented yet" /> | –             |
+| AREAS        | <Badge type="info" text="Not implemented yet" /> | –             |
 | CHOOSE       | <Badge type="tip" text="Available" />          | –             |
-| CHOOSECOLS   | <Badge type="info" text="Not available yet" /> | –             |
-| CHOOSEROWS   | <Badge type="info" text="Not available yet" /> | –             |
+| CHOOSECOLS   | <Badge type="info" text="Not implemented yet" /> | –             |
+| CHOOSEROWS   | <Badge type="info" text="Not implemented yet" /> | –             |
 | COLUMN       | <Badge type="tip" text="Available" />          | –             |
 | COLUMNS      | <Badge type="tip" text="Available" />          | –             |
-| DROP         | <Badge type="info" text="Not available yet" /> | –             |
-| EXPAND       | <Badge type="info" text="Not available yet" /> | –             |
-| FILTER       | <Badge type="info" text="Not available yet" /> | –             |
-| FORMULATEXT  | <Badge type="info" text="Not available yet" /> | –             |
-| GETPIVOTDATA | <Badge type="info" text="Not available yet" /> | –             |
+| DROP         | <Badge type="info" text="Not implemented yet" /> | –             |
+| EXPAND       | <Badge type="info" text="Not implemented yet" /> | –             |
+| FILTER       | <Badge type="info" text="Not implemented yet" /> | –             |
+| FORMULATEXT  | <Badge type="info" text="Not implemented yet" /> | –             |
+| GETPIVOTDATA | <Badge type="info" text="Not implemented yet" /> | –             |
 | HLOOKUP      | <Badge type="tip" text="Available" />          | –             |
-| HSTACK       | <Badge type="info" text="Not available yet" /> | –             |
-| HYPERLINK    | <Badge type="info" text="Not available yet" /> | –             |
-| IMAGE        | <Badge type="info" text="Not available yet" /> | –             |
+| HSTACK       | <Badge type="info" text="Not implemented yet" /> | –             |
+| HYPERLINK    | <Badge type="info" text="Not implemented yet" /> | –             |
+| IMAGE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | INDEX        | <Badge type="tip" text="Available" />          | –             |
 | INDIRECT     | <Badge type="tip" text="Available" />          | –             |
 | LOOKUP       | <Badge type="tip" text="Available" />          | –             |
 | MATCH        | <Badge type="tip" text="Available" />          | –             |
 | OFFSET       | <Badge type="tip" text="Available" />          | –             |
 | ROW          | <Badge type="tip" text="Available" />          | –             |
-| ROWS         | <Badge type="info" text="Not available yet" /> | –             |
-| RTD          | <Badge type="info" text="Not available yet" /> | –             |
-| SORT         | <Badge type="info" text="Not available yet" /> | –             |
-| SORTBY       | <Badge type="info" text="Not available yet" /> | –             |
-| TAKE         | <Badge type="info" text="Not available yet" /> | –             |
-| TOCOL        | <Badge type="info" text="Not available yet" /> | –             |
-| TOROW        | <Badge type="info" text="Not available yet" /> | –             |
-| TRANSPOSE    | <Badge type="info" text="Not available yet" /> | –             |
-| UNIQUE       | <Badge type="info" text="Not available yet" /> | –             |
+| ROWS         | <Badge type="info" text="Not implemented yet" /> | –             |
+| RTD          | <Badge type="info" text="Not implemented yet" /> | –             |
+| SORT         | <Badge type="info" text="Not implemented yet" /> | –             |
+| SORTBY       | <Badge type="info" text="Not implemented yet" /> | –             |
+| TAKE         | <Badge type="info" text="Not implemented yet" /> | –             |
+| TOCOL        | <Badge type="info" text="Not implemented yet" /> | –             |
+| TOROW        | <Badge type="info" text="Not implemented yet" /> | –             |
+| TRANSPOSE    | <Badge type="info" text="Not implemented yet" /> | –             |
+| UNIQUE       | <Badge type="info" text="Not implemented yet" /> | –             |
 | VLOOKUP      | <Badge type="tip" text="Available" />          | –             |
-| VSTACK       | <Badge type="info" text="Not available yet" /> | –             |
-| WRAPCOLS     | <Badge type="info" text="Not available yet" /> | –             |
-| WRAPROWS     | <Badge type="info" text="Not available yet" /> | –             |
+| VSTACK       | <Badge type="info" text="Not implemented yet" /> | –             |
+| WRAPCOLS     | <Badge type="info" text="Not implemented yet" /> | –             |
+| WRAPROWS     | <Badge type="info" text="Not implemented yet" /> | –             |
 | XLOOKUP      | <Badge type="tip" text="Available" />          | –             |
-| XMATCH       | <Badge type="info" text="Not available yet" /> | –             |
+| XMATCH       | <Badge type="info" text="Not implemented yet" /> | –             |
