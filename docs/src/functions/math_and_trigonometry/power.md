@@ -4,18 +4,8 @@ outline: deep
 lang: en-US
 ---
 
-::: warning
-**Note:** This page is under construction 🚧
-:::
-
 # POWER
 
-## Parameters
-
-## Overview
-
-## Examples
-
-[See this example in IronCalc](https://app.ironcalc.com/?filename=power)
-
-## Links
+::: warning
+🚧 This function is implemented but currently lacks detailed documentation. For guidance, you may refer to the equivalent functionality in [Microsoft Excel documentation](https://support.microsoft.com/en-us/office/excel-functions-by-category-5f91f4e9-7b42-46d2-9bd1-63f26a86c0eb).
+:::
