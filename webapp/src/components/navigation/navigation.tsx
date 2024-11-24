@@ -101,12 +101,13 @@ const Container = styled("div")`
   padding-left: 12px;
   font-family: Inter;
   background-color: #fff;
-  border-top: 1px solid #E0E0E0;
+  border-top: 1px solid #e0e0e0;
 `;
 
 const Sheets = styled("div")`
   flex-grow: 2;
   overflow: hidden;
+  overflow-x: auto;
 `;
 
 const SheetInner = styled("div")`
@@ -115,9 +116,15 @@ const SheetInner = styled("div")`
 
 const Advert = styled("a")`
   color: #f2994a;
-  margin-right: 12px;
+  padding: 0px 12px;
   font-size: 12px;
   text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
+  @media (max-width: 769px) {
+    border-left: 1px solid #e0e0e0;
+  }
 `;
 
 export default Navigation;

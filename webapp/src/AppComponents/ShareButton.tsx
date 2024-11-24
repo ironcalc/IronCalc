@@ -19,7 +19,7 @@ const Wrapper = styled("div")`
   height: 36px;
   line-height: 36px;
   border-radius: 4px;
-  margin-right: 10px;
+  margin-right: 12px;
   display: flex;
   align-items: center;
   font-family: "Inter";

@@ -41,7 +41,7 @@ export function FileMenu(props: {
         >
           {models[uuid]}
         </MenuItemText>
-      </MenuItemWrapper>,
+      </MenuItemWrapper>
     );
   }
 
@@ -150,11 +150,11 @@ const StyledTrash = styled(Trash2)`
 `;
 
 const MenuDivider = styled("div")`
-  width: 80%;
+  width: 100%;
   margin: auto;
   margin-top: 8px;
   margin-bottom: 8px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid #eeeeee;
 `;
 
 const MenuItemText = styled("div")`

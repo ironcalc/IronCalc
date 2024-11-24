@@ -144,7 +144,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={false}
         onClick={(): void => {
           properties.onNumberFormatPicked(
-            decreaseDecimalPlaces(properties.numFmt),
+            decreaseDecimalPlaces(properties.numFmt)
           );
         }}
         disabled={!canEdit}
@@ -157,7 +157,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={false}
         onClick={(): void => {
           properties.onNumberFormatPicked(
-            increaseDecimalPlaces(properties.numFmt),
+            increaseDecimalPlaces(properties.numFmt)
           );
         }}
         disabled={!canEdit}
@@ -183,7 +183,7 @@ function Toolbar(properties: ToolbarProperties) {
           title={t("toolbar.format_number")}
           sx={{
             width: "40px", // Keep in sync with anchorOrigin in FormatMenu above
-            fontSize: "13px",
+            fontSize: "12px",
             fontWeight: 400,
           }}
         >
@@ -257,7 +257,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={properties.horizontalAlign === "left"}
         onClick={() =>
           properties.onToggleHorizontalAlign(
-            properties.horizontalAlign === "left" ? "general" : "left",
+            properties.horizontalAlign === "left" ? "general" : "left"
           )
         }
         disabled={!canEdit}
@@ -270,7 +270,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={properties.horizontalAlign === "center"}
         onClick={() =>
           properties.onToggleHorizontalAlign(
-            properties.horizontalAlign === "center" ? "general" : "center",
+            properties.horizontalAlign === "center" ? "general" : "center"
           )
         }
         disabled={!canEdit}
@@ -283,7 +283,7 @@ function Toolbar(properties: ToolbarProperties) {
         $pressed={properties.horizontalAlign === "right"}
         onClick={() =>
           properties.onToggleHorizontalAlign(
-            properties.horizontalAlign === "right" ? "general" : "right",
+            properties.horizontalAlign === "right" ? "general" : "right"
           )
         }
         disabled={!canEdit}
@@ -391,7 +391,7 @@ const ToolbarContainer = styled("div")`
   font-family: Inter;
   border-radius: 4px 4px 0px 0px;
   overflow-x: auto;
-  padding-left: 11px;
+  padding: 0px 12px;
 `;
 
 type TypeButtonProperties = { $pressed: boolean; $underlinedColor?: string };
@@ -399,15 +399,16 @@ export const StyledButton = styled("button")<TypeButtonProperties>(
   ({ disabled, $pressed, $underlinedColor }) => {
     const result = {
       width: "24px",
+      minWidth: "24px",
       height: "24px",
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
       fontSize: "26px",
       border: "0px solid #fff",
-      borderRadius: "2px",
-      marginRight: "5px",
-      transition: "all 0.2s",
+      borderRadius: "4px",
+      marginRight: "4px",
+      // transition: "all 0.2s",
       cursor: "pointer",
       backgroundColor: "white",
       padding: "0px",
@@ -419,7 +420,7 @@ export const StyledButton = styled("button")<TypeButtonProperties>(
     if (disabled) {
       return {
         ...result,
-        color: theme.palette.grey["600"],
+        color: theme.palette.grey["400"],
         cursor: "default",
       };
     }
@@ -430,19 +431,20 @@ export const StyledButton = styled("button")<TypeButtonProperties>(
       color: "#21243A",
       backgroundColor: $pressed ? "#EEE" : "#FFF",
       "&:hover": {
-        backgroundColor: "#F1F2F8",
-        borderTopColor: "#F1F2F8",
+        backgroundColor: $pressed ? "#EEE" : "#fff",
+        borderTopColor: $pressed ? "#EEE" : "#fff",
+        outline: "1px solid #EEE",
       },
     };
-  },
+  }
 );
 
 const Divider = styled("div")({
   width: "0px",
-  height: "10px",
+  height: "12px",
   borderLeft: "1px solid #E0E0E0",
-  marginLeft: "5px",
-  marginRight: "10px",
+  marginLeft: "8px",
+  marginRight: "12px",
 });
 
 export default Toolbar;

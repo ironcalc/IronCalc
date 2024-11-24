@@ -2,7 +2,7 @@ all:
 	wasm-pack build --target web --scope ironcalc --release
 	cp README.pkg.md pkg/README.md
 	tsc types.ts --target esnext --module esnext
-	python fix_types.py
+	python3 fix_types.py
 
 tests:
 	wasm-pack build --target nodejs && node tests/test.mjs

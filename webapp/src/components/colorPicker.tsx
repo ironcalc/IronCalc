@@ -71,6 +71,7 @@ const ColorPicker = (properties: ColorPickerProps) => {
             setColor(newColor);
           }}
         />
+        <HorizontalDivider />
         <ColorPickerInput>
           <HexWrapper>
             <HexLabel>{"Hex"}</HexLabel>
@@ -123,6 +124,8 @@ const ColorPicker = (properties: ColorPickerProps) => {
 
 const RecentLabel = styled.div`
   font-size: 12px;
+  font-family: Inter;
+  margin: 8px;
   color: ${theme.palette.text.secondary};
 `;
 
@@ -130,14 +133,16 @@ const ColorList = styled.div`
   display: flex;
   flex-wrap: wrap;
   flex-direction: row;
+  margin: 8px;
+  justify-content: space-between;
 `;
 
 const Button = styled.button<{ $color: string }>`
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   ${({ $color }): string => {
     if ($color.toUpperCase() === "#FFFFFF") {
-      return `border: 1px solid ${theme.palette.grey["600"]};`;
+      return `border: 1px solid ${theme.palette.grey["300"]};`;
     }
     return `border: 1px solid ${$color};`;
   }}
@@ -145,17 +150,14 @@ const Button = styled.button<{ $color: string }>`
     return $color;
   }};
   box-sizing: border-box;
-  margin-top: 10px;
-  margin-right: 10px;
-  border-radius: 2px;
+  margin-top: 0px;
+  border-radius: 4px;
 `;
 
 const HorizontalDivider = styled.div`
   height: 0px;
   width: 100%;
-  border-top: 1px solid ${theme.palette.grey["400"]};
-  margin-top: 15px;
-  margin-bottom: 5px;
+  border-top: 1px solid ${theme.palette.grey["200"]};
 `;
 
 // const StyledPopover = styled(Popover)`
@@ -175,7 +177,7 @@ const HorizontalDivider = styled.div`
 const ColorPickerDialog = styled.div`
   background: ${theme.palette.background.default};
   width: ${colorPickerWidth}px;
-  padding: 15px;
+  padding: 0px;
   display: flex;
   flex-direction: column;
 
@@ -185,11 +187,11 @@ const ColorPickerDialog = styled.div`
   }
   & .react-colorful__saturation {
     border-bottom: none;
-    border-radius: 5px;
+    border-radius: 0px;
   }
   & .react-colorful__hue {
-    height: 20px;
-    margin-top: 15px;
+    height: 8px;
+    margin: 8px;
     border-radius: 5px;
   }
   & .react-colorful__saturation-pointer {
@@ -198,19 +200,22 @@ const ColorPickerDialog = styled.div`
   }
   & .react-colorful__hue-pointer {
     width: 7px;
-    border-radius: 3px;
+    border-radius: 8px;
+    height: 16px;
+    width: 16px;
+    border-bottom: 1px solid #eee;
   }
 `;
 
 const HashLabel = styled.div`
   margin: auto 0px auto 10px;
   font-size: 13px;
-  color: #7d8ec2;
+  color: #333;
   font-family: ${theme.typography.button.fontFamily};
 `;
 
 const HexLabel = styled.div`
-  margin: auto 10px auto 0px;
+  margin: auto 0px;
   font-size: 12px;
   display: inline-flex;
   font-family: ${theme.typography.button.fontFamily};
@@ -219,15 +224,22 @@ const HexLabel = styled.div`
 const HexColorInputBox = styled.div`
   display: inline-flex;
   flex-grow: 1;
-  margin-right: 10px;
   width: 140px;
   height: 28px;
-  border: 1px solid ${theme.palette.grey["600"]};
+  border: 1px solid ${theme.palette.grey["300"]};
   border-radius: 5px;
+  &:hover {
+    border: 1px solid ${theme.palette.grey["600"]};
+  }
+  &:focus-within {
+    outline: 2px solid ${theme.palette.secondary.main};
+    outline-offset: 1px;
+  }
 `;
 
 const HexWrapper = styled.div`
   display: flex;
+  gap: 8px;
   flex-grow: 1;
   & input {
     min-width: 0px;
@@ -265,7 +277,8 @@ const ColorPickerInput = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin-top: 15px;
+  margin: 8px;
+  gap: 8px;
 `;
 
 export default ColorPicker;

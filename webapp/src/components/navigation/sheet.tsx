@@ -145,12 +145,15 @@ const StyledButton = styled(Button)`
 
 const Wrapper = styled("div")`
   display: flex;
-  margin-left: 20px;
+  margin: 0px 12px;
   border-bottom: 3px solid;
   border-top: 3px solid white;
   line-height: 34px;
   align-items: center;
   cursor: pointer;
+  @media (max-width: 769px) {
+    margin-left: 12px;
+  }
 `;
 
 const Name = styled("div")`

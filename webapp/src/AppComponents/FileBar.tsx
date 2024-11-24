@@ -84,7 +84,7 @@ export function FileBar(properties: {
 
 const StyledDesktopLogo = styled(IronCalcLogo)`
   width: 120px;
-  margin-left: 10px;
+  margin-left: 12px;
   @media (max-width: 769px) {
     display: none;
   }
@@ -107,7 +107,7 @@ const Toast = styled("div")`
 `;
 
 const Divider = styled("div")`
-  margin: 10px;
+  margin: 0px 16px;
   height: 12px;
   border-left: 1px solid #e0e0e0;
 `;
