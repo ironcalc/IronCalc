@@ -21,7 +21,9 @@ export async function get_model(modelHash: string): Promise<Uint8Array> {
   );
 }
 
-export async function get_documentation_model(filename: string): Promise<Uint8Array> {
+export async function get_documentation_model(
+  filename: string,
+): Promise<Uint8Array> {
   return new Uint8Array(
     await (await fetch(`/models/${filename}.ic`)).arrayBuffer(),
   );

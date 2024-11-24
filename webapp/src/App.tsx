@@ -24,7 +24,7 @@ import { IronCalcIcon } from "./icons";
 function App() {
   const [model, setModel] = useState<Model | null>(null);
   const [workbookState, setWorkbookState] = useState<WorkbookState | null>(
-    null
+    null,
   );
 
   useEffect(() => {
