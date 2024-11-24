@@ -8,6 +8,7 @@
 
 use std::fs;
 
+use ironcalc_base::Model;
 use serde::Serialize;
 use std::io::{self, BufRead};
 
@@ -42,6 +43,11 @@ fn main() -> io::Result<()> {
 
     let mut category_items = Vec::new();
 
+    let mut implemented = Vec::new();
+    for function in Model::documentation() {
+        implemented.push(function.name.clone());
+    }
+
     for entry in fs::read_dir(functions_dir)? {
         let entry = entry?;
         let path = entry.path();
@@ -72,37 +78,51 @@ fn main() -> io::Result<()> {
                     // Create a file with the name from the line, ending with .md
                     let file_name = format!("{}/{}.md", target_dir, function_name);
 
-                    // Write "Hello World" into the file
-                    fs::write(
-                        &file_name,
-                        format!(
-                            r#"
+                    if implemented.contains(&function_name_upper_case) {
+                        println!("Implemented: {function_name_upper_case}");
+                        fs::write(
+                            &file_name,
+                            format!(
+                                r#"
 ---
 layout: doc
 outline: deep
 lang: en-US
 ---
 
+# {function_name_upper_case}
+
 ::: warning
-**Note:** This page is under construction 🚧
+🚧 This function is implemented but currently lacks detailed documentation. For guidance, you may refer to the equivalent functionality in [Microsoft Excel documentation](https://support.microsoft.com/en-us/office/excel-functions-by-category-5f91f4e9-7b42-46d2-9bd1-63f26a86c0eb).
 :::
+    
+                            "#
+                            )
+                            .trim(),
+                        )?;
+                    } else {
+                        println!("Not implemented: {function_name_upper_case}");
+                        fs::write(
+                            &file_name,
+                            format!(
+                                r#"
+---
+layout: doc
+outline: deep
+lang: en-US
+---
 
 # {function_name_upper_case}
 
-## Parameters
-
-## Overview
-
-## Examples
-
-[See this example in IronCalc](https://app.ironcalc.com/?filename={function_name})
-
-## Links
-
-                        "#
-                        )
-                        .trim(),
-                    )?;
+::: warning
+🚧 This function is not yet available in IronCalc.
+[Follow development here](https://github.com/ironcalc/IronCalc/labels/Functions)
+:::               
+                            "#
+                            )
+                            .trim(),
+                        )?;
+                    }
 
                     // Add the item to file_items
                     let item = FunctionItem {
