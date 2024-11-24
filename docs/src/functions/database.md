@@ -11,15 +11,15 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 
 | Function | Status                                         | Documentation |
 | -------- | ---------------------------------------------- | ------------- |
-| DAVERAGE | <Badge type="info" text="Not available yet" /> | –             |
-| DCOUNT   | <Badge type="info" text="Not available yet" /> | –             |
-| DCOUNTA  | <Badge type="info" text="Not available yet" /> | –             |
-| DGET     | <Badge type="info" text="Not available yet" /> | –             |
-| DMAX     | <Badge type="info" text="Not available yet" /> | –             |
-| DMIN     | <Badge type="info" text="Not available yet" /> | –             |
-| DPRODUCT | <Badge type="info" text="Not available yet" /> | –             |
-| DSTDEV   | <Badge type="info" text="Not available yet" /> | –             |
-| DSTDEVP  | <Badge type="info" text="Not available yet" /> | –             |
-| DSUM     | <Badge type="info" text="Not available yet" /> | –             |
-| DVAR     | <Badge type="info" text="Not available yet" /> | –             |
-| DVARP    | <Badge type="info" text="Not available yet" /> | –             |
+| DAVERAGE | <Badge type="info" text="Not implemented yet" /> | –             |
+| DCOUNT   | <Badge type="info" text="Not implemented yet" /> | –             |
+| DCOUNTA  | <Badge type="info" text="Not implemented yet" /> | –             |
+| DGET     | <Badge type="info" text="Not implemented yet" /> | –             |
+| DMAX     | <Badge type="info" text="Not implemented yet" /> | –             |
+| DMIN     | <Badge type="info" text="Not implemented yet" /> | –             |
+| DPRODUCT | <Badge type="info" text="Not implemented yet" /> | –             |
+| DSTDEV   | <Badge type="info" text="Not implemented yet" /> | –             |
+| DSTDEVP  | <Badge type="info" text="Not implemented yet" /> | –             |
+| DSUM     | <Badge type="info" text="Not implemented yet" /> | –             |
+| DVAR     | <Badge type="info" text="Not implemented yet" /> | –             |
+| DVARP    | <Badge type="info" text="Not implemented yet" /> | –             |
