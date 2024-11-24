@@ -1938,25 +1938,25 @@ export default defineConfig({
             ],
           },
           {
-            text: "Uncatogorized",
+            text: "Uncategorized",
             collapsed: true,
-            link: "/functions/uncatogorized",
+            link: "/functions/uncategorized",
             items: [
               {
                 text: "REGEXTEST",
-                link: "/functions/uncatogorized/regextest",
+                link: "/functions/uncategorized/regextest",
               },
               {
                 text: "REGEXEXTRACT",
-                link: "/functions/uncatogorized/regexextract",
+                link: "/functions/uncategorized/regexextract",
               },
               {
                 text: "REGEXREPLACE:",
-                link: "/functions/uncatogorized/regexreplace:",
+                link: "/functions/uncategorized/regexreplace:",
               },
               {
                 text: "TRIMRANGE",
-                link: "/functions/uncatogorized/trimrange",
+                link: "/functions/uncategorized/trimrange",
               },
             ],
           },
