@@ -26,7 +26,7 @@ If your interest rate varies between periods, use the **FVSCHEDULE** function in
 
 ### Additional notes
 
-- FV may generate #ERROR!, #VALUE! or #DIV/0! errors. For more details see our Error Types page (<span style="color:orange">link when page written</span>).
+- FV may generate #ERROR!, #VALUE! or #DIV/0! errors. For more details see our [Error Types page](/features/error-types.md).
 - Make sure that the _rate_ argument specifies the interest rate or yield applicable to the compounding period, based on the value chosen for _nper_.
 - The _pmt_ and _pv_ arguments should be expressed in the same currency unit. FV returns a value in the same currency unit.
 - To ensure a worthwhile result, one of the _pmt_ and _pv_ arguments should be set to a non-zero value.
