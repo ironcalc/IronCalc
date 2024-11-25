@@ -2007,7 +2007,7 @@ export default defineConfig({
     ],
 
     editLink: {
-      pattern: "https://github.com/ironcalc/ironcalc/edit/main/docs/:path",
+      pattern: "https://github.com/ironcalc/ironcalc/edit/main/docs/src/:path",
       text: "Edit on GitHub",
     },
 
