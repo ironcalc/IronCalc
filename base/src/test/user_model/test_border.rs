@@ -782,7 +782,7 @@ fn borders_left() {
 }
 
 #[test]
-fn heavier_side() {
+fn none_borders_get_neighbour() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
     // We set an outer border in cells F5:
     let range = &Area {
@@ -881,4 +881,153 @@ fn heavier_side() {
         };
         assert_eq!(style.border, expected_border);
     }
+}
+
+#[test]
+fn heavier_borders() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+
+    model._set_cell_border("F5", "#F2F2F2");
+
+    // We set an outer border in F4:
+    model._set_cell_border("F4", "#000000");
+
+    // We check the border between F4 and F5
+    let border_item = BorderItem {
+        style: BorderStyle::Thin,
+        color: Some("#000000".to_string()),
+    };
+    assert_eq!(model._get_cell_border("F5").top, Some(border_item.clone()));
+
+    // But the border is actually NOT changed (because it is lighter)
+    let border_item2 = BorderItem {
+        style: BorderStyle::Thin,
+        color: Some("#F2F2F2".to_string()),
+    };
+    assert_eq!(model._get_cell_actual_border("F5").top, Some(border_item2));
+
+    model._set_cell_border("F6", "#000000");
+}
+
+#[test]
+fn lighter_borders() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+
+    model._set_cell_border("F5", "#000000");
+
+    // We set an outer border all around that is "lighter":
+    model._set_cell_border("F4", "#F2F2F2");
+    model._set_cell_border("G5", "#F2F2F2");
+    model._set_cell_border("F6", "#F2F2F2");
+    model._set_cell_border("E5", "#F2F2F2");
+
+    // We check the border around F5
+    let border_item = BorderItem {
+        style: BorderStyle::Thin,
+        color: Some("#F2F2F2".to_string()),
+    };
+    let border = model._get_cell_border("F5");
+    assert_eq!(border.top, Some(border_item.clone()));
+    assert_eq!(border.right, Some(border_item.clone()));
+    assert_eq!(border.bottom, Some(border_item.clone()));
+    assert_eq!(border.left, Some(border_item.clone()));
+
+    // The border is actually changed (because it is heavier)
+    let actual_border = model._get_cell_actual_border("F5");
+    assert_eq!(actual_border.top, Some(border_item.clone()));
+    assert_eq!(actual_border.right, Some(border_item.clone()));
+    assert_eq!(actual_border.bottom, Some(border_item.clone()));
+    assert_eq!(actual_border.left, Some(border_item));
+
+    model.undo().unwrap();
+    model.undo().unwrap();
+    model.undo().unwrap();
+    model.undo().unwrap();
+
+    // after undoing the border is what it was
+    let border_item = BorderItem {
+        style: BorderStyle::Thin,
+        color: Some("#000000".to_string()),
+    };
+    let border = model._get_cell_border("F5");
+    assert_eq!(border.top, Some(border_item.clone()));
+    assert_eq!(border.right, Some(border_item.clone()));
+    assert_eq!(border.bottom, Some(border_item.clone()));
+    assert_eq!(border.left, Some(border_item.clone()));
+}
+
+#[test]
+fn autofill() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+
+    model._set_area_border("C4:F6", "#F4F4F4", "All");
+
+    // Set a border in D2
+    model._set_cell_border("D2", "#000000");
+    // now we extend to D8
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 2,
+                column: 4,
+                width: 1,
+                height: 1,
+            },
+            8,
+        )
+        .unwrap();
+    // auto filling does not change the borders
+    let border_item = BorderItem {
+        style: BorderStyle::Thin,
+        color: Some("#000000".to_string()),
+    };
+    let border = model._get_cell_border("D4");
+    assert_eq!(border.top, Some(border_item.clone()));
+    assert_eq!(border.right, Some(border_item.clone()));
+    assert_eq!(border.bottom, Some(border_item.clone()));
+    assert_eq!(border.left, Some(border_item.clone()));
+
+    // E5
+    let border_e5 = model._get_cell_border("E5");
+    assert_eq!(border_e5.left, Some(border_item.clone()));
+
+    // but it hasn't really changed
+    let border_item = BorderItem {
+        style: BorderStyle::Thin,
+        color: Some("#F4F4F4".to_string()),
+    };
+    let border_e5_actual = model._get_cell_actual_border("E5");
+    assert_eq!(border_e5_actual.left, Some(border_item.clone()));
+}
+
+#[test]
+fn border_top() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+
+    model._set_area_border("C4:F6", "#000000", "All");
+
+    // We set all with a lighter color in the top
+    model._set_area_border("C4:F6", "#F2F2F2", "Top");
+
+    // C3 doesn't have a border in the bottom
+    assert_eq!(model._get_cell_actual_border("C3").bottom, None);
+
+    // But C4 was changed
+    let border_item = BorderItem {
+        style: BorderStyle::Thin,
+        color: Some("#F2F2F2".to_string()),
+    };
+    assert_eq!(model._get_cell_actual_border("C4").bottom, Some(border_item));
+
+    model.undo().unwrap();
+
+
+    // This tests that diff lists go in the right order
+    let border_item = BorderItem {
+        style: BorderStyle::Thin,
+        color: Some("#000000".to_string()),
+    };
+    assert_eq!(model._get_cell_actual_border("C4").top, Some(border_item));
+
 }
