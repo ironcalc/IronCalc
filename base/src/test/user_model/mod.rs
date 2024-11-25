@@ -19,3 +19,4 @@ mod test_to_from_bytes;
 mod test_undo_redo;
 mod test_view;
 mod test_window_size;
+mod util;

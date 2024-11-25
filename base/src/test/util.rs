@@ -9,7 +9,7 @@ pub fn new_empty_model() -> Model {
 }
 
 impl Model {
-    fn _parse_reference(&self, cell: &str) -> CellReferenceIndex {
+    pub fn _parse_reference(&self, cell: &str) -> CellReferenceIndex {
         if cell.contains('!') {
             self.parse_reference(cell).unwrap()
         } else {
