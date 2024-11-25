@@ -2022,6 +2022,7 @@ export default defineConfig({
     socialLinks: [
       { icon: "github", link: "https://github.com/ironcalc" },
       { icon: "discord", link: "https://discord.gg/zZYWfh3RHJ" },
+      { icon: "bluesky", link: "https://bsky.app/profile/ironcalc.com" },
     ],
   },
 });
