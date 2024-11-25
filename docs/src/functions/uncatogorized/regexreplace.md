@@ -4,7 +4,7 @@ outline: deep
 lang: en-US
 ---
 
-# REGEXREPLACE:
+# REGEXREPLACE
 
 ::: warning
 🚧 This function is not yet available in IronCalc.

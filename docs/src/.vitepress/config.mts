@@ -1951,7 +1951,7 @@ export default defineConfig({
                 link: "/functions/uncategorized/regexextract",
               },
               {
-                text: "REGEXREPLACE:",
+                text: "REGEXREPLACE",
                 link: "/functions/uncategorized/regexreplace:",
               },
               {
