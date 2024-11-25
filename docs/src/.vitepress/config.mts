@@ -1963,6 +1963,30 @@ export default defineConfig({
         ],
       },
       {
+        text: "Desktop App",
+        collapsed: true,
+        items: [
+          {
+            text: "About Desktop app",
+            link: "/desktop/about",
+          },
+        ],
+      },
+      {
+        text: "Tironcalc",
+        collapsed: true,
+        items: [
+          {
+            text: "About Tironcalc",
+            link: "/tironcalc/about",
+          },
+          {
+            text: "Installing and basic usage",
+            link: "/tironcalc/installing",
+          },
+        ],
+      },
+      {
         text: "Programming",
         collapsed: true,
         items: [
@@ -1977,20 +2001,6 @@ export default defineConfig({
           {
             text: "JavScript",
             link: "/programming/javascript-bindings",
-          },
-        ],
-      },
-      {
-        text: "TUI Application: Tironcalc",
-        collapsed: true,
-        items: [
-          {
-            text: "About Tironcalc",
-            link: "/tironcalc/about",
-          },
-          {
-            text: "Installing and basic usage",
-            link: "/tironcalc/installing",
           },
         ],
       },
