@@ -35,13 +35,3 @@ path = "src/lib.rs"
 [[bin]]
 name = "test"
 path = "src/bin/test.rs"
-
-
-[[bin]]
-name = "documentation"
-path = "src/bin/documentation.rs"
-
-
-[[bin]]
-name = "generate_docs"
-path = "src/bin/generate_docs.rs"
