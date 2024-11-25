@@ -1018,10 +1018,12 @@ fn border_top() {
         style: BorderStyle::Thin,
         color: Some("#F2F2F2".to_string()),
     };
-    assert_eq!(model._get_cell_actual_border("C4").bottom, Some(border_item));
+    assert_eq!(
+        model._get_cell_actual_border("C4").bottom,
+        Some(border_item)
+    );
 
     model.undo().unwrap();
-
 
     // This tests that diff lists go in the right order
     let border_item = BorderItem {
@@ -1029,5 +1031,4 @@ fn border_top() {
         color: Some("#000000".to_string()),
     };
     assert_eq!(model._get_cell_actual_border("C4").top, Some(border_item));
-
 }

@@ -42,8 +42,7 @@ impl UserModel {
                 }},
                 "type": "{}"
             }}"##,
-            color,
-            kind
+            color, kind
         ))
         .unwrap();
         let range = &Area {
