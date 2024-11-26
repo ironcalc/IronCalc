@@ -3,7 +3,6 @@
 use std::{collections::HashMap, fmt::Debug, io::Cursor};
 
 use csv::{ReaderBuilder, WriterBuilder};
-use csv_sniffer::Sniffer;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -60,6 +59,30 @@ pub enum BorderType {
 pub struct BorderArea {
     item: BorderItem,
     r#type: BorderType,
+}
+
+fn guess_delimiter(data: &str) -> char {
+    let delimiters = [',', ';', '\t', '|', ':'];
+    let mut best_delim = ',';
+    let mut max_fields = 0;
+
+    for &delim in &delimiters {
+        let mut fields_per_line = Vec::new();
+
+        for line in data.lines() {
+            let fields = line.split(delim).count();
+            fields_per_line.push(fields);
+        }
+
+        let first_count = fields_per_line.first().copied().unwrap_or(0);
+
+        if fields_per_line.iter().all(|&count| count == first_count) && first_count > max_fields {
+            max_fields = first_count;
+            best_delim = delim;
+        }
+    }
+
+    best_delim
 }
 
 fn boolean(value: &str) -> Result<bool, String> {
@@ -1509,18 +1532,13 @@ impl UserModel {
         let sheet = area.sheet;
         let mut row = area.row;
         let mut column = area.column;
-        // Create a sniffer with default settings
-        let mut sniffer = Sniffer::new();
         let mut csv_reader = Cursor::new(csv);
 
-        // Sniff the CSV metadata
-        let metadata = sniffer
-            .sniff_reader(&mut csv_reader)
-            .map_err(|_| "Failed")?;
+        let delimiter = guess_delimiter(csv) as u8;
         // Reset the cursor to the beginning after sniffing
         csv_reader.set_position(0);
         let mut reader = ReaderBuilder::new()
-            .delimiter(metadata.dialect.delimiter)
+            .delimiter(delimiter)
             .has_headers(false)
             .from_reader(csv_reader);
         for record in reader.records() {
@@ -1876,6 +1894,8 @@ mod tests {
         user_model::common::{horizontal, vertical},
     };
 
+    use super::guess_delimiter;
+
     #[test]
     fn test_vertical() {
         let all = vec![
@@ -1905,5 +1925,12 @@ mod tests {
         for a in all {
             assert_eq!(horizontal(&format!("{}", a)), Ok(a));
         }
+    }
+
+    #[test]
+    fn test_guess_delimiter() {
+        assert_eq!(guess_delimiter("1,2,3\n4,5,6"), ',');
+        assert_eq!(guess_delimiter("1\t2\t3\n4\t5\t6"), '\t');
+        assert_eq!(guess_delimiter("1"), ',');
     }
 }
