@@ -27,6 +27,27 @@ fn csv_paste() {
 }
 
 #[test]
+fn csv_paste_formula() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+
+    let csv = "=YEAR(TODAY())";
+    let area = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+    model.set_selected_cell(1, 1).unwrap();
+    model.paste_csv_string(&area, csv).unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 1),
+        Ok("2022".to_string())
+    );
+}
+
+#[test]
 fn tsv_crlf_paste() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
     model.set_user_input(0, 7, 7, "=SUM(B4:D7)").unwrap();
