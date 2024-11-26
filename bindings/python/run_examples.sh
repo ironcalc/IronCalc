@@ -9,6 +9,14 @@ if [ ! -d "$EXAMPLES_DIR" ]; then
   exit 1
 fi
 
+python -m venv venv
+source venv/bin/activate
+# not sure why this is needed
+pip install patchelf
+pip install maturin
+pip install pytest
+maturin develop
+
 # Iterate over all Python files in the examples directory
 for file in "$EXAMPLES_DIR"/*.py; do
   # Check if there are any Python files
