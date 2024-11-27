@@ -8,6 +8,10 @@
 - New document server (Thanks Dani!)
 - New function FORMULATEXT
 
+### Fixed
+
+- Fixed several issues with pasting content
+
 ## [0.2.0] - 2024-11-06 (The HN release)
 
 ### Added
