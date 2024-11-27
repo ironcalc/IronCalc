@@ -75,6 +75,7 @@ pub enum Function {
 
     // Information
     ErrorType,
+    Formulatext,
     Isblank,
     Iserr,
     Iserror,
@@ -247,7 +248,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 193> {
+    pub fn into_iter() -> IntoIter<Function, 194> {
         [
             Function::And,
             Function::False,
@@ -332,6 +333,7 @@ impl Function {
             Function::Isodd,
             Function::Iseven,
             Function::ErrorType,
+            Function::Formulatext,
             Function::Isformula,
             Function::Type,
             Function::Sheet,
@@ -482,6 +484,7 @@ impl Function {
             Function::Valuetotext => "_xlfn.VALUETOTEXT".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
+            Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
             _ => self.to_string(),
         }
     }
@@ -592,6 +595,7 @@ impl Function {
             "ISODD" => Some(Function::Isodd),
             "ISEVEN" => Some(Function::Iseven),
             "ERROR.TYPE" => Some(Function::ErrorType),
+            "FORMULATEXT" | "_XLFN.FORMULATEXT" => Some(Function::Formulatext),
             "ISFORMULA" | "_XLFN.ISFORMULA" => Some(Function::Isformula),
             "TYPE" => Some(Function::Type),
             "SHEET" | "_XLFN.SHEET" => Some(Function::Sheet),
@@ -798,6 +802,7 @@ impl fmt::Display for Function {
             Function::Isodd => write!(f, "ISODD"),
             Function::Iseven => write!(f, "ISEVEN"),
             Function::ErrorType => write!(f, "ERROR.TYPE"),
+            Function::Formulatext => write!(f, "FORMULATEXT"),
             Function::Isformula => write!(f, "ISFORMULA"),
             Function::Type => write!(f, "TYPE"),
             Function::Sheet => write!(f, "SHEET"),
@@ -1033,6 +1038,7 @@ impl Model {
             Function::Isodd => self.fn_isodd(args, cell),
             Function::Iseven => self.fn_iseven(args, cell),
             Function::ErrorType => self.fn_errortype(args, cell),
+            Function::Formulatext => self.fn_formulatext(args, cell),
             Function::Isformula => self.fn_isformula(args, cell),
             Function::Type => self.fn_type(args, cell),
             Function::Sheet => self.fn_sheet(args, cell),
