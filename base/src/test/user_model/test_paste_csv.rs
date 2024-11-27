@@ -9,7 +9,7 @@ fn csv_paste() {
     assert_eq!(model.get_formatted_cell_value(0, 7, 7), Ok("0".to_string()));
 
     // paste some numbers in B4:C7
-    let csv = "1,2,3\n4,5,6";
+    let csv = "1\t2\t3\n4\t5\t6";
     let area = Area {
         sheet: 0,
         row: 4,
@@ -88,7 +88,7 @@ fn cut_paste() {
     model.update_range_style(&range, "font.b", "true").unwrap();
 
     model
-        .set_user_input(0, 2, 1, "A season of faith, \"perfection\"")
+        .set_user_input(0, 2, 1, "A season of faith\t \"perfection\"")
         .unwrap();
 
     // Select A1:B2 and copy
@@ -136,7 +136,7 @@ fn copy_paste_internal() {
     model.update_range_style(&range, "font.b", "true").unwrap();
 
     model
-        .set_user_input(0, 2, 1, "A season of faith, \"perfection\"")
+        .set_user_input(0, 2, 1, "A season of faith\t \"perfection\"")
         .unwrap();
 
     // Select A1:B2 and copy
@@ -144,7 +144,7 @@ fn copy_paste_internal() {
     let copy = model.copy_to_clipboard().unwrap();
     assert_eq!(
         copy.csv,
-        "42,127\n\"A season of faith, \"\"perfection\"\"\",\n"
+        "42\t127\n\"A season of faith\t \"\"perfection\"\"\"\t\n"
     );
     assert_eq!(copy.range, (1, 1, 2, 2));
 

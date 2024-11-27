@@ -63,30 +63,6 @@ pub struct BorderArea {
     r#type: BorderType,
 }
 
-fn guess_delimiter(data: &str) -> char {
-    let delimiters = [',', ';', '\t', '|', ':'];
-    let mut best_delim = ',';
-    let mut max_fields = 0;
-
-    for &delim in &delimiters {
-        let mut fields_per_line = Vec::new();
-
-        for line in data.lines() {
-            let fields = line.split(delim).count();
-            fields_per_line.push(fields);
-        }
-
-        let first_count = fields_per_line.first().copied().unwrap_or(0);
-
-        if fields_per_line.iter().all(|&count| count == first_count) && first_count > max_fields {
-            max_fields = first_count;
-            best_delim = delim;
-        }
-    }
-
-    best_delim
-}
-
 fn boolean(value: &str) -> Result<bool, String> {
     match value {
         "true" => Ok(true),
@@ -1510,7 +1486,7 @@ impl UserModel {
     pub fn copy_to_clipboard(&self) -> Result<Clipboard, String> {
         let selected_area = self.get_selected_view();
         let sheet = selected_area.sheet;
-        let mut wtr = WriterBuilder::new().from_writer(vec![]);
+        let mut wtr = WriterBuilder::new().delimiter(b'\t').from_writer(vec![]);
 
         let mut data = HashMap::new();
         let [row_start, column_start, row_end, column_end] = selected_area.range;
@@ -1669,12 +1645,9 @@ impl UserModel {
         let mut row = area.row;
         let mut column = area.column;
         let mut csv_reader = Cursor::new(csv);
-
-        let delimiter = guess_delimiter(csv) as u8;
-        // Reset the cursor to the beginning after sniffing
         csv_reader.set_position(0);
         let mut reader = ReaderBuilder::new()
-            .delimiter(delimiter)
+            .delimiter(b'\t')
             .has_headers(false)
             .from_reader(csv_reader);
         for record in reader.records() {
@@ -2030,8 +2003,6 @@ mod tests {
         user_model::common::{horizontal, vertical},
     };
 
-    use super::guess_delimiter;
-
     #[test]
     fn test_vertical() {
         let all = vec![
@@ -2061,12 +2032,5 @@ mod tests {
         for a in all {
             assert_eq!(horizontal(&format!("{}", a)), Ok(a));
         }
-    }
-
-    #[test]
-    fn test_guess_delimiter() {
-        assert_eq!(guess_delimiter("1,2,3\n4,5,6"), ',');
-        assert_eq!(guess_delimiter("1\t2\t3\n4\t5\t6"), '\t');
-        assert_eq!(guess_delimiter("1"), ',');
     }
 }
