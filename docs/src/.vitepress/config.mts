@@ -1991,6 +1991,10 @@ export default defineConfig({
         collapsed: true,
         items: [
           {
+            text: "About",
+            link: "/programming/about",
+          },
+          {
             text: "Rust",
             link: "/programming/rust",
           },
