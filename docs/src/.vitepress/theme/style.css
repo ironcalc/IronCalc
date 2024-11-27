@@ -175,20 +175,20 @@ li::marker {
   top: 36px;
 }
 
-.VPSwitch[data-v-70a26bb8] {
-  background-color: var(--vp-c-bg-alt);
+.VPSwitch {
+  background-color: var(--vp-c-bg-alt) !important;
 }
 
-.VPDocFooter[data-v-29ec59c0] {
-  margin-top: 36px;
+.VPDocFooter {
+  margin-top: 36px !important;
 }
 
 table {
   width: 100%;
 }
 
-.VPSidebarItem.level-0[data-v-3db96182] {
-  padding-bottom: 10px;
+.VPSidebarItem.level-0 {
+  padding-bottom: 10px !important;
 }
 
 .VPBadge.info {
