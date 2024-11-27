@@ -6,6 +6,7 @@
 
 - New function UNICODE ([#128](https://github.com/ironcalc/IronCalc/pull/128))
 - New document server (Thanks Dani!)
+- New function FORMULATEXT
 
 ## [0.2.0] - 2024-11-06 (The HN release)
 
