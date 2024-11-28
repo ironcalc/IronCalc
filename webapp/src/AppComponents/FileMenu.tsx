@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
-import { FileDown, FileUp, Plus, Trash2 } from "lucide-react";
+import { FileDown, FileUp, Plus, Trash2, Check } from "lucide-react";
 import { useRef, useState } from "react";
 import { UploadFileDialog } from "./UploadFileDialog";
 import { getModelsMetadata, getSelectedUuid } from "./storage";
@@ -29,9 +29,9 @@ export function FileMenu(props: {
           setMenuOpen(false);
         }}
       >
-        <span style={{ width: "20px" }}>
-          {uuid === selectedUuid ? "•" : ""}
-        </span>
+        <CheckIndicator>
+          {uuid === selectedUuid ? <StyledCheck /> : ""}
+        </CheckIndicator>
         <MenuItemText
           style={{
             maxWidth: "240px",
@@ -149,6 +149,13 @@ const StyledTrash = styled(Trash2)`
   padding-right: 10px;
 `;
 
+const StyledCheck = styled(Check)`
+  width: 16px;
+  height: 16px;
+  color: #333333;
+  padding-right: 10px;
+`;
+
 const MenuDivider = styled("div")`
   width: 80%;
   margin: auto;
@@ -181,4 +188,10 @@ const FileMenuWrapper = styled("div")`
   &:hover {
     background-color: #f2f2f2;
   }
+`;
+
+const CheckIndicator = styled("span")`
+  display: flex;
+  justify-content: center;
+  min-width: 26px;
 `;
