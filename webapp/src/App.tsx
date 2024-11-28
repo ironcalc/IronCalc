@@ -33,7 +33,7 @@ function App() {
       const queryString = window.location.search;
       const urlParams = new URLSearchParams(queryString);
       const modelHash = urlParams.get("model");
-      const filename = urlParams.get("filename");
+      const exampleFilename = urlParams.get("example");
       // If there is a model name ?model=modelHash we try to load it
       // if there is not, or the loading failed we load an empty model
       if (modelHash) {
@@ -46,15 +46,14 @@ function App() {
         } catch (e) {
           alert("Model not found, or failed to load");
         }
-      }
-      if (filename) {
+      } else if (exampleFilename) {
         try {
-          const model_bytes = await get_documentation_model(filename);
+          const model_bytes = await get_documentation_model(exampleFilename);
           const importedModel = Model.from_bytes(model_bytes);
           localStorage.removeItem("selected");
           setModel(importedModel);
         } catch (e) {
-          alert("Model not found, or failed to load");
+          alert("Example file not found, or failed to load");
         }
       } else {
         // try to load from local storage
