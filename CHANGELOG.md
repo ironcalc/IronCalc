@@ -11,6 +11,7 @@
 ### Fixed
 
 - Fixed several issues with pasting content
+- Fixed several issues with borders
 
 ## [0.2.0] - 2024-11-06 (The HN release)
 
