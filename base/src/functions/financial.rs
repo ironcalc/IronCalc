@@ -1337,21 +1337,21 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    /// This next three functions deal with Treasure Bills or T-Bills for short
-    /// They are zero-coupon that mature in one year or less.
-    ///  Definitions:
-    ///    $r$ be the discount rate
-    ///    $v$ the face value of the Bill
-    ///    $p$ the price of the Bill
-    ///    $d_m$ is the number of days from the settlement to maturity
-    /// Then:
-    ///   $$ p = v \times\left(1-\frac{d_m}{r}\right) $$
-    /// If d_m is less than 183 days the he Bond Equivalent Yield (BEY, here $y$) is given by:
-    /// $$ y = \frac{F - B}{M}\times \frac{365}{d_m} = \frac{365\times r}{360-r\times d_m}
-    /// If d_m>= 183 days things are a bit more complicated.
-    /// Let $d_e = d_m - 365/2$ if $d_m <= 365$ or $d_e = 183$ if $d_m = 366$.
-    /// $$ v = p\times \left(1+\frac{y}{2}\right)\left(1+d_e\times\frac{y}{365}\right) $$
-    /// Together with the previous relation of $p$ and $v$ gives us a quadratic equation for $y$.
+    // This next three functions deal with Treasure Bills or T-Bills for short
+    // They are zero-coupon that mature in one year or less.
+    //  Definitions:
+    //    $r$ be the discount rate
+    //    $v$ the face value of the Bill
+    //    $p$ the price of the Bill
+    //    $d_m$ is the number of days from the settlement to maturity
+    // Then:
+    //   $$ p = v \times\left(1-\frac{d_m}{r}\right) $$
+    // If d_m is less than 183 days the he Bond Equivalent Yield (BEY, here $y$) is given by:
+    // $$ y = \frac{F - B}{M}\times \frac{365}{d_m} = \frac{365\times r}{360-r\times d_m}
+    // If d_m>= 183 days things are a bit more complicated.
+    // Let $d_e = d_m - 365/2$ if $d_m <= 365$ or $d_e = 183$ if $d_m = 366$.
+    // $$ v = p\times \left(1+\frac{y}{2}\right)\left(1+d_e\times\frac{y}{365}\right) $$
+    // Together with the previous relation of $p$ and $v$ gives us a quadratic equation for $y$.
 
     // TBILLEQ(settlement, maturity, discount)
     pub(crate) fn fn_tbilleq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

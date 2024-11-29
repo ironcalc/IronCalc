@@ -550,7 +550,7 @@ impl Model {
             }
             result.push(ch);
         }
-        return CalcResult::String(result.chars().rev().collect::<String>());
+        CalcResult::String(result.chars().rev().collect::<String>())
     }
 
     pub(crate) fn fn_mid(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
