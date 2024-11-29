@@ -214,7 +214,7 @@ impl PyModel {
     }
 }
 
-/// Create methods
+// Create methods
 
 /// Loads a function from an xlsx file
 #[pyfunction]

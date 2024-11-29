@@ -12,7 +12,7 @@ const EPS_LOW: f64 = 1e-6;
 
 // Known values computed with Arb via Nemo.jl in Julia
 // You can also use Mathematica
-/// But please do not use Excel or any other software without arbitrary precision
+// But please do not use Excel or any other software without arbitrary precision
 
 fn numbers_are_close(a: f64, b: f64) -> bool {
     if a == b {
