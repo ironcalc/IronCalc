@@ -1,4 +1,5 @@
-use regex::{escape, Regex};
+#[cfg(feature = "use_regex_lite")]
+use regex_lite as regex;
 
 use crate::{calc_result::CalcResult, expressions::token::is_english_error_string};
 
@@ -86,7 +87,7 @@ pub(crate) fn from_wildcard_to_regex(
     exact: bool,
 ) -> Result<regex::Regex, regex::Error> {
     // 1. Escape all
-    let reg = &escape(wildcard);
+    let reg = &regex::escape(wildcard);
 
     // 2. We convert the escaped '?' into '.' (matches a single character)
     let reg = &reg.replace("\\?", ".");
@@ -109,9 +110,9 @@ pub(crate) fn from_wildcard_to_regex(
 
     // And we have a valid Perl regex! (As Kim Kardashian said before me: "I know, right?")
     if exact {
-        return Regex::new(&format!("^{}$", reg));
+        return regex::Regex::new(&format!("^{}$", reg));
     }
-    Regex::new(reg)
+    regex::Regex::new(reg)
 }
 
 /// NUMBERS ///
@@ -203,7 +204,7 @@ fn result_is_not_equal_to_bool(calc_result: &CalcResult, target: bool) -> bool {
 
 /// Note that strings are case insensitive. `target` must always be lower case.
 
-pub(crate) fn result_matches_regex(calc_result: &CalcResult, reg: &Regex) -> bool {
+pub(crate) fn result_matches_regex(calc_result: &CalcResult, reg: &regex::Regex) -> bool {
     match calc_result {
         CalcResult::String(s) => reg.is_match(&s.to_lowercase()),
         _ => false,
