@@ -10,7 +10,7 @@ First, ensure you have [nodejs](https://nodejs.org/) installed in your system
 
 ## Installation
 
-Start installing the required dependencies by running the following command in your terminal:
+Start installing the required dependencies by changing directory to the docs folder of your IronCalc repository and running the following command in your terminal:
 
 ```bash
 npm install
@@ -18,7 +18,7 @@ npm install
 
 ## Running the Project
 
-Start a development instnace of the documentation server with:
+Start a development instance of the documentation server with:
 
 ```bash
 npm run dev
