@@ -1,6 +1,6 @@
 # Contributing to IronCalc
 
-Wether you are aseasoned developer or a rookie, welcome to IronCalc! 
+Whether you are a seasoned developer or a rookie, welcome to IronCalc! 
 
 🎉 We appreciate your interest in contributing to our project.
 
@@ -12,10 +12,10 @@ Please be patient, I am only one and this is a side project.
 
 ## 🛠 Changes to the main repo
 
-If are used to work with GitHub the following steps should be straightforward.
+If are comfortable working with GitHub and Git, the following steps should be straightforward. For more general information visit [GitHub Docs](https://docs.github.com/en) and [Git Documentation](https://git-scm.com/doc). 
 
 1. **Fork the repository**
-   Start by forking the repository to your own GitHub account. You can do this by clicking the "Fork" button on the top right of this page.
+   Start by forking the repository to your own GitHub account. You can do this by clicking the "Fork" button on the top right of the repository page.
 
 2. **Clone the original repository**
    Clone the original repository to your local machine:
@@ -68,6 +68,6 @@ Feel free to reach out if you have questions or need help. Via GitHub, email, ou
 * Open an issue to report a bug or discuss a feature before implementing it.
 * Engage with the community to share ideas or seek guidance.
 
-Note that not all contributors need to be code. Testing, bug reports, typos, ideas of all kinds you can just send us an email.
+Note that not all contributors need to be coding. To contribute testing, bug reports, typos, ideas of all kinds, you can just send us an email.
 
 Thank you for your contributions! 💪 Together, we can make IronCalc even better.
