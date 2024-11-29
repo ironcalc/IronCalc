@@ -56,7 +56,7 @@ impl<'a> Process<'a> {
     }
 }
 
-impl<'a> Extend<(usize, Value)> for Process<'a> {
+impl Extend<(usize, Value)> for Process<'_> {
     fn extend<I: IntoIterator<Item = (usize, Value)>>(&mut self, it: I) {
         for v in it.into_iter() {
             self.process(v);
