@@ -3,6 +3,7 @@ mod test_autofill_columns;
 mod test_autofill_rows;
 mod test_border;
 mod test_clear_cells;
+mod test_defined_names;
 mod test_diff_queue;
 mod test_evaluation;
 mod test_general;
