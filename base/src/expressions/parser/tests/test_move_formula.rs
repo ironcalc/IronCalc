@@ -15,7 +15,7 @@ fn test_move_formula() {
         column,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Area is C2:F6
     let area = &Area {
@@ -102,7 +102,7 @@ fn test_move_formula_context_offset() {
         column,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Area is C2:F6
     let area = &Area {
@@ -140,7 +140,7 @@ fn test_move_formula_area_limits() {
         column,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Area is C2:F6
     let area = &Area {
@@ -195,7 +195,7 @@ fn test_move_formula_ranges() {
         column,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     let area = &Area {
         sheet: 0,
@@ -318,7 +318,7 @@ fn test_move_formula_wrong_reference() {
         height: 5,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Wrong formulas will NOT be displaced
     let node = parser.parse("Sheet3!AB31", &Some(context.clone()));
@@ -377,7 +377,7 @@ fn test_move_formula_misc() {
         column,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Area is C2:F6
     let area = &Area {
@@ -445,7 +445,7 @@ fn test_move_formula_another_sheet() {
     };
     // we add two sheets and we cut/paste from Sheet1 to Sheet2
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Area is C2:F6
     let area = &Area {

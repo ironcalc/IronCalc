@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 
 use crate::expressions::{token::Error, types::CellReferenceIndex};
 
+#[derive(Clone)]
 pub struct Range {
     pub left: CellReferenceIndex,
     pub right: CellReferenceIndex,

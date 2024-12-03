@@ -164,7 +164,9 @@ pub enum Node {
         args: Vec<Node>,
     },
     ArrayKind(Vec<Node>),
-    VariableKind(String),
+    DefinedNameKind((String, Option<u32>)),
+    TableNameKind(String),
+    WrongVariableKind(String),
     CompareKind {
         kind: OpCompare,
         left: Box<Node>,
@@ -187,12 +189,17 @@ pub enum Node {
 pub struct Parser {
     lexer: lexer::Lexer,
     worksheets: Vec<String>,
+    defined_names: Vec<(String, Option<u32>)>,
     context: Option<CellReferenceRC>,
     tables: HashMap<String, Table>,
 }
 
 impl Parser {
-    pub fn new(worksheets: Vec<String>, tables: HashMap<String, Table>) -> Parser {
+    pub fn new(
+        worksheets: Vec<String>,
+        defined_names: Vec<(String, Option<u32>)>,
+        tables: HashMap<String, Table>,
+    ) -> Parser {
         let lexer = lexer::Lexer::new(
             "",
             lexer::LexerMode::A1,
@@ -204,6 +211,7 @@ impl Parser {
         Parser {
             lexer,
             worksheets,
+            defined_names,
             context: None,
             tables,
         }
@@ -212,8 +220,13 @@ impl Parser {
         self.lexer.set_lexer_mode(mode)
     }
 
-    pub fn set_worksheets(&mut self, worksheets: Vec<String>) {
+    pub fn set_worksheets_and_names(
+        &mut self,
+        worksheets: Vec<String>,
+        defined_names: Vec<(String, Option<u32>)>,
+    ) {
         self.worksheets = worksheets;
+        self.defined_names = defined_names;
     }
 
     pub fn parse(&mut self, formula: &str, context: &Option<CellReferenceRC>) -> Node {
@@ -227,6 +240,24 @@ impl Parser {
         for (i, sheet) in worksheets.iter().enumerate() {
             if sheet == name {
                 return Some(i as u32);
+            }
+        }
+        None
+    }
+
+    // Returns:
+    //  * None: If there is no defined name by that name
+    //  * Some(Some(index)): If there is a defined name local to that sheet
+    //  * Some(None): If there is a global defined name
+    fn get_defined_name(&self, name: &str, sheet: u32) -> Option<Option<u32>> {
+        for (df_name, df_scope) in &self.defined_names {
+            if name.to_lowercase() == df_name.to_lowercase() && df_scope == &Some(sheet) {
+                return Some(*df_scope);
+            }
+        }
+        for (df_name, df_scope) in &self.defined_names {
+            if name.to_lowercase() == df_name.to_lowercase() && df_scope.is_none() {
+                return Some(None);
             }
         }
         None
@@ -585,11 +616,42 @@ impl Parser {
                             kind: function_kind,
                             args,
                         };
-                    } else {
-                        return Node::InvalidFunctionKind { name, args };
+                    }
+                    return Node::InvalidFunctionKind { name, args };
+                }
+                let context = match &self.context {
+                    Some(c) => c,
+                    None => {
+                        return Node::ParseErrorKind {
+                            formula: self.lexer.get_formula(),
+                            position: self.lexer.get_position() as usize,
+                            message: "Expected context for the reference".to_string(),
+                        }
+                    }
+                };
+
+                let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {
+                    Some(i) => i,
+                    None => {
+                        return Node::ParseErrorKind {
+                            formula: self.lexer.get_formula(),
+                            position: 0,
+                            message: "sheet not found".to_string(),
+                        };
+                    }
+                };
+
+                // Could be a defined name or a table
+                if let Some(scope) = self.get_defined_name(&name, context_sheet_index) {
+                    return Node::DefinedNameKind((name, scope));
+                }
+                let name_lower = name.to_lowercase();
+                for table_name in self.tables.keys() {
+                    if table_name.to_lowercase() == name_lower {
+                        return Node::TableNameKind(name);
                     }
                 }
-                Node::VariableKind(name)
+                Node::WrongVariableKind(name)
             }
             TokenType::Error(kind) => Node::ErrorKind(kind),
             TokenType::Illegal(error) => Node::ParseErrorKind {

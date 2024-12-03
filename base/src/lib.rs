@@ -25,6 +25,8 @@
 #![doc = include_str!("../examples/formulas_and_errors.rs")]
 //! ```
 
+#![warn(clippy::print_stdout)]
+
 pub mod calc_result;
 pub mod cell;
 pub mod expressions;

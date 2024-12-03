@@ -187,6 +187,20 @@ paste_from_clipboard_types = r"""
   pasteFromClipboard(source_sheet: number, source_range: [number, number, number, number], clipboard: ClipboardData, is_cut: boolean): void;
 """
 
+defined_name_list = r"""
+/**
+* @returns {any}
+*/
+  getDefinedNameList(): any;
+"""
+
+defined_name_list_types = r"""
+/**
+* @returns {DefinedName[]}
+*/
+  getDefinedNameList(): DefinedName[];
+"""
+
 def fix_types(text):
     text = text.replace(get_tokens_str, get_tokens_str_types)
     text = text.replace(update_style_str, update_style_str_types)
@@ -200,6 +214,7 @@ def fix_types(text):
     text = text.replace(paste_csv_string, paste_csv_string_types)
     text = text.replace(clipboard, clipboard_types)
     text = text.replace(paste_from_clipboard, paste_from_clipboard_types)
+    text = text.replace(defined_name_list, defined_name_list_types)
     with open("types.ts") as f:
         types_str = f.read()
         header_types = "{}\n\n{}".format(header, types_str)

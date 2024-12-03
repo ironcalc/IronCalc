@@ -9,7 +9,7 @@ use crate::expressions::types::CellReferenceRC;
 #[test]
 fn issue_155_parser() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -24,7 +24,7 @@ fn issue_155_parser() {
 #[test]
 fn issue_155_parser_case_2() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -39,7 +39,7 @@ fn issue_155_parser_case_2() {
 #[test]
 fn issue_155_parser_only_row() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -55,7 +55,7 @@ fn issue_155_parser_only_row() {
 #[test]
 fn issue_155_parser_only_column() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {

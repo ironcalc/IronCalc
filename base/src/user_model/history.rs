@@ -113,7 +113,26 @@ pub(crate) enum Diff {
         sheet: u32,
         old_value: bool,
         new_value: bool,
-    }, // FIXME: we are missing SetViewDiffs
+    },
+    CreateDefinedName {
+        name: String,
+        scope: Option<u32>,
+        value: String,
+    },
+    DeleteDefinedName {
+        name: String,
+        scope: Option<u32>,
+        old_value: String,
+    },
+    UpdateDefinedName {
+        name: String,
+        scope: Option<u32>,
+        old_formula: String,
+        new_name: String,
+        new_scope: Option<u32>,
+        new_formula: String,
+    },
+    // FIXME: we are missing SetViewDiffs
 }
 
 pub(crate) type DiffList = Vec<Diff>;
