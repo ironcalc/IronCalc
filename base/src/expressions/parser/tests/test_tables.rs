@@ -63,7 +63,7 @@ fn simple_table() {
     let row_count = 3;
     let tables = create_test_table("tblIncome", &column_names, "A1", row_count);
 
-    let mut parser = Parser::new(worksheets, tables);
+    let mut parser = Parser::new(worksheets, vec![], tables);
     // Reference cell is 'Sheet One'!F2
     let cell_reference = CellReferenceRC {
         sheet: "Sheet One".to_string(),

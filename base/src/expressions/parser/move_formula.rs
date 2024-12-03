@@ -375,7 +375,9 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             }
             format!("{{{}}}", arguments)
         }
-        VariableKind(value) => value.to_string(),
+        DefinedNameKind((name, _)) => name.to_string(),
+        TableNameKind(name) => name.to_string(),
+        WrongVariableKind(name) => name.to_string(),
         CompareKind { kind, left, right } => format!(
             "{}{}{}",
             to_string_moved(left, move_context),

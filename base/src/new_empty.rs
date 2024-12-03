@@ -144,8 +144,9 @@ impl Model {
 
     /// Reparses all formulas and defined names
     pub(crate) fn reset_parsed_structures(&mut self) {
+        let defined_names = self.workbook.get_defined_names_with_scope();
         self.parser
-            .set_worksheets(self.workbook.get_worksheet_names());
+            .set_worksheets_and_names(self.workbook.get_worksheet_names(), defined_names);
         self.parsed_formulas = vec![];
         self.parse_formulas();
         self.parsed_defined_names = HashMap::new();
@@ -388,7 +389,7 @@ impl Model {
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
-        let parser = Parser::new(worksheet_names, HashMap::new());
+        let parser = Parser::new(worksheet_names, vec![], HashMap::new());
         let cells = HashMap::new();
 
         // FIXME: Add support for display languages

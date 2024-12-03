@@ -464,7 +464,9 @@ fn stringify(
                 | ReferenceKind { .. }
                 | RangeKind { .. }
                 | WrongReferenceKind { .. }
-                | VariableKind(_)
+                | DefinedNameKind(_)
+                | TableNameKind(_)
+                | WrongVariableKind(_)
                 | WrongRangeKind { .. } => {
                     stringify(left, context, displace_data, use_original_name)
                 }
@@ -492,7 +494,9 @@ fn stringify(
                 | ReferenceKind { .. }
                 | RangeKind { .. }
                 | WrongReferenceKind { .. }
-                | VariableKind(_)
+                | DefinedNameKind(_)
+                | TableNameKind(_)
+                | WrongVariableKind(_)
                 | WrongRangeKind { .. } => {
                     stringify(right, context, displace_data, use_original_name)
                 }
@@ -543,7 +547,9 @@ fn stringify(
             }
             format!("{{{}}}", arguments)
         }
-        VariableKind(value) => value.to_string(),
+        TableNameKind(value) => value.to_string(),
+        DefinedNameKind((name, _)) => name.to_string(),
+        WrongVariableKind(name) => name.to_string(),
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
                 format!(
@@ -660,7 +666,90 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ErrorKind(_) => {}
         Node::ParseErrorKind { .. } => {}
         Node::ArrayKind(_) => {}
-        Node::VariableKind(_) => {}
+        Node::DefinedNameKind(_) => {}
+        Node::TableNameKind(_) => {}
+        Node::WrongVariableKind(_) => {}
         Node::EmptyArgKind => {}
+    }
+}
+
+pub(crate) fn rename_defined_name_in_node(
+    node: &mut Node,
+    name: &str,
+    scope: Option<u32>,
+    new_name: &str,
+) {
+    match node {
+        // Rename
+        Node::DefinedNameKind((n, s)) => {
+            if name.to_lowercase() == n.to_lowercase() && *s == scope {
+                *n = new_name.to_string();
+            }
+        }
+        // Go next level
+        Node::OpRangeKind { left, right } => {
+            rename_defined_name_in_node(left, name, scope, new_name);
+            rename_defined_name_in_node(right, name, scope, new_name);
+        }
+        Node::OpConcatenateKind { left, right } => {
+            rename_defined_name_in_node(left, name, scope, new_name);
+            rename_defined_name_in_node(right, name, scope, new_name);
+        }
+        Node::OpSumKind {
+            kind: _,
+            left,
+            right,
+        } => {
+            rename_defined_name_in_node(left, name, scope, new_name);
+            rename_defined_name_in_node(right, name, scope, new_name);
+        }
+        Node::OpProductKind {
+            kind: _,
+            left,
+            right,
+        } => {
+            rename_defined_name_in_node(left, name, scope, new_name);
+            rename_defined_name_in_node(right, name, scope, new_name);
+        }
+        Node::OpPowerKind { left, right } => {
+            rename_defined_name_in_node(left, name, scope, new_name);
+            rename_defined_name_in_node(right, name, scope, new_name);
+        }
+        Node::FunctionKind { kind: _, args } => {
+            for arg in args {
+                rename_defined_name_in_node(arg, name, scope, new_name);
+            }
+        }
+        Node::InvalidFunctionKind { name: _, args } => {
+            for arg in args {
+                rename_defined_name_in_node(arg, name, scope, new_name);
+            }
+        }
+        Node::CompareKind {
+            kind: _,
+            left,
+            right,
+        } => {
+            rename_defined_name_in_node(left, name, scope, new_name);
+            rename_defined_name_in_node(right, name, scope, new_name);
+        }
+        Node::UnaryKind { kind: _, right } => {
+            rename_defined_name_in_node(right, name, scope, new_name);
+        }
+
+        // Do nothing
+        Node::BooleanKind(_) => {}
+        Node::NumberKind(_) => {}
+        Node::StringKind(_) => {}
+        Node::ErrorKind(_) => {}
+        Node::ParseErrorKind { .. } => {}
+        Node::ArrayKind(_) => {}
+        Node::EmptyArgKind => {}
+        Node::ReferenceKind { .. } => {}
+        Node::RangeKind { .. } => {}
+        Node::WrongReferenceKind { .. } => {}
+        Node::WrongRangeKind { .. } => {}
+        Node::TableNameKind(_) => {}
+        Node::WrongVariableKind(_) => {}
     }
 }

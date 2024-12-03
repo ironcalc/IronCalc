@@ -9,7 +9,7 @@ use crate::expressions::types::CellReferenceRC;
 #[test]
 fn exp_order() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {

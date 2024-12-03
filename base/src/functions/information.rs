@@ -247,45 +247,67 @@ impl Model {
             return CalcResult::Number(cell.sheet as f64 + 1.0);
         }
         // The arg could be a defined name or a table
-        let arg = &args[0];
-        if let Node::VariableKind(name) = arg {
-            // Let's see if it is a defined name
-            if let Some(defined_name) = self.parsed_defined_names.get(&(None, name.to_lowercase()))
-            {
-                match defined_name {
-                    ParsedDefinedName::CellReference(reference) => {
-                        return CalcResult::Number(reference.sheet as f64 + 1.0)
+        // let  = &args[0];
+        match &args[0] {
+            Node::DefinedNameKind((name, scope)) => {
+                // Let's see if it is a defined name
+                if let Some(defined_name) = self
+                    .parsed_defined_names
+                    .get(&(*scope, name.to_lowercase()))
+                {
+                    match defined_name {
+                        ParsedDefinedName::CellReference(reference) => {
+                            return CalcResult::Number(reference.sheet as f64 + 1.0)
+                        }
+                        ParsedDefinedName::RangeReference(range) => {
+                            return CalcResult::Number(range.left.sheet as f64 + 1.0)
+                        }
+                        ParsedDefinedName::InvalidDefinedNameFormula => {
+                            return CalcResult::Error {
+                                error: Error::ERROR,
+                                origin: cell,
+                                message: "Invalid name".to_string(),
+                            };
+                        }
                     }
-                    ParsedDefinedName::RangeReference(range) => {
-                        return CalcResult::Number(range.left.sheet as f64 + 1.0)
-                    }
-                    ParsedDefinedName::InvalidDefinedNameFormula => {
-                        return CalcResult::Error {
-                            error: Error::NA,
-                            origin: cell,
-                            message: "Invalid name".to_string(),
-                        };
+                } else {
+                    // This should never happen
+                    return CalcResult::Error {
+                        error: Error::ERROR,
+                        origin: cell,
+                        message: "Invalid name".to_string(),
+                    };
+                }
+            }
+            Node::TableNameKind(name) => {
+                // Now let's see if it is a table
+                for (table_name, table) in &self.workbook.tables {
+                    if table_name == name {
+                        if let Some(sheet_index) = self.get_sheet_index_by_name(&table.sheet_name) {
+                            return CalcResult::Number(sheet_index as f64 + 1.0);
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
-            // Now let's see if it is a table
-            for (table_name, table) in &self.workbook.tables {
-                if table_name == name {
-                    if let Some(sheet_index) = self.get_sheet_index_by_name(&table.sheet_name) {
-                        return CalcResult::Number(sheet_index as f64 + 1.0);
-                    } else {
-                        break;
-                    }
+            Node::WrongVariableKind(name) => {
+                return CalcResult::Error {
+                    error: Error::NAME,
+                    origin: cell,
+                    message: format!("Name not found: {name}"),
                 }
             }
-        }
-        // Now it should be the name of a sheet
-        let sheet_name = match self.get_string(arg, cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        if let Some(sheet_index) = self.get_sheet_index_by_name(&sheet_name) {
-            return CalcResult::Number(sheet_index as f64 + 1.0);
+            arg => {
+                // Now it should be the name of a sheet
+                let sheet_name = match self.get_string(arg, cell) {
+                    Ok(s) => s,
+                    Err(e) => return e,
+                };
+                if let Some(sheet_index) = self.get_sheet_index_by_name(&sheet_name) {
+                    return CalcResult::Number(sheet_index as f64 + 1.0);
+                }
+            }
         }
         CalcResult::Error {
             error: Error::NA,

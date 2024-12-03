@@ -41,6 +41,30 @@ pub(crate) struct Relationship {
     pub(crate) rel_type: String,
 }
 
+impl WorkbookXML {
+    fn get_defined_names_with_scope(&self) -> Vec<(String, Option<u32>)> {
+        let sheet_id_index: Vec<u32> = self.worksheets.iter().map(|s| s.sheet_id).collect();
+
+        let defined_names = self
+            .defined_names
+            .iter()
+            .map(|dn| {
+                let index = dn
+                    .sheet_id
+                    .and_then(|sheet_id| {
+                        // returns an Option<usize>
+                        sheet_id_index.iter().position(|&x| x == sheet_id)
+                    })
+                    // convert Option<usize> to Option<u32>
+                    .map(|pos| pos as u32);
+
+                (dn.name.clone(), index)
+            })
+            .collect::<Vec<_>>();
+        defined_names
+    }
+}
+
 fn get_column_from_ref(s: &str) -> String {
     let cs = s.chars();
     let mut column = Vec::<char>::new();
@@ -280,8 +304,9 @@ fn from_a1_to_rc(
     worksheets: &[String],
     context: String,
     tables: HashMap<String, Table>,
+    defined_names: Vec<(String, Option<u32>)>,
 ) -> Result<String, XlsxError> {
-    let mut parser = Parser::new(worksheets.to_owned(), tables);
+    let mut parser = Parser::new(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
     let t = parser.parse(&formula, &Some(cell_reference));
@@ -681,6 +706,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     worksheets: &[String],
     tables: &HashMap<String, Table>,
     shared_strings: &mut Vec<String>,
+    defined_names: Vec<(String, Option<u32>)>,
 ) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
@@ -855,8 +881,13 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                                 // It's the mother cell. We do not use the ref attribute in IronCalc
                                 let formula = fs[0].text().unwrap_or("").to_string();
                                 let context = format!("{}!{}", sheet_name, cell_ref);
-                                let formula =
-                                    from_a1_to_rc(formula, worksheets, context, tables.clone())?;
+                                let formula = from_a1_to_rc(
+                                    formula,
+                                    worksheets,
+                                    context,
+                                    tables.clone(),
+                                    defined_names.clone(),
+                                )?;
                                 match index_map.get(&si) {
                                     Some(index) => {
                                         // The index for that formula already exists meaning we bumped into a daughter cell first
@@ -910,7 +941,13 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                         // Its a cell with a simple formula
                         let formula = fs[0].text().unwrap_or("").to_string();
                         let context = format!("{}!{}", sheet_name, cell_ref);
-                        let formula = from_a1_to_rc(formula, worksheets, context, tables.clone())?;
+                        let formula = from_a1_to_rc(
+                            formula,
+                            worksheets,
+                            context,
+                            tables.clone(),
+                            defined_names.clone(),
+                        )?;
 
                         match get_formula_index(&formula, &shared_formulas) {
                             Some(index) => formula_index = index,
@@ -1023,6 +1060,9 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     let mut sheets = Vec::new();
     let mut selected_sheet = 0;
     let mut sheet_index = 0;
+
+    let defined_names = workbook.get_defined_names_with_scope();
+
     for sheet in &workbook.worksheets {
         let sheet_name = &sheet.name;
         let rel_id = &sheet.id;
@@ -1044,8 +1084,15 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                     .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?
                     .to_vec(),
             };
-            let (s, is_selected) =
-                load_sheet(archive, &path, settings, worksheets, tables, shared_strings)?;
+            let (s, is_selected) = load_sheet(
+                archive,
+                &path,
+                settings,
+                worksheets,
+                tables,
+                shared_strings,
+                defined_names.clone(),
+            )?;
             if is_selected {
                 selected_sheet = sheet_index;
             }
