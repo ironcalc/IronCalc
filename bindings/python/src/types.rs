@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use xlsx::base::types::{
-    Alignment, Border, BorderItem, BorderStyle, Fill, Font, FontScheme, HorizontalAlignment, Style,
+    Alignment, Border, BorderItem, BorderStyle, Fill, Font, FontScheme, HorizontalAlignment, Style, CellType,
     VerticalAlignment,
 };
 
@@ -159,6 +159,17 @@ pub struct PyFill {
     pub fg_color: Option<String>,
     #[pyo3(get)]
     pub bg_color: Option<String>,
+}
+
+#[pyclass(eq, eq_int)]
+#[derive(PartialEq, Clone)]
+pub enum PyCellType {
+    Number = 1,
+    Text = 2,
+    LogicalValue = 4,
+    ErrorValue = 16,
+    Array = 64,
+    CompoundData = 128,
 }
 
 // Conversions from references to Py* types to non-Py types
@@ -423,6 +434,34 @@ impl From<Style> for PyStyle {
             font: style.font.into(),
             border: style.border.into(),
             quote_prefix: style.quote_prefix,
+        }
+    }
+}
+
+// Conversion from PyCellType to CellType
+impl From<PyCellType> for CellType {
+    fn from(py_cell_type: PyCellType) -> Self {
+        match py_cell_type {
+            PyCellType::Number => CellType::Number,
+            PyCellType::Text => CellType::Text,
+            PyCellType::LogicalValue => CellType::LogicalValue,
+            PyCellType::ErrorValue => CellType::ErrorValue,
+            PyCellType::Array => CellType::Array,
+            PyCellType::CompoundData => CellType::CompoundData,
+        }
+    }
+}
+
+// Conversion from CellType to PyCellType
+impl From<CellType> for PyCellType {
+    fn from(cell_type: CellType) -> Self {
+        match cell_type {
+            CellType::Number => PyCellType::Number,
+            CellType::Text => PyCellType::Text,
+            CellType::LogicalValue => PyCellType::LogicalValue,
+            CellType::ErrorValue => PyCellType::ErrorValue,
+            CellType::Array => PyCellType::Array,
+            CellType::CompoundData => PyCellType::CompoundData,
         }
     }
 }
