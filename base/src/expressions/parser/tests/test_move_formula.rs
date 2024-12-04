@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
 use crate::expressions::parser::move_formula::{move_formula, MoveContext};
-use crate::expressions::types::Area;
-
-use super::super::types::CellReferenceRC;
-use super::Parser;
+use crate::expressions::parser::Parser;
+use crate::expressions::types::{Area, CellReferenceRC};
 
 #[test]
 fn test_move_formula() {

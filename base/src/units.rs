@@ -309,6 +309,7 @@ impl Model {
             Function::Sum => self.units_fn_sum_like(args, cell),
             Function::Average => self.units_fn_sum_like(args, cell),
             Function::Pmt => self.units_fn_currency(args, cell),
+            Function::Fv => self.units_fn_currency(args, cell),
             Function::Nper => self.units_fn_currency(args, cell),
             Function::Npv => self.units_fn_currency(args, cell),
             Function::Irr => self.units_fn_percentage(args, cell),

@@ -89,6 +89,9 @@ fn compute_future_value(
     if rate == 0.0 {
         return Ok(-pv - pmt * nper);
     }
+    if rate == -1.0 && nper < 0.0 {
+        return Err((Error::DIV, "Divide by zero".to_string()));
+    }
 
     let rate_nper = (1.0 + rate).powf(nper);
     let fv = if period_start {
