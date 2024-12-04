@@ -51,6 +51,7 @@ mod test_number_format;
 
 mod test_escape_quotes;
 mod test_extend;
+mod test_fn_fv;
 mod test_fn_type;
 mod test_frozen_rows_and_columns;
 mod test_geomean;

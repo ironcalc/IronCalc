@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use crate::expressions::lexer::LexerMode;
 
-use super::super::parser::stringify::{to_rc_format, to_string};
-use super::super::types::CellReferenceRC;
-use super::Parser;
+use crate::expressions::parser::stringify::{to_rc_format, to_string};
+use crate::expressions::parser::Parser;
+use crate::expressions::types::CellReferenceRC;
 
 struct Formula<'a> {
     formula_a1: &'a str,

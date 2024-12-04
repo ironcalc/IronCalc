@@ -6,8 +6,8 @@ use crate::expressions::parser::stringify::to_string;
 use crate::expressions::utils::{number_to_column, parse_reference_a1};
 use crate::types::{Table, TableColumn, TableStyleInfo};
 
-use super::super::types::CellReferenceRC;
-use super::Parser;
+use crate::expressions::parser::Parser;
+use crate::expressions::types::CellReferenceRC;
 
 fn create_test_table(
     table_name: &str,

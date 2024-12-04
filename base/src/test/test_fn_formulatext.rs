@@ -3,9 +3,6 @@
 use crate::test::util::new_empty_model;
 
 #[test]
-fn simple_cases() {}
-
-#[test]
 fn wrong_number_of_arguments() {
     let mut model = new_empty_model();
     model._set("A1", "=FORMULATEXT()");

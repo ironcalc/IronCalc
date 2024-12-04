@@ -456,11 +456,65 @@ fn stringify(
             };
             format!("{}{}{}", x, kind, y)
         }
-        OpPowerKind { left, right } => format!(
-            "{}^{}",
-            stringify(left, context, displace_data, use_original_name),
-            stringify(right, context, displace_data, use_original_name)
-        ),
+        OpPowerKind { left, right } => {
+            let x = match **left {
+                BooleanKind(_)
+                | NumberKind(_)
+                | StringKind(_)
+                | ReferenceKind { .. }
+                | RangeKind { .. }
+                | WrongReferenceKind { .. }
+                | VariableKind(_)
+                | WrongRangeKind { .. } => {
+                    stringify(left, context, displace_data, use_original_name)
+                }
+                OpRangeKind { .. }
+                | OpConcatenateKind { .. }
+                | OpProductKind { .. }
+                | OpPowerKind { .. }
+                | FunctionKind { .. }
+                | InvalidFunctionKind { .. }
+                | ArrayKind(_)
+                | UnaryKind { .. }
+                | ErrorKind(_)
+                | ParseErrorKind { .. }
+                | OpSumKind { .. }
+                | CompareKind { .. }
+                | EmptyArgKind => format!(
+                    "({})",
+                    stringify(left, context, displace_data, use_original_name)
+                ),
+            };
+            let y = match **right {
+                BooleanKind(_)
+                | NumberKind(_)
+                | StringKind(_)
+                | ReferenceKind { .. }
+                | RangeKind { .. }
+                | WrongReferenceKind { .. }
+                | VariableKind(_)
+                | WrongRangeKind { .. } => {
+                    stringify(right, context, displace_data, use_original_name)
+                }
+                OpRangeKind { .. }
+                | OpConcatenateKind { .. }
+                | OpProductKind { .. }
+                | OpPowerKind { .. }
+                | FunctionKind { .. }
+                | InvalidFunctionKind { .. }
+                | ArrayKind(_)
+                | UnaryKind { .. }
+                | ErrorKind(_)
+                | ParseErrorKind { .. }
+                | OpSumKind { .. }
+                | CompareKind { .. }
+                | EmptyArgKind => format!(
+                    "({})",
+                    stringify(right, context, displace_data, use_original_name)
+                ),
+            };
+            format!("{}^{}", x, y)
+        }
         InvalidFunctionKind { name, args } => {
             format_function(name, args, context, displace_data, use_original_name)
         }

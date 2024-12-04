@@ -2,9 +2,9 @@
 
 use std::collections::HashMap;
 
-use super::super::parser::stringify::to_string;
-use super::super::types::CellReferenceRC;
-use super::Parser;
+use crate::expressions::parser::stringify::to_string;
+use crate::expressions::parser::Parser;
+use crate::expressions::types::CellReferenceRC;
 
 #[test]
 fn issue_155_parser() {
