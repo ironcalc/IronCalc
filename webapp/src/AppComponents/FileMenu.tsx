@@ -41,7 +41,7 @@ export function FileMenu(props: {
         >
           {models[uuid]}
         </MenuItemText>
-      </MenuItemWrapper>,
+      </MenuItemWrapper>
     );
   }
 
@@ -57,9 +57,19 @@ export function FileMenu(props: {
         open={isMenuOpen}
         onClose={(): void => setMenuOpen(false)}
         anchorEl={anchorElement.current}
+        sx={{
+          "& .MuiPaper-root": { borderRadius: "8px", padding: "4px 0px" },
+          "& .MuiList-root": { padding: "0" },
+        }}
+
         // anchorOrigin={properties.anchorOrigin}
       >
-        <MenuItemWrapper onClick={props.newModel}>
+        <MenuItemWrapper
+          onClick={() => {
+            props.newModel();
+            setMenuOpen(false);
+          }}
+        >
           <StyledPlus />
           <MenuItemText>New</MenuItemText>
         </MenuItemWrapper>
@@ -157,11 +167,11 @@ const StyledCheck = styled(Check)`
 `;
 
 const MenuDivider = styled("div")`
-  width: 80%;
+  width: 100%;
   margin: auto;
-  margin-top: 8px;
-  margin-bottom: 8px;
-  border-top: 1px solid #e0e0e0;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-top: 1px solid #eeeeee;
 `;
 
 const MenuItemText = styled("div")`
@@ -173,7 +183,12 @@ const MenuItemWrapper = styled(MenuItem)`
   display: flex;
   justify-content: flex-start;
   font-size: 14px;
-  width: 100%;
+  width: calc(100% - 8px);
+  min-width: 172px;
+  margin: 0px 4px;
+  border-radius: 4px;
+  padding: 8px;
+  height: 32px;
 `;
 
 const FileMenuWrapper = styled("div")`
@@ -181,8 +196,7 @@ const FileMenuWrapper = styled("div")`
   align-items: center;
   font-size: 12px;
   font-family: Inter;
-  padding: 10px;
-  height: 20px;
+  padding: 8px;
   border-radius: 4px;
   cursor: pointer;
   &:hover {
