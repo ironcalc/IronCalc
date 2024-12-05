@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use xlsx::base::types::{
-    Alignment, Border, BorderItem, BorderStyle, Fill, Font, FontScheme, HorizontalAlignment, Style, CellType,
-    VerticalAlignment,
+    Alignment, Border, BorderItem, BorderStyle, CellType, Fill, Font, FontScheme,
+    HorizontalAlignment, Style, VerticalAlignment,
 };
 
 #[derive(Clone)]
