@@ -76,7 +76,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SECH            | <Badge type="info" text="Not implemented yet" /> | –             |
 | SERIESSUM       | <Badge type="info" text="Not implemented yet" /> | –             |
 | SEQUENCE        | <Badge type="info" text="Not implemented yet" /> | –             |
-| SIGN            | <Badge type="info" text="Not implemented yet" /> | –             |
+| SIGN            | <Badge type="tip" text="Available" /> | –             |
 | SIN             | <Badge type="tip" text="Available" />          | –             |
 | SINH            | <Badge type="tip" text="Available" />          | –             |
 | SQRT            | <Badge type="tip" text="Available" />          | –             |

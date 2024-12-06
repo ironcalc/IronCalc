@@ -682,4 +682,25 @@ impl Model {
         }
         CalcResult::Number((x + random() * (y - x)).floor())
     }
+
+    pub(crate) fn fn_sign(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if value.is_nan() {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Invalid argument for SIGN".to_string(),
+            };
+        }
+        if value == 0.0 {
+            return CalcResult::Number(0.0);
+        }
+        CalcResult::Number(value.signum())
+    }
 }
