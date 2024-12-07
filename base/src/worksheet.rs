@@ -287,7 +287,7 @@ impl Worksheet {
     ///   * If the column does not a have a width we simply add it
     ///   * If it has, it might be part of a range and we ned to split the range.
     ///
-    /// Fails if column index is outside allowed range or the width is negative.
+    /// Fails if column index is outside allowed range or width is negative.
     pub fn set_column_width(&mut self, column: i32, width: f64) -> Result<(), String> {
         self.set_column_width_and_style(column, width, None)
     }
