@@ -261,7 +261,7 @@ impl Worksheet {
             return Err(format!("Row number '{row}' is not valid."));
         }
         if height < 0.0 {
-            return Err(format!("Cannot set a negative height: {height}"));
+            return Err(format!("Can not set a negative height: {height}"));
         }
 
         let rows = &mut self.rows;
@@ -302,7 +302,7 @@ impl Worksheet {
             return Err(format!("Column number '{column}' is not valid."));
         }
         if width < 0.0 {
-            return Err(format!("Cannot set a negative width: {width}"));
+            return Err(format!("Can not set a negative width: {width}"));
         }
         let cols = &mut self.cols;
         let mut col = Col {
