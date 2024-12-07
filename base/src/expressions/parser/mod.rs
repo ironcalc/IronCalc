@@ -59,6 +59,9 @@ mod test_move_formula;
 #[cfg(test)]
 mod test_tables;
 
+#[cfg(test)]
+mod test_issue_155;
+
 pub(crate) fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String> {
     let mut lexer = lexer::Lexer::new(
         formula,
@@ -522,20 +525,6 @@ impl Parser {
                 let mut absolute_row1 = left.absolute_row;
                 let mut absolute_row2 = right.absolute_row;
 
-                if self.lexer.is_a1_mode() {
-                    if !left.absolute_row {
-                        row1 -= context.row
-                    };
-                    if !left.absolute_column {
-                        column1 -= context.column
-                    };
-                    if !right.absolute_row {
-                        row2 -= context.row
-                    };
-                    if !right.absolute_column {
-                        column2 -= context.column
-                    };
-                }
                 if row1 > row2 {
                     (row2, row1) = (row1, row2);
                     (absolute_row2, absolute_row1) = (absolute_row1, absolute_row2);
@@ -544,6 +533,22 @@ impl Parser {
                     (column2, column1) = (column1, column2);
                     (absolute_column2, absolute_column1) = (absolute_column1, absolute_column2);
                 }
+
+                if self.lexer.is_a1_mode() {
+                    if !absolute_row1 {
+                        row1 -= context.row
+                    };
+                    if !absolute_column1 {
+                        column1 -= context.column
+                    };
+                    if !absolute_row2 {
+                        row2 -= context.row
+                    };
+                    if !absolute_column2 {
+                        column2 -= context.column
+                    };
+                }
+
                 match sheet_index {
                     Some(index) => Node::RangeKind {
                         sheet_name: sheet,

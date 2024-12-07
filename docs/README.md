@@ -6,11 +6,11 @@ This repository contains IronCalc's end-user documentation. Here, you can explor
 
 To manage the documentation, we use [VitePress](https://vitepress.dev/guide/what-is-vitepress), a Static Site Generator (SSG).
 
-First, ensure you have [nodejs](https://nodejs.org/) installed in your system
+First, ensure you have [nodejs](https://nodejs.org/) installed in your system.
 
 ## Installation
 
-Start installing the required dependencies by running the following command in your terminal:
+Start installing the required dependencies by changing directory to the _docs_ folder of the IronCalc repository and running the following command in your terminal:
 
 ```bash
 npm install
@@ -18,7 +18,7 @@ npm install
 
 ## Running the Project
 
-Start a development instnace of the documentation server with:
+Start a development instance of the documentation server with:
 
 ```bash
 npm run dev
