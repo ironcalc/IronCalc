@@ -41,7 +41,7 @@ export function FileMenu(props: {
         >
           {models[uuid]}
         </MenuItemText>
-      </MenuItemWrapper>
+      </MenuItemWrapper>,
     );
   }
 
