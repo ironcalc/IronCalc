@@ -2003,7 +2003,7 @@ export default defineConfig({
             link: "/programming/python-bindings",
           },
           {
-            text: "JavScript",
+            text: "JavaScript",
             link: "/programming/javascript-bindings",
           },
         ],
