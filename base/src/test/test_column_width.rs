@@ -82,3 +82,26 @@ fn test_column_width_higher_edge() {
     assert!((worksheet.get_column_width(17).unwrap() - DEFAULT_COLUMN_WIDTH).abs() < f64::EPSILON);
     assert_eq!(model.get_cell_style_index(0, 23, 16), Ok(1));
 }
+
+#[test]
+fn test_column_width_negative() {
+    let mut model = new_empty_model();
+    let cols = vec![Col {
+        custom_width: false,
+        max: 16,
+        min: 5,
+        style: Some(1),
+        width: 10.0,
+    }];
+    model.workbook.worksheets[0].cols = cols;
+    let result = model
+        .workbook
+        .worksheet_mut(0)
+        .unwrap()
+        .set_column_width(16, -1.0);
+    assert!(result.is_err());
+    assert_eq!(model.workbook.worksheets[0].cols.len(), 1);
+    let worksheet = model.workbook.worksheet(0).unwrap();
+    assert_eq!((worksheet.get_column_width(16).unwrap()), DEFAULT_COLUMN_WIDTH);
+    assert_eq!(model.get_cell_style_index(0, 23, 16), Ok(1));
+}
