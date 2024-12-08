@@ -133,7 +133,7 @@ const RecentLabel = styled.div`
   font-family: "Inter";
   font-size: 12px;
   font-family: Inter;
-  margin: 8px;
+  margin: 8px 8px 0px 8px;
   color: ${theme.palette.text.secondary};
 `;
 
@@ -142,7 +142,8 @@ const ColorList = styled.div`
   flex-wrap: wrap;
   flex-direction: row;
   margin: 8px;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 4.7px;
 `;
 
 const Button = styled.button<{ $color: string }>`
@@ -160,6 +161,11 @@ const Button = styled.button<{ $color: string }>`
   box-sizing: border-box;
   margin-top: 0px;
   border-radius: 4px;
+  &:hover {
+    cursor: pointer;
+    outline: 1px solid ${theme.palette.grey["300"]};
+    outline-offset: 1px;
+  }
 `;
 
 const HorizontalDivider = styled.div`
@@ -271,7 +277,7 @@ const Swatch = styled.div<{ $color: string }>`
   display: inline-flex;
   ${({ $color }): string => {
     if ($color.toUpperCase() === "#FFFFFF") {
-      return `border: 1px solid ${theme.palette.grey["600"]};`;
+      return `border: 1px solid ${theme.palette.grey["300"]};`;
     }
     return `border: 1px solid ${$color};`;
   }}
