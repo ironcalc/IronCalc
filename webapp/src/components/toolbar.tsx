@@ -251,6 +251,16 @@ function Toolbar(properties: ToolbarProperties) {
       >
         <PaintBucket />
       </StyledButton>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        onClick={() => setBorderPickerOpen(true)}
+        ref={borderButton}
+        disabled={!canEdit}
+        title={t("toolbar.borders.title")}
+      >
+        <Grid2X2 />
+      </StyledButton>
       <Divider />
       <StyledButton
         type="button"
@@ -318,17 +328,7 @@ function Toolbar(properties: ToolbarProperties) {
       >
         <ArrowDownToLine />
       </StyledButton>
-      <Divider />
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={() => setBorderPickerOpen(true)}
-        ref={borderButton}
-        disabled={!canEdit}
-        title={t("toolbar.borders.title")}
-      >
-        <Grid2X2 />
-      </StyledButton>
+
       <Divider />
       <StyledButton
         type="button"
