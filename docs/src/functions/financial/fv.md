@@ -28,15 +28,15 @@ If your interest rate varies between periods, use the [FVSCHEDULE](/functions/fi
 <!--@include: ../markdown-snippets/error-type-details.md-->
 
 ## Details
-* If *rate* = 0, FV solves the equation:
+* If *rate* = 0, FV is given by the equation:
 $$
 FV = -pv - (pmt \times nper)
 $$
 
-* If *rate* <> 0 and *type* = 0, FV solves the equation:
+* If *rate* <> 0 and *type* = 0, FV is given by the equation:
 $$ FV = -pv \times (1 + rate)^{nper} - \dfrac{pmt\times\big({(1+rate)^{nper}-1}\big)}{rate}
 $$
-* If *rate* <> 0 and *type* <> 0, FV solves the equation:
+* If *rate* <> 0 and *type* <> 0, FV is given by the equation:
 $$ FV = -pv \times (1 + rate)^{nper} - \dfrac{pmt\times\big({(1+rate)^{nper}-1}\big) \times(1+rate)}{rate}
 $$
 ## Examples
