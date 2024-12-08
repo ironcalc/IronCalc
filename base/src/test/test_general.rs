@@ -118,7 +118,8 @@ fn test_set_row_height() {
 
     let worksheet = model.workbook.worksheet_mut(0).unwrap();
     let result = worksheet.set_row_height(6, -1.0);
-    assert!(result.is_err());
+    assert_eq!(result, Err("Can not set a negative height: -1".to_string()));
+
     assert_eq!(worksheet.row_height(6).unwrap(), DEFAULT_ROW_HEIGHT);
 
     worksheet.set_row_height(6, 0.0).unwrap();
