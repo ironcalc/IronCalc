@@ -6,7 +6,7 @@ lang: en-US
 
 # Math and Trigonometry functions
 
-At the moment IronCalc only supports a few function in this section.  
+At the moment IronCalc only supports a few functions in this section.  
 You can track the progress in this [GitHub issue](https://github.com/ironcalc/IronCalc/issues/54).
 
 | Function        | Status                                         | Documentation |
@@ -77,7 +77,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SERIESSUM       | <Badge type="info" text="Not implemented yet" /> | –             |
 | SEQUENCE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SIGN            | <Badge type="info" text="Not implemented yet" /> | –             |
-| SIN             | <Badge type="tip" text="Available" />          | –             |
+| SIN             | <Badge type="tip" text="Available" />          | [SIN](math_and_trigonometry/sin) |
 | SINH            | <Badge type="tip" text="Available" />          | –             |
 | SQRT            | <Badge type="tip" text="Available" />          | –             |
 | SQRTPI          | <Badge type="info" text="Not implemented yet" /> | –             |
