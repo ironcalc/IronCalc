@@ -6,12 +6,12 @@ lang: en-US
 
 # Date and Time functions
 
-At the moment IronCalc only supports a few function in this section.  
+At the moment IronCalc only supports a few functions in this section.  
 You can track the progress in this [GitHub issue](https://github.com/ironcalc/IronCalc/issues/48).
 
 | Function         | Status                                         | Documentation |
 | ---------------- | ---------------------------------------------- | ------------- |
-| DATE             | <Badge type="tip" text="Available" />          | –             |
+| DATE             | <Badge type="tip" text="Available" />          | [DATE](date_and_time/DATE) |
 | DATEDIF          | <Badge type="info" text="Not implemented yet" /> | –             |
 | DATEVALUE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | DAY              | <Badge type="tip" text="Available" />          | –             |
