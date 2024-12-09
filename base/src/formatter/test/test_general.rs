@@ -77,6 +77,14 @@ fn test_color() {
 }
 
 #[test]
+fn dollar_euro() {
+    let locale = get_default_locale();
+    let format = "[$€]#,##0.00";
+    let t = format_number(3.1, format, locale);
+    assert_eq!(t.text, "€3.10");
+}
+
+#[test]
 fn test_parts() {
     let locale = get_default_locale();
     assert_eq!(format_number(3.1, "0.00;(0.00);(-)", locale).text, "3.10");
