@@ -25,6 +25,25 @@ fn test_get_tokens() {
 }
 
 #[test]
+fn get_tokens_unicode() {
+    let formula = "'🇵🇭 Philippines'!A1";
+    let t = get_tokens(formula);
+    assert_eq!(t.len(), 1);
+
+    let expected = TokenType::Reference {
+        sheet: Some("🇵🇭 Philippines".to_string()),
+        row: 1,
+        column: 1,
+        absolute_column: false,
+        absolute_row: false,
+    };
+    let l = t.first().expect("expected token");
+    assert_eq!(l.token, expected);
+    assert_eq!(l.start, 0);
+    assert_eq!(l.end, 19);
+}
+
+#[test]
 fn test_simple_tokens() {
     assert_eq!(
         get_tokens_types("()"),

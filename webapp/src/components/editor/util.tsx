@@ -7,6 +7,16 @@ import {
 } from "@ironcalc/wasm";
 import type { ActiveRange } from "../workbookState";
 
+function sliceString(
+  text: string,
+  startScalar: number,
+  endScalar: number,
+): string {
+  const scalarValues = Array.from(text);
+  const sliced = scalarValues.slice(startScalar, endScalar);
+  return sliced.join("");
+}
+
 export function tokenIsReferenceType(token: TokenType): token is Reference {
   return typeof token === "object" && "Reference" in token;
 }
@@ -127,7 +137,7 @@ function getFormulaHTML(
         }
         html.push(
           <span key={index} style={{ color }}>
-            {formula.slice(start, end)}
+            {sliceString(formula, start, end)}
           </span>,
         );
         activeRanges.push({
@@ -162,7 +172,7 @@ function getFormulaHTML(
         }
         html.push(
           <span key={index} style={{ color }}>
-            {formula.slice(start, end)}
+            {sliceString(formula, start, end)}
           </span>,
         );
         colorCount += 1;
@@ -176,7 +186,7 @@ function getFormulaHTML(
           color,
         });
       } else {
-        html.push(<span key={index}>{formula.slice(start, end)}</span>);
+        html.push(<span key={index}>{sliceString(formula, start, end)}</span>);
       }
     }
     html = [<span key="equals">=</span>].concat(html);
