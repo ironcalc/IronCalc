@@ -43,6 +43,7 @@ export const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
             setName(event.target.value);
           }}
           spellCheck="false"
+          onPaste={(event) => event.stopPropagation()}
         />
       </DialogContent>
       <DialogActions>
