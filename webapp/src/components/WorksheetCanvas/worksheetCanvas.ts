@@ -867,14 +867,18 @@ export default class WorksheetCanvas {
         frozenRows,
         frozenColumns,
       );
-      xFrozenEnd += this.getColumnWidth(
-        this.model.getSelectedSheet(),
-        frozenColumns,
-      );
-      yFrozenEnd += this.getRowHeight(
-        this.model.getSelectedSheet(),
-        frozenRows,
-      );
+      if (frozenColumns > 0) {
+        xFrozenEnd += this.getColumnWidth(
+          this.model.getSelectedSheet(),
+          frozenColumns,
+        );
+      }
+      if (frozenRows > 0) {
+        yFrozenEnd += this.getRowHeight(
+          this.model.getSelectedSheet(),
+          frozenRows,
+        );
+      }
       if (startRow <= frozenRows && endRow > frozenRows) {
         yEnd = Math.max(yEnd, yFrozenEnd);
       }
