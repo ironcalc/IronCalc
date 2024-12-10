@@ -148,6 +148,65 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
     Ok(cols)
 }
 
+
+// https://c-rex.net/samples/ooxml/e1/Part4/OOXML_P4_DOCX_cfRule_topic_ID0EFKO4.html
+fn load_conditional_formatting(ws: Node) -> Result<Vec<String>, XlsxError> {
+    // Conditional Formatting
+    // <conditionalFormatting sqref="B1:B9">
+    //     <cfRule type="colorScale" priority="1">
+    //         <colorScale>
+    //             <cfvo type="min"/>
+    //             <cfvo type="max"/>
+    //             <color rgb="FFF8696B"/>
+    //             <color rgb="FFFCFCFF"/>
+    //         </colorScale>
+    //     </cfRule>
+    // </conditionalFormatting>
+    let mut conditional_formatting = Vec::new();
+    let conditional_formatting_nodes = ws
+        .children()
+        .filter(|n| n.has_tag_name("conditionalFormattng"))
+        .collect::<Vec<Node>>();
+    for format in conditional_formatting_nodes {
+        let reference = get_attribute(&format, "sqref")?.to_string();
+        // cfRule
+        let cf_rule_nodes = ws
+            .children()
+            .filter(|n| n.has_tag_name("cfRule"))
+            .collect::<Vec<Node>>();
+        if cf_rule_nodes.len() == 1 {
+            let cf_rule = cf_rule_nodes[0] ;
+            let cf_type = get_attribute(&cf_rule, "type")?.to_string();
+            match cf_type.as_str() {
+                "colorScale" => {
+                    todo!()
+                }
+                "aboveAverage" => {
+                    let dxf_id = get_attribute(&cf_rule, "dxfId")?.to_string();
+                    todo!()
+                }
+                "notContainsBlanks" => {
+                    let dxf_id = get_attribute(&cf_rule, "dxfId")?.to_string();
+
+                }
+                _ => {}
+                
+            }
+        }
+        // priority
+
+        // if type is avobeAverage then avobeAverage (and equlAverage)
+
+        // dxfId for some types((Differential Formatting Id) What style to apply when the criteria are met
+
+        // Posible children
+        // formula
+        // colorScales
+    }
+
+    Ok(conditional_formatting)
+}
+
 fn load_merge_cells(ws: Node) -> Result<Vec<String>, XlsxError> {
     // 18.3.1.55 Merge Cells
     // <mergeCells count="1">
@@ -945,17 +1004,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let merge_cells = load_merge_cells(ws)?;
 
-    // Conditional Formatting
-    // <conditionalFormatting sqref="B1:B9">
-    //     <cfRule type="colorScale" priority="1">
-    //         <colorScale>
-    //             <cfvo type="min"/>
-    //             <cfvo type="max"/>
-    //             <color rgb="FFF8696B"/>
-    //             <color rgb="FFFCFCFF"/>
-    //         </colorScale>
-    //     </cfRule>
-    // </conditionalFormatting>
+    let conditional_formatting = load_conditional_formatting(ws)?;
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 
