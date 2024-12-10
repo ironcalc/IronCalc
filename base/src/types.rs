@@ -35,7 +35,7 @@ pub struct WorkbookView {
     pub sheet: u32,
     /// The current width of the window
     pub window_width: i64,
-    /// The current heigh of the window
+    /// The current height of the window
     pub window_height: i64,
 }
 
