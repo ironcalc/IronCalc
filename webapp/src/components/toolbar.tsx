@@ -36,7 +36,7 @@ import {
 import { theme } from "../theme";
 import BorderPicker from "./borderPicker";
 import ColorPicker from "./colorPicker";
-import { TOOLBAR_HEIGH } from "./constants";
+import { TOOLBAR_HEIGHT } from "./constants";
 import FormatMenu from "./formatMenu";
 import {
   NumberFormats,
@@ -385,8 +385,8 @@ const ToolbarContainer = styled("div")`
   flex-shrink: 0;
   align-items: center;
   background: ${({ theme }) => theme.palette.background.paper};
-  height: ${TOOLBAR_HEIGH}px;
-  line-height: ${TOOLBAR_HEIGH}px;
+  height: ${TOOLBAR_HEIGHT}px;
+  line-height: ${TOOLBAR_HEIGHT}px;
   border-bottom: 1px solid ${({ theme }) => theme.palette.grey["300"]};
   font-family: Inter;
   border-radius: 4px 4px 0px 0px;
