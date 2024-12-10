@@ -14,7 +14,7 @@ all:
 	rm -f types.js
 
 tests:
-	wasm-pack build --target nodejs && node tests/test.mjs
+	wasm-pack build --target nodejs && node tests/test.mjs && node tests/test_cf.mjs
 
 lint:
 	cargo check

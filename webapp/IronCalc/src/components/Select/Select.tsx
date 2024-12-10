@@ -45,6 +45,7 @@ export interface SelectProperties {
   required?: boolean;
   disabled?: boolean;
   className?: string;
+  hideCheck?: boolean;
 }
 
 function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
@@ -106,6 +107,7 @@ export function Select({
   required,
   disabled = false,
   className,
+  hideCheck = false,
 }: SelectProperties) {
   const autoId = useId();
   const selectId = id ?? autoId;
@@ -372,12 +374,14 @@ export function Select({
                         onMouseEnter={() => setActiveIndex(index)}
                         onKeyDown={(event) => handleOptionKeyDown(event, index)}
                       >
-                        <span
-                          className="ic-dropdown-menu-option-check"
-                          aria-hidden="true"
-                        >
-                          {isSelected ? <Check size={16} /> : null}
-                        </span>
+                        {!hideCheck && (
+                          <span
+                            className="ic-dropdown-menu-option-check"
+                            aria-hidden="true"
+                          >
+                            {isSelected ? <Check size={16} /> : null}
+                          </span>
+                        )}
 
                         <span className="ic-dropdown-menu-option-content">
                           {option.label}

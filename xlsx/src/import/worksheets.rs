@@ -23,6 +23,7 @@ use thiserror::Error;
 use crate::error::XlsxError;
 
 use super::{
+    conditional_formatting::load_conditional_formatting,
     tables::load_table,
     theme::Theme,
     util::{get_attribute, get_color, get_number},
@@ -1114,17 +1115,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let merge_cells = load_merge_cells(ws)?;
 
-    // Conditional Formatting
-    // <conditionalFormatting sqref="B1:B9">
-    //     <cfRule type="colorScale" priority="1">
-    //         <colorScale>
-    //             <cfvo type="min"/>
-    //             <cfvo type="max"/>
-    //             <color rgb="FFF8696B"/>
-    //             <color rgb="FFFCFCFF"/>
-    //         </colorScale>
-    //     </cfRule>
-    // </conditionalFormatting>
+    let conditional_formatting = load_conditional_formatting(ws, theme)?;
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 
@@ -1157,6 +1148,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             frozen_columns: sheet_view.frozen_columns,
             show_grid_lines: sheet_view.show_grid_lines,
             views,
+            conditional_formatting,
         },
         sheet_view.is_selected,
     ))

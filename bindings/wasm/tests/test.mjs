@@ -42,41 +42,25 @@ test('Evaluates correctly', (t) => {
     assert.strictEqual(result, "70");
 });
 
+const DEFAULT_STYLE = {
+    num_fmt: 'general',
+    fill: { pattern_type: 'none' },
+    font: { sz: 13, color: undefined, name: 'Calibri', family: 2, scheme: 'minor' },
+    border: {},
+    quote_prefix: false,
+};
+
 test('Styles work', () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
-    let style = model.getCellStyle(0, 1, 1);
-    assert.deepEqual(style, {
-        num_fmt: 'general',
-        fill: { pattern_type: 'none' },
-        font: {
-            sz: 13,
-            // Default font has no color set (Font::default().color is None in Rust);
-            // serde_wasm_bindgen surfaces None as `undefined`.
-            color: undefined,
-            name: 'Calibri',
-            family: 2,
-            scheme: 'minor'
-        },
-        border: {},
-        quote_prefix: false
-    });
+    let extended = model.getCellStyle(0, 1, 1);
+    assert.deepEqual(extended.style, DEFAULT_STYLE);
+    assert.strictEqual(extended.icon, undefined);
+    assert.strictEqual(extended.data_bar, undefined);
+    assert.strictEqual(extended.custom_icon, undefined);
+
     model.setUserInput(0, 1, 1, "'=1+1");
-    style = model.getCellStyle(0, 1, 1);
-    assert.deepEqual(style, {
-        num_fmt: 'general',
-        fill: { pattern_type: 'none' },
-        font: {
-            sz: 13,
-            // Default font has no color set (Font::default().color is None in Rust);
-            // serde_wasm_bindgen surfaces None as `undefined`.
-            color: undefined,
-            name: 'Calibri',
-            family: 2,
-            scheme: 'minor'
-        },
-        border: {},
-        quote_prefix: true
-    });
+    extended = model.getCellStyle(0, 1, 1);
+    assert.deepEqual(extended.style, { ...DEFAULT_STYLE, quote_prefix: true });
 });
 
 test("Add sheets", (t) => {

@@ -11,6 +11,7 @@ import {
   ArrowDownToLine,
   ArrowUpToLine,
   Bold,
+  Brush,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -88,6 +89,8 @@ type ToolbarProperties = {
   showGridLines: boolean;
   onToggleShowGridLines: (show: boolean) => void;
   formatOptions: FmtSettings;
+  onOpenConditionalFormatting: () => void;
+  isConditionalFormattingOpen: boolean;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -380,6 +383,15 @@ function Toolbar(properties: ToolbarProperties) {
               onClick={() => setBorderPickerOpen(true)}
               disabled={!canEdit}
               icon={<Grid2X2 />}
+            />
+          </Tooltip>
+          <Tooltip title={t("toolbar.conditional_formatting")}>
+            <IconButton
+              icon={<Brush />}
+              aria-label={t("toolbar.conditional_formatting")}
+              pressed={properties.isConditionalFormattingOpen}
+              onClick={properties.onOpenConditionalFormatting}
+              disabled={!canEdit}
             />
           </Tooltip>
         </div>
