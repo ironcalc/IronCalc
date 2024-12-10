@@ -713,7 +713,7 @@ impl UserModel {
 
     /// Paste `styles` in the selected area
     pub fn on_paste_styles(&mut self, styles: &[Vec<Style>]) -> Result<(), String> {
-        let styles_heigh = styles.len() as i32;
+        let styles_height = styles.len() as i32;
         let styles_width = styles[0].len() as i32;
         let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
             view.sheet
@@ -732,13 +732,13 @@ impl UserModel {
 
         // If the pasted area is smaller than the selected area we increase it
         let [row_start, column_start, row_end, column_end] = range;
-        let last_row = row_end.max(row_start + styles_heigh - 1);
+        let last_row = row_end.max(row_start + styles_height - 1);
         let last_column = column_end.max(column_start + styles_width - 1);
 
         let mut diff_list = Vec::new();
         for row in row_start..=last_row {
             for column in column_start..=last_column {
-                let row_index = ((row - row_start) % styles_heigh) as usize;
+                let row_index = ((row - row_start) % styles_height) as usize;
                 let column_index = ((column - column_start) % styles_width) as usize;
                 let style = &styles[row_index][column_index];
                 let old_value = self.model.get_style_for_cell(sheet, row, column)?;

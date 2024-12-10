@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
-    constants::{DEFAULT_ROW_HEIGHT, DEFAULT_WINDOW_HEIGH, DEFAULT_WINDOW_WIDTH},
+    constants::{DEFAULT_ROW_HEIGHT, DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH},
     test::util::new_empty_model,
     UserModel,
 };
@@ -11,7 +11,7 @@ fn basic_test() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
     let window_height = model.get_window_height().unwrap();
-    assert_eq!(window_height, DEFAULT_WINDOW_HEIGH);
+    assert_eq!(window_height, DEFAULT_WINDOW_HEIGHT);
 
     let window_width = model.get_window_width().unwrap();
     assert_eq!(window_width, DEFAULT_WINDOW_WIDTH);
