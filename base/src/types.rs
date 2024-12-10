@@ -117,6 +117,26 @@ pub struct Worksheet {
     pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
+    pub conditional_formatting: Vec<ConditionalFormatting>
+}
+
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub struct ColorScale {
+
+}
+
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub enum CfRule {
+    ColorScale {
+        priority: u32,
+    },
+    CellIs,
+}
+
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub struct ConditionalFormatting {
+    sqref: String,
+    cf_rule: Vec<CfRule>
 }
 
 /// Internal representation of Excel's sheet_data

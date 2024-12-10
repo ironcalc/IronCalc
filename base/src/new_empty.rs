@@ -70,6 +70,7 @@ impl<'a> Model<'a> {
             frozen_rows: 0,
             show_grid_lines: true,
             views,
+            conditional_formatting: vec![]
         }
     }
 
