@@ -59,3 +59,4 @@ mod test_set_functions_error_handling;
 mod test_today;
 mod test_types;
 mod user_model;
+mod test_geomean;
