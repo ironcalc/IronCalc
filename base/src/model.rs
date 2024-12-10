@@ -31,7 +31,7 @@ use crate::{
     utils as common,
 };
 
-use crate::tz::Tz;
+use crate::{cf_types::CfCellResult, tz::Tz};
 
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -217,6 +217,9 @@ pub struct Model<'a> {
     pub(crate) spill_cells: Vec<CellReferenceIndex>,
     /// A dictionary to keep track of which cells or ranges support a given cell.
     pub(crate) support: HashMap<CellReferenceIndex, Vec<CellOrRange>>,
+    /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
+    /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
+    pub(crate) cf_cache: HashMap<(u32, i32, i32), CfCellResult>,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -1473,10 +1476,12 @@ impl<'a> Model<'a> {
             last_lambda_id: 0,
             spill_cells: Vec::new(),
             support: HashMap::new(),
+            cf_cache: HashMap::new(),
         };
 
         model.parse_formulas();
         model.parse_defined_names();
+        model.evaluate_conditional_formatting();
 
         Ok(model)
     }
@@ -2812,6 +2817,7 @@ impl<'a> Model<'a> {
                 column: cell.column,
             });
         }
+        self.evaluate_conditional_formatting();
     }
 
     /// Removes the content of every cell in the range but leaves the style.

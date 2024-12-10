@@ -29,6 +29,7 @@
 
 pub mod calc_result;
 pub mod cell;
+pub mod cf_types;
 pub mod expressions;
 pub mod formatter;
 pub mod language;
@@ -41,6 +42,7 @@ pub mod worksheet;
 mod actions;
 mod arithmetic;
 mod cast;
+mod conditional_formatting;
 mod constants;
 mod functions;
 mod implicit_intersection;

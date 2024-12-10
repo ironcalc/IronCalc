@@ -1,7 +1,7 @@
 use crate::{
     model::Model,
     number_format::{get_default_num_fmt_id, get_new_num_fmt_index, get_num_fmt},
-    types::{Border, CellStyles, CellXfs, Fill, Font, NumFmt, Style, Styles},
+    types::{Border, CellStyles, CellXfs, Dxf, Fill, Font, NumFmt, Style, Styles},
 };
 
 impl Styles {
@@ -295,5 +295,50 @@ impl<'a> Model<'a> {
             .worksheet_mut(sheet)?
             .set_column_style(column, style_index)?;
         Ok(())
+    }
+}
+
+impl Dxf {
+    /// Applies this differential format on top of `base`, returning the merged style.
+    /// Only fields present in the Dxf (i.e. `Some`) override the base.
+    pub fn apply_to(&self, base: &Style) -> Style {
+        let mut style = base.clone();
+
+        if let Some(ref dxf_fill) = self.fill {
+            style.fill = dxf_fill.clone();
+        }
+
+        if let Some(ref dxf_font) = self.font {
+            // Override color only when it differs from the default (#000000)
+            if dxf_font.color != Font::default().color {
+                style.font.color = dxf_font.color.clone();
+            }
+            if dxf_font.b {
+                style.font.b = true;
+            }
+            if dxf_font.i {
+                style.font.i = true;
+            }
+            if dxf_font.u {
+                style.font.u = true;
+            }
+            if dxf_font.strike {
+                style.font.strike = true;
+            }
+        }
+
+        if let Some(ref dxf_border) = self.border {
+            style.border = dxf_border.clone();
+        }
+
+        if let Some(ref dxf_num_fmt) = self.num_fmt {
+            style.num_fmt = dxf_num_fmt.format_code.clone();
+        }
+
+        if let Some(ref dxf_alignment) = self.alignment {
+            style.alignment = Some(dxf_alignment.clone());
+        }
+
+        style
     }
 }

@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
 
-use crate::types::{Cell, Col, Row, SheetState, Style, Worksheet};
+use crate::{
+    cf_types::CfRule,
+    types::{Cell, Col, Row, SheetState, Style, Worksheet},
+};
 
 #[derive(Clone, Encode, Decode)]
 pub(crate) struct RowData {
@@ -209,6 +212,29 @@ pub(crate) enum Diff {
     SetTimezone {
         old_value: String,
         new_value: String,
+    },
+    // Conditional formatting diffs
+    AddConditionalFormatting {
+        sheet: u32,
+        range: String,
+        rule: Box<CfRule>,
+        priority: u32,
+    },
+    DeleteConditionalFormatting {
+        sheet: u32,
+        index: u32,
+        old_range: String,
+        old_rule: Box<CfRule>,
+        old_priority: u32,
+    },
+    UpdateConditionalFormatting {
+        sheet: u32,
+        index: u32,
+        old_range: String,
+        old_rule: Box<CfRule>,
+        old_priority: u32,
+        new_range: String,
+        new_rule: Box<CfRule>,
     },
     // FIXME: we are missing SetViewDiffs
 }

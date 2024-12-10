@@ -70,6 +70,7 @@ impl<'a> Model<'a> {
             frozen_rows: 0,
             show_grid_lines: true,
             views,
+            conditional_formatting: vec![],
         }
     }
 
@@ -493,8 +494,10 @@ impl<'a> Model<'a> {
             last_lambda_id: 0,
             spill_cells: Vec::new(),
             support: HashMap::new(),
+            cf_cache: HashMap::new(),
         };
         model.parse_formulas();
+        model.evaluate_conditional_formatting();
         Ok(model)
     }
 }
