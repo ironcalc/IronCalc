@@ -1,5 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::constants::DEFAULT_ROW_HEIGHT;
+
 use crate::cell::CellValue;
 
 use crate::number_format::to_excel_precision_str;
@@ -113,6 +115,15 @@ fn test_set_row_height() {
     worksheet.set_row_height(5, 5.0).unwrap();
     let worksheet = model.workbook.worksheet(0).unwrap();
     assert!((5.0 - worksheet.row_height(5).unwrap()).abs() < f64::EPSILON);
+
+    let worksheet = model.workbook.worksheet_mut(0).unwrap();
+    let result = worksheet.set_row_height(6, -1.0);
+    assert_eq!(result, Err("Can not set a negative height: -1".to_string()));
+
+    assert_eq!(worksheet.row_height(6).unwrap(), DEFAULT_ROW_HEIGHT);
+
+    worksheet.set_row_height(6, 0.0).unwrap();
+    assert_eq!(worksheet.row_height(6).unwrap(), 0.0);
 }
 
 #[test]

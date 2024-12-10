@@ -104,10 +104,16 @@ function Worksheet(props: {
         editor: editor,
       },
       onColumnWidthChanges(sheet, column, width) {
+        if (width < 0) {
+          return;
+        }
         model.setColumnWidth(sheet, column, width);
         worksheetCanvas.current?.renderSheet();
       },
       onRowHeightChanges(sheet, row, height) {
+        if (height < 0) {
+          return;
+        }
         model.setRowHeight(sheet, row, height);
         worksheetCanvas.current?.renderSheet();
       },
