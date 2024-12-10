@@ -9,13 +9,13 @@ lang: en-US
 At the moment IronCalc only supports a few function in this section.  
 You can track the progress in this [GitHub issue](https://github.com/ironcalc/IronCalc/issues/55).
 
-| Function                 | Status                                         | Documentation |
-| ------------------------ | ---------------------------------------------- | ------------- |
+| Function                 | Status                                           | Documentation |
+| ------------------------ |--------------------------------------------------| ------------- |
 | AVEDEV                   | <Badge type="info" text="Not implemented yet" /> | –             |
-| AVERAGE                  | <Badge type="tip" text="Available" />          | –             |
-| AVERAGEA                 | <Badge type="tip" text="Available" />          | –             |
-| AVERAGEIF                | <Badge type="tip" text="Available" />          | –             |
-| AVERAGEIFS               | <Badge type="tip" text="Available" />          | –             |
+| AVERAGE                  | <Badge type="tip" text="Available" />            | –             |
+| AVERAGEA                 | <Badge type="tip" text="Available" />            | –             |
+| AVERAGEIF                | <Badge type="tip" text="Available" />            | –             |
+| AVERAGEIFS               | <Badge type="tip" text="Available" />            | –             |
 | BETA.DIST                | <Badge type="info" text="Not implemented yet" /> | –             |
 | BETA.INV                 | <Badge type="info" text="Not implemented yet" /> | –             |
 | BINOM.DIST               | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -29,11 +29,11 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | CONFIDENCE.NORM          | <Badge type="info" text="Not implemented yet" /> | –             |
 | CONFIDENCE.T             | <Badge type="info" text="Not implemented yet" /> | –             |
 | CORREL                   | <Badge type="info" text="Not implemented yet" /> | –             |
-| COUNT                    | <Badge type="tip" text="Available" />          | –             |
-| COUNTA                   | <Badge type="tip" text="Available" />          | –             |
-| COUNTBLANK               | <Badge type="tip" text="Available" />          | –             |
-| COUNTIF                  | <Badge type="tip" text="Available" />          | –             |
-| COUNTIFS                 | <Badge type="tip" text="Available" />          | –             |
+| COUNT                    | <Badge type="tip" text="Available" />            | –             |
+| COUNTA                   | <Badge type="tip" text="Available" />            | –             |
+| COUNTBLANK               | <Badge type="tip" text="Available" />            | –             |
+| COUNTIF                  | <Badge type="tip" text="Available" />            | –             |
+| COUNTIFS                 | <Badge type="tip" text="Available" />            | –             |
 | COVARIANCE.P             | <Badge type="info" text="Not implemented yet" /> | –             |
 | COVARIANCE.S             | <Badge type="info" text="Not implemented yet" /> | –             |
 | DEVSQ                    | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -58,7 +58,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | GAMMALN                  | <Badge type="info" text="Not implemented yet" /> | –             |
 | GAMMALN.PRECISE          | <Badge type="info" text="Not implemented yet" /> | –             |
 | GAUSS                    | <Badge type="info" text="Not implemented yet" /> | –             |
-| GEOMEAN                  | <Badge type="info" text="Not implemented yet" /> | –             |
+| GEOMEAN                  | <Badge type="info" text="Available" />            | –             |
 | GROWTH                   | <Badge type="info" text="Not implemented yet" /> | –             |
 | HARMEAN                  | <Badge type="info" text="Not implemented yet" /> | –             |
 | HYPGEOM.DIST             | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -69,9 +69,9 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | LOGEST                   | <Badge type="info" text="Not implemented yet" /> | –             |
 | LOGNORM.DIST             | <Badge type="info" text="Not implemented yet" /> | –             |
 | LOGNORM.INV              | <Badge type="info" text="Not implemented yet" /> | –             |
-| MAX                      | <Badge type="tip" text="Available" />          | –             |
+| MAX                      | <Badge type="tip" text="Available" />            | –             |
 | MAXA                     | <Badge type="info" text="Not implemented yet" /> | –             |
-| MAXIFS                   | <Badge type="tip" text="Available" />          | –             |
+| MAXIFS                   | <Badge type="tip" text="Available" />            | –             |
 | MEDIAN                   | <Badge type="info" text="Not implemented yet" /> | –             |
 | MODE.MULT                | <Badge type="info" text="Not implemented yet" /> | –             |
 | MODE.SNGL                | <Badge type="info" text="Not implemented yet" /> | –             |

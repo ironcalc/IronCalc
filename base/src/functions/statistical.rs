@@ -636,7 +636,7 @@ impl Model {
         CalcResult::Number(max)
     }
 
-    pub(crate) fn fn_geomean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult{
+    pub(crate) fn fn_geomean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
@@ -714,6 +714,6 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::Number(product.powf(1.0/count))
+        CalcResult::Number(product.powf(1.0 / count))
     }
 }
