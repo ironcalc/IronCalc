@@ -12,6 +12,7 @@
 
 - Fixed several issues with pasting content
 - Fixed several issues with borders
+- Fixed bug where columns and rows could be resized to negative width and height, respectively
 
 ## [0.2.0] - 2024-11-06 (The HN release)
 
