@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::constants::{DEFAULT_ROW_HEIGHT};
+use crate::constants::DEFAULT_ROW_HEIGHT;
 
 use crate::cell::CellValue;
 
