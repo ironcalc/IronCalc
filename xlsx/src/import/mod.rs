@@ -1,4 +1,5 @@
 mod colors;
+mod conditional_formatting;
 mod metadata;
 mod shared_strings;
 mod styles;

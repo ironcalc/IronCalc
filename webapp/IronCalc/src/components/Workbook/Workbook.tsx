@@ -177,7 +177,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     for (let row = row1; row <= row2; row++) {
       const styleRow = [];
       for (let column = column1; column <= column2; column++) {
-        styleRow.push(model.getCellStyle(sheet, row, column));
+        styleRow.push(model.getCellStyle(sheet, row, column).style);
       }
       styles.push(styleRow);
     }
@@ -274,17 +274,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     },
     onBold: () => {
       const { sheet, row, column } = model.getSelectedView();
-      const value = model.getCellStyle(sheet, row, column).font.b;
+      const value = model.getCellStyle(sheet, row, column).style.font.b;
       onToggleBold(!value);
     },
     onItalic: () => {
       const { sheet, row, column } = model.getSelectedView();
-      const value = model.getCellStyle(sheet, row, column).font.i;
+      const value = model.getCellStyle(sheet, row, column).style.font.i;
       onToggleItalic(!value);
     },
     onUnderline: () => {
       const { sheet, row, column } = model.getSelectedView();
-      const value = model.getCellStyle(sheet, row, column).font.u;
+      const value = model.getCellStyle(sheet, row, column).style.font.u;
       onToggleUnderline(!value);
     },
     onNavigationToEdge: (direction: NavigationKey): void => {
@@ -426,7 +426,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
 
   const getCellStyle = useCallback(() => {
     const { sheet, row, column } = model.getSelectedView();
-    return model.getCellStyle(sheet, row, column);
+    return model.getCellStyle(sheet, row, column).style;
   }, [model]);
 
   const style = getCellStyle();
@@ -734,6 +734,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setRedrawId((id) => id + 1);
         }}
         formatOptions={fmtSettings}
+        onOpenConditionalFormatting={() => openDrawer("conditionalFormatting")}
+        isConditionalFormattingOpen={
+          isDrawerOpen && drawerType === "conditionalFormatting"
+        }
       />
       <div
         className="ic-workbook-worksheet-area-left"

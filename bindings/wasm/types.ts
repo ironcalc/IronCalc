@@ -207,6 +207,229 @@ export interface CellStyle {
   alignment?: Alignment;
 }
 
+export type ValueOperator =
+  | "Equal"
+  | "GreaterThan"
+  | "GreaterThanOrEqual"
+  | "LessThan"
+  | "LessThanOrEqual"
+  | "NotEqual"
+  | "Between"
+  | "NotBetween";
+
+export type TextOperator =
+  | "Contains"
+  | "DoesNotContain"
+  | "BeginsWith"
+  | "EndsWith"
+  | "Equals";
+
+export type PeriodType =
+  | "Between"
+  | "NotBetween"
+  | "Yesterday"
+  | "Today"
+  | "Tomorrow"
+  | "Last7Days"
+  | "Next7Days"
+  | "LastWeek"
+  | "ThisWeek"
+  | "NextWeek"
+  | "LastMonth"
+  | "ThisMonth"
+  | "NextMonth"
+  | "LastYear"
+  | "ThisYear"
+  | "NextYear";
+
+export type Icon =
+  | "ArrowUp"
+  | "ArrowRight"
+  | "ArrowDown"
+  | "ArrowAngleUp"
+  | "ArrowAngleDown"
+  | "Circle"
+  | "TriangleUp"
+  | "TriangleDown"
+  | "FlatRectangle"
+  | "Rhombus"
+  | "Flag"
+  | "Check"
+  | "Cross"
+  | "Exclamation"
+  | "Star";
+
+export type Cfvo =
+  | "Min"
+  | "Max"
+  | { Number: number }
+  | { Percent: number }
+  | { Percentile: number }
+  | { Formula: string };
+
+export interface ColorScaleThreshold {
+  cfvo: Cfvo;
+  color: string;
+}
+
+export interface IconThreshold {
+  icon: Icon;
+  cfvo: Cfvo;
+  color: string;
+  is_strict: boolean;
+}
+
+/** Stored CF rule returned by getConditionalFormattingList (no format field — use getDxfForConditionalFormatting to retrieve it). */
+export type CfRule =
+  | { type: "ColorScale"; thresholds: ColorScaleThreshold[] }
+  | { type: "CellIs"; operator: ValueOperator; formula: string; formula2: string | null }
+  | { type: "Formula"; formula: string }
+  | { type: "Text"; operator: TextOperator; value: string }
+  | { type: "TimePeriod"; time_period: PeriodType; date1: string | null; date2: string | null }
+  | { type: "DuplicateValues" }
+  | { type: "UniqueValues" }
+  | { type: "Blanks" }
+  | { type: "NotBlanks" }
+  | { type: "Errors" }
+  | { type: "NoErrors" }
+  | { type: "AboveAverage" }
+  | { type: "BelowAverage" }
+  | { type: "Top10"; rank: number; percent: boolean }
+  | { type: "Bottom10"; rank: number; percent: boolean }
+  | { type: "DataBar"; min: Cfvo | null; max: Cfvo | null; positive_color: string; negative_color: string; is_gradient: boolean; show_value: boolean }
+  | { type: "IconSet"; thresholds: IconThreshold[]; show_value: boolean }
+  | { type: "IconRating"; icon: Icon; color: string; thresholds: [Cfvo, boolean][]; show_value: boolean };
+
+/** Input CF rule for addConditionalFormatting / updateConditionalFormatting.
+ *  Dxf-based variants carry an optional inline `format` instead of a separate Dxf argument. */
+export type CfRuleInput =
+  | { type: "ColorScale"; thresholds: ColorScaleThreshold[] }
+  | { type: "CellIs"; operator: ValueOperator; formula: string; formula2: string | null; format: Dxf }
+  | { type: "Formula"; formula: string; format: Dxf }
+  | { type: "Text"; operator: TextOperator; value: string; format: Dxf }
+  | { type: "TimePeriod"; time_period: PeriodType; date1: string | null; date2: string | null; format: Dxf }
+  | { type: "DuplicateValues"; format: Dxf }
+  | { type: "UniqueValues"; format: Dxf }
+  | { type: "Blanks"; format: Dxf }
+  | { type: "NotBlanks"; format: Dxf }
+  | { type: "Errors"; format: Dxf }
+  | { type: "NoErrors"; format: Dxf }
+  | { type: "AboveAverage"; format: Dxf }
+  | { type: "BelowAverage"; format: Dxf }
+  | { type: "Top10"; rank: number; percent: boolean; format: Dxf }
+  | { type: "Bottom10"; rank: number; percent: boolean; format: Dxf }
+  | { type: "DataBar"; min: Cfvo | null; max: Cfvo | null; positive_color: string; negative_color: string; is_gradient: boolean; show_value: boolean }
+  | { type: "IconSet"; thresholds: IconThreshold[]; show_value: boolean }
+  | { type: "IconRating"; icon: Icon; color: string; thresholds: [Cfvo, boolean][]; show_value: boolean };
+
+export type FontScheme = "minor" | "major" | "none";
+
+export interface DxfFont {
+  strike?: boolean;
+  u?: boolean;
+  b?: boolean;
+  i?: boolean;
+  sz?: number;
+  color?: string;
+  name?: string;
+  family?: number;
+  scheme?: FontScheme;
+}
+
+export interface DxfFill {
+  pattern_type: string;
+  fg_color?: string;
+  bg_color?: string;
+}
+
+export interface DxfBorderItem {
+  style: BorderStyle;
+  color?: string;
+}
+
+export interface DxfBorder {
+  diagonal_up?: boolean;
+  diagonal_down?: boolean;
+  left?: DxfBorderItem;
+  right?: DxfBorderItem;
+  top?: DxfBorderItem;
+  bottom?: DxfBorderItem;
+  diagonal?: DxfBorderItem;
+}
+
+export interface DxfNumFmt {
+  num_fmt_id: number;
+  format_code: string;
+}
+
+export interface DxfAlignment {
+  horizontal?: HorizontalAlignment;
+  vertical?: VerticalAlignment;
+  wrap_text?: boolean;
+}
+
+export interface Dxf {
+  font?: DxfFont;
+  fill?: DxfFill;
+  border?: DxfBorder;
+  num_fmt?: DxfNumFmt;
+  alignment?: DxfAlignment;
+}
+
+export interface ConditionalFormatting {
+  range: string;
+  cf_rule: CfRule;
+  priority: number;
+  stop_if_true: boolean;
+}
+
+export type IconSetType =
+  | "Arrows3"
+  | "ArrowsGray3"
+  | "Arrows4"
+  | "ArrowsGray4"
+  | "Arrows5"
+  | "ArrowsGray5"
+  | "Triangles3"
+  | "TrafficLights3"
+  | "TrafficLights3Rimmed"
+  | "TrafficLights4"
+  | "Signs3"
+  | "RedToBlack4"
+  | "Symbols3Circled"
+  | "Symbols3Uncircled"
+  | "Flags3";
+
+export interface CfIcon {
+  icon: Icon;
+  color: string;
+  show_value: boolean;
+}
+
+export interface CfDataBar {
+  positive_color: string;
+  negative_color: string;
+  is_gradient: boolean;
+  value: number;
+  axis_position: number;
+  show_value: boolean;
+}
+
+export interface CfRating {
+  icon: Icon;
+  count: number;
+  max: number;
+  color: string;
+  show_value: boolean;
+}
+
+export interface ExtendedCellStyle {
+  style: CellStyle;
+  icon: CfIcon | null;
+  data_bar: CfDataBar | null;
+  rating: CfRating | null;
+}
+
 export interface SelectedView {
   sheet: number;
   row: number;
