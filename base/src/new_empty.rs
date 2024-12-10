@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     calc_result::Range,
-    constants::{DEFAULT_WINDOW_HEIGH, DEFAULT_WINDOW_WIDTH},
+    constants::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH},
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -359,7 +359,7 @@ impl Model {
             WorkbookView {
                 sheet: 0,
                 window_width: DEFAULT_WINDOW_WIDTH,
-                window_height: DEFAULT_WINDOW_HEIGH,
+                window_height: DEFAULT_WINDOW_HEIGHT,
             },
         );
 

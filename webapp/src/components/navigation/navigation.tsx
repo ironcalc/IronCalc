@@ -2,7 +2,7 @@ import { styled } from "@mui/material";
 import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NAVIGATION_HEIGH } from "../constants";
+import { NAVIGATION_HEIGHT } from "../constants";
 import { StyledButton } from "../toolbar";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./menus";
@@ -96,7 +96,7 @@ const Container = styled("div")`
   left: 0px;
   right: 0px;
   display: flex;
-  height: ${NAVIGATION_HEIGH}px;
+  height: ${NAVIGATION_HEIGHT}px;
   align-items: center;
   padding-left: 12px;
   font-family: Inter;
