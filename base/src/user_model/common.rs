@@ -342,7 +342,7 @@ impl UserModel {
             old_value: Box::new(old_value),
         }];
 
-        let line_count = value.split("\n").count();
+        let line_count = value.split('\n').count();
         let row_height = self.model.get_row_height(sheet, row)?;
         let cell_height = (line_count as f64) * DEFAULT_ROW_HEIGHT;
         if cell_height > row_height {
