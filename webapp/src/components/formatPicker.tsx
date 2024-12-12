@@ -1,15 +1,8 @@
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-} from "@mui/material";
+import styled from "@emotion/styled";
+import { Dialog, TextField } from "@mui/material";
+import { Check } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
-import styled from "@emotion/styled";
 import { theme } from "../theme";
 
 type FormatPickerProps = {
