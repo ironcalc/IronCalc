@@ -2,6 +2,7 @@ import { styled } from "@mui/material";
 import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { theme } from "../../theme";
 import { NAVIGATION_HEIGH } from "../constants";
 import { StyledButton } from "../toolbar";
 import type { WorkbookState } from "../workbookState";
@@ -101,12 +102,19 @@ const Container = styled("div")`
   padding-left: 12px;
   font-family: Inter;
   background-color: #fff;
-  border-top: 1px solid #E0E0E0;
+  border-top: 1px solid #e0e0e0;
 `;
 
 const Sheets = styled("div")`
   flex-grow: 2;
   overflow: hidden;
+  overflow-x: auto;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-scroll: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 `;
 
 const SheetInner = styled("div")`
@@ -114,10 +122,20 @@ const SheetInner = styled("div")`
 `;
 
 const Advert = styled("a")`
+  display: flex;
+  align-items: center;
   color: #f2994a;
-  margin-right: 12px;
+  padding: 0px 12px;
   font-size: 12px;
   text-decoration: none;
+  border-left: 1px solid ${theme.palette.grey["300"]};
+  transition: color 0.2s ease-in-out;
+  &:hover {
+    text-decoration: underline;
+  }
+  @media (max-width: 769px) {
+    height: 100%;
+  }
 `;
 
 export default Navigation;
