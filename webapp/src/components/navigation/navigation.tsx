@@ -109,12 +109,7 @@ const Sheets = styled("div")`
   flex-grow: 2;
   overflow: hidden;
   overflow-x: auto;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  -ms-overflow-scroll: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
 `;
 
 const SheetInner = styled("div")`
