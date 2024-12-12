@@ -38,7 +38,22 @@ const FormatMenu = (properties: FormatMenuProps) => {
         open={isMenuOpen}
         onClose={(): void => setMenuOpen(false)}
         anchorEl={anchorElement.current}
-        anchorOrigin={properties.anchorOrigin}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "left",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+        sx={{
+          "& .MuiPaper-root": {
+            borderRadius: "8px",
+            padding: "4px 0px",
+            marginLeft: "-4px", // Starting with a small offset
+          },
+          "& .MuiList-root": { padding: "0" },
+        }}
       >
         <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.AUTO)}>
           <MenuItemText>{t("toolbar.format_menu.auto")}</MenuItemText>
@@ -123,14 +138,25 @@ const MenuItemWrapper = styled(MenuItem)`
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  width: 100%;
+  width: calc(100% - 8px);
+  min-width: 172px;
+  margin: 0px 4px;
+  border-radius: 4px;
+  padding: 8px;
+  height: 32px;
 `;
 
 const ChildrenWrapper = styled("div")`
   display: flex;
 `;
 
-const MenuDivider = styled("div")``;
+const MenuDivider = styled("div")`
+  width: 100%;
+  margin: auto;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-top: 1px solid #eeeeee;
+`;
 
 const MenuItemText = styled("div")`
   color: #000;
