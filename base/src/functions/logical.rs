@@ -136,6 +136,9 @@ impl Model {
     }
 
     pub(crate) fn fn_or(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
         let mut result = false;
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
