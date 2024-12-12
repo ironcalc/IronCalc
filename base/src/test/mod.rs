@@ -46,6 +46,7 @@ pub(crate) mod util;
 
 mod engineering;
 mod test_fn_offset;
+mod test_fn_or;
 mod test_number_format;
 
 mod test_escape_quotes;
