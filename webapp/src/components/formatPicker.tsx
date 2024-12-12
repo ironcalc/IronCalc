@@ -127,8 +127,8 @@ const StyledTextField = styled(TextField)`
     padding: 10px;
     border: 1px solid ${theme.palette.grey["300"]};
     border-radius: 4px;
-    color: ${theme.palette.common["black"]};
-    background-color: ${theme.palette.common["white"]};
+    color: ${theme.palette.common.black};
+    background-color: ${theme.palette.common.white};
   }
   &:hover .MuiInputBase-input {
     border: 1px solid ${theme.palette.grey["500"]};
