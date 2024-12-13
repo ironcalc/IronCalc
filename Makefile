@@ -10,6 +10,7 @@ format:
 
 .PHONY: tests
 tests: lint
+	cargo test
 	make remove-artifacts
 	# Regretabbly we need to build the wasm twice, once for the nodejs tests
 	# and a second one for the vitest.
