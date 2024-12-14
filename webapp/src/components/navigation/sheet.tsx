@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import ColorPicker from "../colorPicker";
 import { isInReferenceMode } from "../editor/util";
 import type { WorkbookState } from "../workbookState";
-import { SheetRenameDialog } from "./menus";
+import SheetRenameDialog from "./SheetRenameDialog";
 
 interface SheetProps {
   name: string;
