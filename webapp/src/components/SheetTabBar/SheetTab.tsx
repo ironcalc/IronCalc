@@ -6,7 +6,7 @@ import { isInReferenceMode } from "../editor/util";
 import type { WorkbookState } from "../workbookState";
 import SheetRenameDialog from "./SheetRenameDialog";
 
-interface SheetProps {
+interface SheetTabProps {
   name: string;
   color: string;
   selected: boolean;
@@ -17,7 +17,7 @@ interface SheetProps {
   workbookState: WorkbookState;
 }
 
-function Sheet(props: SheetProps) {
+function SheetTab(props: SheetTabProps) {
   const { name, color, selected, workbookState, onSelected } = props;
   const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
@@ -100,8 +100,8 @@ function Sheet(props: SheetProps) {
         </StyledMenuItem>
       </StyledMenu>
       <SheetRenameDialog
-        isOpen={renameDialogOpen}
-        close={handleCloseRenameDialog}
+        open={renameDialogOpen}
+        onClose={handleCloseRenameDialog}
         defaultName={name}
         onNameChanged={(newName) => {
           props.onRenamed(newName);
@@ -159,4 +159,4 @@ const Name = styled("div")`
   text-wrap: nowrap;
 `;
 
-export default Sheet;
+export default SheetTab;

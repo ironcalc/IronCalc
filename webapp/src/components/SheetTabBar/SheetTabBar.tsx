@@ -7,10 +7,10 @@ import { NAVIGATION_HEIGHT } from "../constants";
 import { StyledButton } from "../toolbar";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
-import Sheet from "./sheet";
+import SheetTab from "./SheetTab";
 import type { SheetOptions } from "./types";
 
-export interface NavigationProps {
+export interface SheetTabBarProps {
   sheets: SheetOptions[];
   selectedIndex: number;
   workbookState: WorkbookState;
@@ -21,7 +21,7 @@ export interface NavigationProps {
   onSheetDeleted: () => void;
 }
 
-function Navigation(props: NavigationProps) {
+function SheetTabBar(props: SheetTabBarProps) {
   const { t } = useTranslation();
   const { workbookState, onSheetSelected, sheets, selectedIndex } = props;
   const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
@@ -52,7 +52,7 @@ function Navigation(props: NavigationProps) {
       <Sheets>
         <SheetInner>
           {sheets.map((tab, index) => (
-            <Sheet
+            <SheetTab
               key={tab.sheetId}
               name={tab.name}
               color={tab.color}
@@ -133,4 +133,4 @@ const Advert = styled("a")`
   }
 `;
 
-export default Navigation;
+export default SheetTabBar;
