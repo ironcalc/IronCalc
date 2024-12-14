@@ -6,6 +6,7 @@ import type {
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { useCallback, useEffect, useRef, useState } from "react";
+import SheetTabBar from "./SheetTabBar/SheetTabBar";
 import {
   COLUMN_WIDTH_SCALE,
   LAST_COLUMN,
@@ -16,7 +17,6 @@ import {
   getNewClipboardId,
 } from "./clipboard";
 import FormulaBar from "./formulabar";
-import Navigation from "./navigation/navigation";
 import Toolbar from "./toolbar";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 import { type NavigationKey, getCellAddress } from "./util";
@@ -572,7 +572,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
       />
 
-      <Navigation
+      <SheetTabBar
         sheets={info}
         selectedIndex={model.getSelectedSheet()}
         workbookState={workbookState}

@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 
 interface SheetRenameDialogProps {
-  isOpen: boolean;
-  close: () => void;
+  open: boolean;
+  onClose: () => void;
   onNameChanged: (name: string) => void;
   defaultName: string;
 }
@@ -14,10 +14,10 @@ const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
   const { t } = useTranslation();
   const [name, setName] = useState(properties.defaultName);
   const handleClose = () => {
-    properties.close();
+    properties.onClose();
   };
   return (
-    <Dialog open={properties.isOpen} onClose={properties.close}>
+    <Dialog open={properties.open} onClose={properties.onClose}>
       <StyledDialogTitle>
         {t("sheet_rename.title")}
         <Cross onClick={handleClose} onKeyDown={() => {}}>
@@ -53,7 +53,7 @@ const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
             event.stopPropagation();
             if (event.key === "Enter") {
               properties.onNameChanged(name);
-              properties.close();
+              properties.onClose();
             }
           }}
           onChange={(event) => {
