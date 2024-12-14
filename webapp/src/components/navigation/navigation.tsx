@@ -6,7 +6,7 @@ import { theme } from "../../theme";
 import { NAVIGATION_HEIGHT } from "../constants";
 import { StyledButton } from "../toolbar";
 import type { WorkbookState } from "../workbookState";
-import SheetListMenu from "./menus";
+import SheetListMenu from "./SheetListMenu";
 import Sheet from "./sheet";
 import type { SheetOptions } from "./types";
 
@@ -77,8 +77,8 @@ function Navigation(props: NavigationProps) {
       </Advert>
       <SheetListMenu
         anchorEl={anchorEl}
-        isOpen={open}
-        close={handleClose}
+        open={open}
+        onClose={handleClose}
         sheetOptionsList={sheets}
         onSheetSelected={(index) => {
           onSheetSelected(index);
