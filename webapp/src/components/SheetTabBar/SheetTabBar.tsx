@@ -35,20 +35,23 @@ function SheetTabBar(props: SheetTabBarProps) {
 
   return (
     <Container>
-      <StyledButton
-        title={t("navigation.add_sheet")}
-        $pressed={false}
-        onClick={props.onAddBlankSheet}
-      >
-        <Plus />
-      </StyledButton>
-      <StyledButton
-        onClick={handleClick}
-        title={t("navigation.sheet_list")}
-        $pressed={false}
-      >
-        <Menu />
-      </StyledButton>
+      <LeftButtonsContainer>
+        <StyledButton
+          title={t("navigation.add_sheet")}
+          $pressed={false}
+          onClick={props.onAddBlankSheet}
+        >
+          <Plus />
+        </StyledButton>
+        <StyledButton
+          onClick={handleClick}
+          title={t("navigation.sheet_list")}
+          $pressed={false}
+        >
+          <Menu />
+        </StyledButton>
+      </LeftButtonsContainer>
+      <VerticalDivider />
       <Sheets>
         <SheetInner>
           {sheets.map((tab, index) => (
@@ -92,6 +95,8 @@ function SheetTabBar(props: SheetTabBarProps) {
 
 // Note I have to specify the font-family in every component that can be considered stand-alone
 const Container = styled("div")`
+  display: flex;
+  flex-direction: row;
   position: absolute;
   bottom: 0px;
   left: 0px;
@@ -99,10 +104,10 @@ const Container = styled("div")`
   display: flex;
   height: ${NAVIGATION_HEIGHT}px;
   align-items: center;
-  padding-left: 12px;
+  padding: 0px 12px;
   font-family: Inter;
-  background-color: #fff;
-  border-top: 1px solid #e0e0e0;
+  background-color: ${theme.palette.common.white};
+  border-top: 1px solid ${theme.palette.grey["300"]};
 `;
 
 const Sheets = styled("div")`
@@ -110,6 +115,9 @@ const Sheets = styled("div")`
   overflow: hidden;
   overflow-x: auto;
   scrollbar-width: none;
+  padding-left: 12px;
+  display: flex;
+  flex-direction: row;
 `;
 
 const SheetInner = styled("div")`
@@ -119,8 +127,8 @@ const SheetInner = styled("div")`
 const Advert = styled("a")`
   display: flex;
   align-items: center;
-  color: #f2994a;
-  padding: 0px 12px;
+  color: ${theme.palette.primary.main};
+  padding: 0px 0px 0px 12px;
   font-size: 12px;
   text-decoration: none;
   border-left: 1px solid ${theme.palette.grey["300"]};
@@ -130,6 +138,21 @@ const Advert = styled("a")`
   }
   @media (max-width: 769px) {
     height: 100%;
+  }
+`;
+
+const LeftButtonsContainer = styled("div")`
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  padding-right: 12px;
+`;
+
+const VerticalDivider = styled("div")`
+  height: 100%;
+  width: 0px;
+  @media (max-width: 769px) {
+    border-right: 1px solid ${theme.palette.grey["200"]};
   }
 `;
 
