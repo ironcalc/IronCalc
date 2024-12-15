@@ -18,7 +18,7 @@ import {
   Grid2x2X,
   Italic,
   PaintBucket,
-  Paintbrush2,
+  PaintRoller,
   Percent,
   Redo2,
   Strikethrough,
@@ -114,7 +114,7 @@ function Toolbar(properties: ToolbarProperties) {
         onClick={properties.onCopyStyles}
         title={t("toolbar.copy_styles")}
       >
-        <Paintbrush2 />
+        <PaintRoller />
       </StyledButton>
       <Divider />
       <StyledButton
@@ -183,8 +183,7 @@ function Toolbar(properties: ToolbarProperties) {
           title={t("toolbar.format_number")}
           sx={{
             width: "40px", // Keep in sync with anchorOrigin in FormatMenu above
-            fontSize: "13px",
-            fontWeight: 400,
+            padding: "0px 4px",
           }}
         >
           {"123"}
@@ -391,7 +390,9 @@ const ToolbarContainer = styled("div")`
   font-family: Inter;
   border-radius: 4px 4px 0px 0px;
   overflow-x: auto;
-  padding-left: 11px;
+  padding: 0px 12px;
+  gap: 4px;
+  scrollbar-width: none;
 `;
 
 type TypeButtonProperties = { $pressed: boolean; $underlinedColor?: string };
@@ -399,15 +400,16 @@ export const StyledButton = styled("button")<TypeButtonProperties>(
   ({ disabled, $pressed, $underlinedColor }) => {
     const result = {
       width: "24px",
+      minWidth: "24px",
       height: "24px",
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
-      fontSize: "26px",
-      border: "0px solid #fff",
-      borderRadius: "2px",
-      marginRight: "5px",
+      fontSize: "12px",
+      border: `0px solid ${theme.palette.common.white}`,
+      borderRadius: "4px",
       transition: "all 0.2s",
+      outline: `1px solid ${theme.palette.common.white}`,
       cursor: "pointer",
       backgroundColor: "white",
       padding: "0px",
@@ -419,19 +421,28 @@ export const StyledButton = styled("button")<TypeButtonProperties>(
     if (disabled) {
       return {
         ...result,
-        color: theme.palette.grey["600"],
+        color: theme.palette.grey["400"],
         cursor: "default",
       };
     }
     return {
       ...result,
-      borderTop: $underlinedColor ? "3px solid #FFF" : "none",
+      borderTop: $underlinedColor
+        ? `3px solid ${theme.palette.common.white}`
+        : "none",
       borderBottom: $underlinedColor ? `3px solid ${$underlinedColor}` : "none",
-      color: "#21243A",
-      backgroundColor: $pressed ? "#EEE" : "#FFF",
+      color: theme.palette.grey["900"],
+      backgroundColor: $pressed
+        ? theme.palette.grey["300"]
+        : theme.palette.common.white,
       "&:hover": {
-        backgroundColor: "#F1F2F8",
-        borderTopColor: "#F1F2F8",
+        transition: "all 0.2s",
+        outline: `1px solid ${theme.palette.grey["200"]}`,
+        borderTopColor: theme.palette.common.white,
+      },
+      "&:active": {
+        backgroundColor: theme.palette.grey["300"],
+        outline: `1px solid ${theme.palette.grey["300"]}`,
       },
     };
   },
@@ -439,10 +450,9 @@ export const StyledButton = styled("button")<TypeButtonProperties>(
 
 const Divider = styled("div")({
   width: "0px",
-  height: "10px",
-  borderLeft: "1px solid #E0E0E0",
-  marginLeft: "5px",
-  marginRight: "10px",
+  height: "12px",
+  borderLeft: `1px solid ${theme.palette.grey["300"]}`,
+  margin: "0px 12px",
 });
 
 export default Toolbar;
