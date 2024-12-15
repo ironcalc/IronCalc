@@ -124,10 +124,38 @@ function SheetTab(props: SheetTabProps) {
   );
 }
 
-const StyledMenu = styled(Menu)``;
+const StyledMenu = styled(Menu)`
+  & .MuiPaper-root {
+    border-radius: 8px;
+    padding: 4px 0px;
+    margin-left: -4px;
+  }
+  & .MuiList-root {
+    padding: 0;
+  }
+`;
 
 const StyledMenuItem = styled(MenuItem)`
+  display: flex;
+  justify-content: space-between;
   font-size: 12px;
+  width: calc(100% - 8px);
+  margin: 0px 4px;
+  border-radius: 4px;
+  padding: 8px;
+  height: 32px;
+`;
+
+const MenuItemWrapper = styled(MenuItem)`
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  width: calc(100% - 8px);
+  min-width: 172px;
+  margin: 0px 4px;
+  border-radius: 4px;
+  padding: 8px;
+  height: 32px;
 `;
 
 const StyledButton = styled(Button)`
