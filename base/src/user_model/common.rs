@@ -39,6 +39,7 @@ pub struct ClipboardCell {
 pub struct Clipboard {
     pub(crate) csv: String,
     pub(crate) data: ClipboardData,
+    pub(crate) sheet: u32,
     pub(crate) range: (i32, i32, i32, i32),
 }
 
@@ -1520,6 +1521,7 @@ impl UserModel {
         Ok(Clipboard {
             csv,
             data,
+            sheet,
             range: (row_start, column_start, row_end, column_end),
         })
     }
@@ -1527,6 +1529,7 @@ impl UserModel {
     /// Paste text that we copied
     pub fn paste_from_clipboard(
         &mut self,
+        source_sheet: u32,
         source_range: ClipboardTuple,
         clipboard: &ClipboardData,
         is_cut: bool,
@@ -1617,17 +1620,17 @@ impl UserModel {
                     let old_value = self
                         .model
                         .workbook
-                        .worksheet(sheet)?
+                        .worksheet(source_sheet)?
                         .cell(row, column)
                         .cloned();
 
                     diff_list.push(Diff::CellClearContents {
-                        sheet,
+                        sheet: source_sheet,
                         row,
                         column,
                         old_value: Box::new(old_value),
                     });
-                    self.model.cell_clear_contents(sheet, row, column)?;
+                    self.model.cell_clear_contents(source_sheet, row, column)?;
                 }
             }
         }

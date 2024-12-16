@@ -99,7 +99,7 @@ fn cut_paste() {
 
     // paste in cell D4 (4, 4)
     model
-        .paste_from_clipboard((1, 1, 2, 2), &copy.data, true)
+        .paste_from_clipboard(0, (1, 1, 2, 2), &copy.data, true)
         .unwrap();
 
     assert_eq!(model.get_cell_content(0, 4, 4), Ok("42".to_string()));
@@ -117,6 +117,26 @@ fn cut_paste() {
     assert_eq!(model.get_cell_content(0, 1, 2), Ok("".to_string()));
     assert_eq!(model.get_cell_content(0, 2, 1), Ok("".to_string()));
     assert_eq!(model.get_cell_content(0, 2, 2), Ok("".to_string()));
+}
+
+#[test]
+fn cut_paste_different_sheet() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.set_user_input(0, 1, 1, "42").unwrap();
+
+    model.set_selected_range(1, 1, 1, 1).unwrap();
+    let copy = model.copy_to_clipboard().unwrap();
+    model.new_sheet().unwrap();
+    model.set_selected_sheet(1).unwrap();
+    model.set_selected_cell(4, 4).unwrap();
+
+    // paste in cell D4 (4, 4) of Sheet2
+    model
+        .paste_from_clipboard(0, (1, 1, 1, 1), &copy.data, true)
+        .unwrap();
+
+    assert_eq!(model.get_cell_content(1, 4, 4), Ok("42".to_string()));
+    assert_eq!(model.get_cell_content(0, 1, 1), Ok("".to_string()));
 }
 
 #[test]
@@ -152,7 +172,7 @@ fn copy_paste_internal() {
 
     // paste in cell D4 (4, 4)
     model
-        .paste_from_clipboard((1, 1, 2, 2), &copy.data, false)
+        .paste_from_clipboard(0, (1, 1, 2, 2), &copy.data, false)
         .unwrap();
 
     assert_eq!(model.get_cell_content(0, 4, 4), Ok("42".to_string()));

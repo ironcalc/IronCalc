@@ -520,6 +520,7 @@ impl Model {
     #[wasm_bindgen(js_name = "pasteFromClipboard")]
     pub fn paste_from_clipboard(
         &mut self,
+        source_sheet: u32,
         source_range: JsValue,
         clipboard: JsValue,
         is_cut: bool,
@@ -529,7 +530,7 @@ impl Model {
         let clipboard: ClipboardData =
             serde_wasm_bindgen::from_value(clipboard).map_err(|e| to_js_error(e.to_string()))?;
         self.model
-            .paste_from_clipboard(source_range, &clipboard, is_cut)
+            .paste_from_clipboard(source_sheet, source_range, &clipboard, is_cut)
             .map_err(|e| to_js_error(e.to_string()))
     }
 
