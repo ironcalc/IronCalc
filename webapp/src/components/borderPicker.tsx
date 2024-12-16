@@ -38,7 +38,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
   const { t } = useTranslation();
 
   const [borderSelected, setBorderSelected] = useState<BorderType | null>(null);
-  const [borderColor, setBorderColor] = useState("#000000");
+  const [borderColor, setBorderColor] = useState(theme.palette.common.white);
   const [borderStyle, setBorderStyle] = useState(BorderStyle.Thin);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [stylePickerOpen, setStylePickerOpen] = useState(false);
@@ -62,7 +62,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
   // biome-ignore lint/correctness/useExhaustiveDependencies: We reset the styles, every time we open (or close) the widget
   useEffect(() => {
     setBorderSelected(null);
-    setBorderColor("#000000");
+    setBorderColor(theme.palette.common.white);
     setBorderStyle(BorderStyle.Thin);
   }, [properties.open]);
 
@@ -240,31 +240,21 @@ const BorderPicker = (properties: BorderPickerProps) => {
           </Borders>
           <Divider />
           <Styles>
-            <ButtonWrapper onClick={() => setColorPickerOpen(true)}>
-              <Button
-                type="button"
-                $pressed={false}
-                disabled={false}
-                ref={borderColorButton}
-                title={t("toolbar.borders.color")}
-              >
-                <PencilLine />
-              </Button>
+            <ButtonWrapper
+              onClick={() => setColorPickerOpen(true)}
+              ref={borderColorButton}
+            >
+              <PencilLine />
+
               <div style={{ flexGrow: 2 }}>Border color</div>
               <ChevronRightStyled />
             </ButtonWrapper>
+
             <ButtonWrapper
               onClick={() => setStylePickerOpen(true)}
               ref={borderStyleButton}
             >
-              <Button
-                type="button"
-                $pressed={false}
-                disabled={false}
-                title={t("toolbar.borders.style")}
-              >
-                <BorderStyleIcon />
-              </Button>
+              <BorderStyleIcon />
               <div style={{ flexGrow: 2 }}>Border style</div>
               <ChevronRightStyled />
             </ButtonWrapper>
@@ -281,6 +271,14 @@ const BorderPicker = (properties: BorderPickerProps) => {
           }}
           anchorEl={borderColorButton}
           open={colorPickerOpen}
+          anchorOrigin={{
+            vertical: "top", // Keep vertical alignment at the top
+            horizontal: "right", // Set horizontal alignment to right
+          }}
+          transformOrigin={{
+            vertical: "top", // Keep vertical alignment at the top
+            horizontal: "left", // Set horizontal alignment to left
+          }}
         />
         <StyledPopover
           open={stylePickerOpen}
@@ -288,8 +286,10 @@ const BorderPicker = (properties: BorderPickerProps) => {
             setStylePickerOpen(false);
           }}
           anchorEl={borderStyleButton.current}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: 38, horizontal: -6 }}
+          anchorOrigin={{
+            vertical: "top",
+            horizontal: "right",
+          }}
         >
           <BorderStyleDialog>
             <LineWrapper
@@ -336,12 +336,12 @@ const LineWrapper = styled("div")<LineWrapperProperties>`
   align-items: center;
   background-color: ${({ $checked }): string => {
     if ($checked) {
-      return "#EEEEEE;";
+      return theme.palette.grey["200"];
     }
     return "inherit;";
   }};
   &:hover {
-    border: 1px solid #eeeeee;
+    border: 1px solid ${theme.palette.grey["200"]};
   }
   padding: 8px;
   cursor: pointer;
@@ -351,52 +351,59 @@ const LineWrapper = styled("div")<LineWrapperProperties>`
 
 const SolidLine = styled("div")`
   width: 68px;
-  border-top: 1px solid #333333;
+  border-top: 1px solid ${theme.palette.grey["900"]};
 `;
 const MediumLine = styled("div")`
   width: 68px;
-  border-top: 2px solid #333333;
+  border-top: 2px solid ${theme.palette.grey["900"]};
 `;
 const ThickLine = styled("div")`
   width: 68px;
-  border-top: 3px solid #333333;
+  border-top: 1px solid ${theme.palette.grey["900"]};
 `;
 
 const Divider = styled("div")`
-  display: inline-flex;
-  heigh: 1px;
-  border-bottom: 1px solid #eee;
-  margin-left: 0px;
-  margin-right: 0px;
+  width: 100%;
+  margin: auto;
+  border-top: 1px solid ${theme.palette.grey["200"]};
 `;
 
 const Borders = styled("div")`
   display: flex;
   flex-direction: column;
-  padding-bottom: 4px;
+  gap: 4px;
+  padding: 4px;
 `;
 
 const Styles = styled("div")`
   display: flex;
   flex-direction: column;
+  padding: 4px;
 `;
 
 const Line = styled("div")`
   display: flex;
   flex-direction: row;
   align-items: center;
+  gap: 4px;
 `;
 
 const ButtonWrapper = styled("div")`
   display: flex;
   flex-direction: row;
   align-items: center;
+  border-radius: 4px;
+  gap: 8px;
   &:hover {
-    background-color: #eee;
-    border-top-color: ${(): string => theme.palette.grey["400"]};
+    background-color: ${theme.palette.grey["200"]};
+    border-top-color: ${(): string => theme.palette.grey["200"]};
   }
   cursor: pointer;
   padding: 8px;
+  svg {
+    width: 16px;
+    height: 16px;
+  }
 `;
 
 const BorderStyleDialog = styled("div")`
@@ -409,7 +416,7 @@ const BorderStyleDialog = styled("div")`
 
 const StyledPopover = styled(Popover)`
   .MuiPopover-paper {
-    border-radius: 10px;
+    border-radius: 8px;
     border: 0px solid ${({ theme }): string => theme.palette.background.default};
     box-shadow: 1px 2px 8px rgba(139, 143, 173, 0.5);
   }
@@ -425,7 +432,6 @@ const StyledPopover = styled(Popover)`
 
 const BorderPickerDialog = styled("div")`
   background: ${({ theme }): string => theme.palette.background.default};
-  padding: 4px;
   display: flex;
   flex-direction: column;
 `;
@@ -444,10 +450,8 @@ const Button = styled("button")<TypeButtonProperties>(
       alignItems: "center",
       justifyContent: "center",
       // fontSize: "26px",
-      border: "0px solid #fff",
+      border: `0px solid ${theme.palette.common.white}`,
       borderRadius: "4px",
-      marginRight: "5px",
-      transition: "all 0.2s",
       cursor: "pointer",
       padding: "0px",
     };
@@ -460,13 +464,15 @@ const Button = styled("button")<TypeButtonProperties>(
     }
     return {
       ...result,
-      borderTop: $underlinedColor ? "3px solid #FFF" : "none",
+      borderTop: $underlinedColor
+        ? `3px solid ${theme.palette.common.white}`
+        : "none",
       borderBottom: $underlinedColor ? `3px solid ${$underlinedColor}` : "none",
-      color: "#21243A",
+      color: `${theme.palette.grey["900"]}`,
       backgroundColor: $pressed ? theme.palette.grey["200"] : "inherit",
       "&:hover": {
-        backgroundColor: "#F1F2F8",
-        borderTopColor: "#F1F2F8",
+        outline: `1px solid ${theme.palette.grey["200"]}`,
+        borderTopColor: theme.palette.grey["200"],
       },
       svg: {
         width: "16px",
