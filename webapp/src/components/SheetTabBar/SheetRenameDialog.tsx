@@ -54,6 +54,8 @@ const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
             if (event.key === "Enter") {
               properties.onNameChanged(name);
               properties.onClose();
+            } else if (event.key === "Escape") {
+              properties.onClose();
             }
           }}
           onChange={(event) => {
@@ -61,6 +63,8 @@ const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
           }}
           spellCheck="false"
           onPaste={(event) => event.stopPropagation()}
+          onCopy={(event) => event.stopPropagation()}
+          onCut={(event) => event.stopPropagation()}
         />
       </StyledDialogContent>
       <DialogFooter>
