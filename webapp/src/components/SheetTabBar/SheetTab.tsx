@@ -1,4 +1,5 @@
-import { Button, Menu, MenuItem, MenuItemProps, styled } from "@mui/material";
+import { Button, Menu, MenuItem, styled } from "@mui/material";
+import type { MenuItemProps } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
 import { theme } from "../../theme";
@@ -139,7 +140,7 @@ const StyledMenu = styled(Menu)`
   }
 `;
 
-const StyledMenuItem = styled(MenuItem)<MenuItemProps>(({}) => ({
+const StyledMenuItem = styled(MenuItem)<MenuItemProps>(() => ({
   display: "flex",
   justifyContent: "space-between",
   fontSize: "12px",
@@ -148,11 +149,10 @@ const StyledMenuItem = styled(MenuItem)<MenuItemProps>(({}) => ({
   borderRadius: "4px",
   padding: "8px",
   height: "32px",
-  '&:disabled': {
+  "&:disabled": {
     color: "#BDBDBD",
-  }
+  },
 }));
-
 
 const TabWrapper = styled("div")<{ $color: string; $selected: boolean }>`
   display: flex;
