@@ -67,6 +67,9 @@ function SheetTabBar(props: SheetTabBarProps) {
               onRenamed={(name: string): void => {
                 props.onSheetRenamed(name);
               }}
+              canDelete={(): boolean => {
+                return sheets.length > 1;
+              }}
               onDeleted={(): void => {
                 props.onSheetDeleted();
               }}
