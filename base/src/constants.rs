@@ -16,3 +16,8 @@ pub(crate) const LAST_ROW: i32 = 1_048_576;
 // NaiveDate::from_ymd(1900, 1, 1).num_days_from_ce() - 2
 // The 2 days offset is because of Excel 1900 bug
 pub(crate) const EXCEL_DATE_BASE: i32 = 693_594;
+
+// Excel can handle dates until the year 0000-01-01
+pub(crate) const EXCEL_DATE_MIN: i32 = -693_959;
+// Excel can handle dates until the year 9999-12-31
+pub(crate) const EXCEL_DATE_MAX: i32 = 2958465;
