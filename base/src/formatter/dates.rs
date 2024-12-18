@@ -58,11 +58,12 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     }
 
     date = {
-        let abs_month = month.unsigned_abs();
-        if month <= 0 {
-            date = date - Months::new(abs_month + 1);
+        let month_diff = month - 1;
+        let abs_month = month_diff.unsigned_abs();
+        if month_diff <= 0 {
+            date = date - Months::new(abs_month);
         } else {
-            date = date + Months::new(abs_month - 1);
+            date = date + Months::new(abs_month);
         }
         if !is_date_within_range(date) {
             return Err("Out of range parameters for date".to_string());
@@ -71,11 +72,12 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     };
 
     date = {
-        let abs_day = day.unsigned_abs() as u64;
-        if day <= 0 {
-            date = date - Days::new(abs_day + 1);
+        let day_diff = day - 1;
+        let abs_day = day_diff.unsigned_abs() as u64;
+        if day_diff <= 0 {
+            date = date - Days::new(abs_day);
         } else {
-            date = date + Days::new(abs_day - 1);
+            date = date + Days::new(abs_day);
         }
         if !is_date_within_range(date) {
             return Err("Out of range parameters for date".to_string());
@@ -109,6 +111,10 @@ mod tests {
             date_to_serial_number(1, 1, 2004)
         );
         assert_eq!(
+            permissive_date_to_serial_number(1, 49, 2000),
+            date_to_serial_number(1, 1, 2004)
+        );
+        assert_eq!(
             permissive_date_to_serial_number(31, 49, 2000),
             date_to_serial_number(31, 1, 2004)
         );
@@ -129,7 +135,7 @@ mod tests {
             Ok(EXCEL_DATE_MAX),
         );
         assert_eq!(
-            permissive_date_to_serial_number(1, 1, 0),
+            permissive_date_to_serial_number(1, 1, 1900),
             Ok(EXCEL_DATE_MIN),
         );
     }

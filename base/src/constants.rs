@@ -18,6 +18,10 @@ pub(crate) const LAST_ROW: i32 = 1_048_576;
 pub(crate) const EXCEL_DATE_BASE: i32 = 693_594;
 
 // Excel can handle dates until the year 0000-01-01
-pub(crate) const EXCEL_DATE_MIN: i32 = -693_959;
+// However, it uses a different numbering scheme for dates
+// that are before 1900-01-01.
+// So for now we will simply not support dates before 1900-01-01.
+pub(crate) const EXCEL_DATE_MIN: i32 = 2;
+
 // Excel can handle dates until the year 9999-12-31
-pub(crate) const EXCEL_DATE_MAX: i32 = 2958465;
+pub(crate) const EXCEL_DATE_MAX: i32 = 2_958_465;
