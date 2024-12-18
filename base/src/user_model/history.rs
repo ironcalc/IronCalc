@@ -49,7 +49,7 @@ pub(crate) enum Diff {
         sheet: u32,
         row: i32,
         column: i32,
-        old_value: Box<Style>,
+        old_value: Box<Option<Style>>,
         new_value: Box<Style>,
     },
     // Column and Row diffs
@@ -64,6 +64,18 @@ pub(crate) enum Diff {
         row: i32,
         new_value: f64,
         old_value: f64,
+    },
+    SetColumnStyle {
+        sheet: u32,
+        column: i32,
+        old_value: Box<Option<Style>>,
+        new_value: Box<Style>,
+    },
+    SetRowStyle {
+        sheet: u32,
+        row: i32,
+        old_value: Box<Option<Style>>,
+        new_value: Box<Style>,
     },
     InsertRow {
         sheet: u32,

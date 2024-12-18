@@ -312,7 +312,7 @@ impl Default for Styles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,

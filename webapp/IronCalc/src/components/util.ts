@@ -1,6 +1,7 @@
 import type { Area, Cell } from "./types";
 
 import { type SelectedView, columnNameFromNumber } from "@ironcalc/wasm";
+import { LAST_COLUMN, LAST_ROW } from "./WorksheetCanvas/constants";
 
 /**
  *  Returns true if the keypress should start editing
@@ -34,11 +35,23 @@ export const getCellAddress = (selectedArea: Area, selectedCell: Cell) => {
     selectedArea.rowStart === selectedArea.rowEnd &&
     selectedArea.columnEnd === selectedArea.columnStart;
 
-  return isSingleCell
-    ? `${columnNameFromNumber(selectedCell.column)}${selectedCell.row}`
-    : `${columnNameFromNumber(selectedArea.columnStart)}${
-        selectedArea.rowStart
-      }:${columnNameFromNumber(selectedArea.columnEnd)}${selectedArea.rowEnd}`;
+  if (isSingleCell) {
+    return `${columnNameFromNumber(selectedCell.column)}${selectedCell.row}`;
+  }
+  if (selectedArea.rowStart === 1 && selectedArea.rowEnd === LAST_ROW) {
+    return `${columnNameFromNumber(selectedArea.columnStart)}:${columnNameFromNumber(
+      selectedArea.columnEnd,
+    )}`;
+  }
+  if (
+    selectedArea.columnStart === 1 &&
+    selectedArea.columnEnd === LAST_COLUMN
+  ) {
+    return `${selectedArea.rowStart}:${selectedArea.rowEnd}`;
+  }
+  return `${columnNameFromNumber(selectedArea.columnStart)}${
+    selectedArea.rowStart
+  }:${columnNameFromNumber(selectedArea.columnEnd)}${selectedArea.rowEnd}`;
 };
 
 export function rangeToStr(
