@@ -37,12 +37,12 @@ fn test_fn_date_arguments() {
     assert_eq!(model._get_text("A3"), *"#ERROR!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");
 
-    assert_eq!(model._get_text("A5"), *"#NUM!");
-    assert_eq!(model._get_text("A6"), *"#NUM!");
-    assert_eq!(model._get_text("A7"), *"#NUM!");
-    assert_eq!(model._get_text("A8"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"10/10/1974");
+    assert_eq!(model._get_text("A6"), *"21/01/1975");
+    assert_eq!(model._get_text("A7"), *"10/02/1976");
+    assert_eq!(model._get_text("A8"), *"02/03/1975");
 
-    assert_eq!(model._get_text("A9"), *"#NUM!");
+    assert_eq!(model._get_text("A9"), *"01/03/1975");
     assert_eq!(model._get_text("A10"), *"29/02/1976");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A10"),
@@ -64,15 +64,18 @@ fn test_date_out_of_range() {
 
     // year (actually years < 1900 don't really make sense)
     model._set("C1", "=DATE(-1, 5, 5)");
+    // excel is not compatible with years past 9999
+    model._set("C2", "=DATE(10000, 5, 5)");
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
-    assert_eq!(model._get_text("B1"), *"#NUM!");
-    assert_eq!(model._get_text("B2"), *"#NUM!");
+    assert_eq!(model._get_text("A1"), *"10/12/2021");
+    assert_eq!(model._get_text("A2"), *"10/01/2023");
+    assert_eq!(model._get_text("B1"), *"30/04/2042");
+    assert_eq!(model._get_text("B2"), *"01/06/2025");
 
     assert_eq!(model._get_text("C1"), *"#NUM!");
+    assert_eq!(model._get_text("C2"), *"#NUM!");
 }
 
 #[test]
@@ -204,7 +207,10 @@ fn test_date_early_dates() {
         model.get_cell_value_by_ref("Sheet1!A2"),
         Ok(CellValue::Number(60.0))
     );
-    assert_eq!(model._get_text("B2"), *"#NUM!");
+
+    // This does not agree with Excel, instead of mistakenly allowing
+    // for Feb 29, it will auto-wrap to the next day after Feb 28. 
+    assert_eq!(model._get_text("B2"), *"01/03/1900");
 
     // This agrees with Excel from he onward
     assert_eq!(model._get_text("A3"), *"01/03/1900");
