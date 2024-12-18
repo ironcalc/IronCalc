@@ -37,6 +37,7 @@ mod test_model_cell_clear_all;
 mod test_model_is_empty_cell;
 mod test_move_formula;
 mod test_quote_prefix;
+mod test_row_column_styles;
 mod test_set_user_input;
 mod test_sheet_markup;
 mod test_sheets;

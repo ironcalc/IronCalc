@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import CellContextMenu from "./CellContextMenu";
 import {
   COLUMN_WIDTH_SCALE,
+  LAST_COLUMN,
+  LAST_ROW,
   ROW_HEIGH_SCALE,
   outlineBackgroundColor,
   outlineColor,
@@ -155,6 +157,20 @@ function Worksheet(props: {
       model,
       workbookState,
       refresh,
+      onColumnSelected: (column: number) => {
+        model.setSelectedCell(1, column);
+        model.setSelectedRange(1, column, LAST_ROW, column);
+        refresh();
+      },
+      onRowSelected: (row: number) => {
+        model.setSelectedCell(row, 1);
+        model.setSelectedRange(row, 1, row, LAST_COLUMN);
+        refresh();
+      },
+      onAllSheetSelected: () => {
+        model.setSelectedCell(1, 1);
+        model.setSelectedRange(1, 1, LAST_ROW, LAST_COLUMN);
+      },
       onCellSelected: (cell: Cell, event: React.MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();

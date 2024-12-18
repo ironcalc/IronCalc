@@ -15,6 +15,9 @@ interface PointerSettings {
   worksheetCanvas: RefObject<WorksheetCanvas | null>;
   worksheetElement: RefObject<HTMLDivElement | null>;
   onCellSelected: (cell: Cell, event: React.MouseEvent) => void;
+  onRowSelected: (row: number) => void;
+  onColumnSelected: (column: number) => void;
+  onAllSheetSelected: () => void;
   onAreaSelecting: (cell: Cell) => void;
   onAreaSelected: () => void;
   onExtendToCell: (cell: Cell) => void;
@@ -116,6 +119,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
 
   const onPointerDown = useCallback(
     (event: PointerEvent) => {
+      console.log("onPointerDown");
       let x = event.clientX;
       let y = event.clientY;
       const {
@@ -125,6 +129,9 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         worksheetElement,
         worksheetCanvas,
         workbookState,
+        onRowSelected,
+        onColumnSelected,
+        onAllSheetSelected,
       } = options;
       const worksheet = worksheetCanvas.current;
       const canvas = canvasElement.current;
@@ -143,7 +150,10 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         y < headerRowHeight ||
         y > canvasRect.height
       ) {
-        if (
+        if (x < headerColumnWidth && y < headerRowHeight) {
+          // Click on the top left corner
+          onAllSheetSelected();
+        } else if (
           x > 0 &&
           x < headerColumnWidth &&
           y > headerRowHeight &&
@@ -152,8 +162,18 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           // Click on a row number
           const cell = worksheet.getCellByCoordinates(headerColumnWidth, y);
           if (cell) {
-            // TODO
-            // Row selected
+            onRowSelected(cell.row);
+          }
+        } else if (
+          x > headerColumnWidth &&
+          x < canvasRect.width &&
+          y > 0 &&
+          y < headerRowHeight
+        ) {
+          // Click on a column letter
+          const cell = worksheet.getCellByCoordinates(x, headerRowHeight);
+          if (cell) {
+            onColumnSelected(cell.column);
           }
         }
         return;

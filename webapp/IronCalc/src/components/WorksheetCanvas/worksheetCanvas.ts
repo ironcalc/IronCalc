@@ -577,8 +577,8 @@ export default class WorksheetCanvas {
     let resizeHandleUp = (event: MouseEvent): void => {
       div.style.opacity = "0";
       this.columnGuide.style.display = "none";
-      document.removeEventListener("mousemove", resizeHandleMove);
-      document.removeEventListener("mouseup", resizeHandleUp);
+      document.removeEventListener("pointermove", resizeHandleMove);
+      document.removeEventListener("pointerup", resizeHandleUp);
       const newColumnWidth = columnWidth + event.pageX - initPageX;
       this.onColumnWidthChanges(
         this.model.getSelectedSheet(),
@@ -587,13 +587,14 @@ export default class WorksheetCanvas {
       );
     };
     resizeHandleUp = resizeHandleUp.bind(this);
-    div.addEventListener("mousedown", (event) => {
+    div.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
       div.style.opacity = "1";
       this.columnGuide.style.display = "block";
       this.columnGuide.style.left = `${headerColumnWidth + x}px`;
       initPageX = event.pageX;
-      document.addEventListener("mousemove", resizeHandleMove);
-      document.addEventListener("mouseup", resizeHandleUp);
+      document.addEventListener("pointermove", resizeHandleMove);
+      document.addEventListener("pointerup", resizeHandleUp);
     });
   }
 
@@ -615,20 +616,21 @@ export default class WorksheetCanvas {
     let resizeHandleUp = (event: MouseEvent): void => {
       div.style.opacity = "0";
       this.rowGuide.style.display = "none";
-      document.removeEventListener("mousemove", resizeHandleMove);
-      document.removeEventListener("mouseup", resizeHandleUp);
+      document.removeEventListener("pointermove", resizeHandleMove);
+      document.removeEventListener("pointerup", resizeHandleUp);
       const newRowHeight = rowHeight + event.pageY - initPageY - 1;
       this.onRowHeightChanges(sheet, row, newRowHeight);
     };
     resizeHandleUp = resizeHandleUp.bind(this);
     /* istanbul ignore next */
-    div.addEventListener("mousedown", (event) => {
+    div.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
       div.style.opacity = "1";
       this.rowGuide.style.display = "block";
       this.rowGuide.style.top = `${y}px`;
       initPageY = event.pageY;
-      document.addEventListener("mousemove", resizeHandleMove);
-      document.addEventListener("mouseup", resizeHandleUp);
+      document.addEventListener("pointermove", resizeHandleMove);
+      document.addEventListener("pointerup", resizeHandleUp);
     });
   }
 

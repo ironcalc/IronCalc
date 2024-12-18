@@ -1872,10 +1872,27 @@ impl Model {
     }
 
     /// Returns the style for cell (`sheet`, `row`, `column`)
+    /// If the cell does not have a style defined we check the row, otherwise the column and finally a default
     pub fn get_style_for_cell(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         let style = self.workbook.styles.get_style(style_index)?;
         Ok(style)
+    }
+
+    /// Returns the style defined in a cell if any.
+    pub fn get_cell_style_or_none(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<Style>, String> {
+        let style = self
+            .workbook
+            .worksheet(sheet)?
+            .cell(row, column)
+            .map(|c| self.workbook.styles.get_style(c.get_style()))
+            .transpose();
+        style
     }
 
     /// Returns an internal binary representation of the workbook
@@ -2160,6 +2177,73 @@ impl Model {
         } else {
             Err("Defined name not found".to_string())
         }
+    }
+    /// Returns the style object of a column, if any
+    pub fn get_column_style(&self, sheet: u32, column: i32) -> Result<Option<Style>, String> {
+        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
+            let cols = &worksheet.cols;
+            for col in cols {
+                if column >= col.min && column <= col.max {
+                    if let Some(style_index) = col.style {
+                        let style = self.workbook.styles.get_style(style_index)?;
+                        return Ok(Some(style));
+                    }
+                    return Ok(None);
+                }
+            }
+            Ok(None)
+        } else {
+            Err("Invalid sheet".to_string())
+        }
+    }
+
+    /// Returns the style object of a row, if any
+    pub fn get_row_style(&self, sheet: u32, row: i32) -> Result<Option<Style>, String> {
+        if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
+            let rows = &worksheet.rows;
+            for r in rows {
+                if row == r.r {
+                    let style = self.workbook.styles.get_style(r.s)?;
+                    return Ok(Some(style));
+                }
+            }
+            Ok(None)
+        } else {
+            Err("Invalid sheet".to_string())
+        }
+    }
+
+    /// Sets a column with style
+    pub fn set_column_style(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        style: &Style,
+    ) -> Result<(), String> {
+        let style_index = self.workbook.styles.get_style_index_or_create(style);
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_column_style(column, style_index)
+    }
+
+    /// Sets a row with style
+    pub fn set_row_style(&mut self, sheet: u32, row: i32, style: &Style) -> Result<(), String> {
+        let style_index = self.workbook.styles.get_style_index_or_create(style);
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_row_style(row, style_index)
+    }
+
+    /// Deletes the style of a column if the is any
+    pub fn delete_column_style(&mut self, sheet: u32, column: i32) -> Result<(), String> {
+        self.workbook
+            .worksheet_mut(sheet)?
+            .delete_column_style(column)
+    }
+
+    /// Deletes the style of a row if there is any
+    pub fn delete_row_style(&mut self, sheet: u32, row: i32) -> Result<(), String> {
+        self.workbook.worksheet_mut(sheet)?.delete_row_style(row)
     }
 }
 

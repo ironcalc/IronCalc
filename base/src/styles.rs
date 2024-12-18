@@ -4,8 +4,6 @@ use crate::{
     types::{Border, CellStyles, CellXfs, Fill, Font, NumFmt, Style, Styles},
 };
 
-// TODO: Move Styles and all related types from crate::types here
-// Not doing it right now to not have conflicts with exporter branch
 impl Styles {
     fn get_font_index(&self, font: &Font) -> Option<i32> {
         for (font_index, item) in self.fonts.iter().enumerate() {

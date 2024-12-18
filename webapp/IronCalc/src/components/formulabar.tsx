@@ -19,8 +19,6 @@ type FormulaBarProps = {
   onTextUpdated: () => void;
 };
 
-const headerColumnWidth = 35;
-
 function FormulaBar(properties: FormulaBarProps) {
   const {
     cellAddress,

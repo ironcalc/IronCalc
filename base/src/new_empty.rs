@@ -301,7 +301,7 @@ impl Model {
         };
         if sheet_index >= sheet_count {
             return Err("Sheet index too large".to_string());
-        }
+        };
         self.workbook.worksheets.remove(sheet_index as usize);
         self.reset_parsed_structures();
         Ok(())
