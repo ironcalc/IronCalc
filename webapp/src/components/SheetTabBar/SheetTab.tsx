@@ -15,7 +15,7 @@ interface SheetTabProps {
   onSelected: () => void;
   onColorChanged: (hex: string) => void;
   onRenamed: (name: string) => void;
-  canDelete: () => boolean;
+  canDelete: boolean;
   onDeleted: () => void;
   workbookState: WorkbookState;
 }
@@ -94,7 +94,7 @@ function SheetTab(props: SheetTabProps) {
           Change Color
         </StyledMenuItem>
         <StyledMenuItem
-          disabled={!props.canDelete()}
+          disabled={!props.canDelete}
           onClick={() => {
             props.onDeleted();
             handleClose();
