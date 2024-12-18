@@ -59,6 +59,30 @@ export default defineConfig({
             link: "/features/error-types",
           },
           {
+            text: "Value Types",
+            link: "/features/value-types",
+          },
+          {
+            text: "Optional arguments",
+            link: "/features/optional-arguments",
+          },
+          {
+            text: "Units",
+            link: "/features/units",
+          },
+          {
+            text: "Implicit Intersection",
+            link: "/features/implicit-intersection",
+          },
+          {
+            text: "Arrays and array formulas",
+            link: "/features/arrays",
+          },
+          {
+            text: "Dynamic Arrays",
+            link: "/features/dynamic-arrays",
+          },
+          {
             text: "Unsupported Features",
             link: "/features/unsupported-features",
           },
