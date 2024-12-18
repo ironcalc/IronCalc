@@ -209,7 +209,7 @@ fn test_date_early_dates() {
     );
 
     // This does not agree with Excel, instead of mistakenly allowing
-    // for Feb 29, it will auto-wrap to the next day after Feb 28. 
+    // for Feb 29, it will auto-wrap to the next day after Feb 28.
     assert_eq!(model._get_text("B2"), *"01/03/1900");
 
     // This agrees with Excel from he onward
