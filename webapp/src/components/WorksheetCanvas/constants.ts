@@ -5,10 +5,10 @@ export const headerGlobalSelectorColor = "#EAECF4";
 export const headerSelectedBackground = "#EEEEEE";
 export const headerFullSelectedBackground = "#D3D6E9";
 export const headerSelectedColor = "#333";
-export const headerBorderColor = "#DEE0EF";
+export const headerBorderColor = "#E0E0E0";
 
 export const gridColor = "#E0E0E0";
-export const gridSeparatorColor = "#D3D6E9";
+export const gridSeparatorColor = "#E0E0E0";
 export const defaultTextColor = "#2E414D";
 
 export const outlineColor = "#F2994A";
