@@ -2,8 +2,8 @@ import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
 import { Check, FileDown, FileUp, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
-import { DeleteWorkbookDialog } from "./DeleteWorkbookDialog";
-import { UploadFileDialog } from "./UploadFileDialog";
+import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
+import UploadFileDialog from "./UploadFileDialog";
 import { getModelsMetadata, getSelectedUuid } from "./storage";
 
 export function FileMenu(props: {
@@ -105,10 +105,6 @@ export function FileMenu(props: {
       <Modal
         open={isImportMenuOpen}
         onClose={() => {
-          const root = document.getElementById("root");
-          if (root) {
-            root.style.filter = "";
-          }
           setImportMenuOpen(false);
         }}
         aria-labelledby="modal-modal-title"
@@ -117,10 +113,6 @@ export function FileMenu(props: {
         <>
           <UploadFileDialog
             onClose={() => {
-              const root = document.getElementById("root");
-              if (root) {
-                root.style.filter = "";
-              }
               setImportMenuOpen(false);
             }}
             onModelUpload={props.onModelUpload}
@@ -133,11 +125,13 @@ export function FileMenu(props: {
         aria-labelledby="delete-dialog-title"
         aria-describedby="delete-dialog-description"
       >
-        <DeleteWorkbookDialog
-          onClose={() => setDeleteDialogOpen(false)}
-          onConfirm={props.onDelete}
-          workbookName={selectedUuid ? models[selectedUuid] : ""}
-        />
+        <>
+          <DeleteWorkbookDialog
+            onClose={() => setDeleteDialogOpen(false)}
+            onConfirm={props.onDelete}
+            workbookName={selectedUuid ? models[selectedUuid] : ""}
+          />
+        </>
       </Modal>
     </>
   );
