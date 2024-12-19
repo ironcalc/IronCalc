@@ -192,9 +192,10 @@ pub(crate) fn get_worksheet_xml(
                         &parsed_formulas[*f as usize],
                     );
                     let style = get_cell_style_attribute(*s);
+                    let escaped_v = escape_xml(v);
 
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"str\"{style}><f>{formula}</f><v>{v}</v></c>"
+                        "<c r=\"{cell_name}\" t=\"str\"{style}><f>{formula}</f><v>{escaped_v}</v></c>"
                     ));
                 }
                 Cell::CellFormulaError {
