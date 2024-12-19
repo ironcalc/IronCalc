@@ -71,8 +71,8 @@ const DialogWrapper = styled.div`
   padding: 12px;
   border-radius: 8px;
   box-shadow: 0px 1px 3px 0px ${theme.palette.common.black}1A;
-  max-width: 280px;
-  width: 100%;
+  width: 280px;
+  max-width: calc(100% - 40px);
   z-index: 50;
   font-family: "Inter", sans-serif;
 `;
@@ -130,13 +130,13 @@ const Button = styled.button`
   background-color: ${theme.palette.primary.main};
   padding: 0px 10px;
   height: 36px;
-  line-height: 36px;
   border-radius: 4px;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
+  text-overflow: ellipsis;
   transition: background-color 150ms;
   &:hover {
     background-color: ${theme.palette.primary.dark};
@@ -147,7 +147,7 @@ const DeleteButton = styled(Button)`
   background-color: ${theme.palette.error.main};
   color: ${theme.palette.common.white};
   &:hover {
-    background-color: ${theme.palette.primary.dark};
+    background-color: ${theme.palette.error.dark};
   }
 `;
 
