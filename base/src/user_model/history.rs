@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
 
-use crate::types::{Cell, Col, Row, Style};
+use crate::types::{Cell, Col, Row, SheetState, Style};
 
 #[derive(Clone, Encode, Decode)]
 pub(crate) struct RowData {
@@ -103,6 +103,11 @@ pub(crate) enum Diff {
         index: u32,
         old_value: String,
         new_value: String,
+    },
+    SetSheetState {
+        index: u32,
+        old_value: SheetState,
+        new_value: SheetState,
     },
     SetShowGridLines {
         sheet: u32,

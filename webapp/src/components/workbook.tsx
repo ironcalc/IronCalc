@@ -32,8 +32,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const setRedrawId = useState(0)[1];
   const info = model
     .getWorksheetsProperties()
-    .map(({ name, color, sheet_id }: WorksheetProperties) => {
-      return { name, color: color ? color : "#FFF", sheetId: sheet_id };
+    .map(({ name, color, sheet_id, state }: WorksheetProperties) => {
+      return { name, color: color ? color : "#FFF", sheetId: sheet_id, state };
     });
   const focusWorkbook = useCallback(() => {
     if (rootRef.current) {
@@ -586,6 +586,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         selectedIndex={model.getSelectedSheet()}
         workbookState={workbookState}
         onSheetSelected={(sheet: number): void => {
+          if (info[sheet].state !== "visible") {
+            model.unhideSheet(sheet);
+          }
           model.setSelectedSheet(sheet);
           setRedrawId((value) => value + 1);
         }}
@@ -614,6 +617,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onSheetDeleted={(): void => {
           const selectedSheet = model.getSelectedSheet();
           model.deleteSheet(selectedSheet);
+          setRedrawId((value) => value + 1);
+        }}
+        onHideSheet={(): void => {
+          const selectedSheet = model.getSelectedSheet();
+          model.hideSheet(selectedSheet);
           setRedrawId((value) => value + 1);
         }}
       />

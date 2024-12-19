@@ -13,8 +13,8 @@ use crate::{
     },
     model::Model,
     types::{
-        Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, Style,
-        VerticalAlignment,
+        Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, SheetState,
+        Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
 };
@@ -437,6 +437,48 @@ impl UserModel {
             old_value,
             new_value: new_name.to_string(),
         }]);
+        Ok(())
+    }
+
+    /// Hides sheet by index
+    ///
+    /// See also:
+    /// * [Model::set_sheet_state]
+    /// * [UserModel::unhide_sheet]
+    pub fn hide_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        for index in 1..sheet_count {
+            let sheet_index = (sheet + index) % sheet_count;
+            if self.model.workbook.worksheet(sheet_index)?.state == SheetState::Visible {
+                if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+                    view.sheet = sheet_index;
+                };
+                break;
+            }
+        }
+        let old_value = self.model.workbook.worksheet(sheet)?.state.clone();
+        self.push_diff_list(vec![Diff::SetSheetState {
+            index: sheet,
+            new_value: SheetState::Hidden,
+            old_value,
+        }]);
+        self.model.set_sheet_state(sheet, SheetState::Hidden)?;
+        Ok(())
+    }
+
+    /// Un hides sheet by index
+    ///
+    /// See also:
+    /// * [Model::set_sheet_state]
+    /// * [UserModel::hide_sheet]
+    pub fn unhide_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        let old_value = self.model.workbook.worksheet(sheet)?.state.clone();
+        self.push_diff_list(vec![Diff::SetSheetState {
+            index: sheet,
+            new_value: SheetState::Visible,
+            old_value,
+        }]);
+        self.model.set_sheet_state(sheet, SheetState::Visible)?;
         Ok(())
     }
 
@@ -1862,6 +1904,11 @@ impl UserModel {
                 } => {
                     self.model.set_show_grid_lines(*sheet, *old_value)?;
                 }
+                Diff::SetSheetState {
+                    index,
+                    old_value,
+                    new_value: _,
+                } => self.model.set_sheet_state(*index, old_value.clone())?,
             }
         }
         if needs_evaluation {
@@ -1989,6 +2036,11 @@ impl UserModel {
                 } => {
                     self.model.set_show_grid_lines(*sheet, *new_value)?;
                 }
+                Diff::SetSheetState {
+                    index,
+                    old_value: _,
+                    new_value,
+                } => self.model.set_sheet_state(*index, new_value.clone())?,
             }
         }
 
