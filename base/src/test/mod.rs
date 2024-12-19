@@ -19,6 +19,7 @@ mod test_fn_formulatext;
 mod test_fn_if;
 mod test_fn_maxifs;
 mod test_fn_minifs;
+mod test_fn_or_xor;
 mod test_fn_product;
 mod test_fn_rept;
 mod test_fn_sum;
@@ -46,7 +47,6 @@ pub(crate) mod util;
 
 mod engineering;
 mod test_fn_offset;
-mod test_fn_or;
 mod test_number_format;
 
 mod test_escape_quotes;
