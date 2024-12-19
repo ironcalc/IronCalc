@@ -1,20 +1,23 @@
 import styled from "@emotion/styled";
 import { Trash2 } from "lucide-react";
-import { forwardRef, useEffect } from "react";
-import { theme } from "../theme";
+import { useEffect, useRef } from "react";
 
-export const DeleteWorkbookDialog = forwardRef<
-  HTMLDivElement,
-  {
-    onClose: () => void;
-    onConfirm: () => void;
-    workbookName: string;
-  }
->((properties, ref) => {
+interface DeleteWorkbookDialogProperties {
+  onClose: () => void;
+  onConfirm: () => void;
+  workbookName: string;
+}
+
+function DeleteWorkbookDialog(properties: DeleteWorkbookDialogProperties) {
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     const root = document.getElementById("root");
     if (root) {
       root.style.filter = "blur(2px)";
+    }
+    if (deleteButtonRef.current) {
+      deleteButtonRef.current.focus();
     }
     return () => {
       const root = document.getElementById("root");
@@ -26,8 +29,12 @@ export const DeleteWorkbookDialog = forwardRef<
 
   return (
     <DialogWrapper
-      ref={ref}
       tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.code === "Escape") {
+          properties.onClose();
+        }
+      }}
       role="dialog"
       aria-labelledby="delete-dialog-title"
       aria-describedby="delete-dialog-description"
@@ -47,6 +54,7 @@ export const DeleteWorkbookDialog = forwardRef<
               properties.onConfirm();
               properties.onClose();
             }}
+            ref={deleteButtonRef}
           >
             Yes, delete workbook
           </DeleteButton>
@@ -55,9 +63,24 @@ export const DeleteWorkbookDialog = forwardRef<
       </ContentWrapper>
     </DialogWrapper>
   );
-});
+}
 
 DeleteWorkbookDialog.displayName = "DeleteWorkbookDialog";
+
+// some colors taken from the IronCalc palette
+const COMMON_WHITE = "#FFF";
+const COMMON_BLACK = "#272525";
+
+const ERROR_MAIN = "#EB5757";
+const ERROR_DARK = "#CB4C4C";
+
+const GREY_200 = "#EEEEEE";
+const GREY_300 = "#E0E0E0";
+const GREY_700 = "#616161";
+const GREY_900 = "#333333";
+
+const PRIMARY_MAIN = "#F2994A";
+const PRIMARY_DARK = "#D68742";
 
 const DialogWrapper = styled.div`
   position: fixed;
@@ -70,7 +93,7 @@ const DialogWrapper = styled.div`
   gap: 16px;
   padding: 12px;
   border-radius: 8px;
-  box-shadow: 0px 1px 3px 0px ${theme.palette.common.black}1A;
+  box-shadow: 0px 1px 3px 0px ${COMMON_BLACK}1A;
   width: 280px;
   max-width: calc(100% - 40px);
   z-index: 50;
@@ -84,9 +107,9 @@ const IconWrapper = styled.div`
   width: 36px;
   height: 36px;
   border-radius: 4px;
-  background-color: ${theme.palette.error.main}1A;
+  background-color: ${ERROR_MAIN}1A;
   margin: 12px auto 0 auto;
-  color: ${theme.palette.error.main};
+  color: ${ERROR_MAIN};
   svg {
     width: 16px;
     height: 16px;
@@ -106,13 +129,13 @@ const Title = styled.h2`
   margin: 0;
   font-weight: 600;
   font-size: inherit;
-  color: ${theme.palette.grey["900"]};
+  color: ${GREY_900};
 `;
 
 const Body = styled.p`
   margin: 0;
   text-align: center;
-  color: ${theme.palette.grey["900"]};
+  color: ${GREY_900};
   font-size: 12px;
 `;
 
@@ -126,8 +149,8 @@ const ButtonGroup = styled.div`
 
 const Button = styled.button`
   cursor: pointer;
-  color: ${theme.palette.common.white};
-  background-color: ${theme.palette.primary.main};
+  color: ${COMMON_WHITE};
+  background-color: ${PRIMARY_MAIN};
   padding: 0px 10px;
   height: 36px;
   border-radius: 4px;
@@ -139,22 +162,24 @@ const Button = styled.button`
   text-overflow: ellipsis;
   transition: background-color 150ms;
   &:hover {
-    background-color: ${theme.palette.primary.dark};
+    background-color: ${PRIMARY_DARK};
   }
 `;
 
 const DeleteButton = styled(Button)`
-  background-color: ${theme.palette.error.main};
-  color: ${theme.palette.common.white};
+  background-color: ${ERROR_MAIN};
+  color: ${COMMON_WHITE};
   &:hover {
-    background-color: ${theme.palette.error.dark};
+    background-color: ${ERROR_DARK};
   }
 `;
 
 const CancelButton = styled(Button)`
-  background-color: ${theme.palette.grey["200"]};
-  color: ${theme.palette.grey["700"]};
+  background-color: ${GREY_200};
+  color: ${GREY_700};
   &:hover {
-    background-color: ${theme.palette.grey["300"]};
+    background-color: ${GREY_300};
   }
 `;
+
+export default DeleteWorkbookDialog;

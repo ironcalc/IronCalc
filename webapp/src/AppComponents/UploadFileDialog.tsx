@@ -1,16 +1,33 @@
 import styled from "@emotion/styled";
 import { BookOpen, FileUp } from "lucide-react";
-import { type DragEvent, useRef, useState } from "react";
+import { type DragEvent, useEffect, useRef, useState } from "react";
 
-export function UploadFileDialog(properties: {
+function UploadFileDialog(properties: {
   onClose: () => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
 }) {
   const [hover, setHover] = useState(false);
   const [message, setMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const crossRef = useRef<HTMLDivElement>(null);
 
   const { onModelUpload } = properties;
+
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (root) {
+      root.style.filter = "blur(2px)";
+    }
+    if (crossRef.current) {
+      crossRef.current.focus();
+    }
+    return () => {
+      const root = document.getElementById("root");
+      if (root) {
+        root.style.filter = "none";
+      }
+    };
+  }, []);
 
   const handleClose = () => {
     properties.onClose();
@@ -79,12 +96,16 @@ export function UploadFileDialog(properties: {
     reader.readAsArrayBuffer(file);
   };
 
-  const root = document.getElementById("root");
-  if (root) {
-    root.style.filter = "blur(4px)";
-  }
   return (
-    <UploadDialog>
+    <UploadDialog
+      tabIndex={-1}
+      role="dialog"
+      onKeyDown={(event) => {
+        if (event.code === "Escape") {
+          handleClose();
+        }
+      }}
+    >
       <UploadTitle>
         <span style={{ flexGrow: 2, marginLeft: 12 }}>
           Import an .xlsx file
@@ -92,7 +113,8 @@ export function UploadFileDialog(properties: {
         <Cross
           style={{ marginRight: 12 }}
           onClick={handleClose}
-          onKeyDown={() => {}}
+          ref={crossRef}
+          tabIndex={0}
         >
           <svg
             width="16"
@@ -300,3 +322,5 @@ const DropZone = styled("div")`
   gap: 16px;
   transition: 0.2s ease-in-out;
 `;
+
+export default UploadFileDialog;
