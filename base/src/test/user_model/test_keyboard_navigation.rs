@@ -2,7 +2,7 @@
 
 use crate::{
     constants::{
-        DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, DEFAULT_WINDOW_HEIGH, DEFAULT_WINDOW_WIDTH,
+        DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH,
         LAST_COLUMN,
     },
     test::util::new_empty_model,
@@ -87,7 +87,7 @@ fn last_colum() {
 fn page_down() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    let window_height = DEFAULT_WINDOW_HEIGH as f64;
+    let window_height = DEFAULT_WINDOW_HEIGHT as f64;
     let row_height = DEFAULT_ROW_HEIGHT;
     let row_count = f64::floor(window_height / row_height) as i32;
     model.on_page_down().unwrap();

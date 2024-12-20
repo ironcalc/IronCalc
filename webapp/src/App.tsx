@@ -5,7 +5,11 @@ import styled from "@emotion/styled";
 import init, { Model } from "@ironcalc/wasm";
 import { useEffect, useState } from "react";
 import { FileBar } from "./AppComponents/FileBar";
-import { get_model, uploadFile } from "./AppComponents/rpc";
+import {
+  get_documentation_model,
+  get_model,
+  uploadFile,
+} from "./AppComponents/rpc";
 import {
   createNewModel,
   deleteSelectedModel,
@@ -29,6 +33,7 @@ function App() {
       const queryString = window.location.search;
       const urlParams = new URLSearchParams(queryString);
       const modelHash = urlParams.get("model");
+      const exampleFilename = urlParams.get("example");
       // If there is a model name ?model=modelHash we try to load it
       // if there is not, or the loading failed we load an empty model
       if (modelHash) {
@@ -40,6 +45,15 @@ function App() {
           setModel(importedModel);
         } catch (e) {
           alert("Model not found, or failed to load");
+        }
+      } else if (exampleFilename) {
+        try {
+          const model_bytes = await get_documentation_model(exampleFilename);
+          const importedModel = Model.from_bytes(model_bytes);
+          localStorage.removeItem("selected");
+          setModel(importedModel);
+        } catch (e) {
+          alert("Example file not found, or failed to load");
         }
       } else {
         // try to load from local storage
@@ -121,7 +135,7 @@ const Loading = styled("div")`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-family: 'Inter';
+  font-family: "Inter";
   font-size: 14px;
 `;
 

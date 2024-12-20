@@ -89,6 +89,9 @@ fn compute_future_value(
     if rate == 0.0 {
         return Ok(-pv - pmt * nper);
     }
+    if rate == -1.0 && nper < 0.0 {
+        return Err((Error::DIV, "Divide by zero".to_string()));
+    }
 
     let rate_nper = (1.0 + rate).powf(nper);
     let fv = if period_start {
@@ -194,16 +197,24 @@ fn compute_ppmt(
 // In these formulas the payment (pmt) is normally negative
 
 impl Model {
-    // FIXME: These three functions (get_array_of_numbers..) need to be refactored
-    // They are really similar expect for small issues
-    fn get_array_of_numbers(
+    fn get_array_of_numbers_generic(
         &mut self,
         arg: &Node,
         cell: &CellReferenceIndex,
+        accept_number_node: bool,
+        handle_empty_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
+        handle_non_number_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
         match self.evaluate_node_in_context(arg, *cell) {
-            CalcResult::Number(value) => values.push(value),
+            CalcResult::Number(value) if accept_number_node => values.push(value),
+            CalcResult::Number(_) => {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    *cell,
+                    "Expected range of numbers".to_string(),
+                ));
+            }
             CalcResult::Range { left, right } => {
                 if left.sheet != right.sheet {
                     return Err(CalcResult::new_error(
@@ -212,6 +223,7 @@ impl Model {
                         "Ranges are in different sheets".to_string(),
                     ));
                 }
+                let sheet = left.sheet;
                 let row1 = left.row;
                 let mut row2 = right.row;
                 let column1 = left.column;
@@ -219,32 +231,46 @@ impl Model {
                 if row1 == 1 && row2 == LAST_ROW {
                     row2 = self
                         .workbook
-                        .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
+                        .worksheet(sheet)
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                *cell,
+                                format!("Invalid worksheet index: '{}'", sheet),
+                            )
+                        })?
                         .dimension()
                         .max_row;
                 }
                 if column1 == 1 && column2 == LAST_COLUMN {
                     column2 = self
                         .workbook
-                        .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
+                        .worksheet(sheet)
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                *cell,
+                                format!("Invalid worksheet index: '{}'", sheet),
+                            )
+                        })?
                         .dimension()
                         .max_column;
                 }
-                for row in row1..row2 + 1 {
-                    for column in column1..(column2 + 1) {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(value) => {
-                                values.push(value);
-                            }
+                for row in row1..=row2 {
+                    for column in column1..=column2 {
+                        let cell_ref = CellReferenceIndex { sheet, row, column };
+                        match self.evaluate_cell(cell_ref) {
+                            CalcResult::Number(value) => values.push(value),
                             error @ CalcResult::Error { .. } => return Err(error),
+                            CalcResult::EmptyCell => {
+                                if let Some(value) = handle_empty_cell()? {
+                                    values.push(value);
+                                }
+                            }
                             _ => {
-                                // We ignore booleans and strings
+                                if let Some(value) = handle_non_number_cell()? {
+                                    values.push(value);
+                                }
                             }
                         }
                     }
@@ -252,10 +278,24 @@ impl Model {
             }
             error @ CalcResult::Error { .. } => return Err(error),
             _ => {
-                // We ignore booleans and strings
+                handle_non_number_cell()?;
             }
-        };
+        }
         Ok(values)
+    }
+
+    fn get_array_of_numbers(
+        &mut self,
+        arg: &Node,
+        cell: &CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
+        self.get_array_of_numbers_generic(
+            arg,
+            cell,
+            true,        // accept_number_node
+            || Ok(None), // Ignore empty cells
+            || Ok(None), // Ignore non-number cells
+        )
     }
 
     fn get_array_of_numbers_xpnv(
@@ -264,76 +304,25 @@ impl Model {
         cell: &CellReferenceIndex,
         error: Error,
     ) -> Result<Vec<f64>, CalcResult> {
-        let mut values = Vec::new();
-        match self.evaluate_node_in_context(arg, *cell) {
-            CalcResult::Number(value) => values.push(value),
-            CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        *cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                let row1 = left.row;
-                let mut row2 = right.row;
-                let column1 = left.column;
-                let mut column2 = right.column;
-                if row1 == 1 && row2 == LAST_ROW {
-                    row2 = self
-                        .workbook
-                        .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
-                        .dimension()
-                        .max_row;
-                }
-                if column1 == 1 && column2 == LAST_COLUMN {
-                    column2 = self
-                        .workbook
-                        .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
-                        .dimension()
-                        .max_column;
-                }
-                for row in row1..row2 + 1 {
-                    for column in column1..(column2 + 1) {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(value) => {
-                                values.push(value);
-                            }
-                            error @ CalcResult::Error { .. } => return Err(error),
-                            CalcResult::EmptyCell => {
-                                return Err(CalcResult::new_error(
-                                    Error::NUM,
-                                    *cell,
-                                    "Expected number".to_string(),
-                                ));
-                            }
-                            _ => {
-                                return Err(CalcResult::new_error(
-                                    error,
-                                    *cell,
-                                    "Expected number".to_string(),
-                                ));
-                            }
-                        }
-                    }
-                }
-            }
-            error @ CalcResult::Error { .. } => return Err(error),
-            _ => {
-                return Err(CalcResult::new_error(
-                    error,
+        self.get_array_of_numbers_generic(
+            arg,
+            cell,
+            true, // accept_number_node
+            || {
+                Err(CalcResult::new_error(
+                    Error::NUM,
                     *cell,
                     "Expected number".to_string(),
-                ));
-            }
-        };
-        Ok(values)
+                ))
+            },
+            || {
+                Err(CalcResult::new_error(
+                    error.clone(),
+                    *cell,
+                    "Expected number".to_string(),
+                ))
+            },
+        )
     }
 
     fn get_array_of_numbers_xirr(
@@ -341,69 +330,19 @@ impl Model {
         arg: &Node,
         cell: &CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        let mut values = Vec::new();
-        match self.evaluate_node_in_context(arg, *cell) {
-            CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        *cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                let row1 = left.row;
-                let mut row2 = right.row;
-                let column1 = left.column;
-                let mut column2 = right.column;
-                if row1 == 1 && row2 == LAST_ROW {
-                    row2 = self
-                        .workbook
-                        .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
-                        .dimension()
-                        .max_row;
-                }
-                if column1 == 1 && column2 == LAST_COLUMN {
-                    column2 = self
-                        .workbook
-                        .worksheet(left.sheet)
-                        .expect("Sheet expected during evaluation.")
-                        .dimension()
-                        .max_column;
-                }
-                for row in row1..row2 + 1 {
-                    for column in column1..(column2 + 1) {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(value) => {
-                                values.push(value);
-                            }
-                            error @ CalcResult::Error { .. } => return Err(error),
-                            CalcResult::EmptyCell => values.push(0.0),
-                            _ => {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    *cell,
-                                    "Expected number".to_string(),
-                                ));
-                            }
-                        }
-                    }
-                }
-            }
-            error @ CalcResult::Error { .. } => return Err(error),
-            _ => {
-                return Err(CalcResult::new_error(
+        self.get_array_of_numbers_generic(
+            arg,
+            cell,
+            false,            // Do not accept a single number node
+            || Ok(Some(0.0)), // Treat empty cells as zero
+            || {
+                Err(CalcResult::new_error(
                     Error::VALUE,
                     *cell,
                     "Expected number".to_string(),
-                ));
-            }
-        };
-        Ok(values)
+                ))
+            },
+        )
     }
 
     /// PMT(rate, nper, pv, [fv], [type])
@@ -862,20 +801,28 @@ impl Model {
                     let column1 = left.column;
                     let mut column2 = right.column;
                     if row1 == 1 && row2 == LAST_ROW {
-                        row2 = self
-                            .workbook
-                            .worksheet(left.sheet)
-                            .expect("Sheet expected during evaluation.")
-                            .dimension()
-                            .max_row;
+                        row2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_row,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
                     }
                     if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = self
-                            .workbook
-                            .worksheet(left.sheet)
-                            .expect("Sheet expected during evaluation.")
-                            .dimension()
-                            .max_column;
+                        column2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_column,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {
@@ -1393,21 +1340,21 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    /// This next three functions deal with Treasure Bills or T-Bills for short
-    /// They are zero-coupon that mature in one year or less.
-    ///  Definitions:
-    ///    $r$ be the discount rate
-    ///    $v$ the face value of the Bill
-    ///    $p$ the price of the Bill
-    ///    $d_m$ is the number of days from the settlement to maturity
-    /// Then:
-    ///   $$ p = v \times\left(1-\frac{d_m}{r}\right) $$
-    /// If d_m is less than 183 days the he Bond Equivalent Yield (BEY, here $y$) is given by:
-    /// $$ y = \frac{F - B}{M}\times \frac{365}{d_m} = \frac{365\times r}{360-r\times d_m}
-    /// If d_m>= 183 days things are a bit more complicated.
-    /// Let $d_e = d_m - 365/2$ if $d_m <= 365$ or $d_e = 183$ if $d_m = 366$.
-    /// $$ v = p\times \left(1+\frac{y}{2}\right)\left(1+d_e\times\frac{y}{365}\right) $$
-    /// Together with the previous relation of $p$ and $v$ gives us a quadratic equation for $y$.
+    // This next three functions deal with Treasure Bills or T-Bills for short
+    // They are zero-coupon that mature in one year or less.
+    //  Definitions:
+    //    $r$ be the discount rate
+    //    $v$ the face value of the Bill
+    //    $p$ the price of the Bill
+    //    $d_m$ is the number of days from the settlement to maturity
+    // Then:
+    //   $$ p = v \times\left(1-\frac{d_m}{r}\right) $$
+    // If d_m is less than 183 days the he Bond Equivalent Yield (BEY, here $y$) is given by:
+    // $$ y = \frac{F - B}{M}\times \frac{365}{d_m} = \frac{365\times r}{360-r\times d_m}
+    // If d_m>= 183 days things are a bit more complicated.
+    // Let $d_e = d_m - 365/2$ if $d_m <= 365$ or $d_e = 183$ if $d_m = 366$.
+    // $$ v = p\times \left(1+\frac{y}{2}\right)\left(1+d_e\times\frac{y}{365}\right) $$
+    // Together with the previous relation of $p$ and $v$ gives us a quadratic equation for $y$.
 
     // TBILLEQ(settlement, maturity, discount)
     pub(crate) fn fn_tbilleq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

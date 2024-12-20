@@ -10,6 +10,7 @@ pub struct Lexer {
 pub enum Token {
     Color(i32),              // [Red] or [Color 23]
     Condition(Compare, f64), // [<=100] (Comparator, number)
+    Currency(char),          // [$€] ($ currency symbol)
     Literal(char), // €, $, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or scaped \X
     Spacer(char),  // *X
     Ghost(char),   // _X
@@ -274,6 +275,15 @@ impl Lexer {
                                 self.set_error("Failed to parse condition");
                                 Token::ILLEGAL
                             }
+                        } else if c == '$' {
+                            // currency
+                            self.read_next_char();
+                            if let Some(currency) = self.read_next_char() {
+                                self.read_next_char();
+                                return Token::Currency(currency);
+                            }
+                            self.set_error("Failed to parse currency");
+                            Token::ILLEGAL
                         } else {
                             // Color
                             if let Some(index) = self.consume_color() {

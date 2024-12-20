@@ -3,7 +3,6 @@
 use std::{collections::HashMap, fmt::Debug, io::Cursor};
 
 use csv::{ReaderBuilder, WriterBuilder};
-use csv_sniffer::Sniffer;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -14,7 +13,7 @@ use crate::{
     },
     model::Model,
     types::{
-        Alignment, BorderItem, BorderStyle, CellType, Col, HorizontalAlignment, SheetProperties,
+        Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, SheetState,
         Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
@@ -23,6 +22,8 @@ use crate::{
 use crate::user_model::history::{
     ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
 };
+
+use super::border_utils::is_max_border;
 /// Data for the clipboard
 pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
 
@@ -38,6 +39,7 @@ pub struct ClipboardCell {
 pub struct Clipboard {
     pub(crate) csv: String,
     pub(crate) data: ClipboardData,
+    pub(crate) sheet: u32,
     pub(crate) range: (i32, i32, i32, i32),
 }
 
@@ -78,37 +80,6 @@ fn color(value: &str) -> Result<Option<String>, String> {
         return Err(format!("Invalid color: '{value}'."));
     }
     Ok(Some(value.to_owned()))
-}
-
-fn border(value: &str) -> Result<Option<BorderItem>, String> {
-    if value.is_empty() {
-        return Ok(None);
-    }
-    let parts = value.split(',');
-    let values = parts.collect::<Vec<&str>>();
-    match values[..] {
-        [border_style, color_str] => {
-            let style = match border_style {
-                "thin" => BorderStyle::Thin,
-                "medium" => BorderStyle::Medium,
-                "thick" => BorderStyle::Thick,
-                "double" => BorderStyle::Double,
-                "dotted" => BorderStyle::Dotted,
-                "slantDashDot" => BorderStyle::SlantDashDot,
-                "mediumDashed" => BorderStyle::MediumDashed,
-                "mediumDashDotDot" => BorderStyle::MediumDashDotDot,
-                "mediumDashDot" => BorderStyle::MediumDashDot,
-                _ => {
-                    return Err(format!("Invalid border style: '{border_style}'."));
-                }
-            };
-            Ok(Some(BorderItem {
-                style,
-                color: color(color_str)?,
-            }))
-        }
-        _ => Err(format!("Invalid border value: '{value}'.")),
-    }
 }
 
 fn horizontal(value: &str) -> Result<HorizontalAlignment, String> {
@@ -372,7 +343,7 @@ impl UserModel {
             old_value: Box::new(old_value),
         }];
 
-        let line_count = value.split("\n").count();
+        let line_count = value.split('\n').count();
         let row_height = self.model.get_row_height(sheet, row)?;
         let cell_height = (line_count as f64) * DEFAULT_ROW_HEIGHT;
         if cell_height > row_height {
@@ -466,6 +437,48 @@ impl UserModel {
             old_value,
             new_value: new_name.to_string(),
         }]);
+        Ok(())
+    }
+
+    /// Hides sheet by index
+    ///
+    /// See also:
+    /// * [Model::set_sheet_state]
+    /// * [UserModel::unhide_sheet]
+    pub fn hide_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        let sheet_count = self.model.workbook.worksheets.len() as u32;
+        for index in 1..sheet_count {
+            let sheet_index = (sheet + index) % sheet_count;
+            if self.model.workbook.worksheet(sheet_index)?.state == SheetState::Visible {
+                if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+                    view.sheet = sheet_index;
+                };
+                break;
+            }
+        }
+        let old_value = self.model.workbook.worksheet(sheet)?.state.clone();
+        self.push_diff_list(vec![Diff::SetSheetState {
+            index: sheet,
+            new_value: SheetState::Hidden,
+            old_value,
+        }]);
+        self.model.set_sheet_state(sheet, SheetState::Hidden)?;
+        Ok(())
+    }
+
+    /// Un hides sheet by index
+    ///
+    /// See also:
+    /// * [Model::set_sheet_state]
+    /// * [UserModel::hide_sheet]
+    pub fn unhide_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        let old_value = self.model.workbook.worksheet(sheet)?.state.clone();
+        self.push_diff_list(vec![Diff::SetSheetState {
+            index: sheet,
+            new_value: SheetState::Visible,
+            old_value,
+        }]);
+        self.model.set_sheet_state(sheet, SheetState::Visible)?;
         Ok(())
     }
 
@@ -571,7 +584,10 @@ impl UserModel {
                 break;
             }
         }
-        let data = worksheet.sheet_data.get(&row).unwrap().clone();
+        let data = match worksheet.sheet_data.get(&row) {
+            Some(s) => s.clone(),
+            None => return Err(format!("Row number '{row}' is not valid.")),
+        };
         let old_data = Box::new(RowData {
             row: row_data,
             data,
@@ -740,7 +756,7 @@ impl UserModel {
 
     /// Paste `styles` in the selected area
     pub fn on_paste_styles(&mut self, styles: &[Vec<Style>]) -> Result<(), String> {
-        let styles_heigh = styles.len() as i32;
+        let styles_height = styles.len() as i32;
         let styles_width = styles[0].len() as i32;
         let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
             view.sheet
@@ -759,13 +775,13 @@ impl UserModel {
 
         // If the pasted area is smaller than the selected area we increase it
         let [row_start, column_start, row_end, column_end] = range;
-        let last_row = row_end.max(row_start + styles_heigh - 1);
+        let last_row = row_end.max(row_start + styles_height - 1);
         let last_column = column_end.max(column_start + styles_width - 1);
 
         let mut diff_list = Vec::new();
         for row in row_start..=last_row {
             for column in column_start..=last_column {
-                let row_index = ((row - row_start) % styles_heigh) as usize;
+                let row_index = ((row - row_start) % styles_height) as usize;
                 let column_index = ((column - column_start) % styles_width) as usize;
                 let style = &styles[row_index][column_index];
                 let old_value = self.model.get_style_for_cell(sheet, row, column)?;
@@ -790,7 +806,9 @@ impl UserModel {
         Ok(())
     }
 
-    /// Sets the border
+    /// Sets the border in an area of cells.
+    /// When setting the border we need to check if the adjacent cells have a "heavier" border
+    /// If that is the case we need to change it
     pub fn set_area_with_border(
         &mut self,
         range: &Area,
@@ -803,195 +821,309 @@ impl UserModel {
         for row in range.row..=last_row {
             for column in range.column..=last_column {
                 let old_value = self.model.get_style_for_cell(sheet, row, column)?;
-                let mut style = old_value.clone();
+                let mut new_value = old_value.clone();
 
                 match border_area.r#type {
                     BorderType::All => {
-                        style.border.top = Some(border_area.item.clone());
-                        style.border.right = Some(border_area.item.clone());
-                        style.border.bottom = Some(border_area.item.clone());
-                        style.border.left = Some(border_area.item.clone());
+                        new_value.border.top = Some(border_area.item.clone());
+                        new_value.border.right = Some(border_area.item.clone());
+                        new_value.border.bottom = Some(border_area.item.clone());
+                        new_value.border.left = Some(border_area.item.clone());
                     }
                     BorderType::Inner => {
                         if row != range.row {
-                            style.border.top = Some(border_area.item.clone());
+                            new_value.border.top = Some(border_area.item.clone());
                         }
                         if row != last_row {
-                            style.border.bottom = Some(border_area.item.clone());
+                            new_value.border.bottom = Some(border_area.item.clone());
                         }
                         if column != range.column {
-                            style.border.left = Some(border_area.item.clone());
+                            new_value.border.left = Some(border_area.item.clone());
                         }
                         if column != last_column {
-                            style.border.right = Some(border_area.item.clone());
+                            new_value.border.right = Some(border_area.item.clone());
                         }
                     }
                     BorderType::Outer => {
                         if row == range.row {
-                            style.border.top = Some(border_area.item.clone());
+                            new_value.border.top = Some(border_area.item.clone());
                         }
                         if row == last_row {
-                            style.border.bottom = Some(border_area.item.clone());
+                            new_value.border.bottom = Some(border_area.item.clone());
                         }
                         if column == range.column {
-                            style.border.left = Some(border_area.item.clone());
+                            new_value.border.left = Some(border_area.item.clone());
                         }
                         if column == last_column {
-                            style.border.right = Some(border_area.item.clone());
+                            new_value.border.right = Some(border_area.item.clone());
                         }
                     }
-                    BorderType::Top => style.border.top = Some(border_area.item.clone()),
-                    BorderType::Right => style.border.right = Some(border_area.item.clone()),
-                    BorderType::Bottom => style.border.bottom = Some(border_area.item.clone()),
-                    BorderType::Left => style.border.left = Some(border_area.item.clone()),
+                    BorderType::Top => {
+                        new_value.border.top = Some(border_area.item.clone());
+                        // Check if the cell above has a "heavier" bottom border
+                        if row > 1 {
+                            let old_value_cell_above =
+                                self.model.get_style_for_cell(sheet, row - 1, column)?;
+                            if is_max_border(
+                                Some(&border_area.item),
+                                old_value_cell_above.border.bottom.as_ref(),
+                            ) {
+                                let mut new_value_cell_above = old_value_cell_above.clone();
+                                if border_area.r#type == BorderType::None {
+                                    new_value_cell_above.border.bottom = None;
+                                } else {
+                                    new_value_cell_above.border.bottom =
+                                        Some(border_area.item.clone());
+                                }
+                                self.model.set_cell_style(
+                                    sheet,
+                                    row - 1,
+                                    column,
+                                    &new_value_cell_above,
+                                )?;
+                                diff_list.push(Diff::SetCellStyle {
+                                    sheet,
+                                    row: row - 1,
+                                    column,
+                                    old_value: Box::new(old_value_cell_above),
+                                    new_value: Box::new(new_value_cell_above),
+                                });
+                            }
+                        }
+                    }
+                    BorderType::Right => {
+                        new_value.border.right = Some(border_area.item.clone());
+                        // Check if the cell to the right has a "heavier" left border
+                        if column < LAST_COLUMN {
+                            let old_value_cell_right =
+                                self.model.get_style_for_cell(sheet, row, column + 1)?;
+                            if is_max_border(
+                                Some(&border_area.item),
+                                old_value_cell_right.border.left.as_ref(),
+                            ) {
+                                let mut new_value_cell_right = old_value_cell_right.clone();
+                                if border_area.r#type == BorderType::None {
+                                    new_value_cell_right.border.left = None;
+                                } else {
+                                    new_value_cell_right.border.left =
+                                        Some(border_area.item.clone());
+                                }
+                                self.model.set_cell_style(
+                                    sheet,
+                                    row,
+                                    column + 1,
+                                    &new_value_cell_right,
+                                )?;
+                                diff_list.push(Diff::SetCellStyle {
+                                    sheet,
+                                    row,
+                                    column: column + 1,
+                                    old_value: Box::new(old_value_cell_right),
+                                    new_value: Box::new(new_value_cell_right),
+                                });
+                            }
+                        }
+                    }
+                    BorderType::Bottom => {
+                        new_value.border.bottom = Some(border_area.item.clone());
+                        // Check if the cell bellow has a "heavier" top border
+                        if row < LAST_ROW {
+                            let old_value_cell_below =
+                                self.model.get_style_for_cell(sheet, row + 1, column)?;
+                            if is_max_border(
+                                Some(&border_area.item),
+                                old_value_cell_below.border.top.as_ref(),
+                            ) {
+                                let mut new_value_cell_below = old_value_cell_below.clone();
+                                if border_area.r#type == BorderType::None {
+                                    new_value_cell_below.border.top = None;
+                                } else {
+                                    new_value_cell_below.border.top =
+                                        Some(border_area.item.clone());
+                                }
+                                self.model.set_cell_style(
+                                    sheet,
+                                    row + 1,
+                                    column,
+                                    &new_value_cell_below,
+                                )?;
+                                diff_list.push(Diff::SetCellStyle {
+                                    sheet,
+                                    row: row + 1,
+                                    column,
+                                    old_value: Box::new(old_value_cell_below),
+                                    new_value: Box::new(new_value_cell_below),
+                                });
+                            }
+                        }
+                    }
+                    BorderType::Left => {
+                        new_value.border.left = Some(border_area.item.clone());
+                        // Check if the cell to the left has a "heavier" right border
+                        if column > 1 {
+                            let old_value_cell_left =
+                                self.model.get_style_for_cell(sheet, row, column - 1)?;
+                            if is_max_border(
+                                Some(&border_area.item),
+                                old_value_cell_left.border.right.as_ref(),
+                            ) {
+                                let mut new_value_cell_left = old_value_cell_left.clone();
+                                if border_area.r#type == BorderType::None {
+                                    new_value_cell_left.border.right = None;
+                                } else {
+                                    new_value_cell_left.border.right =
+                                        Some(border_area.item.clone());
+                                }
+                                self.model.set_cell_style(
+                                    sheet,
+                                    row,
+                                    column - 1,
+                                    &new_value_cell_left,
+                                )?;
+                                diff_list.push(Diff::SetCellStyle {
+                                    sheet,
+                                    row,
+                                    column: column - 1,
+                                    old_value: Box::new(old_value_cell_left),
+                                    new_value: Box::new(new_value_cell_left),
+                                });
+                            }
+                        }
+                    }
                     BorderType::CenterH => {
                         if row != range.row {
-                            style.border.top = Some(border_area.item.clone());
+                            new_value.border.top = Some(border_area.item.clone());
                         }
                         if row != last_row {
-                            style.border.bottom = Some(border_area.item.clone());
+                            new_value.border.bottom = Some(border_area.item.clone());
                         }
                     }
                     BorderType::CenterV => {
                         if column != range.column {
-                            style.border.left = Some(border_area.item.clone());
+                            new_value.border.left = Some(border_area.item.clone());
                         }
                         if column != last_column {
-                            style.border.right = Some(border_area.item.clone());
+                            new_value.border.right = Some(border_area.item.clone());
                         }
                     }
                     BorderType::None => {
-                        style.border.top = None;
-                        style.border.right = None;
-                        style.border.bottom = None;
-                        style.border.left = None;
+                        new_value.border.top = None;
+                        new_value.border.right = None;
+                        new_value.border.bottom = None;
+                        new_value.border.left = None;
                     }
                 }
 
-                self.model.set_cell_style(sheet, row, column, &style)?;
+                self.model.set_cell_style(sheet, row, column, &new_value)?;
                 diff_list.push(Diff::SetCellStyle {
                     sheet,
                     row,
                     column,
                     old_value: Box::new(old_value),
-                    new_value: Box::new(style),
+                    new_value: Box::new(new_value),
                 });
             }
         }
+
         // bottom of the cells above the first
         if range.row > 1
-            && [
-                BorderType::Top,
-                BorderType::All,
-                BorderType::None,
-                BorderType::Outer,
-            ]
-            .contains(&border_area.r#type)
+            && [BorderType::All, BorderType::None, BorderType::Outer].contains(&border_area.r#type)
         {
             let row = range.row - 1;
             for column in range.column..=last_column {
                 let old_value = self.model.get_style_for_cell(sheet, row, column)?;
-                let mut style = old_value.clone();
-                if border_area.r#type == BorderType::None {
-                    style.border.bottom = None;
-                } else {
-                    style.border.bottom = Some(border_area.item.clone());
+                if is_max_border(Some(&border_area.item), old_value.border.bottom.as_ref()) {
+                    let mut style = old_value.clone();
+                    if border_area.r#type == BorderType::None {
+                        style.border.bottom = None;
+                    } else {
+                        style.border.bottom = Some(border_area.item.clone());
+                    }
+                    self.model.set_cell_style(sheet, row, column, &style)?;
+                    diff_list.push(Diff::SetCellStyle {
+                        sheet,
+                        row,
+                        column,
+                        old_value: Box::new(old_value),
+                        new_value: Box::new(style),
+                    });
                 }
-                self.model.set_cell_style(sheet, row, column, &style)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(style),
-                });
             }
         }
         // Cells to the right
         if last_column < LAST_COLUMN
-            && [
-                BorderType::Right,
-                BorderType::All,
-                BorderType::None,
-                BorderType::Outer,
-            ]
-            .contains(&border_area.r#type)
+            && [BorderType::All, BorderType::None, BorderType::Outer].contains(&border_area.r#type)
         {
             let column = last_column + 1;
             for row in range.row..=last_row {
                 let old_value = self.model.get_style_for_cell(sheet, row, column)?;
-                let mut style = old_value.clone();
-                if border_area.r#type == BorderType::None {
-                    style.border.left = None;
-                } else {
-                    style.border.left = Some(border_area.item.clone());
+                // If the border in the adjacent cell is "heavier" we change it
+                if is_max_border(Some(&border_area.item), old_value.border.left.as_ref()) {
+                    let mut style = old_value.clone();
+                    if border_area.r#type == BorderType::None {
+                        style.border.left = None;
+                    } else {
+                        style.border.left = Some(border_area.item.clone());
+                    }
+                    self.model.set_cell_style(sheet, row, column, &style)?;
+                    diff_list.push(Diff::SetCellStyle {
+                        sheet,
+                        row,
+                        column,
+                        old_value: Box::new(old_value),
+                        new_value: Box::new(style),
+                    });
                 }
-                self.model.set_cell_style(sheet, row, column, &style)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(style),
-                });
             }
         }
         // Cells bellow
         if last_row < LAST_ROW
-            && [
-                BorderType::Bottom,
-                BorderType::All,
-                BorderType::None,
-                BorderType::Outer,
-            ]
-            .contains(&border_area.r#type)
+            && [BorderType::All, BorderType::None, BorderType::Outer].contains(&border_area.r#type)
         {
             let row = last_row + 1;
             for column in range.column..=last_column {
                 let old_value = self.model.get_style_for_cell(sheet, row, column)?;
-                let mut style = old_value.clone();
-                if border_area.r#type == BorderType::None {
-                    style.border.top = None;
-                } else {
-                    style.border.top = Some(border_area.item.clone());
+                if is_max_border(Some(&border_area.item), old_value.border.top.as_ref()) {
+                    let mut style = old_value.clone();
+                    if border_area.r#type == BorderType::None {
+                        style.border.top = None;
+                    } else {
+                        style.border.top = Some(border_area.item.clone());
+                    }
+                    self.model.set_cell_style(sheet, row, column, &style)?;
+                    diff_list.push(Diff::SetCellStyle {
+                        sheet,
+                        row,
+                        column,
+                        old_value: Box::new(old_value),
+                        new_value: Box::new(style),
+                    });
                 }
-                self.model.set_cell_style(sheet, row, column, &style)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(style),
-                });
             }
         }
         // Cells to the left
         if range.column > 1
-            && [
-                BorderType::Left,
-                BorderType::All,
-                BorderType::None,
-                BorderType::Outer,
-            ]
-            .contains(&border_area.r#type)
+            && [BorderType::All, BorderType::None, BorderType::Outer].contains(&border_area.r#type)
         {
             let column = range.column - 1;
             for row in range.row..=last_row {
                 let old_value = self.model.get_style_for_cell(sheet, row, column)?;
-                let mut style = old_value.clone();
-                if border_area.r#type == BorderType::None {
-                    style.border.right = None;
-                } else {
-                    style.border.right = Some(border_area.item.clone());
+                if is_max_border(Some(&border_area.item), old_value.border.right.as_ref()) {
+                    let mut style = old_value.clone();
+                    if border_area.r#type == BorderType::None {
+                        style.border.right = None;
+                    } else {
+                        style.border.right = Some(border_area.item.clone());
+                    }
+                    self.model.set_cell_style(sheet, row, column, &style)?;
+                    diff_list.push(Diff::SetCellStyle {
+                        sheet,
+                        row,
+                        column,
+                        old_value: Box::new(old_value),
+                        new_value: Box::new(style),
+                    });
                 }
-                self.model.set_cell_style(sheet, row, column, &style)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(style),
-                });
             }
         }
 
@@ -1040,18 +1172,6 @@ impl UserModel {
                     }
                     "num_fmt" => {
                         value.clone_into(&mut style.num_fmt);
-                    }
-                    "border.left" => {
-                        style.border.left = border(value)?;
-                    }
-                    "border.right" => {
-                        style.border.right = border(value)?;
-                    }
-                    "border.top" => {
-                        style.border.top = border(value)?;
-                    }
-                    "border.bottom" => {
-                        style.border.bottom = border(value)?;
                     }
                     "alignment" => {
                         if !value.is_empty() {
@@ -1109,11 +1229,69 @@ impl UserModel {
 
     /// Returns the style for a cell
     ///
+    /// Cells share a border, so the left border of B1 is the right border of A1
+    /// In the object structure the borders of the cells might be difference,
+    /// We always pick the "heaviest" border.
+    ///
     /// See also:
     /// * [Model::get_style_for_cell]
-    #[inline]
     pub fn get_cell_style(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
-        self.model.get_style_for_cell(sheet, row, column)
+        let mut style = self.model.get_style_for_cell(sheet, row, column)?;
+
+        // We need to check if the adjacent cells have a "heavier" border
+        let border_top = if row > 1 {
+            self.model
+                .get_style_for_cell(sheet, row - 1, column)?
+                .border
+                .bottom
+        } else {
+            None
+        };
+
+        let border_right = if column < LAST_COLUMN {
+            self.model
+                .get_style_for_cell(sheet, row, column + 1)?
+                .border
+                .left
+        } else {
+            None
+        };
+
+        let border_bottom = if row < LAST_ROW {
+            self.model
+                .get_style_for_cell(sheet, row + 1, column)?
+                .border
+                .top
+        } else {
+            None
+        };
+
+        let border_left = if column > 1 {
+            self.model
+                .get_style_for_cell(sheet, row, column - 1)?
+                .border
+                .right
+        } else {
+            None
+        };
+
+        if is_max_border(style.border.top.as_ref(), border_top.as_ref()) {
+            style.border.top = border_top;
+        }
+
+        if is_max_border(style.border.right.as_ref(), border_right.as_ref()) {
+            style.border.right = border_right;
+        }
+
+        if is_max_border(style.border.bottom.as_ref(), border_bottom.as_ref()) {
+            style.border.bottom = border_bottom;
+        }
+
+        if is_max_border(style.border.left.as_ref(), border_left.as_ref()) {
+            style.border.left = border_left;
+        }
+
+        Ok(style)
     }
 
     /// Fills the cells from `source_area` until `to_row`.
@@ -1222,27 +1400,27 @@ impl UserModel {
     pub fn auto_fill_columns(&mut self, source_area: &Area, to_column: i32) -> Result<(), String> {
         let mut diff_list = Vec::new();
         let sheet = source_area.sheet;
-        let row1 = source_area.row;
-        let column1 = source_area.column;
-        let width1 = source_area.width;
-        let height1 = source_area.height;
+        let first_row = source_area.row;
+        let first_column = source_area.column;
+        let last_column = first_column + source_area.width - 1;
+        let last_row = first_row + source_area.height - 1;
 
         // Check first all parameters are valid
         if self.model.workbook.worksheet(sheet).is_err() {
             return Err(format!("Invalid worksheet index: '{sheet}'"));
         }
 
-        if !is_valid_column_number(column1) {
-            return Err(format!("Invalid column: '{column1}'"));
+        if !is_valid_column_number(first_column) {
+            return Err(format!("Invalid column: '{first_column}'"));
         }
-        if !is_valid_row(row1) {
-            return Err(format!("Invalid row: '{row1}'"));
+        if !is_valid_row(first_row) {
+            return Err(format!("Invalid row: '{first_row}'"));
         }
-        if !is_valid_column_number(column1 + width1 - 1) {
-            return Err(format!("Invalid column: '{}'", column1 + width1 - 1));
+        if !is_valid_column_number(last_column) {
+            return Err(format!("Invalid column: '{}'", last_column));
         }
-        if !is_valid_row(row1 + height1 - 1) {
-            return Err(format!("Invalid row: '{}'", row1 + height1 - 1));
+        if !is_valid_row(last_row) {
+            return Err(format!("Invalid row: '{}'", last_row));
         }
 
         if !is_valid_row(to_column) {
@@ -1255,21 +1433,21 @@ impl UserModel {
         // this is the range of columns we are going to fill
         let column_range: Vec<i32>;
 
-        if to_column >= column1 + width1 {
+        if to_column > last_column {
             // we go right, we start from `1 + width` to `to_column`,
-            anchor_column = column1;
+            anchor_column = first_column;
             sign = 1;
-            column_range = (column1 + width1..to_column + 1).collect();
-        } else if to_column < column1 {
+            column_range = (last_column + 1..to_column + 1).collect();
+        } else if to_column < first_column {
             // we go left, starting from `column1 - `` all the way to `to_column`
-            anchor_column = column1 + width1 - 1;
+            anchor_column = last_column;
             sign = -1;
-            column_range = (to_column..column1).rev().collect();
+            column_range = (to_column..first_column).rev().collect();
         } else {
             return Err("Invalid parameters for autofill".to_string());
         }
 
-        for row in row1..row1 + height1 {
+        for row in first_row..=last_row {
             let mut index = 0;
             for column_ref in &column_range {
                 let column = *column_ref;
@@ -1290,8 +1468,9 @@ impl UserModel {
                 self.model
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
-                // Compute the new style and set it
                 let new_style = self.model.get_style_for_cell(sheet, row, source_column)?;
+                // Compute the new style and set it
+
                 self.model.set_cell_style(sheet, row, column, &new_style)?;
 
                 // Add the diffs
@@ -1302,6 +1481,7 @@ impl UserModel {
                     old_value: Box::new(old_style),
                     new_value: Box::new(new_style),
                 });
+
                 diff_list.push(Diff::SetCellValue {
                     sheet,
                     row,
@@ -1310,7 +1490,7 @@ impl UserModel {
                     old_value: Box::new(old_value),
                 });
 
-                index = (index + sign) % width1;
+                index = (index + sign) % source_area.width;
             }
         }
         self.push_diff_list(diff_list);
@@ -1349,7 +1529,7 @@ impl UserModel {
     pub fn copy_to_clipboard(&self) -> Result<Clipboard, String> {
         let selected_area = self.get_selected_view();
         let sheet = selected_area.sheet;
-        let mut wtr = WriterBuilder::new().from_writer(vec![]);
+        let mut wtr = WriterBuilder::new().delimiter(b'\t').from_writer(vec![]);
 
         let mut data = HashMap::new();
         let [row_start, column_start, row_end, column_end] = selected_area.range;
@@ -1359,7 +1539,7 @@ impl UserModel {
             for column in column_start..=column_end {
                 let text = self.get_formatted_cell_value(sheet, row, column)?;
                 let content = self.get_cell_content(sheet, row, column)?;
-                let style = self.get_cell_style(sheet, row, column)?;
+                let style = self.model.get_style_for_cell(sheet, row, column)?;
                 data_row.insert(
                     column,
                     ClipboardCell {
@@ -1369,15 +1549,21 @@ impl UserModel {
                 );
                 text_row.push(text);
             }
-            wtr.write_record(text_row).unwrap();
+            wtr.write_record(text_row)
+                .map_err(|e| format!("Error while processing csv: {}", e))?;
             data.insert(row, data_row);
         }
 
-        let csv = String::from_utf8(wtr.into_inner().unwrap()).unwrap();
+        let csv = String::from_utf8(
+            wtr.into_inner()
+                .map_err(|e| format!("Processing error: '{}'", e))?,
+        )
+        .map_err(|e| format!("Error converting from utf8: '{}'", e))?;
 
         Ok(Clipboard {
             csv,
             data,
+            sheet,
             range: (row_start, column_start, row_end, column_end),
         })
     }
@@ -1385,6 +1571,7 @@ impl UserModel {
     /// Paste text that we copied
     pub fn paste_from_clipboard(
         &mut self,
+        source_sheet: u32,
         source_range: ClipboardTuple,
         clipboard: &ClipboardData,
         is_cut: bool,
@@ -1475,16 +1662,17 @@ impl UserModel {
                     let old_value = self
                         .model
                         .workbook
-                        .worksheet(sheet)?
+                        .worksheet(source_sheet)?
                         .cell(row, column)
                         .cloned();
+
                     diff_list.push(Diff::CellClearContents {
-                        sheet,
+                        sheet: source_sheet,
                         row,
                         column,
                         old_value: Box::new(old_value),
                     });
-                    self.model.cell_clear_contents(sheet, row, column)?;
+                    self.model.cell_clear_contents(source_sheet, row, column)?;
                 }
             }
         }
@@ -1501,18 +1689,10 @@ impl UserModel {
         let sheet = area.sheet;
         let mut row = area.row;
         let mut column = area.column;
-        // Create a sniffer with default settings
-        let mut sniffer = Sniffer::new();
         let mut csv_reader = Cursor::new(csv);
-
-        // Sniff the CSV metadata
-        let metadata = sniffer
-            .sniff_reader(&mut csv_reader)
-            .map_err(|_| "Failed")?;
-        // Reset the cursor to the beginning after sniffing
         csv_reader.set_position(0);
         let mut reader = ReaderBuilder::new()
-            .delimiter(metadata.dialect.delimiter)
+            .delimiter(b'\t')
             .has_headers(false)
             .from_reader(csv_reader);
         for record in reader.records() {
@@ -1572,7 +1752,7 @@ impl UserModel {
 
     fn apply_undo_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
-        for diff in diff_list {
+        for diff in diff_list.iter().rev() {
             match diff {
                 Diff::SetCellValue {
                     sheet,
@@ -1724,6 +1904,11 @@ impl UserModel {
                 } => {
                     self.model.set_show_grid_lines(*sheet, *old_value)?;
                 }
+                Diff::SetSheetState {
+                    index,
+                    old_value,
+                    new_value: _,
+                } => self.model.set_sheet_state(*index, old_value.clone())?,
             }
         }
         if needs_evaluation {
@@ -1851,6 +2036,11 @@ impl UserModel {
                 } => {
                     self.model.set_show_grid_lines(*sheet, *new_value)?;
                 }
+                Diff::SetSheetState {
+                    index,
+                    old_value: _,
+                    new_value,
+                } => self.model.set_sheet_state(*index, new_value.clone())?,
             }
         }
 

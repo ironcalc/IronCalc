@@ -35,7 +35,7 @@ pub struct WorkbookView {
     pub sheet: u32,
     /// The current width of the window
     pub window_width: i64,
-    /// The current heigh of the window
+    /// The current height of the window
     pub window_height: i64,
 }
 
@@ -578,7 +578,7 @@ impl Default for CellStyles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, PartialOrd, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum BorderStyle {
     Thin,

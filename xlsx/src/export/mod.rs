@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 mod _rels;
 mod doc_props;
 mod escape;

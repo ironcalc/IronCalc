@@ -26,6 +26,7 @@ pub struct SetCellValue {
 }
 
 impl Model {
+    #[allow(clippy::expect_used)]
     pub(crate) fn shift_cell_formula(
         &mut self,
         sheet: u32,
@@ -57,6 +58,7 @@ impl Model {
         }
     }
 
+    #[allow(clippy::expect_used)]
     pub fn forward_references(
         &mut self,
         source_area: &Area,

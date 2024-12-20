@@ -40,6 +40,7 @@ pub struct NumberPart {
     pub is_scientific: bool,
     pub scientific_minus: bool,
     pub exponent_digit_count: i32,
+    pub currency: Option<char>,
 }
 
 pub struct DatePart {
@@ -114,6 +115,7 @@ impl Parser {
         let mut exponent_digit_count = 0;
         let mut number = 'i';
         let mut index = 0;
+        let mut currency = None;
 
         while token != Token::EOF && token != Token::Separator {
             let next_token = self.lexer.next_token();
@@ -169,6 +171,9 @@ impl Parser {
                 }
                 Token::Condition(cmp, value) => {
                     condition = Some((cmp, value));
+                }
+                Token::Currency(c) => {
+                    currency = Some(c);
                 }
                 Token::QuestionMark => {
                     tokens.push(TextToken::Digit(Digit {
@@ -291,6 +296,7 @@ impl Parser {
                 is_scientific,
                 scientific_minus,
                 exponent_digit_count,
+                currency,
             })
         }
     }

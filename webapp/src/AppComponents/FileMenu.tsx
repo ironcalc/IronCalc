@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
-import { FileDown, FileUp, Plus, Trash2 } from "lucide-react";
+import { Check, FileDown, FileUp, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
-import { UploadFileDialog } from "./UploadFileDialog";
+import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
+import UploadFileDialog from "./UploadFileDialog";
 import { getModelsMetadata, getSelectedUuid } from "./storage";
 
 export function FileMenu(props: {
@@ -18,6 +19,7 @@ export function FileMenu(props: {
   const models = getModelsMetadata();
   const uuids = Object.keys(models);
   const selectedUuid = getSelectedUuid();
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const elements = [];
   for (const uuid of uuids) {
@@ -29,9 +31,9 @@ export function FileMenu(props: {
           setMenuOpen(false);
         }}
       >
-        <span style={{ width: "20px" }}>
-          {uuid === selectedUuid ? "•" : ""}
-        </span>
+        <CheckIndicator>
+          {uuid === selectedUuid ? <StyledCheck /> : ""}
+        </CheckIndicator>
         <MenuItemText
           style={{
             maxWidth: "240px",
@@ -57,9 +59,19 @@ export function FileMenu(props: {
         open={isMenuOpen}
         onClose={(): void => setMenuOpen(false)}
         anchorEl={anchorElement.current}
+        sx={{
+          "& .MuiPaper-root": { borderRadius: "8px", padding: "4px 0px" },
+          "& .MuiList-root": { padding: "0" },
+        }}
+
         // anchorOrigin={properties.anchorOrigin}
       >
-        <MenuItemWrapper onClick={props.newModel}>
+        <MenuItemWrapper
+          onClick={() => {
+            props.newModel();
+            setMenuOpen(false);
+          }}
+        >
           <StyledPlus />
           <MenuItemText>New</MenuItemText>
         </MenuItemWrapper>
@@ -78,16 +90,14 @@ export function FileMenu(props: {
             Download (.xlsx)
           </MenuItemText>
         </MenuItemWrapper>
-        <MenuItemWrapper>
+        <MenuItemWrapper
+          onClick={() => {
+            setDeleteDialogOpen(true);
+            setMenuOpen(false);
+          }}
+        >
           <StyledTrash />
-          <MenuItemText
-            onClick={() => {
-              props.onDelete();
-              setMenuOpen(false);
-            }}
-          >
-            Delete workbook
-          </MenuItemText>
+          <MenuItemText>Delete workbook</MenuItemText>
         </MenuItemWrapper>
         <MenuDivider />
         {elements}
@@ -95,10 +105,6 @@ export function FileMenu(props: {
       <Modal
         open={isImportMenuOpen}
         onClose={() => {
-          const root = document.getElementById("root");
-          if (root) {
-            root.style.filter = "";
-          }
           setImportMenuOpen(false);
         }}
         aria-labelledby="modal-modal-title"
@@ -107,13 +113,23 @@ export function FileMenu(props: {
         <>
           <UploadFileDialog
             onClose={() => {
-              const root = document.getElementById("root");
-              if (root) {
-                root.style.filter = "";
-              }
               setImportMenuOpen(false);
             }}
             onModelUpload={props.onModelUpload}
+          />
+        </>
+      </Modal>
+      <Modal
+        open={isDeleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <>
+          <DeleteWorkbookDialog
+            onClose={() => setDeleteDialogOpen(false)}
+            onConfirm={props.onDelete}
+            workbookName={selectedUuid ? models[selectedUuid] : ""}
           />
         </>
       </Modal>
@@ -149,12 +165,19 @@ const StyledTrash = styled(Trash2)`
   padding-right: 10px;
 `;
 
+const StyledCheck = styled(Check)`
+  width: 16px;
+  height: 16px;
+  color: #333333;
+  padding-right: 10px;
+`;
+
 const MenuDivider = styled("div")`
-  width: 80%;
+  width: 100%;
   margin: auto;
-  margin-top: 8px;
-  margin-bottom: 8px;
-  border-top: 1px solid #e0e0e0;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-top: 1px solid #eeeeee;
 `;
 
 const MenuItemText = styled("div")`
@@ -166,7 +189,12 @@ const MenuItemWrapper = styled(MenuItem)`
   display: flex;
   justify-content: flex-start;
   font-size: 14px;
-  width: 100%;
+  width: calc(100% - 8px);
+  min-width: 172px;
+  margin: 0px 4px;
+  border-radius: 4px;
+  padding: 8px;
+  height: 32px;
 `;
 
 const FileMenuWrapper = styled("div")`
@@ -174,11 +202,16 @@ const FileMenuWrapper = styled("div")`
   align-items: center;
   font-size: 12px;
   font-family: Inter;
-  padding: 10px;
-  height: 20px;
+  padding: 8px;
   border-radius: 4px;
   cursor: pointer;
   &:hover {
     background-color: #f2f2f2;
   }
+`;
+
+const CheckIndicator = styled("span")`
+  display: flex;
+  justify-content: center;
+  min-width: 26px;
 `;

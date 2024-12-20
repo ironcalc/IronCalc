@@ -49,21 +49,15 @@ pub mod stringify;
 pub mod walk;
 
 #[cfg(test)]
-mod test;
-
-#[cfg(test)]
-mod test_ranges;
-
-#[cfg(test)]
-mod test_move_formula;
-#[cfg(test)]
-mod test_tables;
+mod tests;
 
 pub(crate) fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String> {
     let mut lexer = lexer::Lexer::new(
         formula,
         lexer::LexerMode::A1,
+        #[allow(clippy::expect_used)]
         get_locale("en").expect(""),
+        #[allow(clippy::expect_used)]
         get_language("en").expect(""),
     );
     if let TokenType::Range {
@@ -202,7 +196,9 @@ impl Parser {
         let lexer = lexer::Lexer::new(
             "",
             lexer::LexerMode::A1,
+            #[allow(clippy::expect_used)]
             get_locale("en").expect(""),
+            #[allow(clippy::expect_used)]
             get_language("en").expect(""),
         );
         Parser {
@@ -518,20 +514,6 @@ impl Parser {
                 let mut absolute_row1 = left.absolute_row;
                 let mut absolute_row2 = right.absolute_row;
 
-                if self.lexer.is_a1_mode() {
-                    if !left.absolute_row {
-                        row1 -= context.row
-                    };
-                    if !left.absolute_column {
-                        column1 -= context.column
-                    };
-                    if !right.absolute_row {
-                        row2 -= context.row
-                    };
-                    if !right.absolute_column {
-                        column2 -= context.column
-                    };
-                }
                 if row1 > row2 {
                     (row2, row1) = (row1, row2);
                     (absolute_row2, absolute_row1) = (absolute_row1, absolute_row2);
@@ -540,6 +522,22 @@ impl Parser {
                     (column2, column1) = (column1, column2);
                     (absolute_column2, absolute_column1) = (absolute_column1, absolute_column2);
                 }
+
+                if self.lexer.is_a1_mode() {
+                    if !absolute_row1 {
+                        row1 -= context.row
+                    };
+                    if !absolute_column1 {
+                        column1 -= context.column
+                    };
+                    if !absolute_row2 {
+                        row2 -= context.row
+                    };
+                    if !absolute_column2 {
+                        column2 -= context.column
+                    };
+                }
+
                 match sheet_index {
                     Some(index) => Node::RangeKind {
                         sheet_name: sheet,
@@ -675,14 +673,23 @@ impl Parser {
                         }
                     };
                     // table-name => table
-                    let table = self.tables.get(&table_name).unwrap_or_else(|| {
-                        panic!(
-                            "Table not found: '{table_name}' at '{}!{}{}'",
-                            context.sheet,
-                            number_to_column(context.column).expect(""),
-                            context.row
-                        )
-                    });
+                    let table = match self.tables.get(&table_name) {
+                        Some(t) => t,
+                        None => {
+                            let message = format!(
+                                "Table not found: '{table_name}' at '{}!{}{}'",
+                                context.sheet,
+                                number_to_column(context.column)
+                                    .unwrap_or(format!("{}", context.column)),
+                                context.row
+                            );
+                            return Node::ParseErrorKind {
+                                formula: self.lexer.get_formula(),
+                                position: 0,
+                                message,
+                            };
+                        }
+                    };
                     let table_sheet_index = match self.get_sheet_index_by_name(&table.sheet_name) {
                         Some(i) => i,
                         None => {
@@ -701,6 +708,7 @@ impl Parser {
                     };
 
                     // context must be with tables.reference
+                    #[allow(clippy::expect_used)]
                     let (column_start, mut row_start, column_end, mut row_end) =
                         parse_range(&table.reference).expect("Failed parsing range");
 

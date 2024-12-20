@@ -35,6 +35,11 @@ export function FileBar(properties: {
         }}
         onDelete={properties.onDelete}
       />
+      <HelpButton
+        onClick={() => window.open("https://docs.ironcalc.com", "_blank")}
+      >
+        Help
+      </HelpButton>
       <WorkbookTitle
         name={properties.model.getName()}
         onNameChange={(name) => {
@@ -84,7 +89,7 @@ export function FileBar(properties: {
 
 const StyledDesktopLogo = styled(IronCalcLogo)`
   width: 120px;
-  margin-left: 10px;
+  margin-left: 12px;
   @media (max-width: 769px) {
     display: none;
   }
@@ -98,6 +103,19 @@ const StyledIronCalcIcon = styled(IronCalcIcon)`
   }
 `;
 
+const HelpButton = styled("div")`
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-family: Inter;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  &:hover {
+    background-color: #f2f2f2;
+  }
+`;
+
 const Toast = styled("div")`
   font-weight: 400;
   font-size: 12px;
@@ -107,7 +125,7 @@ const Toast = styled("div")`
 `;
 
 const Divider = styled("div")`
-  margin: 10px;
+  margin: 0px 8px 0px 16px;
   height: 12px;
   border-left: 1px solid #e0e0e0;
 `;

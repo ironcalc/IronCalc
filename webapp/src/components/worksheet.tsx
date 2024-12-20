@@ -9,9 +9,9 @@ import {
 } from "./WorksheetCanvas/constants";
 import WorksheetCanvas from "./WorksheetCanvas/worksheetCanvas";
 import {
-  FORMULA_BAR_HEIGH,
-  NAVIGATION_HEIGH,
-  TOOLBAR_HEIGH,
+  FORMULA_BAR_HEIGHT,
+  NAVIGATION_HEIGHT,
+  TOOLBAR_HEIGHT,
 } from "./constants";
 import Editor from "./editor/editor";
 import type { Cell } from "./types";
@@ -104,10 +104,16 @@ function Worksheet(props: {
         editor: editor,
       },
       onColumnWidthChanges(sheet, column, width) {
+        if (width < 0) {
+          return;
+        }
         model.setColumnWidth(sheet, column, width);
         worksheetCanvas.current?.renderSheet();
       },
       onRowHeightChanges(sheet, row, height) {
+        if (height < 0) {
+          return;
+        }
         model.setRowHeight(sheet, row, height);
         worksheetCanvas.current?.renderSheet();
       },
@@ -433,10 +439,10 @@ const SheetContainer = styled("div")`
 const Wrapper = styled("div")({
   position: "absolute",
   overflow: "scroll",
-  top: TOOLBAR_HEIGH + FORMULA_BAR_HEIGH + 1,
+  top: TOOLBAR_HEIGHT + FORMULA_BAR_HEIGHT + 1,
   left: 0,
   right: 0,
-  bottom: NAVIGATION_HEIGH + 1,
+  bottom: NAVIGATION_HEIGHT + 1,
   overscrollBehavior: "none",
 });
 

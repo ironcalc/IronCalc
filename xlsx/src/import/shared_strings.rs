@@ -120,6 +120,7 @@ fn read_shared_strings_from_reader<R: Read>(reader: &mut R) -> Result<Vec<String
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     #[test]

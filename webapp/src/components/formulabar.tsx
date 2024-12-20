@@ -5,7 +5,7 @@ import {
   COLUMN_WIDTH_SCALE,
   ROW_HEIGH_SCALE,
 } from "./WorksheetCanvas/constants";
-import { FORMULA_BAR_HEIGH } from "./constants";
+import { FORMULA_BAR_HEIGHT } from "./constants";
 import Editor from "./editor/editor";
 import type { WorkbookState } from "./workbookState";
 
@@ -122,7 +122,7 @@ const Container = styled("div")`
   align-items: center;
   background: ${(properties): string =>
     properties.theme.palette.background.default};
-  height: ${FORMULA_BAR_HEIGH}px;
+  height: ${FORMULA_BAR_HEIGHT}px;
 `;
 
 const AddressContainer = styled("div")`

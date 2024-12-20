@@ -41,6 +41,7 @@ pub use crate::mock_time::get_milliseconds_since_epoch;
 /// * Or mocked for tests
 #[cfg(not(test))]
 #[cfg(not(target_arch = "wasm32"))]
+#[allow(clippy::expect_used)]
 pub fn get_milliseconds_since_epoch() -> i64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
@@ -90,11 +91,11 @@ pub(crate) enum ParsedDefinedName {
 /// * The Locale: a parsed version of the Workbook's locale
 /// * The Timezone: an object representing the Workbook's timezone
 /// * The language. Note that the timezone and the locale belong to the workbook while
-/// the language can be different for different users looking _at the same_ workbook.
+///   the language can be different for different users looking _at the same_ workbook.
 /// * Parsed Formulas: All the formulas in the workbook are parsed here (runtime only)
 /// * A list of cells with its status (evaluating, evaluated, not evaluated)
 /// * A dictionary with the shared strings and their indices.
-/// This is an optimization for large files (~1 million rows)
+///   This is an optimization for large files (~1 million rows)
 pub struct Model {
     /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook,
@@ -529,6 +530,7 @@ impl Model {
         }
     }
 
+    #[allow(clippy::expect_used)]
     fn cell_reference_to_string(
         &self,
         cell_reference: &CellReferenceIndex,
@@ -544,6 +546,7 @@ impl Model {
     /// Sets `result` in the cell given by `sheet` sheet index, row and column
     /// Note that will panic if the cell does not exist
     /// It will do nothing if the cell does not have a formula
+    #[allow(clippy::expect_used)]
     fn set_cell_value(&mut self, cell_reference: CellReferenceIndex, result: &CalcResult) {
         let CellReferenceIndex { sheet, column, row } = cell_reference;
         let cell = &self.workbook.worksheets[sheet as usize].sheet_data[&row][&column];
@@ -677,6 +680,13 @@ impl Model {
             return Ok(());
         }
         Err(format!("Invalid color: {}", color))
+    }
+
+    /// Changes the visibility of a sheet
+    pub fn set_sheet_state(&mut self, sheet: u32, state: SheetState) -> Result<(), String> {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        worksheet.state = state;
+        Ok(())
     }
 
     /// Makes the grid lines in the sheet visible (`true`) or hidden (`false`)
@@ -875,6 +885,7 @@ impl Model {
             .map_err(|_| format!("Invalid timezone: {}", workbook.settings.tz))?;
 
         // FIXME: Add support for display languages
+        #[allow(clippy::expect_used)]
         let language = get_language("en").expect("").clone();
         let mut shared_strings = HashMap::new();
         for (index, s) in workbook.shared_strings.iter().enumerate() {
@@ -1986,6 +1997,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
     use super::CellReferenceIndex as CellReference;
     use crate::{test::util::new_empty_model, types::Cell};
 

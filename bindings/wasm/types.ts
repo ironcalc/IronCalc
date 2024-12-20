@@ -113,6 +113,7 @@ export interface WorksheetProperties {
   name: string;
   color: string;
   sheet_id: number;
+  state: string;
 }
 
 interface CellStyleFill {
@@ -143,10 +144,12 @@ export enum BorderStyle {
   Thin = "thin",
   Medium = "medium",
   Thick = "thick",
-  Dashed = "dashed",
-  Dotted = "dotted",
   Double = "double",
-  None = "none",
+  Dotted = "dotted",
+  SlantDashDot = "slantdashdot",
+  MediumDashed = "mediumdashed",
+  MediumDashDotDot = "mediumdashdotdot",
+  MediumDashDot = "mediumdashdot",
 }
 
 interface BorderItem {

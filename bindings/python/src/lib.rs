@@ -10,6 +10,8 @@ use xlsx::import;
 
 mod types;
 
+use crate::types::PyCellType;
+
 create_exception!(_ironcalc, WorkbookError, PyException);
 
 /// This is a model implementing the 'raw' API
@@ -57,6 +59,21 @@ impl PyModel {
     }
 
     // Get values
+
+    /// Get raw value
+    pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> PyResult<String> {
+        self.model
+            .get_cell_content(sheet, row, column)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    /// Get cell type
+    pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> PyResult<PyCellType> {
+        self.model
+            .get_cell_type(sheet, row, column)
+            .map(|cell_type| cell_type.into())
+            .map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
 
     /// Get formatted value
     pub fn get_formatted_cell_value(&self, sheet: u32, row: i32, column: i32) -> PyResult<String> {
@@ -208,12 +225,13 @@ impl PyModel {
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 
+    #[allow(clippy::panic)]
     pub fn test_panic(&self) -> PyResult<()> {
         panic!("This function panics for testing panic handling");
     }
 }
 
-/// Create methods
+// Create methods
 
 /// Loads a function from an xlsx file
 #[pyfunction]
@@ -240,6 +258,7 @@ pub fn create(name: &str, locale: &str, tz: &str) -> PyResult<PyModel> {
 }
 
 #[pyfunction]
+#[allow(clippy::panic)]
 pub fn test_panic() {
     panic!("This function panics for testing panic handling");
 }

@@ -108,11 +108,19 @@ const useKeyboardNavigation = (
 
             break;
           }
+          case "a": {
+            // TODO: Area selection. CTRL+A should select "continuous" area around the selection,
+            // if it does exist then whole sheet is selected.
+            event.stopPropagation();
+            event.preventDefault();
+            break;
+          }
           // No default
         }
         if (isNavigationKey(key)) {
           // Ctrl+Arrows, Ctrl+Home/End
           options.onNavigationToEdge(key);
+          // navigate_to_edge_in_direction
           event.stopPropagation();
           event.preventDefault();
         }

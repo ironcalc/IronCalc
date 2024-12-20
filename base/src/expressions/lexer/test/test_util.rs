@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+
 use crate::expressions::{
     lexer::util::get_tokens,
     token::{OpCompare, OpSum, TokenType},
@@ -20,6 +22,25 @@ fn test_get_tokens() {
     let l = t.get(2).expect("expected token");
     assert_eq!(l.start, 3);
     assert_eq!(l.end, 10);
+}
+
+#[test]
+fn get_tokens_unicode() {
+    let formula = "'🇵🇭 Philippines'!A1";
+    let t = get_tokens(formula);
+    assert_eq!(t.len(), 1);
+
+    let expected = TokenType::Reference {
+        sheet: Some("🇵🇭 Philippines".to_string()),
+        row: 1,
+        column: 1,
+        absolute_column: false,
+        absolute_row: false,
+    };
+    let l = t.first().expect("expected token");
+    assert_eq!(l.token, expected);
+    assert_eq!(l.start, 0);
+    assert_eq!(l.end, 19);
 }
 
 #[test]

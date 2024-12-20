@@ -19,6 +19,3 @@ pyo3 = { version = "0.22.3", features = ["extension-module"] }
 [features]
 extension-module = ["pyo3/extension-module"]
 default = ["extension-module"]
-
-[tool.maturin]
-features = ["pyo3/extension-module"]

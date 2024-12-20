@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use crate::{
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT},
     test::util::new_empty_model,

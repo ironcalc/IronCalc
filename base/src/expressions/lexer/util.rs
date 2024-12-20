@@ -52,7 +52,9 @@ pub fn get_tokens(formula: &str) -> Vec<MarkedToken> {
     let mut lexer = Lexer::new(
         formula,
         LexerMode::A1,
+        #[allow(clippy::expect_used)]
         get_locale("en").expect(""),
+        #[allow(clippy::expect_used)]
         get_language("en").expect(""),
     );
     let mut start = lexer.get_position();

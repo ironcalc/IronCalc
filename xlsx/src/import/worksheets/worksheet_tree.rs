@@ -1,4 +1,5 @@
-use core::str;
+#![allow(clippy::unwrap_used)]
+
 use std::{collections::HashMap, io::Read};
 
 use ironcalc_base::{

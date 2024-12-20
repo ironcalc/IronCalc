@@ -5,7 +5,10 @@ import type {
   WorksheetProperties,
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
+import { PaintRoller } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactDOMServer from "react-dom/server";
+import SheetTabBar from "./SheetTabBar/SheetTabBar";
 import {
   COLUMN_WIDTH_SCALE,
   LAST_COLUMN,
@@ -16,7 +19,6 @@ import {
   getNewClipboardId,
 } from "./clipboard";
 import FormulaBar from "./formulabar";
-import Navigation from "./navigation/navigation";
 import Toolbar from "./toolbar";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 import { type NavigationKey, getCellAddress } from "./util";
@@ -32,8 +34,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const setRedrawId = useState(0)[1];
   const info = model
     .getWorksheetsProperties()
-    .map(({ name, color, sheet_id }: WorksheetProperties) => {
-      return { name, color: color ? color : "#FFF", sheetId: sheet_id };
+    .map(({ name, color, sheet_id, state }: WorksheetProperties) => {
+      return { name, color: color ? color : "#FFF", sheetId: sheet_id, state };
     });
   const focusWorkbook = useCallback(() => {
     if (rootRef.current) {
@@ -136,7 +138,15 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     const el = rootRef.current?.getElementsByClassName("sheet-container")[0];
     if (el) {
       (el as HTMLElement).style.cursor =
-        `url('data:image/svg+xml;utf8,<svg data-v-56bd7dfc="" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paintbrush-vertical"><path d="M10 2v2"></path><path d="M14 2v4"></path><path d="M17 2a1 1 0 0 1 1 1v9H6V3a1 1 0 0 1 1-1z"></path><path d="M6 12a1 1 0 0 0-1 1v1a2 2 0 0 0 2 2h2a1 1 0 0 1 1 1v2.9a2 2 0 1 0 4 0V17a1 1 0 0 1 1-1h2a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1"></path></svg>'), auto`;
+        `url('data:image/svg+xml;utf8,${encodeURIComponent(
+          ReactDOMServer.renderToString(
+            <PaintRoller
+              width={24}
+              height={24}
+              style={{ transform: "rotate(-8deg)" }}
+            />,
+          ),
+        )}'), auto`;
     }
   };
 
@@ -390,7 +400,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             }
             data.set(Number.parseInt(row, 10), rowMap);
           }
-          model.pasteFromClipboard(source.area, data, source.type === "cut");
+          model.pasteFromClipboard(
+            source.sheet,
+            source.area,
+            data,
+            source.type === "cut",
+          );
           setRedrawId((id) => id + 1);
         } else if (mimeType === "text/plain") {
           const {
@@ -416,6 +431,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       }}
       onCopy={(event: React.ClipboardEvent) => {
         const data = model.copyToClipboard();
+        const sheet = model.getSelectedSheet();
         // '2024-10-18T14:07:37.599Z'
 
         let clipboardId = sessionStorage.getItem(
@@ -443,6 +459,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           type: "copy",
           area: data.range,
           sheetData,
+          sheet,
           clipboardId,
         });
         event.clipboardData.setData("text/plain", data.csv);
@@ -452,6 +469,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       }}
       onCut={(event: React.ClipboardEvent) => {
         const data = model.copyToClipboard();
+        const sheet = model.getSelectedSheet();
         // '2024-10-18T14:07:37.599Z'
 
         let clipboardId = sessionStorage.getItem(
@@ -479,6 +497,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           type: "cut",
           area: data.range,
           sheetData,
+          sheet,
           clipboardId,
         });
         event.clipboardData.setData("text/plain", data.csv);
@@ -530,7 +549,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           );
           setRedrawId((id) => id + 1);
         }}
-        fillColor={style.fill.fg_color || "#FFF"}
+        fillColor={style.fill.fg_color || "#FFFFFF"}
         fontColor={style.font.color}
         bold={style.font.b}
         underline={style.font.u}
@@ -572,11 +591,14 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
       />
 
-      <Navigation
+      <SheetTabBar
         sheets={info}
         selectedIndex={model.getSelectedSheet()}
         workbookState={workbookState}
         onSheetSelected={(sheet: number): void => {
+          if (info[sheet].state !== "visible") {
+            model.unhideSheet(sheet);
+          }
           model.setSelectedSheet(sheet);
           setRedrawId((value) => value + 1);
         }}
@@ -605,6 +627,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onSheetDeleted={(): void => {
           const selectedSheet = model.getSelectedSheet();
           model.deleteSheet(selectedSheet);
+          setRedrawId((value) => value + 1);
+        }}
+        onHideSheet={(): void => {
+          const selectedSheet = model.getSelectedSheet();
+          model.hideSheet(selectedSheet);
           setRedrawId((value) => value + 1);
         }}
       />

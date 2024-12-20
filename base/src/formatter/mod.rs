@@ -74,6 +74,7 @@ mod test;
 //
 // * Color [Red] or [Color 23] or [Color23]
 // * Conditions [<100]
+// * Currency [$€]
 // * Space _X when X is any given char
 // * A spacer of chars: *X where X is repeated as much as possible
 // * Literals: $, (, ), :, +, - and space

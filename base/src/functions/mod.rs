@@ -75,6 +75,7 @@ pub enum Function {
 
     // Information
     ErrorType,
+    Formulatext,
     Isblank,
     Iserr,
     Iserror,
@@ -122,6 +123,7 @@ pub enum Function {
     Textbefore,
     Textjoin,
     Trim,
+    Unicode,
     Upper,
     Value,
     Valuetotext,
@@ -138,6 +140,7 @@ pub enum Function {
     Countifs,
     Maxifs,
     Minifs,
+    Geomean,
 
     // Date and time
     Date,
@@ -246,7 +249,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 192> {
+    pub fn into_iter() -> IntoIter<Function, 195> {
         [
             Function::And,
             Function::False,
@@ -316,6 +319,7 @@ impl Function {
             Function::Search,
             Function::Text,
             Function::Trim,
+            Function::Unicode,
             Function::Upper,
             Function::Isnumber,
             Function::Isnontext,
@@ -330,6 +334,7 @@ impl Function {
             Function::Isodd,
             Function::Iseven,
             Function::ErrorType,
+            Function::Formulatext,
             Function::Isformula,
             Function::Type,
             Function::Sheet,
@@ -344,6 +349,7 @@ impl Function {
             Function::Countifs,
             Function::Maxifs,
             Function::Minifs,
+            Function::Geomean,
             Function::Year,
             Function::Day,
             Function::Month,
@@ -460,6 +466,7 @@ impl Function {
             Function::Textbefore => "_xlfn.TEXTBEFORE".to_string(),
             Function::Textafter => "_xlfn.TEXTAFTER".to_string(),
             Function::Textjoin => "_xlfn.TEXTJOIN".to_string(),
+            Function::Unicode => "_xlfn.UNICODE".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),
@@ -479,6 +486,7 @@ impl Function {
             Function::Valuetotext => "_xlfn.VALUETOTEXT".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
+            Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
             _ => self.to_string(),
         }
     }
@@ -567,6 +575,7 @@ impl Function {
             "SEARCH" => Some(Function::Search),
             "TEXT" => Some(Function::Text),
             "TRIM" => Some(Function::Trim),
+            "UNICODE" | "_XLFN.UNICODE" => Some(Function::Unicode),
             "UPPER" => Some(Function::Upper),
 
             "REPT" => Some(Function::Rept),
@@ -588,6 +597,7 @@ impl Function {
             "ISODD" => Some(Function::Isodd),
             "ISEVEN" => Some(Function::Iseven),
             "ERROR.TYPE" => Some(Function::ErrorType),
+            "FORMULATEXT" | "_XLFN.FORMULATEXT" => Some(Function::Formulatext),
             "ISFORMULA" | "_XLFN.ISFORMULA" => Some(Function::Isformula),
             "TYPE" => Some(Function::Type),
             "SHEET" | "_XLFN.SHEET" => Some(Function::Sheet),
@@ -603,6 +613,7 @@ impl Function {
             "COUNTIFS" => Some(Function::Countifs),
             "MAXIFS" | "_XLFN.MAXIFS" => Some(Function::Maxifs),
             "MINIFS" | "_XLFN.MINIFS" => Some(Function::Minifs),
+            "GEOMEAN" => Some(Function::Geomean),
             // Date and Time
             "YEAR" => Some(Function::Year),
             "DAY" => Some(Function::Day),
@@ -779,6 +790,7 @@ impl fmt::Display for Function {
             Function::Search => write!(f, "SEARCH"),
             Function::Text => write!(f, "TEXT"),
             Function::Trim => write!(f, "TRIM"),
+            Function::Unicode => write!(f, "UNICODE"),
             Function::Upper => write!(f, "UPPER"),
             Function::Isnumber => write!(f, "ISNUMBER"),
             Function::Isnontext => write!(f, "ISNONTEXT"),
@@ -793,6 +805,7 @@ impl fmt::Display for Function {
             Function::Isodd => write!(f, "ISODD"),
             Function::Iseven => write!(f, "ISEVEN"),
             Function::ErrorType => write!(f, "ERROR.TYPE"),
+            Function::Formulatext => write!(f, "FORMULATEXT"),
             Function::Isformula => write!(f, "ISFORMULA"),
             Function::Type => write!(f, "TYPE"),
             Function::Sheet => write!(f, "SHEET"),
@@ -808,6 +821,7 @@ impl fmt::Display for Function {
             Function::Countifs => write!(f, "COUNTIFS"),
             Function::Maxifs => write!(f, "MAXIFS"),
             Function::Minifs => write!(f, "MINIFS"),
+            Function::Geomean => write!(f, "GEOMEAN"),
             Function::Year => write!(f, "YEAR"),
             Function::Day => write!(f, "DAY"),
             Function::Month => write!(f, "MONTH"),
@@ -1012,6 +1026,7 @@ impl Model {
             Function::Search => self.fn_search(args, cell),
             Function::Text => self.fn_text(args, cell),
             Function::Trim => self.fn_trim(args, cell),
+            Function::Unicode => self.fn_unicode(args, cell),
             Function::Upper => self.fn_upper(args, cell),
             // Information
             Function::Isnumber => self.fn_isnumber(args, cell),
@@ -1027,6 +1042,7 @@ impl Model {
             Function::Isodd => self.fn_isodd(args, cell),
             Function::Iseven => self.fn_iseven(args, cell),
             Function::ErrorType => self.fn_errortype(args, cell),
+            Function::Formulatext => self.fn_formulatext(args, cell),
             Function::Isformula => self.fn_isformula(args, cell),
             Function::Type => self.fn_type(args, cell),
             Function::Sheet => self.fn_sheet(args, cell),
@@ -1042,6 +1058,7 @@ impl Model {
             Function::Countifs => self.fn_countifs(args, cell),
             Function::Maxifs => self.fn_maxifs(args, cell),
             Function::Minifs => self.fn_minifs(args, cell),
+            Function::Geomean => self.fn_geomean(args, cell),
             // Date and Time
             Function::Year => self.fn_year(args, cell),
             Function::Day => self.fn_day(args, cell),
@@ -1148,6 +1165,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use std::{
         fs::File,
         io::{BufRead, BufReader},

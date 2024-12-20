@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 
+mod border_utils;
 mod common;
 mod history;
 mod ui;

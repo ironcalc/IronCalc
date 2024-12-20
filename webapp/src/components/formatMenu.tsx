@@ -34,11 +34,18 @@ const FormatMenu = (properties: FormatMenuProps) => {
       >
         {properties.children}
       </ChildrenWrapper>
-      <Menu
+      <StyledMenu
         open={isMenuOpen}
         onClose={(): void => setMenuOpen(false)}
         anchorEl={anchorElement.current}
-        anchorOrigin={properties.anchorOrigin}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "left",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
       >
         <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.AUTO)}>
           <MenuItemText>{t("toolbar.format_menu.auto")}</MenuItemText>
@@ -107,7 +114,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper onClick={(): void => setPickerOpen(true)}>
           <MenuItemText>{t("toolbar.format_menu.custom")}</MenuItemText>
         </MenuItemWrapper>
-      </Menu>
+      </StyledMenu>
       <FormatPicker
         numFmt={properties.numFmt}
         onChange={onSelect}
@@ -119,18 +126,40 @@ const FormatMenu = (properties: FormatMenuProps) => {
   );
 };
 
+const StyledMenu = styled(Menu)`
+  & .MuiPaper-root {
+    border-radius: 8px;
+    padding: 4px 0px;
+    margin-left: -4px; // Starting with a small offset
+  }
+  & .MuiList-root {
+    padding: 0;
+  }
+`;
+
 const MenuItemWrapper = styled(MenuItem)`
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  width: 100%;
+  width: calc(100% - 8px);
+  min-width: 172px;
+  margin: 0px 4px;
+  border-radius: 4px;
+  padding: 8px;
+  height: 32px;
 `;
 
 const ChildrenWrapper = styled("div")`
   display: flex;
 `;
 
-const MenuDivider = styled("div")``;
+const MenuDivider = styled("div")`
+  width: 100%;
+  margin: auto;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-top: 1px solid #eeeeee;
+`;
 
 const MenuItemText = styled("div")`
   color: #000;

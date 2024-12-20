@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 //! <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
 
 //! A workbook is composed of workbook-level properties and a collection of 1 or more sheets.

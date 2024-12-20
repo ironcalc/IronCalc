@@ -53,8 +53,13 @@ impl Model {
         false
     }
 
-    fn cell_hidden_status(&self, sheet_index: u32, row: i32, column: i32) -> CellTableStatus {
-        let worksheet = self.workbook.worksheet(sheet_index).expect("");
+    fn cell_hidden_status(
+        &self,
+        sheet_index: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<CellTableStatus, String> {
+        let worksheet = self.workbook.worksheet(sheet_index)?;
         let mut hidden = false;
         for row_style in &worksheet.rows {
             if row_style.r == row {
@@ -63,13 +68,13 @@ impl Model {
             }
         }
         if !hidden {
-            return CellTableStatus::Normal;
+            return Ok(CellTableStatus::Normal);
         }
         // The row is hidden we need to know if the table has filters
         if self.get_table_for_cell(sheet_index, row, column) {
-            CellTableStatus::Filtered
+            Ok(CellTableStatus::Filtered)
         } else {
-            CellTableStatus::Hidden
+            Ok(CellTableStatus::Hidden)
         }
     }
 
@@ -143,7 +148,11 @@ impl Model {
                             let column2 = right.column;
 
                             for row in row1..=row2 {
-                                let cell_status = self.cell_hidden_status(left.sheet, row, column1);
+                                let cell_status = self
+                                    .cell_hidden_status(left.sheet, row, column1)
+                                    .map_err(|message| {
+                                        CalcResult::new_error(Error::ERROR, cell, message)
+                                    })?;
                                 if cell_status == CellTableStatus::Filtered {
                                     continue;
                                 }
@@ -380,7 +389,14 @@ impl Model {
                             let column2 = right.column;
 
                             for row in row1..=row2 {
-                                let cell_status = self.cell_hidden_status(left.sheet, row, column1);
+                                let cell_status = match self
+                                    .cell_hidden_status(left.sheet, row, column1)
+                                {
+                                    Ok(s) => s,
+                                    Err(message) => {
+                                        return CalcResult::new_error(Error::ERROR, cell, message);
+                                    }
+                                };
                                 if cell_status == CellTableStatus::Filtered {
                                     continue;
                                 }
@@ -449,7 +465,14 @@ impl Model {
                             let column2 = right.column;
 
                             for row in row1..=row2 {
-                                let cell_status = self.cell_hidden_status(left.sheet, row, column1);
+                                let cell_status = match self
+                                    .cell_hidden_status(left.sheet, row, column1)
+                                {
+                                    Ok(s) => s,
+                                    Err(message) => {
+                                        return CalcResult::new_error(Error::ERROR, cell, message);
+                                    }
+                                };
                                 if cell_status == CellTableStatus::Filtered {
                                     continue;
                                 }

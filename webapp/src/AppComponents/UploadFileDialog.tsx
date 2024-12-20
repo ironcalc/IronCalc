@@ -1,16 +1,33 @@
 import styled from "@emotion/styled";
 import { BookOpen, FileUp } from "lucide-react";
-import { type DragEvent, useRef, useState } from "react";
+import { type DragEvent, useEffect, useRef, useState } from "react";
 
-export function UploadFileDialog(properties: {
+function UploadFileDialog(properties: {
   onClose: () => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
 }) {
   const [hover, setHover] = useState(false);
   const [message, setMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const crossRef = useRef<HTMLDivElement>(null);
 
   const { onModelUpload } = properties;
+
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (root) {
+      root.style.filter = "blur(2px)";
+    }
+    if (crossRef.current) {
+      crossRef.current.focus();
+    }
+    return () => {
+      const root = document.getElementById("root");
+      if (root) {
+        root.style.filter = "none";
+      }
+    };
+  }, []);
 
   const handleClose = () => {
     properties.onClose();
@@ -79,12 +96,16 @@ export function UploadFileDialog(properties: {
     reader.readAsArrayBuffer(file);
   };
 
-  const root = document.getElementById("root");
-  if (root) {
-    root.style.filter = "blur(4px)";
-  }
   return (
-    <UploadDialog>
+    <UploadDialog
+      tabIndex={-1}
+      role="dialog"
+      onKeyDown={(event) => {
+        if (event.code === "Escape") {
+          handleClose();
+        }
+      }}
+    >
       <UploadTitle>
         <span style={{ flexGrow: 2, marginLeft: 12 }}>
           Import an .xlsx file
@@ -92,7 +113,8 @@ export function UploadFileDialog(properties: {
         <Cross
           style={{ marginRight: 12 }}
           onClick={handleClose}
-          onKeyDown={() => {}}
+          ref={crossRef}
+          tabIndex={0}
         >
           <svg
             width="16"
@@ -134,7 +156,7 @@ export function UploadFileDialog(properties: {
                     width: 16,
                     color: "#EFAA6D",
                     backgroundColor: "#F2994A1A",
-                    padding: "2px 4px",
+                    padding: "2px 6px",
                     borderRadius: 4,
                   }}
                 />
@@ -192,7 +214,13 @@ export function UploadFileDialog(properties: {
         <BookOpen
           style={{ width: 16, height: 16, marginLeft: 12, marginRight: 8 }}
         />
-        <span>Learn more about importing files into IronCalc</span>
+        <UploadFooterLink
+          href="https://docs.ironcalc.com/web-application/importing-files.html"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn more about importing files into IronCalc
+        </UploadFooterLink>
       </UploadFooter>
     </UploadDialog>
   );
@@ -202,34 +230,46 @@ const Cross = styled("div")`
   &:hover {
     background-color: #f5f5f5;
   }
+  display: flex;
   border-radius: 4px;
-  height: 16px;
-  width: 16px;
+  height: 24px;
+  width: 24px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
 `;
 
 const DocLink = styled("span")`
   color: #f2994a;
-  text-decoration: underline;
+  text-decoration: none;
   &:hover {
-    font-weight: bold;
+    text-decoration: underline;
   }
 `;
 
 const UploadFooter = styled("div")`
-  height: 40px;
+  height: 44px;
   border-top: 1px solid #e0e0e0;
-  font-size: 12px;
-  font-weight: 400;
   color: #757575;
   display: flex;
   align-items: center;
+`;
+
+const UploadFooterLink = styled("a")`
+  font-size: 12px;
+  font-weight: 400;
+  color: #757575;
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
 `;
 
 const UploadTitle = styled("div")`
   display: flex;
   align-items: center;
   border-bottom: 1px solid #e0e0e0;
-  height: 40px;
+  height: 44px;
   font-size: 14px;
   font-weight: 500;
 `;
@@ -241,7 +281,8 @@ const UploadDialog = styled("div")`
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 455px;
+  width: 460px;
+  max-width: 90%;
   height: 285px;
   background: #fff;
   border: 1px solid #e0e0e0;
@@ -251,6 +292,16 @@ const UploadDialog = styled("div")`
 `;
 
 const DropZone = styled("div")`
+  &:hover {
+    border: 1px dashed #f2994a;
+    transition: 0.2s ease-in-out;
+    gap: 8px;
+    background: linear-gradient(
+      180deg,
+      rgba(242, 153, 74, 0.12) 0%,
+      rgba(242, 153, 74, 0) 100%
+    );
+  }
   flex-grow: 2;
   border-radius: 10px;
   text-align: center;
@@ -259,7 +310,7 @@ const DropZone = styled("div")`
   font-family: Arial, sans-serif;
   cursor: pointer;
   background-color: #faebd7;
-  border: 1px dashed #f2994a;
+  border: 1px dashed #efaa6d;
   background: linear-gradient(
     180deg,
     rgba(242, 153, 74, 0.08) 0%,
@@ -268,4 +319,8 @@ const DropZone = styled("div")`
   display: flex;
   flex-direction: column;
   vertical-align: center;
+  gap: 16px;
+  transition: 0.2s ease-in-out;
 `;
+
+export default UploadFileDialog;

@@ -1,6 +1,7 @@
 name: Coverage
 
-on: [pull_request]
+on:
+  workflow_dispatch:
 
 jobs:
   coverage:
@@ -18,6 +19,5 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
           fail_ci_if_error: true

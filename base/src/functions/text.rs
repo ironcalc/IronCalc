@@ -151,7 +151,7 @@ impl Model {
     ///  * If find_text does not appear in within_text, FIND and FINDB return the #VALUE! error value.
     ///  * If start_num is not greater than zero, FIND and FINDB return the #VALUE! error value.
     ///  * If start_num is greater than the length of within_text, FIND and FINDB return the #VALUE! error value.
-    /// NB: FINDB is not implemented. It is the same as FIND function unless locale is a DBCS (Double Byte Character Set)
+    ///    NB: FINDB is not implemented. It is the same as FIND function unless locale is a DBCS (Double Byte Character Set)
     pub(crate) fn fn_find(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
@@ -203,7 +203,7 @@ impl Model {
     /// Same API as FIND but:
     ///  * Allows wildcards
     ///  * It is case insensitive
-    /// SEARCH(find_text, within_text, [start_num])
+    ///    SEARCH(find_text, within_text, [start_num])
     pub(crate) fn fn_search(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
@@ -338,6 +338,53 @@ impl Model {
                 CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
             };
             return CalcResult::String(s.to_lowercase());
+        }
+        CalcResult::new_args_number_error(cell)
+    }
+
+    pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() == 1 {
+            let s = match self.evaluate_node_in_context(&args[0], cell) {
+                CalcResult::Number(v) => format!("{}", v),
+                CalcResult::String(v) => v,
+                CalcResult::Boolean(b) => {
+                    if b {
+                        "TRUE".to_string()
+                    } else {
+                        "FALSE".to_string()
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                CalcResult::Range { .. } => {
+                    // Implicit Intersection not implemented
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Implicit Intersection not implemented".to_string(),
+                    };
+                }
+                CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Empty cell".to_string(),
+                    }
+                }
+            };
+
+            match s.chars().next() {
+                Some(c) => {
+                    let unicode_number = c as u32;
+                    return CalcResult::Number(unicode_number as f64);
+                }
+                None => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Empty cell".to_string(),
+                    };
+                }
+            }
         }
         CalcResult::new_args_number_error(cell)
     }
@@ -503,7 +550,7 @@ impl Model {
             }
             result.push(ch);
         }
-        return CalcResult::String(result.chars().rev().collect::<String>());
+        CalcResult::String(result.chars().rev().collect::<String>())
     }
 
     pub(crate) fn fn_mid(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -888,20 +935,28 @@ impl Model {
                     let column1 = left.column;
                     let mut column2 = right.column;
                     if row1 == 1 && row2 == LAST_ROW {
-                        row2 = self
-                            .workbook
-                            .worksheet(left.sheet)
-                            .expect("Sheet expected during evaluation.")
-                            .dimension()
-                            .max_row;
+                        row2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_row,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
                     }
                     if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = self
-                            .workbook
-                            .worksheet(left.sheet)
-                            .expect("Sheet expected during evaluation.")
-                            .dimension()
-                            .max_column;
+                        column2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_column,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {

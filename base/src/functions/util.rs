@@ -1,4 +1,5 @@
-use regex::{escape, Regex};
+#[cfg(feature = "use_regex_lite")]
+use regex_lite as regex;
 
 use crate::{calc_result::CalcResult, expressions::token::is_english_error_string};
 
@@ -25,9 +26,9 @@ pub(crate) fn values_are_equal(left: &CalcResult, right: &CalcResult) -> bool {
     }
 }
 
-/// In Excel there are two ways of comparing cell values.
-/// The old school comparison valid in formulas like D3 < D4 or HLOOKUP,... cast empty cells into empty strings or 0
-/// For the new formulas like XLOOKUP or SORT an empty cell is always larger than anything else.
+// In Excel there are two ways of comparing cell values.
+// The old school comparison valid in formulas like D3 < D4 or HLOOKUP,... cast empty cells into empty strings or 0
+// For the new formulas like XLOOKUP or SORT an empty cell is always larger than anything else.
 
 // ..., -2, -1, 0, 1, 2, ..., A-Z, FALSE, TRUE;
 pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
@@ -86,7 +87,7 @@ pub(crate) fn from_wildcard_to_regex(
     exact: bool,
 ) -> Result<regex::Regex, regex::Error> {
     // 1. Escape all
-    let reg = &escape(wildcard);
+    let reg = &regex::escape(wildcard);
 
     // 2. We convert the escaped '?' into '.' (matches a single character)
     let reg = &reg.replace("\\?", ".");
@@ -109,13 +110,13 @@ pub(crate) fn from_wildcard_to_regex(
 
     // And we have a valid Perl regex! (As Kim Kardashian said before me: "I know, right?")
     if exact {
-        return Regex::new(&format!("^{}$", reg));
+        return regex::Regex::new(&format!("^{}$", reg));
     }
-    Regex::new(reg)
+    regex::Regex::new(reg)
 }
 
-/// NUMBERS ///
-///*********///
+// NUMBERS ///
+//*********///
 
 // It could be either the number or a string representation of the number
 // In the rest of the cases calc_result needs to be a number (cannot be the string "23", for instance)
@@ -180,8 +181,8 @@ fn result_is_not_equal_to_number(calc_result: &CalcResult, target: f64) -> bool 
     }
 }
 
-/// BOOLEANS ///
-///**********///
+// BOOLEANS ///
+//**********///
 
 // Booleans have to be "exactly" equal
 fn result_is_equal_to_bool(calc_result: &CalcResult, target: bool) -> bool {
@@ -198,12 +199,12 @@ fn result_is_not_equal_to_bool(calc_result: &CalcResult, target: bool) -> bool {
     }
 }
 
-/// STRINGS ///
-///*********///
+// STRINGS ///
+//*********///
 
-/// Note that strings are case insensitive. `target` must always be lower case.
+// Note that strings are case insensitive. `target` must always be lower case.
 
-pub(crate) fn result_matches_regex(calc_result: &CalcResult, reg: &Regex) -> bool {
+pub(crate) fn result_matches_regex(calc_result: &CalcResult, reg: &regex::Regex) -> bool {
     match calc_result {
         CalcResult::String(s) => reg.is_match(&s.to_lowercase()),
         _ => false,
@@ -269,8 +270,8 @@ fn result_is_greater_or_equal_than_string(calc_result: &CalcResult, target: &str
     }
 }
 
-/// ERRORS ///
-///********///
+// ERRORS ///
+//********///
 
 fn result_is_equal_to_error(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
@@ -286,8 +287,8 @@ fn result_is_not_equal_to_error(calc_result: &CalcResult, target: &str) -> bool 
     }
 }
 
-/// EMPTY ///
-///*******///
+// EMPTY ///
+//*******///
 
 // Note that these two are not inverse of each other.
 // In particular, you can never match an empty cell.

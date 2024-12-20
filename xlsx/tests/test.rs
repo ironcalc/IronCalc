@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::panic)]
+
 use std::io::Read;
 use std::{env, fs, io};
 use uuid::Uuid;
@@ -389,7 +392,7 @@ fn no_export() {
 }
 
 // This test verifies whether exporting the merged cells functionality is happening properly or not.
-// It first loads the excell having the merged cell and exports it to another xlsx and verifies whether merged
+// It first loads the Excel having the merged cell and exports it to another xlsx and verifies whether merged
 // cell node is same in both of the xlsx file or not.
 #[test]
 fn test_exporting_merged_cells() {
@@ -451,4 +454,43 @@ fn test_exporting_merged_cells() {
     }
 
     fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
+fn test_documentation_xlsx() {
+    let mut entries = fs::read_dir("tests/docs/")
+        .unwrap()
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, io::Error>>()
+        .unwrap();
+    entries.sort();
+    // We can't test volatiles
+    let skip = ["DATE.xlsx", "DAY.xlsx", "MONTH.xlsx", "YEAR.xlsx"];
+    let skip = skip.map(|s| format!("tests/docs/{s}"));
+    println!("{:?}", skip);
+    // dumb counter to make sure we are actually testing the files
+    assert_eq!(entries.len(), 7);
+    let temp_folder = env::temp_dir();
+    let path = format!("{}", Uuid::new_v4());
+    let dir = temp_folder.join(path);
+    fs::create_dir(&dir).unwrap();
+    for file_path in entries {
+        let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
+        let file_path_str = file_path.to_str().unwrap();
+        if skip.contains(&file_path_str.to_string()) {
+            println!("Skipping file: {}", file_path_str);
+            continue;
+        }
+        println!("Testing file: {}", file_path_str);
+        if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
+            if let Err(message) = test_file(file_path_str) {
+                println!("{}", message);
+                panic!("Model was evaluated inconsistently with XLSX data.")
+            }
+            assert!(test_load_and_saving(file_path_str, &dir).is_ok());
+        } else {
+            println!("skipping");
+        }
+    }
+    fs::remove_dir_all(&dir).unwrap();
 }

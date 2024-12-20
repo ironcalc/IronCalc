@@ -254,10 +254,14 @@ impl Worksheet {
     /// Changes the height of a row.
     ///   * If the row does not a have a style we add it.
     ///   * If it has we modify the height and make sure it is applied.
-    /// Fails if column index is outside allowed range.
+    ///
+    /// Fails if row index is outside allowed range or height is negative.
     pub fn set_row_height(&mut self, row: i32, height: f64) -> Result<(), String> {
         if !is_valid_row(row) {
             return Err(format!("Row number '{row}' is not valid."));
+        }
+        if height < 0.0 {
+            return Err(format!("Can not set a negative height: {height}"));
         }
 
         let rows = &mut self.rows;
@@ -282,7 +286,8 @@ impl Worksheet {
     /// Changes the width of a column.
     ///   * If the column does not a have a width we simply add it
     ///   * If it has, it might be part of a range and we ned to split the range.
-    /// Fails if column index is outside allowed range.
+    ///
+    /// Fails if column index is outside allowed range or width is negative.
     pub fn set_column_width(&mut self, column: i32, width: f64) -> Result<(), String> {
         self.set_column_width_and_style(column, width, None)
     }
@@ -295,6 +300,9 @@ impl Worksheet {
     ) -> Result<(), String> {
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
+        }
+        if width < 0.0 {
+            return Err(format!("Can not set a negative width: {width}"));
         }
         let cols = &mut self.cols;
         let mut col = Col {

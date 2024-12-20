@@ -248,6 +248,7 @@ const Editor = (options: EditorOptions) => {
             maskRef.current.style.top = `-${textareaRef.current.scrollTop}px`;
           }
         }}
+        onPaste={(event) => event.stopPropagation()}
       />
     </div>
   );
