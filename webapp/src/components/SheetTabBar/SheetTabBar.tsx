@@ -19,6 +19,7 @@ export interface SheetTabBarProps {
   onSheetColorChanged: (hex: string) => void;
   onSheetRenamed: (name: string) => void;
   onSheetDeleted: () => void;
+  onHideSheet: () => void;
 }
 
 function SheetTabBar(props: SheetTabBarProps) {
@@ -32,6 +33,18 @@ function SheetTabBar(props: SheetTabBarProps) {
   const handleClose = () => {
     setAnchorEl(null);
   };
+
+  const nonHidenSheets = sheets
+    .map((s, index) => {
+      return {
+        state: s.state,
+        index,
+        name: s.name,
+        color: s.color,
+        sheetId: s.sheetId,
+      };
+    })
+    .filter((s) => s.state === "visible");
 
   return (
     <Container>
@@ -54,25 +67,24 @@ function SheetTabBar(props: SheetTabBarProps) {
       <VerticalDivider />
       <Sheets>
         <SheetInner>
-          {sheets.map((tab, index) => (
+          {nonHidenSheets.map((tab) => (
             <SheetTab
               key={tab.sheetId}
               name={tab.name}
               color={tab.color}
-              selected={index === selectedIndex}
-              onSelected={() => onSheetSelected(index)}
+              selected={tab.index === selectedIndex}
+              onSelected={() => onSheetSelected(tab.index)}
               onColorChanged={(hex: string): void => {
                 props.onSheetColorChanged(hex);
               }}
               onRenamed={(name: string): void => {
                 props.onSheetRenamed(name);
               }}
-              canDelete={(): boolean => {
-                return sheets.length > 1;
-              }}
+              canDelete={nonHidenSheets.length > 1}
               onDeleted={(): void => {
                 props.onSheetDeleted();
               }}
+              onHideSheet={props.onHideSheet}
               workbookState={workbookState}
             />
           ))}

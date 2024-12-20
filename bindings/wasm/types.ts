@@ -113,6 +113,7 @@ export interface WorksheetProperties {
   name: string;
   color: string;
   sheet_id: number;
+  state: string;
 }
 
 interface CellStyleFill {

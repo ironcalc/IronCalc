@@ -106,6 +106,16 @@ impl Model {
         self.model.delete_sheet(sheet).map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "hideSheet")]
+    pub fn hide_sheet(&mut self, sheet: u32) -> Result<(), JsError> {
+        self.model.hide_sheet(sheet).map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "unhideSheet")]
+    pub fn unhide_sheet(&mut self, sheet: u32) -> Result<(), JsError> {
+        self.model.unhide_sheet(sheet).map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "renameSheet")]
     pub fn rename_sheet(&mut self, sheet: u32, name: &str) -> Result<(), JsError> {
         self.model.rename_sheet(sheet, name).map_err(to_js_error)

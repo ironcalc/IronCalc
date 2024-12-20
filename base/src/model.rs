@@ -682,6 +682,13 @@ impl Model {
         Err(format!("Invalid color: {}", color))
     }
 
+    /// Changes the visibility of a sheet
+    pub fn set_sheet_state(&mut self, sheet: u32, state: SheetState) -> Result<(), String> {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        worksheet.state = state;
+        Ok(())
+    }
+
     /// Makes the grid lines in the sheet visible (`true`) or hidden (`false`)
     pub fn set_show_grid_lines(&mut self, sheet: u32, show_grid_lines: bool) -> Result<(), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
