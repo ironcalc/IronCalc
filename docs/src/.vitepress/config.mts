@@ -59,6 +59,18 @@ export default defineConfig({
             link: "/features/error-types",
           },
           {
+            text: "Value Types",
+            link: "/features/value-types",
+          },
+          {
+            text: "Optional Arguments",
+            link: "/features/optional-arguments",
+          },
+          {
+            text: "Units",
+            link: "/features/units",
+          },		  
+          {
             text: "Unsupported Features",
             link: "/features/unsupported-features",
           },
