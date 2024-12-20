@@ -1,1 +1,0 @@
-* For information about the different types of errors that you may encounter when using IronCalc functions, visit our [Error Types](/features/error-types) page.
