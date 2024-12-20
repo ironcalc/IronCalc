@@ -5,6 +5,7 @@ use chrono::Timelike;
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::dates::date_to_serial_number;
+use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::model::get_milliseconds_since_epoch;
 use crate::{
     calc_result::CalcResult, constants::EXCEL_DATE_BASE, expressions::parser::Node,
@@ -137,32 +138,18 @@ impl Model {
         let month = match self.get_number(&args[1], cell) {
             Ok(c) => {
                 let t = c.floor();
-                if t < 0.0 {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Out of range parameters for date".to_string(),
-                    };
-                }
-                t as u32
+                t as i32
             }
             Err(s) => return s,
         };
         let day = match self.get_number(&args[2], cell) {
             Ok(c) => {
                 let t = c.floor();
-                if t < 0.0 {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Out of range parameters for date".to_string(),
-                    };
-                }
-                t as u32
+                t as i32
             }
             Err(s) => return s,
         };
-        match date_to_serial_number(day, month, year) {
+        match permissive_date_to_serial_number(day, month, year) {
             Ok(serial_number) => CalcResult::Number(serial_number as f64),
             Err(message) => CalcResult::Error {
                 error: Error::NUM,
