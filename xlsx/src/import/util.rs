@@ -24,18 +24,6 @@ where
         .ok_or_else(|| XlsxError::Xml(format!("Missing \"{:?}\" XML attribute", attr_name)))
 }
 
-pub(super) fn get_value_or_default(node: &Node, tag_name: &str, default: &str) -> String {
-    let application_nodes = node
-        .children()
-        .filter(|n| n.has_tag_name(tag_name))
-        .collect::<Vec<Node>>();
-    if application_nodes.len() == 1 {
-        application_nodes[0].text().unwrap_or(default).to_string()
-    } else {
-        default.to_string()
-    }
-}
-
 pub(super) fn get_color(node: Node) -> Result<Option<String>, XlsxError> {
     // 18.3.1.15 color (Data Bar Color)
     if node.has_attribute("rgb") {
