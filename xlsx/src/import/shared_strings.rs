@@ -1,7 +1,6 @@
 use std::io::{BufReader, Read};
 
 use quick_xml::events::Event;
-use roxmltree::Node;
 
 use crate::error::XlsxError;
 
@@ -77,45 +76,25 @@ pub(crate) fn read_shared_strings<R: Read + std::io::Seek>(
 }
 
 fn read_shared_strings_from_reader<R: Read>(reader: &mut R) -> Result<Vec<String>, XlsxError> {
-    let streaming = true;
-    if streaming {
-        let mut parser = SSParser::new();
+    let mut parser = SSParser::new();
 
-        let xmlfile = BufReader::new(reader);
-        let mut xmlfile = quick_xml::Reader::from_reader(xmlfile);
+    let xmlfile = BufReader::new(reader);
+    let mut xmlfile = quick_xml::Reader::from_reader(xmlfile);
 
-        const BUF_SIZE: usize = 900;
-        let mut buf = Vec::with_capacity(BUF_SIZE);
-        loop {
-            match xmlfile
-                .read_event_into(&mut buf)
-                .map_err(|e| XlsxError::Xml(e.to_string()))?
-            {
-                Event::Eof => break,
-                event => parser.process(event)?,
-            };
-            buf.clear();
-        }
-
-        parser.strings()
-    } else {
-        let mut text = String::new();
-        reader.read_to_string(&mut text)?;
-
-        let doc = roxmltree::Document::parse(&text)?;
-        let mut shared_strings = Vec::new();
-        let nodes: Vec<Node> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
-        for node in nodes {
-            let text = node
-                .descendants()
-                .filter(|n| n.has_tag_name("t"))
-                .map(|n| n.text().unwrap_or("").to_string())
-                .collect::<Vec<String>>()
-                .join("");
-            shared_strings.push(text);
-        }
-        Ok(shared_strings)
+    const BUF_SIZE: usize = 900;
+    let mut buf = Vec::with_capacity(BUF_SIZE);
+    loop {
+        match xmlfile
+            .read_event_into(&mut buf)
+            .map_err(|e| XlsxError::Xml(e.to_string()))?
+        {
+            Event::Eof => break,
+            event => parser.process(event)?,
+        };
+        buf.clear();
     }
+
+    parser.strings()
 }
 
 #[cfg(test)]
