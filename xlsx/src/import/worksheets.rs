@@ -7,7 +7,6 @@ use ironcalc_base::types::{Cell, Col, Row, SheetData, Table, Worksheet, Workshee
 use quick_xml::events::{BytesStart, BytesText, Event};
 use std::num::ParseIntError;
 use std::{
-    borrow::Cow,
     collections::HashMap,
     io::{BufReader, Read},
 };
@@ -25,6 +24,8 @@ use ironcalc_base::{
 use roxmltree::Node;
 use thiserror::Error;
 
+use super::relationships::Relationship;
+use super::util::{get_optional_attribute, get_required_attribute};
 use super::{tables::load_table, util::get_attribute};
 
 pub(crate) struct Sheet {
@@ -37,11 +38,6 @@ pub(crate) struct Sheet {
 pub(crate) struct WorkbookXML {
     pub(crate) worksheets: Vec<Sheet>,
     pub(crate) defined_names: Vec<DefinedName>,
-}
-
-pub(crate) struct Relationship {
-    pub(crate) target: String,
-    pub(crate) rel_type: String,
 }
 
 pub(super) struct SheetSettings {
@@ -677,7 +673,7 @@ impl<'a> SheetParser<'a> {
 
     fn load_dimension(&mut self, tag: BytesStart) -> Result<(), XlsxError> {
         // <dimension ref="A1:O18"/>
-        if let Some(dimension) = get_optional_attribute_streaming(&tag, "ref")? {
+        if let Some(dimension) = get_optional_attribute(&tag, "ref")? {
             self.dimensions.push(dimension.to_string());
         }
 
@@ -708,10 +704,10 @@ impl<'a> SheetParser<'a> {
         // IronCalc ignores all those.
 
         self.current_sheet_view.is_selected =
-            get_optional_attribute_streaming(&tag, "tabSelected")?.unwrap_or("0".into()) == "1";
+            get_optional_attribute(&tag, "tabSelected")?.unwrap_or("0".into()) == "1";
 
         self.current_sheet_view.show_grid_lines =
-            get_optional_attribute_streaming(&tag, "showGridLines")?.unwrap_or("1".into()) == "1";
+            get_optional_attribute(&tag, "showGridLines")?.unwrap_or("1".into()) == "1";
 
         Ok(())
     }
@@ -719,7 +715,7 @@ impl<'a> SheetParser<'a> {
     fn load_current_sheet_view_pane(&mut self, tag: BytesStart) -> Result<(), XlsxError> {
         // 18.18.53 ST_PaneState (Pane State)
         // frozen, frozenSplit, split
-        if let Some(state) = get_optional_attribute_streaming(&tag, "state")? {
+        if let Some(state) = get_optional_attribute(&tag, "state")? {
             if state == "frozen" {
                 // TODO: Should we assert that topLeft is consistent?
                 // let top_left_cell = pane[0].attribute("topLeftCell").unwrap_or("A1").to_string();
@@ -733,15 +729,13 @@ impl<'a> SheetParser<'a> {
     }
 
     fn load_current_sheet_view_selection(&mut self, tag: BytesStart) -> Result<(), XlsxError> {
-        let active_cell = match get_optional_attribute_streaming(&tag, "activeCell")?
-            .map(|a| parse_cell_reference(&a))
-        {
-            Some(Ok(s)) => Some(s),
-            _ => None,
-        };
+        let active_cell =
+            match get_optional_attribute(&tag, "activeCell")?.map(|a| parse_cell_reference(&a)) {
+                Some(Ok(s)) => Some(s),
+                _ => None,
+            };
 
-        let sqref = match get_optional_attribute_streaming(&tag, "sqref")?.map(|s| parse_range(&s))
-        {
+        let sqref = match get_optional_attribute(&tag, "sqref")?.map(|s| parse_range(&s)) {
             Some(Ok(s)) => Some(s),
             _ => None,
         };
@@ -769,22 +763,21 @@ impl<'a> SheetParser<'a> {
         //     <col min="8" max="8" width="4" customWidth="1"/>
         // </cols>
 
-        let min = get_required_attribute_streaming(&tag, "min")?;
+        let min = get_required_attribute(&tag, "min")?;
         let min = min.parse::<i32>()?;
 
-        let max = get_required_attribute_streaming(&tag, "max")?;
+        let max = get_required_attribute(&tag, "max")?;
         let max = max.parse::<i32>()?;
 
-        let width = get_required_attribute_streaming(&tag, "width")?;
+        let width = get_required_attribute(&tag, "width")?;
         let width = width.parse::<f64>()?;
 
-        let custom_width = match get_optional_attribute_streaming(&tag, "customWidth")? {
+        let custom_width = match get_optional_attribute(&tag, "customWidth")? {
             Some(w) => w == "1",
             None => false,
         };
 
-        let style =
-            get_optional_attribute_streaming(&tag, "style")?.map(|s| s.parse::<i32>().unwrap_or(0));
+        let style = get_optional_attribute(&tag, "style")?.map(|s| s.parse::<i32>().unwrap_or(0));
         self.cols.push(Col {
             min,
             max,
@@ -811,7 +804,7 @@ impl<'a> SheetParser<'a> {
         // <mergeCells count="1">
         //    <mergeCell ref="K7:L10"/>
         // </mergeCells>
-        let reference = get_required_attribute_streaming(&tag, "ref")?.to_string();
+        let reference = get_required_attribute(&tag, "ref")?.to_string();
         self.merge_cells.push(reference);
 
         Ok(())
@@ -1004,14 +997,13 @@ impl<'a> SheetParser<'a> {
     }
 
     fn load_formula_attributes(&mut self, tag: BytesStart) -> Result<(), XlsxError> {
-        self.current_cell_data.formula_data.formula_type =
-            get_optional_attribute_streaming(&tag, "t")?
-                .unwrap_or("normal".into())
-                .to_string();
+        self.current_cell_data.formula_data.formula_type = get_optional_attribute(&tag, "t")?
+            .unwrap_or("normal".into())
+            .to_string();
         self.current_cell_data.formula_data.formula_si =
-            get_optional_attribute_streaming(&tag, "si")?.map(|s| s.to_string());
+            get_optional_attribute(&tag, "si")?.map(|s| s.to_string());
         self.current_cell_data.formula_data.formula_has_ref =
-            get_optional_attribute_streaming(&tag, "ref")?.is_some();
+            get_optional_attribute(&tag, "ref")?.is_some();
 
         Ok(())
     }
@@ -1377,59 +1369,8 @@ impl<'a> SheetParser<'a> {
     }
 }
 
-fn get_required_attribute_streaming<'a>(
-    tag: &'a BytesStart,
-    attr_name: &str,
-) -> Result<Cow<'a, str>, XlsxError> {
-    tag.try_get_attribute(attr_name)
-        .map_err(|e| {
-            XlsxError::Xml(format!(
-                "Unable to parse attribute: \"{:?}\": {:?}",
-                attr_name,
-                e.to_string()
-            ))
-        })?
-        .ok_or_else(|| {
-            XlsxError::Xml(format!(
-                "Missing required \"{:?}\" XML attribute",
-                attr_name
-            ))
-        })?
-        .unescape_value()
-        .map_err(|e| {
-            XlsxError::Xml(format!(
-                "Unable to decode and unescape attribute: \"{:?}\": {:?}",
-                attr_name,
-                e.to_string()
-            ))
-        })
-}
-
-fn get_optional_attribute_streaming<'a>(
-    tag: &'a BytesStart,
-    attr_name: &str,
-) -> Result<Option<Cow<'a, str>>, XlsxError> {
-    tag.try_get_attribute(attr_name)
-        .map_err(|e| {
-            XlsxError::Xml(format!(
-                "Unable to parse attribute: \"{:?}\": {:?}",
-                attr_name,
-                e.to_string()
-            ))
-        })?
-        .map(|a| a.unescape_value())
-        .transpose()
-        .map_err(|e| {
-            XlsxError::Xml(format!(
-                "Unable to decode and unescape attribute: \"{:?}\": {:?}",
-                attr_name,
-                e.to_string()
-            ))
-        })
-}
-
 fn get_number_streaming(tag: &BytesStart, attr_name: &str) -> i32 {
-    get_optional_attribute_streaming(tag, attr_name)
+    get_optional_attribute(tag, attr_name)
         .ok()
         .and_then(|opt| opt)
         .and_then(|cow| cow.parse::<i32>().ok())
@@ -1438,26 +1379,26 @@ fn get_number_streaming(tag: &BytesStart, attr_name: &str) -> i32 {
 
 pub(super) fn get_color_streaming(tag: BytesStart) -> Result<Option<String>, XlsxError> {
     // 18.3.1.15 color (Data Bar Color)
-    if let Some(mut val) = get_optional_attribute_streaming(&tag, "rbg")? {
+    if let Some(mut val) = get_optional_attribute(&tag, "rbg")? {
         // FIXME the two first values is normally the alpha.
         if val.len() == 8 {
             val = format!("#{}", &val[2..8]).into();
         }
         Ok(Some(val.to_string()))
-    } else if let Some(index) = get_optional_attribute_streaming(&tag, "indexed")? {
+    } else if let Some(index) = get_optional_attribute(&tag, "indexed")? {
         let index = index.parse::<i32>()?;
         let rgb = get_indexed_color(index);
         Ok(Some(rgb))
         // Color::Indexed(val)
-    } else if let Some(theme) = get_optional_attribute_streaming(&tag, "theme")? {
+    } else if let Some(theme) = get_optional_attribute(&tag, "theme")? {
         let theme = theme.parse::<i32>()?;
-        let tint = get_optional_attribute_streaming(&tag, "tint")?
+        let tint = get_optional_attribute(&tag, "tint")?
             .map(|t| t.parse::<f64>().unwrap_or(0.0))
             .unwrap_or(0.0);
         let rgb = colors::get_themed_color(theme, tint);
         Ok(Some(rgb))
     // Color::Theme { theme, tint }
-    } else if get_optional_attribute_streaming(&tag, "auto")?.is_some() {
+    } else if get_optional_attribute(&tag, "auto")?.is_some() {
         // TODO: Is this correct?
         // A boolean value indicating the color is automatic and system color dependent.
         Ok(None)

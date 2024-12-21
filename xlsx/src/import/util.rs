@@ -1,11 +1,65 @@
 #![allow(clippy::unwrap_used)]
 
+use std::borrow::Cow;
+
 use colors::{get_indexed_color, get_themed_color};
+use quick_xml::events::BytesStart;
 use roxmltree::{ExpandedName, Node};
 
 use crate::error::XlsxError;
 
 use super::colors;
+
+pub(crate) fn get_required_attribute<'a>(
+    tag: &'a BytesStart,
+    attr_name: &str,
+) -> Result<Cow<'a, str>, XlsxError> {
+    tag.try_get_attribute(attr_name)
+        .map_err(|e| {
+            XlsxError::Xml(format!(
+                "Unable to parse attribute: \"{:?}\": {:?}",
+                attr_name,
+                e.to_string()
+            ))
+        })?
+        .ok_or_else(|| {
+            XlsxError::Xml(format!(
+                "Missing required \"{:?}\" XML attribute",
+                attr_name
+            ))
+        })?
+        .unescape_value()
+        .map_err(|e| {
+            XlsxError::Xml(format!(
+                "Unable to decode and unescape attribute: \"{:?}\": {:?}",
+                attr_name,
+                e.to_string()
+            ))
+        })
+}
+
+pub(crate) fn get_optional_attribute<'a>(
+    tag: &'a BytesStart,
+    attr_name: &str,
+) -> Result<Option<Cow<'a, str>>, XlsxError> {
+    tag.try_get_attribute(attr_name)
+        .map_err(|e| {
+            XlsxError::Xml(format!(
+                "Unable to parse attribute: \"{:?}\": {:?}",
+                attr_name,
+                e.to_string()
+            ))
+        })?
+        .map(|a| a.unescape_value())
+        .transpose()
+        .map_err(|e| {
+            XlsxError::Xml(format!(
+                "Unable to decode and unescape attribute: \"{:?}\": {:?}",
+                attr_name,
+                e.to_string()
+            ))
+        })
+}
 
 pub(crate) fn get_number(node: Node, s: &str) -> i32 {
     node.attribute(s).unwrap_or("0").parse::<i32>().unwrap_or(0)

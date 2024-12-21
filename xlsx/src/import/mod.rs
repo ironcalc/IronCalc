@@ -1,5 +1,6 @@
 mod colors;
 mod metadata;
+mod relationships;
 mod shared_strings;
 mod styles;
 mod tables;
@@ -13,8 +14,6 @@ use std::{
     io::{BufReader, Cursor, Read},
 };
 
-use roxmltree::Node;
-
 use ironcalc_base::{
     types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
     Model,
@@ -25,34 +24,10 @@ use crate::error::XlsxError;
 use shared_strings::read_shared_strings;
 
 use metadata::load_metadata;
+use relationships::load_relationships;
 use styles::load_styles;
-use util::get_attribute;
 use workbook::load_workbook;
-use worksheets::{load_sheets, Relationship};
-
-fn load_relationships<R: Read + std::io::Seek>(
-    archive: &mut zip::ZipArchive<R>,
-) -> Result<HashMap<String, Relationship>, XlsxError> {
-    let mut file = archive.by_name("xl/_rels/workbook.xml.rels")?;
-    let mut text = String::new();
-    file.read_to_string(&mut text)?;
-    let doc = roxmltree::Document::parse(&text)?;
-    let nodes: Vec<Node> = doc
-        .descendants()
-        .filter(|n| n.has_tag_name("Relationship"))
-        .collect();
-    let mut rels = HashMap::new();
-    for node in nodes {
-        rels.insert(
-            get_attribute(&node, "Id")?.to_string(),
-            Relationship {
-                rel_type: get_attribute(&node, "Type")?.to_string(),
-                target: get_attribute(&node, "Target")?.to_string(),
-            },
-        );
-    }
-    Ok(rels)
-}
+use worksheets::load_sheets;
 
 fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     name: String,
