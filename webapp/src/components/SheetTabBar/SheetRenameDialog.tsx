@@ -1,6 +1,6 @@
 import { Dialog, TextField, styled } from "@mui/material";
 import { Check, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 
@@ -14,7 +14,6 @@ interface SheetRenameDialogProps {
 const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
   const { t } = useTranslation();
   const [name, setName] = useState(properties.defaultName);
-  const crossRef = useRef<HTMLDivElement>(null);
   const handleClose = () => {
     properties.onClose();
   };
@@ -25,7 +24,6 @@ const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
         <Cross
           onClick={handleClose}
           title="Close Dialog"
-          ref={crossRef}
           tabIndex={0}
           onKeyDown={() => {}}
         >

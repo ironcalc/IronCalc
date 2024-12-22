@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { Dialog, TextField } from "@mui/material";
 import { Check, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../theme";
 
@@ -17,7 +17,6 @@ type FormatPickerProps = {
 const FormatPicker = (properties: FormatPickerProps) => {
   const { t } = useTranslation();
   const [formatCode, setFormatCode] = useState(properties.numFmt);
-  const crossRef = useRef<HTMLDivElement>(null);
 
   const handleClose = () => {
     properties.onClose();
@@ -40,7 +39,6 @@ const FormatPicker = (properties: FormatPickerProps) => {
         <Cross
           onClick={handleClose}
           title="Close Dialog"
-          ref={crossRef}
           tabIndex={0}
           onKeyDown={() => {}}
         >
