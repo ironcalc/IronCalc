@@ -38,7 +38,7 @@ const FormatPicker = (properties: FormatPickerProps) => {
         {t("num_fmt.title")}
         <Cross
           onClick={handleClose}
-          title="Close Dialog"
+          title={t("num_fmt.close")}
           tabIndex={0}
           onKeyDown={() => {}}
         >
