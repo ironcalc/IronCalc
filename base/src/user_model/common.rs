@@ -13,8 +13,8 @@ use crate::{
     },
     model::Model,
     types::{
-        Alignment, BorderItem, CellType, Col, DefinedName, HorizontalAlignment, SheetProperties,
-        SheetState, Style, VerticalAlignment,
+        Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, SheetState,
+        Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
 };
@@ -1735,8 +1735,8 @@ impl UserModel {
     }
 
     /// Returns the list of defined names
-    pub fn get_defined_name_list(&self) -> Vec<DefinedName> {
-        self.model.workbook.defined_names.clone()
+    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String)> {
+        self.model.workbook.get_defined_names_with_scope()
     }
 
     /// Delete an existing defined name

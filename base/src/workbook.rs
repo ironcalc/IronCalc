@@ -29,7 +29,7 @@ impl Workbook {
     }
 
     /// Returns the a list of defined names in the workbook with their scope
-    pub(crate) fn get_defined_names_with_scope(&self) -> Vec<(String, Option<u32>)> {
+    pub(crate) fn get_defined_names_with_scope(&self) -> Vec<(String, Option<u32>, String)> {
         let sheet_id_index: Vec<u32> = self.worksheets.iter().map(|s| s.sheet_id).collect();
 
         let defined_names = self
@@ -45,7 +45,7 @@ impl Workbook {
                     // convert Option<usize> to Option<u32>
                     .map(|pos| pos as u32);
 
-                (dn.name.clone(), index)
+                (dn.name.clone(), index, dn.formula.clone())
             })
             .collect::<Vec<_>>();
         defined_names
