@@ -309,7 +309,7 @@ fn from_a1_to_rc(
     let mut parser = Parser::new(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
-    let t = parser.parse(&formula, &Some(cell_reference));
+    let t = parser.parse(&formula, &cell_reference);
     Ok(to_rc_format(&t))
 }
 

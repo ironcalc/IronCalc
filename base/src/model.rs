@@ -1040,7 +1040,7 @@ impl Model {
                 column: source.column,
             };
             let formula_str = move_formula(
-                &self.parser.parse(formula, &Some(cell_reference)),
+                &self.parser.parse(formula, &cell_reference),
                 &MoveContext {
                     source_sheet_name: &source_sheet_name,
                     row: source.row,
@@ -1148,7 +1148,7 @@ impl Model {
                 row: source.row,
                 column: source.column,
             };
-            let formula = &self.parser.parse(formula_str, &Some(cell_reference));
+            let formula = &self.parser.parse(formula_str, &cell_reference);
             let cell_reference = CellReferenceRC {
                 sheet: target_sheet_name,
                 row: target.row,
@@ -1524,13 +1524,11 @@ impl Model {
             column,
         };
         let shared_formulas = &mut worksheet.shared_formulas;
-        let mut parsed_formula = self.parser.parse(formula, &Some(cell_reference.clone()));
+        let mut parsed_formula = self.parser.parse(formula, &cell_reference);
         // If the formula fails to parse try adding a parenthesis
         // SUM(A1:A3  => SUM(A1:A3)
         if let Node::ParseErrorKind { .. } = parsed_formula {
-            let new_parsed_formula = self
-                .parser
-                .parse(&format!("{})", formula), &Some(cell_reference));
+            let new_parsed_formula = self.parser.parse(&format!("{})", formula), &cell_reference);
             match new_parsed_formula {
                 Node::ParseErrorKind { .. } => {}
                 _ => parsed_formula = new_parsed_formula,
@@ -2140,14 +2138,14 @@ impl Model {
                     self.parser.set_lexer_mode(LexerMode::R1C1);
                     let worksheets = &mut self.workbook.worksheets;
                     for worksheet in worksheets {
-                        let cell_reference = &Some(CellReferenceRC {
+                        let cell_reference = CellReferenceRC {
                             sheet: worksheet.get_name(),
                             row: 1,
                             column: 1,
-                        });
+                        };
                         let mut formulas = Vec::new();
                         for formula in &worksheet.shared_formulas {
-                            let mut t = self.parser.parse(formula, cell_reference);
+                            let mut t = self.parser.parse(formula, &cell_reference);
                             rename_defined_name_in_node(&mut t, name, scope, new_name);
                             formulas.push(to_rc_format(&t));
                         }

@@ -17,18 +17,18 @@ fn exp_order() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("(1 + 2)^3  + 4", &Some(cell_reference.clone()));
+    let t = parser.parse("(1 + 2)^3  + 4", &cell_reference);
     assert_eq!(to_string(&t, &cell_reference), "(1+2)^3+4");
 
-    let t = parser.parse("(C5 + 3)^R4", &Some(cell_reference.clone()));
+    let t = parser.parse("(C5 + 3)^R4", &cell_reference);
     assert_eq!(to_string(&t, &cell_reference), "(C5+3)^R4");
 
-    let t = parser.parse("(C5 + 3)^(R4*6)", &Some(cell_reference.clone()));
+    let t = parser.parse("(C5 + 3)^(R4*6)", &cell_reference);
     assert_eq!(to_string(&t, &cell_reference), "(C5+3)^(R4*6)");
 
-    let t = parser.parse("(C5)^(R4)", &Some(cell_reference.clone()));
+    let t = parser.parse("(C5)^(R4)", &cell_reference);
     assert_eq!(to_string(&t, &cell_reference), "C5^R4");
 
-    let t = parser.parse("(5)^(4)", &Some(cell_reference.clone()));
+    let t = parser.parse("(5)^(4)", &cell_reference);
     assert_eq!(to_string(&t, &cell_reference), "5^4");
 }

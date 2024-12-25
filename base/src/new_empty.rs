@@ -85,14 +85,14 @@ impl Model {
         let worksheets = &self.workbook.worksheets;
         for worksheet in worksheets {
             let shared_formulas = &worksheet.shared_formulas;
-            let cell_reference = &Some(CellReferenceRC {
+            let cell_reference = CellReferenceRC {
                 sheet: worksheet.get_name(),
                 row: 1,
                 column: 1,
-            });
+            };
             let mut parse_formula = Vec::new();
             for formula in shared_formulas {
-                let t = self.parser.parse(formula, cell_reference);
+                let t = self.parser.parse(formula, &cell_reference);
                 parse_formula.push(t);
             }
             self.parsed_formulas.push(parse_formula);
@@ -268,11 +268,11 @@ impl Model {
         // We use iter because the default would be a mut_iter and we don't need a mutable reference
         let worksheets = &mut self.workbook.worksheets;
         for worksheet in worksheets {
-            let cell_reference = &Some(CellReferenceRC {
+            let cell_reference = &CellReferenceRC {
                 sheet: worksheet.get_name(),
                 row: 1,
                 column: 1,
-            });
+            };
             let mut formulas = Vec::new();
             for formula in &worksheet.shared_formulas {
                 let mut t = self.parser.parse(formula, cell_reference);
