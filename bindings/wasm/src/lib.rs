@@ -568,12 +568,11 @@ impl Model {
             .get_defined_name_list()
             .iter()
             .map(|s| DefinedName {
-                name: s.name.to_string(),
-                scope: s.sheet_id,
-                formula: s.formula.to_string(),
+                name: s.0.to_owned(),
+                scope: s.1,
+                formula: s.2.to_owned(),
             })
             .collect();
-        // Ok(data)
         serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
     }
 

@@ -865,7 +865,11 @@ impl Model {
 
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
 
-        let defined_names = workbook.get_defined_names_with_scope();
+        let defined_names = workbook
+            .get_defined_names_with_scope()
+            .iter()
+            .map(|s| (s.0.to_owned(), s.1))
+            .collect();
         // add all tables
         // let mut tables = Vec::new();
         // for worksheet in worksheets {
