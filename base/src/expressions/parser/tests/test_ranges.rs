@@ -52,11 +52,11 @@ fn test_parser_formulas_with_full_ranges() {
     for formula in &formulas {
         let t = parser.parse(
             formula.formula_a1,
-            &Some(CellReferenceRC {
+            &CellReferenceRC {
                 sheet: "Sheet1".to_string(),
                 row: 1,
                 column: 1,
-            }),
+            },
         );
         assert_eq!(to_rc_format(&t), formula.formula_r1c1);
         assert_eq!(to_string(&t, &cell_reference), formula.formula_a1);
@@ -67,11 +67,11 @@ fn test_parser_formulas_with_full_ranges() {
     for formula in &formulas {
         let t = parser.parse(
             formula.formula_r1c1,
-            &Some(CellReferenceRC {
+            &CellReferenceRC {
                 sheet: "Sheet1".to_string(),
                 row: 1,
                 column: 1,
-            }),
+            },
         );
         assert_eq!(to_rc_format(&t), formula.formula_r1c1);
         assert_eq!(to_string(&t, &cell_reference), formula.formula_a1);
@@ -93,7 +93,7 @@ fn test_range_inverse_order() {
     // D4:C2 => C2:D4
     let t = parser.parse(
         "SUM(D4:C2)*SUM(Sheet2!D4:C20)*SUM($C$20:D4)",
-        &Some(cell_reference.clone()),
+        &cell_reference,
     );
     assert_eq!(
         to_string(&t, &cell_reference),

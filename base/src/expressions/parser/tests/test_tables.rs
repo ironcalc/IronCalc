@@ -72,7 +72,7 @@ fn simple_table() {
     };
 
     let formula = "SUM(tblIncome[[#This Row],[Jan]:[Dec]])";
-    let t = parser.parse(formula, &Some(cell_reference.clone()));
+    let t = parser.parse(formula, &cell_reference);
     assert_eq!(to_string(&t, &cell_reference), "SUM($A$2:$E$2)");
 
     // Cell A3
@@ -82,7 +82,7 @@ fn simple_table() {
         column: 1,
     };
     let formula = "SUBTOTAL(109, tblIncome[Jan])";
-    let t = parser.parse(formula, &Some(cell_reference.clone()));
+    let t = parser.parse(formula, &cell_reference);
     assert_eq!(to_string(&t, &cell_reference), "SUBTOTAL(109,$A$2:$A$3)");
 
     // Cell A3 in 'Second Sheet'
@@ -92,7 +92,7 @@ fn simple_table() {
         column: 1,
     };
     let formula = "SUBTOTAL(109, tblIncome[Jan])";
-    let t = parser.parse(formula, &Some(cell_reference.clone()));
+    let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_string(&t, &cell_reference),
         "SUBTOTAL(109,'Sheet One'!$A$2:$A$3)"
