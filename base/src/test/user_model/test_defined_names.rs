@@ -165,3 +165,162 @@ fn rename_defined_name() {
         Ok(r#"=CONCATENATE(newName," world!")"#.to_string())
     );
 }
+
+#[test]
+fn rename_defined_name_operations() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.set_user_input(0, 1, 1, "42").unwrap();
+    model.set_user_input(0, 1, 2, "123").unwrap();
+
+    model
+        .new_defined_name("answer", None, "Sheet1!$A$1")
+        .unwrap();
+
+    model
+        .set_user_input(0, 2, 1, "=IF(answer<2, answer*2, answer^2)")
+        .unwrap();
+
+    model
+        .set_user_input(0, 3, 1, "=badDunction(-answer)")
+        .unwrap();
+
+    model.new_sheet().unwrap();
+    model.set_user_input(1, 1, 1, "78").unwrap();
+    model
+        .new_defined_name("answer", Some(1), "Sheet1!$A$1")
+        .unwrap();
+
+    model.set_user_input(1, 3, 1, "=answer").unwrap();
+
+    model
+        .update_defined_name("answer", None, "respuesta", None, "Sheet1!$A$1")
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 2, 1),
+        Ok("=IF(respuesta<2,respuesta*2,respuesta^2)".to_string())
+    );
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1),
+        Ok("=badDunction(-respuesta)".to_string())
+    );
+
+    // A defined name with the same name but different scope
+    assert_eq!(model.get_cell_content(1, 3, 1), Ok("=answer".to_string()));
+}
+
+#[test]
+fn rename_defined_name_string_operations() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.set_user_input(0, 1, 1, "Hello").unwrap();
+    model.set_user_input(0, 1, 2, "World").unwrap();
+
+    model
+        .new_defined_name("hello", None, "Sheet1!$A$1")
+        .unwrap();
+
+    model
+        .new_defined_name("world", None, "Sheet1!$B$1")
+        .unwrap();
+
+    model.set_user_input(0, 2, 1, "=hello&world").unwrap();
+
+    model
+        .update_defined_name("hello", None, "HolaS", None, "Sheet1!$A$1")
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 2, 1),
+        Ok("=HolaS&world".to_string())
+    );
+}
+
+#[test]
+fn invalid_names() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.set_user_input(0, 1, 1, "Hello").unwrap();
+    model
+        .new_defined_name("MyName", None, "Sheet1!$A$1")
+        .unwrap();
+
+    // spaces
+    assert_eq!(
+        model.new_defined_name("A real", None, "Sheet1!$A$1"),
+        Err("Invalid defined name".to_string())
+    );
+
+    // Starts with number
+    assert_eq!(
+        model.new_defined_name("2real", None, "Sheet1!$A$1"),
+        Err("Invalid defined name".to_string())
+    );
+
+    // Updating also fails
+    assert_eq!(
+        model.update_defined_name("MyName", None, "My Name", None, "Sheet1!$A$1"),
+        Err("Invalid defined name".to_string())
+    );
+}
+
+#[test]
+fn already_existing() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+
+    model
+        .new_defined_name("MyName", None, "Sheet1!$A$1")
+        .unwrap();
+    model
+        .new_defined_name("Another", None, "Sheet1!$A$1")
+        .unwrap();
+
+    // Can't create a new name with the same name
+    assert_eq!(
+        model.new_defined_name("MyName", None, "Sheet1!$A$2"),
+        Err("Defined name already exists".to_string())
+    );
+
+    // Can't update one into an existing
+    assert_eq!(
+        model.update_defined_name("Another", None, "MyName", None, "Sheet1!$A$1"),
+        Err("Defined name already exists".to_string())
+    );
+}
+
+#[test]
+fn invalid_sheet() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.set_user_input(0, 1, 1, "Hello").unwrap();
+    model
+        .new_defined_name("MyName", None, "Sheet1!$A$1")
+        .unwrap();
+
+    assert_eq!(
+        model.new_defined_name("Mything", Some(2), "Sheet1!$A$1"),
+        Err("Invalid sheet index".to_string())
+    );
+
+    assert_eq!(
+        model.update_defined_name("MyName", None, "MyName", Some(2), "Sheet1!$A$1"),
+        Err("Invalid sheet index".to_string())
+    );
+
+    assert_eq!(
+        model.update_defined_name("MyName", Some(9), "YourName", None, "Sheet1!$A$1"),
+        Err("Invalid sheet index".to_string())
+    );
+}
+
+#[test]
+fn invalid_formula() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.set_user_input(0, 1, 1, "Hello").unwrap();
+    model.new_defined_name("MyName", None, "A1").unwrap();
+
+    model.set_user_input(0, 1, 2, "=MyName").unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 2),
+        Ok("#NAME?".to_string())
+    );
+}

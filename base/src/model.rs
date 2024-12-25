@@ -16,7 +16,7 @@ use crate::{
         },
         token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
         types::*,
-        utils::{self, is_valid_column_number, is_valid_row},
+        utils::{self, is_valid_column_number, is_valid_identifier, is_valid_row},
     },
     formatter::{
         format::{format_number, parse_formatted_number},
@@ -2039,6 +2039,9 @@ impl Model {
         scope: Option<u32>,
         formula: &str,
     ) -> Result<(), String> {
+        if !is_valid_identifier(name) {
+            return Err("Invalid defined name".to_string());
+        };
         let name_upper = name.to_uppercase();
         let defined_names = &self.workbook.defined_names;
         let sheet_id = match scope {
@@ -2093,7 +2096,19 @@ impl Model {
         new_scope: Option<u32>,
         new_formula: &str,
     ) -> Result<(), String> {
+        if !is_valid_identifier(new_name) {
+            return Err("Invalid defined name".to_string());
+        };
         let name_upper = name.to_uppercase();
+        let new_name_upper = new_name.to_uppercase();
+
+        if name_upper != new_name_upper || scope != new_scope {
+            for key in self.parsed_defined_names.keys() {
+                if key.1.to_uppercase() == new_name_upper && key.0 == new_scope {
+                    return Err("Defined name already exists".to_string());
+                }
+            }
+        }
         let defined_names = &self.workbook.defined_names;
         let sheet_id = match scope {
             Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
