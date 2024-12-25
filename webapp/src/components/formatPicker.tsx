@@ -36,12 +36,7 @@ const FormatPicker = (properties: FormatPickerProps) => {
     >
       <StyledDialogTitle>
         {t("num_fmt.title")}
-        <Cross
-          onClick={handleClose}
-          title={t("num_fmt.close")}
-          tabIndex={0}
-          onKeyDown={() => {}}
-        >
+        <Cross onClick={handleClose} title={t("num_fmt.close")}>
           <X />
         </Cross>
       </StyledDialogTitle>
