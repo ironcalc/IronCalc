@@ -23,8 +23,8 @@ const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
         {t("sheet_rename.title")}
         <Cross
           onClick={handleClose}
-          title="Close Dialog"
-          tabIndex={0}
+          title={t("sheet_rename.close")}
+          tabIndex={-1}
           onKeyDown={() => {}}
         >
           <X />
