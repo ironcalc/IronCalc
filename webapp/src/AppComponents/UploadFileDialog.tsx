@@ -114,6 +114,7 @@ function UploadFileDialog(properties: {
           style={{ marginRight: 12 }}
           onClick={handleClose}
           title="Close Dialog"
+          ref={crossRef}
           tabIndex={0}
         >
           <X />
