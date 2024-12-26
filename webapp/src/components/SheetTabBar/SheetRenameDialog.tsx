@@ -24,8 +24,8 @@ const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
         <Cross
           onClick={handleClose}
           title={t("sheet_rename.close")}
-          tabIndex={-1}
-          onKeyDown={() => {}}
+          tabIndex={0}
+          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
         >
           <X />
         </Cross>
@@ -58,6 +58,13 @@ const SheetRenameDialog = (properties: SheetRenameDialogProps) => {
           onClick={() => {
             properties.onNameChanged(name);
           }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              properties.onNameChanged(name);
+              properties.onClose();
+            }
+          }}
+          tabIndex={0}
         >
           <Check
             style={{ width: "16px", height: "16px", marginRight: "8px" }}
