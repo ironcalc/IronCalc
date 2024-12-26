@@ -36,7 +36,12 @@ const FormatPicker = (properties: FormatPickerProps) => {
     >
       <StyledDialogTitle>
         {t("num_fmt.title")}
-        <Cross onClick={handleClose} title={t("num_fmt.close")}>
+        <Cross
+          onClick={handleClose}
+          title={t("num_fmt.close")}
+          tabIndex={0}
+          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
+        >
           <X />
         </Cross>
       </StyledDialogTitle>
@@ -49,6 +54,10 @@ const FormatPicker = (properties: FormatPickerProps) => {
           onChange={(event) => setFormatCode(event.target.value)}
           onKeyDown={(event) => {
             event.stopPropagation();
+            if (event.key === "Enter") {
+              onSubmit(formatCode);
+              properties.onClose();
+            }
           }}
           spellCheck="false"
           onClick={(event) => event.stopPropagation()}
@@ -56,7 +65,16 @@ const FormatPicker = (properties: FormatPickerProps) => {
         />
       </StyledDialogContent>
       <DialogFooter>
-        <StyledButton onClick={() => onSubmit(formatCode)}>
+        <StyledButton
+          onClick={() => onSubmit(formatCode)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              onSubmit(formatCode);
+              properties.onClose();
+            }
+          }}
+          tabIndex={0}
+        >
           <Check
             style={{ width: "16px", height: "16px", marginRight: "8px" }}
           />
