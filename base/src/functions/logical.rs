@@ -66,91 +66,61 @@ impl Model {
     }
 
     pub(crate) fn fn_and(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut true_count = 0;
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Boolean(b) => {
-                    if !b {
-                        return CalcResult::Boolean(false);
-                    }
-                    true_count += 1;
-                }
-                CalcResult::Number(value) => {
-                    if value == 0.0 {
-                        return CalcResult::Boolean(false);
-                    }
-                    true_count += 1;
-                }
-                CalcResult::String(_value) => {
-                    true_count += 1;
-                }
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Boolean(b) => {
-                                    if !b {
-                                        return CalcResult::Boolean(false);
-                                    }
-                                    true_count += 1;
-                                }
-                                CalcResult::Number(value) => {
-                                    if value == 0.0 {
-                                        return CalcResult::Boolean(false);
-                                    }
-                                    true_count += 1;
-                                }
-                                CalcResult::String(_value) => {
-                                    true_count += 1;
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                CalcResult::Range { .. } => {}
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-            };
-        }
-        if true_count == 0 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Boolean values not found".to_string(),
-            );
-        }
-        CalcResult::Boolean(true)
+        self.logical_nary(
+            args,
+            cell,
+            |acc, value| acc.unwrap_or(true) && value,
+            Some(false),
+        )
     }
 
     pub(crate) fn fn_or(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.logical_nary(
+            args,
+            cell,
+            |acc, value| acc.unwrap_or(false) || value,
+            Some(true),
+        )
+    }
+
+    pub(crate) fn fn_xor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.logical_nary(args, cell, |acc, value| acc.unwrap_or(false) ^ value, None)
+    }
+
+    /// Base function for AND, OR, XOR. These are all n-ary functions that perform a boolean operation on a series of
+    /// boolean values. These boolean values are sourced from `args`. Note that there is not a 1-1 relationship between
+    /// arguments and boolean values evaluated (see how Ranges are handled for example).
+    ///
+    /// Each argument in `args` is evaluated and the resulting value is interpreted as a boolean as follows:
+    /// - Boolean: The value is used directly.
+    /// - Number: 0 is FALSE, all other values are TRUE.
+    /// - Range: Each cell in the range is evaluated as if they were individual arguments with some caveats
+    /// - Empty arg: FALSE
+    /// - Empty cell & String: Ignored, behaves exactly like the argument wasn't passed in at all
+    /// - Error: Propagated
+    ///
+    /// If no arguments are provided, or all arguments are ignored, the function returns a #VALUE! error
+    ///
+    /// **`fold_fn`:** The function that combines the running result with the next value boolean value. The running result
+    /// starts as `None`.
+    ///
+    /// **`short_circuit_value`:** If the running result reaches `short_circuit_value`, the function returns early.
+    fn logical_nary(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        fold_fn: fn(Option<bool>, bool) -> bool,
+        short_circuit_value: Option<bool>,
+    ) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut result = false;
+
+        let mut result = None;
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Boolean(value) => result = value || result,
-                CalcResult::Number(value) => {
-                    if value != 0.0 {
-                        return CalcResult::Boolean(true);
-                    }
-                }
-                CalcResult::String(_value) => {
-                    return CalcResult::Boolean(true);
-                }
+                CalcResult::Boolean(value) => result = Some(fold_fn(result, value)),
+                CalcResult::Number(value) => result = Some(fold_fn(result, value != 0.0)),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -166,94 +136,58 @@ impl Model {
                                 row,
                                 column,
                             }) {
-                                CalcResult::Boolean(value) => {
-                                    result = value || result;
-                                }
+                                CalcResult::Boolean(value) => result = Some(fold_fn(result, value)),
                                 CalcResult::Number(value) => {
-                                    if value != 0.0 {
-                                        return CalcResult::Boolean(true);
-                                    }
-                                }
-                                CalcResult::String(_value) => {
-                                    return CalcResult::Boolean(true);
+                                    result = Some(fold_fn(result, value != 0.0))
                                 }
                                 error @ CalcResult::Error { .. } => return error,
-                                CalcResult::Range { .. } => {}
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
+                                CalcResult::EmptyArg => {} // unreachable
+                                CalcResult::Range { .. }
+                                | CalcResult::String { .. }
+                                | CalcResult::EmptyCell => {}
+                            }
+                            if let (Some(current_result), Some(short_circuit_value)) =
+                                (result, short_circuit_value)
+                            {
+                                if current_result == short_circuit_value {
+                                    return CalcResult::Boolean(current_result);
+                                }
                             }
                         }
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-            };
-        }
-        CalcResult::Boolean(result)
-    }
-
-    /// XOR(logical1, [logical]*,...)
-    /// Logical1 is required, subsequent logical values are optional. Can be logical values, arrays, or references.
-    /// The result of XOR is TRUE when the number of TRUE inputs is odd and FALSE when the number of TRUE inputs is even.
-    pub(crate) fn fn_xor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut true_count = 0;
-        let mut false_count = 0;
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Boolean(b) => {
-                    if b {
-                        true_count += 1;
-                    } else {
-                        false_count += 1;
-                    }
-                }
-                CalcResult::Number(value) => {
-                    if value != 0.0 {
-                        true_count += 1;
-                    } else {
-                        false_count += 1;
-                    }
-                }
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Boolean(b) => {
-                                    if b {
-                                        true_count += 1;
-                                    } else {
-                                        false_count += 1;
-                                    }
-                                }
-                                CalcResult::Number(value) => {
-                                    if value != 0.0 {
-                                        true_count += 1;
-                                    } else {
-                                        false_count += 1;
-                                    }
-                                }
-                                _ => {}
-                            }
+                CalcResult::EmptyArg => result = Some(result.unwrap_or(false)),
+                // Strings are ignored unless they are "TRUE" or "FALSE" (case insensitive). EXCEPT if the string value
+                // comes from a reference, in which case it is always ignored regardless of its value.
+                CalcResult::String(..) => {
+                    if !matches!(arg, Node::ReferenceKind { .. }) {
+                        if let Ok(f) = self.get_boolean(arg, cell) {
+                            result = Some(fold_fn(result, f));
                         }
                     }
                 }
-                _ => {}
-            };
+                // References to empty cells are ignored. If all args are ignored the result is #VALUE!
+                CalcResult::EmptyCell => {}
+            }
+
+            if let (Some(current_result), Some(short_circuit_value)) = (result, short_circuit_value)
+            {
+                if current_result == short_circuit_value {
+                    return CalcResult::Boolean(current_result);
+                }
+            }
         }
-        if true_count == 0 && false_count == 0 {
-            return CalcResult::new_error(Error::VALUE, cell, "No booleans found".to_string());
+
+        if let Some(result) = result {
+            CalcResult::Boolean(result)
+        } else {
+            CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "No logical values in argument list".to_string(),
+            )
         }
-        CalcResult::Boolean(true_count % 2 == 1)
     }
 
     /// =SWITCH(expression, case1, value1, [case, value]*, [default])
