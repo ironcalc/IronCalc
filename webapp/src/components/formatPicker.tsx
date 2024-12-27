@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Dialog, TextField } from "@mui/material";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../theme";
@@ -36,28 +36,8 @@ const FormatPicker = (properties: FormatPickerProps) => {
     >
       <StyledDialogTitle>
         {t("num_fmt.title")}
-        <Cross onClick={handleClose} onKeyDown={() => {}}>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <title>Close</title>
-            <path
-              d="M12 4.5L4 12.5"
-              stroke="#333333"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M4 4.5L12 12.5"
-              stroke="#333333"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+        <Cross onClick={handleClose} title={t("num_fmt.close")}>
+          <X />
         </Cross>
       </StyledDialogTitle>
 
@@ -101,7 +81,7 @@ const StyledDialogTitle = styled("div")`
 
 const Cross = styled("div")`
   &:hover {
-    background-color: ${theme.palette.grey["100"]};
+    background-color: ${theme.palette.grey["50"]};
   }
   display: flex;
   border-radius: 4px;
@@ -110,6 +90,11 @@ const Cross = styled("div")`
   cursor: pointer;
   align-items: center;
   justify-content: center;
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.5;
+  }
 `;
 
 const StyledDialogContent = styled("div")`

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { BookOpen, FileUp } from "lucide-react";
+import { BookOpen, FileUp, X } from "lucide-react";
 import { type DragEvent, useEffect, useRef, useState } from "react";
 
 function UploadFileDialog(properties: {
@@ -113,30 +113,11 @@ function UploadFileDialog(properties: {
         <Cross
           style={{ marginRight: 12 }}
           onClick={handleClose}
+          title="Close Dialog"
           ref={crossRef}
           tabIndex={0}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <title>Close</title>
-            <path
-              d="M12 4.5L4 12.5"
-              stroke="#333333"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M4 4.5L12 12.5"
-              stroke="#333333"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <X />
         </Cross>
       </UploadTitle>
       {message === "" ? (
@@ -237,6 +218,11 @@ const Cross = styled("div")`
   cursor: pointer;
   align-items: center;
   justify-content: center;
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.5;
+  }
 `;
 
 const DocLink = styled("span")`

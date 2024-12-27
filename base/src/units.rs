@@ -293,7 +293,9 @@ impl Model {
             Node::EmptyArgKind => None,
             Node::InvalidFunctionKind { .. } => None,
             Node::ArrayKind(_) => None,
-            Node::VariableKind(_) => None,
+            Node::DefinedNameKind(_) => None,
+            Node::TableNameKind(_) => None,
+            Node::WrongVariableKind(_) => None,
             Node::CompareKind { .. } => None,
             Node::OpPowerKind { .. } => None,
         }

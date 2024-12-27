@@ -85,14 +85,14 @@ impl Model {
         let worksheets = &self.workbook.worksheets;
         for worksheet in worksheets {
             let shared_formulas = &worksheet.shared_formulas;
-            let cell_reference = &Some(CellReferenceRC {
+            let cell_reference = CellReferenceRC {
                 sheet: worksheet.get_name(),
                 row: 1,
                 column: 1,
-            });
+            };
             let mut parse_formula = Vec::new();
             for formula in shared_formulas {
-                let t = self.parser.parse(formula, cell_reference);
+                let t = self.parser.parse(formula, &cell_reference);
                 parse_formula.push(t);
             }
             self.parsed_formulas.push(parse_formula);
@@ -144,8 +144,14 @@ impl Model {
 
     /// Reparses all formulas and defined names
     pub(crate) fn reset_parsed_structures(&mut self) {
+        let defined_names = self
+            .workbook
+            .get_defined_names_with_scope()
+            .iter()
+            .map(|s| (s.0.to_owned(), s.1))
+            .collect();
         self.parser
-            .set_worksheets(self.workbook.get_worksheet_names());
+            .set_worksheets_and_names(self.workbook.get_worksheet_names(), defined_names);
         self.parsed_formulas = vec![];
         self.parse_formulas();
         self.parsed_defined_names = HashMap::new();
@@ -262,11 +268,11 @@ impl Model {
         // We use iter because the default would be a mut_iter and we don't need a mutable reference
         let worksheets = &mut self.workbook.worksheets;
         for worksheet in worksheets {
-            let cell_reference = &Some(CellReferenceRC {
+            let cell_reference = &CellReferenceRC {
                 sheet: worksheet.get_name(),
                 row: 1,
                 column: 1,
-            });
+            };
             let mut formulas = Vec::new();
             for formula in &worksheet.shared_formulas {
                 let mut t = self.parser.parse(formula, cell_reference);
@@ -388,7 +394,7 @@ impl Model {
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
-        let parser = Parser::new(worksheet_names, HashMap::new());
+        let parser = Parser::new(worksheet_names, vec![], HashMap::new());
         let cells = HashMap::new();
 
         // FIXME: Add support for display languages

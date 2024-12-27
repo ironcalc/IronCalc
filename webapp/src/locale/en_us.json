@@ -58,12 +58,14 @@
   "num_fmt": {
     "title": "Custom number format",
     "label": "Number format",
+    "close": "Close dialog",
     "save": "Save"
   },
   "sheet_rename": {
     "rename": "Save",
     "label": "New name",
-    "title": "Rename Sheet"
+    "title": "Rename Sheet",
+    "close": "Close dialog"
   },
   "formula_input": {
     "update": "Update",

@@ -1734,6 +1734,68 @@ impl UserModel {
         Ok(())
     }
 
+    /// Returns the list of defined names
+    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String)> {
+        self.model.workbook.get_defined_names_with_scope()
+    }
+
+    /// Delete an existing defined name
+    pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
+        let old_value = self.model.get_defined_name_formula(name, scope)?;
+        let diff_list = vec![Diff::DeleteDefinedName {
+            name: name.to_string(),
+            scope,
+            old_value,
+        }];
+        self.push_diff_list(diff_list);
+        self.model.delete_defined_name(name, scope)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Create a new defined name
+    pub fn new_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<(), String> {
+        self.model.new_defined_name(name, scope, formula)?;
+        let diff_list = vec![Diff::CreateDefinedName {
+            name: name.to_string(),
+            scope,
+            value: formula.to_string(),
+        }];
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Updates a defined name
+    pub fn update_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        new_name: &str,
+        new_scope: Option<u32>,
+        new_formula: &str,
+    ) -> Result<(), String> {
+        let old_formula = self.model.get_defined_name_formula(name, scope)?;
+        let diff_list = vec![Diff::UpdateDefinedName {
+            name: name.to_string(),
+            scope,
+            old_formula: old_formula.to_string(),
+            new_name: new_name.to_string(),
+            new_scope,
+            new_formula: new_formula.to_string(),
+        }];
+        self.push_diff_list(diff_list);
+        self.model
+            .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
     // **** Private methods ****** //
 
     fn push_diff_list(&mut self, diff_list: DiffList) {
@@ -1904,6 +1966,36 @@ impl UserModel {
                 } => {
                     self.model.set_show_grid_lines(*sheet, *old_value)?;
                 }
+                Diff::CreateDefinedName {
+                    name,
+                    scope,
+                    value: _,
+                } => {
+                    self.model.delete_defined_name(name, *scope)?;
+                }
+                Diff::DeleteDefinedName {
+                    name,
+                    scope,
+                    old_value,
+                } => {
+                    self.model.new_defined_name(name, *scope, old_value)?;
+                }
+                Diff::UpdateDefinedName {
+                    name,
+                    scope,
+                    old_formula,
+                    new_name,
+                    new_scope,
+                    new_formula: _,
+                } => {
+                    self.model.update_defined_name(
+                        new_name,
+                        *new_scope,
+                        name,
+                        *scope,
+                        old_formula,
+                    )?;
+                }
                 Diff::SetSheetState {
                     index,
                     old_value,
@@ -2036,6 +2128,28 @@ impl UserModel {
                 } => {
                     self.model.set_show_grid_lines(*sheet, *new_value)?;
                 }
+                Diff::CreateDefinedName { name, scope, value } => {
+                    self.model.new_defined_name(name, *scope, value)?
+                }
+                Diff::DeleteDefinedName {
+                    name,
+                    scope,
+                    old_value: _,
+                } => self.model.delete_defined_name(name, *scope)?,
+                Diff::UpdateDefinedName {
+                    name,
+                    scope,
+                    old_formula: _,
+                    new_name,
+                    new_scope,
+                    new_formula,
+                } => self.model.update_defined_name(
+                    name,
+                    *scope,
+                    new_name,
+                    *new_scope,
+                    new_formula,
+                )?,
                 Diff::SetSheetState {
                     index,
                     old_value: _,

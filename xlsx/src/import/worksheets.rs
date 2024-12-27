@@ -40,6 +40,28 @@ pub(crate) struct WorkbookXML {
     pub(crate) defined_names: Vec<DefinedName>,
 }
 
+impl WorkbookXML {
+    fn get_defined_names_with_scope(&self) -> Vec<(String, Option<u32>)> {
+        let sheet_id_index: Vec<u32> = self.worksheets.iter().map(|s| s.sheet_id).collect();
+        let defined_names = self
+            .defined_names
+            .iter()
+            .map(|dn| {
+                let index = dn
+                    .sheet_id
+                    .and_then(|sheet_id| {
+                        // returns an Option<usize>
+                        sheet_id_index.iter().position(|&x| x == sheet_id)
+                    })
+                    // convert Option<usize> to Option<u32>
+                    .map(|pos| pos as u32);
+                (dn.name.clone(), index)
+            })
+            .collect::<Vec<_>>();
+        defined_names
+    }
+}
+
 pub(super) struct SheetSettings {
     pub id: u32,
     pub name: String,
@@ -102,6 +124,9 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     let mut sheets = Vec::new();
     let mut selected_sheet = 0;
     let mut sheet_index = 0;
+
+    let defined_names = workbook.get_defined_names_with_scope();
+
     for sheet in &workbook.worksheets {
         let sheet_name = &sheet.name;
         let rel_id = &sheet.id;
@@ -124,8 +149,15 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                     .to_vec(),
             };
 
-            let (s, is_selected) =
-                load_sheet(archive, &path, settings, worksheets, tables, shared_strings)?;
+            let (s, is_selected) = load_sheet(
+                archive,
+                &path,
+                settings,
+                worksheets,
+                tables,
+                shared_strings,
+                defined_names.clone(),
+            )?;
             if is_selected {
                 selected_sheet = sheet_index;
             }
@@ -242,11 +274,12 @@ fn from_a1_to_rc(
     worksheets: &[String],
     context: String,
     tables: HashMap<String, Table>,
+    defined_names: Vec<(String, Option<u32>)>,
 ) -> Result<String, XlsxError> {
-    let mut parser = Parser::new(worksheets.to_owned(), tables);
+    let mut parser = Parser::new(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
-    let t = parser.parse(&formula, &Some(cell_reference));
+    let t = parser.parse(&formula, &cell_reference);
     Ok(to_rc_format(&t))
 }
 
@@ -526,8 +559,10 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     worksheets: &[String],
     tables: &HashMap<String, Table>,
     shared_strings: &mut Vec<String>,
+    defined_names: Vec<(String, Option<u32>)>,
 ) -> Result<(Worksheet, bool), XlsxError> {
-    let mut sheet_parser = SheetParser::new(settings, shared_strings, worksheets, tables);
+    let mut sheet_parser =
+        SheetParser::new(settings, worksheets, tables, shared_strings, &defined_names);
 
     let zipfile = archive.by_name(path)?;
     let xmlfile = BufReader::new(zipfile);
@@ -623,6 +658,7 @@ struct SheetParser<'a> {
     worksheets: &'a [String],
     tables: &'a HashMap<String, Table>,
     shared_strings: &'a mut Vec<String>,
+    defined_names: &'a Vec<(String, Option<u32>)>,
 
     state: ParseState,
     dimensions: Vec<String>,
@@ -645,14 +681,16 @@ struct SheetParser<'a> {
 impl<'a> SheetParser<'a> {
     fn new(
         settings: SheetSettings,
-        shared_strings: &'a mut Vec<String>,
         worksheets: &'a [String],
         tables: &'a HashMap<String, Table>,
+        shared_strings: &'a mut Vec<String>,
+        defined_names: &'a Vec<(String, Option<u32>)>,
     ) -> Self {
         Self {
             settings,
             worksheets,
             tables,
+            defined_names,
             state: ParseState::Start,
             dimensions: vec![],
             sheet_views: vec![],
@@ -1065,8 +1103,13 @@ impl<'a> SheetParser<'a> {
                     let formula = self.current_cell_data.formula_data.formula_text.clone();
                     let context =
                         format!("{}!{}", self.settings.name, self.current_cell_data.cell_ref);
-                    let formula =
-                        from_a1_to_rc(formula, self.worksheets, context, self.tables.clone())?;
+                    let formula = from_a1_to_rc(
+                        formula,
+                        self.worksheets,
+                        context,
+                        self.tables.clone(),
+                        self.defined_names.clone(),
+                    )?;
                     match self.index_map.get(&si) {
                         Some(index) => {
                             // The index for that formula already exists meaning we bumped into a daughter cell first
@@ -1119,8 +1162,13 @@ impl<'a> SheetParser<'a> {
                 // Its a cell with a simple formula
                 let formula = self.current_cell_data.formula_data.formula_text.clone();
                 let context = format!("{}!{}", self.settings.name, self.current_cell_data.cell_ref);
-                let formula =
-                    from_a1_to_rc(formula, self.worksheets, context, self.tables.clone())?;
+                let formula = from_a1_to_rc(
+                    formula,
+                    self.worksheets,
+                    context,
+                    self.tables.clone(),
+                    self.defined_names.clone(),
+                )?;
 
                 match get_formula_index(&formula, &self.shared_formulas) {
                     Some(index) => self.current_cell_data.formula_index = index,

@@ -91,7 +91,6 @@ fn insert_remove_columns() {
     let mut model = UserModel::from_model(model);
     // column E
     let column_width = model.get_column_width(0, 5).unwrap();
-    println!("{column_width}");
 
     // Insert some data in row 5 (and change the style) in E1
     assert!(model.set_user_input(0, 1, 5, "100$").is_ok());

@@ -263,7 +263,9 @@ pub(crate) fn forward_references(
         // TODO: Not implemented
         Node::ArrayKind(_) => {}
         // Do nothing. Note: we could do a blanket _ => {}
-        Node::VariableKind(_) => {}
+        Node::DefinedNameKind(_) => {}
+        Node::TableNameKind(_) => {}
+        Node::WrongVariableKind(_) => {}
         Node::ErrorKind(_) => {}
         Node::ParseErrorKind { .. } => {}
         Node::EmptyArgKind => {}

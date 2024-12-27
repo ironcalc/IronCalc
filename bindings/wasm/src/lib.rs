@@ -1,3 +1,4 @@
+use serde::Serialize;
 use wasm_bindgen::{
     prelude::{wasm_bindgen, JsError},
     JsValue,
@@ -27,6 +28,13 @@ pub fn column_name_from_number(column: i32) -> Result<String, JsError> {
         Some(c) => Ok(c),
         None => Err(JsError::new("Invalid column number")),
     }
+}
+
+#[derive(Serialize)]
+struct DefinedName {
+    name: String,
+    scope: Option<u32>,
+    formula: String,
 }
 
 #[wasm_bindgen]
@@ -550,6 +558,54 @@ impl Model {
             serde_wasm_bindgen::from_value(area).map_err(|e| to_js_error(e.to_string()))?;
         self.model
             .paste_csv_string(&range, csv)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "getDefinedNameList")]
+    pub fn get_defined_name_list(&self) -> Result<JsValue, JsError> {
+        let data: Vec<DefinedName> = self
+            .model
+            .get_defined_name_list()
+            .iter()
+            .map(|s| DefinedName {
+                name: s.0.to_owned(),
+                scope: s.1,
+                formula: s.2.to_owned(),
+            })
+            .collect();
+        serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "newDefinedName")]
+    pub fn new_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<(), JsError> {
+        self.model
+            .new_defined_name(name, scope, formula)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "updateDefinedName")]
+    pub fn update_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        new_name: &str,
+        new_scope: Option<u32>,
+        new_formula: &str,
+    ) -> Result<(), JsError> {
+        self.model
+            .update_defined_name(name, scope, new_name, new_scope, new_formula)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "deleteDefinedName")]
+    pub fn delete_definedname(&mut self, name: &str, scope: Option<u32>) -> Result<(), JsError> {
+        self.model
+            .delete_defined_name(name, scope)
             .map_err(|e| to_js_error(e.to_string()))
     }
 }

@@ -51,7 +51,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | PRICE      | <Badge type="info" text="Not implemented yet" /> | –                  |
 | PRICEDISC  | <Badge type="info" text="Not implemented yet" /> | –                  |
 | PRICEMAT   | <Badge type="info" text="Not implemented yet" /> | –                  |
-| PV         | <Badge type="tip" text="Available" />          | –                  |
+| PV         | <Badge type="tip" text="Available" />          | [PV](financial/pv) |
 | RATE       | <Badge type="tip" text="Available" />          | –                  |
 | RECEIVED   | <Badge type="info" text="Not implemented yet" /> | –                  |
 | RRI        | <Badge type="tip" text="Available" />          | -                  |

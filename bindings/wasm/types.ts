@@ -228,3 +228,9 @@ export interface Clipboard {
   data: ClipboardData;
   range: [number, number, number, number];
 }
+
+export interface DefinedName {
+  name: string;
+  scope?: number;
+  formula: string;
+}

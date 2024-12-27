@@ -17,7 +17,7 @@ struct Formula<'a> {
 #[test]
 fn test_parser_reference() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -25,14 +25,14 @@ fn test_parser_reference() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("A2", &Some(cell_reference));
+    let t = parser.parse("A2", &cell_reference);
     assert_eq!(to_rc_format(&t), "R[1]C[0]");
 }
 
 #[test]
 fn test_parser_absolute_column() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -40,14 +40,14 @@ fn test_parser_absolute_column() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("$A1", &Some(cell_reference));
+    let t = parser.parse("$A1", &cell_reference);
     assert_eq!(to_rc_format(&t), "R[0]C1");
 }
 
 #[test]
 fn test_parser_absolute_row_col() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -55,14 +55,14 @@ fn test_parser_absolute_row_col() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("$C$5", &Some(cell_reference));
+    let t = parser.parse("$C$5", &cell_reference);
     assert_eq!(to_rc_format(&t), "R5C3");
 }
 
 #[test]
 fn test_parser_absolute_row_col_1() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -70,14 +70,14 @@ fn test_parser_absolute_row_col_1() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("$A$1", &Some(cell_reference));
+    let t = parser.parse("$A$1", &cell_reference);
     assert_eq!(to_rc_format(&t), "R1C1");
 }
 
 #[test]
 fn test_parser_simple_formula() {
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -86,14 +86,14 @@ fn test_parser_simple_formula() {
         column: 1,
     };
 
-    let t = parser.parse("C3+Sheet2!D4", &Some(cell_reference));
+    let t = parser.parse("C3+Sheet2!D4", &cell_reference);
     assert_eq!(to_rc_format(&t), "R[2]C[2]+Sheet2!R[3]C[3]");
 }
 
 #[test]
 fn test_parser_boolean() {
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -102,14 +102,14 @@ fn test_parser_boolean() {
         column: 1,
     };
 
-    let t = parser.parse("true", &Some(cell_reference));
+    let t = parser.parse("true", &cell_reference);
     assert_eq!(to_rc_format(&t), "TRUE");
 }
 
 #[test]
 fn test_parser_bad_formula() {
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -117,7 +117,7 @@ fn test_parser_bad_formula() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("#Value", &Some(cell_reference));
+    let t = parser.parse("#Value", &cell_reference);
     match &t {
         Node::ParseErrorKind {
             formula,
@@ -138,7 +138,7 @@ fn test_parser_bad_formula() {
 #[test]
 fn test_parser_bad_formula_1() {
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -146,7 +146,7 @@ fn test_parser_bad_formula_1() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("<5", &Some(cell_reference));
+    let t = parser.parse("<5", &cell_reference);
     match &t {
         Node::ParseErrorKind {
             formula,
@@ -167,7 +167,7 @@ fn test_parser_bad_formula_1() {
 #[test]
 fn test_parser_bad_formula_2() {
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -175,7 +175,7 @@ fn test_parser_bad_formula_2() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("*5", &Some(cell_reference));
+    let t = parser.parse("*5", &cell_reference);
     match &t {
         Node::ParseErrorKind {
             formula,
@@ -196,7 +196,7 @@ fn test_parser_bad_formula_2() {
 #[test]
 fn test_parser_bad_formula_3() {
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -204,7 +204,7 @@ fn test_parser_bad_formula_3() {
         row: 1,
         column: 1,
     };
-    let t = parser.parse("SUM(#VALVE!)", &Some(cell_reference));
+    let t = parser.parse("SUM(#VALVE!)", &cell_reference);
     match &t {
         Node::ParseErrorKind {
             formula,
@@ -225,7 +225,7 @@ fn test_parser_bad_formula_3() {
 #[test]
 fn test_parser_formulas() {
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     let formulas = vec![
         Formula {
@@ -259,11 +259,11 @@ fn test_parser_formulas() {
     for formula in formulas {
         let t = parser.parse(
             formula.initial,
-            &Some(CellReferenceRC {
+            &CellReferenceRC {
                 sheet: "Sheet1".to_string(),
                 row: 1,
                 column: 1,
-            }),
+            },
         );
         assert_eq!(to_rc_format(&t), formula.expected);
         assert_eq!(to_string(&t, &cell_reference), formula.initial);
@@ -273,7 +273,7 @@ fn test_parser_formulas() {
 #[test]
 fn test_parser_r1c1_formulas() {
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
     parser.set_lexer_mode(LexerMode::R1C1);
 
     let formulas = vec![
@@ -324,11 +324,11 @@ fn test_parser_r1c1_formulas() {
     for formula in formulas {
         let t = parser.parse(
             formula.initial,
-            &Some(CellReferenceRC {
+            &CellReferenceRC {
                 sheet: "Sheet1".to_string(),
                 row: 1,
                 column: 1,
-            }),
+            },
         );
         assert_eq!(to_string(&t, &cell_reference), formula.expected);
         assert_eq!(to_rc_format(&t), formula.initial);
@@ -338,7 +338,7 @@ fn test_parser_r1c1_formulas() {
 #[test]
 fn test_parser_quotes() {
     let worksheets = vec!["Sheet1".to_string(), "Second Sheet".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -347,14 +347,14 @@ fn test_parser_quotes() {
         column: 1,
     };
 
-    let t = parser.parse("C3+'Second Sheet'!D4", &Some(cell_reference));
+    let t = parser.parse("C3+'Second Sheet'!D4", &cell_reference);
     assert_eq!(to_rc_format(&t), "R[2]C[2]+'Second Sheet'!R[3]C[3]");
 }
 
 #[test]
 fn test_parser_escape_quotes() {
     let worksheets = vec!["Sheet1".to_string(), "Second '2' Sheet".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -363,14 +363,14 @@ fn test_parser_escape_quotes() {
         column: 1,
     };
 
-    let t = parser.parse("C3+'Second ''2'' Sheet'!D4", &Some(cell_reference));
+    let t = parser.parse("C3+'Second ''2'' Sheet'!D4", &cell_reference);
     assert_eq!(to_rc_format(&t), "R[2]C[2]+'Second ''2'' Sheet'!R[3]C[3]");
 }
 
 #[test]
 fn test_parser_parenthesis() {
     let worksheets = vec!["Sheet1".to_string(), "Second2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -379,14 +379,14 @@ fn test_parser_parenthesis() {
         column: 1,
     };
 
-    let t = parser.parse("(C3=\"Yes\")*5", &Some(cell_reference));
+    let t = parser.parse("(C3=\"Yes\")*5", &cell_reference);
     assert_eq!(to_rc_format(&t), "(R[2]C[2]=\"Yes\")*5");
 }
 
 #[test]
 fn test_parser_excel_xlfn() {
     let worksheets = vec!["Sheet1".to_string(), "Second2".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -395,7 +395,7 @@ fn test_parser_excel_xlfn() {
         column: 1,
     };
 
-    let t = parser.parse("_xlfn.CONCAT(C3)", &Some(cell_reference));
+    let t = parser.parse("_xlfn.CONCAT(C3)", &cell_reference);
     assert_eq!(to_rc_format(&t), "CONCAT(R[2]C[2])");
 }
 
@@ -407,9 +407,9 @@ fn test_to_string_displaced() {
         column: 1,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
-    let node = parser.parse("C3", &Some(context.clone()));
+    let node = parser.parse("C3", context);
     let displace_data = DisplaceData::Column {
         sheet: 0,
         column: 1,
@@ -427,9 +427,9 @@ fn test_to_string_displaced_full_ranges() {
         column: 1,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
-    let node = parser.parse("SUM(3:3)", &Some(context.clone()));
+    let node = parser.parse("SUM(3:3)", context);
     let displace_data = DisplaceData::Column {
         sheet: 0,
         column: 1,
@@ -440,7 +440,7 @@ fn test_to_string_displaced_full_ranges() {
         "SUM(3:3)".to_string()
     );
 
-    let node = parser.parse("SUM(D:D)", &Some(context.clone()));
+    let node = parser.parse("SUM(D:D)", context);
     let displace_data = DisplaceData::Row {
         sheet: 0,
         row: 3,
@@ -460,9 +460,9 @@ fn test_to_string_displaced_too_low() {
         column: 1,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
-    let node = parser.parse("C3", &Some(context.clone()));
+    let node = parser.parse("C3", context);
     let displace_data = DisplaceData::Column {
         sheet: 0,
         column: 1,
@@ -480,9 +480,9 @@ fn test_to_string_displaced_too_high() {
         column: 1,
     };
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, HashMap::new());
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
 
-    let node = parser.parse("C3", &Some(context.clone()));
+    let node = parser.parse("C3", context);
     let displace_data = DisplaceData::Column {
         sheet: 0,
         column: 1,
