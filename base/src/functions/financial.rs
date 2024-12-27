@@ -436,7 +436,7 @@ impl Model {
         }
         if rate == -1.0 {
             return CalcResult::Error {
-                error: Error::NUM,
+                error: Error::DIV,
                 origin: cell,
                 message: "Rate must be != -1".to_string(),
             };
