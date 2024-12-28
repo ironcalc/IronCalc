@@ -18,6 +18,7 @@
     "decimal_places_increase": "Increase decimal places",
     "decimal_places_decrease": "Decrease decimal places",
     "show_hide_grid_lines": "Show/hide grid lines",
+    "name_manager": "Name manager",
     "vertical_align_bottom": "Align bottom",
     "vertical_align_middle": " Align middle",
     "vertical_align_top": "Align top",
@@ -58,14 +59,12 @@
   "num_fmt": {
     "title": "Custom number format",
     "label": "Number format",
-    "close": "Close dialog",
     "save": "Save"
   },
   "sheet_rename": {
     "rename": "Save",
     "label": "New name",
-    "title": "Rename Sheet",
-    "close": "Close dialog"
+    "title": "Rename Sheet"
   },
   "formula_input": {
     "update": "Update",
@@ -75,5 +74,15 @@
   "navigation": {
     "add_sheet": "Add sheet",
     "sheet_list": "Sheet list"
+  },
+  "name_manager_dialog": {
+    "title": "Named Ranges",
+    "name": "Name",
+    "range": "Scope",
+    "scope": "Range",
+    "help": "Learn more about Named Ranges",
+    "save": "Save",
+    "cancel": "Cancel",
+    "workbook": "Workbook (Global)"
   }
 }
