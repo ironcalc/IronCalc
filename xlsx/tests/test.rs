@@ -469,7 +469,7 @@ fn test_documentation_xlsx() {
     let skip = skip.map(|s| format!("tests/docs/{s}"));
     println!("{:?}", skip);
     // dumb counter to make sure we are actually testing the files
-    assert_eq!(entries.len(), 7);
+    assert_eq!(entries.len(), 8);
     let temp_folder = env::temp_dir();
     let path = format!("{}", Uuid::new_v4());
     let dir = temp_folder.join(path);
