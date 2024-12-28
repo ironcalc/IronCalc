@@ -90,6 +90,6 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SUMX2MY2        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMX2PY2        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMXMY2         | <Badge type="info" text="Not implemented yet" /> | –             |
-| TAN             | <Badge type="tip" text="Available" />          | –             |
+| TAN             | <Badge type="tip" text="Available" />          | [TAN](math_and_trigonometry/tan) |
 | TANH            | <Badge type="tip" text="Available" />          | –             |
 | TRUNC           | <Badge type="info" text="Not implemented yet" /> | –             |
