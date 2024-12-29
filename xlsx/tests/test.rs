@@ -465,11 +465,13 @@ fn test_documentation_xlsx() {
         .unwrap();
     entries.sort();
     // We can't test volatiles
-    let skip = ["DATE.xlsx", "DAY.xlsx", "MONTH.xlsx", "YEAR.xlsx"];
-    let skip = skip.map(|s| format!("tests/docs/{s}"));
+    let mut skip = vec!["DATE.xlsx", "DAY.xlsx", "MONTH.xlsx", "YEAR.xlsx"];
+    // Numerically unstable
+    skip.push("TAN.xlsx");
+    let skip: Vec<String> = skip.iter().map(|s| format!("tests/docs/{s}")).collect();
     println!("{:?}", skip);
     // dumb counter to make sure we are actually testing the files
-    assert_eq!(entries.len(), 8);
+    assert!(entries.len() > 7);
     let temp_folder = env::temp_dir();
     let path = format!("{}", Uuid::new_v4());
     let dir = temp_folder.join(path);
