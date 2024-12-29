@@ -36,7 +36,7 @@ import {
   DecimalPlacesIncreaseIcon,
 } from "../icons";
 import { theme } from "../theme";
-import NameManagerDialog from "./NameManagerDialog";
+import NameManagerDialog from "./NameManager/NameManagerDialog";
 import BorderPicker from "./borderPicker";
 import ColorPicker from "./colorPicker";
 import { TOOLBAR_HEIGHT } from "./constants";
