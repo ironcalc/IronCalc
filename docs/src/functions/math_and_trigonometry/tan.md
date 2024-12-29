@@ -21,7 +21,7 @@ $$
 ### Additional guidance
 None.
 ### Returned value
-TAN returns a unitless [number](/features/value-types/#numbers) that is the trigonometric tangent of the specified angle.
+TAN returns a unitless [number](/features/value-types#numbers) that is the trigonometric tangent of the specified angle.
 ### Error conditions
 * In common with many other IronCalc functions, TAN propagates errors that are found in its argument.
 * If no argument, or more than one argument, is supplied, then TAN returns the [`#ERROR!`](/features/error-types.md#error) error.

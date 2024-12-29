@@ -19,14 +19,14 @@ PV can be used to calculate present value over a specified number of compounding
 * *nper* ([number](/features/value-types#numbers), required). "nper" stands for <u>n</u>umber of <u>per</u>iods, in this case the number of compounding periods to be taken into account. While this will often be an integer, non-integer values are accepted and processed.
 * *pmt* ([number](/features/value-types#numbers), required). "pmt" stands for <u>p</u>ay<u>m</u>en<u>t</u>, in this case the fixed amount paid or deposited each compounding period. 
 * *fv* ([number](/features/value-types#numbers), [optional](/features/optional-arguments.md)). "fv" is the <u>f</u>uture <u>v</u>alue at the end of the final compounding period (default 0).
-* *type* ([Boolean](/features/value-types/#booleans), [optional](/features/optional-arguments.md)). A logical value indicating whether the payment due dates are at the end (FALSE or 0) of the compounding periods or at the beginning (TRUE or any non-zero value). The default is FALSE when omitted.
+* *type* ([Boolean](/features/value-types#booleans), [optional](/features/optional-arguments.md)). A logical value indicating whether the payment due dates are at the end (FALSE or 0) of the compounding periods or at the beginning (TRUE or any non-zero value). The default is FALSE when omitted.
 ### Additional guidance
 * Make sure that the *rate* argument specifies the interest rate or yield applicable to the compounding period, based on the value chosen for *nper*.
 * The *pmt* and *fv* arguments should be expressed in the same currency unit.
 * To ensure a worthwhile result, one of the *pmt* and *fv* arguments should be non-zero.
 * The setting of the *type* argument only affects the calculation for non-zero values of the *pmt* argument.
 ### Returned value
-PV returns a [number](/features/value-types/#numbers) representing the present value expressed in the same [currency unit](/features/units) that was used for the *pmt* and *fv* arguments.
+PV returns a [number](/features/value-types#numbers) representing the present value expressed in the same [currency unit](/features/units) that was used for the *pmt* and *fv* arguments.
 ### Error conditions
 * In common with many other IronCalc functions, PV propagates errors that are found in any of its arguments.
 * If too few or too many arguments are supplied, PV returns the [`#ERROR!`](/features/error-types.md#error) error.

@@ -21,7 +21,7 @@ $$
 ### Additional guidance
 None.
 ### Returned value
-SIN returns a unitless [number](/features/value-types/#numbers) that is the trigonometric sine of the specified angle.
+SIN returns a unitless [number](/features/value-types#numbers) that is the trigonometric sine of the specified angle.
 ### Error conditions
 * In common with many other IronCalc functions, SIN propagates errors that are found in its argument.
 * If no argument, or more than one argument, is supplied, then SIN returns the [`#ERROR!`](/features/error-types.md#error) error.
