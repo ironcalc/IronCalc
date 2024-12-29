@@ -21,7 +21,7 @@ $$
 ### Additional guidance
 None.
 ### Returned value
-COS returns a unitless [number](/features/value-types/#numbers) that is the trigonometric cosine of the specified angle.
+COS returns a unitless [number](/features/value-types#numbers) that is the trigonometric cosine of the specified angle.
 ### Error conditions
 * In common with many other IronCalc functions, COS propagates errors that are found in its argument.
 * If no argument, or more than one argument, is supplied, then COS returns the [`#ERROR!`](/features/error-types.md#error) error.
