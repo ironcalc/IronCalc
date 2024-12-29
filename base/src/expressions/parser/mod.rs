@@ -642,7 +642,38 @@ impl Parser {
                 position: 0,
                 message: "Unexpected end of input.".to_string(),
             },
-            TokenType::Boolean(value) => Node::BooleanKind(value),
+            TokenType::Boolean(value) => {
+                // Could be a function call "TRUE()"
+                let next_token = self.lexer.peek_token();
+                if next_token == TokenType::LeftParenthesis {
+                    self.lexer.advance_token();
+                    // We parse all the arguments, although technically this is moot
+                    // But is has the upside of transforming `=TRUE( 4 )` into `=TRUE(4)`
+                    let args = match self.parse_function_args() {
+                        Ok(s) => s,
+                        Err(e) => return e,
+                    };
+                    if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
+                        return Node::ParseErrorKind {
+                            formula: self.lexer.get_formula(),
+                            position: err.position,
+                            message: err.message,
+                        };
+                    }
+                    if value {
+                        return Node::FunctionKind {
+                            kind: Function::True,
+                            args,
+                        };
+                    } else {
+                        return Node::FunctionKind {
+                            kind: Function::False,
+                            args,
+                        };
+                    }
+                }
+                Node::BooleanKind(value)
+            }
             TokenType::Compare(_) => {
                 // A primary Node cannot start with an operator
                 Node::ParseErrorKind {

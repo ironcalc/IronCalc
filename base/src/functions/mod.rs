@@ -949,7 +949,7 @@ impl Model {
         match kind {
             // Logical
             Function::And => self.fn_and(args, cell),
-            Function::False => CalcResult::Boolean(false),
+            Function::False => self.fn_false(args, cell),
             Function::If => self.fn_if(args, cell),
             Function::Iferror => self.fn_iferror(args, cell),
             Function::Ifna => self.fn_ifna(args, cell),
@@ -957,7 +957,7 @@ impl Model {
             Function::Not => self.fn_not(args, cell),
             Function::Or => self.fn_or(args, cell),
             Function::Switch => self.fn_switch(args, cell),
-            Function::True => CalcResult::Boolean(true),
+            Function::True => self.fn_true(args, cell),
             Function::Xor => self.fn_xor(args, cell),
             // Math and trigonometry
             Function::Sin => self.fn_sin(args, cell),
