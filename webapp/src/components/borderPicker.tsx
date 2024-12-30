@@ -62,7 +62,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
   // biome-ignore lint/correctness/useExhaustiveDependencies: We reset the styles, every time we open (or close) the widget
   useEffect(() => {
     setBorderSelected(null);
-    setBorderColor(theme.palette.common.white);
+    setBorderColor(theme.palette.common.black);
     setBorderStyle(BorderStyle.Thin);
   }, [properties.open]);
 
