@@ -5,8 +5,8 @@ use chrono::Months;
 use chrono::NaiveDate;
 
 use crate::constants::EXCEL_DATE_BASE;
-use crate::constants::EXCEL_DATE_MAX;
-use crate::constants::EXCEL_DATE_MIN;
+use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
+use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 
 #[inline]
 fn convert_to_serial_number(date: NaiveDate) -> i32 {
@@ -14,8 +14,8 @@ fn convert_to_serial_number(date: NaiveDate) -> i32 {
 }
 
 fn is_date_within_range(date: NaiveDate) -> bool {
-    convert_to_serial_number(date) >= EXCEL_DATE_MIN
-        && convert_to_serial_number(date) <= EXCEL_DATE_MAX
+    convert_to_serial_number(date) >= MINIMUM_DATE_SERIAL_NUMBER
+        && convert_to_serial_number(date) <= MAXIMUM_DATE_SERIAL_NUMBER
 }
 
 pub fn from_excel_date(days: i64) -> NaiveDate {
@@ -132,11 +132,11 @@ mod tests {
     fn test_max_and_min_dates() {
         assert_eq!(
             permissive_date_to_serial_number(31, 12, 9999),
-            Ok(EXCEL_DATE_MAX),
+            Ok(MAXIMUM_DATE_SERIAL_NUMBER),
         );
         assert_eq!(
             permissive_date_to_serial_number(1, 1, 1900),
-            Ok(EXCEL_DATE_MIN),
+            Ok(MINIMUM_DATE_SERIAL_NUMBER),
         );
     }
 }

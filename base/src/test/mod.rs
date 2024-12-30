@@ -13,6 +13,7 @@ mod test_fn_averageifs;
 mod test_fn_choose;
 mod test_fn_concatenate;
 mod test_fn_count;
+mod test_fn_day;
 mod test_fn_exact;
 mod test_fn_financial;
 mod test_fn_formulatext;

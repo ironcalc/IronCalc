@@ -21,7 +21,8 @@ pub(crate) const EXCEL_DATE_BASE: i32 = 693_594;
 // However, it uses a different numbering scheme for dates
 // that are before 1900-01-01.
 // So for now we will simply not support dates before 1900-01-01.
-pub(crate) const EXCEL_DATE_MIN: i32 = 2;
+pub(crate) const MINIMUM_DATE_SERIAL_NUMBER: i32 = 2;
 
 // Excel can handle dates until the year 9999-12-31
-pub(crate) const EXCEL_DATE_MAX: i32 = 2_958_465;
+// 2958465 is the number of days from 1900-01-01 to 9999-12-31
+pub(crate) const MAXIMUM_DATE_SERIAL_NUMBER: i32 = 2_958_465;

@@ -3,6 +3,7 @@ use chrono::Datelike;
 use chrono::Months;
 use chrono::Timelike;
 
+use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
@@ -32,6 +33,13 @@ impl Model {
             }
             Err(s) => return s,
         };
+        if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Function DAY parameter 1 value is too large.".to_string(),
+            };
+        }
         let date = from_excel_date(serial_number);
         let day = date.day() as f64;
         CalcResult::Number(day)
@@ -56,6 +64,13 @@ impl Model {
             }
             Err(s) => return s,
         };
+        if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Function DAY parameter 1 value is too large.".to_string(),
+            };
+        }
         let date = from_excel_date(serial_number);
         let month = date.month() as f64;
         CalcResult::Number(month)
@@ -80,6 +95,13 @@ impl Model {
             }
             Err(s) => return s,
         };
+        if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Function DAY parameter 1 value is too large.".to_string(),
+            };
+        }
 
         let months = match self.get_number_no_bools(&args[1], cell) {
             Ok(c) => {
@@ -178,6 +200,13 @@ impl Model {
             }
             Err(s) => return s,
         };
+        if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Function DAY parameter 1 value is too large.".to_string(),
+            };
+        }
         let date = from_excel_date(serial_number);
         let year = date.year() as f64;
         CalcResult::Number(year)
