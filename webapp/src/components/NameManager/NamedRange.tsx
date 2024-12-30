@@ -14,27 +14,31 @@ import { useEffect, useState } from "react";
 interface NamedRangeProperties {
   model: Model;
   worksheets: WorksheetProperties[];
-  name?: string;
+  name: string;
   scope?: number;
   formula: string;
+  onCreate?: () => void;
   onDelete?: () => void;
   toggleShowNewName?: () => void;
   toggleOptions: () => void;
   showOptions?: boolean;
 }
 
-function NamedRange({
-  model,
-  worksheets,
-  name,
-  scope,
-  formula,
-  onDelete,
-  toggleShowNewName,
-  toggleOptions,
-  showOptions,
-}: NamedRangeProperties) {
-  const [newName, setNewName] = useState(name || "");
+function NamedRange(properties: NamedRangeProperties) {
+  const {
+    model,
+    worksheets,
+    name,
+    scope,
+    formula,
+    onCreate,
+    onDelete,
+    toggleShowNewName,
+    toggleOptions,
+    showOptions,
+  } = properties;
+
+  const [newName, setNewName] = useState(name);
   const [newScope, setNewScope] = useState(scope);
   const [newFormula, setNewFormula] = useState(formula);
   const [readOnly, setReadOnly] = useState(true);
@@ -53,30 +57,24 @@ function NamedRange({
     }
   }, [newName, model]);
 
-  const handleSaveUpdate = () => {
+  const handleCreateUpdate = () => {
     const definedNamesModel = model.getDefinedNameList();
 
     if (definedNamesModel.find((n) => n.name === name)) {
-      // update name
+      // update
       try {
-        model.updateDefinedName(
-          name || "",
-          scope,
-          newName,
-          newScope,
-          newFormula,
-        );
+        model.updateDefinedName(name, scope, newName, newScope, newFormula);
       } catch (error) {
         console.log("DefinedName update failed", error);
       }
     } else {
-      // create name
+      // create
       try {
         model.newDefinedName(newName, newScope, newFormula);
       } catch (error) {
         console.log("DefinedName save failed", error);
       }
-      setReadOnly(true);
+      onCreate?.();
     }
     setShowEditDelete(false);
     toggleOptions();
@@ -86,11 +84,9 @@ function NamedRange({
     setReadOnly(true);
     setShowEditDelete(false);
     toggleOptions();
-    setNewName(name || "");
+    setNewName(name);
     setNewScope(scope);
-
-    // if it's newName remove it from modal
-    toggleShowNewName?.();
+    toggleShowNewName?.(); // if it's newName remove it from modal
   };
 
   const handleEdit = () => {
@@ -105,7 +101,7 @@ function NamedRange({
     } catch (error) {
       console.log("DefinedName delete failed", error);
     }
-    onDelete?.(); // refresh modal
+    onDelete?.();
   };
 
   return (
@@ -169,12 +165,18 @@ function NamedRange({
         {showEditDelete ? (
           // save cancel
           <>
-            <IconButton onClick={handleSaveUpdate}>
+            <IconButton
+              onClick={handleCreateUpdate}
+              sx={{ color: (theme) => theme.palette.success.main }}
+            >
               <Check size={12} />
             </IconButton>
-            <StyledIconButton onClick={handleCancel}>
+            <IconButton
+              onClick={handleCancel}
+              sx={{ color: (theme) => theme.palette.error.main }}
+            >
               <X size={12} />
-            </StyledIconButton>
+            </IconButton>
           </>
         ) : (
           // edit delete

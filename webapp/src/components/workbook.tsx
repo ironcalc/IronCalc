@@ -569,6 +569,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setShowGridLines(sheet, show);
           setRedrawId((id) => id + 1);
         }}
+        onNamesChanged={() => setRedrawId((id) => id + 1)}
         model={model}
       />
       <FormulaBar
