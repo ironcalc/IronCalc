@@ -1,10 +1,6 @@
 import type { Area, Cell } from "./types";
 
-import {
-  type SelectedView,
-  type WorksheetProperties,
-  columnNameFromNumber,
-} from "@ironcalc/wasm";
+import { type SelectedView, columnNameFromNumber } from "@ironcalc/wasm";
 
 /**
  *  Returns true if the keypress should start editing
@@ -68,12 +64,11 @@ export function rangeToStr(
 
 export function getFullRangeToString(
   selectedView: SelectedView,
-  worksheets: WorksheetProperties[], // solo pasar names
+  worksheetNames: string[],
 ): string {
   // order of values is confusing compared to rangeToStr range type, needs refactoring for consistency
   const [rowStart, columnStart, rowEnd, columnEnd] = selectedView.range;
-  const sheetNames = worksheets.map((s) => s.name);
-  const sheetName = `${sheetNames[selectedView.sheet]}!`;
+  const sheetName = `${worksheetNames[selectedView.sheet]}!`;
 
   if (rowStart === rowEnd && columnStart === columnEnd) {
     return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}`;
