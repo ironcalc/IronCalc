@@ -1,4 +1,4 @@
-import type { DefinedName, Model } from "@ironcalc/wasm";
+import type { Model } from "@ironcalc/wasm";
 import {
   Box,
   Button,
@@ -18,44 +18,40 @@ import NamedRange from "./NamedRange";
 
 interface NameManagerDialogProperties {
   onClose: () => void;
+  onNamesChanged: () => void;
   open: boolean;
   model: Model;
 }
 
-function NameManagerDialog({
-  onClose,
-  open,
-  model,
-}: NameManagerDialogProperties) {
-  const [definedNamesLocal, setDefinedNamesLocal] = useState<DefinedName[]>();
+function NameManagerDialog(properties: NameManagerDialogProperties) {
+  const { onClose, open, model, onNamesChanged } = properties;
+
   const [showNewName, setShowNewName] = useState(false);
   const [showOptions, setShowOptions] = useState(true);
 
   useEffect(() => {
-    // render definedNames from model
-    if (open) {
-      const definedNamesModel = model.getDefinedNameList();
-      setDefinedNamesLocal(definedNamesModel);
-    }
     setShowNewName(false);
     setShowOptions(true);
-  }, [open, model]);
+  }, []);
 
   const handleNewName = () => {
-    setShowNewName(true);
-    setShowOptions(false);
+    toggleShowNewName();
+    toggleOptions();
+  };
+
+  const handleCreate = () => {
+    toggleShowNewName();
   };
 
   const handleDelete = () => {
-    // re-render modal
-    setDefinedNamesLocal(model.getDefinedNameList());
+    onNamesChanged();
   };
 
   const formatFormula = (): string => {
-    const worksheets = model.getWorksheetsProperties();
+    const worksheetNames = model.getWorksheetsProperties().map((s) => s.name);
     const selectedView = model.getSelectedView();
 
-    return getFullRangeToString(selectedView, worksheets);
+    return getFullRangeToString(selectedView, worksheetNames);
   };
 
   const toggleOptions = () => {
@@ -63,8 +59,11 @@ function NameManagerDialog({
   };
 
   const toggleShowNewName = () => {
-    setShowNewName(false);
+    setShowNewName(!showNewName);
   };
+
+  const worksheets = model.getWorksheetsProperties();
+  const definedNameList = model.getDefinedNameList();
 
   return (
     <StyledDialog open={open} onClose={onClose} maxWidth={false} scroll="paper">
@@ -76,14 +75,14 @@ function NameManagerDialog({
       </StyledDialogTitle>
       <StyledDialogContent dividers>
         <StyledRangesHeader>
-          <Box width="171px">{t("name_manager_dialog.name")}</Box>
-          <Box width="171px">{t("name_manager_dialog.range")}</Box>
-          <Box width="171px">{t("name_manager_dialog.scope")}</Box>
+          <StyledBox>{t("name_manager_dialog.name")}</StyledBox>
+          <StyledBox>{t("name_manager_dialog.range")}</StyledBox>
+          <StyledBox>{t("name_manager_dialog.scope")}</StyledBox>
         </StyledRangesHeader>
-        {definedNamesLocal?.map((definedName) => (
+        {definedNameList.map((definedName) => (
           <NamedRange
             model={model}
-            worksheets={model.getWorksheetsProperties()}
+            worksheets={worksheets}
             name={definedName.name}
             scope={definedName.scope}
             formula={definedName.formula}
@@ -96,11 +95,13 @@ function NameManagerDialog({
         {showNewName && (
           <NamedRange
             model={model}
-            worksheets={model.getWorksheetsProperties()}
+            worksheets={worksheets}
+            name={""}
             formula={formatFormula()}
             showOptions={showOptions}
             toggleOptions={toggleOptions}
             toggleShowNewName={toggleShowNewName}
+            onCreate={handleCreate}
           />
         )}
       </StyledDialogContent>
@@ -117,7 +118,7 @@ function NameManagerDialog({
           disableElevation
           sx={{ textTransform: "none" }}
           startIcon={<Plus size={16} />}
-          disabled={!showOptions} // disable when editing
+          disabled={!showOptions}
         >
           {t("name_manager_dialog.new")}
         </Button>
@@ -140,6 +141,10 @@ font-weight: 600;
 display: flex;
 align-items: center;
 justify-content: space-between;
+`;
+
+const StyledBox = styled(Box)`
+width: 171px;
 `;
 
 const StyledDialogContent = styled(DialogContent)`
