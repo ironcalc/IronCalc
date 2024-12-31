@@ -71,6 +71,10 @@ export default defineConfig({
             link: "/features/units",
           },		  
           {
+            text: "Serial Numbers",
+            link: "/features/serial-numbers",
+          },		  
+          {
             text: "Unsupported Features",
             link: "/features/unsupported-features",
           },
