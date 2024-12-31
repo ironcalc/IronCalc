@@ -14,33 +14,49 @@ import { t } from "i18next";
 import { BookOpen, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getFullRangeToString } from "../util";
-import NamedRange from "./NamedRange";
+import NamedRangeActive from "./NamedRangeActive";
+import NamedRangeInactive from "./NamedRangeInactive";
 
 interface NameManagerDialogProperties {
-  onClose: () => void;
-  onNamesChanged: () => void;
   open: boolean;
   model: Model;
+  onClose: () => void;
+  onNamesChanged: () => void;
 }
 
 function NameManagerDialog(properties: NameManagerDialogProperties) {
-  const { onClose, open, model, onNamesChanged } = properties;
-
-  const [showNewName, setShowNewName] = useState(false);
+  const { open, model, onClose, onNamesChanged } = properties;
+  // If editingNameIndex is -1, then we are adding a new name
+  // If editingNameIndex is -2, then we are not editing any name
+  // If editingNameIndex is a positive number, then we are editing that index
+  const [editingNameIndex, setEditingNameIndex] = useState(-2);
   const [showOptions, setShowOptions] = useState(true);
+  const worksheets = model.getWorksheetsProperties();
+  const definedNameList = model.getDefinedNameList();
 
+  // reset modal state in case editing was in progress
   useEffect(() => {
-    setShowNewName(false);
-    setShowOptions(true);
-  }, []);
+    if (open) {
+      setEditingNameIndex(-2);
+    }
+  }, [open]);
+
+  // enable/disable options while editing
+  useEffect(() => {
+    if (editingNameIndex !== -2) {
+      setShowOptions(false);
+    } else {
+      setShowOptions(true);
+    }
+  }, [editingNameIndex]);
 
   const handleNewName = () => {
-    toggleShowNewName();
-    toggleOptions();
+    setEditingNameIndex(-1);
   };
 
-  const handleCreate = () => {
-    toggleShowNewName();
+  const handleSave = () => {
+    setEditingNameIndex(-2);
+    onNamesChanged();
   };
 
   const handleDelete = () => {
@@ -54,22 +70,11 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
     return getFullRangeToString(selectedView, worksheetNames);
   };
 
-  const toggleOptions = () => {
-    setShowOptions(!showOptions);
-  };
-
-  const toggleShowNewName = () => {
-    setShowNewName(!showNewName);
-  };
-
-  const worksheets = model.getWorksheetsProperties();
-  const definedNameList = model.getDefinedNameList();
-
   return (
     <StyledDialog open={open} onClose={onClose} maxWidth={false} scroll="paper">
       <StyledDialogTitle>
         {t("name_manager_dialog.title")}
-        <IconButton onClick={() => onClose()}>
+        <IconButton onClick={onClose}>
           <X size={16} />
         </IconButton>
       </StyledDialogTitle>
@@ -79,29 +84,45 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
           <StyledBox>{t("name_manager_dialog.range")}</StyledBox>
           <StyledBox>{t("name_manager_dialog.scope")}</StyledBox>
         </StyledRangesHeader>
-        {definedNameList.map((definedName) => (
-          <NamedRange
-            model={model}
-            worksheets={worksheets}
-            name={definedName.name}
-            scope={definedName.scope}
-            formula={definedName.formula}
-            key={definedName.name}
-            showOptions={showOptions}
-            toggleOptions={toggleOptions}
-            onDelete={handleDelete}
-          />
-        ))}
-        {showNewName && (
-          <NamedRange
+        <NameListWrapper>
+          {definedNameList.map((definedName, index) => {
+            if (index === editingNameIndex) {
+              return (
+                <NamedRangeActive
+                  model={model}
+                  worksheets={worksheets}
+                  name={definedName.name}
+                  scope={definedName.scope}
+                  formula={definedName.formula}
+                  key={definedName.name}
+                  onSave={handleSave}
+                  onCancel={() => setEditingNameIndex(-2)}
+                />
+              );
+            }
+            return (
+              <NamedRangeInactive
+                model={model}
+                worksheets={worksheets}
+                name={definedName.name}
+                scope={definedName.scope}
+                formula={definedName.formula}
+                key={definedName.name}
+                showOptions={showOptions}
+                onEdit={() => setEditingNameIndex(index)}
+                onDelete={handleDelete}
+              />
+            );
+          })}
+        </NameListWrapper>
+        {editingNameIndex === -1 && (
+          <NamedRangeActive
             model={model}
             worksheets={worksheets}
             name={""}
             formula={formatFormula()}
-            showOptions={showOptions}
-            toggleOptions={toggleOptions}
-            toggleShowNewName={toggleShowNewName}
-            onCreate={handleCreate}
+            onSave={handleSave}
+            onCancel={() => setEditingNameIndex(-2)}
           />
         )}
       </StyledDialogContent>
@@ -118,7 +139,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
           disableElevation
           sx={{ textTransform: "none" }}
           startIcon={<Plus size={16} />}
-          disabled={!showOptions}
+          disabled={editingNameIndex > -2}
         >
           {t("name_manager_dialog.new")}
         </Button>
@@ -141,6 +162,11 @@ font-weight: 600;
 display: flex;
 align-items: center;
 justify-content: space-between;
+`;
+
+const NameListWrapper = styled(Stack)`
+  overflow-y: auto;
+  gap: 12px;
 `;
 
 const StyledBox = styled(Box)`
