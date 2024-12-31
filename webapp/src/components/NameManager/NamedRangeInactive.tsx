@@ -26,6 +26,7 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
     showOptions,
   } = properties;
 
+  //todo: move logic to NameManagerDialog
   const handleDelete = () => {
     try {
       model.deleteDefinedName(name, scope);
@@ -35,9 +36,10 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
     onDelete();
   };
 
+  //todo: pass the name, avoid logic
   const scopeName =
     worksheets.find((sheet, index) => index === scope)?.name ||
-    t("name_manager_dialog.workbook");
+    `${t("name_manager_dialog.workbook")} ${t("name_manager_dialog.global")}`;
 
   return (
     <>
@@ -45,14 +47,14 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
         <StyledDiv>{name}</StyledDiv>
         <StyledDiv>{scopeName}</StyledDiv>
         <StyledDiv>{formula}</StyledDiv>
-        <WrappedIcons>
+        <IconsWrapper>
           <StyledIconButtonBlack onClick={onEdit} disabled={!showOptions}>
             <PencilLine size={12} />
           </StyledIconButtonBlack>
           <StyledIconButtonRed onClick={handleDelete} disabled={!showOptions}>
             <Trash2 size={12} />
           </StyledIconButtonRed>
-        </WrappedIcons>
+        </IconsWrapper>
       </WrappedLine>
       <Divider />
     </>
@@ -75,6 +77,7 @@ const WrappedLine = styled(Box)({
   display: "flex",
   height: "28px",
   alignItems: "center",
+  gap: "12px",
 });
 
 const StyledDiv = styled("div")(({ theme }) => ({
@@ -82,12 +85,12 @@ const StyledDiv = styled("div")(({ theme }) => ({
   fontSize: "12px",
   fontWeight: "400",
   color: theme.palette.common.black,
-  width: "171px",
+  width: "153.67px",
+  paddingLeft: "8px",
 }));
 
-const WrappedIcons = styled(Box)({
+const IconsWrapper = styled(Box)({
   display: "flex",
-  gap: "0px",
 });
 
 export default NamedRangeInactive;

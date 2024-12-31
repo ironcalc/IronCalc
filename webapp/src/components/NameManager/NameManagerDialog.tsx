@@ -34,14 +34,12 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
   const worksheets = model.getWorksheetsProperties();
   const definedNameList = model.getDefinedNameList();
 
-  // reset modal state in case editing was in progress
   useEffect(() => {
     if (open) {
       setEditingNameIndex(-2);
     }
   }, [open]);
 
-  // enable/disable options while editing
   useEffect(() => {
     if (editingNameIndex !== -2) {
       setShowOptions(false);
@@ -94,7 +92,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
                   name={definedName.name}
                   scope={definedName.scope}
                   formula={definedName.formula}
-                  key={definedName.name}
+                  key={definedName.name + definedName.scope}
                   onSave={handleSave}
                   onCancel={() => setEditingNameIndex(-2)}
                 />
@@ -107,7 +105,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
                 name={definedName.name}
                 scope={definedName.scope}
                 formula={definedName.formula}
-                key={definedName.name}
+                key={definedName.name + definedName.scope}
                 showOptions={showOptions}
                 onEdit={() => setEditingNameIndex(index)}
                 onDelete={handleDelete}
@@ -151,12 +149,14 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
 const StyledDialog = styled(Dialog)(() => ({
   "& .MuiPaper-root": {
     height: "380px",
+    minHeight: "200px",
     minWidth: "620px",
   },
 }));
 
 const StyledDialogTitle = styled(DialogTitle)`
 padding: 12px 20px;
+height: 20px;
 font-size: 14px;
 font-weight: 600;
 display: flex;
@@ -170,7 +170,7 @@ const NameListWrapper = styled(Stack)`
 `;
 
 const StyledBox = styled(Box)`
-width: 171px;
+width: 161.67px;
 `;
 
 const StyledDialogContent = styled(DialogContent)`
@@ -182,6 +182,7 @@ padding: 20px 12px 20px 20px;
 
 const StyledRangesHeader = styled(Stack)(({ theme }) => ({
   flexDirection: "row",
+  padding: "0 8px",
   gap: "12px",
   fontFamily: theme.typography.fontFamily,
   fontSize: "12px",
