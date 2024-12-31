@@ -8,8 +8,8 @@ import {
   styled,
 } from "@mui/material";
 import { t } from "i18next";
-import { Check, PencilLine, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, X } from "lucide-react";
+import { useState } from "react";
 
 interface NamedRangeProperties {
   model: Model;
@@ -17,91 +17,39 @@ interface NamedRangeProperties {
   name: string;
   scope?: number;
   formula: string;
-  onCreate?: () => void;
+  onSave: () => void;
   onDelete?: () => void;
-  toggleShowNewName?: () => void;
-  toggleOptions: () => void;
-  showOptions?: boolean;
+  onCancel?: () => void;
 }
 
-function NamedRange(properties: NamedRangeProperties) {
-  const {
-    model,
-    worksheets,
-    name,
-    scope,
-    formula,
-    onCreate,
-    onDelete,
-    toggleShowNewName,
-    toggleOptions,
-    showOptions,
-  } = properties;
-
+function NamedRangeActive(properties: NamedRangeProperties) {
+  const { model, worksheets, name, scope, formula, onSave, onCancel } =
+    properties;
   const [newName, setNewName] = useState(name);
   const [newScope, setNewScope] = useState(scope);
   const [newFormula, setNewFormula] = useState(formula);
-  const [readOnly, setReadOnly] = useState(true);
-  const [showEditDelete, setShowEditDelete] = useState(false);
 
   // todo: add error messages for validations
   const [nameError, setNameError] = useState(false);
   const [formulaError, setFormulaError] = useState(false);
 
-  useEffect(() => {
-    // set state for new name
-    const definedNamesModel = model.getDefinedNameList();
-    if (!definedNamesModel.find((n) => n.name === newName)) {
-      setReadOnly(false);
-      setShowEditDelete(true);
-    }
-  }, [newName, model]);
-
-  const handleCreateUpdate = () => {
+  const handleSaveUpdate = () => {
     const definedNamesModel = model.getDefinedNameList();
 
     if (definedNamesModel.find((n) => n.name === name)) {
-      // update
       try {
         model.updateDefinedName(name, scope, newName, newScope, newFormula);
       } catch (error) {
         console.log("DefinedName update failed", error);
       }
     } else {
-      // create
       try {
         model.newDefinedName(newName, newScope, newFormula);
       } catch (error) {
         console.log("DefinedName save failed", error);
       }
-      onCreate?.();
     }
-    setShowEditDelete(false);
-    toggleOptions();
-  };
-
-  const handleCancel = () => {
-    setReadOnly(true);
-    setShowEditDelete(false);
-    toggleOptions();
-    setNewName(name);
-    setNewScope(scope);
-    toggleShowNewName?.(); // if it's newName remove it from modal
-  };
-
-  const handleEdit = () => {
-    setReadOnly(false);
-    setShowEditDelete(true);
-    toggleOptions();
-  };
-
-  const handleDelete = () => {
-    try {
-      model.deleteDefinedName(newName, newScope);
-    } catch (error) {
-      console.log("DefinedName delete failed", error);
-    }
-    onDelete?.();
+    onSave();
   };
 
   return (
@@ -113,7 +61,6 @@ function NamedRange(properties: NamedRangeProperties) {
           size="small"
           margin="none"
           fullWidth
-          InputProps={{ readOnly: readOnly }}
           error={nameError}
           value={newName}
           onChange={(event) => setNewName(event.target.value)}
@@ -129,7 +76,6 @@ function NamedRange(properties: NamedRangeProperties) {
           size="small"
           margin="none"
           fullWidth
-          InputProps={{ readOnly: readOnly }}
           value={newScope ?? "global"}
           onChange={(event) => {
             event.target.value === "global"
@@ -152,7 +98,6 @@ function NamedRange(properties: NamedRangeProperties) {
           size="small"
           margin="none"
           fullWidth
-          InputProps={{ readOnly: readOnly }}
           error={formulaError}
           value={newFormula}
           onChange={(event) => setNewFormula(event.target.value)}
@@ -161,34 +106,14 @@ function NamedRange(properties: NamedRangeProperties) {
           }}
           onClick={(event) => event.stopPropagation()}
         />
-
-        {showEditDelete ? (
-          // save cancel
-          <>
-            <IconButton
-              onClick={handleCreateUpdate}
-              sx={{ color: (theme) => theme.palette.success.main }}
-            >
-              <Check size={12} />
-            </IconButton>
-            <IconButton
-              onClick={handleCancel}
-              sx={{ color: (theme) => theme.palette.error.main }}
-            >
-              <X size={12} />
-            </IconButton>
-          </>
-        ) : (
-          // edit delete
-          <>
-            <IconButton onClick={handleEdit} disabled={!showOptions}>
-              <PencilLine size={12} />
-            </IconButton>
-            <StyledIconButton onClick={handleDelete} disabled={!showOptions}>
-              <Trash2 size={12} />
-            </StyledIconButton>
-          </>
-        )}
+        <>
+          <IconButton onClick={handleSaveUpdate}>
+            <StyledCheck size={12} />
+          </IconButton>
+          <StyledIconButton onClick={onCancel}>
+            <X size={12} />
+          </StyledIconButton>
+        </>
       </StyledBox>
       <Divider />
     </>
@@ -205,6 +130,11 @@ const StyledTextField = styled(TextField)(() => ({
   "& .MuiInputBase-root": {
     height: "28px",
     margin: 0,
+    fontFamily: "Inter",
+    fontSize: "12px",
+  },
+  "& .MuiInputBase-input": {
+    padding: "8px",
   },
 }));
 
@@ -216,4 +146,8 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
-export default NamedRange;
+const StyledCheck = styled(Check)(({ theme }) => ({
+  color: theme.palette.success.main,
+}));
+
+export default NamedRangeActive;
