@@ -84,6 +84,7 @@
     "scope": "Range",
     "help": "Learn more about Named Ranges",
     "new": "Add new",
-    "workbook": "Workbook (Global)"
+    "workbook": "Workbook",
+    "global": "(Global)"
   }
 }

@@ -7,6 +7,7 @@
 - New function UNICODE ([#128](https://github.com/ironcalc/IronCalc/pull/128))
 - New document server (Thanks Dani!)
 - New function FORMULATEXT
+- Name Manager ([#212](https://github.com/ironcalc/IronCalc/pull/212) [#220](https://github.com/ironcalc/IronCalc/pull/220))
 
 ### Fixed
 

@@ -33,10 +33,11 @@ function NamedRangeActive(properties: NamedRangeProperties) {
   const [nameError, setNameError] = useState(false);
   const [formulaError, setFormulaError] = useState(false);
 
+  //todo: move logic to NameManagerDialog
   const handleSaveUpdate = () => {
     const definedNamesModel = model.getDefinedNameList();
 
-    if (definedNamesModel.find((n) => n.name === name)) {
+    if (definedNamesModel.find((n) => n.name === name && n.scope === scope)) {
       try {
         model.updateDefinedName(name, scope, newName, newScope, newFormula);
       } catch (error) {
@@ -84,7 +85,7 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           }}
         >
           <MenuItem value={"global"}>
-            {t("name_manager_dialog.workbook")}
+            {`${t("name_manager_dialog.workbook")} ${t("name_manager_dialog.global")}`}
           </MenuItem>
           {worksheets.map((option, index) => (
             <MenuItem key={option.name} value={index}>
@@ -106,14 +107,14 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           }}
           onClick={(event) => event.stopPropagation()}
         />
-        <>
+        <IconsWrapper>
           <IconButton onClick={handleSaveUpdate}>
             <StyledCheck size={12} />
           </IconButton>
           <StyledIconButton onClick={onCancel}>
             <X size={12} />
           </StyledIconButton>
-        </>
+        </IconsWrapper>
       </StyledBox>
       <Divider />
     </>
@@ -129,6 +130,7 @@ width: 577px;
 const StyledTextField = styled(TextField)(() => ({
   "& .MuiInputBase-root": {
     height: "28px",
+    width: "161.67px",
     margin: 0,
     fontFamily: "Inter",
     fontSize: "12px",
@@ -149,5 +151,9 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
 const StyledCheck = styled(Check)(({ theme }) => ({
   color: theme.palette.success.main,
 }));
+
+const IconsWrapper = styled(Box)({
+  display: "flex",
+});
 
 export default NamedRangeActive;
