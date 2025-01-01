@@ -30,7 +30,6 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
   // If editingNameIndex is -2, then we are not editing any name
   // If editingNameIndex is a positive number, then we are editing that index
   const [editingNameIndex, setEditingNameIndex] = useState(-2);
-  const [showOptions, setShowOptions] = useState(true);
   const worksheets = model.getWorksheetsProperties();
   const definedNameList = model.getDefinedNameList();
 
@@ -39,14 +38,6 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
       setEditingNameIndex(-2);
     }
   }, [open]);
-
-  useEffect(() => {
-    if (editingNameIndex !== -2) {
-      setShowOptions(false);
-    } else {
-      setShowOptions(true);
-    }
-  }, [editingNameIndex]);
 
   const formatFormula = (): string => {
     const worksheetNames = worksheets.map((s) => s.name);
@@ -115,7 +106,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
                 scope={scopeName}
                 formula={definedName.formula}
                 key={definedName.name + definedName.scope}
-                showOptions={showOptions}
+                showOptions={editingNameIndex === -2}
                 onEdit={() => setEditingNameIndex(index)}
                 onDelete={() => {
                   model.deleteDefinedName(definedName.name, definedName.scope);
