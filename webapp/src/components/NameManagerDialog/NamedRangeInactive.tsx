@@ -26,7 +26,7 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
     showOptions,
   } = properties;
 
-  //todo: move logic to NameManagerDialog
+  // TODO: move logic to NameManagerDialog
   const handleDelete = () => {
     try {
       model.deleteDefinedName(name, scope);
@@ -36,7 +36,7 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
     onDelete();
   };
 
-  //todo: pass the name, avoid logic
+  // TODO: pass the name, avoid logic
   const scopeName =
     worksheets.find((sheet, index) => index === scope)?.name ||
     `${t("name_manager_dialog.workbook")} ${t("name_manager_dialog.global")}`;

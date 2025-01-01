@@ -29,11 +29,11 @@ function NamedRangeActive(properties: NamedRangeProperties) {
   const [newScope, setNewScope] = useState(scope);
   const [newFormula, setNewFormula] = useState(formula);
 
-  // todo: add error messages for validations
+  // TODO: add error messages for validations
   const [nameError, setNameError] = useState(false);
   const [formulaError, setFormulaError] = useState(false);
 
-  //todo: move logic to NameManagerDialog
+  // TODO: move logic to NameManagerDialog
   const handleSaveUpdate = () => {
     const definedNamesModel = model.getDefinedNameList();
 
@@ -85,7 +85,9 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           }}
         >
           <MenuItem value={"global"}>
-            {`${t("name_manager_dialog.workbook")} ${t("name_manager_dialog.global")}`}
+            {`${t("name_manager_dialog.workbook")} ${t(
+              "name_manager_dialog.global",
+            )}`}
           </MenuItem>
           {worksheets.map((option, index) => (
             <MenuItem key={option.name} value={index}>
@@ -122,9 +124,9 @@ function NamedRangeActive(properties: NamedRangeProperties) {
 }
 
 const StyledBox = styled(Box)`
-display: flex;
-gap: 12px;
-width: 577px;
+  display: flex;
+  gap: 12px;
+  width: 577px;
 `;
 
 const StyledTextField = styled(TextField)(() => ({
