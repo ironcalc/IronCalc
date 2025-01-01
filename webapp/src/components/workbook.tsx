@@ -21,7 +21,11 @@ import {
 import FormulaBar from "./formulabar";
 import Toolbar from "./toolbar";
 import useKeyboardNavigation from "./useKeyboardNavigation";
-import { type NavigationKey, getCellAddress } from "./util";
+import {
+  type NavigationKey,
+  getCellAddress,
+  getFullRangeToString,
+} from "./util";
 import type { WorkbookState } from "./workbookState";
 import Worksheet from "./worksheet";
 
@@ -32,11 +36,13 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
-  const info = model
-    .getWorksheetsProperties()
-    .map(({ name, color, sheet_id, state }: WorksheetProperties) => {
+
+  const worksheets = model.getWorksheetsProperties();
+  const info = worksheets.map(
+    ({ name, color, sheet_id, state }: WorksheetProperties) => {
       return { name, color: color ? color : "#FFF", sheetId: sheet_id, state };
-    });
+    },
+  );
   const focusWorkbook = useCallback(() => {
     if (rootRef.current) {
       rootRef.current.focus();
@@ -569,8 +575,38 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setShowGridLines(sheet, show);
           setRedrawId((id) => id + 1);
         }}
-        onNamesChanged={() => setRedrawId((id) => id + 1)}
-        model={model}
+        nameManagerProperties={{
+          newDefinedName: (
+            name: string,
+            scope: number | undefined,
+            formula: string,
+          ) => {
+            model.newDefinedName(name, scope, formula);
+            setRedrawId((id) => id + 1);
+          },
+          updateDefinedName: (
+            name: string,
+            scope: number | undefined,
+            newName: string,
+            newScope: number | undefined,
+            newFormula: string,
+          ) => {
+            model.updateDefinedName(name, scope, newName, newScope, newFormula);
+            setRedrawId((id) => id + 1);
+          },
+          deleteDefinedName: (name: string, scope: number | undefined) => {
+            model.deleteDefinedName(name, scope);
+            setRedrawId((id) => id + 1);
+          },
+          selectedArea: () => {
+            const worksheetNames = worksheets.map((s) => s.name);
+            const selectedView = model.getSelectedView();
+
+            return getFullRangeToString(selectedView, worksheetNames);
+          },
+          worksheets,
+          definedNameList: model.getDefinedNameList(),
+        }}
       />
       <FormulaBar
         cellAddress={cellAddress()}
