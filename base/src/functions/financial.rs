@@ -2,7 +2,7 @@ use chrono::Datelike;
 
 use crate::{
     calc_result::CalcResult,
-    constants::{LAST_COLUMN, LAST_ROW},
+    constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
     model::Model,
@@ -13,37 +13,38 @@ use super::financial_util::{compute_irr, compute_npv, compute_rate, compute_xirr
 // See:
 // https://github.com/apache/openoffice/blob/c014b5f2b55cff8d4b0c952d5c16d62ecde09ca1/main/scaddins/source/analysis/financial.cxx
 
-// FIXME: Is this enough?
-fn is_valid_date(date: f64) -> bool {
-    date > 0.0
-}
-
-fn is_less_than_one_year(start_date: i64, end_date: i64) -> bool {
+fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bool, String> {
+    let end = match from_excel_date(end_date) {
+        Ok(s) => s,
+        Err(s) => return Err(s),
+    };
+    let start = match from_excel_date(start_date) {
+        Ok(s) => s,
+        Err(s) => return Err(s),
+    };
     if end_date - start_date < 365 {
-        return true;
+        return Ok(true);
     }
-    let end = from_excel_date(end_date);
-    let start = from_excel_date(start_date);
     let end_year = end.year();
     let start_year = start.year();
     if end_year == start_year {
-        return true;
+        return Ok(true);
     }
     if end_year != start_year + 1 {
-        return false;
+        return Ok(false);
     }
     let start_month = start.month();
     let end_month = end.month();
     if end_month < start_month {
-        return true;
+        return Ok(true);
     }
     if end_month > start_month {
-        return false;
+        return Ok(false);
     }
     // we are one year later same month
     let start_day = start.day();
     let end_day = end.day();
-    end_day <= start_day
+    Ok(end_day <= start_day)
 }
 
 fn compute_payment(
@@ -923,7 +924,9 @@ impl Model {
         }
         let first_date = dates[0];
         for date in &dates {
-            if !is_valid_date(*date) {
+            if *date < MINIMUM_DATE_SERIAL_NUMBER as f64
+                || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64
+            {
                 // Excel docs claim that if any number in dates is not a valid date,
                 // XNPV returns the #VALUE! error value, but it seems to return #VALUE!
                 return CalcResult::new_error(
@@ -989,7 +992,9 @@ impl Model {
         }
         let first_date = dates[0];
         for date in &dates {
-            if !is_valid_date(*date) {
+            if *date < MINIMUM_DATE_SERIAL_NUMBER as f64
+                || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64
+            {
                 return CalcResult::new_error(
                     Error::NUM,
                     cell,
@@ -1373,9 +1378,10 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if !is_valid_date(settlement) || !is_valid_date(maturity) {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string());
-        }
+        let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
+            Ok(f) => f,
+            Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
+        };
         if settlement > maturity {
             return CalcResult::new_error(
                 Error::NUM,
@@ -1383,7 +1389,7 @@ impl Model {
                 "settlement should be <= maturity".to_string(),
             );
         }
-        if !is_less_than_one_year(settlement as i64, maturity as i64) {
+        if !less_than_one_year {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -1437,9 +1443,10 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if !is_valid_date(settlement) || !is_valid_date(maturity) {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string());
-        }
+        let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
+            Ok(f) => f,
+            Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
+        };
         if settlement > maturity {
             return CalcResult::new_error(
                 Error::NUM,
@@ -1447,7 +1454,7 @@ impl Model {
                 "settlement should be <= maturity".to_string(),
             );
         }
-        if !is_less_than_one_year(settlement as i64, maturity as i64) {
+        if !less_than_one_year {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -1487,9 +1494,10 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if !is_valid_date(settlement) || !is_valid_date(maturity) {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string());
-        }
+        let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
+            Ok(f) => f,
+            Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
+        };
         if settlement > maturity {
             return CalcResult::new_error(
                 Error::NUM,
@@ -1497,7 +1505,7 @@ impl Model {
                 "settlement should be <= maturity".to_string(),
             );
         }
-        if !is_less_than_one_year(settlement as i64, maturity as i64) {
+        if !less_than_one_year {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,

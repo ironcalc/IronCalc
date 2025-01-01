@@ -154,15 +154,16 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Date(p) => {
             let tokens = &p.tokens;
             let mut text = "".to_string();
-            if !(1.0..=2_958_465.0).contains(&value) {
-                // 2_958_465 is 31 December 9999
-                return Formatted {
-                    text: "#VALUE!".to_owned(),
-                    color: None,
-                    error: Some("Date negative or too long".to_owned()),
-                };
-            }
-            let date = from_excel_date(value as i64);
+            let date = match from_excel_date(value as i64) {
+                Ok(d) => d,
+                Err(e) => {
+                    return Formatted {
+                        text: "#VALUE!".to_owned(),
+                        color: None,
+                        error: Some(e),
+                    }
+                }
+            };
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {

@@ -17,11 +17,8 @@ pub(crate) const LAST_ROW: i32 = 1_048_576;
 // The 2 days offset is because of Excel 1900 bug
 pub(crate) const EXCEL_DATE_BASE: i32 = 693_594;
 
-// Excel can handle dates until the year 0000-01-01
-// However, it uses a different numbering scheme for dates
-// that are before 1900-01-01.
-// So for now we will simply not support dates before 1900-01-01.
-pub(crate) const MINIMUM_DATE_SERIAL_NUMBER: i32 = 2;
+// We do not support dates before 1899-12-31.
+pub(crate) const MINIMUM_DATE_SERIAL_NUMBER: i32 = 1;
 
 // Excel can handle dates until the year 9999-12-31
 // 2958465 is the number of days from 1900-01-01 to 9999-12-31
