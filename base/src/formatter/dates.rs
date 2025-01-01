@@ -18,10 +18,22 @@ fn is_date_within_range(date: NaiveDate) -> bool {
         && convert_to_serial_number(date) <= MAXIMUM_DATE_SERIAL_NUMBER
 }
 
-pub fn from_excel_date(days: i64) -> NaiveDate {
+pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
+    if days < MINIMUM_DATE_SERIAL_NUMBER as i64 {
+        return Err(format!(
+            "Excel date must be greater than {}",
+            MINIMUM_DATE_SERIAL_NUMBER
+        ));
+    };
+    if days > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
+        return Err(format!(
+            "Excel date must be less than {}",
+            MAXIMUM_DATE_SERIAL_NUMBER
+        ));
+    };
     #[allow(clippy::expect_used)]
     let dt = NaiveDate::from_ymd_opt(1900, 1, 1).expect("problem with chrono::NaiveDate");
-    dt + Duration::days(days - 2)
+    Ok(dt + Duration::days(days - 2))
 }
 
 pub fn date_to_serial_number(day: u32, month: u32, year: i32) -> Result<i32, String> {
@@ -40,6 +52,10 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     // This function applies that same logic to dates. And does it in the most compatible way as
     // possible.
 
+    // Special case for the minimum date
+    if year == 1899 && month == 12 && day == 31 {
+        return Ok(MINIMUM_DATE_SERIAL_NUMBER);
+    }
     let Some(mut date) = NaiveDate::from_ymd_opt(year, 1, 1) else {
         return Err("Out of range parameters for date".to_string());
     };
@@ -135,7 +151,7 @@ mod tests {
             Ok(MAXIMUM_DATE_SERIAL_NUMBER),
         );
         assert_eq!(
-            permissive_date_to_serial_number(1, 1, 1900),
+            permissive_date_to_serial_number(31, 12, 1899),
             Ok(MINIMUM_DATE_SERIAL_NUMBER),
         );
     }

@@ -4,6 +4,7 @@ use chrono::Months;
 use chrono::Timelike;
 
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
+use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
@@ -20,27 +21,19 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let serial_number = match self.get_number(&args[0], cell) {
-            Ok(c) => {
-                let t = c.floor() as i64;
-                if t < 0 {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Function DAY parameter 1 value is negative. It should be positive or zero.".to_string(),
-                    };
-                }
-                t
-            }
+            Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Function DAY parameter 1 value is too large.".to_string(),
-            };
-        }
-        let date = from_excel_date(serial_number);
+        let date = match from_excel_date(serial_number) {
+            Ok(date) => date,
+            Err(_) => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Out of range parameters for date".to_string(),
+                }
+            }
+        };
         let day = date.day() as f64;
         CalcResult::Number(day)
     }
@@ -51,27 +44,19 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let serial_number = match self.get_number(&args[0], cell) {
-            Ok(c) => {
-                let t = c.floor() as i64;
-                if t < 0 {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Function MONTH parameter 1 value is negative. It should be positive or zero.".to_string(),
-                    };
-                }
-                t
-            }
+            Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Function DAY parameter 1 value is too large.".to_string(),
-            };
-        }
-        let date = from_excel_date(serial_number);
+        let date = match from_excel_date(serial_number) {
+            Ok(date) => date,
+            Err(_) => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Out of range parameters for date".to_string(),
+                }
+            }
+        };
         let month = date.month() as f64;
         CalcResult::Number(month)
     }
@@ -95,6 +80,16 @@ impl Model {
             }
             Err(s) => return s,
         };
+        let date = match from_excel_date(serial_number) {
+            Ok(date) => date,
+            Err(_) => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Out of range parameters for date".to_string(),
+                }
+            }
+        };
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -114,9 +109,9 @@ impl Model {
         let months_abs = months.unsigned_abs();
 
         let native_date = if months > 0 {
-            from_excel_date(serial_number) + Months::new(months_abs)
+            date + Months::new(months_abs)
         } else {
-            from_excel_date(serial_number) - Months::new(months_abs)
+            date - Months::new(months_abs)
         };
 
         // Instead of calculating the end of month we compute the first day of the following month
@@ -187,27 +182,19 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let serial_number = match self.get_number(&args[0], cell) {
-            Ok(c) => {
-                let t = c.floor() as i64;
-                if t < 0 {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Function YEAR parameter 1 value is negative. It should be positive or zero.".to_string(),
-                    };
-                }
-                t
-            }
+            Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Function DAY parameter 1 value is too large.".to_string(),
-            };
-        }
-        let date = from_excel_date(serial_number);
+        let date = match from_excel_date(serial_number) {
+            Ok(date) => date,
+            Err(_) => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Out of range parameters for date".to_string(),
+                }
+            }
+        };
         let year = date.year() as f64;
         CalcResult::Number(year)
     }
@@ -219,19 +206,18 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let serial_number = match self.get_number(&args[0], cell) {
-            Ok(c) => {
-                let t = c.floor() as i64;
-                if t < 0 {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Parameter 1 value is negative. It should be positive or zero."
-                            .to_string(),
-                    };
-                }
-                t
-            }
+            Ok(c) => c.floor() as i64,
             Err(s) => return s,
+        };
+        let date = match from_excel_date(serial_number) {
+            Ok(date) => date,
+            Err(_) => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Out of range parameters for date".to_string(),
+                }
+            }
         };
 
         let months = match self.get_number(&args[1], cell) {
@@ -245,13 +231,13 @@ impl Model {
         let months_abs = months.unsigned_abs();
 
         let native_date = if months > 0 {
-            from_excel_date(serial_number) + Months::new(months_abs)
+            date + Months::new(months_abs)
         } else {
-            from_excel_date(serial_number) - Months::new(months_abs)
+            date - Months::new(months_abs)
         };
 
         let serial_number = native_date.num_days_from_ce() - EXCEL_DATE_BASE;
-        if serial_number < 0 {
+        if serial_number < MINIMUM_DATE_SERIAL_NUMBER {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,

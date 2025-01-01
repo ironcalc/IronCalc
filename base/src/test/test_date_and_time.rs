@@ -132,8 +132,7 @@ fn test_day_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    // This agrees with Google Docs and disagrees with Excel
-    assert_eq!(model._get_text("A2"), *"30");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
     // Excel thinks is Feb 29, 1900
     assert_eq!(model._get_text("A3"), *"28");
 
@@ -153,8 +152,7 @@ fn test_month_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    // This agrees with Google Docs and disagrees with Excel
-    assert_eq!(model._get_text("A2"), *"12");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
     // We agree with Excel here (We are both in Feb)
     assert_eq!(model._get_text("A3"), *"2");
 
@@ -174,8 +172,7 @@ fn test_year_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    // This agrees with Google Docs and disagrees with Excel
-    assert_eq!(model._get_text("A2"), *"1899");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
 
     assert_eq!(model._get_text("A3"), *"1900");
 
