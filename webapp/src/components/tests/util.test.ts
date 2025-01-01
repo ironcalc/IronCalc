@@ -41,5 +41,7 @@ test("format range to get the full formula", async () => {
   };
   const worksheetNames = ["Sheet1", "Notes"];
 
-  expect(getFullRangeToString(selectedView, worksheetNames)).toBe("Sheet1!$H$1");
+  expect(getFullRangeToString(selectedView, worksheetNames)).toBe(
+    "Sheet1!$H$1",
+  );
 });
