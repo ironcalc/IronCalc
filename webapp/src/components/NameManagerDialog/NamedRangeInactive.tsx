@@ -1,13 +1,10 @@
-import type { Model, WorksheetProperties } from "@ironcalc/wasm";
 import { Box, Divider, IconButton, styled } from "@mui/material";
 import { t } from "i18next";
 import { PencilLine, Trash2 } from "lucide-react";
 
 interface NamedRangeInactiveProperties {
-  model: Model;
-  worksheets: WorksheetProperties[];
   name: string;
-  scope?: number;
+  scope: string;
   formula: string;
   onDelete: () => void;
   onEdit: () => void;
@@ -15,31 +12,14 @@ interface NamedRangeInactiveProperties {
 }
 
 function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
-  const {
-    model,
-    worksheets,
-    name,
-    scope,
-    formula,
-    onDelete,
-    onEdit,
-    showOptions,
-  } = properties;
+  const { name, scope, formula, onDelete, onEdit, showOptions } = properties;
 
-  // TODO: move logic to NameManagerDialog
-  const handleDelete = () => {
-    try {
-      model.deleteDefinedName(name, scope);
-    } catch (error) {
-      console.log("DefinedName delete failed", error);
-    }
-    onDelete();
-  };
-
-  // TODO: pass the name, avoid logic
   const scopeName =
-    worksheets.find((sheet, index) => index === scope)?.name ||
-    `${t("name_manager_dialog.workbook")} ${t("name_manager_dialog.global")}`;
+    scope === "[global]"
+      ? `${t("name_manager_dialog.workbook")} ${t(
+          "name_manager_dialog.global",
+        )}`
+      : scope;
 
   return (
     <>
@@ -51,7 +31,7 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
           <StyledIconButtonBlack onClick={onEdit} disabled={!showOptions}>
             <PencilLine size={12} />
           </StyledIconButtonBlack>
-          <StyledIconButtonRed onClick={handleDelete} disabled={!showOptions}>
+          <StyledIconButtonRed onClick={onDelete} disabled={!showOptions}>
             <Trash2 size={12} />
           </StyledIconButtonRed>
         </IconsWrapper>
