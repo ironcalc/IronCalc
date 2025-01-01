@@ -45,6 +45,10 @@ export default defineConfig({
           { text: "About the web application", link: "/web-application/about" },
           { text: "Importing Files", link: "/web-application/importing-files" },
           { text: "Sharing Files", link: "/web-application/sharing-files" },
+          {
+            text: "Name Manager",
+            link: "/web-application/name-manager",
+          }
         ],
       },
       {
