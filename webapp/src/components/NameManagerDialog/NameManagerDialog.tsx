@@ -83,20 +83,28 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
                   scope={scopeName}
                   formula={definedName.formula}
                   key={definedName.name + definedName.scope}
-                  onSave={(newName, newScope, newFormula) => {
+                  onSave={(
+                    newName,
+                    newScope,
+                    newFormula
+                  ): string | undefined => {
                     const scope_index = worksheets.findIndex(
-                      (s) => s.name === newScope,
+                      (s) => s.name === newScope
                     );
                     const scope = scope_index > 0 ? scope_index : undefined;
-                    model.updateDefinedName(
-                      definedName.name,
-                      definedName.scope,
-                      newName,
-                      scope,
-                      newFormula,
-                    );
-                    setEditingNameIndex(-2);
-                    onNamesChanged();
+                    try {
+                      model.updateDefinedName(
+                        definedName.name,
+                        definedName.scope,
+                        newName,
+                        scope,
+                        newFormula
+                      );
+                      setEditingNameIndex(-2);
+                      onNamesChanged();
+                    } catch (e) {
+                      return `${e}`;
+                    }
                   }}
                   onCancel={() => setEditingNameIndex(-2)}
                 />
@@ -124,13 +132,17 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
             worksheets={worksheets}
             name={""}
             formula={formatFormula()}
-            scope={t("name_manager_dialog.global")}
-            onSave={(name, scope, formula) => {
+            scope={"[global]"}
+            onSave={(name, scope, formula): string | undefined => {
               const scope_index = worksheets.findIndex((s) => s.name === scope);
               const scope_value = scope_index > 0 ? scope_index : undefined;
-              model.newDefinedName(name, scope_value, formula);
-              setEditingNameIndex(-2);
-              onNamesChanged();
+              try {
+                model.newDefinedName(name, scope_value, formula);
+                setEditingNameIndex(-2);
+                onNamesChanged();
+              } catch (e) {
+                return `${e}`;
+              }
             }}
             onCancel={() => setEditingNameIndex(-2)}
           />

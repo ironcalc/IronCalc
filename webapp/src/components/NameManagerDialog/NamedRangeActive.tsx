@@ -17,7 +17,7 @@ interface NamedRangeProperties {
   name: string;
   scope: string;
   formula: string;
-  onSave: (name: string, scope: string, formula: string) => void;
+  onSave: (name: string, scope: string, formula: string) => string | undefined;
   onCancel: () => void;
 }
 
@@ -27,8 +27,6 @@ function NamedRangeActive(properties: NamedRangeProperties) {
   const [scope, setScope] = useState(properties.scope);
   const [formula, setFormula] = useState(properties.formula);
 
-  // TODO: add error messages for validations
-  const [nameError, setNameError] = useState(false);
   const [formulaError, setFormulaError] = useState(false);
 
   return (
@@ -40,7 +38,7 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           size="small"
           margin="none"
           fullWidth
-          error={nameError}
+          error={formulaError}
           value={name}
           onChange={(event) => setName(event.target.value)}
           onKeyDown={(event) => {
@@ -55,6 +53,7 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           size="small"
           margin="none"
           fullWidth
+          error={formulaError}
           value={scope}
           onChange={(event) => {
             setScope(event.target.value);
@@ -88,7 +87,10 @@ function NamedRangeActive(properties: NamedRangeProperties) {
         <IconsWrapper>
           <IconButton
             onClick={() => {
-              onSave(name, scope, formula);
+              const error = onSave(name, scope, formula);
+              if (error) {
+                setFormulaError(true);
+              }
             }}
           >
             <StyledCheck size={12} />
