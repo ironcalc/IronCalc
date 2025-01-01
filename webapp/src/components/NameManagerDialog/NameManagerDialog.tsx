@@ -1,4 +1,4 @@
-import type { Model } from "@ironcalc/wasm";
+import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
 import {
   Box,
   Button,
@@ -13,58 +13,48 @@ import {
 import { t } from "i18next";
 import { BookOpen, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getFullRangeToString } from "../util";
 import NamedRangeActive from "./NamedRangeActive";
 import NamedRangeInactive from "./NamedRangeInactive";
 
-interface NameManagerDialogProperties {
-  open: boolean;
-  model: Model;
-  onClose: () => void;
-  onNamesChanged: () => void;
-}
-
-function NameManagerDialog(properties: NameManagerDialogProperties) {
-  const { open, model, onClose, onNamesChanged } = properties;
-  // If editingNameIndex is -1, then we are adding a new name
-  // If editingNameIndex is -2, then we are not editing any name
-  // If editingNameIndex is a positive number, then we are editing that index
-  const [editingNameIndex, setEditingNameIndex] = useState(-2);
-
-  useEffect(() => {
-    if (open) {
-      setEditingNameIndex(-2);
-    }
-  }, [open]);
-
-  // Model stuff:
-  const worksheets = model.getWorksheetsProperties();
-  const definedNameList = model.getDefinedNameList();
-  const formatFormula = (): string => {
-    const worksheetNames = worksheets.map((s) => s.name);
-    const selectedView = model.getSelectedView();
-
-    return getFullRangeToString(selectedView, worksheetNames);
-  };
-  const newDefinedName = (
+export interface NameManagerProperties {
+  newDefinedName: (
     name: string,
     scope: number | undefined,
-    formula: string
-  ) => {
-    model.newDefinedName(name, scope, formula);
-  };
-  const updateDefinedName = (
+    formula: string,
+  ) => void;
+  updateDefinedName: (
     name: string,
     scope: number | undefined,
     newName: string,
     newScope: number | undefined,
-    newFormula: string
-  ) => {
-    model.updateDefinedName(name, scope, newName, newScope, newFormula);
-  };
-  const deleteDefinedName = (name: string, scope: number | undefined) => {
-    model.deleteDefinedName(name, scope);
-  };
+    newFormula: string,
+  ) => void;
+  deleteDefinedName: (name: string, scope: number | undefined) => void;
+  selectedArea: () => string;
+  worksheets: WorksheetProperties[];
+  definedNameList: DefinedName[];
+}
+
+interface NameManagerDialogProperties {
+  open: boolean;
+  onClose: () => void;
+  model: NameManagerProperties;
+}
+
+function NameManagerDialog(properties: NameManagerDialogProperties) {
+  const { open, model, onClose } = properties;
+  const {
+    newDefinedName,
+    updateDefinedName,
+    deleteDefinedName,
+    selectedArea,
+    worksheets,
+    definedNameList,
+  } = model;
+  // If editingNameIndex is -1, then we are adding a new name
+  // If editingNameIndex is -2, then we are not editing any name
+  // If editingNameIndex is a positive number, then we are editing that index
+  const [editingNameIndex, setEditingNameIndex] = useState(-2);
 
   useEffect(() => {
     if (open) {
@@ -102,10 +92,10 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
                   onSave={(
                     newName,
                     newScope,
-                    newFormula
+                    newFormula,
                   ): string | undefined => {
                     const scope_index = worksheets.findIndex(
-                      (s) => s.name === newScope
+                      (s) => s.name === newScope,
                     );
                     const scope = scope_index > 0 ? scope_index : undefined;
                     try {
@@ -114,10 +104,9 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
                         definedName.scope,
                         newName,
                         scope,
-                        newFormula
+                        newFormula,
                       );
                       setEditingNameIndex(-2);
-                      onNamesChanged();
                     } catch (e) {
                       return `${e}`;
                     }
@@ -136,7 +125,6 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
                 onEdit={() => setEditingNameIndex(index)}
                 onDelete={() => {
                   deleteDefinedName(definedName.name, definedName.scope);
-                  onNamesChanged();
                 }}
               />
             );
@@ -146,7 +134,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
           <NamedRangeActive
             worksheets={worksheets}
             name={""}
-            formula={formatFormula()}
+            formula={selectedArea()}
             scope={"[global]"}
             onSave={(name, scope, formula): string | undefined => {
               const scope_index = worksheets.findIndex((s) => s.name === scope);
@@ -154,7 +142,6 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
               try {
                 newDefinedName(name, scope_value, formula);
                 setEditingNameIndex(-2);
-                onNamesChanged();
               } catch (e) {
                 return `${e}`;
               }
