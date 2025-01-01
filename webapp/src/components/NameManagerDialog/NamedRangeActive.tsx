@@ -18,8 +18,8 @@ interface NamedRangeProperties {
   scope?: number;
   formula: string;
   onSave: () => void;
-  onDelete?: () => void;
-  onCancel?: () => void;
+  onDelete: () => void;
+  onCancel: () => void;
 }
 
 function NamedRangeActive(properties: NamedRangeProperties) {
