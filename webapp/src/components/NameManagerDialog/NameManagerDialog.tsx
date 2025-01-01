@@ -48,19 +48,6 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
     }
   }, [editingNameIndex]);
 
-  const handleNewName = () => {
-    setEditingNameIndex(-1);
-  };
-
-  const handleSave = () => {
-    setEditingNameIndex(-2);
-    onNamesChanged();
-  };
-
-  const handleDelete = () => {
-    onNamesChanged();
-  };
-
   const formatFormula = (): string => {
     const worksheetNames = model.getWorksheetsProperties().map((s) => s.name);
     const selectedView = model.getSelectedView();
@@ -84,31 +71,49 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
         </StyledRangesHeader>
         <NameListWrapper>
           {definedNameList.map((definedName, index) => {
+            const scopeName = definedName.scope
+              ? worksheets[definedName.scope].name
+              : "[global]";
             if (index === editingNameIndex) {
               return (
                 <NamedRangeActive
                   model={model}
                   worksheets={worksheets}
                   name={definedName.name}
-                  scope={definedName.scope}
+                  scope={scopeName}
                   formula={definedName.formula}
                   key={definedName.name + definedName.scope}
-                  onSave={handleSave}
+                  onSave={(newName, newScope, newFormula) => {
+                    const scope_index = worksheets.findIndex(
+                      (s) => s.name === newScope,
+                    );
+                    const scope = scope_index > 0 ? scope_index : undefined;
+                    model.updateDefinedName(
+                      definedName.name,
+                      definedName.scope,
+                      newName,
+                      scope,
+                      newFormula,
+                    );
+                    setEditingNameIndex(-2);
+                    onNamesChanged();
+                  }}
                   onCancel={() => setEditingNameIndex(-2)}
                 />
               );
             }
             return (
               <NamedRangeInactive
-                model={model}
-                worksheets={worksheets}
                 name={definedName.name}
-                scope={definedName.scope}
+                scope={scopeName}
                 formula={definedName.formula}
                 key={definedName.name + definedName.scope}
                 showOptions={showOptions}
                 onEdit={() => setEditingNameIndex(index)}
-                onDelete={handleDelete}
+                onDelete={() => {
+                  model.deleteDefinedName(definedName.name, definedName.scope);
+                  onNamesChanged();
+                }}
               />
             );
           })}
@@ -119,7 +124,14 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
             worksheets={worksheets}
             name={""}
             formula={formatFormula()}
-            onSave={handleSave}
+            scope={t("name_manager_dialog.global")}
+            onSave={(name, scope, formula) => {
+              const scope_index = worksheets.findIndex((s) => s.name === scope);
+              const scope_value = scope_index > 0 ? scope_index : undefined;
+              model.newDefinedName(name, scope_value, formula);
+              setEditingNameIndex(-2);
+              onNamesChanged();
+            }}
             onCancel={() => setEditingNameIndex(-2)}
           />
         )}
@@ -132,7 +144,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
           </span>
         </Box>
         <Button
-          onClick={handleNewName}
+          onClick={() => setEditingNameIndex(-1)}
           variant="contained"
           disableElevation
           sx={{ textTransform: "none" }}
@@ -155,13 +167,13 @@ const StyledDialog = styled(Dialog)(() => ({
 }));
 
 const StyledDialogTitle = styled(DialogTitle)`
-padding: 12px 20px;
-height: 20px;
-font-size: 14px;
-font-weight: 600;
-display: flex;
-align-items: center;
-justify-content: space-between;
+  padding: 12px 20px;
+  height: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 `;
 
 const NameListWrapper = styled(Stack)`
@@ -170,14 +182,14 @@ const NameListWrapper = styled(Stack)`
 `;
 
 const StyledBox = styled(Box)`
-width: 161.67px;
+  width: 161.67px;
 `;
 
 const StyledDialogContent = styled(DialogContent)`
-display: flex;
-flex-direction: column;
-gap: 12px;
-padding: 20px 12px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 12px 20px 20px;
 `;
 
 const StyledRangesHeader = styled(Stack)(({ theme }) => ({
@@ -191,13 +203,13 @@ const StyledRangesHeader = styled(Stack)(({ theme }) => ({
 }));
 
 const StyledDialogActions = styled(DialogActions)`
-padding: 12px 20px;
-height: 40px;
-display: flex;
-align-items: center;
-justify-content: space-between;
-font-size: 12px;
-color: #757575;
+  padding: 12px 20px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #757575;
 `;
 
 export default NameManagerDialog;

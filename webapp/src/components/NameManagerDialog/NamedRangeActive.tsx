@@ -15,43 +15,21 @@ interface NamedRangeProperties {
   model: Model;
   worksheets: WorksheetProperties[];
   name: string;
-  scope?: number;
+  scope: string;
   formula: string;
-  onSave: () => void;
-  onDelete: () => void;
+  onSave: (name: string, scope: string, formula: string) => void;
   onCancel: () => void;
 }
 
 function NamedRangeActive(properties: NamedRangeProperties) {
-  const { model, worksheets, name, scope, formula, onSave, onCancel } =
-    properties;
-  const [newName, setNewName] = useState(name);
-  const [newScope, setNewScope] = useState(scope);
-  const [newFormula, setNewFormula] = useState(formula);
+  const { worksheets, onSave, onCancel } = properties;
+  const [name, setName] = useState(properties.name);
+  const [scope, setScope] = useState(properties.scope);
+  const [formula, setFormula] = useState(properties.formula);
 
   // TODO: add error messages for validations
   const [nameError, setNameError] = useState(false);
   const [formulaError, setFormulaError] = useState(false);
-
-  // TODO: move logic to NameManagerDialog
-  const handleSaveUpdate = () => {
-    const definedNamesModel = model.getDefinedNameList();
-
-    if (definedNamesModel.find((n) => n.name === name && n.scope === scope)) {
-      try {
-        model.updateDefinedName(name, scope, newName, newScope, newFormula);
-      } catch (error) {
-        console.log("DefinedName update failed", error);
-      }
-    } else {
-      try {
-        model.newDefinedName(newName, newScope, newFormula);
-      } catch (error) {
-        console.log("DefinedName save failed", error);
-      }
-    }
-    onSave();
-  };
 
   return (
     <>
@@ -63,8 +41,8 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           margin="none"
           fullWidth
           error={nameError}
-          value={newName}
-          onChange={(event) => setNewName(event.target.value)}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
           onKeyDown={(event) => {
             event.stopPropagation();
           }}
@@ -77,20 +55,18 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           size="small"
           margin="none"
           fullWidth
-          value={newScope ?? "global"}
+          value={scope}
           onChange={(event) => {
-            event.target.value === "global"
-              ? setNewScope(undefined)
-              : setNewScope(+event.target.value);
+            setScope(event.target.value);
           }}
         >
-          <MenuItem value={"global"}>
+          <MenuItem value={"[global]"}>
             {`${t("name_manager_dialog.workbook")} ${t(
               "name_manager_dialog.global",
             )}`}
           </MenuItem>
-          {worksheets.map((option, index) => (
-            <MenuItem key={option.name} value={index}>
+          {worksheets.map((option) => (
+            <MenuItem key={option.name} value={option.name}>
               {option.name}
             </MenuItem>
           ))}
@@ -102,15 +78,19 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           margin="none"
           fullWidth
           error={formulaError}
-          value={newFormula}
-          onChange={(event) => setNewFormula(event.target.value)}
+          value={formula}
+          onChange={(event) => setFormula(event.target.value)}
           onKeyDown={(event) => {
             event.stopPropagation();
           }}
           onClick={(event) => event.stopPropagation()}
         />
         <IconsWrapper>
-          <IconButton onClick={handleSaveUpdate}>
+          <IconButton
+            onClick={() => {
+              onSave(name, scope, formula);
+            }}
+          >
             <StyledCheck size={12} />
           </IconButton>
           <StyledIconButton onClick={onCancel}>
