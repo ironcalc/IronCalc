@@ -31,3 +31,20 @@ The fractional part of a serial number represents time, as a fraction of the day
 Since date-times are stored as numbers, they can be used for arithmetic operations in formulas. For example, it is possible to determine the difference between two dates by subtracting one serial number from the other.
 
 **Note**: A #VALUE! error is reported if a date-formatted cell contains a number less than 1 or greater than 2,958,465.
+
+## Compatibility Notes
+
+Excel has an infamous [feature](https://learn.microsoft.com/en-us/office/troubleshoot/excel/wrongly-assumes-1900-is-leap-year) that was ported from a bug in Lotus 1-2-3 that assumes that the year 1900 is a leap year.
+
+That means that serial numbers 1 to 60 in IronCalc are different than Excel.
+
+In IronCalc, Google Sheets, Libre Office and Zoho Date(1900,1,1) returns 2
+
+In Excel Date(1900,1,1) returns 1.
+
+Gnumeric solves the problem in yet another way. It follows Excel from 1 to 59, skips 60, and it follows Excel (and all other engines from there on).
+A formula like `=DAY(60)` produces `#NUM!` in Gnumeric.
+
+Serial number 61 corresponds to 1 March 1900, and from there on most spreadsheet engines agree.
+
+IronCalc, like Excel, doesn't deal with serial numbers outside of the range [1, 2,958,465]. Other engines like Google sheets, do not have an upper limit.

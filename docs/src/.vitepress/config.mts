@@ -75,8 +75,12 @@ export default defineConfig({
             link: "/features/units",
           },		  
           {
-            text: "Serial Numbers",
+            text: "Dates and serial numbers",
             link: "/features/serial-numbers",
+          },
+          {
+            text: "Numbers in IronCalc",
+            link: "/features/numbers-in-ironcalc",
           },		  
           {
             text: "Unsupported Features",
@@ -2025,6 +2029,16 @@ export default defineConfig({
           {
             text: "JavaScript",
             link: "/programming/javascript-bindings",
+          },
+        ],
+      },
+      {
+        text: "Spreadhsheet Engines",
+        collapsed: true,
+        items: [
+          {
+            text: "Spreadsheet Engines",
+            link: "/other-spreadsheets/index",
           },
         ],
       },
