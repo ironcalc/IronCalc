@@ -26,7 +26,7 @@ export type NavigationKey =
 
 export const isNavigationKey = (key: string): key is NavigationKey =>
   ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"].includes(
-    key,
+    key
   );
 
 export const getCellAddress = (selectedArea: Area, selectedCell: Cell) => {
@@ -50,30 +50,32 @@ export function rangeToStr(
     columnEnd: number;
   },
   referenceSheet: number,
-  referenceName: string,
+  referenceName: string
 ): string {
   const { sheet, rowStart, rowEnd, columnStart, columnEnd } = range;
   const sheetName = sheet === referenceSheet ? "" : `'${referenceName}'!`;
   if (rowStart === rowEnd && columnStart === columnEnd) {
     return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}`;
   }
-  return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}:${columnNameFromNumber(
-    columnEnd,
-  )}${rowEnd}`;
+  return `${sheetName}${columnNameFromNumber(
+    columnStart
+  )}${rowStart}:${columnNameFromNumber(columnEnd)}${rowEnd}`;
 }
 
+
+// Returns the full range of the selected view as a string in absolute form
+// e.g. 'Sheet1!$A$1:$B$2' or 'Sheet1!$A$1'
 export function getFullRangeToString(
   selectedView: SelectedView,
-  worksheetNames: string[],
+  worksheetNames: string[]
 ): string {
-  // order of values is confusing compared to rangeToStr range type, needs refactoring for consistency
   const [rowStart, columnStart, rowEnd, columnEnd] = selectedView.range;
-  const sheetName = `${worksheetNames[selectedView.sheet]}!`;
+  const sheetName = `${worksheetNames[selectedView.sheet]}`;
 
   if (rowStart === rowEnd && columnStart === columnEnd) {
-    return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}`;
+    return `${sheetName}!$${columnNameFromNumber(columnStart)}$${rowStart}`;
   }
-  return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}:${columnNameFromNumber(
-    columnEnd,
-  )}${rowEnd}`;
+  return `${sheetName}!$${columnNameFromNumber(
+    columnStart
+  )}$${rowStart}:$${columnNameFromNumber(columnEnd)}$${rowEnd}`;
 }
