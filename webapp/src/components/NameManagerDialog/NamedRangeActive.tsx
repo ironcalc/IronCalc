@@ -10,6 +10,7 @@ import {
 import { t } from "i18next";
 import { Check, X } from "lucide-react";
 import { useState } from "react";
+import { theme } from "../../theme";
 
 interface NamedRangeProperties {
   worksheets: WorksheetProperties[];
@@ -59,13 +60,12 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           }}
         >
           <MenuItem value={"[global]"}>
-            {`${t("name_manager_dialog.workbook")} ${t(
-              "name_manager_dialog.global",
-            )}`}
+            <MenuSpan>{t("name_manager_dialog.workbook")}</MenuSpan>
+            <MenuSpanGrey>{` ${t("name_manager_dialog.global")}`}</MenuSpanGrey>
           </MenuItem>
           {worksheets.map((option) => (
             <MenuItem key={option.name} value={option.name}>
-              {option.name}
+              <MenuSpan>{option.name}</MenuSpan>
             </MenuItem>
           ))}
         </StyledTextField>
@@ -103,6 +103,18 @@ function NamedRangeActive(properties: NamedRangeProperties) {
     </>
   );
 }
+
+const MenuSpan = styled("span")`
+  font-size: 12px;
+  font-family: "Inter";
+`;
+
+const MenuSpanGrey = styled("span")`
+  white-space: pre;
+  font-size: 12px;
+  font-family: "Inter";
+  color: ${theme.palette.grey[400]};
+`;
 
 const StyledBox = styled(Box)`
   display: flex;
