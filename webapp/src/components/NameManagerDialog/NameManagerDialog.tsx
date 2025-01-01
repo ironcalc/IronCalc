@@ -49,7 +49,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
   }, [editingNameIndex]);
 
   const formatFormula = (): string => {
-    const worksheetNames = model.getWorksheetsProperties().map((s) => s.name);
+    const worksheetNames = worksheets.map((s) => s.name);
     const selectedView = model.getSelectedView();
 
     return getFullRangeToString(selectedView, worksheetNames);
@@ -77,7 +77,6 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
             if (index === editingNameIndex) {
               return (
                 <NamedRangeActive
-                  model={model}
                   worksheets={worksheets}
                   name={definedName.name}
                   scope={scopeName}
@@ -128,7 +127,6 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
         </NameListWrapper>
         {editingNameIndex === -1 && (
           <NamedRangeActive
-            model={model}
             worksheets={worksheets}
             name={""}
             formula={formatFormula()}
