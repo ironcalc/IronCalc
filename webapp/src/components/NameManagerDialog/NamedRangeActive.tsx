@@ -1,4 +1,4 @@
-import type { Model, WorksheetProperties } from "@ironcalc/wasm";
+import type { WorksheetProperties } from "@ironcalc/wasm";
 import {
   Box,
   Divider,
@@ -12,7 +12,6 @@ import { Check, X } from "lucide-react";
 import { useState } from "react";
 
 interface NamedRangeProperties {
-  model: Model;
   worksheets: WorksheetProperties[];
   name: string;
   scope: string;
