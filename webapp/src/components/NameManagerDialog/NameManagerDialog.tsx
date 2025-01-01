@@ -140,9 +140,13 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
       <StyledDialogActions>
         <Box display="flex" alignItems="center" gap={"8px"}>
           <BookOpen color="grey" size={16} />
-          <span style={{ fontSize: "12px", fontFamily: "Inter" }}>
+          <UploadFooterLink
+            href="https://docs.ironcalc.com/web-application/name-manager.html"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {t("name_manager_dialog.help")}
-          </span>
+          </UploadFooterLink>
         </Box>
         <Button
           onClick={() => setEditingNameIndex(-1)}
@@ -211,6 +215,17 @@ const StyledDialogActions = styled(DialogActions)`
   justify-content: space-between;
   font-size: 12px;
   color: #757575;
+`;
+
+const UploadFooterLink = styled("a")`
+  font-size: 12px;
+  font-weight: 400;
+  font-family: "Inter";
+  color: #757575;
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
 `;
 
 export default NameManagerDialog;
