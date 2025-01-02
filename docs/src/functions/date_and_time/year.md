@@ -23,7 +23,7 @@ YEAR returns an integer [number](/features/value-types#numbers) in the range [18
 * If no argument, or more than one argument, is supplied, then YEAR returns the [`#ERROR!`](/features/error-types.md#error) error.
 * If the value of the *date* argument is not (or cannot be converted to) a [number](/features/value-types#numbers), then YEAR returns the [`#VALUE!`](/features/error-types.md#value) error.
 * For some argument values, YEAR may return the [`#DIV/0!`](/features/error-types.md#div-0) error.
-* If date is less than 0, or greater than or equal to 2,958,466, then YEAR returns the [`#NUM!`](/features/error-types.md#num) error.
+* If date is less than 1, or greater than or equal to 2,958,466, then YEAR returns the [`#NUM!`](/features/error-types.md#num) error.
 * At present, YEAR does not accept a string representation of a date literal as an argument. For example, the formula `=YEAR("2024-12-31")` returns the [`#VALUE!`](/features/error-types.md#value) error.
 <!--@include: ../markdown-snippets/error-type-details.txt-->
 ## Details
