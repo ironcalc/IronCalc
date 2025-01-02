@@ -34,5 +34,5 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | WEEKNUM          | <Badge type="info" text="Not implemented yet" /> | –             |
 | WORKDAY          | <Badge type="info" text="Not implemented yet" /> | –             |
 | WORKDAY.INTL     | <Badge type="info" text="Not implemented yet" /> | –             |
-| YEAR             | <Badge type="tip" text="Available" />          | –             |
+| YEAR             | <Badge type="tip" text="Available" />          | [YEAR](date_and_time/year) |
 | YEARFRAC         | <Badge type="info" text="Not implemented yet" /> | –             |
