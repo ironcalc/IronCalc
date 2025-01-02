@@ -30,4 +30,4 @@ The fractional part of a serial number represents time, as a fraction of the day
 
 Since date-times are stored as numbers, they can be used for arithmetic operations in formulas. For example, it is possible to determine the difference between two dates by subtracting one serial number from the other.
 
-**Note**: A #VALUE! error is reported if a date-formatted cell contains a number less than 1 or greater than 2,958,465.
+**Note**: A #VALUE! error is reported if a date-formatted cell contains a number less than 1, or greater than or equal to 2,958,466.
