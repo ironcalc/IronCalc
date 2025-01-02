@@ -13,7 +13,7 @@ DAY is a function of the Date and Time category that extracts the day of the mon
 ### Syntax
 **DAY(<span title="Number" style="color:#1E88E5">date</span>) => <span title="Number" style="color:#1E88E5">day</span>**
 ### Argument descriptions
-* *date* ([number](/features/value-types#numbers), required). The date for which the day of the month is to be calculated, expressed as a [serial number](/features/serial-numbers.md) in the range [0, 2958465]. The value 0 corresponds to the date 1899-12-30, while 2958465 corresponds to 9999-12-31.
+* *date* ([number](/features/value-types#numbers), required). The date for which the day of the month is to be calculated, expressed as a [serial number](/features/serial-numbers.md) in the range [1, 2958466). The value 1 corresponds to the date 1899-12-31, while 2958465 corresponds to 9999-12-31.
 ### Additional guidance
 If the supplied _date_ argument has a fractional part, DAY uses its [floor value](https://en.wikipedia.org/wiki/Floor_and_ceiling_functions).
 ### Returned value
@@ -23,7 +23,7 @@ DAY returns an integer [number](/features/value-types#numbers) in the range [1, 
 * If no argument, or more than one argument, is supplied, then DAY returns the [`#ERROR!`](/features/error-types.md#error) error.
 * If the value of the *date* argument is not (or cannot be converted to) a [number](/features/value-types#numbers), then DAY returns the [`#VALUE!`](/features/error-types.md#value) error.
 * For some argument values, DAY may return the [`#DIV/0!`](/features/error-types.md#div-0) error.
-* If date is less than 0, or greater than 2,958,465, then DAY returns the [`#NUM!`](/features/error-types.md#num) error.
+* If date is less than 1, or greater than 2,958,465, then DAY returns the [`#NUM!`](/features/error-types.md#num) error.
 * At present, DAY does not accept a string representation of a date literal as an argument. For example, the formula `=DAY("2024-12-31")` returns the [`#VALUE!`](/features/error-types.md#value) error.
 <!--@include: ../markdown-snippets/error-type-details.txt-->
 ## Details
