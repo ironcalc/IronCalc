@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { Dialog, styled } from "@mui/material";
 import { BookOpen, FileUp, X } from "lucide-react";
 import { type DragEvent, useEffect, useRef, useState } from "react";
 
@@ -16,7 +16,7 @@ function UploadFileDialog(properties: {
   useEffect(() => {
     const root = document.getElementById("root");
     if (root) {
-      root.style.filter = "blur(2px)";
+      root.style.filter = "none";
     }
     if (crossRef.current) {
       crossRef.current.focus();
@@ -97,9 +97,11 @@ function UploadFileDialog(properties: {
   };
 
   return (
-    <UploadDialog
-      tabIndex={-1}
+    <DialogWrapper
+      open={true}
+      tabIndex={0}
       role="dialog"
+      onClose={handleClose}
       onKeyDown={(event) => {
         if (event.code === "Escape") {
           handleClose();
@@ -116,6 +118,7 @@ function UploadFileDialog(properties: {
           title="Close Dialog"
           ref={crossRef}
           tabIndex={0}
+          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
         >
           <X />
         </Cross>
@@ -167,6 +170,14 @@ function UploadFileDialog(properties: {
                       fileInputRef.current.click();
                     }
                   }}
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.click();
+                      }
+                    }
+                  }}
                 >
                   click to browse
                 </DocLink>
@@ -192,9 +203,7 @@ function UploadFileDialog(properties: {
       )}
 
       <UploadFooter>
-        <BookOpen
-          style={{ width: 16, height: 16, marginLeft: 12, marginRight: 8 }}
-        />
+        <BookOpen />
         <UploadFooterLink
           href="https://docs.ironcalc.com/web-application/importing-files.html"
           target="_blank"
@@ -203,9 +212,18 @@ function UploadFileDialog(properties: {
           Learn more about importing files into IronCalc
         </UploadFooterLink>
       </UploadFooter>
-    </UploadDialog>
+    </DialogWrapper>
   );
 }
+
+const DialogWrapper = styled(Dialog)`
+  .MuiDialog-paper {
+    width: 460px;
+  }
+  .MuiBackdrop-root {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+`;
 
 const Cross = styled("div")`
   &:hover {
@@ -233,12 +251,27 @@ const DocLink = styled("span")`
   }
 `;
 
+const UploadTitle = styled("div")`
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e0e0e0;
+  height: 44px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: Inter;
+`;
+
 const UploadFooter = styled("div")`
   height: 44px;
   border-top: 1px solid #e0e0e0;
   color: #757575;
   display: flex;
   align-items: center;
+  font-family: Inter;
+  gap: 8px;
+  padding: 0px 12px;
+  svg {
+   max-width: 16px;
 `;
 
 const UploadFooterLink = styled("a")`
@@ -251,49 +284,14 @@ const UploadFooterLink = styled("a")`
   }
 `;
 
-const UploadTitle = styled("div")`
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #e0e0e0;
-  height: 44px;
-  font-size: 14px;
-  font-weight: 500;
-`;
-
-const UploadDialog = styled("div")`
-  display: flex;
-  flex-direction: column;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 460px;
-  max-width: 90%;
-  height: 285px;
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  box-shadow: 0px 1px 3px 0px #0000001a;
-  font-family: Inter;
-`;
-
 const DropZone = styled("div")`
-  &:hover {
-    border: 1px dashed #f2994a;
-    transition: 0.2s ease-in-out;
-    gap: 8px;
-    background: linear-gradient(
-      180deg,
-      rgba(242, 153, 74, 0.12) 0%,
-      rgba(242, 153, 74, 0) 100%
-    );
-  }
   flex-grow: 2;
   border-radius: 10px;
+  height: 160px;
   text-align: center;
   margin: 12px;
   color: #aaa;
-  font-family: Arial, sans-serif;
+  font-family: Inter;
   cursor: pointer;
   background-color: #faebd7;
   border: 1px dashed #efaa6d;
@@ -307,6 +305,16 @@ const DropZone = styled("div")`
   vertical-align: center;
   gap: 16px;
   transition: 0.2s ease-in-out;
+  &:hover {
+    border: 1px dashed #f2994a;
+    transition: 0.2s ease-in-out;
+    gap: 8px;
+    background: linear-gradient(
+      180deg,
+      rgba(242, 153, 74, 0.12) 0%,
+      rgba(242, 153, 74, 0) 100%
+    );
+  }
 `;
 
 export default UploadFileDialog;
