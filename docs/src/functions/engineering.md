@@ -27,7 +27,7 @@ All Engineering functions are already supported in IronCalc.
 | DEC2BIN      | <Badge type="tip" text="Available" /> | –             |
 | DEC2HEX      | <Badge type="tip" text="Available" /> | –             |
 | DEC2OCT      | <Badge type="tip" text="Available" /> | –             |
-| ERF          | <Badge type="tip" text="Available" /> | –             |
+| ERF          | <Badge type="tip" text="Available" /> | [ERF](engineering/erf) |
 | ERF.PRECISE  | <Badge type="tip" text="Available" /> | –             |
 | ERFC         | <Badge type="tip" text="Available" /> | –             |
 | ERFC.PRECISE | <Badge type="tip" text="Available" /> | –             |
