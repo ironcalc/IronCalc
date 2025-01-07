@@ -14,7 +14,6 @@ function UploadFileDialog(properties: {
   const { onModelUpload } = properties;
 
   useEffect(() => {
-    const root = document.getElementById("root");
     if (crossRef.current) {
       crossRef.current.focus();
     }

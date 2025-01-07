@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import type { Model } from "@ironcalc/wasm";
+import type { Model } from "@ironcalc/ironcalc";
+import { IronCalcIcon, IronCalcLogo } from "@ironcalc/ironcalc";
 import { CircleCheck } from "lucide-react";
 import { useRef, useState } from "react";
-import { IronCalcIcon, IronCalcLogo } from "./../icons";
+// import { IronCalcIcon, IronCalcLogo } from "./../icons";
 import { FileMenu } from "./FileMenu";
 import { ShareButton } from "./ShareButton";
 import { WorkbookTitle } from "./WorkbookTitle";

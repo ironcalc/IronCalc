@@ -1,12 +1,15 @@
 {
-  "name": "frontend",
+  "name": "ironcalc",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
+  "main": "./dist/ironcalc.js",
+  "module": "./dist/ironcalc.js",
+  "source": "./src/index.ts",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
+    "build": "vite build && tsc",
     "check": "biome check ./src",
     "check-write": "biome check --write ./src",
     "test": "vitest run"
@@ -14,24 +17,30 @@
   "dependencies": {
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
-    "@ironcalc/wasm": "file:../bindings/wasm/pkg",
+    "@ironcalc/wasm": "file:../../bindings/wasm/pkg",
     "@mui/material": "^5.15.15",
     "i18next": "^23.11.1",
     "lucide-react": "^0.427.0",
-    "react": "^18.2.0",
     "react-colorful": "^5.6.1",
-    "react-dom": "^18.2.0",
     "react-i18next": "^13.5.0"
   },
   "devDependencies": {
     "@biomejs/biome": "1.8.3",
-    "@types/react": "^18.2.75",
-    "@types/react-dom": "^18.2.24",
     "@vitejs/plugin-react": "^4.2.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5",
-    "vite": "^5.2.8",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.5",
     "vite-plugin-svgr": "^4.2.0",
-    "vitest": "^2.0.5"
+    "vitest": "^2.0.5",
+    "react": "^18.0.0"
+  },
+  "peerDependencies": {
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    }
   }
 }
