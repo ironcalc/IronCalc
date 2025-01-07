@@ -1,0 +1,19 @@
+{
+    "organizeImports": { "enabled": true },
+    "linter": {
+      "enabled": true,
+      "rules": {
+        "correctness": { "noUnusedImports": "error" }
+      }
+    },
+    "formatter": {
+      "indentStyle": "space",
+      "indentWidth": 2
+    },
+    "css": {
+      "formatter": {
+        "enabled": true
+      }
+    }
+  }
+  

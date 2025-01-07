@@ -1,15 +1,12 @@
 import "./App.css";
-import Workbook from "./components/workbook";
-import "./i18n";
 import styled from "@emotion/styled";
-import init, { Model } from "@ironcalc/wasm";
 import { useEffect, useState } from "react";
-import { FileBar } from "./AppComponents/FileBar";
+import { FileBar } from "./components/FileBar";
 import {
   get_documentation_model,
   get_model,
   uploadFile,
-} from "./AppComponents/rpc";
+} from "./components/rpc";
 import {
   createNewModel,
   deleteSelectedModel,
@@ -17,15 +14,13 @@ import {
   saveModelToStorage,
   saveSelectedModelInStorage,
   selectModelFromStorage,
-} from "./AppComponents/storage";
-import { WorkbookState } from "./components/workbookState";
-import { IronCalcIcon } from "./icons";
+} from "./components/storage";
+
+// From IronCalc
+import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/ironcalc";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
-  const [workbookState, setWorkbookState] = useState<WorkbookState | null>(
-    null,
-  );
 
   useEffect(() => {
     async function start() {
@@ -60,12 +55,11 @@ function App() {
         const newModel = loadModelFromStorageOrCreate();
         setModel(newModel);
       }
-      setWorkbookState(new WorkbookState());
     }
     start();
   }, []);
 
-  if (!model || !workbookState) {
+  if (!model) {
     return (
       <Loading>
         <IronCalcIcon style={{ width: 24, height: 24, marginBottom: 16 }} />
@@ -114,7 +108,7 @@ function App() {
           }
         }}
       />
-      <Workbook model={model} workbookState={workbookState} />
+      <IronCalc model={model} />
     </Wrapper>
   );
 }

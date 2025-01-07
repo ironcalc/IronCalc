@@ -1,0 +1,14 @@
+[package]
+name = "ironcalc_server"
+version = "0.3.0"
+edition = "2021"
+
+[dependencies]
+rocket = "0.5"
+rand = "0.8"
+ironcalc = { path = "../../../xlsx/"}
+
+[dependencies.rocket_db_pools]
+version = "0.2.0"
+features = ["sqlx_sqlite"]
+

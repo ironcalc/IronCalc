@@ -5,9 +5,7 @@ import type {
   WorksheetProperties,
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
-import { PaintRoller } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import ReactDOMServer from "react-dom/server";
 import SheetTabBar from "./SheetTabBar/SheetTabBar";
 import {
   COLUMN_WIDTH_SCALE,
@@ -143,16 +141,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     // FIXME: This is so that the cursor indicates there are styles to be pasted
     const el = rootRef.current?.getElementsByClassName("sheet-container")[0];
     if (el) {
+      // Taken from lucide icons: <PaintRoller /> and rotated.
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paint-roller" style="transform:rotate(-8deg)"><rect width="16" height="6" x="2" y="2" rx="2"></rect><path d="M10 16v-2a2 2 0 0 1 2-2h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect width="4" height="6" x="8" y="16" rx="1"></rect></svg>`;
       (el as HTMLElement).style.cursor =
-        `url('data:image/svg+xml;utf8,${encodeURIComponent(
-          ReactDOMServer.renderToString(
-            <PaintRoller
-              width={24}
-              height={24}
-              style={{ transform: "rotate(-8deg)" }}
-            />,
-          ),
-        )}'), auto`;
+        `url('data:image/svg+xml;utf8,${encodeURIComponent(svg)}'), auto`;
     }
   };
 

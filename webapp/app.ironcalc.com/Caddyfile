@@ -1,0 +1,7 @@
+:2080
+
+# rocket API
+reverse_proxy /api/* 127.0.0.1:8000
+
+# everything else is the frontend
+reverse_proxy :5173

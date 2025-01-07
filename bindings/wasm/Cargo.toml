@@ -1,6 +1,6 @@
 [package]
 name = "wasm"
-version = "0.1.3"
+version = "0.3.0"
 authors = ["Nicolas Hatcher <nicolas@theuniverse.today>"]
 description = "IronCalc Web bindings"
 license = "MIT/Apache-2.0"
@@ -14,7 +14,7 @@ crate-type = ["cdylib"]
 # Uses `../ironcalc/base` when used locally, and uses
 # the inicated version from crates.io when published.
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
-ironcalc_base = { path = "../../base", version = "0.2", features = ["use_regex_lite"] }
+ironcalc_base = { path = "../../base", version = "0.3", features = ["use_regex_lite"] }
 serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = "0.2.92"
 serde-wasm-bindgen = "0.4"
