@@ -8,7 +8,7 @@ lang: en-US
 **Note:** This draft page is under construction 🚧
 :::
 ## Overview
-ERF (<u>ER</u>ror <u>Function</u>) is a function of the Engineering category that calculates a value for the _error function_. Also known as the _Gauss error function_, the error function represents the probability of a random variable falling within a certain range, given that it follows a specified normal distribution.
+ERF (<u>ER</u>ror <u>F</u>unction) is a function of the Engineering category that calculates a value for the _error function_. Also known as the _Gauss error function_, the error function represents the probability of a random variable falling within a certain range, given that it follows a specified normal distribution.
 ## Usage
 ### Syntax
 **ERF(<span title="Number" style="color:#1E88E5">X</span>, <span title="Number" style="color:#1E88E5">Y</span>) => <span title="Number" style="color:#1E88E5">erf</span>**
@@ -36,16 +36,16 @@ $$
 
 * This figure illustrates some of the key characteristics of the error function:
 
-  * erf($0$) = $0$
-  * erf($x$) = -erf($x$)
-  * As $x → ∞$, erf($x$) $→ 1$.
-  * As $x → -∞$, erf($x$) $→ -1$.
+  * $\text{erf}(0) = 0$
+  * $\text{erf}(x) = -\text{erf}(x)$
+  * As $x \rightarrow \infty$, $\text{erf}(x) \rightarrow 1$
+  * As $x \rightarrow -\infty$, $\text{erf}(x) \rightarrow -1$
 
 * The error function is a [transcendental](https://en.wikipedia.org/wiki/Transcendental_function), non-algebraic mathematical function. IronCalc implements the ERF function by numerical approximation using a power series.
 ## Examples
 [See some examples in IronCalc](https://app.ironcalc.com/?example=erf).
 
 ## Links
-* See also IronCalc's [ERFC](/functions/engineering/erfc.md), [ERF.PRECISE](/functions/engineering/erf.precise.md) and [ERFC.PRECISE](/functions/engineering/ERFC.PRECISE.md) functions.
+* See also IronCalc's [ERFC](/functions/engineering/erfc.md), [ERF.PRECISE](/functions/engineering/erf.precise.md) and [ERFC.PRECISE](/functions/engineering/erfc.precise.md) functions.
 * Visit Microsoft Excel's [ERF function](https://support.microsoft.com/en-gb/office/erf-function-c53c7e7b-5482-4b6c-883e-56df3c9af349) page.
 * Both [Google Sheets](https://support.google.com/docs/answer/9116267) and [LibreOffice Calc](https://wiki.documentfoundation.org/Documentation/Calc_Functions/ERF) provide versions of the ERF function.
