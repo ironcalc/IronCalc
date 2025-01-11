@@ -40,7 +40,11 @@ const FormatPicker = (properties: FormatPickerProps) => {
           onClick={handleClose}
           title={t("num_fmt.close")}
           tabIndex={0}
-          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              properties.onClose();
+            }
+          }}
         >
           <X />
         </Cross>

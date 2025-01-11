@@ -15,9 +15,6 @@ function UploadFileDialog(properties: {
 
   useEffect(() => {
     const root = document.getElementById("root");
-    if (root) {
-      root.style.filter = "none";
-    }
     if (crossRef.current) {
       crossRef.current.focus();
     }
