@@ -173,7 +173,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
           onClick={() => setEditingNameIndex(-1)}
           variant="contained"
           disableElevation
-          sx={{ textTransform: "none" }}
+          sx={{ textTransform: "none", minWidth: "fit-content" }}
           startIcon={<Plus size={16} />}
           disabled={editingNameIndex > -2}
         >
@@ -184,11 +184,15 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
   );
 }
 
-const StyledDialog = styled(Dialog)(() => ({
+const StyledDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiPaper-root": {
     height: "400px",
     minHeight: "200px",
     minWidth: "620px",
+    maxWidth: "90%",
+    [theme.breakpoints.down("sm")]: {
+      minWidth: "90%",
+    },
   },
 }));
 
