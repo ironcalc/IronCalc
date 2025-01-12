@@ -186,7 +186,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
 
 const StyledDialog = styled(Dialog)(() => ({
   "& .MuiPaper-root": {
-    height: "380px",
+    height: "400px",
     minHeight: "200px",
     minWidth: "620px",
   },
@@ -260,14 +260,15 @@ const StyledDialogActions = styled(DialogActions)`
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
-  color: #757575;
+  color: ${theme.palette.grey["600"]};
+  border-top: 1px solid ${theme.palette.grey["300"]};
 `;
 
 const UploadFooterLink = styled("a")`
   font-size: 12px;
   font-weight: 400;
   font-family: "Inter";
-  color: #757575;
+  color: ${theme.palette.grey["600"]};
   text-decoration: none;
   &:hover {
     text-decoration: underline;
