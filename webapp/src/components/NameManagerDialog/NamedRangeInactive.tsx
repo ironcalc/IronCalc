@@ -56,7 +56,6 @@ const StyledIconButtonRed = styled(IconButton)(({ theme }) => ({
 const WrappedLine = styled(Box)({
   display: "flex",
   flexDirection: "row",
-  maxHeight: "52px",
   alignItems: "center",
   gap: "12px",
   padding: "12px 20px 12px 12px",
