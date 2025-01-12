@@ -28,10 +28,18 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
         <StyledDiv>{scopeName}</StyledDiv>
         <StyledDiv>{formula}</StyledDiv>
         <IconsWrapper>
-          <StyledIconButtonBlack onClick={onEdit} disabled={!showOptions}>
+          <StyledIconButtonBlack
+            onClick={onEdit}
+            disabled={!showOptions}
+            title={t("name_manager_dialog.edit")}
+          >
             <PencilLine size={16} />
           </StyledIconButtonBlack>
-          <StyledIconButtonRed onClick={onDelete} disabled={!showOptions}>
+          <StyledIconButtonRed
+            onClick={onDelete}
+            disabled={!showOptions}
+            title={t("name_manager_dialog.delete")}
+          >
             <Trash2 size={16} />
           </StyledIconButtonRed>
         </IconsWrapper>
@@ -43,10 +51,18 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
 
 const StyledIconButtonBlack = styled(IconButton)(({ theme }) => ({
   color: theme.palette.common.black,
+  borderRadius: "8px",
+  "&:hover": {
+    backgroundColor: theme.palette.grey["50"],
+  },
 }));
 
 const StyledIconButtonRed = styled(IconButton)(({ theme }) => ({
   color: theme.palette.error.main,
+  borderRadius: "8px",
+  "&:hover": {
+    backgroundColor: theme.palette.grey["50"],
+  },
   "&.Mui-disabled": {
     opacity: 0.6,
     color: theme.palette.error.light,
