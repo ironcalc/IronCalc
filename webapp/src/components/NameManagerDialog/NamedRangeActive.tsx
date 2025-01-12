@@ -122,7 +122,7 @@ const StyledBox = styled(Box)`
   align-items: center;
   gap: 12px;
   width: auto;
-  padding: 12px 20px 12px 4px;
+  padding: 12px 20px 12px 12px;
   box-shadow: 0 -1px 0 ${theme.palette.grey[300]};
 `;
 

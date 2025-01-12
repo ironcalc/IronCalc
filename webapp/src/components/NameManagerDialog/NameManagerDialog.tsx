@@ -202,7 +202,8 @@ const StyledBox = styled(Box)`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: 161.67px;
+  width: 100%;
+  padding-left: 8px;
 `;
 
 const StyledDialogContent = styled(DialogContent)`
@@ -214,8 +215,8 @@ const StyledDialogContent = styled(DialogContent)`
 const StyledRangesHeader = styled(Stack)(({ theme }) => ({
   flexDirection: "row",
   minHeight: "32px",
-  padding: "0px 84px 0px 12px",
-  gap: "8px",
+  padding: "0px 96px 0px 12px",
+  gap: "12px",
   fontFamily: theme.typography.fontFamily,
   fontSize: "12px",
   fontWeight: "700",
