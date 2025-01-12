@@ -196,27 +196,31 @@ const StyledDialogTitle = styled(DialogTitle)`
 
 const NameListWrapper = styled(Stack)`
   overflow-y: auto;
-  gap: 12px;
 `;
 
 const StyledBox = styled(Box)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 161.67px;
 `;
 
 const StyledDialogContent = styled(DialogContent)`
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px 12px 20px 20px;
+  padding: 0px;
 `;
 
 const StyledRangesHeader = styled(Stack)(({ theme }) => ({
   flexDirection: "row",
-  padding: "0 8px",
-  gap: "12px",
+  minHeight: "32px",
+  padding: "0px 84px 0px 12px",
+  gap: "8px",
   fontFamily: theme.typography.fontFamily,
   fontSize: "12px",
   fontWeight: "700",
+  borderBottom: `1px solid ${theme.palette.info.light}`,
+  backgroundColor: theme.palette.grey["50"],
   color: theme.palette.info.main,
 }));
 

@@ -92,10 +92,10 @@ function NamedRangeActive(properties: NamedRangeProperties) {
               }
             }}
           >
-            <StyledCheck size={12} />
+            <StyledCheck size={16} />
           </IconButton>
           <StyledIconButton onClick={onCancel}>
-            <X size={12} />
+            <X size={16} />
           </StyledIconButton>
         </IconsWrapper>
       </StyledBox>
@@ -118,8 +118,12 @@ const MenuSpanGrey = styled("span")`
 
 const StyledBox = styled(Box)`
   display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 12px;
-  width: 577px;
+  width: auto;
+  padding: 12px 20px 12px 4px;
+  box-shadow: 0 -1px 0 ${theme.palette.grey[300]};
 `;
 
 const StyledTextField = styled(TextField)(() => ({
