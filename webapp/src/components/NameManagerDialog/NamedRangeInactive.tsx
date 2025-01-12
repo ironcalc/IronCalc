@@ -29,10 +29,10 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
         <StyledDiv>{formula}</StyledDiv>
         <IconsWrapper>
           <StyledIconButtonBlack onClick={onEdit} disabled={!showOptions}>
-            <PencilLine size={12} />
+            <PencilLine size={16} />
           </StyledIconButtonBlack>
           <StyledIconButtonRed onClick={onDelete} disabled={!showOptions}>
-            <Trash2 size={12} />
+            <Trash2 size={16} />
           </StyledIconButtonRed>
         </IconsWrapper>
       </WrappedLine>
@@ -55,9 +55,11 @@ const StyledIconButtonRed = styled(IconButton)(({ theme }) => ({
 
 const WrappedLine = styled(Box)({
   display: "flex",
-  height: "28px",
+  flexDirection: "row",
+  maxHeight: "52px",
   alignItems: "center",
   gap: "12px",
+  padding: "12px 20px 12px 4px",
 });
 
 const StyledDiv = styled("div")(({ theme }) => ({
@@ -65,7 +67,7 @@ const StyledDiv = styled("div")(({ theme }) => ({
   fontSize: "12px",
   fontWeight: "400",
   color: theme.palette.common.black,
-  width: "153.67px",
+  width: "100%",
   paddingLeft: "8px",
 }));
 
