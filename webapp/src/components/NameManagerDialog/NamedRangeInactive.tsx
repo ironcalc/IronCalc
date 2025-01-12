@@ -59,7 +59,7 @@ const WrappedLine = styled(Box)({
   maxHeight: "52px",
   alignItems: "center",
   gap: "12px",
-  padding: "12px 20px 12px 4px",
+  padding: "12px 20px 12px 12px",
 });
 
 const StyledDiv = styled("div")(({ theme }) => ({
