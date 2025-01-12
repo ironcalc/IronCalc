@@ -6,13 +6,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   Stack,
   styled,
 } from "@mui/material";
 import { t } from "i18next";
 import { BookOpen, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { theme } from "../../theme";
 import NamedRangeActive from "./NamedRangeActive";
 import NamedRangeInactive from "./NamedRangeInactive";
 
@@ -61,16 +61,24 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
       setEditingNameIndex(-2);
     }
   }, [open]);
+  const handleClose = () => {
+    properties.onClose();
+  };
 
   return (
     <StyledDialog open={open} onClose={onClose} maxWidth={false} scroll="paper">
       <StyledDialogTitle>
         {t("name_manager_dialog.title")}
-        <IconButton onClick={onClose}>
-          <X size={16} />
-        </IconButton>
+        <Cross
+          onClick={handleClose}
+          title={t("name_manager_dialog.close")}
+          tabIndex={0}
+          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
+        >
+          <X />
+        </Cross>
       </StyledDialogTitle>
-      <StyledDialogContent dividers>
+      <StyledDialogContent>
         <StyledRangesHeader>
           <StyledBox>{t("name_manager_dialog.name")}</StyledBox>
           <StyledBox>{t("name_manager_dialog.range")}</StyledBox>
@@ -185,13 +193,33 @@ const StyledDialog = styled(Dialog)(() => ({
 }));
 
 const StyledDialogTitle = styled(DialogTitle)`
-  padding: 12px 20px;
-  height: 20px;
-  font-size: 14px;
-  font-weight: 600;
   display: flex;
   align-items: center;
+  height: 44px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: Inter;
+  padding: 0px 12px;
   justify-content: space-between;
+  border-bottom: 1px solid ${theme.palette.grey["300"]};
+`;
+
+const Cross = styled("div")`
+  &:hover {
+    background-color: ${theme.palette.grey["50"]};
+  }
+  display: flex;
+  border-radius: 4px;
+  height: 24px;
+  width: 24px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.5;
+  }
 `;
 
 const NameListWrapper = styled(Stack)`
@@ -226,7 +254,7 @@ const StyledRangesHeader = styled(Stack)(({ theme }) => ({
 }));
 
 const StyledDialogActions = styled(DialogActions)`
-  padding: 12px 20px;
+  padding: 12px;
   height: 40px;
   display: flex;
   align-items: center;
