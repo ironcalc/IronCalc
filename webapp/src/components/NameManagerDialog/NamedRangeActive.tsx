@@ -84,17 +84,21 @@ function NamedRangeActive(properties: NamedRangeProperties) {
           onClick={(event) => event.stopPropagation()}
         />
         <IconsWrapper>
-          <IconButton
+          <StyledIconButton
             onClick={() => {
               const error = onSave(name, scope, formula);
               if (error) {
                 setFormulaError(true);
               }
             }}
+            title={t("name_manager_dialog.apply")}
           >
             <StyledCheck size={16} />
-          </IconButton>
-          <StyledIconButton onClick={onCancel}>
+          </StyledIconButton>
+          <StyledIconButton
+            onClick={onCancel}
+            title={t("name_manager_dialog.discard")}
+          >
             <X size={16} />
           </StyledIconButton>
         </IconsWrapper>
@@ -141,6 +145,10 @@ const StyledTextField = styled(TextField)(() => ({
 
 const StyledIconButton = styled(IconButton)(({ theme }) => ({
   color: theme.palette.error.main,
+  borderRadius: "8px",
+  "&:hover": {
+    backgroundColor: theme.palette.grey["50"],
+  },
   "&.Mui-disabled": {
     opacity: 0.6,
     color: theme.palette.error.light,

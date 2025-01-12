@@ -85,6 +85,11 @@
     "help": "Learn more about Named Ranges",
     "new": "Add new",
     "workbook": "Workbook",
-    "global": "(Global)"
+    "global": "(Global)",
+    "close": "Close dialog",
+    "delete": "Delete Range",
+    "edit": "Edit Range",
+    "apply": "Apply changes",
+    "discard": "Discard changes"
   }
 }
