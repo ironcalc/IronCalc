@@ -128,12 +128,16 @@ const StyledBox = styled(Box)`
   width: auto;
   padding: 10px 20px 10px 12px;
   box-shadow: 0 -1px 0 ${theme.palette.grey[300]};
+
+  @media (max-width: 600px) {
+    padding: 12px;
+  }
 `;
 
 const StyledTextField = styled(TextField)(() => ({
   "& .MuiInputBase-root": {
     height: "36px",
-    width: "161.67px",
+    width: "100%",
     margin: 0,
     fontFamily: "Inter",
     fontSize: "12px",
