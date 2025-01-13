@@ -189,7 +189,7 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
     height: "400px",
     minHeight: "200px",
     minWidth: "620px",
-    maxWidth: "90%",
+    maxWidth: "620px",
     [theme.breakpoints.down("sm")]: {
       minWidth: "90%",
     },
