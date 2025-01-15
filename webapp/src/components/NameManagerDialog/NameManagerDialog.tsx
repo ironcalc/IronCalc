@@ -84,7 +84,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
           <StyledBox>{t("name_manager_dialog.range")}</StyledBox>
           <StyledBox>{t("name_manager_dialog.scope")}</StyledBox>
         </StyledRangesHeader>
-        <NameListWrapper>
+        <NameListWrapper tabIndex={-1}>
           {definedNameList.map((definedName, index) => {
             const scopeName = definedName.scope
               ? worksheets[definedName.scope].name
@@ -176,6 +176,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
           sx={{ textTransform: "none", minWidth: "fit-content" }}
           startIcon={<Plus size={16} />}
           disabled={editingNameIndex > -2}
+          tabIndex={0}
         >
           {t("name_manager_dialog.new")}
         </Button>

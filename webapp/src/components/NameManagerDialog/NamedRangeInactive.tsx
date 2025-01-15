@@ -32,6 +32,7 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
             onClick={onEdit}
             disabled={!showOptions}
             title={t("name_manager_dialog.edit")}
+            disableFocusRipple={true}
           >
             <PencilLine size={16} />
           </StyledIconButtonBlack>
@@ -39,6 +40,7 @@ function NamedRangeInactive(properties: NamedRangeInactiveProperties) {
             onClick={onDelete}
             disabled={!showOptions}
             title={t("name_manager_dialog.delete")}
+            disableFocusRipple={true}
           >
             <Trash2 size={16} />
           </StyledIconButtonRed>
@@ -55,6 +57,12 @@ const StyledIconButtonBlack = styled(IconButton)(({ theme }) => ({
   "&:hover": {
     backgroundColor: theme.palette.grey["50"],
   },
+  "&.Mui-disabled": {
+    color: theme.palette.info.light,
+  },
+  "&.Mui-focusVisible": {
+    boxShadow: "inset 0 0 0 2px #007AFF",
+  },
 }));
 
 const StyledIconButtonRed = styled(IconButton)(({ theme }) => ({
@@ -64,8 +72,10 @@ const StyledIconButtonRed = styled(IconButton)(({ theme }) => ({
     backgroundColor: theme.palette.grey["50"],
   },
   "&.Mui-disabled": {
-    opacity: 0.6,
-    color: theme.palette.error.light,
+    color: theme.palette.info.light,
+  },
+  "&.Mui-focusVisible": {
+    boxShadow: "inset 0 0 0 2px #007AFF",
   },
 }));
 

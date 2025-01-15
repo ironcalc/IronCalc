@@ -92,12 +92,14 @@ function NamedRangeActive(properties: NamedRangeProperties) {
               }
             }}
             title={t("name_manager_dialog.apply")}
+            disableFocusRipple={true}
           >
             <StyledCheck size={16} />
           </StyledIconButton>
           <StyledIconButton
             onClick={onCancel}
             title={t("name_manager_dialog.discard")}
+            disableFocusRipple={true}
           >
             <X size={16} />
           </StyledIconButton>
@@ -156,6 +158,9 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
   "&.Mui-disabled": {
     opacity: 0.6,
     color: theme.palette.error.light,
+  },
+  "&.Mui-focusVisible": {
+    boxShadow: "inset 0 0 0 2px #007AFF",
   },
 }));
 
