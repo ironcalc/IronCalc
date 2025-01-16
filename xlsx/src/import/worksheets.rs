@@ -808,8 +808,9 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         // r: reference. A1 style
         // s: style index
         // t: cell type
-        // Unused attributes
-        // cm (cell metadata), ph (Show Phonetic), vm (value metadata)
+        // cm: cell metadata (used for dynamic arrays)
+        // vm: value metadata (used for #SPILL! and #CALC! errors)
+        // ph: Show Phonetic, unused
         for cell in row.children() {
             let cell_ref = get_attribute(&cell, "r")?;
             let column_letter = get_column_from_ref(cell_ref);
@@ -824,6 +825,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             } else {
                 None
             };
+
+            let cell_metadata = cell.attribute("cm");
 
             // type, the default type being "n" for number
             // If the cell does not have a value is an empty cell
@@ -934,13 +937,16 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                             }
                         }
                     }
-                    "array" => {
-                        return Err(XlsxError::NotImplemented("array formulas".to_string()));
-                    }
                     "dataTable" => {
                         return Err(XlsxError::NotImplemented("data table formulas".to_string()));
                     }
-                    "normal" => {
+                    "array" | "normal" => {
+                        let is_dynamic_array = cell_metadata == Some("1");
+                        if formula_type == "array" && !is_dynamic_array {
+                            // Dynamic formulas in Excel are formulas of type array with the cm=1, those we support.
+                            // On the other hand the old CSE formulas or array formulas are not supported in IronCalc for the time being
+                            return Err(XlsxError::NotImplemented("array formulas".to_string()));
+                        }
                         // Its a cell with a simple formula
                         let formula = fs[0].text().unwrap_or("").to_string();
                         let context = format!("{}!{}", sheet_name, cell_ref);

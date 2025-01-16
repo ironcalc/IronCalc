@@ -267,27 +267,10 @@ impl Model {
     ) -> CalcResult {
         use Node::*;
         match node {
-            OpSumKind { kind, left, right } => {
-                // In the future once the feature try trait stabilizes we could use the '?' operator for this :)
-                // See: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2018&gist=236044e8321a1450988e6ffe5a27dab5
-                let l = match self.get_number(left, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
-                };
-                let r = match self.get_number(right, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
-                };
-                let result = match kind {
-                    OpSum::Add => l + r,
-                    OpSum::Minus => l - r,
-                };
-                CalcResult::Number(result)
-            }
+            OpSumKind { kind, left, right } => match kind {
+                OpSum::Add => self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1 + f2)),
+                OpSum::Minus => self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1 - f2)),
+            },
             NumberKind(value) => CalcResult::Number(*value),
             StringKind(value) => CalcResult::String(value.replace(r#""""#, r#"""#)),
             BooleanKind(value) => CalcResult::Boolean(*value),
@@ -375,58 +358,26 @@ impl Model {
                 let result = format!("{}{}", l, r);
                 CalcResult::String(result)
             }
-            OpProductKind { kind, left, right } => {
-                let l = match self.get_number(left, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
+            OpProductKind { kind, left, right } => match kind {
+                OpProduct::Times => {
+                    self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1 * f2))
+                }
+                OpProduct::Divide => self.handle_arithmetic(left, right, cell, &|f1, f2| {
+                    if f2 == 0.0 {
+                        Err(Error::DIV)
+                    } else {
+                        Ok(f1 / f2)
                     }
-                };
-                let r = match self.get_number(right, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
-                };
-                let result = match kind {
-                    OpProduct::Times => l * r,
-                    OpProduct::Divide => {
-                        if r == 0.0 {
-                            return CalcResult::new_error(
-                                Error::DIV,
-                                cell,
-                                "Divide by Zero".to_string(),
-                            );
-                        }
-                        l / r
-                    }
-                };
-                CalcResult::Number(result)
-            }
+                }),
+            },
             OpPowerKind { left, right } => {
-                let l = match self.get_number(left, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
-                };
-                let r = match self.get_number(right, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
-                };
-                // Deal with errors properly
-                CalcResult::Number(l.powf(r))
+                self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1.powf(f2)))
             }
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             InvalidFunctionKind { name, args: _ } => {
                 CalcResult::new_error(Error::ERROR, cell, format!("Invalid function: {}", name))
             }
-            ArrayKind(_) => {
-                // TODO: NOT IMPLEMENTED
-                CalcResult::new_error(Error::NIMPL, cell, "Arrays not implemented".to_string())
-            }
+            ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
                 if let Ok(Some(parsed_defined_name)) = self.get_parsed_defined_name(name, *scope) {
                     match parsed_defined_name {
@@ -703,6 +654,20 @@ impl Model {
                         .expect("expected a row")
                         .get_mut(&column)
                         .expect("expected a column") = Cell::CellFormulaNumber { f, s, v: 0.0 };
+                }
+                CalcResult::Array(_) => {
+                    *self.workbook.worksheets[sheet as usize]
+                        .sheet_data
+                        .get_mut(&row)
+                        .expect("expected a row")
+                        .get_mut(&column)
+                        .expect("expected a column") = Cell::CellFormulaError {
+                        f,
+                        s,
+                        o: "".to_string(),
+                        m: "Arrays not supported yet".to_string(),
+                        ei: Error::NIMPL,
+                    };
                 }
             }
         }

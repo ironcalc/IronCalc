@@ -95,6 +95,14 @@ pub(crate) struct Reference<'a> {
 }
 
 #[derive(PartialEq, Clone, Debug)]
+pub enum ArrayNode {
+    Boolean(bool),
+    Number(f64),
+    String(String),
+    Error(token::Error),
+}
+
+#[derive(PartialEq, Clone, Debug)]
 pub enum Node {
     BooleanKind(bool),
     NumberKind(f64),
@@ -167,7 +175,7 @@ pub enum Node {
         name: String,
         args: Vec<Node>,
     },
-    ArrayKind(Vec<Node>),
+    ArrayKind(Vec<Vec<ArrayNode>>),
     DefinedNameKind(DefinedNameS),
     TableNameKind(String),
     WrongVariableKind(String),
@@ -454,6 +462,49 @@ impl Parser {
         self.parse_primary()
     }
 
+    fn parse_array_row(&mut self) -> Result<Vec<ArrayNode>, Node> {
+        let mut row = Vec::new();
+        // and array can only have numbers, string or booleans
+        // otherwise it is a syntax error
+        let first_element = match self.parse_expr() {
+            Node::BooleanKind(s) => ArrayNode::Boolean(s),
+            Node::NumberKind(s) => ArrayNode::Number(s),
+            Node::StringKind(s) => ArrayNode::String(s),
+            Node::ErrorKind(kind) => ArrayNode::Error(kind),
+            error @ Node::ParseErrorKind { .. } => return Err(error),
+            _ => {
+                return Err(Node::ParseErrorKind {
+                    formula: self.lexer.get_formula(),
+                    message: "Invalid value in array".to_string(),
+                    position: self.lexer.get_position() as usize,
+                });
+            }
+        };
+        row.push(first_element);
+        let mut next_token = self.lexer.peek_token();
+        // FIXME: this is not respecting the locale
+        while next_token == TokenType::Comma {
+            self.lexer.advance_token();
+            let value = match self.parse_expr() {
+                Node::BooleanKind(s) => ArrayNode::Boolean(s),
+                Node::NumberKind(s) => ArrayNode::Number(s),
+                Node::StringKind(s) => ArrayNode::String(s),
+                Node::ErrorKind(kind) => ArrayNode::Error(kind),
+                error @ Node::ParseErrorKind { .. } => return Err(error),
+                _ => {
+                    return Err(Node::ParseErrorKind {
+                        formula: self.lexer.get_formula(),
+                        message: "Invalid value in array".to_string(),
+                        position: self.lexer.get_position() as usize,
+                    });
+                }
+            };
+            row.push(value);
+            next_token = self.lexer.peek_token();
+        }
+        Ok(row)
+    }
+
     fn parse_primary(&mut self) -> Node {
         let next_token = self.lexer.next_token();
         match next_token {
@@ -475,21 +526,35 @@ impl Parser {
             TokenType::Number(s) => Node::NumberKind(s),
             TokenType::String(s) => Node::StringKind(s),
             TokenType::LeftBrace => {
-                let t = self.parse_expr();
-                if let Node::ParseErrorKind { .. } = t {
-                    return t;
-                }
+                // It's an array. It's a collection of rows all of the same dimension
+
+                let first_row = match self.parse_array_row() {
+                    Ok(s) => s,
+                    Err(error) => return error,
+                };
+                let length = first_row.len();
+
+                let mut matrix = Vec::new();
+                matrix.push(first_row);
+                // FIXME: this is not respecting the locale
                 let mut next_token = self.lexer.peek_token();
-                let mut args: Vec<Node> = vec![t];
                 while next_token == TokenType::Semicolon {
                     self.lexer.advance_token();
-                    let p = self.parse_expr();
-                    if let Node::ParseErrorKind { .. } = p {
-                        return p;
-                    }
+                    let row = match self.parse_array_row() {
+                        Ok(s) => s,
+                        Err(error) => return error,
+                    };
                     next_token = self.lexer.peek_token();
-                    args.push(p);
+                    if row.len() != length {
+                        return Node::ParseErrorKind {
+                            formula: self.lexer.get_formula(),
+                            position: self.lexer.get_position() as usize,
+                            message: "All rows in an array should be the same length".to_string(),
+                        };
+                    }
+                    matrix.push(row);
                 }
+
                 if let Err(err) = self.lexer.expect(TokenType::RightBrace) {
                     return Node::ParseErrorKind {
                         formula: self.lexer.get_formula(),
@@ -497,7 +562,7 @@ impl Parser {
                         message: err.message,
                     };
                 }
-                Node::ArrayKind(args)
+                Node::ArrayKind(matrix)
             }
             TokenType::Reference {
                 sheet,

@@ -31,7 +31,7 @@ fn return_of_array_is_n_impl() {
     model.evaluate();
 
     assert_eq!(model._get_text("C2"), "#N/IMPL!".to_string());
-    assert_eq!(model._get_text("D2"), "#N/IMPL!".to_string());
+    assert_eq!(model._get_text("D2"), "1.89188842".to_string());
 }
 
 #[test]

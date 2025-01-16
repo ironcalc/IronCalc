@@ -235,6 +235,11 @@ impl Model {
                 // This cannot happen
                 CalcResult::Number(1.0)
             }
+            CalcResult::Array(_) => CalcResult::Error {
+                error: Error::NIMPL,
+                origin: cell,
+                message: "Arrays not supported yet".to_string(),
+            },
         }
     }
     pub(crate) fn fn_sheet(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
