@@ -182,6 +182,13 @@ impl Model {
                             }
                         }
                         CalcResult::EmptyCell | CalcResult::EmptyArg => result.push(0.0),
+                        CalcResult::Array(_) => {
+                            return Err(CalcResult::Error {
+                                error: Error::NIMPL,
+                                origin: cell,
+                                message: "Arrays not supported yet".to_string(),
+                            })
+                        }
                     }
                 }
             }
@@ -426,6 +433,13 @@ impl Model {
                         | CalcResult::Number(_)
                         | CalcResult::Boolean(_)
                         | CalcResult::Error { .. } => counta += 1,
+                        CalcResult::Array(_) => {
+                            return CalcResult::Error {
+                                error: Error::NIMPL,
+                                origin: cell,
+                                message: "Arrays not supported yet".to_string(),
+                            }
+                        }
                     }
                 }
             }

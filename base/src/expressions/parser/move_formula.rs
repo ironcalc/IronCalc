@@ -1,6 +1,6 @@
 use super::{
     stringify::{stringify_reference, DisplaceData},
-    Node, Reference,
+    ArrayNode, Node, Reference,
 };
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
@@ -54,6 +54,15 @@ fn move_function(name: &str, args: &Vec<Node>, move_context: &MoveContext) -> St
         }
     }
     format!("{}({})", name, arguments)
+}
+
+pub(crate) fn to_string_array_node(node: &ArrayNode) -> String {
+    match node {
+        ArrayNode::Boolean(value) => format!("{}", value).to_ascii_uppercase(),
+        ArrayNode::Number(number) => to_excel_precision_str(*number),
+        ArrayNode::String(value) => format!("\"{}\"", value),
+        ArrayNode::Error(kind) => format!("{}", kind),
+    }
 }
 
 fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
@@ -362,18 +371,39 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             move_function(name, args, move_context)
         }
         ArrayKind(args) => {
-            // This code is a placeholder. Arrays are not yet implemented
-            let mut first = true;
-            let mut arguments = "".to_string();
-            for el in args {
-                if !first {
-                    arguments = format!("{},{}", arguments, to_string_moved(el, move_context));
+            let mut first_row = true;
+            let mut matrix_string = String::new();
+
+            // Each element in `args` is assumed to be one "row" (itself a `Vec<T>`).
+            for row in args {
+                if !first_row {
+                    matrix_string.push(',');
                 } else {
-                    first = false;
-                    arguments = to_string_moved(el, move_context);
+                    first_row = false;
                 }
+
+                // Build the string for the current row
+                let mut first_col = true;
+                let mut row_string = String::new();
+                for el in row {
+                    if !first_col {
+                        row_string.push(',');
+                    } else {
+                        first_col = false;
+                    }
+
+                    // Reuse your existing element-stringification function
+                    row_string.push_str(&to_string_array_node(el));
+                }
+
+                // Enclose the row in braces
+                matrix_string.push('{');
+                matrix_string.push_str(&row_string);
+                matrix_string.push('}');
             }
-            format!("{{{}}}", arguments)
+
+            // Enclose the whole matrix in braces
+            format!("{{{}}}", matrix_string)
         }
         DefinedNameKind((name, ..)) => name.to_string(),
         TableNameKind(name) => name.to_string(),

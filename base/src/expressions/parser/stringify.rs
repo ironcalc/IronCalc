@@ -1,5 +1,6 @@
 use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::parser::move_formula::to_string_array_node;
 use crate::expressions::parser::static_analysis::add_implicit_intersection;
 use crate::expressions::token::OpUnary;
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
@@ -257,6 +258,31 @@ fn format_function(
     }
     format!("{}({})", name, arguments)
 }
+
+// There is just one representation in the AST (Abstract Syntax Tree) of a formula.
+// But three different ways to convert it to a string.
+//
+// To stringify a formula we need a "context", that is in which cell are we doing the "stringifying"
+//
+// But there are three ways to stringify a formula:
+//
+// * To show it to the IronCalc user
+// * To store internally
+// * To export to Excel
+//
+// There are, of course correspondingly three "modes" when parsing a formula.
+//
+// The internal representation is the more different as references are stored in the RC representation.
+// The the AST of the formula is kept close to this representation we don't need a context
+//
+// In the export to Excel representation certain things are different:
+// * We add a _xlfn. in front of some (more modern) functions
+// * We remove the Implicit Intersection operator when it is automatic and add _xlfn.SINGLE when it is not
+//
+// Examples:
+// * =A1+B2
+// * =RC+R1C1
+// * =A1+B1
 
 fn stringify(
     node: &Node,
@@ -535,21 +561,28 @@ fn stringify(
             format_function(&name, args, context, displace_data, export_to_excel)
         }
         ArrayKind(args) => {
-            let mut first = true;
-            let mut arguments = "".to_string();
-            for el in args {
-                if !first {
-                    arguments = format!(
-                        "{},{}",
-                        arguments,
-                        stringify(el, context, displace_data, export_to_excel)
-                    );
+            let mut first_row = true;
+            let mut matrix_string = String::new();
+
+            for row in args {
+                if !first_row {
+                    matrix_string.push(';');
                 } else {
-                    first = false;
-                    arguments = stringify(el, context, displace_data, export_to_excel);
+                    first_row = false;
                 }
+                let mut first_column = true;
+                let mut row_string = String::new();
+                for el in row {
+                    if !first_column {
+                        row_string.push(',');
+                    } else {
+                        first_column = false;
+                    }
+                    row_string.push_str(&to_string_array_node(el));
+                }
+                matrix_string.push_str(&row_string);
             }
-            format!("{{{}}}", arguments)
+            format!("{{{}}}", matrix_string)
         }
         TableNameKind(value) => value.to_string(),
         DefinedNameKind((name, ..)) => name.to_string(),

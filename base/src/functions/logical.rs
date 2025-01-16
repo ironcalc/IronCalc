@@ -161,6 +161,13 @@ impl Model {
                                 CalcResult::Range { .. }
                                 | CalcResult::String { .. }
                                 | CalcResult::EmptyCell => {}
+                                CalcResult::Array(_) => {
+                                    return CalcResult::Error {
+                                        error: Error::NIMPL,
+                                        origin: cell,
+                                        message: "Arrays not supported yet".to_string(),
+                                    }
+                                }
                             }
                             if let (Some(current_result), Some(short_circuit_value)) =
                                 (result, short_circuit_value)
@@ -185,6 +192,13 @@ impl Model {
                 }
                 // References to empty cells are ignored. If all args are ignored the result is #VALUE!
                 CalcResult::EmptyCell => {}
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
             }
 
             if let (Some(current_result), Some(short_circuit_value)) = (result, short_circuit_value)

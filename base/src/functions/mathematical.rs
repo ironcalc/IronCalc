@@ -1,5 +1,8 @@
+use crate::cast::NumberOrArray;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -162,6 +165,27 @@ impl Model {
                                     result += value;
                                 }
                                 error @ CalcResult::Error { .. } => return error,
+                                _ => {
+                                    // We ignore booleans and strings
+                                }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for value in row {
+                            match value {
+                                ArrayNode::Number(value) => {
+                                    result += value;
+                                }
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::Error {
+                                        error,
+                                        origin: cell,
+                                        message: "Error in array".to_string(),
+                                    }
+                                }
                                 _ => {
                                     // We ignore booleans and strings
                                 }
@@ -354,187 +378,22 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_sin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.sin();
-        CalcResult::Number(result)
-    }
-    pub(crate) fn fn_cos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.cos();
-        CalcResult::Number(result)
-    }
+    single_number_fn!(fn_sin, f64::sin);
+    single_number_fn!(fn_cos, f64::cos);
+    single_number_fn!(fn_tan, f64::tan);
+    single_number_fn!(fn_sinh, f64::sinh);
+    single_number_fn!(fn_cosh, f64::cosh);
+    single_number_fn!(fn_tanh, f64::tanh);
+    single_number_fn!(fn_asin, f64::asin);
+    single_number_fn!(fn_acos, f64::acos);
+    single_number_fn!(fn_atan, f64::atan);
+    single_number_fn!(fn_asinh, f64::asinh);
+    single_number_fn!(fn_acosh, f64::acosh);
+    single_number_fn!(fn_atanh, f64::atanh);
+    single_number_fn!(fn_abs, f64::abs);
+    single_number_fn!(fn_sqrt, f64::sqrt);
+    single_number_fn!(fn_sqrtpi, |f: f64| (f * PI).sqrt());
 
-    pub(crate) fn fn_tan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.tan();
-        CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_sinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.sinh();
-        CalcResult::Number(result)
-    }
-    pub(crate) fn fn_cosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.cosh();
-        CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_tanh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.tanh();
-        CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_asin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.asin();
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid argument for ASIN".to_string(),
-            };
-        }
-        CalcResult::Number(result)
-    }
-    pub(crate) fn fn_acos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.acos();
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid argument for COS".to_string(),
-            };
-        }
-        CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_atan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.atan();
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid argument for ATAN".to_string(),
-            };
-        }
-        CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_asinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.asinh();
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid argument for ASINH".to_string(),
-            };
-        }
-        CalcResult::Number(result)
-    }
-    pub(crate) fn fn_acosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.acosh();
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid argument for ACOSH".to_string(),
-            };
-        }
-        CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_atanh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let result = value.atanh();
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid argument for ATANH".to_string(),
-            };
-        }
-        CalcResult::Number(result)
-    }
 
     pub(crate) fn fn_pi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !args.is_empty() {
@@ -543,52 +402,7 @@ impl Model {
         CalcResult::Number(PI)
     }
 
-    pub(crate) fn fn_abs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        CalcResult::Number(value.abs())
-    }
 
-    pub(crate) fn fn_sqrtpi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if value < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Argument of SQRTPI should be >= 0".to_string(),
-            };
-        }
-        CalcResult::Number((value * PI).sqrt())
-    }
-
-    pub(crate) fn fn_sqrt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if value < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Argument of SQRT should be >= 0".to_string(),
-            };
-        }
-        CalcResult::Number(value.sqrt())
-    }
 
     pub(crate) fn fn_atan2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {

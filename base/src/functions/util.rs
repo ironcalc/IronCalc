@@ -393,10 +393,8 @@ pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResul
             // An error will match an error (never a string that is an error)
             Box::new(move |x| result_is_equal_to_error(x, &error.to_string()))
         }
-        CalcResult::Range { left: _, right: _ } => {
-            // TODO: Implicit Intersection
-            Box::new(move |_x| false)
-        }
+        CalcResult::Range { left: _, right: _ } => Box::new(move |_x| false),
+        CalcResult::Array(_) => Box::new(move |_x| false),
         CalcResult::EmptyCell | CalcResult::EmptyArg => Box::new(result_is_equal_to_empty),
     }
 }

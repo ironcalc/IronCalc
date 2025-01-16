@@ -39,6 +39,7 @@ pub mod types;
 pub mod worksheet;
 
 mod actions;
+mod arithmetic;
 mod cast;
 mod constants;
 mod functions;
