@@ -97,8 +97,22 @@ impl Model {
                                 error @ CalcResult::Error { .. } => return error,
                                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                                 CalcResult::Range { .. } => {}
+                                CalcResult::Array(_) => {
+                                    return CalcResult::Error {
+                                        error: Error::NIMPL,
+                                        origin: cell,
+                                        message: "Arrays not supported yet".to_string(),
+                                    }
+                                }
                             }
                         }
+                    }
+                }
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
                     }
                 }
             };
@@ -125,6 +139,13 @@ impl Model {
                     };
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
             };
             let format_code = match self.get_string(&args[1], cell) {
                 Ok(s) => s,
@@ -280,6 +301,13 @@ impl Model {
                     };
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
             };
             return CalcResult::Number(s.chars().count() as f64);
         }
@@ -308,6 +336,13 @@ impl Model {
                     };
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
             };
             return CalcResult::String(s.trim().to_owned());
         }
@@ -336,6 +371,13 @@ impl Model {
                     };
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
             };
             return CalcResult::String(s.to_lowercase());
         }
@@ -368,6 +410,13 @@ impl Model {
                         error: Error::VALUE,
                         origin: cell,
                         message: "Empty cell".to_string(),
+                    }
+                }
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
                     }
                 }
             };
@@ -411,6 +460,13 @@ impl Model {
                     };
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
             };
             return CalcResult::String(s.to_uppercase());
         }
@@ -441,6 +497,13 @@ impl Model {
                 };
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
+            CalcResult::Array(_) => {
+                return CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                }
+            }
         };
         let num_chars = if args.len() == 2 {
             match self.evaluate_node_in_context(&args[1], cell) {
@@ -471,6 +534,13 @@ impl Model {
                     };
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => 0,
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
             }
         } else {
             1
@@ -509,6 +579,13 @@ impl Model {
                 };
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
+            CalcResult::Array(_) => {
+                return CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                }
+            }
         };
         let num_chars = if args.len() == 2 {
             match self.evaluate_node_in_context(&args[1], cell) {
@@ -539,6 +616,13 @@ impl Model {
                     };
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => 0,
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
             }
         } else {
             1
@@ -577,6 +661,13 @@ impl Model {
                 };
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
+            CalcResult::Array(_) => {
+                return CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                }
+            }
         };
         let start_num = match self.evaluate_node_in_context(&args[1], cell) {
             CalcResult::Number(v) => {
@@ -641,6 +732,13 @@ impl Model {
                 };
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => 0,
+            CalcResult::Array(_) => {
+                return CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                }
+            }
         };
         let mut result = "".to_string();
         let mut count: usize = 0;
@@ -983,6 +1081,13 @@ impl Model {
                                 }
                                 error @ CalcResult::Error { .. } => return error,
                                 CalcResult::EmptyArg | CalcResult::Range { .. } => {}
+                                CalcResult::Array(_) => {
+                                    return CalcResult::Error {
+                                        error: Error::NIMPL,
+                                        origin: cell,
+                                        message: "Arrays not supported yet".to_string(),
+                                    }
+                                }
                             }
                         }
                     }
@@ -1002,6 +1107,13 @@ impl Model {
                     }
                 }
                 CalcResult::EmptyArg => {}
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
             };
         }
         let result = values.join(&delimiter);
@@ -1125,6 +1237,11 @@ impl Model {
                 }
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(0.0),
+            CalcResult::Array(_) => CalcResult::Error {
+                error: Error::NIMPL,
+                origin: cell,
+                message: "Arrays not supported yet".to_string(),
+            },
         }
     }
 

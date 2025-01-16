@@ -925,7 +925,7 @@ dependencies = [
 
 [[package]]
 name = "ironcalc"
-version = "0.2.0"
+version = "0.5.0"
 dependencies = [
  "bitcode",
  "chrono",
@@ -940,7 +940,7 @@ dependencies = [
 
 [[package]]
 name = "ironcalc_base"
-version = "0.2.0"
+version = "0.5.0"
 dependencies = [
  "bitcode",
  "chrono",
@@ -956,7 +956,7 @@ dependencies = [
 
 [[package]]
 name = "ironcalc_server"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "ironcalc",
  "rand",
