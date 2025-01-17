@@ -4,7 +4,7 @@ version = "0.3.0"
 authors = ["Nicolas Hatcher <nicolas@theuniverse.today>"]
 description = "IronCalc Web bindings"
 license = "MIT/Apache-2.0"
-repository = "https://github.com/ironcalc/web-bindings"
+repository = "https://github.com/ironcalc/ironcalc"
 edition = "2021"
 
 [lib]
