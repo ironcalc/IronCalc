@@ -17,7 +17,7 @@ import {
 } from "./components/storage";
 
 // From IronCalc
-import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/ironcalc";
+import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/workbook";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);

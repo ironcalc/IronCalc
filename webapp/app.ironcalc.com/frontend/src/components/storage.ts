@@ -1,4 +1,4 @@
-import { Model } from "@ironcalc/ironcalc";
+import { Model } from "@ironcalc/workbook";
 import { base64ToBytes, bytesToBase64 } from "./util";
 
 const MAX_WORKBOOKS = 50;

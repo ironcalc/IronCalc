@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import type { Model } from "@ironcalc/ironcalc";
-import { IronCalcIcon, IronCalcLogo } from "@ironcalc/ironcalc";
+import type { Model } from "@ironcalc/workbook";
+import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
 import { CircleCheck } from "lucide-react";
 import { useRef, useState } from "react";
 // import { IronCalcIcon, IronCalcLogo } from "./../icons";

@@ -1,7 +1,6 @@
 {
-  "name": "ironcalc",
-  "private": true,
-  "version": "0.3.0",
+  "name": "@ironcalc/workbook",
+  "version": "0.3.1",
   "type": "module",
   "main": "./dist/ironcalc.js",
   "module": "./dist/ironcalc.js",
@@ -17,7 +16,7 @@
   "dependencies": {
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
-    "@ironcalc/wasm": "file:../../bindings/wasm/pkg",
+    "@ironcalc/wasm": "^0.3.0",
     "@mui/material": "^5.15.15",
     "i18next": "^23.11.1",
     "lucide-react": "^0.427.0",
@@ -42,5 +41,8 @@
     "@types/react": {
       "optional": true
     }
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

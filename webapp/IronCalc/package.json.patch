@@ -1,0 +1,2 @@
+"@ironcalc/wasm": "^0.3.0",
+"@ironcalc/wasm": "file:../../bindings/wasm/pkg",
