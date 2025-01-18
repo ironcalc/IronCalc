@@ -14,14 +14,8 @@ use super::financial_util::{compute_irr, compute_npv, compute_rate, compute_xirr
 // https://github.com/apache/openoffice/blob/c014b5f2b55cff8d4b0c952d5c16d62ecde09ca1/main/scaddins/source/analysis/financial.cxx
 
 fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bool, String> {
-    let end = match from_excel_date(end_date) {
-        Ok(s) => s,
-        Err(s) => return Err(s),
-    };
-    let start = match from_excel_date(start_date) {
-        Ok(s) => s,
-        Err(s) => return Err(s),
-    };
+    let end = from_excel_date(end_date)?;
+    let start = from_excel_date(start_date)?;
     if end_date - start_date < 365 {
         return Ok(true);
     }
