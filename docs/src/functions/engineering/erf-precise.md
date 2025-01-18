@@ -42,7 +42,7 @@ $$
   * As $x \rightarrow \infty$, $\text{erf}(x) \rightarrow 1$
   * As $x \rightarrow -\infty$, $\text{erf}(x) \rightarrow -1$
 
-* The error function is a [transcendental](https://en.wikipedia.org/wiki/Transcendental_function), non-algebraic mathematical function. IronCalc implements the ERF.PRECISE function by numerical approximation using a power series.
+* The error function is a [transcendental](https://en.wikipedia.org/wiki/Transcendental_function), non-algebraic mathematical function. IronCalc implements the ERF.PRECISE function by numerical approximation.
 ## Examples
 [See some examples in IronCalc](https://app.ironcalc.com/?example=erf-precise).
 

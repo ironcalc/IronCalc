@@ -40,7 +40,7 @@ $$
   * As $x \rightarrow \infty$, $\text{erfc}(x) \rightarrow 0$
   * As $x \rightarrow -\infty$, $\text{erfc}(x) \rightarrow 2$
 
-* The complementary error function is a [transcendental](https://en.wikipedia.org/wiki/Transcendental_function), non-algebraic mathematical function. IronCalc implements the ERFC function by numerical approximation using a power series.
+* The complementary error function is a [transcendental](https://en.wikipedia.org/wiki/Transcendental_function), non-algebraic mathematical function. IronCalc implements the ERFC function by numerical approximation.
 ## Examples
 [See some examples in IronCalc](https://app.ironcalc.com/?example=erfc).
 
