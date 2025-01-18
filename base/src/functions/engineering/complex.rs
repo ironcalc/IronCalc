@@ -188,10 +188,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<(f64, f64, Suffix), CalcResult> {
-        let value = match self.get_string(node, cell) {
-            Ok(s) => s,
-            Err(s) => return Err(s),
-        };
+        let value = self.get_string(node, cell)?;
         if value.is_empty() {
             return Ok((0.0, 0.0, Suffix::I));
         }

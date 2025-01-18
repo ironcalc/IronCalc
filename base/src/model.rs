@@ -960,10 +960,7 @@ impl Model {
                 }
             }
         }
-        let sheet = match self.get_sheet_index_by_name(&sheet_name) {
-            Some(s) => s,
-            None => return None,
-        };
+        let sheet = self.get_sheet_index_by_name(&sheet_name)?;
         let row = match row.parse::<i32>() {
             Ok(r) => r,
             Err(_) => return None,
