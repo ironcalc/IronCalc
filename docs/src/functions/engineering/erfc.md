@@ -47,6 +47,6 @@ $$
 [See some examples in IronCalc](https://app.ironcalc.com/?example=erfc).
 
 ## Links
-* See also IronCalc's [ERF](/functions/engineering/erf.md), [ERF.PRECISE](/functions/engineering/erf-precise.md) and [ERFC.PRECISE](/functions/engineering/erfc-precise.md) functions.
+* See also IronCalc's [ERF](/functions/engineering/erf.md) function.
 * Visit Microsoft Excel's [ERFC function](https://support.microsoft.com/en-gb/office/erfc-function-736e0318-70ba-4e8b-8d08-461fe68b71b3) page.
 * Both [Google Sheets](https://support.google.com/docs/answer/3093407) and [LibreOffice Calc](https://wiki.documentfoundation.org/Documentation/Calc_Functions/ERFC) provide versions of the ERFC function.
