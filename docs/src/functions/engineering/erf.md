@@ -3,12 +3,14 @@ layout: doc
 outline: deep
 lang: en-US
 ---
-# ERF function
+# ERF and ERF.PRECISE functions
 ::: warning
 **Note:** This draft page is under construction 🚧
 :::
 ## Overview
 ERF (<u>ER</u>ror <u>F</u>unction) is a function of the Engineering category that calculates a value for the _error function_. Also known as the _Gauss error function_, the error function represents the probability of a random variable falling within a certain range, given that it follows a specified normal distribution.
+
+ERF.PRECISE is provided for compatibility with other spreadsheets. For all real values of $x$, $\text{ERF.PRECISE}(x)=\text{ERF}(x)$.
 ## Usage
 ### Syntax
 **ERF(<span title="Number" style="color:#1E88E5">X</span>, <span title="Number" style="color:#1E88E5">Y</span>) => <span title="Number" style="color:#1E88E5">erf</span>**

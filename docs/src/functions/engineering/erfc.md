@@ -3,17 +3,19 @@ layout: doc
 outline: deep
 lang: en-US
 ---
-# ERFC function
+# ERFC and ERFC.PRECISE functions
 ::: warning
 **Note:** This draft page is under construction 🚧
 :::
 ## Overview
 ERFC (<u>ER</u>ror <u>F</u>unction <u>C</u>omplementary) is a function of the Engineering category that calculates a value for the _complementary error function_, defined by $\text{erfc}(x) = 1 - \text{erf}(x)$. Also known as the _complementary Gauss error function_, the complementary error function represents the probability of a random variable falling outside a certain range, given that it follows a specified normal distribution.
+
+ERFC.PRECISE is provided for compatibility with other spreadsheets. For all real values of $x$, $\text{ERFC.PRECISE}(x)=\text{ERFC}(x)$.
 ## Usage
 ### Syntax
 **ERFC(<span title="Number" style="color:#1E88E5">X</span>) => <span title="Number" style="color:#1E88E5">erfc</span>**
 ### Argument descriptions
-* *X* ([number](/features/value-types#numbers), required). The lower integration limit to be used to calculate the complementary error function. ERFC integrates over the range [X, $\infty$).
+* *X* ([number](/features/value-types#numbers), required). The lower integration limit to be used to calculate the complementary error function. ERFC integrates over the range $[X, \infty)$.
 ### Additional guidance
 None.
 ### Returned value
