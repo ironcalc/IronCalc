@@ -66,6 +66,9 @@ const FormatPicker = (properties: FormatPickerProps) => {
           spellCheck="false"
           onClick={(event) => event.stopPropagation()}
           onFocus={(event) => event.target.select()}
+          onPaste={(event) => event.stopPropagation()}
+          onCopy={(event) => event.stopPropagation()}
+          onCut={(event) => event.stopPropagation()}
         />
       </StyledDialogContent>
       <DialogFooter>
