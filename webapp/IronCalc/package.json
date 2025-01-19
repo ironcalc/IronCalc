@@ -11,36 +11,45 @@
     "build": "vite build && tsc",
     "check": "biome check ./src",
     "check-write": "biome check --write ./src",
-    "test": "vitest run"
+    "test": "vitest run",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@emotion/react": "^11.11.4",
-    "@emotion/styled": "^11.11.5",
-    "@ironcalc/wasm": "^0.3.0",
-    "@mui/material": "^5.15.15",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@ironcalc/wasm": "file:../../bindings/wasm/pkg",
+    "@mui/material": "^6.4",
+    "@mui/system": "^6.4",
     "i18next": "^23.11.1",
-    "lucide-react": "^0.427.0",
+    "lucide-react": "^0.473.0",
     "react-colorful": "^5.6.1",
-    "react-i18next": "^13.5.0"
+    "react-i18next": "^15.4.0"
   },
   "devDependencies": {
     "@biomejs/biome": "1.8.3",
+    "@chromatic-com/storybook": "^3.2.4",
+    "@storybook/addon-essentials": "^8.6.0-alpha.0",
+    "@storybook/addon-interactions": "^8.6.0-alpha.0",
+    "@storybook/addon-onboarding": "^8.6.0-alpha.0",
+    "@storybook/blocks": "^8.6.0-alpha.0",
+    "@storybook/react": "^8.6.0-alpha.0",
+    "@storybook/react-vite": "^8.6.0-alpha.0",
+    "@storybook/test": "^8.6.0-alpha.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "storybook": "^8.6.0-alpha.0",
     "ts-node": "^10.9.2",
     "typescript": "~5.6.2",
     "vite": "^6.0.5",
     "vite-plugin-svgr": "^4.2.0",
-    "vitest": "^2.0.5",
-    "react": "^18.0.0"
+    "vitest": "^2.0.5"
   },
   "peerDependencies": {
     "@types/react": "^18.0.0",
-    "react": "^18.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@types/react": {
-      "optional": true
-    }
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
   },
   "files": [
     "dist"
