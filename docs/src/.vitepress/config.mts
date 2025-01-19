@@ -588,7 +588,7 @@ export default defineConfig({
               },
               {
                 text: "ERF.PRECISE",
-                link: "/functions/engineering/erf.precise",
+                link: "/functions/engineering/erf-precise",
               },
               {
                 text: "ERFC",
@@ -596,7 +596,7 @@ export default defineConfig({
               },
               {
                 text: "ERFC.PRECISE",
-                link: "/functions/engineering/erfc.precise",
+                link: "/functions/engineering/erfc-precise",
               },
               {
                 text: "GESTEP",
