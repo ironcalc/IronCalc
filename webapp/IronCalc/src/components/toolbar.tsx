@@ -1,9 +1,11 @@
+import type {} from "@emotion/styled";
 import type {
   BorderOptions,
   HorizontalAlignment,
   VerticalAlignment,
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
+import type {} from "@mui/system";
 import {
   AlignCenter,
   AlignLeft,
