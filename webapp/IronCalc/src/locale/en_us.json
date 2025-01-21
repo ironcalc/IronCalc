@@ -100,5 +100,20 @@
     "edit": "Edit Range",
     "apply": "Apply changes",
     "discard": "Discard changes"
+  },
+  "cell_context": {
+    "insert_row_above": "Insert 1 row above",
+    "insert_row_below": "Insert 1 row below",
+    "insert_column_before": "Insert 1 column left",
+    "insert_column_after": "Insert 1 column right",
+    "freeze_columns": "Freeze up to column '{{column}}'",
+    "freeze_rows": "Freeze up to row '{{row}}'",
+    "unfreeze_rows": "Unfreeze rows",
+    "unfreeze_columns": "Unfreeze columns",
+    "delete_row": "Delete row '{{row}}'",
+    "delete_column": "Delete column '{{column}}'",
+    "freeze": "Freeze",
+    "insert_row": "Insert row",
+    "insert_column": "Insert column"
   }
 }

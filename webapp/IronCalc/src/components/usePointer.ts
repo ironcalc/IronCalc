@@ -240,7 +240,6 @@ const usePointer = (options: PointerSettings): PointerEvents => {
     onPointerMove,
     onPointerUp,
     onPointerHandleDown,
-    // onContextMenu,
   };
 };
 

@@ -1,6 +1,6 @@
 [package]
 name = "wasm"
-version = "0.3.0"
+version = "0.3.2"
 authors = ["Nicolas Hatcher <nicolas@theuniverse.today>"]
 description = "IronCalc Web bindings"
 license = "MIT/Apache-2.0"
