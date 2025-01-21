@@ -79,6 +79,8 @@
   },
   "name_manager_dialog": {
     "title": "Named Ranges",
+    "empty_message1": "No named ranges added yet.",
+    "empty_message2": "Click on 'Add new' to add one.",
     "name": "Name",
     "range": "Scope",
     "scope": "Range",

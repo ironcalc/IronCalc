@@ -10,7 +10,7 @@ import {
   styled,
 } from "@mui/material";
 import { t } from "i18next";
-import { BookOpen, Plus, X } from "lucide-react";
+import { BookOpen, PackageOpen, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { theme } from "../../theme";
 import NamedRangeActive from "./NamedRangeActive";
@@ -79,65 +79,78 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
         </Cross>
       </StyledDialogTitle>
       <StyledDialogContent>
-        <StyledRangesHeader>
-          <StyledBox>{t("name_manager_dialog.name")}</StyledBox>
-          <StyledBox>{t("name_manager_dialog.range")}</StyledBox>
-          <StyledBox>{t("name_manager_dialog.scope")}</StyledBox>
-        </StyledRangesHeader>
-        <NameListWrapper>
-          {definedNameList.map((definedName, index) => {
-            const scopeName = definedName.scope
-              ? worksheets[definedName.scope].name
-              : "[global]";
-            if (index === editingNameIndex) {
+        {(definedNameList.length > 0 || editingNameIndex !== -2) && (
+          <StyledRangesHeader>
+            <StyledBox>{t("name_manager_dialog.name")}</StyledBox>
+            <StyledBox>{t("name_manager_dialog.range")}</StyledBox>
+            <StyledBox>{t("name_manager_dialog.scope")}</StyledBox>
+          </StyledRangesHeader>
+        )}
+        {definedNameList.length === 0 && editingNameIndex === -2 ? (
+          <EmptyStateMessage>
+            <IconWrapper>
+              <PackageOpen />
+            </IconWrapper>
+            {t("name_manager_dialog.empty_message1")}
+            <br />
+            {t("name_manager_dialog.empty_message2")}
+          </EmptyStateMessage>
+        ) : (
+          <NameListWrapper>
+            {definedNameList.map((definedName, index) => {
+              const scopeName = definedName.scope
+                ? worksheets[definedName.scope].name
+                : "[global]";
+              if (index === editingNameIndex) {
+                return (
+                  <NamedRangeActive
+                    worksheets={worksheets}
+                    name={definedName.name}
+                    scope={scopeName}
+                    formula={definedName.formula}
+                    key={definedName.name + definedName.scope}
+                    onSave={(
+                      newName,
+                      newScope,
+                      newFormula,
+                    ): string | undefined => {
+                      const scope_index = worksheets.findIndex(
+                        (s) => s.name === newScope,
+                      );
+                      const scope = scope_index > 0 ? scope_index : undefined;
+                      try {
+                        updateDefinedName(
+                          definedName.name,
+                          definedName.scope,
+                          newName,
+                          scope,
+                          newFormula,
+                        );
+                        setEditingNameIndex(-2);
+                      } catch (e) {
+                        return `${e}`;
+                      }
+                    }}
+                    onCancel={() => setEditingNameIndex(-2)}
+                  />
+                );
+              }
               return (
-                <NamedRangeActive
-                  worksheets={worksheets}
+                <NamedRangeInactive
                   name={definedName.name}
                   scope={scopeName}
                   formula={definedName.formula}
                   key={definedName.name + definedName.scope}
-                  onSave={(
-                    newName,
-                    newScope,
-                    newFormula,
-                  ): string | undefined => {
-                    const scope_index = worksheets.findIndex(
-                      (s) => s.name === newScope,
-                    );
-                    const scope = scope_index > 0 ? scope_index : undefined;
-                    try {
-                      updateDefinedName(
-                        definedName.name,
-                        definedName.scope,
-                        newName,
-                        scope,
-                        newFormula,
-                      );
-                      setEditingNameIndex(-2);
-                    } catch (e) {
-                      return `${e}`;
-                    }
+                  showOptions={editingNameIndex === -2}
+                  onEdit={() => setEditingNameIndex(index)}
+                  onDelete={() => {
+                    deleteDefinedName(definedName.name, definedName.scope);
                   }}
-                  onCancel={() => setEditingNameIndex(-2)}
                 />
               );
-            }
-            return (
-              <NamedRangeInactive
-                name={definedName.name}
-                scope={scopeName}
-                formula={definedName.formula}
-                key={definedName.name + definedName.scope}
-                showOptions={editingNameIndex === -2}
-                onEdit={() => setEditingNameIndex(index)}
-                onDelete={() => {
-                  deleteDefinedName(definedName.name, definedName.scope);
-                }}
-              />
-            );
-          })}
-        </NameListWrapper>
+            })}
+          </NameListWrapper>
+        )}
         {editingNameIndex === -1 && (
           <NamedRangeActive
             worksheets={worksheets}
@@ -228,6 +241,39 @@ const Cross = styled("div")`
 
 const NameListWrapper = styled(Stack)`
   overflow-y: auto;
+`;
+
+const EmptyStateMessage = styled(Box)`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  font-size: 12px;
+  color: ${theme.palette.grey["600"]};
+  font-family: "Inter";
+  z-index: 0;
+  margin: auto 0px;
+  position: relative;
+`;
+
+const IconWrapper = styled("div")`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  background-color: ${theme.palette.grey["100"]};
+  color: ${theme.palette.grey["600"]};
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+  }
 `;
 
 const StyledBox = styled(Box)`
