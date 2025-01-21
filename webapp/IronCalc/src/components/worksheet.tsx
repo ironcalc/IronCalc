@@ -1,6 +1,7 @@
-import type { Model } from "@ironcalc/wasm";
+import { type Model, columnNameFromNumber } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import CellContextMenu from "./CellContextMenu";
 import {
   COLUMN_WIDTH_SCALE,
   ROW_HEIGH_SCALE,
@@ -51,6 +52,8 @@ function Worksheet(props: {
   const rowResizeGuide = useRef<HTMLDivElement>(null);
   const columnHeaders = useRef<HTMLDivElement>(null);
   const worksheetCanvas = useRef<WorksheetCanvas | null>(null);
+
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
 
   const ignoreScrollEventRef = useRef(false);
 
@@ -147,174 +150,175 @@ function Worksheet(props: {
     worksheetCanvas.current = canvas;
   });
 
-  const {
-    onPointerMove,
-    onPointerDown,
-    onPointerHandleDown,
-    onPointerUp,
-    // onContextMenu,
-  } = usePointer({
-    model,
-    workbookState,
-    refresh,
-    onCellSelected: (cell: Cell, event: React.MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      model.setSelectedCell(cell.row, cell.column);
-      refresh();
-    },
-    onAreaSelecting: (cell: Cell) => {
-      const canvas = worksheetCanvas.current;
-      if (!canvas) {
-        return;
-      }
-      const { row, column } = cell;
-      model.onAreaSelecting(row, column);
-      canvas.renderSheet();
-      refresh();
-    },
-    onAreaSelected: () => {
-      const styles = workbookState.getCopyStyles();
-      if (styles?.length) {
-        model.onPasteStyles(styles);
+  const { onPointerMove, onPointerDown, onPointerHandleDown, onPointerUp } =
+    usePointer({
+      model,
+      workbookState,
+      refresh,
+      onCellSelected: (cell: Cell, event: React.MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        model.setSelectedCell(cell.row, cell.column);
+        refresh();
+      },
+      onAreaSelecting: (cell: Cell) => {
         const canvas = worksheetCanvas.current;
         if (!canvas) {
           return;
         }
+        const { row, column } = cell;
+        model.onAreaSelecting(row, column);
         canvas.renderSheet();
-      }
-      workbookState.setCopyStyles(null);
-      if (worksheetElement.current) {
-        worksheetElement.current.style.cursor = "auto";
-      }
-      refresh();
-    },
-    onExtendToCell: (cell) => {
-      const canvas = worksheetCanvas.current;
-      if (!canvas) {
-        return;
-      }
-      const { row, column } = cell;
-      const {
-        range: [rowStart, columnStart, rowEnd, columnEnd],
-      } = model.getSelectedView();
-      // We are either extending by rows or by columns
-      // And we could be doing it in the positive direction (downwards or right)
-      // or the negative direction (upwards or left)
-
-      if (
-        row > rowEnd &&
-        ((column <= columnEnd && column >= columnStart) ||
-          (column < columnStart && columnStart - column < row - rowEnd) ||
-          (column > columnEnd && column - columnEnd < row - rowEnd))
-      ) {
-        // rows downwards
-        const area = {
-          type: AreaType.rowsDown,
-          rowStart: rowEnd + 1,
-          rowEnd: row,
-          columnStart,
-          columnEnd,
-        };
-        workbookState.setExtendToArea(area);
-        canvas.renderSheet();
-      } else if (
-        row < rowStart &&
-        ((column <= columnEnd && column >= columnStart) ||
-          (column < columnStart && columnStart - column < rowStart - row) ||
-          (column > columnEnd && column - columnEnd < rowStart - row))
-      ) {
-        // rows upwards
-        const area = {
-          type: AreaType.rowsUp,
-          rowStart: row,
-          rowEnd: rowStart,
-          columnStart,
-          columnEnd,
-        };
-        workbookState.setExtendToArea(area);
-        canvas.renderSheet();
-      } else if (
-        column > columnEnd &&
-        ((row <= rowEnd && row >= rowStart) ||
-          (row < rowStart && rowStart - row < column - columnEnd) ||
-          (row > rowEnd && row - rowEnd < column - columnEnd))
-      ) {
-        // columns right
-        const area = {
-          type: AreaType.columnsRight,
-          rowStart,
-          rowEnd,
-          columnStart: columnEnd + 1,
-          columnEnd: column,
-        };
-        workbookState.setExtendToArea(area);
-        canvas.renderSheet();
-      } else if (
-        column < columnStart &&
-        ((row <= rowEnd && row >= rowStart) ||
-          (row < rowStart && rowStart - row < columnStart - column) ||
-          (row > rowEnd && row - rowEnd < columnStart - column))
-      ) {
-        // columns left
-        const area = {
-          type: AreaType.columnsLeft,
-          rowStart,
-          rowEnd,
-          columnStart: column,
-          columnEnd: columnStart,
-        };
-        workbookState.setExtendToArea(area);
-        canvas.renderSheet();
-      }
-    },
-    onExtendToEnd: () => {
-      const canvas = worksheetCanvas.current;
-      if (!canvas) {
-        return;
-      }
-      const { sheet, range } = model.getSelectedView();
-      const extendedArea = workbookState.getExtendToArea();
-      if (!extendedArea) {
-        return;
-      }
-      const rowStart = Math.min(range[0], range[2]);
-      const height = Math.abs(range[2] - range[0]) + 1;
-      const width = Math.abs(range[3] - range[1]) + 1;
-      const columnStart = Math.min(range[1], range[3]);
-
-      const area = { sheet, row: rowStart, column: columnStart, width, height };
-
-      switch (extendedArea.type) {
-        case AreaType.rowsDown:
-          model.autoFillRows(area, extendedArea.rowEnd);
-          break;
-        case AreaType.rowsUp: {
-          model.autoFillRows(area, extendedArea.rowStart);
-          break;
+        refresh();
+      },
+      onAreaSelected: () => {
+        const styles = workbookState.getCopyStyles();
+        if (styles?.length) {
+          model.onPasteStyles(styles);
+          const canvas = worksheetCanvas.current;
+          if (!canvas) {
+            return;
+          }
+          canvas.renderSheet();
         }
-        case AreaType.columnsRight: {
-          model.autoFillColumns(area, extendedArea.columnEnd);
-          break;
+        workbookState.setCopyStyles(null);
+        if (worksheetElement.current) {
+          worksheetElement.current.style.cursor = "auto";
         }
-        case AreaType.columnsLeft: {
-          model.autoFillColumns(area, extendedArea.columnStart);
-          break;
+        refresh();
+      },
+      onExtendToCell: (cell) => {
+        const canvas = worksheetCanvas.current;
+        if (!canvas) {
+          return;
         }
-      }
-      model.setSelectedRange(
-        Math.min(rowStart, extendedArea.rowStart),
-        Math.min(columnStart, extendedArea.columnStart),
-        Math.max(rowStart + height - 1, extendedArea.rowEnd),
-        Math.max(columnStart + width - 1, extendedArea.columnEnd),
-      );
-      workbookState.clearExtendToArea();
-      canvas.renderSheet();
-    },
-    canvasElement,
-    worksheetElement,
-    worksheetCanvas,
-  });
+        const { row, column } = cell;
+        const {
+          range: [rowStart, columnStart, rowEnd, columnEnd],
+        } = model.getSelectedView();
+        // We are either extending by rows or by columns
+        // And we could be doing it in the positive direction (downwards or right)
+        // or the negative direction (upwards or left)
+
+        if (
+          row > rowEnd &&
+          ((column <= columnEnd && column >= columnStart) ||
+            (column < columnStart && columnStart - column < row - rowEnd) ||
+            (column > columnEnd && column - columnEnd < row - rowEnd))
+        ) {
+          // rows downwards
+          const area = {
+            type: AreaType.rowsDown,
+            rowStart: rowEnd + 1,
+            rowEnd: row,
+            columnStart,
+            columnEnd,
+          };
+          workbookState.setExtendToArea(area);
+          canvas.renderSheet();
+        } else if (
+          row < rowStart &&
+          ((column <= columnEnd && column >= columnStart) ||
+            (column < columnStart && columnStart - column < rowStart - row) ||
+            (column > columnEnd && column - columnEnd < rowStart - row))
+        ) {
+          // rows upwards
+          const area = {
+            type: AreaType.rowsUp,
+            rowStart: row,
+            rowEnd: rowStart,
+            columnStart,
+            columnEnd,
+          };
+          workbookState.setExtendToArea(area);
+          canvas.renderSheet();
+        } else if (
+          column > columnEnd &&
+          ((row <= rowEnd && row >= rowStart) ||
+            (row < rowStart && rowStart - row < column - columnEnd) ||
+            (row > rowEnd && row - rowEnd < column - columnEnd))
+        ) {
+          // columns right
+          const area = {
+            type: AreaType.columnsRight,
+            rowStart,
+            rowEnd,
+            columnStart: columnEnd + 1,
+            columnEnd: column,
+          };
+          workbookState.setExtendToArea(area);
+          canvas.renderSheet();
+        } else if (
+          column < columnStart &&
+          ((row <= rowEnd && row >= rowStart) ||
+            (row < rowStart && rowStart - row < columnStart - column) ||
+            (row > rowEnd && row - rowEnd < columnStart - column))
+        ) {
+          // columns left
+          const area = {
+            type: AreaType.columnsLeft,
+            rowStart,
+            rowEnd,
+            columnStart: column,
+            columnEnd: columnStart,
+          };
+          workbookState.setExtendToArea(area);
+          canvas.renderSheet();
+        }
+      },
+      onExtendToEnd: () => {
+        const canvas = worksheetCanvas.current;
+        if (!canvas) {
+          return;
+        }
+        const { sheet, range } = model.getSelectedView();
+        const extendedArea = workbookState.getExtendToArea();
+        if (!extendedArea) {
+          return;
+        }
+        const rowStart = Math.min(range[0], range[2]);
+        const height = Math.abs(range[2] - range[0]) + 1;
+        const width = Math.abs(range[3] - range[1]) + 1;
+        const columnStart = Math.min(range[1], range[3]);
+
+        const area = {
+          sheet,
+          row: rowStart,
+          column: columnStart,
+          width,
+          height,
+        };
+
+        switch (extendedArea.type) {
+          case AreaType.rowsDown:
+            model.autoFillRows(area, extendedArea.rowEnd);
+            break;
+          case AreaType.rowsUp: {
+            model.autoFillRows(area, extendedArea.rowStart);
+            break;
+          }
+          case AreaType.columnsRight: {
+            model.autoFillColumns(area, extendedArea.columnEnd);
+            break;
+          }
+          case AreaType.columnsLeft: {
+            model.autoFillColumns(area, extendedArea.columnStart);
+            break;
+          }
+        }
+        model.setSelectedRange(
+          Math.min(rowStart, extendedArea.rowStart),
+          Math.min(columnStart, extendedArea.columnStart),
+          Math.max(rowStart + height - 1, extendedArea.rowEnd),
+          Math.max(columnStart + width - 1, extendedArea.columnEnd),
+        );
+        workbookState.clearExtendToArea();
+        canvas.renderSheet();
+      },
+      canvasElement,
+      worksheetElement,
+      worksheetCanvas,
+    });
 
   const onScroll = (): void => {
     if (!scrollElement.current || !worksheetCanvas.current) {
@@ -340,6 +344,11 @@ function Worksheet(props: {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setContextMenuOpen(true);
+        }}
         onDoubleClick={(event) => {
           // Starts editing cell
           const { sheet, row, column } = model.getSelectedView();
@@ -392,6 +401,63 @@ function Worksheet(props: {
         <RowResizeGuide ref={rowResizeGuide} />
         <ColumnHeaders ref={columnHeaders} />
       </SheetContainer>
+      <CellContextMenu
+        open={contextMenuOpen}
+        onClose={() => setContextMenuOpen(false)}
+        anchorEl={cellOutline.current}
+        onInsertRowAbove={(): void => {
+          const view = model.getSelectedView();
+          model.insertRow(view.sheet, view.row);
+          setContextMenuOpen(false);
+        }}
+        onInsertRowBelow={(): void => {
+          const view = model.getSelectedView();
+          model.insertRow(view.sheet, view.row + 1);
+          setContextMenuOpen(false);
+        }}
+        onInsertColumnLeft={(): void => {
+          const view = model.getSelectedView();
+          model.insertColumn(view.sheet, view.column);
+          setContextMenuOpen(false);
+        }}
+        onInsertColumnRight={(): void => {
+          const view = model.getSelectedView();
+          model.insertColumn(view.sheet, view.column + 1);
+          setContextMenuOpen(false);
+        }}
+        onFreezeColumns={(): void => {
+          const view = model.getSelectedView();
+          model.setFrozenColumnsCount(view.sheet, view.column);
+          setContextMenuOpen(false);
+        }}
+        onFreezeRows={(): void => {
+          const view = model.getSelectedView();
+          model.setFrozenRowsCount(view.sheet, view.row);
+          setContextMenuOpen(false);
+        }}
+        onUnfreezeColumns={(): void => {
+          const sheet = model.getSelectedSheet();
+          model.setFrozenColumnsCount(sheet, 0);
+          setContextMenuOpen(false);
+        }}
+        onUnfreezeRows={(): void => {
+          const sheet = model.getSelectedSheet();
+          model.setFrozenRowsCount(sheet, 0);
+          setContextMenuOpen(false);
+        }}
+        onDeleteRow={(): void => {
+          const view = model.getSelectedView();
+          model.deleteRow(view.sheet, view.row);
+          setContextMenuOpen(false);
+        }}
+        onDeleteColumn={(): void => {
+          const view = model.getSelectedView();
+          model.deleteColumn(view.sheet, view.column);
+          setContextMenuOpen(false);
+        }}
+        row={model.getSelectedView().row}
+        column={columnNameFromNumber(model.getSelectedView().column)}
+      />
     </Wrapper>
   );
 }
