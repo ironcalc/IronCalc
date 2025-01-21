@@ -6,6 +6,7 @@ import { theme } from "../../theme";
 import ColorPicker from "../colorPicker";
 import { isInReferenceMode } from "../editor/util";
 import type { WorkbookState } from "../workbookState";
+import SheetDeleteDialog from "./SheetDeleteDialog";
 import SheetRenameDialog from "./SheetRenameDialog";
 
 interface SheetTabProps {
@@ -37,8 +38,19 @@ function SheetTab(props: SheetTabProps) {
   const handleCloseRenameDialog = () => {
     setRenameDialogOpen(false);
   };
+
   const handleOpenRenameDialog = () => {
     setRenameDialogOpen(true);
+  };
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const handleOpenDeleteDialog = () => {
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
   };
   return (
     <>
@@ -97,7 +109,7 @@ function SheetTab(props: SheetTabProps) {
         <StyledMenuItem
           disabled={!props.canDelete}
           onClick={() => {
-            props.onDeleted();
+            handleOpenDeleteDialog();
             handleClose();
           }}
         >
@@ -133,6 +145,15 @@ function SheetTab(props: SheetTabProps) {
         }}
         anchorEl={colorButton}
         open={colorPickerOpen}
+      />
+      <SheetDeleteDialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+        onDelete={() => {
+          props.onDeleted();
+          handleCloseDeleteDialog();
+        }}
+        sheetName={name}
       />
     </>
   );
