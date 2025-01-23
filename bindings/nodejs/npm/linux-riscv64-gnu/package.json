@@ -1,0 +1,21 @@
+{
+  "name": "@ironcalc/nodejs-linux-riscv64-gnu",
+  "version": "0.2.0",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "riscv64"
+  ],
+  "main": "nodejs.linux-riscv64-gnu.node",
+  "files": [
+    "nodejs.linux-riscv64-gnu.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  },
+  "libc": [
+    "glibc"
+  ]
+}

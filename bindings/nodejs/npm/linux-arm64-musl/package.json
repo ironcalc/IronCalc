@@ -1,0 +1,21 @@
+{
+  "name": "@ironcalc/nodejs-linux-arm64-musl",
+  "version": "0.2.0",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "main": "nodejs.linux-arm64-musl.node",
+  "files": [
+    "nodejs.linux-arm64-musl.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  },
+  "libc": [
+    "musl"
+  ]
+}

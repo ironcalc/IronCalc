@@ -1,0 +1,18 @@
+{
+  "name": "@ironcalc/nodejs-android-arm-eabi",
+  "version": "0.2.0",
+  "os": [
+    "android"
+  ],
+  "cpu": [
+    "arm"
+  ],
+  "main": "nodejs.android-arm-eabi.node",
+  "files": [
+    "nodejs.android-arm-eabi.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}
