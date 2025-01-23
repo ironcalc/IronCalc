@@ -1,0 +1,15 @@
+{
+  "name": "@ironcalc/nodejs-darwin-universal",
+  "version": "0.2.0",
+  "os": [
+    "darwin"
+  ],
+  "main": "nodejs.darwin-universal.node",
+  "files": [
+    "nodejs.darwin-universal.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}

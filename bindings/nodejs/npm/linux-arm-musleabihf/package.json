@@ -1,0 +1,18 @@
+{
+  "name": "@ironcalc/nodejs-linux-arm-musleabihf",
+  "version": "0.2.0",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm"
+  ],
+  "main": "nodejs.linux-arm-musleabihf.node",
+  "files": [
+    "nodejs.linux-arm-musleabihf.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}

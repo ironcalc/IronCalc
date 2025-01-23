@@ -1,0 +1,18 @@
+{
+  "name": "@ironcalc/nodejs-android-arm64",
+  "version": "0.2.0",
+  "os": [
+    "android"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "main": "nodejs.android-arm64.node",
+  "files": [
+    "nodejs.android-arm64.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}
