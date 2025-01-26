@@ -100,7 +100,7 @@ const FormulaSymbolButton = styled(StyledButton)`
 `;
 
 const Divider = styled("div")`
-  background-color: #e0e0e0;
+  background-color: ${theme.palette.grey["300"]};
   width: 1px;
   height: 20px;
   margin-left: 16px;
