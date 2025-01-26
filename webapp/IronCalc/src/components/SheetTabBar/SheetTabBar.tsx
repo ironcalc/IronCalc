@@ -123,6 +123,10 @@ const Container = styled("div")`
   font-family: Inter;
   background-color: ${theme.palette.common.white};
   border-top: 1px solid ${theme.palette.grey["300"]};
+  @media (max-width: 769px) {
+    padding-right: 0px;
+    padding-left: 8px;
+  }
 `;
 
 const Sheets = styled("div")`
@@ -152,7 +156,7 @@ const Advert = styled("a")`
     text-decoration: underline;
   }
   @media (max-width: 769px) {
-    height: 100%;
+    display: none;
   }
 `;
 
@@ -161,6 +165,9 @@ const LeftButtonsContainer = styled("div")`
   flex-direction: row;
   gap: 4px;
   padding-right: 12px;
+  @media (max-width: 769px) {
+    padding-right: 8px;
+  }
 `;
 
 const VerticalDivider = styled("div")`
