@@ -12,10 +12,6 @@ Although IronCalc is ready for use, it’s important to understand its current l
 
 IronCalc currently does not implement arrays or array formulas. These are planned and are coming very soon, as they are the highest priority on the engine side.
 
-## **Name Manager** <Badge type="info" text="Planned" />
-
-While IronCalc supports importing and exporting defined names, it does not yet allow you to create, delete, or update them in the UI. This feature is expected to be implemented shortly.
-
 ## **Only English Supported**
 
 The MVP version of IronCalc supports only the English language. However, version 1.0 will include support for three languages: **English**, **German**, and **Spanish**.
