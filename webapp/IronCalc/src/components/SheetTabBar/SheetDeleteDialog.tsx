@@ -27,8 +27,9 @@ function SheetDeleteDialog({
         </IconWrapper>
         <Title>{t("sheet_delete.title")}</Title>
         <Body>
-          {t("sheet_delete.message1")} <strong>'{sheetName}'</strong>{" "}
-          {t("sheet_delete.message2")}
+          {t("sheet_delete.message", {
+            sheetName,
+          })}
         </Body>
         <ButtonGroup>
           <DeleteButton onClick={onDelete} autoFocus>
