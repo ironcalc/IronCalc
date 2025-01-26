@@ -129,7 +129,6 @@ const StyledDialogContent = styled("div")`
 
 const StyledTextField = styled(TextField)`
   width: 100%;
-  min-width: 320px;
   border-radius: 4px;
   overflow: hidden;
   & .MuiInputBase-input {
