@@ -1,6 +1,7 @@
 import type { Model } from "@ironcalc/wasm";
 import { styled } from "@mui/material";
 import { Fx } from "../icons";
+import { theme } from "../theme";
 import {
   COLUMN_WIDTH_SCALE,
   ROW_HEIGH_SCALE,
@@ -127,14 +128,14 @@ const Container = styled("div")`
 
 const AddressContainer = styled("div")`
   padding-left: 16px;
-  color: #333;
+  color: ${theme.palette.common.black};
   font-style: normal;
   font-weight: normal;
-  font-size: 11px;
+  font-size: 12px;
   display: flex;
   font-weight: 600;
   flex-grow: row;
-  min-width: ${headerColumnWidth}px;
+  // min-width: ${headerColumnWidth}px;
 `;
 
 const CellBarAddress = styled("div")`
