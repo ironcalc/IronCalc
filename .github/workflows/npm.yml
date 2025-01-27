@@ -12,11 +12,7 @@ permissions:
       publish:
         description: "Publish to npm"
         required: true
-        type: choice
-        options:
-          - yes
-          - no
-        default: "no"
+        type: boolean
 defaults:
   run:
     working-directory: ./bindings/nodejs
@@ -437,10 +433,13 @@ jobs:
         shell: bash
       - name: Publish
         run: |
+          cd bindings/nodejs
           npm config set provenance true
-          if [ "${{ github.event.inputs.publish }}" = "yes" ]; then
+          echo "${{ github.event.inputs.publish }}"
+          if [ "${{ github.event.inputs.publish }}" = "true" ]; then
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
             npm publish --access public
+            echo "Published to npm"
           else
             echo "Not a release, skipping publish"
           fi
