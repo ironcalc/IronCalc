@@ -433,8 +433,6 @@ jobs:
         shell: bash
       - name: Publish
         run: |
-          cd bindings/nodejs
-          npm config set provenance true
           echo "${{ github.event.inputs.publish }}"
           if [ "${{ github.event.inputs.publish }}" = "true" ]; then
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
