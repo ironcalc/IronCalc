@@ -310,6 +310,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { Model } = nativeBinding
+const { Model, UserModel } = nativeBinding
 
 module.exports.Model = Model
+module.exports.UserModel = UserModel

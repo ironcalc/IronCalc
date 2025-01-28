@@ -5,7 +5,45 @@
 
 export declare class Model {
   constructor(name: string, locale: string, timezone: string)
-  static fromBytes(bytes: Uint8Array): Model
+  static fromXlsx(filePath: string, locale: string, tz: string): Model
+  static fromIcalc(fileName: string): Model
+  saveToXlsx(file: string): void
+  saveToIcalc(file: string): void
+  evaluate(): void
+  setUserInput(sheet: number, row: number, column: number, value: string): void
+  clearCellContents(sheet: number, row: number, column: number): void
+  getCellContent(sheet: number, row: number, column: number): string
+  getCellType(sheet: number, row: number, column: number): number
+  getFormattedCellValue(sheet: number, row: number, column: number): string
+  setCellStyle(sheet: number, row: number, column: number, style: unknown): void
+  getCellStyle(sheet: number, row: number, column: number): unknown
+  insertRows(sheet: number, row: number, rowCount: number): void
+  insertColumns(sheet: number, column: number, columnCount: number): void
+  deleteRows(sheet: number, row: number, rowCount: number): void
+  deleteColumns(sheet: number, column: number, columnCount: number): void
+  getColumnWidth(sheet: number, column: number): number
+  getRowHeight(sheet: number, row: number): number
+  setColumnWidth(sheet: number, column: number, width: number): void
+  setRowHeight(sheet: number, row: number, height: number): void
+  getFrozenColumnsCount(sheet: number): number
+  getFrozenRowsCount(sheet: number): number
+  setFrozenColumnsCount(sheet: number, columnCount: number): void
+  setFrozenRowsCount(sheet: number, rowCount: number): void
+  getWorksheetsProperties(): unknown
+  setSheetColor(sheet: number, color: string): void
+  addSheet(sheetName: string): void
+  newSheet(): void
+  deleteSheet(sheet: number): void
+  renameSheet(sheet: number, newName: string): void
+  getDefinedNameList(): unknown
+  newDefinedName(name: string, scope: number | undefined | null, formula: string): void
+  updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string): void
+  deleteDefinedName(name: string, scope?: number | undefined | null): void
+  testPanic(): void
+}
+export declare class UserModel {
+  constructor(name: string, locale: string, timezone: string)
+  static fromBytes(bytes: Uint8Array): UserModel
   canUndo(): boolean
   canRedo(): boolean
   pauseEvaluation(): void
