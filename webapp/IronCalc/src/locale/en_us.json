@@ -68,6 +68,12 @@
     "title": "Rename Sheet",
     "close": "Close dialog"
   },
+  "sheet_delete": {
+    "title": "Are you sure?",
+    "message": "The sheet '{{sheetName}}' will be permanently deleted. This action cannot be undone.",
+    "confirm": "Yes, delete sheet",
+    "cancel": "Cancel"
+  },
   "formula_input": {
     "update": "Update",
     "label": "Formula",
