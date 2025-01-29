@@ -16,7 +16,7 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Topic :: Software Development :: Libraries",
   "Topic :: Software Development :: Libraries :: Python Modules",
-  "Office/Business :: Financial :: Spreadsheet",
+  "Topic :: Office/Business :: Financial :: Spreadsheet",
 ]
 authors = [
   { name = "Nicolás Hatcher", email = "nicolas@theuniverse.today" },
