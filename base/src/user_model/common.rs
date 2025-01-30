@@ -195,6 +195,11 @@ impl UserModel {
         self.model.to_bytes()
     }
 
+    /// Returns the internal model
+    pub fn get_model(&self) -> &Model {
+        &self.model
+    }
+
     /// Returns the workbook name
     pub fn get_name(&self) -> String {
         self.model.workbook.name.clone()

@@ -9,7 +9,7 @@ use ironcalc::compare::{test_file, test_load_and_saving};
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::{load_from_icalc, load_from_xlsx, load_from_xlsx_bytes};
 use ironcalc_base::types::{HorizontalAlignment, VerticalAlignment};
-use ironcalc_base::Model;
+use ironcalc_base::{Model, UserModel};
 
 // This is a functional test.
 // We check that the output of example.xlsx is what we expect.
@@ -495,4 +495,18 @@ fn test_documentation_xlsx() {
         }
     }
     fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn test_user_model() {
+    let temp_file_name = "temp_file_test_user_model.xlsx";
+    let mut model = UserModel::new_empty("my_model", "en", "UTC").unwrap();
+    model.set_user_input(0, 1, 1, "=1+1").unwrap();
+
+    // test we can use `get_model` to save the model
+    save_to_xlsx(model.get_model(), temp_file_name).unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+
+    // we can still use the model afterwards
+    model.set_row_height(0, 1, 100.0).unwrap();
 }
