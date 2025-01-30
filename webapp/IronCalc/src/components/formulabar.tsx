@@ -135,7 +135,6 @@ const AddressContainer = styled("div")`
   display: flex;
   font-weight: 600;
   flex-grow: row;
-  // min-width: ${headerColumnWidth}px;
 `;
 
 const CellBarAddress = styled("div")`
