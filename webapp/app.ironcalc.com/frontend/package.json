@@ -13,7 +13,7 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
-    "@ironcalc/workbook": "^0.3.1",
+    "@ironcalc/workbook": "file:../../IronCalc/",
     "@mui/material": "^6.3.1",
     "lucide": "^0.469.0",
     "lucide-react": "^0.469.0",
