@@ -9,7 +9,7 @@ interface Options {
   onEditEnd: () => void;
   onTextUpdated: () => void;
   workbookState: WorkbookState;
-  textareaRef: RefObject<HTMLTextAreaElement>;
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
 export const useKeyDown = (

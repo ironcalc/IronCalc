@@ -96,7 +96,6 @@ function UploadFileDialog(properties: {
     <DialogWrapper
       open={true}
       tabIndex={0}
-      role="dialog"
       onClose={handleClose}
       onKeyDown={(event) => {
         if (event.code === "Escape") {

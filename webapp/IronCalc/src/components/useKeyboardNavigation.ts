@@ -32,7 +32,7 @@ interface Options {
   onNextSheet: () => void;
   onPreviousSheet: () => void;
   onEscape: () => void;
-  root: RefObject<HTMLDivElement>;
+  root: RefObject<HTMLDivElement | null>;
 }
 
 // # IronCalc Keyboard accessibility:

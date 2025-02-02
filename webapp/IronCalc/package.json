@@ -1,13 +1,12 @@
 {
   "name": "@ironcalc/workbook",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "main": "./dist/ironcalc.js",
   "module": "./dist/ironcalc.js",
   "source": "./src/index.ts",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "dev": "vite",
     "build": "vite build && tsc",
     "check": "biome check ./src",
     "check-write": "biome check --write ./src",
@@ -27,19 +26,19 @@
     "react-i18next": "^15.4.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.8.3",
+    "@biomejs/biome": "1.9.4",
     "@chromatic-com/storybook": "^3.2.4",
-    "@storybook/addon-essentials": "^8.6.0-alpha.0",
-    "@storybook/addon-interactions": "^8.6.0-alpha.0",
-    "@storybook/addon-onboarding": "^8.6.0-alpha.0",
-    "@storybook/blocks": "^8.6.0-alpha.0",
-    "@storybook/react": "^8.6.0-alpha.0",
-    "@storybook/react-vite": "^8.6.0-alpha.0",
-    "@storybook/test": "^8.6.0-alpha.0",
+    "@storybook/addon-essentials": "^8.5.3",
+    "@storybook/addon-interactions": "^8.5.3",
+    "@storybook/addon-onboarding": "^8.5.3",
+    "@storybook/blocks": "^8.5.3",
+    "@storybook/react": "^8.5.3",
+    "@storybook/react-vite": "^8.5.3",
+    "@storybook/test": "^8.5.3",
     "@vitejs/plugin-react": "^4.2.1",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "storybook": "^8.6.0-alpha.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "storybook": "^8.5.3",
     "ts-node": "^10.9.2",
     "typescript": "~5.6.2",
     "vite": "^6.0.5",
@@ -47,9 +46,9 @@
     "vitest": "^2.0.5"
   },
   "peerDependencies": {
-    "@types/react": "^18.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "@types/react": "^18.0.0 || ^19.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
   },
   "files": [
     "dist"

@@ -29,7 +29,7 @@ import Worksheet from "./worksheet";
 
 const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const { model, workbookState } = props;
-  const rootRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
@@ -350,7 +350,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       ref={rootRef}
       onKeyDown={onKeyDown}
       tabIndex={0}
-      onClick={(event) => {
+      onClick={(event: React.MouseEvent) => {
         if (!workbookState.getEditingCell()) {
           focusWorkbook();
         } else {
