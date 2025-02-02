@@ -110,14 +110,12 @@ export function FileMenu(props: {
         aria-labelledby="modal-modal-title"
         aria-describedby="modal-modal-description"
       >
-        <>
-          <UploadFileDialog
-            onClose={() => {
-              setImportMenuOpen(false);
-            }}
-            onModelUpload={props.onModelUpload}
-          />
-        </>
+        <UploadFileDialog
+          onClose={() => {
+            setImportMenuOpen(false);
+          }}
+          onModelUpload={props.onModelUpload}
+        />
       </Modal>
       <Modal
         open={isDeleteDialogOpen}
@@ -125,13 +123,11 @@ export function FileMenu(props: {
         aria-labelledby="delete-dialog-title"
         aria-describedby="delete-dialog-description"
       >
-        <>
-          <DeleteWorkbookDialog
-            onClose={() => setDeleteDialogOpen(false)}
-            onConfirm={props.onDelete}
-            workbookName={selectedUuid ? models[selectedUuid] : ""}
-          />
-        </>
+        <DeleteWorkbookDialog
+          onClose={() => setDeleteDialogOpen(false)}
+          onConfirm={props.onDelete}
+          workbookName={selectedUuid ? models[selectedUuid] : ""}
+        />
       </Modal>
     </>
   );

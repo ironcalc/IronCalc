@@ -11,9 +11,9 @@ import { rangeToStr } from "./util";
 import type { WorkbookState } from "./workbookState";
 
 interface PointerSettings {
-  canvasElement: RefObject<HTMLCanvasElement>;
+  canvasElement: RefObject<HTMLCanvasElement | null>;
   worksheetCanvas: RefObject<WorksheetCanvas | null>;
-  worksheetElement: RefObject<HTMLDivElement>;
+  worksheetElement: RefObject<HTMLDivElement | null>;
   onCellSelected: (cell: Cell, event: React.MouseEvent) => void;
   onAreaSelecting: (cell: Cell) => void;
   onAreaSelected: () => void;

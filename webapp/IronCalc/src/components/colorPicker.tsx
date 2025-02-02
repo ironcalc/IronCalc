@@ -10,7 +10,7 @@ type ColorPickerProps = {
   color: string;
   onChange: (color: string) => void;
   onClose: () => void;
-  anchorEl: React.RefObject<HTMLElement>;
+  anchorEl: React.RefObject<HTMLElement | null>;
   anchorOrigin?: PopoverOrigin;
   transformOrigin?: PopoverOrigin;
   open: boolean;

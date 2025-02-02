@@ -28,7 +28,7 @@ type BorderPickerProps = {
   className?: string;
   onChange: (border: BorderOptions) => void;
   onClose: () => void;
-  anchorEl: React.RefObject<HTMLElement>;
+  anchorEl: React.RefObject<HTMLElement | null>;
   anchorOrigin?: PopoverOrigin;
   transformOrigin?: PopoverOrigin;
   open: boolean;

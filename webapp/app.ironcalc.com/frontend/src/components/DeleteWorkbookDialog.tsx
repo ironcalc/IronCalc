@@ -35,7 +35,6 @@ function DeleteWorkbookDialog(properties: DeleteWorkbookDialogProperties) {
           properties.onClose();
         }
       }}
-      role="dialog"
       aria-labelledby="delete-dialog-title"
       aria-describedby="delete-dialog-description"
     >

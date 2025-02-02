@@ -5,6 +5,7 @@ import {
   type TokenType,
   getTokens,
 } from "@ironcalc/wasm";
+import type { JSX } from "react";
 import type { ActiveRange } from "../workbookState";
 
 function sliceString(

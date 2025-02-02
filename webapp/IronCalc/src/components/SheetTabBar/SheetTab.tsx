@@ -26,7 +26,7 @@ function SheetTab(props: SheetTabProps) {
   const { name, color, selected, workbookState, onSelected } = props;
   const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const colorButton = useRef(null);
+  const colorButton = useRef<HTMLDivElement>(null);
   const open = Boolean(anchorEl);
   const handleOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -57,12 +57,12 @@ function SheetTab(props: SheetTabProps) {
       <TabWrapper
         $color={color}
         $selected={selected}
-        onClick={(event) => {
+        onClick={(event: React.MouseEvent) => {
           onSelected();
           event.stopPropagation();
           event.preventDefault();
         }}
-        onPointerDown={(event) => {
+        onPointerDown={(event: React.PointerEvent) => {
           // If it is in browse mode stop he event
           const cell = workbookState.getEditingCell();
           if (cell && isInReferenceMode(cell.text, cell.cursorStart)) {
