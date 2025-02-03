@@ -436,3 +436,47 @@ fn false_removes_value() {
     let style = model.get_cell_style(0, 1, 1).unwrap();
     assert!(!style.font.b);
 }
+
+#[test]
+fn cell_clear_formatting() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let range = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+
+    // bold
+    model.update_range_style(&range, "font.b", "true").unwrap();
+    model
+        .update_range_style(&range, "alignment.horizontal", "centerContinuous")
+        .unwrap();
+
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert!(style.font.b);
+    assert_eq!(
+        style.alignment.unwrap().horizontal,
+        HorizontalAlignment::CenterContinuous
+    );
+
+    model.range_clear_all(&range).unwrap();
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert!(!style.font.b);
+    assert_eq!(style.alignment, None);
+
+    model.undo().unwrap();
+
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert!(style.font.b);
+    assert_eq!(
+        style.alignment.unwrap().horizontal,
+        HorizontalAlignment::CenterContinuous
+    );
+    model.redo().unwrap();
+
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert!(!style.font.b);
+    assert_eq!(style.alignment, None);
+}

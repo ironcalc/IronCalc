@@ -3,6 +3,7 @@
     "redo": "Redo",
     "undo": "Undo",
     "copy_styles": "Copy styles",
+    "clear_formatting": "Clear formatting",
     "euro": "Format as Euro",
     "percentage": "Format as Percentage",
     "bold": "Bold",

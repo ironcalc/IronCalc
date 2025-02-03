@@ -39,6 +39,12 @@ pub(crate) enum Diff {
         old_value: Box<Option<Cell>>,
         old_style: Box<Style>,
     },
+    CellClearFormatting {
+        sheet: u32,
+        row: i32,
+        column: i32,
+        old_style: Box<Style>,
+    },
     SetCellStyle {
         sheet: u32,
         row: i32,

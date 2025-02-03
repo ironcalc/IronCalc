@@ -566,6 +566,34 @@ impl UserModel {
         Ok(())
     }
 
+    /// Removes cells styles and formatting, but keeps the content
+    ///
+    /// See also:
+    /// * [UserModel::range_clear_all]
+    /// * [UserModel::range_clear_contents]
+    pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
+        let sheet = range.sheet;
+        let mut diff_list = Vec::new();
+        for row in range.row..range.row + range.height {
+            for column in range.column..range.column + range.width {
+                let old_style = self.model.get_style_for_cell(sheet, row, column)?;
+                // We can always assume that style with style_index 0 exists and it is the default
+                self.model
+                    .workbook
+                    .worksheet_mut(sheet)?
+                    .set_cell_style(row, column, 0)?;
+                diff_list.push(Diff::CellClearFormatting {
+                    sheet,
+                    row,
+                    column,
+                    old_style: Box::new(old_style),
+                });
+            }
+        }
+        self.push_diff_list(diff_list);
+        Ok(())
+    }
+
     /// Inserts a row
     ///
     /// See also:
@@ -2006,6 +2034,15 @@ impl UserModel {
                     old_value,
                     new_value: _,
                 } => self.model.set_sheet_state(*index, old_value.clone())?,
+                Diff::CellClearFormatting {
+                    sheet,
+                    row,
+                    column,
+                    old_style,
+                } => {
+                    self.model
+                        .set_cell_style(*sheet, *row, *column, old_style)?;
+                }
             }
         }
         if needs_evaluation {
@@ -2160,6 +2197,17 @@ impl UserModel {
                     old_value: _,
                     new_value,
                 } => self.model.set_sheet_state(*index, new_value.clone())?,
+                Diff::CellClearFormatting {
+                    sheet,
+                    row,
+                    column,
+                    old_style: _,
+                } => {
+                    self.model
+                        .workbook
+                        .worksheet_mut(*sheet)?
+                        .set_cell_style(*row, *column, 0)?;
+                }
             }
         }
 

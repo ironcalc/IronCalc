@@ -527,6 +527,20 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onTextColorPicked={onTextColorPicked}
         onFillColorPicked={onFillColorPicked}
         onNumberFormatPicked={onNumberFormatPicked}
+        onClearFormatting={() => {
+          const {
+            sheet,
+            range: [rowStart, columnStart, rowEnd, columnEnd],
+          } = model.getSelectedView();
+          model.rangeClearFormatting(
+            sheet,
+            rowStart,
+            columnStart,
+            rowEnd,
+            columnEnd,
+          );
+          setRedrawId((id) => id + 1);
+        }}
         onBorderChanged={(border: BorderOptions): void => {
           const {
             sheet,
