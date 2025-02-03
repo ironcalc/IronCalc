@@ -23,6 +23,7 @@ import {
   PaintRoller,
   Percent,
   Redo2,
+  RemoveFormatting,
   Strikethrough,
   Tags,
   Type,
@@ -65,6 +66,7 @@ type ToolbarProperties = {
   onFillColorPicked: (hex: string) => void;
   onNumberFormatPicked: (numberFmt: string) => void;
   onBorderChanged: (border: BorderOptions) => void;
+  onClearFormatting: () => void;
   fillColor: string;
   fontColor: string;
   bold: boolean;
@@ -358,6 +360,19 @@ function Toolbar(properties: ToolbarProperties) {
         title={t("toolbar.name_manager")}
       >
         <Tags />
+      </StyledButton>
+
+      <Divider />
+      <StyledButton
+        type="button"
+        $pressed={false}
+        disabled={!canEdit}
+        onClick={() => {
+          properties.onClearFormatting();
+        }}
+        title={t("toolbar.clear_formatting")}
+      >
+        <RemoveFormatting />
       </StyledButton>
 
       <ColorPicker

@@ -174,6 +174,27 @@ impl Model {
         self.model.range_clear_contents(&range).map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "rangeClearFormatting")]
+    pub fn range_clear_formatting(
+        &mut self,
+        sheet: u32,
+        start_row: i32,
+        start_column: i32,
+        end_row: i32,
+        end_column: i32,
+    ) -> Result<(), JsError> {
+        let range = Area {
+            sheet,
+            row: start_row,
+            column: start_column,
+            width: end_column - start_column + 1,
+            height: end_row - start_row + 1,
+        };
+        self.model
+            .range_clear_formatting(&range)
+            .map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "insertRow")]
     pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), JsError> {
         self.model.insert_row(sheet, row).map_err(to_js_error)
