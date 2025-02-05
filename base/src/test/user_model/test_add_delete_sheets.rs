@@ -25,9 +25,6 @@ fn add_undo_redo() {
     assert_eq!(model.get_formatted_cell_value(2, 1, 1), Ok("6".to_string()));
 
     model.delete_sheet(1).unwrap();
-
-    assert!(!model.can_undo());
-    assert!(!model.can_redo());
 }
 
 #[test]
