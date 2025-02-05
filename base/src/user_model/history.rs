@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
 
-use crate::types::{Cell, Col, Row, SheetState, Style};
+use crate::types::{Cell, Col, Row, SheetState, Style, Worksheet};
 
 #[derive(Clone, Encode, Decode)]
 pub(crate) struct RowData {
@@ -83,6 +83,10 @@ pub(crate) enum Diff {
         column: i32,
         old_data: Box<ColumnData>,
     },
+    DeleteSheet {
+        sheet: u32,
+        old_data: Box<Worksheet>,
+    },
     SetFrozenRowsCount {
         sheet: u32,
         new_value: i32,
@@ -92,9 +96,6 @@ pub(crate) enum Diff {
         sheet: u32,
         new_value: i32,
         old_value: i32,
-    },
-    DeleteSheet {
-        sheet: u32,
     },
     NewSheet {
         index: u32,
@@ -173,11 +174,6 @@ impl History {
             }
             None => None,
         }
-    }
-
-    pub fn clear(&mut self) {
-        self.redo_stack = vec![];
-        self.undo_stack = vec![];
     }
 }
 

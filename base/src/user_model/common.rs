@@ -412,9 +412,13 @@ impl UserModel {
     /// See also:
     /// * [Model::delete_sheet]
     pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
-        self.push_diff_list(vec![Diff::DeleteSheet { sheet }]);
-        // There is no coming back
-        self.history.clear();
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+
+        self.push_diff_list(vec![Diff::DeleteSheet {
+            sheet,
+            old_data: Box::new(worksheet.clone()),
+        }]);
+
         let sheet_count = self.model.workbook.worksheets.len() as u32;
         // If we are deleting the last sheet we need to change the selected sheet
         if sheet == sheet_count - 1 && sheet_count > 1 {
@@ -1972,11 +1976,11 @@ impl UserModel {
                     new_value: _,
                     old_value,
                 } => self.model.set_frozen_columns(*sheet, *old_value)?,
-                Diff::DeleteSheet { sheet: _ } => {
-                    // do nothing
-                }
                 Diff::NewSheet { index, name: _ } => {
                     self.model.delete_sheet(*index)?;
+                    if *index > 0 {
+                        self.set_selected_sheet(*index - 1)?;
+                    }
                 }
                 Diff::RenameSheet {
                     index,
@@ -2042,6 +2046,32 @@ impl UserModel {
                 } => {
                     self.model
                         .set_cell_style(*sheet, *row, *column, old_style)?;
+                }
+                Diff::DeleteSheet { sheet, old_data } => {
+                    needs_evaluation = true;
+                    let sheet_name = &old_data.name.clone();
+                    let sheet_index = *sheet;
+                    let sheet_id = old_data.sheet_id;
+                    self.model
+                        .insert_sheet(sheet_name, sheet_index, Some(sheet_id))?;
+                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
+                    for (row, row_data) in &old_data.sheet_data {
+                        for (column, cell) in row_data {
+                            worksheet.update_cell(*row, *column, cell.clone())?;
+                        }
+                    }
+                    worksheet.rows = old_data.rows.clone();
+                    worksheet.cols = old_data.cols.clone();
+                    worksheet.show_grid_lines = old_data.show_grid_lines;
+                    worksheet.frozen_columns = old_data.frozen_columns;
+                    worksheet.frozen_rows = old_data.frozen_rows;
+                    worksheet.state = old_data.state.clone();
+                    worksheet.color = old_data.color.clone();
+                    worksheet.merge_cells = old_data.merge_cells.clone();
+                    worksheet.shared_formulas = old_data.shared_formulas.clone();
+                    self.model.reset_parsed_structures();
+
+                    self.set_selected_sheet(sheet_index)?;
                 }
             }
         }
@@ -2145,9 +2175,15 @@ impl UserModel {
                     new_value,
                     old_value: _,
                 } => self.model.set_frozen_columns(*sheet, *new_value)?,
-                Diff::DeleteSheet { sheet } => self.model.delete_sheet(*sheet)?,
+                Diff::DeleteSheet { sheet, old_data: _ } => {
+                    self.model.delete_sheet(*sheet)?;
+                    if *sheet > 0 {
+                        self.set_selected_sheet(*sheet - 1)?;
+                    }
+                }
                 Diff::NewSheet { index, name } => {
                     self.model.insert_sheet(name, *index, None)?;
+                    self.set_selected_sheet(*index)?;
                 }
                 Diff::RenameSheet {
                     index,

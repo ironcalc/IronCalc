@@ -71,7 +71,7 @@
   },
   "sheet_delete": {
     "title": "Are you sure?",
-    "message": "The sheet '{{sheetName}}' will be permanently deleted. This action cannot be undone.",
+    "message": "The sheet '{{sheetName}}' will be deleted.",
     "confirm": "Yes, delete sheet",
     "cancel": "Cancel"
   },
