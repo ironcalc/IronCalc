@@ -7,6 +7,15 @@ https://www.npmjs.com/package/@ironcalc/wasm?activeTab=readme
 
 ## Building
 
+Dependencies:
+
+* Rust
+* wasm-pack
+* TypeScript
+* Python
+* binutils (for make)
+
+
 ```bash
 make
 ```

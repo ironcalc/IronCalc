@@ -14,9 +14,8 @@ npm install
 
 ## Local development
 
-
 ```bash
-npm run dev
+npm run storybook
 ```
 
 ## Linter and formatting
@@ -39,20 +38,9 @@ npm run test
 
 Warning: There is only the testing infrastructure in place.
 
-## Deploy
+## Build package
 
-Deploying is a bit of a manual hassle right now:
-To build a deployable frontend:
 
 ```bash
 npm run build
 ```
-
-Please copy the `inroncalc.svg` icon and the models you want to have as 'examples' in the internal 'ic' format.
-I normally compress the wasm and js files with brotli
-
-```
-brotli wasm_bg-*****.wasm
-```
-
-Copy to the final destination and you are good to go.
