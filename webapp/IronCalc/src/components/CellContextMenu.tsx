@@ -246,7 +246,8 @@ const StyledTrash = styled(Trash2)`
 const StyledMenu = styled(Menu)({
   "& .MuiPaper-root": {
     borderRadius: 8,
-    padding: 4,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   "& .MuiList-padding": {
     padding: 0,
