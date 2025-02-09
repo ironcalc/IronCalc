@@ -8,8 +8,9 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { theme } from "../theme";
 
-const red_color = "rgb(235, 12, 12)";
+const red_color = theme.palette.error.main;
 
 interface CellContextMenuProps {
   open: boolean;
@@ -217,21 +218,21 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
 const BetweenVerticalStartStyled = styled(BetweenVerticalStart)`
   width: 16px;
   height: 16px;
-  color: #333333;
+  color: ${theme.palette.grey[900]};
   padding-right: 10px;
 `;
 
 const BetweenHorizontalStartStyled = styled(BetweenHorizontalStart)`
   width: 16px;
   height: 16px;
-  color: #333333;
+  color: ${theme.palette.grey[900]};
   padding-right: 10px;
 `;
 
 const StyledSnowflake = styled(Snowflake)`
   width: 16px;
   height: 16px;
-  color: #333333;
+  color: ${theme.palette.grey[900]};
   padding-right: 10px;
 `;
 
@@ -269,12 +270,12 @@ const MenuDivider = styled("div")`
   margin: auto;
   margin-top: 4px;
   margin-bottom: 4px;
-  border-top: 1px solid #eeeeee;
+  border-top: 1px solid ${theme.palette.grey[200]};
 `;
 
 const ItemNameStyled = styled("div")`
   font-size: 12px;
-  color: #333;
+  color: ${theme.palette.grey[900]};
   flex-grow: 2;
 `;
 
