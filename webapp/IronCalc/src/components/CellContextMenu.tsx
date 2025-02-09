@@ -194,6 +194,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
             {t("cell_context.freeze_rows", { row })}
           </ItemNameStyled>
         </StyledMenuItem>
+        <MenuDivider />
         <StyledMenuItem
           onClick={() => {
             onUnfreezeColumns();
