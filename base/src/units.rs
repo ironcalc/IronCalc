@@ -298,6 +298,7 @@ impl Model {
             Node::WrongVariableKind(_) => None,
             Node::CompareKind { .. } => None,
             Node::OpPowerKind { .. } => None,
+            Node::ImplicitIntersection { .. } => None,
         }
     }
 
