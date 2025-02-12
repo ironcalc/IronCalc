@@ -520,14 +520,19 @@ fn borders_top() {
     .unwrap();
     model.set_area_with_border(range, &border_area).unwrap();
     check_borders(&model);
-    for row in 5..9 {
+    for row in 4..9 {
         for column in 6..9 {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
                 color: Some("#FF5566".to_string()),
             };
-            let bottom = if row == 8 {
+            let bottom = if row != 4 {
+                None
+            } else {
+                Some(border_item.clone())
+            };
+            let top = if row != 5 {
                 None
             } else {
                 Some(border_item.clone())
@@ -537,7 +542,7 @@ fn borders_top() {
                 diagonal_down: false,
                 left: None,
                 right: None,
-                top: Some(border_item.clone()),
+                top,
                 bottom,
                 diagonal: None,
             };
@@ -647,12 +652,12 @@ fn borders_right() {
                 style: BorderStyle::Thin,
                 color: Some("#FF5566".to_string()),
             };
-            let left = if column == 6 {
+            let left = if column != 9 {
                 None
             } else {
                 Some(border_item.clone())
             };
-            let right = if column == 9 {
+            let right = if column != 8 {
                 None
             } else {
                 Some(border_item.clone())
@@ -705,7 +710,7 @@ fn borders_bottom() {
                 color: Some("#FF5566".to_string()),
             };
             // The top will also have a value for all but the first one
-            let top = if row == 5 {
+            let bottom = if row != 8 {
                 None
             } else {
                 Some(border_item.clone())
@@ -715,8 +720,8 @@ fn borders_bottom() {
                 diagonal_down: false,
                 left: None,
                 right: None,
-                top,
-                bottom: Some(border_item.clone()),
+                top: None,
+                bottom,
                 diagonal: None,
             };
             assert_eq!(style.border, expected_border);
@@ -751,18 +756,13 @@ fn borders_left() {
     model.set_area_with_border(range, &border_area).unwrap();
 
     for row in 5..9 {
-        for column in 5..9 {
+        for column in 6..9 {
             let style = model.get_cell_style(0, row, column).unwrap();
             let border_item = BorderItem {
                 style: BorderStyle::Thin,
                 color: Some("#FF5566".to_string()),
             };
-            let left = if column == 5 {
-                None
-            } else {
-                Some(border_item.clone())
-            };
-            let right = if column == 8 {
+            let left = if column != 6 {
                 None
             } else {
                 Some(border_item.clone())
@@ -771,13 +771,29 @@ fn borders_left() {
                 diagonal_up: false,
                 diagonal_down: false,
                 left,
-                right,
+                right: None,
                 top: None,
                 bottom: None,
                 diagonal: None,
             };
             assert_eq!(style.border, expected_border);
         }
+        // Column 5 has a border to the right, of course:
+        let style = model.get_cell_style(0, row, 5).unwrap();
+        let border_item = BorderItem {
+            style: BorderStyle::Thin,
+            color: Some("#FF5566".to_string()),
+        };
+        let expected_border = Border {
+            diagonal_up: false,
+            diagonal_down: false,
+            left: None,
+            right: Some(border_item.clone()),
+            top: None,
+            bottom: None,
+            diagonal: None,
+        };
+        assert_eq!(style.border, expected_border);
     }
 }
 
@@ -1018,10 +1034,7 @@ fn border_top() {
         style: BorderStyle::Thin,
         color: Some("#F2F2F2".to_string()),
     };
-    assert_eq!(
-        model._get_cell_actual_border("C4").bottom,
-        Some(border_item)
-    );
+    assert_eq!(model._get_cell_actual_border("C4").top, Some(border_item));
 
     model.undo().unwrap();
 
