@@ -119,7 +119,6 @@ const usePointer = (options: PointerSettings): PointerEvents => {
 
   const onPointerDown = useCallback(
     (event: PointerEvent) => {
-      console.log("onPointerDown");
       let x = event.clientX;
       let y = event.clientY;
       const {
