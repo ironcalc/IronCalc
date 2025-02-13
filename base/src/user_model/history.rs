@@ -77,6 +77,16 @@ pub(crate) enum Diff {
         old_value: Box<Option<Style>>,
         new_value: Box<Style>,
     },
+    DeleteColumnStyle {
+        sheet: u32,
+        column: i32,
+        old_value: Box<Option<Style>>,
+    },
+    DeleteRowStyle {
+        sheet: u32,
+        row: i32,
+        old_value: Box<Option<Style>>,
+    },
     InsertRow {
         sheet: u32,
         row: i32,

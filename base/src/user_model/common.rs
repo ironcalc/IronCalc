@@ -590,6 +590,7 @@ impl UserModel {
     /// * [Model::cell_clear_all]
     pub fn range_clear_all(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
+        // TODO: full rows/columns
         let mut diff_list = Vec::new();
         for row in range.row..range.row + range.height {
             for column in range.column..range.column + range.width {
@@ -621,6 +622,7 @@ impl UserModel {
     pub fn range_clear_contents(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
         let mut diff_list = Vec::new();
+        // TODO: full rows/columns
         for row in range.row..range.row + range.height {
             for column in range.column..range.column + range.width {
                 let old_value = self
@@ -642,6 +644,145 @@ impl UserModel {
         Ok(())
     }
 
+    fn clear_column_formatting(&mut self, sheet: u32, column: i32) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        let old_value = self.model.get_column_style(sheet, column)?;
+        self.model.delete_column_style(sheet, column)?;
+        self.model
+            .set_column_width(sheet, column, constants::DEFAULT_COLUMN_WIDTH)?;
+        diff_list.push(Diff::DeleteColumnStyle {
+            sheet,
+            column,
+            old_value: Box::new(old_value),
+        });
+
+        let data_rows: Vec<i32> = self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .sheet_data
+            .keys()
+            .copied()
+            .collect();
+        let styled_rows = &self.model.workbook.worksheet(sheet)?.rows.clone();
+
+        // Delete the formatting in all non empty cells
+        for row in data_rows {
+            if let Some(old_style) = self.model.get_cell_style_or_none(sheet, row, column)? {
+                // We can always assume that style with style_index 0 exists and it is the default
+                self.model
+                    .workbook
+                    .worksheet_mut(sheet)?
+                    .set_cell_style(row, column, 0)?;
+                diff_list.push(Diff::CellClearFormatting {
+                    sheet,
+                    row,
+                    column,
+                    old_style: Box::new(old_style),
+                });
+            } else {
+                let old_style = self.model.get_style_for_cell(sheet, row, column)?;
+                if old_style != Style::default() {
+                    self.model
+                        .workbook
+                        .worksheet_mut(sheet)?
+                        .set_cell_style(row, column, 0)?;
+                    diff_list.push(Diff::CellClearFormatting {
+                        sheet,
+                        row,
+                        column,
+                        old_style: Box::new(old_style),
+                    });
+                }
+            }
+        }
+        // Delete the formatting in all cells with a row style
+        for row in styled_rows {
+            if let Some(old_style) = self.model.get_cell_style_or_none(sheet, row.r, column)? {
+                // We can always assume that style with style_index 0 exists and it is the default
+                self.model
+                    .workbook
+                    .worksheet_mut(sheet)?
+                    .set_cell_style(row.r, column, 0)?;
+                diff_list.push(Diff::CellClearFormatting {
+                    sheet,
+                    row: row.r,
+                    column,
+                    old_style: Box::new(old_style),
+                });
+            } else {
+                let old_style = self.model.get_style_for_cell(sheet, row.r, column)?;
+                if old_style != Style::default() {
+                    self.model
+                        .workbook
+                        .worksheet_mut(sheet)?
+                        .set_cell_style(row.r, column, 0)?;
+                    diff_list.push(Diff::CellClearFormatting {
+                        sheet,
+                        row: row.r,
+                        column,
+                        old_style: Box::new(old_style),
+                    });
+                }
+            }
+        }
+        self.push_diff_list(diff_list);
+        Ok(())
+    }
+
+    fn clear_row_formatting(&mut self, sheet: u32, row: i32) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        let old_value = self.model.get_row_style(sheet, row)?;
+        self.model.delete_row_style(sheet, row)?;
+        diff_list.push(Diff::DeleteRowStyle {
+            sheet,
+            row,
+            old_value: Box::new(old_value),
+        });
+
+        // Delete the formatting in all non empty cells
+        let columns: Vec<i32> = self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .sheet_data
+            .get(&row)
+            .map(|row_data| row_data.keys().copied().collect())
+            .unwrap_or_default();
+        for column in columns {
+            if let Some(old_style) = self.model.get_cell_style_or_none(sheet, row, column)? {
+                // We can always assume that style with style_index 0 exists and it is the default
+                self.model
+                    .workbook
+                    .worksheet_mut(sheet)?
+                    .set_cell_style(row, column, 0)?;
+                diff_list.push(Diff::CellClearFormatting {
+                    sheet,
+                    row,
+                    column,
+                    old_style: Box::new(old_style),
+                });
+            } else {
+                let old_style = self.model.get_style_for_cell(sheet, row, column)?;
+                if old_style != Style::default() {
+                    self.model
+                        .workbook
+                        .worksheet_mut(sheet)?
+                        .set_cell_style(row, column, 0)?;
+                    diff_list.push(Diff::CellClearFormatting {
+                        sheet,
+                        row,
+                        column,
+                        old_style: Box::new(old_style),
+                    });
+                }
+            }
+        }
+        self.push_diff_list(diff_list);
+
+        Ok(())
+    }
+
     /// Removes cells styles and formatting, but keeps the content
     ///
     /// See also:
@@ -649,6 +790,19 @@ impl UserModel {
     /// * [UserModel::range_clear_contents]
     pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
+
+        if range.row == 1 && range.height == LAST_ROW {
+            for column in range.column..range.column + range.width {
+                self.clear_column_formatting(sheet, column)?;
+            }
+            return Ok(());
+        }
+        if range.column == 1 && range.width == LAST_COLUMN {
+            for row in range.row..range.row + range.height {
+                self.clear_row_formatting(sheet, row)?;
+            }
+            return Ok(());
+        }
         let mut diff_list = Vec::new();
         for row in range.row..range.row + range.height {
             for column in range.column..range.column + range.width {
@@ -664,6 +818,20 @@ impl UserModel {
                         column,
                         old_style: Box::new(old_style),
                     });
+                } else {
+                    let old_style = self.model.get_style_for_cell(sheet, row, column)?;
+                    if old_style != Style::default() {
+                        self.model
+                            .workbook
+                            .worksheet_mut(sheet)?
+                            .set_cell_style(row, column, 0)?;
+                        diff_list.push(Diff::CellClearFormatting {
+                            sheet,
+                            row,
+                            column,
+                            old_style: Box::new(old_style),
+                        });
+                    }
                 }
             }
         }
@@ -1911,6 +2079,28 @@ impl UserModel {
                         self.model.delete_row_style(*sheet, *row)?;
                     }
                 }
+                Diff::DeleteColumnStyle {
+                    sheet,
+                    column,
+                    old_value,
+                } => {
+                    if let Some(s) = old_value.as_ref() {
+                        self.model.set_column_style(*sheet, *column, s)?;
+                    } else {
+                        self.model.delete_column_style(*sheet, *column)?;
+                    }
+                }
+                Diff::DeleteRowStyle {
+                    sheet,
+                    row,
+                    old_value,
+                } => {
+                    if let Some(s) = old_value.as_ref() {
+                        self.model.set_row_style(*sheet, *row, s)?;
+                    } else {
+                        self.model.delete_row_style(*sheet, *row)?;
+                    }
+                }
             }
         }
         if needs_evaluation {
@@ -2097,6 +2287,28 @@ impl UserModel {
                     new_value,
                 } => {
                     self.model.set_row_style(*sheet, *row, new_value)?;
+                }
+                Diff::DeleteColumnStyle {
+                    sheet,
+                    column,
+                    old_value,
+                } => {
+                    if let Some(s) = old_value.as_ref() {
+                        self.model.set_column_style(*sheet, *column, s)?;
+                    } else {
+                        self.model.delete_column_style(*sheet, *column)?;
+                    }
+                }
+                Diff::DeleteRowStyle {
+                    sheet,
+                    row,
+                    old_value,
+                } => {
+                    if let Some(s) = old_value.as_ref() {
+                        self.model.set_row_style(*sheet, *row, s)?;
+                    } else {
+                        self.model.delete_row_style(*sheet, *row)?;
+                    }
                 }
             }
         }
