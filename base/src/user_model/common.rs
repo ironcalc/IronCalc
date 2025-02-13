@@ -6,7 +6,7 @@ use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    constants::{self, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW},
+    constants::{self, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW},
     expressions::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
@@ -648,13 +648,23 @@ impl UserModel {
         let mut diff_list = Vec::new();
         let old_value = self.model.get_column_style(sheet, column)?;
         self.model.delete_column_style(sheet, column)?;
-        self.model
-            .set_column_width(sheet, column, constants::DEFAULT_COLUMN_WIDTH)?;
         diff_list.push(Diff::DeleteColumnStyle {
             sheet,
             column,
             old_value: Box::new(old_value),
         });
+        let column_width = self.model.get_column_width(sheet, column)?;
+        if column_width != DEFAULT_COLUMN_WIDTH {
+            self.model
+                .set_column_width(sheet, column, DEFAULT_COLUMN_WIDTH)?;
+
+            diff_list.push(Diff::SetColumnWidth {
+                sheet,
+                column,
+                new_value: DEFAULT_COLUMN_WIDTH,
+                old_value: column_width,
+            });
+        }
 
         let data_rows: Vec<i32> = self
             .model
@@ -790,7 +800,6 @@ impl UserModel {
     /// * [UserModel::range_clear_contents]
     pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
-
         if range.row == 1 && range.height == LAST_ROW {
             for column in range.column..range.column + range.width {
                 self.clear_column_formatting(sheet, column)?;
@@ -1084,6 +1093,7 @@ impl UserModel {
         Ok(())
     }
 
+    // Updates the style of a cell
     fn update_single_cell_style(
         &mut self,
         sheet: u32,
@@ -1093,12 +1103,11 @@ impl UserModel {
         value: &str,
         diff_list: &mut Vec<Diff>,
     ) -> Result<(), String> {
+        // This is the value in the cell itself
         let old_value = self.model.get_cell_style_or_none(sheet, row, column)?;
-        let style = match old_value.as_ref() {
-            Some(s) => s,
-            None => &Style::default(),
-        };
-        let new_style = update_style(style, style_path, value)?;
+        // This takes into account row or column styles
+        let style = self.get_cell_style(sheet, row, column)?;
+        let new_style = update_style(&style, style_path, value)?;
         self.model.set_cell_style(sheet, row, column, &new_style)?;
         diff_list.push(Diff::SetCellStyle {
             sheet,
@@ -2291,24 +2300,16 @@ impl UserModel {
                 Diff::DeleteColumnStyle {
                     sheet,
                     column,
-                    old_value,
+                    old_value: _,
                 } => {
-                    if let Some(s) = old_value.as_ref() {
-                        self.model.set_column_style(*sheet, *column, s)?;
-                    } else {
-                        self.model.delete_column_style(*sheet, *column)?;
-                    }
+                    self.model.delete_column_style(*sheet, *column)?;
                 }
                 Diff::DeleteRowStyle {
                     sheet,
                     row,
-                    old_value,
+                    old_value: _,
                 } => {
-                    if let Some(s) = old_value.as_ref() {
-                        self.model.set_row_style(*sheet, *row, s)?;
-                    } else {
-                        self.model.delete_row_style(*sheet, *row)?;
-                    }
+                    self.model.delete_row_style(*sheet, *row)?;
                 }
             }
         }

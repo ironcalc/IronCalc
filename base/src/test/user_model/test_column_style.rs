@@ -330,3 +330,76 @@ fn cell_row_undo() {
     let style = model.get_cell_style(0, 12, 7).unwrap();
     assert_eq!(style.fill.bg_color, Some("#333444".to_string()));
 }
+
+#[test]
+fn set_column_style_then_cell() {
+    // We check that if we set a cell style in a column that already has a style
+    // the styles compound
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let cell_g12 = Area {
+        sheet: 0,
+        row: 12,
+        column: 7,
+        width: 1,
+        height: 1,
+    };
+
+    let column_g_range = Area {
+        sheet: 0,
+        row: 1,
+        column: 7,
+        width: 1,
+        height: LAST_ROW,
+    };
+
+    // Set G12 background to red
+    model
+        .update_range_style(&column_g_range, "fill.bg_color", "#333444")
+        .unwrap();
+
+    model
+        .update_range_style(&cell_g12, "alignment.horizontal", "center")
+        .unwrap();
+
+    let style = model.get_cell_style(0, 12, 7).unwrap();
+    assert_eq!(style.fill.bg_color, Some("#333444".to_string()));
+
+    model.undo().unwrap();
+    model.undo().unwrap();
+    let style = model.get_cell_style(0, 12, 7).unwrap();
+    assert_eq!(style.fill.bg_color, None);
+}
+
+#[test]
+fn set_row_style_then_cell() {
+    // We check that if we set a cell style in a column that already has a style
+    // the styles compound
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let cell_g12 = Area {
+        sheet: 0,
+        row: 12,
+        column: 7,
+        width: 1,
+        height: 1,
+    };
+
+    let row_12_range = Area {
+        sheet: 0,
+        row: 12,
+        column: 1,
+        width: LAST_COLUMN,
+        height: 1,
+    };
+
+    // Set G12 background to red
+    model
+        .update_range_style(&row_12_range, "fill.bg_color", "#333444")
+        .unwrap();
+
+    model
+        .update_range_style(&cell_g12, "alignment.horizontal", "center")
+        .unwrap();
+
+    let style = model.get_cell_style(0, 12, 7).unwrap();
+    assert_eq!(style.fill.bg_color, Some("#333444".to_string()));
+}
