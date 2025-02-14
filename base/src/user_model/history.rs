@@ -43,7 +43,7 @@ pub(crate) enum Diff {
         sheet: u32,
         row: i32,
         column: i32,
-        old_style: Box<Style>,
+        old_style: Box<Option<Style>>,
     },
     SetCellStyle {
         sheet: u32,
