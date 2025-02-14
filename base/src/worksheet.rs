@@ -123,18 +123,20 @@ impl Worksheet {
     }
 
     pub fn set_row_style(&mut self, row: i32, style_index: i32) -> Result<(), String> {
+        // FIXME: This is a HACK
+        let custom_format = style_index != 0;
         for r in self.rows.iter_mut() {
             if r.r == row {
                 r.s = style_index;
-                r.custom_format = true;
+                r.custom_format = custom_format;
                 return Ok(());
             }
         }
         self.rows.push(Row {
             height: constants::DEFAULT_ROW_HEIGHT / constants::ROW_HEIGHT_FACTOR,
             r: row,
-            custom_format: true,
-            custom_height: true,
+            custom_format,
+            custom_height: false,
             s: style_index,
             hidden: false,
         });
@@ -150,7 +152,10 @@ impl Worksheet {
             }
         }
         if let Some(i) = index {
-            self.rows.remove(i);
+            if let Some(r) = self.rows.get_mut(i) {
+                r.s = 0;
+                r.custom_format = false;
+            }
         }
         Ok(())
     }
@@ -400,6 +405,7 @@ impl Worksheet {
                 if min == column && max == column {
                     c.style = style;
                     c.width = width / constants::COLUMN_WIDTH_FACTOR;
+                    c.custom_width = width != constants::DEFAULT_COLUMN_WIDTH;
                     return Ok(());
                 }
                 split = true;

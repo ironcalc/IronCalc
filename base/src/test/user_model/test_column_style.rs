@@ -403,3 +403,55 @@ fn set_row_style_then_cell() {
     let style = model.get_cell_style(0, 12, 7).unwrap();
     assert_eq!(style.fill.bg_color, Some("#333444".to_string()));
 }
+
+#[test]
+fn column_style_then_row_alignment() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let column_g_range = Area {
+        sheet: 0,
+        row: 1,
+        column: 7,
+        width: 1,
+        height: LAST_ROW,
+    };
+    let row_3_range = Area {
+        sheet: 0,
+        row: 3,
+        column: 1,
+        width: LAST_COLUMN,
+        height: 1,
+    };
+    model
+        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .unwrap();
+    model
+        .update_range_style(&row_3_range, "alignment.horizontal", "center")
+        .unwrap();
+    // check the row alignment does not affect the column style
+    let style = model.get_cell_style(0, 3, 7).unwrap();
+    assert_eq!(style.fill.bg_color, Some("#555666".to_string()));
+}
+
+#[test]
+fn column_style_then_width() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let column_g_range = Area {
+        sheet: 0,
+        row: 1,
+        column: 7,
+        width: 1,
+        height: LAST_ROW,
+    };
+    model
+        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .unwrap();
+    model
+        .set_column_width(0, 7, DEFAULT_COLUMN_WIDTH * 2.0)
+        .unwrap();
+
+    // Check column width worked:
+    assert_eq!(
+        model.get_column_width(0, 7).unwrap(),
+        DEFAULT_COLUMN_WIDTH * 2.0
+    );
+}

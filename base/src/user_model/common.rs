@@ -6,7 +6,7 @@ use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    constants::{self, DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW},
+    constants::{self, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW},
     expressions::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
@@ -653,18 +653,6 @@ impl UserModel {
             column,
             old_value: Box::new(old_value),
         });
-        let column_width = self.model.get_column_width(sheet, column)?;
-        if column_width != DEFAULT_COLUMN_WIDTH {
-            self.model
-                .set_column_width(sheet, column, DEFAULT_COLUMN_WIDTH)?;
-
-            diff_list.push(Diff::SetColumnWidth {
-                sheet,
-                column,
-                new_value: DEFAULT_COLUMN_WIDTH,
-                old_value: column_width,
-            });
-        }
 
         let data_rows: Vec<i32> = self
             .model
@@ -688,7 +676,7 @@ impl UserModel {
                     sheet,
                     row,
                     column,
-                    old_style: Box::new(old_style),
+                    old_style: Box::new(Some(old_style)),
                 });
             } else {
                 let old_style = self.model.get_style_for_cell(sheet, row, column)?;
@@ -701,7 +689,7 @@ impl UserModel {
                         sheet,
                         row,
                         column,
-                        old_style: Box::new(old_style),
+                        old_style: Box::new(None),
                     });
                 }
             }
@@ -718,7 +706,7 @@ impl UserModel {
                     sheet,
                     row: row.r,
                     column,
-                    old_style: Box::new(old_style),
+                    old_style: Box::new(Some(old_style)),
                 });
             } else {
                 let old_style = self.model.get_style_for_cell(sheet, row.r, column)?;
@@ -731,7 +719,7 @@ impl UserModel {
                         sheet,
                         row: row.r,
                         column,
-                        old_style: Box::new(old_style),
+                        old_style: Box::new(None),
                     });
                 }
             }
@@ -770,7 +758,7 @@ impl UserModel {
                     sheet,
                     row,
                     column,
-                    old_style: Box::new(old_style),
+                    old_style: Box::new(Some(old_style)),
                 });
             } else {
                 let old_style = self.model.get_style_for_cell(sheet, row, column)?;
@@ -783,7 +771,7 @@ impl UserModel {
                         sheet,
                         row,
                         column,
-                        old_style: Box::new(old_style),
+                        old_style: Box::new(None),
                     });
                 }
             }
@@ -825,7 +813,7 @@ impl UserModel {
                         sheet,
                         row,
                         column,
-                        old_style: Box::new(old_style),
+                        old_style: Box::new(Some(old_style)),
                     });
                 } else {
                     let old_style = self.model.get_style_for_cell(sheet, row, column)?;
@@ -838,7 +826,7 @@ impl UserModel {
                             sheet,
                             row,
                             column,
-                            old_style: Box::new(old_style),
+                            old_style: Box::new(None),
                         });
                     }
                 }
@@ -1191,22 +1179,8 @@ impl UserModel {
             }
         } else if range.column == 1 && range.width == LAST_COLUMN {
             // Full rows
+            let styled_columns = &self.model.workbook.worksheet(sheet)?.cols.clone();
             for row in range.row..range.row + range.height {
-                // First update the style of the row
-                let old_style = self.model.get_row_style(sheet, row)?;
-                let style = match old_style.as_ref() {
-                    Some(s) => s,
-                    None => &Style::default(),
-                };
-                let style = update_style(style, style_path, value)?;
-                self.model.set_row_style(sheet, row, &style)?;
-                diff_list.push(Diff::SetRowStyle {
-                    sheet,
-                    row,
-                    old_value: Box::new(old_style),
-                    new_value: Box::new(style),
-                });
-
                 // Now update style in all cells that are not empty
                 let columns: Vec<i32> = self
                     .model
@@ -1226,8 +1200,35 @@ impl UserModel {
                         &mut diff_list,
                     )?;
                 }
-                // since rows take precedence over columns we do not need
-                // to update the styles in all cells that have a column style
+
+                // We need to go through all the cells that have a column style and merge them
+                for col in styled_columns.iter() {
+                    for column in col.min..col.max + 1 {
+                        self.update_single_cell_style(
+                            sheet,
+                            row,
+                            column,
+                            style_path,
+                            value,
+                            &mut diff_list,
+                        )?;
+                    }
+                }
+
+                // Finally update the style of the row
+                let old_style = self.model.get_row_style(sheet, row)?;
+                let style = match old_style.as_ref() {
+                    Some(s) => s,
+                    None => &Style::default(),
+                };
+                let style = update_style(style, style_path, value)?;
+                self.model.set_row_style(sheet, row, &style)?;
+                diff_list.push(Diff::SetRowStyle {
+                    sheet,
+                    row,
+                    old_value: Box::new(old_style),
+                    new_value: Box::new(style),
+                });
             }
         } else {
             for row in range.row..range.row + range.height {
@@ -2036,8 +2037,11 @@ impl UserModel {
                     column,
                     old_style,
                 } => {
-                    self.model
-                        .set_cell_style(*sheet, *row, *column, old_style)?;
+                    if let Some(value) = old_style.as_ref() {
+                        self.model.set_cell_style(*sheet, *row, *column, value)?;
+                    } else {
+                        self.model.cell_clear_all(*sheet, *row, *column)?;
+                    }
                 }
                 Diff::DeleteSheet { sheet, old_data } => {
                     needs_evaluation = true;
