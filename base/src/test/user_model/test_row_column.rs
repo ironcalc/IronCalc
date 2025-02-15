@@ -172,3 +172,42 @@ fn row_heigh_increases_automatically() {
         .unwrap();
     assert_eq!(model.get_row_height(0, 1), Ok(2.0 * DEFAULT_ROW_HEIGHT));
 }
+
+#[test]
+fn insert_row_evaluates() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "42").unwrap();
+    model.set_user_input(0, 1, 2, "=A1*2").unwrap();
+
+    assert!(model.insert_row(0, 1).is_ok());
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2).unwrap(), "84");
+    model.undo().unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "84");
+    model.redo().unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 2).unwrap(), "84");
+
+    model.delete_row(0, 1).unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "84");
+    assert_eq!(model.get_cell_content(0, 1, 2).unwrap(), "=A1*2");
+}
+
+#[test]
+fn insert_column_evaluates() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "42").unwrap();
+    model.set_user_input(0, 10, 1, "=A1*2").unwrap();
+
+    assert!(model.insert_column(0, 1).is_ok());
+    assert_eq!(model.get_formatted_cell_value(0, 10, 2).unwrap(), "84");
+
+    model.undo().unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 10, 1).unwrap(), "84");
+    model.redo().unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 10, 2).unwrap(), "84");
+
+    model.delete_column(0, 1).unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 10, 1).unwrap(), "84");
+    assert_eq!(model.get_cell_content(0, 10, 1).unwrap(), "=A1*2");
+}
