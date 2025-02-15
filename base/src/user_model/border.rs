@@ -1,7 +1,6 @@
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
     expressions::types::Area,
-    types::Style,
 };
 
 use super::{
@@ -9,20 +8,21 @@ use super::{
 };
 
 impl UserModel {
-    fn get_new_border_value(
-        &self,
+    fn update_single_cell_border(
+        &mut self,
         border_area: &BorderArea,
-        old_value: &Option<Style>,
-        row: i32,
-        column: i32,
+        cell: (u32, i32, i32),
         range: (i32, i32, i32, i32),
-    ) -> Result<Style, String> {
-        let mut new_value = match old_value {
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
+        let (sheet, row, column) = cell;
+        let (first_row, first_column, last_row, last_column) = range;
+
+        let old_value = self.model.get_cell_style_or_none(sheet, row, column)?;
+        let mut new_value = match &old_value {
             Some(value) => value.clone(),
             None => Default::default(),
         };
-        let (first_row, first_column, last_row, last_column) = range;
-
         match border_area.r#type {
             BorderType::All => {
                 new_value.border.top = Some(border_area.item.clone());
@@ -101,7 +101,15 @@ impl UserModel {
                 new_value.border.left = None;
             }
         }
-        Ok(new_value)
+        self.model.set_cell_style(sheet, row, column, &new_value)?;
+        diff_list.push(Diff::SetCellStyle {
+            sheet,
+            row,
+            column,
+            old_value: Box::new(old_value),
+            new_value: Box::new(new_value),
+        });
+        Ok(())
     }
 
     fn set_rows_with_border(
@@ -188,23 +196,12 @@ impl UserModel {
                 .map(|row_data| row_data.keys().copied().collect())
                 .unwrap_or_default();
             for column in columns {
-                let old_value = self.model.get_cell_style_or_none(sheet, row, column)?;
-                let new_value = self.get_new_border_value(
+                self.update_single_cell_border(
                     border_area,
-                    &old_value,
-                    row,
-                    column,
+                    (sheet, row, column),
                     (first_row, 1, last_row, LAST_COLUMN),
+                    &mut diff_list,
                 )?;
-
-                self.model.set_cell_style(sheet, row, column, &new_value)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(new_value),
-                });
             }
 
             self.model.set_row_style(sheet, row, &new_value)?;
@@ -215,6 +212,7 @@ impl UserModel {
                 new_value: Box::new(new_value),
             });
         }
+        // TODO: We need to check the rows above and below. also any non empty cell in the rows above and below.
         self.push_diff_list(diff_list);
         Ok(())
     }
@@ -307,23 +305,12 @@ impl UserModel {
             for &row in &data_rows {
                 if let Some(data_row) = self.model.workbook.worksheet(sheet)?.sheet_data.get(&row) {
                     if data_row.get(&column).is_some() {
-                        let old_value = self.model.get_cell_style_or_none(sheet, row, column)?;
-                        let new_value = self.get_new_border_value(
+                        self.update_single_cell_border(
                             border_area,
-                            &old_value,
-                            row,
-                            column,
+                            (sheet, row, column),
                             (1, first_column, LAST_ROW, last_column),
+                            &mut diff_list,
                         )?;
-
-                        self.model.set_cell_style(sheet, row, column, &new_value)?;
-                        diff_list.push(Diff::SetCellStyle {
-                            sheet,
-                            row,
-                            column,
-                            old_value: Box::new(old_value),
-                            new_value: Box::new(new_value),
-                        });
                     }
                 }
             }
@@ -331,23 +318,12 @@ impl UserModel {
             // We also need to overwrite those that have a row style
             for row_s in styled_rows.iter() {
                 let row = row_s.r;
-                let old_value = self.model.get_cell_style_or_none(sheet, row, column)?;
-                let new_value = self.get_new_border_value(
+                self.update_single_cell_border(
                     border_area,
-                    &old_value,
-                    row,
-                    column,
+                    (sheet, row, column),
                     (1, first_column, LAST_ROW, last_column),
+                    &mut diff_list,
                 )?;
-
-                self.model.set_cell_style(sheet, row, column, &new_value)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(new_value),
-                });
             }
 
             self.model.set_column_style(sheet, column, &new_value)?;
@@ -358,6 +334,8 @@ impl UserModel {
                 new_value: Box::new(new_value),
             });
         }
+        // We need to check the borders of the column to the left and the column to the right
+        // We also need to check every non-empty cell in the columns to the left and right
         self.push_diff_list(diff_list);
         Ok(())
     }
@@ -388,23 +366,12 @@ impl UserModel {
         let mut diff_list = Vec::new();
         for row in first_row..=last_row {
             for column in first_column..=last_column {
-                let old_value = self.model.get_cell_style_or_none(sheet, row, column)?;
-                let new_value = self.get_new_border_value(
+                self.update_single_cell_border(
                     border_area,
-                    &old_value,
-                    row,
-                    column,
+                    (sheet, row, column),
                     (first_row, first_column, last_row, last_column),
+                    &mut diff_list,
                 )?;
-
-                self.model.set_cell_style(sheet, row, column, &new_value)?;
-                diff_list.push(Diff::SetCellStyle {
-                    sheet,
-                    row,
-                    column,
-                    old_value: Box::new(old_value),
-                    new_value: Box::new(new_value),
-                });
             }
         }
 
