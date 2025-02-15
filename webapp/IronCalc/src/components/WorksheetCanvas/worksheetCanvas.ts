@@ -1356,7 +1356,7 @@ export default class WorksheetCanvas {
     let y = headerRowHeight + 0.5;
     for (let row = 1; row <= frozenRows; row += 1) {
       const rowHeight = this.getRowHeight(selectedSheet, row);
-      x = headerColumnWidth;
+      x = headerColumnWidth + 0.5;
       for (let column = 1; column <= frozenColumns; column += 1) {
         const columnWidth = this.getColumnWidth(selectedSheet, column);
         this.renderCell(row, column, x, y, columnWidth, rowHeight);
@@ -1365,7 +1365,7 @@ export default class WorksheetCanvas {
       y += rowHeight;
     }
     if (frozenRows === 0 && frozenColumns !== 0) {
-      x = headerColumnWidth;
+      x = headerColumnWidth + 0.5;
       for (let column = 1; column <= frozenColumns; column += 1) {
         x += this.getColumnWidth(selectedSheet, column);
       }
@@ -1399,7 +1399,7 @@ export default class WorksheetCanvas {
     const frozenX = x;
     const frozenY = y;
     // Draw frozen rows (top-right pane)
-    y = headerRowHeight;
+    y = headerRowHeight + 0.5;
     for (let row = 1; row <= frozenRows; row += 1) {
       x = frozenX;
       const rowHeight = this.getRowHeight(selectedSheet, row);
