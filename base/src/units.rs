@@ -50,8 +50,9 @@ impl Units {
 fn get_units_from_format_string(num_fmt: &str) -> Option<Units> {
     let mut parser = Parser::new(num_fmt);
     parser.parse();
+    let parts = parser.parts.first()?;
     // We only care about the first part (positive number)
-    match &parser.parts[0] {
+    match parts {
         ParsePart::Number(part) => {
             if part.percent > 0 {
                 Some(Units::Percentage {

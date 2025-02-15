@@ -312,7 +312,7 @@ impl Default for Styles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
@@ -321,6 +321,19 @@ pub struct Style {
     pub font: Font,
     pub border: Border,
     pub quote_prefix: bool,
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        Style {
+            alignment: None,
+            num_fmt: "general".to_string(),
+            fill: Fill::default(),
+            font: Font::default(),
+            border: Border::default(),
+            quote_prefix: false,
+        }
+    }
 }
 
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
