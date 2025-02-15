@@ -136,6 +136,33 @@ impl Model {
             }),
         );
 
+        // In the list of columns:
+        // * Keep all the columns to the left
+        // * Displace all the columns to the right
+
+        let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
+
+        let mut new_columns = Vec::new();
+        for col in worksheet.cols.iter_mut() {
+            // range under study
+            let min = col.min;
+            let max = col.max;
+            if column > max {
+                // If the range under study is to our left, this is a noop
+            } else if column <= min {
+                // If the range under study is to our right, we displace it
+                col.min = min + column_count;
+                col.max = max + column_count;
+            } else {
+                // If the range under study is in the middle we augment it
+                col.max = max + column_count;
+            }
+            new_columns.push(col.clone());
+        }
+        // TODO: If in a row the cell to the right and left have the same style we should copy it
+
+        worksheet.cols = new_columns;
+
         Ok(())
     }
 
