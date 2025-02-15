@@ -1081,7 +1081,7 @@ impl UserModel {
         Ok(())
     }
 
-    // Updates the style of a cell
+    // Updates the style of a cell, adding the new style to the diff list
     fn update_single_cell_style(
         &mut self,
         sheet: u32,
@@ -1093,9 +1093,10 @@ impl UserModel {
     ) -> Result<(), String> {
         // This is the value in the cell itself
         let old_value = self.model.get_cell_style_or_none(sheet, row, column)?;
-        // This takes into account row or column styles
-        let style = self.get_cell_style(sheet, row, column)?;
-        let new_style = update_style(&style, style_path, value)?;
+
+        // This takes into account row or column styles. If none of those are present, it will return the default style
+        let old_style = self.get_cell_style(sheet, row, column)?;
+        let new_style = update_style(&old_style, style_path, value)?;
         self.model.set_cell_style(sheet, row, column, &new_style)?;
         diff_list.push(Diff::SetCellStyle {
             sheet,
@@ -1118,19 +1119,19 @@ impl UserModel {
     ) -> Result<(), String> {
         let sheet = range.sheet;
         let mut diff_list = Vec::new();
-        // We need all the rows in the column to update the style
-        // NB: This is too much, this is all the rows that have values
-        let data_rows: Vec<i32> = self
-            .model
-            .workbook
-            .worksheet(sheet)?
-            .sheet_data
-            .keys()
-            .copied()
-            .collect();
-        let styled_rows = &self.model.workbook.worksheet(sheet)?.rows.clone();
         if range.row == 1 && range.height == LAST_ROW {
             // Full columns
+            let styled_rows = &self.model.workbook.worksheet(sheet)?.rows.clone();
+            // We need all the rows in the column to update the style
+            // NB: This is too much, this is all the rows that have values
+            let data_rows: Vec<i32> = self
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .sheet_data
+                .keys()
+                .copied()
+                .collect();
             for column in range.column..range.column + range.width {
                 // we set the style of the full column
                 let old_style = self.model.get_column_style(sheet, column)?;
@@ -1154,6 +1155,7 @@ impl UserModel {
                         self.model.workbook.worksheet(sheet)?.sheet_data.get(&row)
                     {
                         if data_row.get(&column).is_some() {
+                            // If the cell has non empty content it will always have some style
                             self.update_single_cell_style(
                                 sheet,
                                 row,
@@ -1167,9 +1169,14 @@ impl UserModel {
                 }
                 // We need to update the styles in all cells that have a row style
                 for row_s in styled_rows.iter() {
+                    let row = row_s.r;
+                    if data_rows.contains(&row) {
+                        // Skip if the row has data
+                        continue;
+                    }
                     self.update_single_cell_style(
                         sheet,
-                        row_s.r,
+                        row,
                         column,
                         style_path,
                         value,
@@ -1201,7 +1208,7 @@ impl UserModel {
                     )?;
                 }
 
-                // We need to go through all the cells that have a column style and merge them
+                // We need to go through all the cells that have a column style and merge the styles
                 for col in styled_columns.iter() {
                     for column in col.min..col.max + 1 {
                         self.update_single_cell_style(
