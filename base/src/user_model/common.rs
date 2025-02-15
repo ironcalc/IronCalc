@@ -843,7 +843,9 @@ impl UserModel {
     pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
         let diff_list = vec![Diff::InsertRow { sheet, row }];
         self.push_diff_list(diff_list);
-        self.model.insert_rows(sheet, row, 1)
+        self.model.insert_rows(sheet, row, 1)?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Deletes a row
@@ -873,7 +875,9 @@ impl UserModel {
             old_data,
         }];
         self.push_diff_list(diff_list);
-        self.model.delete_rows(sheet, row, 1)
+        self.model.delete_rows(sheet, row, 1)?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Inserts a column
@@ -883,7 +887,9 @@ impl UserModel {
     pub fn insert_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
         let diff_list = vec![Diff::InsertColumn { sheet, column }];
         self.push_diff_list(diff_list);
-        self.model.insert_columns(sheet, column, 1)
+        self.model.insert_columns(sheet, column, 1)?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Deletes a column
@@ -928,7 +934,9 @@ impl UserModel {
             }),
         }];
         self.push_diff_list(diff_list);
-        self.model.delete_columns(sheet, column, 1)
+        self.model.delete_columns(sheet, column, 1)?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Sets the width of a column
