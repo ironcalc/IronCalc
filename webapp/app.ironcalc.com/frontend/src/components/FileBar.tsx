@@ -1,13 +1,12 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
 import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
-import { CircleCheck } from "lucide-react";
 import { useRef, useState } from "react";
-// import { IronCalcIcon, IronCalcLogo } from "./../icons";
 import { FileMenu } from "./FileMenu";
 import { ShareButton } from "./ShareButton";
+import ShareWorkbookDialog from "./ShareWorkbookDialog";
 import { WorkbookTitle } from "./WorkbookTitle";
-import { downloadModel, shareModel } from "./rpc";
+import { downloadModel } from "./rpc";
 import { updateNameSelectedWorkbook } from "./storage";
 
 export function FileBar(properties: {
@@ -18,7 +17,8 @@ export function FileBar(properties: {
   onDelete: () => void;
 }) {
   const hiddenInputRef = useRef<HTMLInputElement>(null);
-  const [toast, setToast] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   return (
     <FileBarWrapper>
       <StyledDesktopLogo />
@@ -53,37 +53,17 @@ export function FileBar(properties: {
         type="text"
         style={{ position: "absolute", left: -9999, top: -9999 }}
       />
-      <div style={{ marginLeft: "auto" }}>
-        {toast ? (
-          <Toast>
-            <CircleCheck style={{ width: 12 }} />
-            <span
-              style={{ marginLeft: 8, marginRight: 12, fontFamily: "Inter" }}
-            >
-              URL copied to clipboard
-            </span>
-          </Toast>
-        ) : (
-          ""
+      <div style={{ marginLeft: "auto" }} />
+      <DialogContainer>
+        <ShareButton onClick={() => setIsDialogOpen(true)} />
+        {isDialogOpen && (
+          <ShareWorkbookDialog
+            onClose={() => setIsDialogOpen(false)}
+            onModelUpload={properties.onModelUpload}
+            model={properties.model}
+          />
         )}
-      </div>
-      <ShareButton
-        onClick={async () => {
-          const model = properties.model;
-          const bytes = model.toBytes();
-          const fileName = model.getName();
-          const hash = await shareModel(bytes, fileName);
-          const value = `${location.origin}/?model=${hash}`;
-          if (hiddenInputRef.current) {
-            hiddenInputRef.current.value = value;
-            hiddenInputRef.current.select();
-            document.execCommand("copy");
-            setToast(true);
-            setTimeout(() => setToast(false), 5000);
-          }
-          console.log(value);
-        }}
-      />
+      </DialogContainer>
     </FileBarWrapper>
   );
 }
@@ -117,14 +97,6 @@ const HelpButton = styled("div")`
   }
 `;
 
-const Toast = styled("div")`
-  font-weight: 400;
-  font-size: 12px;
-  color: #9e9e9e;
-  display: flex;
-  align-items: center;
-`;
-
 const Divider = styled("div")`
   margin: 0px 8px 0px 16px;
   height: 12px;
@@ -140,4 +112,18 @@ const FileBarWrapper = styled("div")`
   border-bottom: 1px solid #e0e0e0;
   position: relative;
   justify-content: space-between;
+`;
+
+const DialogContainer = styled("div")`
+  position: relative;
+  display: inline-block;
+  button {
+    margin-bottom: 8px;
+  }
+  .MuiDialog-root {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    transform: translateY(8px);
+  }
 `;
