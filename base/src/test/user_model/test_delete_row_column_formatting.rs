@@ -105,7 +105,7 @@ fn delete_column_formatting() {
 fn column_width() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
     model
-        .set_column_width(0, 7, DEFAULT_COLUMN_WIDTH * 2.0)
+        .set_columns_width(0, 7, 7, DEFAULT_COLUMN_WIDTH * 2.0)
         .unwrap();
 
     let column_g_range = Area {
@@ -145,7 +145,7 @@ fn column_width() {
 fn column_row_style_undo() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
     model
-        .set_column_width(0, 7, DEFAULT_COLUMN_WIDTH * 2.0)
+        .set_columns_width(0, 7, 7, DEFAULT_COLUMN_WIDTH * 2.0)
         .unwrap();
 
     let column_g_range = Area {
@@ -228,7 +228,7 @@ fn column_row_row_height_undo() {
         .unwrap();
 
     model
-        .set_row_height(0, 3, DEFAULT_ROW_HEIGHT * 2.0)
+        .set_rows_height(0, 3, 3, DEFAULT_ROW_HEIGHT * 2.0)
         .unwrap();
 
     model

@@ -6,7 +6,7 @@ use crate::{test::util::new_empty_model, UserModel};
 fn basic() {
     let mut model1 = UserModel::from_model(new_empty_model());
     let width = model1.get_column_width(0, 3).unwrap() * 3.0;
-    model1.set_column_width(0, 3, width).unwrap();
+    model1.set_columns_width(0, 3, 3, width).unwrap();
     model1.set_user_input(0, 1, 2, "Hello IronCalc!").unwrap();
 
     let model_bytes = model1.to_bytes();

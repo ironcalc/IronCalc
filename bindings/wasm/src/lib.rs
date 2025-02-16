@@ -215,17 +215,29 @@ impl Model {
         self.model.delete_column(sheet, column).map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "setRowHeight")]
-    pub fn set_row_height(&mut self, sheet: u32, row: i32, height: f64) -> Result<(), JsError> {
+    #[wasm_bindgen(js_name = "setRowsHeight")]
+    pub fn set_rows_height(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        height: f64,
+    ) -> Result<(), JsError> {
         self.model
-            .set_row_height(sheet, row, height)
+            .set_rows_height(sheet, row_start, row_end, height)
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "setColumnWidth")]
-    pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> Result<(), JsError> {
+    #[wasm_bindgen(js_name = "setColumnsWidth")]
+    pub fn set_columns_width(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        width: f64,
+    ) -> Result<(), JsError> {
         self.model
-            .set_column_width(sheet, column, width)
+            .set_columns_width(sheet, column_start, column_end, width)
             .map_err(to_js_error)
     }
 
@@ -290,6 +302,28 @@ impl Model {
         self.model
             .set_frozen_columns_count(sheet, count)
             .map_err(to_js_error)
+    }
+
+    // This two are only used when we want to compute the automatic width of a column or height of a row
+    #[wasm_bindgen(js_name = "getRowsWithData")]
+    pub fn get_rows_with_data(&self, sheet: u32, column: i32) -> Result<Vec<i32>, JsError> {
+        let sheet_data = &self.model.get_model().workbook.worksheet(sheet).map_err(to_js_error)?.sheet_data;
+        Ok(sheet_data
+            .iter()
+            .filter(|(_, data)| data.contains_key(&column))
+            .map(|(row, _)| *row)
+            .collect())
+    }
+
+    #[wasm_bindgen(js_name = "getColumnsWithData")]
+    pub fn get_columns_with_data(&self, sheet: u32, row: i32) -> Result<Vec<i32>, JsError> {
+        Ok(self.model.get_model()
+            .workbook
+            .worksheet(sheet).map_err(to_js_error)?
+            .sheet_data
+            .get(&row)
+            .map(|row_data| row_data.keys().copied().collect())
+            .unwrap_or_default())
     }
 
     #[wasm_bindgen(js_name = "updateRangeStyle")]

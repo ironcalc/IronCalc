@@ -20,7 +20,7 @@ test('Row height', () => {
     let model = new Model('Workbook1', 'en', 'UTC');
     assert.strictEqual(model.getRowHeight(0, 3), DEFAULT_ROW_HEIGHT);
 
-    model.setRowHeight(0, 3, 32);
+    model.setRowsHeight(0, 3, 3, 32);
     assert.strictEqual(model.getRowHeight(0, 3), 32);
 
     model.undo();
@@ -29,7 +29,7 @@ test('Row height', () => {
     model.redo();
     assert.strictEqual(model.getRowHeight(0, 3), 32);
 
-    model.setRowHeight(0, 3, 320);
+    model.setRowsHeight(0, 3, 3, 320);
     assert.strictEqual(model.getRowHeight(0, 3), 320);
 });
 
@@ -96,7 +96,7 @@ test("Add sheets", (t) => {
 test("invalid sheet index throws an exception", () => {
     const model = new Model('Workbook1', 'en', 'UTC');
     assert.throws(() => {
-        model.setRowHeight(1, 1, 100);
+        model.setRowsHeight(1, 1, 1, 100);
     }, {
         name: 'Error',
         message: 'Invalid sheet index',
@@ -106,7 +106,7 @@ test("invalid sheet index throws an exception", () => {
 test("invalid column throws an exception", () => {
     const model = new Model('Workbook1', 'en', 'UTC');
     assert.throws(() => {
-        model.setRowHeight(0, -1, 100);
+        model.setRowsHeight(0, -1, 0, 100);
     }, {
         name: 'Error',
         message: "Row number '-1' is not valid.",
@@ -115,7 +115,7 @@ test("invalid column throws an exception", () => {
 
 test("floating column numbers get truncated", () => {
     const model = new Model('Workbook1', 'en', 'UTC');
-    model.setRowHeight(0.8, 5.2, 100.5);
+    model.setRowsHeight(0.8, 5.2, 5.5, 100.5);
 
     assert.strictEqual(model.getRowHeight(0.11, 5.99), 100.5);
     assert.strictEqual(model.getRowHeight(0, 5), 100.5);

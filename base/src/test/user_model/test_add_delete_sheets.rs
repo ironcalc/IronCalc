@@ -9,7 +9,7 @@ fn add_undo_redo() {
     model.set_user_input(1, 1, 1, "=1 + 1").unwrap();
     model.set_user_input(1, 1, 2, "=A1*3").unwrap();
     model
-        .set_column_width(1, 5, 5.0 * DEFAULT_COLUMN_WIDTH)
+        .set_columns_width(1, 5, 5, 5.0 * DEFAULT_COLUMN_WIDTH)
         .unwrap();
     model.new_sheet().unwrap();
     model.set_user_input(2, 1, 1, "=Sheet2!B1").unwrap();

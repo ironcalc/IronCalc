@@ -39,7 +39,7 @@ fn column_width() {
 
     // change the column width and check it does not affect the style
     model
-        .set_column_width(0, 7, DEFAULT_COLUMN_WIDTH * 2.0)
+        .set_columns_width(0, 7, 7, DEFAULT_COLUMN_WIDTH * 2.0)
         .unwrap();
     let style = model.get_cell_style(0, 109, 7).unwrap();
     assert!(style.font.b);
@@ -241,7 +241,7 @@ fn width_column_undo() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
 
     model
-        .set_column_width(0, 7, DEFAULT_COLUMN_WIDTH * 2.0)
+        .set_columns_width(0, 7, 7, DEFAULT_COLUMN_WIDTH * 2.0)
         .unwrap();
 
     let column_g_range = Area {
@@ -267,7 +267,7 @@ fn width_column_undo() {
 fn height_row_undo() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
     model
-        .set_row_height(0, 10, DEFAULT_ROW_HEIGHT * 2.0)
+        .set_rows_height(0, 10, 10, DEFAULT_ROW_HEIGHT * 2.0)
         .unwrap();
 
     let row_10_range = Area {
@@ -446,7 +446,7 @@ fn column_style_then_width() {
         .update_range_style(&column_g_range, "fill.bg_color", "#555666")
         .unwrap();
     model
-        .set_column_width(0, 7, DEFAULT_COLUMN_WIDTH * 2.0)
+        .set_columns_width(0, 7, 7, DEFAULT_COLUMN_WIDTH * 2.0)
         .unwrap();
 
     // Check column width worked:
