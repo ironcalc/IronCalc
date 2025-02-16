@@ -112,14 +112,36 @@ function Worksheet(props: {
         if (width < 0) {
           return;
         }
-        model.setColumnWidth(sheet, column, width);
+        // if the column is one of the selected columns, we need to update the width of all selected columns
+        // FIXME: This is a bit of a hack, we should probably have a separate function for this
+        const { range } = model.getSelectedView();
+        if (column >= range[1] && column <= range[3]) {
+          model.setColumnWidth(sheet, column, width);
+          for (let i = range[1]; i <= range[3]; i++) {
+            if (i !== column) {
+              model.setColumnWidth(sheet, i, width);
+            }
+          }
+        } else {
+          model.setColumnWidth(sheet, column, width);
+        }
         worksheetCanvas.current?.renderSheet();
       },
       onRowHeightChanges(sheet, row, height) {
         if (height < 0) {
           return;
         }
-        model.setRowHeight(sheet, row, height);
+        const { range } = model.getSelectedView();
+        if (row >= range[0] && row <= range[2]) {
+          model.setRowHeight(sheet, row, height);
+          for (let i = range[0]; i <= range[2]; i++) {
+            if (i !== row) {
+              model.setRowHeight(sheet, i, height);
+            }
+          }
+        } else {
+          model.setRowHeight(sheet, row, height);
+        }
         worksheetCanvas.current?.renderSheet();
       },
     });
@@ -157,14 +179,28 @@ function Worksheet(props: {
       model,
       workbookState,
       refresh,
-      onColumnSelected: (column: number) => {
-        model.setSelectedCell(1, column);
-        model.setSelectedRange(1, column, LAST_ROW, column);
+      onColumnSelected: (column: number, shift: boolean) => {
+        let firstColumn = column;
+        let lastColumn = column;
+        if (shift) {
+          const { range } = model.getSelectedView();
+          firstColumn = Math.min(range[1], column, range[3]);
+          lastColumn = Math.max(range[3], column, range[1]);
+        }
+        model.setSelectedCell(1, firstColumn);
+        model.setSelectedRange(1, firstColumn, LAST_ROW, lastColumn);
         refresh();
       },
-      onRowSelected: (row: number) => {
-        model.setSelectedCell(row, 1);
-        model.setSelectedRange(row, 1, row, LAST_COLUMN);
+      onRowSelected: (row: number, shift: boolean) => {
+        let firstRow = row;
+        let lastRow = row;
+        if (shift) {
+          const { range } = model.getSelectedView();
+          firstRow = Math.min(range[0], row, range[2]);
+          lastRow = Math.max(range[2], row, range[0]);
+        }
+        model.setSelectedCell(firstRow, 1);
+        model.setSelectedRange(firstRow, 1, lastRow, LAST_COLUMN);
         refresh();
       },
       onAllSheetSelected: () => {
@@ -326,7 +362,7 @@ function Worksheet(props: {
           Math.min(rowStart, extendedArea.rowStart),
           Math.min(columnStart, extendedArea.columnStart),
           Math.max(rowStart + height - 1, extendedArea.rowEnd),
-          Math.max(columnStart + width - 1, extendedArea.columnEnd),
+          Math.max(columnStart + width - 1, extendedArea.columnEnd)
         );
         workbookState.clearExtendToArea();
         canvas.renderSheet();

@@ -1156,6 +1156,19 @@ impl UserModel {
                     new_value: Box::new(style),
                 });
 
+                // We need to update the styles in all cells that have a row style
+                for row_s in styled_rows.iter() {
+                    let row = row_s.r;
+                    self.update_single_cell_style(
+                        sheet,
+                        row,
+                        column,
+                        style_path,
+                        value,
+                        &mut diff_list,
+                    )?;
+                }
+
                 // Update style in all cells that have different styles
                 // FIXME: We need a better way to transverse of cells in a column
                 for &row in &data_rows {
@@ -1174,22 +1187,6 @@ impl UserModel {
                             )?;
                         }
                     }
-                }
-                // We need to update the styles in all cells that have a row style
-                for row_s in styled_rows.iter() {
-                    let row = row_s.r;
-                    if data_rows.contains(&row) {
-                        // Skip if the row has data
-                        continue;
-                    }
-                    self.update_single_cell_style(
-                        sheet,
-                        row,
-                        column,
-                        style_path,
-                        value,
-                        &mut diff_list,
-                    )?;
                 }
             }
         } else if range.column == 1 && range.width == LAST_COLUMN {
