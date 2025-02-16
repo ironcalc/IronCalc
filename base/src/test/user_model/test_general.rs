@@ -59,7 +59,7 @@ fn insert_remove_rows() {
     // Insert some data in row 5 (and change the style)
     assert!(model.set_user_input(0, 5, 1, "100$").is_ok());
     // Change the height of the column
-    assert!(model.set_row_height(0, 5, 3.0 * height).is_ok());
+    assert!(model.set_rows_height(0, 5, 5, 3.0 * height).is_ok());
 
     // remove the row
     assert!(model.delete_row(0, 5).is_ok());
@@ -95,7 +95,7 @@ fn insert_remove_columns() {
     // Insert some data in row 5 (and change the style) in E1
     assert!(model.set_user_input(0, 1, 5, "100$").is_ok());
     // Change the width of the column
-    assert!(model.set_column_width(0, 5, 3.0 * column_width).is_ok());
+    assert!(model.set_columns_width(0, 5, 5, 3.0 * column_width).is_ok());
     assert_eq!(model.get_column_width(0, 5).unwrap(), 3.0 * column_width);
 
     // remove the column

@@ -112,19 +112,14 @@ function Worksheet(props: {
         if (width < 0) {
           return;
         }
-        // if the column is one of the selected columns, we need to update the width of all selected columns
-        // FIXME: This is a bit of a hack, we should probably have a separate function for this
         const { range } = model.getSelectedView();
+        let columnStart = column;
+        let columnEnd = column;
         if (column >= range[1] && column <= range[3]) {
-          model.setColumnWidth(sheet, column, width);
-          for (let i = range[1]; i <= range[3]; i++) {
-            if (i !== column) {
-              model.setColumnWidth(sheet, i, width);
-            }
-          }
-        } else {
-          model.setColumnWidth(sheet, column, width);
+          columnStart = Math.min(range[1], column, range[3]);
+          columnEnd = Math.max(range[1], column, range[3]);
         }
+        model.setColumnsWidth(sheet, columnStart, columnEnd, width);
         worksheetCanvas.current?.renderSheet();
       },
       onRowHeightChanges(sheet, row, height) {
@@ -132,16 +127,13 @@ function Worksheet(props: {
           return;
         }
         const { range } = model.getSelectedView();
+        let rowStart = row;
+        let rowEnd = row;
         if (row >= range[0] && row <= range[2]) {
-          model.setRowHeight(sheet, row, height);
-          for (let i = range[0]; i <= range[2]; i++) {
-            if (i !== row) {
-              model.setRowHeight(sheet, i, height);
-            }
-          }
-        } else {
-          model.setRowHeight(sheet, row, height);
+          rowStart = Math.min(range[0], row, range[2]);
+          rowEnd = Math.max(range[0], row, range[2]);
         }
+        model.setRowsHeight(sheet, rowStart, rowEnd, height);
         worksheetCanvas.current?.renderSheet();
       },
     });
@@ -362,7 +354,7 @@ function Worksheet(props: {
           Math.min(rowStart, extendedArea.rowStart),
           Math.min(columnStart, extendedArea.columnStart),
           Math.max(rowStart + height - 1, extendedArea.rowEnd),
-          Math.max(columnStart + width - 1, extendedArea.columnEnd)
+          Math.max(columnStart + width - 1, extendedArea.columnEnd),
         );
         workbookState.clearExtendToArea();
         canvas.renderSheet();

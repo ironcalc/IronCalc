@@ -508,5 +508,5 @@ fn test_user_model() {
     fs::remove_file(temp_file_name).unwrap();
 
     // we can still use the model afterwards
-    model.set_row_height(0, 1, 100.0).unwrap();
+    model.set_rows_height(0, 1, 1, 100.0).unwrap();
 }

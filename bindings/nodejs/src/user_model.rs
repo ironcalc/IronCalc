@@ -203,19 +203,31 @@ impl UserModel {
     self.model.delete_column(sheet, column).map_err(to_js_error)
   }
 
-  #[napi(js_name = "setRowHeight")]
-  pub fn set_row_height(&mut self, sheet: u32, row: i32, height: f64) -> Result<()> {
+  #[napi(js_name = "setRowsHeight")]
+  pub fn set_rows_height(
+    &mut self,
+    sheet: u32,
+    row_start: i32,
+    row_end: i32,
+    height: f64,
+  ) -> Result<()> {
     self
       .model
-      .set_row_height(sheet, row, height)
+      .set_rows_height(sheet, row_start, row_end, height)
       .map_err(to_js_error)
   }
 
-  #[napi(js_name = "setColumnWidth")]
-  pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> Result<()> {
+  #[napi(js_name = "setColumnsWidth")]
+  pub fn set_columns_width(
+    &mut self,
+    sheet: u32,
+    column_start: i32,
+    column_end: i32,
+    width: f64,
+  ) -> Result<()> {
     self
       .model
-      .set_column_width(sheet, column, width)
+      .set_columns_width(sheet, column_start, column_end, width)
       .map_err(to_js_error)
   }
 

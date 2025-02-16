@@ -59,7 +59,7 @@ fn simple_delete_column() {
     model.set_user_input(0, 1, 5, "3").unwrap();
     model.set_user_input(0, 2, 5, "=E1*2").unwrap();
     model
-        .set_column_width(0, 5, DEFAULT_COLUMN_WIDTH * 3.0)
+        .set_columns_width(0, 5, 5, DEFAULT_COLUMN_WIDTH * 3.0)
         .unwrap();
 
     model.delete_column(0, 5).unwrap();
@@ -116,7 +116,7 @@ fn simple_delete_row() {
     model.set_user_input(0, 15, 6, "=D15*2").unwrap();
 
     model
-        .set_row_height(0, 15, DEFAULT_ROW_HEIGHT * 3.0)
+        .set_rows_height(0, 15, 15, DEFAULT_ROW_HEIGHT * 3.0)
         .unwrap();
 
     model.delete_row(0, 15).unwrap();

@@ -10,7 +10,7 @@ use crate::{
 fn send_queue() {
     let mut model1 = UserModel::from_model(new_empty_model());
     let width = model1.get_column_width(0, 3).unwrap() * 3.0;
-    model1.set_column_width(0, 3, width).unwrap();
+    model1.set_columns_width(0, 3, 3, width).unwrap();
     model1.set_user_input(0, 1, 2, "Hello IronCalc!").unwrap();
     let send_queue = model1.flush_send_queue();
 
@@ -34,7 +34,7 @@ fn apply_external_diffs_wrong_str() {
 fn queue_undo_redo() {
     let mut model1 = UserModel::from_model(new_empty_model());
     let width = model1.get_column_width(0, 3).unwrap() * 3.0;
-    model1.set_column_width(0, 3, width).unwrap();
+    model1.set_columns_width(0, 3, 3, width).unwrap();
     model1.set_user_input(0, 1, 2, "Hello IronCalc!").unwrap();
     assert!(model1.undo().is_ok());
     assert!(model1.redo().is_ok());
@@ -57,8 +57,8 @@ fn queue_undo_redo_multiple() {
     // do a bunch of things
     model1.set_frozen_columns_count(0, 5).unwrap();
     model1.set_frozen_rows_count(0, 6).unwrap();
-    model1.set_column_width(0, 7, 300.0).unwrap();
-    model1.set_row_height(0, 23, 123.0).unwrap();
+    model1.set_columns_width(0, 7, 7, 300.0).unwrap();
+    model1.set_rows_height(0, 23, 23, 123.0).unwrap();
     model1.set_user_input(0, 55, 55, "=42+8").unwrap();
 
     for row in 1..5 {

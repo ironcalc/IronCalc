@@ -939,34 +939,56 @@ impl UserModel {
         Ok(())
     }
 
-    /// Sets the width of a column
+    /// Sets the width of a group of columns in a single diff list
     ///
     /// See also:
     /// * [Model::set_column_width]
-    pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> Result<(), String> {
-        let old_value = self.model.get_column_width(sheet, column)?;
-        self.push_diff_list(vec![Diff::SetColumnWidth {
-            sheet,
-            column,
-            new_value: width,
-            old_value,
-        }]);
-        self.model.set_column_width(sheet, column, width)
+    pub fn set_columns_width(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        width: f64,
+    ) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        for column in column_start..=column_end {
+            let old_value = self.model.get_column_width(sheet, column)?;
+            diff_list.push(Diff::SetColumnWidth {
+                sheet,
+                column,
+                new_value: width,
+                old_value,
+            });
+            self.model.set_column_width(sheet, column, width)?;
+        }
+        self.push_diff_list(diff_list);
+        Ok(())
     }
 
-    /// Sets the height of a row
+    /// Sets the height of a range of rows in a single diff list
     ///
     /// See also:
     /// * [Model::set_row_height]
-    pub fn set_row_height(&mut self, sheet: u32, row: i32, height: f64) -> Result<(), String> {
-        let old_value = self.model.get_row_height(sheet, row)?;
-        self.push_diff_list(vec![Diff::SetRowHeight {
-            sheet,
-            row,
-            new_value: height,
-            old_value,
-        }]);
-        self.model.set_row_height(sheet, row, height)
+    pub fn set_rows_height(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        height: f64,
+    ) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        for row in row_start..=row_end {
+            let old_value = self.model.get_row_height(sheet, row)?;
+            diff_list.push(Diff::SetRowHeight {
+                sheet,
+                row,
+                new_value: height,
+                old_value,
+            });
+            self.model.set_row_height(sheet, row, height)?;
+        }
+        self.push_diff_list(diff_list);
+        Ok(())
     }
 
     /// Gets the height of a row
