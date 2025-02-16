@@ -15,8 +15,8 @@ interface PointerSettings {
   worksheetCanvas: RefObject<WorksheetCanvas | null>;
   worksheetElement: RefObject<HTMLDivElement | null>;
   onCellSelected: (cell: Cell, event: React.MouseEvent) => void;
-  onRowSelected: (row: number) => void;
-  onColumnSelected: (column: number) => void;
+  onRowSelected: (row: number, shift: boolean) => void;
+  onColumnSelected: (column: number, shift: boolean) => void;
   onAllSheetSelected: () => void;
   onAreaSelecting: (cell: Cell) => void;
   onAreaSelected: () => void;
@@ -161,7 +161,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           // Click on a row number
           const cell = worksheet.getCellByCoordinates(headerColumnWidth, y);
           if (cell) {
-            onRowSelected(cell.row);
+            onRowSelected(cell.row, event.shiftKey);
           }
         } else if (
           x > headerColumnWidth &&
@@ -172,7 +172,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           // Click on a column letter
           const cell = worksheet.getCellByCoordinates(x, headerRowHeight);
           if (cell) {
-            onColumnSelected(cell.column);
+            onColumnSelected(cell.column, event.shiftKey);
           }
         }
         return;
