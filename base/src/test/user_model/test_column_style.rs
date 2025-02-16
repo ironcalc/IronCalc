@@ -455,3 +455,50 @@ fn column_style_then_width() {
         DEFAULT_COLUMN_WIDTH * 2.0
     );
 }
+
+#[test]
+fn test_row_column_column() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+
+    let column_c_range = Area {
+        sheet: 0,
+        row: 1,
+        column: 3,
+        width: 1,
+        height: LAST_ROW,
+    };
+
+    let column_e_range = Area {
+        sheet: 0,
+        row: 1,
+        column: 5,
+        width: 1,
+        height: LAST_ROW,
+    };
+
+    let row_5_range = Area {
+        sheet: 0,
+        row: 5,
+        column: 1,
+        width: LAST_COLUMN,
+        height: 1,
+    };
+
+    // update the row style
+    model
+        .update_range_style(&row_5_range, "fill.bg_color", "#333444")
+        .unwrap();
+
+    // update the column style
+    model
+        .update_range_style(&column_c_range, "fill.bg_color", "#555666")
+        .unwrap();
+
+    model
+        .update_range_style(&column_e_range, "fill.bg_color", "#CCC111")
+        .unwrap();
+
+    // test E5 has the column style
+    let style = model.get_cell_style(0, 5, 5).unwrap();
+    assert_eq!(style.fill.bg_color, Some("#CCC111".to_string()));
+}
