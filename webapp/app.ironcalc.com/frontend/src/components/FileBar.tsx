@@ -9,6 +9,8 @@ import { ShareButton } from "./ShareButton";
 import { WorkbookTitle } from "./WorkbookTitle";
 import { downloadModel, shareModel } from "./rpc";
 import { updateNameSelectedWorkbook } from "./storage";
+import { Button } from "@mui/material";
+import ShareWorkbookDialog from "./ShareWorkbookDialog";
 
 export function FileBar(properties: {
   model: Model;
@@ -19,6 +21,8 @@ export function FileBar(properties: {
 }) {
   const hiddenInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   return (
     <FileBarWrapper>
       <StyledDesktopLogo />
@@ -67,7 +71,7 @@ export function FileBar(properties: {
           ""
         )}
       </div>
-      <ShareButton
+      {/* <ShareButton
         onClick={async () => {
           const model = properties.model;
           const bytes = model.toBytes();
@@ -83,7 +87,17 @@ export function FileBar(properties: {
           }
           console.log(value);
         }}
-      />
+      /> */}
+      <DialogContainer>
+        <ShareButton onClick={() => setIsDialogOpen(true)} />
+        {isDialogOpen && (
+          <ShareWorkbookDialog
+            onClose={() => setIsDialogOpen(false)}
+            onModelUpload={properties.onModelUpload}
+            model={properties.model}
+          />
+        )}
+      </DialogContainer>
     </FileBarWrapper>
   );
 }
@@ -140,4 +154,18 @@ const FileBarWrapper = styled("div")`
   border-bottom: 1px solid #e0e0e0;
   position: relative;
   justify-content: space-between;
+`;
+
+const DialogContainer = styled("div")`
+  position: relative;
+  display: inline-block;
+  button {
+    margin-bottom: 8px;
+  }
+  .MuiDialog-root {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    transform: translateY(8px);
+  }
 `;
