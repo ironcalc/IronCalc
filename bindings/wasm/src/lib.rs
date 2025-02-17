@@ -307,7 +307,13 @@ impl Model {
     // This two are only used when we want to compute the automatic width of a column or height of a row
     #[wasm_bindgen(js_name = "getRowsWithData")]
     pub fn get_rows_with_data(&self, sheet: u32, column: i32) -> Result<Vec<i32>, JsError> {
-        let sheet_data = &self.model.get_model().workbook.worksheet(sheet).map_err(to_js_error)?.sheet_data;
+        let sheet_data = &self
+            .model
+            .get_model()
+            .workbook
+            .worksheet(sheet)
+            .map_err(to_js_error)?
+            .sheet_data;
         Ok(sheet_data
             .iter()
             .filter(|(_, data)| data.contains_key(&column))
@@ -317,9 +323,12 @@ impl Model {
 
     #[wasm_bindgen(js_name = "getColumnsWithData")]
     pub fn get_columns_with_data(&self, sheet: u32, row: i32) -> Result<Vec<i32>, JsError> {
-        Ok(self.model.get_model()
+        Ok(self
+            .model
+            .get_model()
             .workbook
-            .worksheet(sheet).map_err(to_js_error)?
+            .worksheet(sheet)
+            .map_err(to_js_error)?
             .sheet_data
             .get(&row)
             .map(|row_data| row_data.keys().copied().collect())
