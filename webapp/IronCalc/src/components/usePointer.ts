@@ -119,6 +119,11 @@ const usePointer = (options: PointerSettings): PointerEvents => {
 
   const onPointerDown = useCallback(
     (event: PointerEvent) => {
+      const target = event.target as HTMLElement;
+      if (target !== null && target.className === "column-resize-handle") {
+        // we are resizing a column
+        return;
+      }
       let x = event.clientX;
       let y = event.clientY;
       const {

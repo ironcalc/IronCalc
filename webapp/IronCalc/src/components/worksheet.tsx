@@ -115,7 +115,14 @@ function Worksheet(props: {
         const { range } = model.getSelectedView();
         let columnStart = column;
         let columnEnd = column;
-        if (column >= range[1] && column <= range[3]) {
+        const fullColumn = range[0] === 1 && range[2] === LAST_ROW;
+        const fullRow = range[1] === 1 && range[3] === LAST_COLUMN;
+        if (
+          fullColumn &&
+          column >= range[1] &&
+          column <= range[3] &&
+          !fullRow
+        ) {
           columnStart = Math.min(range[1], column, range[3]);
           columnEnd = Math.max(range[1], column, range[3]);
         }
@@ -129,13 +136,16 @@ function Worksheet(props: {
         const { range } = model.getSelectedView();
         let rowStart = row;
         let rowEnd = row;
-        if (row >= range[0] && row <= range[2]) {
+        const fullColumn = range[0] === 1 && range[2] === LAST_ROW;
+        const fullRow = range[1] === 1 && range[3] === LAST_COLUMN;
+        if (fullRow && row >= range[0] && row <= range[2] && !fullColumn) {
           rowStart = Math.min(range[0], row, range[2]);
           rowEnd = Math.max(range[0], row, range[2]);
         }
         model.setRowsHeight(sheet, rowStart, rowEnd, height);
         worksheetCanvas.current?.renderSheet();
       },
+      refresh,
     });
     const scrollX = model.getScrollX();
     const scrollY = model.getScrollY();

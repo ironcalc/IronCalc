@@ -37,6 +37,7 @@ export interface CanvasSettings {
   };
   onColumnWidthChanges: (sheet: number, column: number, width: number) => void;
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
+  refresh: () => void;
 }
 
 export const fonts = {
@@ -106,6 +107,8 @@ export default class WorksheetCanvas {
 
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
 
+  refresh: () => void;
+
   constructor(options: CanvasSettings) {
     this.model = options.model;
     this.sheetWidth = 0;
@@ -116,6 +119,7 @@ export default class WorksheetCanvas {
     this.ctx = this.setContext();
     this.workbookState = options.workbookState;
     this.editor = options.elements.editor;
+    this.refresh = options.refresh;
 
     this.cellOutline = options.elements.cellOutline;
     this.cellOutlineHandle = options.elements.cellOutlineHandle;
@@ -580,21 +584,51 @@ export default class WorksheetCanvas {
       document.removeEventListener("pointermove", resizeHandleMove);
       document.removeEventListener("pointerup", resizeHandleUp);
       const newColumnWidth = columnWidth + event.pageX - initPageX;
-      this.onColumnWidthChanges(
-        this.model.getSelectedSheet(),
-        column,
-        newColumnWidth,
-      );
+      if (newColumnWidth !== columnWidth) {
+        this.onColumnWidthChanges(
+          this.model.getSelectedSheet(),
+          column,
+          newColumnWidth,
+        );
+      }
     };
     resizeHandleUp = resizeHandleUp.bind(this);
     div.addEventListener("pointerdown", (event) => {
-      event.stopPropagation();
       div.style.opacity = "1";
       this.columnGuide.style.display = "block";
       this.columnGuide.style.left = `${headerColumnWidth + x}px`;
       initPageX = event.pageX;
       document.addEventListener("pointermove", resizeHandleMove);
       document.addEventListener("pointerup", resizeHandleUp);
+    });
+
+    div.addEventListener("dblclick", (event) => {
+      // This is tough. We should have a call like this.model.setAutofitColumn(sheet, column)
+      // but we can't do that because the back end knows nothing about the rendering engine.
+      const sheet = this.model.getSelectedSheet();
+      const rows = this.model.getRowsWithData(sheet, column);
+      let width = 0;
+      // This is a bit of a HACK. We should use the actual font size and weather is bold or not
+      const fontSize = 13;
+      this.ctx.font = `${fontSize}px ${defaultCellFontFamily}`;
+      for (const row of rows) {
+        const fullText = this.model.getFormattedCellValue(sheet, row, column);
+        if (fullText === "") {
+          continue;
+        }
+        const lines = fullText.split("\n");
+        for (const line of lines) {
+          const textWidth = this.ctx.measureText(line).width;
+          width = Math.max(width, textWidth);
+        }
+      }
+      // If the width is 0, we do nothing
+      if (width !== 0) {
+        // The +8 is so that the text is in the same position regardless of the horizontal alignment
+        this.model.setColumnsWidth(sheet, column, column, width + 8);
+        this.refresh();
+      }
+      event.stopPropagation();
     });
   }
 
@@ -618,8 +652,10 @@ export default class WorksheetCanvas {
       this.rowGuide.style.display = "none";
       document.removeEventListener("pointermove", resizeHandleMove);
       document.removeEventListener("pointerup", resizeHandleUp);
-      const newRowHeight = rowHeight + event.pageY - initPageY - 1;
-      this.onRowHeightChanges(sheet, row, newRowHeight);
+      const newRowHeight = rowHeight + event.pageY - initPageY;
+      if (newRowHeight !== rowHeight) {
+        this.onRowHeightChanges(sheet, row, newRowHeight);
+      }
     };
     resizeHandleUp = resizeHandleUp.bind(this);
     /* istanbul ignore next */
@@ -631,6 +667,35 @@ export default class WorksheetCanvas {
       initPageY = event.pageY;
       document.addEventListener("pointermove", resizeHandleMove);
       document.addEventListener("pointerup", resizeHandleUp);
+    });
+
+    div.addEventListener("dblclick", (event) => {
+      // This is tough. We should have a call like this.model.setAutofitRow(sheet, row)
+      // but we can't do that because the back end knows nothing about the rendering engine.
+      const sheet = this.model.getSelectedSheet();
+      const columns = this.model.getColumnsWithData(sheet, row);
+      let height = 0;
+      const lineHeight = 22;
+      // This is a bit of a HACK. We should use the actual font size and weather is bold or not
+      const fontSize = 13;
+      this.ctx.font = `${fontSize}px ${defaultCellFontFamily}`;
+      for (const column of columns) {
+        const fullText = this.model.getFormattedCellValue(sheet, row, column);
+        if (fullText === "") {
+          continue;
+        }
+        const lines = fullText.split("\n");
+        const lineCount = lines.length;
+        // This si computed so that the y position of the text is independent of the vertical alignment
+        const textHeight = (lineCount - 1) * lineHeight + 8 + fontSize;
+        height = Math.max(height, textHeight);
+      }
+      // If the height is 0, we do nothing
+      if (height !== 0) {
+        this.model.setRowsHeight(sheet, row, row, height);
+        this.refresh();
+      }
+      event.stopPropagation();
     });
   }
 
