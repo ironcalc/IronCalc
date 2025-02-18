@@ -396,3 +396,30 @@ fn undo_redo() {
         Ok("Hola!".to_string())
     );
 }
+
+#[test]
+fn change_scope_to_first_sheet() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.new_sheet().unwrap();
+    model.set_user_input(0, 1, 1, "Hello").unwrap();
+    model
+        .set_user_input(1, 2, 1, r#"=CONCATENATE(MyName, " world!")"#)
+        .unwrap();
+    model
+        .new_defined_name("myName", None, "Sheet1!$A$1")
+        .unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(1, 2, 1),
+        Ok("Hello world!".to_string())
+    );
+
+    model
+        .update_defined_name("myName", None, "myName", Some(0), "Sheet1!$A$1")
+        .unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(1, 2, 1),
+        Ok("#NAME?".to_string())
+    );
+}
