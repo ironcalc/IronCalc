@@ -98,9 +98,10 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
         ) : (
           <NameListWrapper>
             {definedNameList.map((definedName, index) => {
-              const scopeName = definedName.scope
-                ? worksheets[definedName.scope].name
-                : "[global]";
+              const scopeName =
+                definedName.scope !== undefined
+                  ? worksheets[definedName.scope].name
+                  : "[global]";
               if (index === editingNameIndex) {
                 return (
                   <NamedRangeActive
@@ -117,7 +118,7 @@ function NameManagerDialog(properties: NameManagerDialogProperties) {
                       const scope_index = worksheets.findIndex(
                         (s) => s.name === newScope,
                       );
-                      const scope = scope_index > 0 ? scope_index : undefined;
+                      const scope = scope_index >= 0 ? scope_index : undefined;
                       try {
                         updateDefinedName(
                           definedName.name,
