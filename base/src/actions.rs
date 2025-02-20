@@ -1,5 +1,6 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::parser::stringify::DisplaceData;
+use crate::expressions::parser::stringify::{to_string, to_string_displaced, DisplaceData};
+use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
 
 // NOTE: There is a difference with Excel behaviour when deleting cells/rows/columns
@@ -8,16 +9,45 @@ use crate::model::Model;
 // I feel this is unimportant for now.
 
 impl Model {
+    fn shift_cell_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        displace_data: &DisplaceData,
+    ) -> Result<(), String> {
+        if let Some(f) = self
+            .workbook
+            .worksheet(sheet)?
+            .cell(row, column)
+            .and_then(|c| c.get_formula())
+        {
+            let node = &self.parsed_formulas[sheet as usize][f as usize].clone();
+            let cell_reference = CellReferenceRC {
+                sheet: self.workbook.worksheets[sheet as usize].get_name(),
+                row,
+                column,
+            };
+            // FIXME: This is not a very performant way if the formula has changed :S.
+            let formula = to_string(node, &cell_reference);
+            let formula_displaced = to_string_displaced(node, &cell_reference, displace_data);
+            if formula != formula_displaced {
+                self.update_cell_with_formula(sheet, row, column, format!("={formula_displaced}"))?;
+            }
+        }
+        Ok(())
+    }
     /// This function iterates over all cells in the model and shifts their formulas according to the displacement data.
     ///
     /// # Arguments
     ///
     /// * `displace_data` - A reference to `DisplaceData` describing the displacement's direction and magnitude.
-    fn displace_cells(&mut self, displace_data: &DisplaceData) {
+    fn displace_cells(&mut self, displace_data: &DisplaceData) -> Result<(), String> {
         let cells = self.get_all_cells();
         for cell in cells {
-            self.shift_cell_formula(cell.index, cell.row, cell.column, displace_data);
+            self.shift_cell_formula(cell.index, cell.row, cell.column, displace_data)?;
         }
+        Ok(())
     }
 
     /// Retrieves the column indices for a specific row in a given sheet, sorted in ascending or descending order.
@@ -134,7 +164,7 @@ impl Model {
                 column,
                 delta: column_count,
             }),
-        );
+        )?;
 
         // In the list of columns:
         // * Keep all the columns to the left
@@ -214,7 +244,7 @@ impl Model {
                 column,
                 delta: -column_count,
             }),
-        );
+        )?;
         let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
 
         // deletes all the column styles
@@ -338,7 +368,7 @@ impl Model {
                 row,
                 delta: row_count,
             }),
-        );
+        )?;
 
         Ok(())
     }
@@ -399,7 +429,7 @@ impl Model {
                 row,
                 delta: -row_count,
             }),
-        );
+        )?;
         Ok(())
     }
 
@@ -420,14 +450,14 @@ impl Model {
         sheet: u32,
         column: i32,
         delta: i32,
-    ) -> Result<(), &'static str> {
+    ) -> Result<(), String> {
         // Check boundaries
         let target_column = column + delta;
         if !(1..=LAST_COLUMN).contains(&target_column) {
-            return Err("Target column out of boundaries");
+            return Err("Target column out of boundaries".to_string());
         }
         if !(1..=LAST_COLUMN).contains(&column) {
-            return Err("Initial column out of boundaries");
+            return Err("Initial column out of boundaries".to_string());
         }
 
         // TODO: Add the actual displacement of data and styles
@@ -439,7 +469,7 @@ impl Model {
                 column,
                 delta,
             }),
-        );
+        )?;
 
         Ok(())
     }
