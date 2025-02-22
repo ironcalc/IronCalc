@@ -4,4 +4,4 @@
 reverse_proxy /api/* 127.0.0.1:8000
 
 # everything else is the frontend
-reverse_proxy :5173
+reverse_proxy localhost:5173
