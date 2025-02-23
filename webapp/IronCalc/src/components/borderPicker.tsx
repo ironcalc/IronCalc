@@ -22,7 +22,7 @@ import {
   BorderTopIcon,
 } from "../icons";
 import { theme } from "../theme";
-import ColorPicker from "./colorPicker";
+import ColorPicker from "./ColorPicker";
 
 type BorderPickerProps = {
   className?: string;

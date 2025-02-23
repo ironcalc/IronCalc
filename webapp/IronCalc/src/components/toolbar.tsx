@@ -38,10 +38,10 @@ import {
   DecimalPlacesIncreaseIcon,
 } from "../icons";
 import { theme } from "../theme";
+import ColorPicker from "./ColorPicker";
 import NameManagerDialog from "./NameManagerDialog";
 import type { NameManagerProperties } from "./NameManagerDialog/NameManagerDialog";
 import BorderPicker from "./borderPicker";
-import ColorPicker from "./colorPicker";
 import { TOOLBAR_HEIGHT } from "./constants";
 import FormatMenu from "./formatMenu";
 import {
