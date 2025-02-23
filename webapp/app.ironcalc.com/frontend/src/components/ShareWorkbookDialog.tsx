@@ -106,9 +106,10 @@ const DialogWrapper = styled(Dialog)`
   .MuiDialog-paper {
     width: 440px;
     position: absolute;
-    top: 53px;
-    right: 10px;
-    margin: 0px;
+    top: 44px;
+    right: 0px;
+    margin: 10px;
+    max-width: calc(100% - 20px);
   }
   .MuiBackdrop-root {
     background-color: transparent;
@@ -176,6 +177,10 @@ const QRCodeWrapper = styled("div")`
   display: flex;
   align-items: center;
   justify-content: center;
+
+  @media (max-width: 600px) {
+    display: none;
+  }
 `;
 
 const UploadFooter = styled("div")`
