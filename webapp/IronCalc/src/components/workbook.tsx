@@ -222,17 +222,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     },
     onBold: () => {
       const { sheet, row, column } = model.getSelectedView();
-      const value = !model.getCellStyle(sheet, row, column).font.b;
+      const value = model.getCellStyle(sheet, row, column).font.b;
       onToggleBold(!value);
     },
     onItalic: () => {
       const { sheet, row, column } = model.getSelectedView();
-      const value = !model.getCellStyle(sheet, row, column).font.i;
+      const value = model.getCellStyle(sheet, row, column).font.i;
       onToggleItalic(!value);
     },
     onUnderline: () => {
       const { sheet, row, column } = model.getSelectedView();
-      const value = !model.getCellStyle(sheet, row, column).font.u;
+      const value = model.getCellStyle(sheet, row, column).font.u;
       onToggleUnderline(!value);
     },
     onNavigationToEdge: (direction: NavigationKey): void => {
