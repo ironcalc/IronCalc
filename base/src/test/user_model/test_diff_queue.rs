@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
+    UserModel,
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT},
     test::util::new_empty_model,
-    UserModel,
 };
 
 #[test]
@@ -157,7 +157,9 @@ fn new_sheet() {
 #[test]
 fn wrong_diffs_handled() {
     let mut model = UserModel::from_model(new_empty_model());
-    assert!(model
-        .apply_external_diffs("Hello world".as_bytes())
-        .is_err());
+    assert!(
+        model
+            .apply_external_diffs("Hello world".as_bytes())
+            .is_err()
+    );
 }

@@ -56,7 +56,7 @@
 
 use std::f64::consts::FRAC_2_PI;
 
-use super::bessel_util::{high_word, split_words, FRAC_2_SQRT_PI, HUGE};
+use super::bessel_util::{FRAC_2_SQRT_PI, HUGE, high_word, split_words};
 
 // R0/S0 on [0,2]
 const R00: f64 = -6.25e-2; // 0xBFB00000, 0x00000000

@@ -57,8 +57,8 @@ mod test;
 #[cfg(test)]
 pub mod mock_time;
 
-pub use model::get_milliseconds_since_epoch;
 pub use model::Model;
+pub use model::get_milliseconds_since_epoch;
 pub use user_model::BorderArea;
 pub use user_model::ClipboardData;
 pub use user_model::UserModel;

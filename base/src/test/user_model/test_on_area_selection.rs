@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
+    UserModel,
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_WINDOW_WIDTH},
     test::util::new_empty_model,
-    UserModel,
 };
 
 #[test]

@@ -1,5 +1,5 @@
 [package]
-edition = "2021"
+edition = "2024"
 name = "ironcalc_nodejs"
 version = "0.3.1"
 

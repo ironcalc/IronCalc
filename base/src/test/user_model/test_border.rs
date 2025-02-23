@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
+    BorderArea, UserModel,
     constants::{LAST_COLUMN, LAST_ROW},
     expressions::{types::Area, utils::number_to_column},
     types::{Border, BorderItem, BorderStyle},
-    BorderArea, UserModel,
 };
 
 // checks there are no borders in the sheet

@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 
 use crate::{
+    UserModel,
     constants::{LAST_COLUMN, LAST_ROW},
     test::util::new_empty_model,
     user_model::SelectedView,
-    UserModel,
 };
 
 #[test]

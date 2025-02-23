@@ -158,11 +158,13 @@ fn test_named_styles() {
     save_to_xlsx(&model, temp_file_name).unwrap();
 
     let model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
-    assert!(model
-        .workbook
-        .styles
-        .get_style_index_by_name("bold & italics")
-        .is_ok());
+    assert!(
+        model
+            .workbook
+            .styles
+            .get_style_index_by_name("bold & italics")
+            .is_ok()
+    );
     fs::remove_file(temp_file_name).unwrap();
 }
 

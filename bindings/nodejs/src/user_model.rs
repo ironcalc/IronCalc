@@ -2,12 +2,12 @@
 
 use serde::Serialize;
 
-use napi::{self, bindgen_prelude::*, JsUnknown, Result};
+use napi::{self, JsUnknown, Result, bindgen_prelude::*};
 
 use ironcalc::base::{
+  BorderArea, ClipboardData, UserModel as BaseModel,
   expressions::types::Area,
   types::{CellType, Style},
-  BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
 #[derive(Serialize)]

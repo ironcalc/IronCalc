@@ -388,7 +388,7 @@ impl Model {
                     Error::ERROR,
                     cell,
                     format!("Invalid worksheet index: '{}'", first_range.left.sheet),
-                )
+                );
             }
         };
         let max_row = dimension.max_row;

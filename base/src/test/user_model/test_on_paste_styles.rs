@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::UserModel;
 use crate::test::util::new_empty_model;
 use crate::types::Fill;
-use crate::UserModel;
 
 #[test]
 fn simple_pasting() {

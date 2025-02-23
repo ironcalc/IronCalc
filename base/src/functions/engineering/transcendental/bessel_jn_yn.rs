@@ -40,7 +40,7 @@
 use super::{
     bessel_j0_y0::{j0, y0},
     bessel_j1_y1::{j1, y1},
-    bessel_util::{split_words, FRAC_2_SQRT_PI},
+    bessel_util::{FRAC_2_SQRT_PI, split_words},
 };
 
 // Special cases are:
@@ -232,11 +232,7 @@ pub(crate) fn jn(n: i32, x: f64) -> f64 {
             }
         }
     };
-    if sign == 1 {
-        -b
-    } else {
-        b
-    }
+    if sign == 1 { -b } else { b }
 }
 
 // Yn returns the order-n Bessel function of the second kind.
@@ -321,9 +317,5 @@ pub(crate) fn yn(n: i32, x: f64) -> f64 {
         }
         b
     };
-    if sign > 0 {
-        b
-    } else {
-        -b
-    }
+    if sign > 0 { b } else { -b }
 }

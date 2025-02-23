@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::UserModel;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
 use crate::test::util::new_empty_model;
-use crate::UserModel;
 
 #[test]
 fn basic_tests() {

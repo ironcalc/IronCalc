@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    text_util::{substitute, text_after, text_before, Case},
+    text_util::{Case, substitute, text_after, text_before},
     util::from_wildcard_to_regex,
 };
 
@@ -368,7 +368,7 @@ impl Model {
                         error: Error::VALUE,
                         origin: cell,
                         message: "Empty cell".to_string(),
-                    }
+                    };
                 }
             };
 
@@ -629,7 +629,7 @@ impl Model {
                     error: Error::VALUE,
                     origin: cell,
                     message: "Expecting number".to_string(),
-                }
+                };
             }
             error @ CalcResult::Error { .. } => return error,
             CalcResult::Range { .. } => {

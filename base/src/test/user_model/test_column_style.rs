@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::UserModel;
 use crate::constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
-use crate::UserModel;
 
 #[test]
 fn column_width() {

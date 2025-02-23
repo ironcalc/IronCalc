@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::expressions::lexer::LexerMode;
 use crate::expressions::parser::stringify::{
-    to_rc_format, to_string, to_string_displaced, DisplaceData,
+    DisplaceData, to_rc_format, to_string, to_string_displaced,
 };
 use crate::expressions::parser::{Node, Parser};
 use crate::expressions::types::CellReferenceRC;

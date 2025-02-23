@@ -10,11 +10,11 @@ use crate::{
     expressions::{
         lexer::LexerMode,
         parser::{
-            move_formula::{move_formula, MoveContext},
-            stringify::{rename_defined_name_in_node, to_rc_format, to_string},
             Node, Parser,
+            move_formula::{MoveContext, move_formula},
+            stringify::{rename_defined_name_in_node, to_rc_format, to_string},
         },
-        token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
+        token::{Error, OpCompare, OpProduct, OpSum, OpUnary, get_error_by_name},
         types::*,
         utils::{self, is_valid_column_number, is_valid_identifier, is_valid_row},
     },
@@ -24,8 +24,8 @@ use crate::{
     },
     functions::util::compare_values,
     implicit_intersection::implicit_intersection,
-    language::{get_language, Language},
-    locale::{get_locale, Currency, Locale},
+    language::{Language, get_language},
+    locale::{Currency, Locale, get_locale},
     types::*,
     utils as common,
 };

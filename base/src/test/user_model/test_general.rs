@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::UserModel;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::test::util::new_empty_model;
 use crate::types::CellType;
-use crate::UserModel;
 
 #[test]
 fn set_user_input_errors() {

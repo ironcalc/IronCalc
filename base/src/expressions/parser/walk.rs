@@ -1,4 +1,4 @@
-use super::{move_formula::ref_is_in_area, Node};
+use super::{Node, move_formula::ref_is_in_area};
 
 use crate::expressions::types::{Area, CellReferenceIndex};
 

@@ -2,8 +2,8 @@ use pyo3::exceptions::PyException;
 use pyo3::{create_exception, prelude::*, wrap_pyfunction};
 
 use types::{PySheetProperty, PyStyle};
-use xlsx::base::types::Style;
 use xlsx::base::Model;
+use xlsx::base::types::Style;
 
 use xlsx::export::{save_to_icalc, save_to_xlsx};
 use xlsx::import;

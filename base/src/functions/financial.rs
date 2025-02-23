@@ -698,7 +698,7 @@ impl Model {
                     error: error.0,
                     origin: cell,
                     message: error.1,
-                }
+                };
             }
         };
         CalcResult::Number(ipmt)
@@ -762,7 +762,7 @@ impl Model {
                     error: error.0,
                     origin: cell,
                     message: error.1,
-                }
+                };
             }
         };
         CalcResult::Number(ppmt)
@@ -1075,7 +1075,7 @@ impl Model {
                         error,
                         origin: cell,
                         message,
-                    }
+                    };
                 }
             }
         };
@@ -1096,7 +1096,7 @@ impl Model {
                         error,
                         origin: cell,
                         message,
-                    }
+                    };
                 }
             }
         };
@@ -1634,7 +1634,7 @@ impl Model {
                         error: error.0,
                         origin: cell,
                         message: error.1,
-                    }
+                    };
                 }
             }
         }
@@ -1702,7 +1702,7 @@ impl Model {
                         error: error.0,
                         origin: cell,
                         message: error.1,
-                    }
+                    };
                 }
             }
         }
@@ -1750,11 +1750,7 @@ impl Model {
             rate = 1.0
         };
         let value = if rate == 1.0 {
-            if period == 1.0 {
-                cost
-            } else {
-                0.0
-            }
+            if period == 1.0 { cost } else { 0.0 }
         } else {
             cost * (1.0 - rate).powf(period - 1.0)
         };

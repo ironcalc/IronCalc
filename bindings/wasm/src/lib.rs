@@ -1,13 +1,13 @@
 use serde::Serialize;
 use wasm_bindgen::{
-    prelude::{wasm_bindgen, JsError},
     JsValue,
+    prelude::{JsError, wasm_bindgen},
 };
 
 use ironcalc_base::{
+    BorderArea, ClipboardData, UserModel as BaseModel,
     expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
     types::{CellType, Style},
-    BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
 fn to_js_error(error: String) -> JsError {

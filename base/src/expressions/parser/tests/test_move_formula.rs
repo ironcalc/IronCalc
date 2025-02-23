@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::expressions::parser::move_formula::{move_formula, MoveContext};
 use crate::expressions::parser::Parser;
+use crate::expressions::parser::move_formula::{MoveContext, move_formula};
 use crate::expressions::types::{Area, CellReferenceRC};
 
 #[test]

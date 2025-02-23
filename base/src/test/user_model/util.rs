@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{expressions::types::Area, types::Border, BorderArea, UserModel};
+use crate::{BorderArea, UserModel, expressions::types::Area, types::Border};
 
 impl UserModel {
     pub fn _set_cell_border(&mut self, cell: &str, color: &str) {

@@ -4,7 +4,7 @@ use std::path::Path;
 
 use ironcalc_base::cell::CellValue;
 use ironcalc_base::types::*;
-use ironcalc_base::{expressions::utils::number_to_column, Model};
+use ironcalc_base::{Model, expressions::utils::number_to_column};
 
 use crate::export::save_to_xlsx;
 use crate::import::load_from_xlsx;

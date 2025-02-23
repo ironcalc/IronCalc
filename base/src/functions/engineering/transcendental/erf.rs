@@ -45,9 +45,5 @@ pub(crate) fn erf(x: f64) -> f64 {
     }
 
     let res = t * f64::exp(-x_abs * x_abs + 0.5 * (cof[0] + ty * d) - dd);
-    if x < 0.0 {
-        res - 1.0
-    } else {
-        1.0 - res
-    }
+    if x < 0.0 { res - 1.0 } else { 1.0 - res }
 }

@@ -9,8 +9,12 @@ pub(crate) fn get_shared_strings_xml(model: &Workbook) -> String {
     for shared_string in &model.shared_strings {
         shared_strings.push(format!("<si><t>{}</t></si>", escape_xml(shared_string)));
     }
-    format!("{}\n\
+    format!(
+        "{}\n\
       <sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" count=\"{count}\" uniqueCount=\"{unique_count}\">\
         {}\
-      </sst>", XML_DECLARATION, shared_strings.join(""))
+      </sst>",
+        XML_DECLARATION,
+        shared_strings.join("")
+    )
 }

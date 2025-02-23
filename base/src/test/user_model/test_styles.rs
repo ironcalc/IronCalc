@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
+    UserModel,
     expressions::types::Area,
     types::{Alignment, HorizontalAlignment, VerticalAlignment},
-    UserModel,
 };
 
 #[test]
