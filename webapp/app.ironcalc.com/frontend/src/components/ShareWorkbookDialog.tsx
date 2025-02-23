@@ -1,8 +1,9 @@
-import { Dialog, styled, TextField, Button } from "@mui/material";
-import { GlobeLock, Copy, Check } from "lucide-react";
-import { useState, useEffect } from "react";
+import type { Model } from "@ironcalc/workbook";
+import { Button, Dialog, TextField, styled } from "@mui/material";
+import { Check, Copy, GlobeLock } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useState } from "react";
 import { shareModel } from "./rpc";
-import { Model } from "@ironcalc/workbook";
 
 function ShareWorkbookDialog(properties: {
   onClose: () => void;
@@ -63,7 +64,9 @@ function ShareWorkbookDialog(properties: {
       }}
     >
       <DialogContent>
-        <QRCodeWrapper />
+        <QRCodeWrapper>
+          <QRCodeSVG value={url} size={80} />{" "}
+        </QRCodeWrapper>
         <URLWrapper>
           <StyledTextField
             hiddenLabel
@@ -73,7 +76,10 @@ function ShareWorkbookDialog(properties: {
             fullWidth
             margin="normal"
             size="small"
-            style={{ fontSize: "14px", paddingTop: "0px" }}
+            style={{
+              fontSize: "12px",
+              paddingTop: "0px",
+            }}
           />
           <StyledButton
             variant="contained"
@@ -99,6 +105,10 @@ function ShareWorkbookDialog(properties: {
 const DialogWrapper = styled(Dialog)`
   .MuiDialog-paper {
     width: 440px;
+    position: absolute;
+    top: 53px;
+    right: 10px;
+    margin: 0px;
   }
   .MuiBackdrop-root {
     background-color: transparent;
@@ -125,6 +135,10 @@ const StyledTextField = styled(TextField)`
   margin: 0px;
   .MuiInputBase-root {
     max-height: 36px;
+  }
+  .MuiOutlinedInput-input {
+    text-overflow: ellipsis;
+    padding: 8px;
   }
 `;
 
@@ -159,6 +173,9 @@ const QRCodeWrapper = styled("div")`
   min-width: 80px;
   background-color: grey;
   border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const UploadFooter = styled("div")`

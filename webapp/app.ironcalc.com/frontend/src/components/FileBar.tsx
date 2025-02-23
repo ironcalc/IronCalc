@@ -3,14 +3,12 @@ import type { Model } from "@ironcalc/workbook";
 import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
 import { CircleCheck } from "lucide-react";
 import { useRef, useState } from "react";
-// import { IronCalcIcon, IronCalcLogo } from "./../icons";
 import { FileMenu } from "./FileMenu";
 import { ShareButton } from "./ShareButton";
-import { WorkbookTitle } from "./WorkbookTitle";
-import { downloadModel, shareModel } from "./rpc";
-import { updateNameSelectedWorkbook } from "./storage";
-import { Button } from "@mui/material";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
+import { WorkbookTitle } from "./WorkbookTitle";
+import { downloadModel } from "./rpc";
+import { updateNameSelectedWorkbook } from "./storage";
 
 export function FileBar(properties: {
   model: Model;
@@ -71,23 +69,6 @@ export function FileBar(properties: {
           ""
         )}
       </div>
-      {/* <ShareButton
-        onClick={async () => {
-          const model = properties.model;
-          const bytes = model.toBytes();
-          const fileName = model.getName();
-          const hash = await shareModel(bytes, fileName);
-          const value = `${location.origin}/?model=${hash}`;
-          if (hiddenInputRef.current) {
-            hiddenInputRef.current.value = value;
-            hiddenInputRef.current.select();
-            document.execCommand("copy");
-            setToast(true);
-            setTimeout(() => setToast(false), 5000);
-          }
-          console.log(value);
-        }}
-      /> */}
       <DialogContainer>
         <ShareButton onClick={() => setIsDialogOpen(true)} />
         {isDialogOpen && (
