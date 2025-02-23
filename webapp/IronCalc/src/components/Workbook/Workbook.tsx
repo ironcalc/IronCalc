@@ -15,6 +15,8 @@ import {
   LAST_COLUMN,
   ROW_HEIGH_SCALE,
 } from "../WorksheetCanvas/constants";
+import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
+import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
@@ -30,6 +32,9 @@ import useKeyboardNavigation from "./useKeyboardNavigation";
 const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const { model, workbookState } = props;
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const worksheetRef = useRef<{
+    getCanvas: () => WorksheetCanvas | null;
+  }>(null);
 
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
@@ -548,6 +553,59 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onIncreaseFontSize={(delta: number) => {
           onIncreaseFontSize(delta);
         }}
+        onDownloadPNG={() => {
+          // creates a new canvas element in the visible part of the the selected area
+          const worksheetCanvas = worksheetRef.current?.getCanvas();
+          if (!worksheetCanvas) {
+            return;
+          }
+          const {
+            range: [rowStart, columnStart, rowEnd, columnEnd],
+          } = model.getSelectedView();
+          const { topLeftCell, bottomRightCell } =
+            worksheetCanvas.getVisibleCells();
+          const firstRow = Math.max(rowStart, topLeftCell.row);
+          const firstColumn = Math.max(columnStart, topLeftCell.column);
+          const lastRow = Math.min(rowEnd, bottomRightCell.row);
+          const lastColumn = Math.min(columnEnd, bottomRightCell.column);
+          let [x, y] = worksheetCanvas.getCoordinatesByCell(
+            firstRow,
+            firstColumn,
+          );
+          const [x1, y1] = worksheetCanvas.getCoordinatesByCell(
+            lastRow + 1,
+            lastColumn + 1,
+          );
+          const width = (x1 - x) * devicePixelRatio;
+          const height = (y1 - y) * devicePixelRatio;
+          x *= devicePixelRatio;
+          y *= devicePixelRatio;
+
+          const capturedCanvas = document.createElement("canvas");
+          capturedCanvas.width = width;
+          capturedCanvas.height = height;
+          const ctx = capturedCanvas.getContext("2d");
+          if (!ctx) {
+            return;
+          }
+
+          ctx.drawImage(
+            worksheetCanvas.canvas,
+            x,
+            y,
+            width,
+            height,
+            0,
+            0,
+            width,
+            height,
+          );
+
+          const downloadLink = document.createElement("a");
+          downloadLink.href = capturedCanvas.toDataURL("image/png");
+          downloadLink.download = "ironcalc.png";
+          downloadLink.click();
+        }}
         onBorderChanged={(border: BorderOptions): void => {
           const {
             sheet,
@@ -640,6 +698,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         refresh={(): void => {
           setRedrawId((id) => id + 1);
         }}
+        ref={worksheetRef}
       />
 
       <SheetTabBar

@@ -20,6 +20,7 @@ import {
   Grid2X2,
   Grid2x2Check,
   Grid2x2X,
+  ImageDown,
   Italic,
   PaintBucket,
   PaintRoller,
@@ -70,6 +71,7 @@ type ToolbarProperties = {
   onBorderChanged: (border: BorderOptions) => void;
   onClearFormatting: () => void;
   onIncreaseFontSize: (delta: number) => void;
+  onDownloadPNG: () => void;
   fillColor: string;
   fontColor: string;
   bold: boolean;
@@ -398,6 +400,17 @@ function Toolbar(properties: ToolbarProperties) {
         title={t("toolbar.clear_formatting")}
       >
         <RemoveFormatting />
+      </StyledButton>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        disabled={!canEdit}
+        onClick={() => {
+          properties.onDownloadPNG();
+        }}
+        title={t("toolbar.selected_png")}
+      >
+        <ImageDown />
       </StyledButton>
 
       <ColorPicker
