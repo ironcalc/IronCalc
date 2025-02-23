@@ -1,12 +1,13 @@
 import styled from "@emotion/styled";
 import Popover, { type PopoverOrigin } from "@mui/material/Popover";
+import { Check } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
+import { useTranslation } from "react-i18next";
 import { theme } from "../theme";
 
 type ColorPickerProps = {
-  className?: string;
   color: string;
   onChange: (color: string) => void;
   onClose: () => void;
@@ -17,17 +18,19 @@ type ColorPickerProps = {
 };
 
 const colorPickerWidth = 240;
-const colorfulHeight = 185; // 150 + 15 + 20
+const colorfulHeight = 240;
 
 const ColorPicker = (properties: ColorPickerProps) => {
   const [color, setColor] = useState<string>(properties.color);
   const recentColors = useRef<string[]>([]);
 
+  const { t } = useTranslation();
+
   const closePicker = (newColor: string): void => {
     const maxRecentColors = 14;
-    properties.onChange(newColor);
     const colors = recentColors.current.filter((c) => c !== newColor);
     recentColors.current = [newColor, ...colors].slice(0, maxRecentColors);
+    properties.onChange(newColor);
   };
 
   const handleClose = (): void => {
@@ -85,21 +88,16 @@ const ColorPicker = (properties: ColorPickerProps) => {
               />
             </HexColorInputBox>
           </HexWrapper>
-          <Swatch
-            $color={color}
-            onClick={(): void => {
-              closePicker(color);
-            }}
-          />
+          <Swatch $color={color} />
         </ColorPickerInput>
         <HorizontalDivider />
         <ColorList>
           {presetColors.map((presetColor) => (
-            <Button
+            <RecentColorButton
               key={presetColor}
               $color={presetColor}
               onClick={(): void => {
-                closePicker(presetColor);
+                setColor(presetColor);
               }}
             />
           ))}
@@ -111,11 +109,11 @@ const ColorPicker = (properties: ColorPickerProps) => {
             <RecentLabel>{"Recent"}</RecentLabel>
             <ColorList>
               {recentColors.current.map((recentColor) => (
-                <Button
+                <RecentColorButton
                   key={recentColor}
                   $color={recentColor}
                   onClick={(): void => {
-                    closePicker(recentColor);
+                    setColor(recentColor);
                   }}
                 />
               ))}
@@ -124,10 +122,45 @@ const ColorPicker = (properties: ColorPickerProps) => {
         ) : (
           <div />
         )}
+        <Buttons>
+          <StyledButton
+            onClick={(): void => {
+              closePicker(color);
+            }}
+          >
+            <Check
+              style={{ width: "16px", height: "16px", marginRight: "8px" }}
+            />
+            {t("color_picker.apply")}
+          </StyledButton>
+        </Buttons>
       </ColorPickerDialog>
     </Popover>
   );
 };
+
+const Buttons = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px;
+`;
+
+const StyledButton = styled("div")`
+  cursor: pointer;
+  color: #ffffff;
+  background: #f2994a;
+  padding: 0px 10px;
+  height: 36px;
+  line-height: 36px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  font-family: "Inter";
+  font-size: 14px;
+  &:hover {
+    background: #d68742;
+  }
+`;
 
 const RecentLabel = styled.div`
   font-family: "Inter";
@@ -146,7 +179,7 @@ const ColorList = styled.div`
   gap: 4.7px;
 `;
 
-const Button = styled.button<{ $color: string }>`
+const RecentColorButton = styled.button<{ $color: string }>`
   width: 16px;
   height: 16px;
   ${({ $color }): string => {
@@ -173,20 +206,6 @@ const HorizontalDivider = styled.div`
   width: 100%;
   border-top: 1px solid ${theme.palette.grey["200"]};
 `;
-
-// const StyledPopover = styled(Popover)`
-//   .MuiPopover-paper {
-//     border-radius: 10px;
-//     border: 0px solid ${theme.palette.background.default};
-//     box-shadow: 1px 2px 8px rgba(139, 143, 173, 0.5);
-//   }
-//   .MuiPopover-padding {
-//     padding: 0px;
-//   }
-//   .MuiList-padding {
-//     padding: 0px;
-//   }
-// `;
 
 const ColorPickerDialog = styled.div`
   background: ${theme.palette.background.default};

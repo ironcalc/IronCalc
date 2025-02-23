@@ -115,5 +115,8 @@
     "freeze": "Freeze",
     "insert_row": "Insert row",
     "insert_column": "Insert column"
+  },
+  "color_picker": {
+    "apply": "Apply"
   }
 }

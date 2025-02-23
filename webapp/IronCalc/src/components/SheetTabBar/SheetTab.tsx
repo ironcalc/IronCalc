@@ -3,7 +3,7 @@ import type { MenuItemProps } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
 import { theme } from "../../theme";
-import ColorPicker from "../colorPicker";
+import ColorPicker from "../ColorPicker";
 import { isInReferenceMode } from "../editor/util";
 import type { WorkbookState } from "../workbookState";
 import SheetDeleteDialog from "./SheetDeleteDialog";
