@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
 import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
-import { CircleCheck } from "lucide-react";
 import { useRef, useState } from "react";
 import { FileMenu } from "./FileMenu";
 import { ShareButton } from "./ShareButton";
@@ -18,7 +17,6 @@ export function FileBar(properties: {
   onDelete: () => void;
 }) {
   const hiddenInputRef = useRef<HTMLInputElement>(null);
-  const [toast, setToast] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   return (
@@ -55,20 +53,7 @@ export function FileBar(properties: {
         type="text"
         style={{ position: "absolute", left: -9999, top: -9999 }}
       />
-      <div style={{ marginLeft: "auto" }}>
-        {toast ? (
-          <Toast>
-            <CircleCheck style={{ width: 12 }} />
-            <span
-              style={{ marginLeft: 8, marginRight: 12, fontFamily: "Inter" }}
-            >
-              URL copied to clipboard
-            </span>
-          </Toast>
-        ) : (
-          ""
-        )}
-      </div>
+      <div style={{ marginLeft: "auto" }}></div>
       <DialogContainer>
         <ShareButton onClick={() => setIsDialogOpen(true)} />
         {isDialogOpen && (
