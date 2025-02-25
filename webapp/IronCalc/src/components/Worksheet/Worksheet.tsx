@@ -1,6 +1,7 @@
 import { type Model, columnNameFromNumber } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import Editor from "../Editor/Editor";
 import {
   COLUMN_WIDTH_SCALE,
   LAST_COLUMN,
@@ -15,7 +16,6 @@ import {
   NAVIGATION_HEIGHT,
   TOOLBAR_HEIGHT,
 } from "../constants";
-import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
 import { AreaType, type WorkbookState } from "../workbookState";
 import CellContextMenu from "./CellContextMenu";
