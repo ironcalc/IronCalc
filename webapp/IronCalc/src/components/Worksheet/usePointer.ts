@@ -1,11 +1,11 @@
 import type { Model } from "@ironcalc/wasm";
 import { type PointerEvent, type RefObject, useCallback, useRef } from "react";
+import { isInReferenceMode } from "../Editor/util";
 import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import {
   headerColumnWidth,
   headerRowHeight,
 } from "../WorksheetCanvas/worksheetCanvas";
-import { isInReferenceMode } from "../Editor/util";
 import type { Cell } from "../types";
 import { rangeToStr } from "../util";
 import type { WorkbookState } from "../workbookState";
