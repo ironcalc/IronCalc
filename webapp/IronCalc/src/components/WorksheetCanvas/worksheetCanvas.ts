@@ -1,6 +1,6 @@
 import type { Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
-import { getColor } from "../editor/util";
+import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
 import {

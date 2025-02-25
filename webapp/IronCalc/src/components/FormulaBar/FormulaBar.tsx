@@ -1,14 +1,14 @@
 import type { Model } from "@ironcalc/wasm";
 import { styled } from "@mui/material";
-import { Fx } from "../icons";
-import { theme } from "../theme";
+import { Fx } from "../../icons";
+import { theme } from "../../theme";
 import {
   COLUMN_WIDTH_SCALE,
   ROW_HEIGH_SCALE,
-} from "./WorksheetCanvas/constants";
-import { FORMULA_BAR_HEIGHT } from "./constants";
-import Editor from "./editor/editor";
-import type { WorkbookState } from "./workbookState";
+} from "../WorksheetCanvas/constants";
+import { FORMULA_BAR_HEIGHT } from "../constants";
+import Editor from "../Editor/Editor";
+import type { WorkbookState } from "../workbookState";
 
 type FormulaBarProps = {
   cellAddress: string;

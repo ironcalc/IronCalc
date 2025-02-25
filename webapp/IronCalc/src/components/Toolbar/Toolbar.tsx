@@ -36,19 +36,19 @@ import {
   ArrowMiddleFromLine,
   DecimalPlacesDecreaseIcon,
   DecimalPlacesIncreaseIcon,
-} from "../icons";
-import { theme } from "../theme";
-import ColorPicker from "./ColorPicker";
-import NameManagerDialog from "./NameManagerDialog";
-import type { NameManagerProperties } from "./NameManagerDialog/NameManagerDialog";
-import BorderPicker from "./borderPicker";
-import { TOOLBAR_HEIGHT } from "./constants";
-import FormatMenu from "./formatMenu";
+} from "../../icons";
+import { theme } from "../../theme";
+import BorderPicker from "../BorderPicker/BorderPicker";
+import ColorPicker from "../ColorPicker/ColorPicker";
+import FormatMenu from "../FormatMenu/FormatMenu";
 import {
   NumberFormats,
   decreaseDecimalPlaces,
   increaseDecimalPlaces,
-} from "./formatUtil";
+} from "../FormatMenu/formatUtil";
+import NameManagerDialog from "../NameManagerDialog";
+import type { NameManagerProperties } from "../NameManagerDialog/NameManagerDialog";
+import { TOOLBAR_HEIGHT } from "../constants";
 
 type ToolbarProperties = {
   canUndo: boolean;

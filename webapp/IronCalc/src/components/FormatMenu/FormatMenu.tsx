@@ -1,7 +1,7 @@
 import { Menu, MenuItem, styled } from "@mui/material";
 import { type ComponentProps, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import FormatPicker from "./formatPicker";
+import FormatPicker from "./FormatPicker";
 import { NumberFormats } from "./formatUtil";
 
 type FormatMenuProps = {

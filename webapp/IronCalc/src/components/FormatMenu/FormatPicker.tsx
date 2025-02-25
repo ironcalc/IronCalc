@@ -3,7 +3,7 @@ import { Dialog, TextField } from "@mui/material";
 import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../theme";
+import { theme } from "../../theme";
 
 type FormatPickerProps = {
   className?: string;

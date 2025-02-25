@@ -1,14 +1,14 @@
 import type { Model } from "@ironcalc/wasm";
 import { type PointerEvent, type RefObject, useCallback, useRef } from "react";
-import type WorksheetCanvas from "./WorksheetCanvas/worksheetCanvas";
+import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import {
   headerColumnWidth,
   headerRowHeight,
-} from "./WorksheetCanvas/worksheetCanvas";
-import { isInReferenceMode } from "./editor/util";
-import type { Cell } from "./types";
-import { rangeToStr } from "./util";
-import type { WorkbookState } from "./workbookState";
+} from "../WorksheetCanvas/worksheetCanvas";
+import { isInReferenceMode } from "../Editor/util";
+import type { Cell } from "../types";
+import { rangeToStr } from "../util";
+import type { WorkbookState } from "../workbookState";
 
 interface PointerSettings {
   canvasElement: RefObject<HTMLCanvasElement | null>;

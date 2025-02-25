@@ -5,7 +5,7 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
 import { useTranslation } from "react-i18next";
-import { theme } from "../theme";
+import { theme } from "../../theme";
 
 type ColorPickerProps = {
   color: string;
