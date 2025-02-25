@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../theme";
+import { theme } from "../../theme";
 
 const red_color = theme.palette.error.main;
 

@@ -1,7 +1,6 @@
 import { type Model, columnNameFromNumber } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import CellContextMenu from "./CellContextMenu";
 import {
   COLUMN_WIDTH_SCALE,
   LAST_COLUMN,
@@ -9,17 +8,18 @@ import {
   ROW_HEIGH_SCALE,
   outlineBackgroundColor,
   outlineColor,
-} from "./WorksheetCanvas/constants";
-import WorksheetCanvas from "./WorksheetCanvas/worksheetCanvas";
+} from "../WorksheetCanvas/constants";
+import WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import {
   FORMULA_BAR_HEIGHT,
   NAVIGATION_HEIGHT,
   TOOLBAR_HEIGHT,
-} from "./constants";
-import Editor from "./editor/editor";
-import type { Cell } from "./types";
+} from "../constants";
+import Editor from "../Editor/Editor";
+import type { Cell } from "../types";
+import { AreaType, type WorkbookState } from "../workbookState";
+import CellContextMenu from "./CellContextMenu";
 import usePointer from "./usePointer";
-import { AreaType, type WorkbookState } from "./workbookState";
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);

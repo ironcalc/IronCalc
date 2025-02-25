@@ -20,9 +20,9 @@ import {
   BorderRightIcon,
   BorderStyleIcon,
   BorderTopIcon,
-} from "../icons";
-import { theme } from "../theme";
-import ColorPicker from "./ColorPicker";
+} from "../../icons";
+import { theme } from "../../theme";
+import ColorPicker from "../ColorPicker/ColorPicker";
 
 type BorderPickerProps = {
   className?: string;

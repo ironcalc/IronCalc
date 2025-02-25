@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { type SelectedView, initSync } from "@ironcalc/wasm";
 import { expect, test } from "vitest";
-import { decreaseDecimalPlaces, increaseDecimalPlaces } from "../formatUtil";
+import {
+  decreaseDecimalPlaces,
+  increaseDecimalPlaces,
+} from "../FormatMenu/formatUtil";
 import { getFullRangeToString, isNavigationKey } from "../util";
 
 test("checks arrow left is a navigation key", () => {

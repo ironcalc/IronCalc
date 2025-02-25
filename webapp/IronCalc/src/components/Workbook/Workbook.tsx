@@ -6,26 +6,26 @@ import type {
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { useCallback, useEffect, useRef, useState } from "react";
-import SheetTabBar from "./SheetTabBar/SheetTabBar";
+import FormulaBar from "../FormulaBar/FormulaBar";
+import SheetTabBar from "../SheetTabBar";
+import Toolbar from "../Toolbar/Toolbar";
+import Worksheet from "../Worksheet/Worksheet";
 import {
   COLUMN_WIDTH_SCALE,
   LAST_COLUMN,
   ROW_HEIGH_SCALE,
-} from "./WorksheetCanvas/constants";
+} from "../WorksheetCanvas/constants";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
-} from "./clipboard";
-import FormulaBar from "./formulabar";
-import Toolbar from "./toolbar";
-import useKeyboardNavigation from "./useKeyboardNavigation";
+} from "../clipboard";
 import {
   type NavigationKey,
   getCellAddress,
   getFullRangeToString,
-} from "./util";
-import type { WorkbookState } from "./workbookState";
-import Worksheet from "./worksheet";
+} from "../util";
+import type { WorkbookState } from "../workbookState";
+import useKeyboardNavigation from "./useKeyboardNavigation";
 
 const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const { model, workbookState } = props;
