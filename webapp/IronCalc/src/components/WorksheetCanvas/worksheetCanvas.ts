@@ -497,7 +497,7 @@ export default class WorksheetCanvas {
     context.clip();
 
     // Is there any better parameter?
-    const lineHeight = 22;
+    const lineHeight = fontSize * 1.5;
     const lines = fullText.split("\n");
     const lineCount = lines.length;
 
@@ -608,14 +608,16 @@ export default class WorksheetCanvas {
       const sheet = this.model.getSelectedSheet();
       const rows = this.model.getRowsWithData(sheet, column);
       let width = 0;
-      // This is a bit of a HACK. We should use the actual font size and weather is bold or not
-      const fontSize = 13;
-      this.ctx.font = `${fontSize}px ${defaultCellFontFamily}`;
       for (const row of rows) {
         const fullText = this.model.getFormattedCellValue(sheet, row, column);
         if (fullText === "") {
           continue;
         }
+        const style = this.model.getCellStyle(sheet, row, column);
+        const fontSize = style.font.sz;
+        let font = `${fontSize}px ${defaultCellFontFamily}`;
+        font = style.font.b ? `bold ${font}` : `400 ${font}`;
+        this.ctx.font = font;
         const lines = fullText.split("\n");
         for (const line of lines) {
           const textWidth = this.ctx.measureText(line).width;
@@ -675,18 +677,20 @@ export default class WorksheetCanvas {
       const sheet = this.model.getSelectedSheet();
       const columns = this.model.getColumnsWithData(sheet, row);
       let height = 0;
-      const lineHeight = 22;
-      // This is a bit of a HACK. We should use the actual font size and weather is bold or not
-      const fontSize = 13;
-      this.ctx.font = `${fontSize}px ${defaultCellFontFamily}`;
       for (const column of columns) {
         const fullText = this.model.getFormattedCellValue(sheet, row, column);
         if (fullText === "") {
           continue;
         }
+        const style = this.model.getCellStyle(sheet, row, column);
+        const fontSize = style.font.sz;
+        const lineHeight = fontSize * 1.5;
+        let font = `${fontSize}px ${defaultCellFontFamily}`;
+        font = style.font.b ? `bold ${font}` : `400 ${font}`;
+        this.ctx.font = font;
         const lines = fullText.split("\n");
         const lineCount = lines.length;
-        // This si computed so that the y position of the text is independent of the vertical alignment
+        // This is computed so that the y position of the text is independent of the vertical alignment
         const textHeight = (lineCount - 1) * lineHeight + 8 + fontSize;
         height = Math.max(height, textHeight);
       }
