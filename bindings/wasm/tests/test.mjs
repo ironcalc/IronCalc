@@ -49,7 +49,7 @@ test('Styles work', () => {
         num_fmt: 'general',
         fill: { pattern_type: 'none' },
         font: {
-            sz: 11,
+            sz: 13,
             color: '#000000',
             name: 'Calibri',
             family: 2,
@@ -64,7 +64,7 @@ test('Styles work', () => {
         num_fmt: 'general',
         fill: { pattern_type: 'none' },
         font: {
-            sz: 11,
+            sz: 13,
             color: '#000000',
             name: 'Calibri',
             family: 2,

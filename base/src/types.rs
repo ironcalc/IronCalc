@@ -407,7 +407,7 @@ impl Default for Font {
             u: false,
             b: false,
             i: false,
-            sz: 11,
+            sz: 13,
             color: Some("#000000".to_string()),
             name: "Calibri".to_string(),
             family: 2,
