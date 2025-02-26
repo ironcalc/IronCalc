@@ -76,17 +76,12 @@ function ShareWorkbookDialog(properties: {
             fullWidth
             margin="normal"
             size="small"
-            style={{
-              fontSize: "12px",
-              paddingTop: "0px",
-            }}
           />
           <StyledButton
             variant="contained"
             color="primary"
             size="small"
             onClick={handleCopy}
-            style={{ textTransform: "capitalize", fontSize: "14px" }}
           >
             {copied ? <StyledCheck /> : <StyledCopy />}
             {copied ? "Copied!" : "Copy URL"}
@@ -136,6 +131,8 @@ const StyledTextField = styled(TextField)`
   margin: 0px;
   .MuiInputBase-root {
     max-height: 36px;
+    font-size: 14px;
+    padding-top: 0px;
   }
   .MuiOutlinedInput-input {
     text-overflow: ellipsis;
@@ -151,6 +148,9 @@ const StyledButton = styled(Button)`
   height: 36px;
   color: #616161;
   box-shadow: none;
+  font-size: 14px;
+  text-transform: capitalize;
+  gap: 10px;
   &:hover {
     background-color: #e0e0e0;
     box-shadow: none;

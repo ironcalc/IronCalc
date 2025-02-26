@@ -53,7 +53,7 @@ export function FileBar(properties: {
         type="text"
         style={{ position: "absolute", left: -9999, top: -9999 }}
       />
-      <div style={{ marginLeft: "auto" }}></div>
+      <div style={{ marginLeft: "auto" }} />
       <DialogContainer>
         <ShareButton onClick={() => setIsDialogOpen(true)} />
         {isDialogOpen && (
