@@ -7,6 +7,8 @@ import type {
 import { styled } from "@mui/material/styles";
 import type {} from "@mui/system";
 import {
+  AArrowDown,
+  AArrowUp,
   AlignCenter,
   AlignLeft,
   AlignRight,
@@ -67,6 +69,7 @@ type ToolbarProperties = {
   onNumberFormatPicked: (numberFmt: string) => void;
   onBorderChanged: (border: BorderOptions) => void;
   onClearFormatting: () => void;
+  onIncreaseFontSize: (delta: number) => void;
   fillColor: string;
   fontColor: string;
   bold: boolean;
@@ -247,6 +250,28 @@ function Toolbar(properties: ToolbarProperties) {
         onClick={() => setFontColorPickerOpen(true)}
       >
         <Type />
+      </StyledButton>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        disabled={!canEdit}
+        onClick={() => {
+          properties.onIncreaseFontSize(1);
+        }}
+        title={t("toolbar.increase_font_size")}
+      >
+        <AArrowUp />
+      </StyledButton>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        disabled={!canEdit}
+        onClick={() => {
+          properties.onIncreaseFontSize(-1);
+        }}
+        title={t("toolbar.decrease_font_size")}
+      >
+        <AArrowDown />
       </StyledButton>
       <StyledButton
         type="button"

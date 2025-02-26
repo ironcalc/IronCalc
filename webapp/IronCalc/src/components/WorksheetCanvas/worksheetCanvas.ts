@@ -353,7 +353,7 @@ export default class WorksheetCanvas {
       ? gridColor
       : backgroundColor;
 
-    const fontSize = 13;
+    const fontSize = style.font?.sz || 13;
     let font = `${fontSize}px ${defaultCellFontFamily}`;
     let textColor = defaultTextColor;
     if (style.font) {
