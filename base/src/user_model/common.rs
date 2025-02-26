@@ -6,7 +6,7 @@ use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    constants::{self, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW},
+    constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
@@ -430,10 +430,14 @@ impl UserModel {
             new_value: value.to_string(),
             old_value: Box::new(old_value),
         }];
+        let style = self.model.get_style_for_cell(sheet, row, column)?;
 
-        let line_count = value.split('\n').count();
+        let line_count = value.split('\n').count() as f64;
         let row_height = self.model.get_row_height(sheet, row)?;
-        let cell_height = (line_count as f64) * DEFAULT_ROW_HEIGHT;
+        // This is in sync with the front-end auto fit row
+        let font_size = style.font.sz as f64;
+        let line_height = font_size * 1.5;
+        let cell_height = (line_count - 1.0) * line_height + 8.0 + font_size;
         if cell_height > row_height {
             diff_list.push(Diff::SetRowHeight {
                 sheet,

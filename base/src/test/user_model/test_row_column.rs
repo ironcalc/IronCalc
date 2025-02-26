@@ -170,7 +170,7 @@ fn row_heigh_increases_automatically() {
     model
         .set_user_input(0, 1, 1, "My home in Canada had horses\nAnd monkeys!")
         .unwrap();
-    assert_eq!(model.get_row_height(0, 1), Ok(2.0 * DEFAULT_ROW_HEIGHT));
+    assert_eq!(model.get_row_height(0, 1), Ok(40.5));
 }
 
 #[test]
