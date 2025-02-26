@@ -119,6 +119,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     updateRangeStyle("num_fmt", numberFmt);
   };
 
+  const onIncreaseFontSize = (delta: number) => {
+    updateRangeStyle("font.size_delta", `${delta}`);
+  };
+
   const onCopyStyles = () => {
     const {
       sheet,
@@ -540,6 +544,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             columnEnd,
           );
           setRedrawId((id) => id + 1);
+        }}
+        onIncreaseFontSize={(delta: number) => {
+          onIncreaseFontSize(delta);
         }}
         onBorderChanged={(border: BorderOptions): void => {
           const {
