@@ -32,6 +32,7 @@ import {
   Type,
   Underline,
   Undo2,
+  WrapText,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -64,6 +65,7 @@ type ToolbarProperties = {
   onToggleStrike: (v: boolean) => void;
   onToggleHorizontalAlign: (v: string) => void;
   onToggleVerticalAlign: (v: string) => void;
+  onToggleWrapText: (v: boolean) => void;
   onCopyStyles: () => void;
   onTextColorPicked: (hex: string) => void;
   onFillColorPicked: (hex: string) => void;
@@ -81,6 +83,7 @@ type ToolbarProperties = {
   strike: boolean;
   horizontalAlign: HorizontalAlignment;
   verticalAlign: VerticalAlignment;
+  wrapText: boolean;
   canEdit: boolean;
   numFmt: string;
   showGridLines: boolean;
@@ -208,6 +211,30 @@ function Toolbar(properties: ToolbarProperties) {
       <Divider />
       <StyledButton
         type="button"
+        $pressed={false}
+        disabled={!canEdit}
+        onClick={() => {
+          properties.onIncreaseFontSize(-1);
+        }}
+        title={t("toolbar.decrease_font_size")}
+      >
+        <Minus />
+      </StyledButton>
+      <FontSizeBox>{properties.fontSize}</FontSizeBox>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        disabled={!canEdit}
+        onClick={() => {
+          properties.onIncreaseFontSize(1);
+        }}
+        title={t("toolbar.increase_font_size")}
+      >
+        <Plus />
+      </StyledButton>
+      <Divider />
+      <StyledButton
+        type="button"
         $pressed={properties.bold}
         onClick={() => properties.onToggleBold(!properties.bold)}
         disabled={!canEdit}
@@ -254,31 +281,6 @@ function Toolbar(properties: ToolbarProperties) {
       >
         <Type />
       </StyledButton>
-      <Divider />
-      <StyledButton
-        type="button"
-        $pressed={false}
-        disabled={!canEdit}
-        onClick={() => {
-          properties.onIncreaseFontSize(-1);
-        }}
-        title={t("toolbar.decrease_font_size")}
-      >
-        <Minus />
-      </StyledButton>
-      <FontSizeBox>{properties.fontSize}</FontSizeBox>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        disabled={!canEdit}
-        onClick={() => {
-          properties.onIncreaseFontSize(1);
-        }}
-        title={t("toolbar.increase_font_size")}
-      >
-        <Plus />
-      </StyledButton>
-      <Divider />
       <StyledButton
         type="button"
         $pressed={false}
@@ -366,6 +368,17 @@ function Toolbar(properties: ToolbarProperties) {
         title={t("toolbar.vertical_align_bottom")}
       >
         <ArrowDownToLine />
+      </StyledButton>
+      <StyledButton
+        type="button"
+        $pressed={properties.wrapText === true}
+        onClick={() => {
+          properties.onToggleWrapText(!properties.wrapText);
+        }}
+        disabled={!canEdit}
+        title={t("toolbar.wrap_text")}
+      >
+        <WrapText />
       </StyledButton>
 
       <Divider />

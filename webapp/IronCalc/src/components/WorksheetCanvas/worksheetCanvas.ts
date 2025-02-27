@@ -70,6 +70,52 @@ function hexToRGBA10Percent(colorHex: string): string {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
+/**
+ * Splits the given text into multiple lines. If `wrapText` is true, it applies word-wrapping
+ * based on the specified canvas context, maximum width, and horizontal padding.
+ *
+ * - First, the text is split by newline characters so that explicit newlines are respected.
+ * - If wrapping is enabled, each line is further split into words and measured against the
+ *   available width. Whenever adding an extra word would exceed
+ *   this limit, a new line is started.
+ *
+ * @param text     The text to split into lines.
+ * @param wrapText Whether to apply word-wrapping or just return text split by newlines.
+ * @param context  The `CanvasRenderingContext2D` used for measuring text width.
+ * @param width    The maximum width for each line.
+ * @returns        An array of lines (strings), each fitting within the specified width if wrapping is enabled.
+ */
+function computeWrappedLines(
+  text: string,
+  wrapText: boolean,
+  context: CanvasRenderingContext2D,
+  width: number,
+): string[] {
+  // Split the text into lines
+  const rawLines = text.split("\n");
+  if (!wrapText) {
+    // If there is no wrapping, return the raw lines
+    return rawLines;
+  }
+  const wrappedLines = [];
+  for (const line of rawLines) {
+    const words = line.split(" ");
+    let currentLine = words[0];
+    for (const word of words) {
+      const testLine = `${currentLine} ${word}`;
+      const textWidth = context.measureText(testLine).width;
+      if (textWidth < width) {
+        currentLine = testLine;
+      } else {
+        wrappedLines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    wrappedLines.push(currentLine);
+  }
+  return wrappedLines;
+}
+
 export default class WorksheetCanvas {
   sheetWidth: number;
 
@@ -371,6 +417,7 @@ export default class WorksheetCanvas {
     if (style.alignment?.vertical) {
       verticalAlign = style.alignment.vertical;
     }
+    const wrapText = style.alignment?.wrap_text || false;
 
     const context = this.ctx;
     context.font = font;
@@ -496,9 +543,14 @@ export default class WorksheetCanvas {
     context.rect(x, y, width, height);
     context.clip();
 
-    // Is there any better parameter?
+    // Is there any better to determine the line height?
     const lineHeight = fontSize * 1.5;
-    const lines = fullText.split("\n");
+    const lines = computeWrappedLines(
+      fullText,
+      wrapText,
+      context,
+      width - padding,
+    );
     const lineCount = lines.length;
 
     lines.forEach((text, line) => {
@@ -682,13 +734,19 @@ export default class WorksheetCanvas {
         if (fullText === "") {
           continue;
         }
+        const width = this.getColumnWidth(sheet, column);
         const style = this.model.getCellStyle(sheet, row, column);
         const fontSize = style.font.sz;
         const lineHeight = fontSize * 1.5;
         let font = `${fontSize}px ${defaultCellFontFamily}`;
         font = style.font.b ? `bold ${font}` : `400 ${font}`;
         this.ctx.font = font;
-        const lines = fullText.split("\n");
+        const lines = computeWrappedLines(
+          fullText,
+          style.alignment?.wrap_text || false,
+          this.ctx,
+          width,
+        );
         const lineCount = lines.length;
         // This is computed so that the y position of the text is independent of the vertical alignment
         const textHeight = (lineCount - 1) * lineHeight + 8 + fontSize;

@@ -26,6 +26,7 @@
     "vertical_align_middle": " Align middle",
     "vertical_align_top": "Align top",
     "selected_png": "Export Selected area as PNG",
+    "wrap_text": "Wrap text",
     "format_menu": {
       "auto": "Auto",
       "number": "Number",
