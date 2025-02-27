@@ -7,8 +7,6 @@ import type {
 import { styled } from "@mui/material/styles";
 import type {} from "@mui/system";
 import {
-  AArrowDown,
-  AArrowUp,
   AlignCenter,
   AlignLeft,
   AlignRight,
@@ -22,9 +20,11 @@ import {
   Grid2x2X,
   ImageDown,
   Italic,
+  Minus,
   PaintBucket,
   PaintRoller,
   Percent,
+  Plus,
   Redo2,
   RemoveFormatting,
   Strikethrough,
@@ -74,6 +74,7 @@ type ToolbarProperties = {
   onDownloadPNG: () => void;
   fillColor: string;
   fontColor: string;
+  fontSize: number;
   bold: boolean;
   underline: boolean;
   italic: boolean;
@@ -253,17 +254,7 @@ function Toolbar(properties: ToolbarProperties) {
       >
         <Type />
       </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        disabled={!canEdit}
-        onClick={() => {
-          properties.onIncreaseFontSize(1);
-        }}
-        title={t("toolbar.increase_font_size")}
-      >
-        <AArrowUp />
-      </StyledButton>
+      <Divider />
       <StyledButton
         type="button"
         $pressed={false}
@@ -273,8 +264,21 @@ function Toolbar(properties: ToolbarProperties) {
         }}
         title={t("toolbar.decrease_font_size")}
       >
-        <AArrowDown />
+        <Minus />
       </StyledButton>
+      <FontSizeBox>{properties.fontSize}</FontSizeBox>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        disabled={!canEdit}
+        onClick={() => {
+          properties.onIncreaseFontSize(1);
+        }}
+        title={t("toolbar.increase_font_size")}
+      >
+        <Plus />
+      </StyledButton>
+      <Divider />
       <StyledButton
         type="button"
         $pressed={false}
@@ -532,6 +536,18 @@ const Divider = styled("div")({
   height: "12px",
   borderLeft: `1px solid ${theme.palette.grey["300"]}`,
   margin: "0px 12px",
+});
+
+const FontSizeBox = styled("div")({
+  width: "24px",
+  height: "24px",
+  lineHeight: "24px",
+  textAlign: "center",
+  fontFamily: "Inter",
+  fontSize: "11px",
+  border: `1px solid ${theme.palette.grey["300"]}`,
+  borderRadius: "4px",
+  minWidth: "24px",
 });
 
 export default Toolbar;
