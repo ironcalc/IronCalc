@@ -628,6 +628,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
         fillColor={style.fill.fg_color || "#FFFFFF"}
         fontColor={style.font.color}
+        fontSize={style.font.sz}
         bold={style.font.b}
         underline={style.font.u}
         italic={style.font.i}
