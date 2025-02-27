@@ -9,10 +9,8 @@
 //!
 //! ```toml
 //! [dependencies]
-//! ironcalc = { git = "https://github.com/ironcalc/IronCalc" }
+//! ironcalc = { git = "https://github.com/ironcalc/IronCalc", tag = "v0.5.0" }
 //! ```
-//!
-//! <small> until version 0.5.0 you should use the git dependencies as stated </small>
 //!
 //! A simple example with some numbers, a new sheet and a formula:
 //!
