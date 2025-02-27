@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{expressions::types::Area, UserModel};
+use crate::{UserModel, expressions::types::Area};
 
 #[test]
 fn basic() {

@@ -1,5 +1,5 @@
 use ironcalc::{
-    base::{expressions::utils::number_to_column, Model},
+    base::{Model, expressions::utils::number_to_column},
     export::save_to_xlsx,
 };
 

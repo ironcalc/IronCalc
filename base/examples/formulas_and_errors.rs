@@ -1,4 +1,4 @@
-use ironcalc_base::{types::CellType, Model};
+use ironcalc_base::{Model, types::CellType};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut model = Model::new_empty("formulas-and-errors", "en", "UTC")?;

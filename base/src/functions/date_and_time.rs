@@ -31,7 +31,7 @@ impl Model {
                     error: Error::NUM,
                     origin: cell,
                     message: "Out of range parameters for date".to_string(),
-                }
+                };
             }
         };
         let day = date.day() as f64;
@@ -54,7 +54,7 @@ impl Model {
                     error: Error::NUM,
                     origin: cell,
                     message: "Out of range parameters for date".to_string(),
-                }
+                };
             }
         };
         let month = date.month() as f64;
@@ -87,7 +87,7 @@ impl Model {
                     error: Error::NUM,
                     origin: cell,
                     message: "Out of range parameters for date".to_string(),
-                }
+                };
             }
         };
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
@@ -192,7 +192,7 @@ impl Model {
                     error: Error::NUM,
                     origin: cell,
                     message: "Out of range parameters for date".to_string(),
-                }
+                };
             }
         };
         let year = date.year() as f64;
@@ -216,7 +216,7 @@ impl Model {
                     error: Error::NUM,
                     origin: cell,
                     message: "Out of range parameters for date".to_string(),
-                }
+                };
             }
         };
 
@@ -266,7 +266,7 @@ impl Model {
                     error: Error::ERROR,
                     origin: cell,
                     message: "Invalid date".to_string(),
-                }
+                };
             }
         };
         // 693_594 is computed as:
@@ -296,7 +296,7 @@ impl Model {
                     error: Error::ERROR,
                     origin: cell,
                     message: "Invalid date".to_string(),
-                }
+                };
             }
         };
         // 693_594 is computed as:

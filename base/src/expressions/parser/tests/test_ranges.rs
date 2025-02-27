@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::expressions::lexer::LexerMode;
 
-use crate::expressions::parser::stringify::{to_rc_format, to_string};
 use crate::expressions::parser::Parser;
+use crate::expressions::parser::stringify::{to_rc_format, to_string};
 use crate::expressions::types::CellReferenceRC;
 
 struct Formula<'a> {

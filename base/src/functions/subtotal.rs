@@ -1,7 +1,7 @@
 use crate::{
     calc_result::CalcResult,
     expressions::{
-        parser::{parse_range, Node},
+        parser::{Node, parse_range},
         token::Error,
         types::CellReferenceIndex,
     },

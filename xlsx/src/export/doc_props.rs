@@ -1,6 +1,6 @@
 use chrono::DateTime;
 use ironcalc_base::{
-    new_empty::{APPLICATION, APP_VERSION, IRONCALC_USER},
+    new_empty::{APP_VERSION, APPLICATION, IRONCALC_USER},
     types::Workbook,
 };
 
@@ -42,7 +42,7 @@ pub(crate) fn get_core_xml(workbook: &Workbook, milliseconds: i64) -> Result<Str
             return Err(XlsxError::Xml(format!(
                 "Invalid timestamp: {}",
                 milliseconds
-            )))
+            )));
         }
     };
     let last_modified = dt.format("%Y-%m-%dT%H:%M:%SZ").to_string();

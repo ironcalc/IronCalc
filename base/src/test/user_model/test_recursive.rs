@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
-    constants::LAST_ROW, expressions::types::Area, test::util::new_empty_model, UserModel,
+    UserModel, constants::LAST_ROW, expressions::types::Area, test::util::new_empty_model,
 };
 
 #[test]

@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    border_utils::is_max_border, common::BorderType, history::Diff, BorderArea, UserModel,
+    BorderArea, UserModel, border_utils::is_max_border, common::BorderType, history::Diff,
 };
 
 impl UserModel {

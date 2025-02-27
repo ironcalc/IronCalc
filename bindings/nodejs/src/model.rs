@@ -1,12 +1,12 @@
 #![deny(clippy::all)]
 
-use napi::{self, bindgen_prelude::*, JsUnknown, Result};
+use napi::{self, JsUnknown, Result, bindgen_prelude::*};
 use serde::Serialize;
 
 use ironcalc::{
   base::{
-    types::{CellType, Style},
     Model as BaseModel,
+    types::{CellType, Style},
   },
   error::XlsxError,
   export::{save_to_icalc, save_to_xlsx},

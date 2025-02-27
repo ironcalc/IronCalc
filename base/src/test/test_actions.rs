@@ -206,9 +206,11 @@ fn test_delete_column_width() {
     let (sheet, column) = (0, 5);
     let normal_width = model.get_column_width(sheet, column).unwrap();
     // Set the width of one column to 5 times the normal width
-    assert!(model
-        .set_column_width(sheet, column, normal_width * 5.0)
-        .is_ok());
+    assert!(
+        model
+            .set_column_width(sheet, column, normal_width * 5.0)
+            .is_ok()
+    );
 
     // delete it
     assert!(model.delete_columns(sheet, column, 1).is_ok());

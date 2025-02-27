@@ -22,7 +22,7 @@ use itertools::Itertools;
 
 use ironcalc_base::{
     expressions::{
-        parser::{stringify::to_excel_string, Node},
+        parser::{Node, stringify::to_excel_string},
         types::CellReferenceRC,
         utils::number_to_column,
     },

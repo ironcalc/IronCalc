@@ -156,7 +156,7 @@ mod tests {
 
     use super::*;
     use crate::language::get_language;
-    use crate::locale::{get_locale, Locale};
+    use crate::locale::{Locale, get_locale};
 
     fn get_test_locale() -> &'static Locale {
         #![allow(clippy::unwrap_used)]

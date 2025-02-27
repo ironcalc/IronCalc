@@ -1,6 +1,6 @@
 use super::{
-    stringify::{stringify_reference, DisplaceData},
     Node, Reference,
+    stringify::{DisplaceData, stringify_reference},
 };
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},

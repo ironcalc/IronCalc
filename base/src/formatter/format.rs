@@ -161,7 +161,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text: "#VALUE!".to_owned(),
                         color: None,
                         error: Some(e),
-                    }
+                    };
                 }
             };
             for token in tokens {
@@ -391,11 +391,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                             if l_exp <= p.exponent_digit_count {
                                 if !(number_index < 0 && digit.kind == '#') {
                                     let c = if number_index < 0 {
-                                        if digit.kind == '?' {
-                                            ' '
-                                        } else {
-                                            '0'
-                                        }
+                                        if digit.kind == '?' { ' ' } else { '0' }
                                     } else {
                                         exponent_part[number_index as usize]
                                     };

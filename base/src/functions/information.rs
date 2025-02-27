@@ -257,10 +257,10 @@ impl Model {
                 {
                     match defined_name {
                         ParsedDefinedName::CellReference(reference) => {
-                            return CalcResult::Number(reference.sheet as f64 + 1.0)
+                            return CalcResult::Number(reference.sheet as f64 + 1.0);
                         }
                         ParsedDefinedName::RangeReference(range) => {
-                            return CalcResult::Number(range.left.sheet as f64 + 1.0)
+                            return CalcResult::Number(range.left.sheet as f64 + 1.0);
                         }
                         ParsedDefinedName::InvalidDefinedNameFormula => {
                             return CalcResult::Error {
@@ -296,7 +296,7 @@ impl Model {
                     error: Error::NAME,
                     origin: cell,
                     message: format!("Name not found: {name}"),
-                }
+                };
             }
             arg => {
                 // Now it should be the name of a sheet

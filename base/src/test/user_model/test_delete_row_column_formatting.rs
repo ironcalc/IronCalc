@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
+    UserModel,
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW},
     expressions::types::Area,
-    UserModel,
 };
 
 #[test]

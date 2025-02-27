@@ -5,7 +5,7 @@ authors = ["Nicolas Hatcher <nicolas@theuniverse.today>"]
 description = "IronCalc Web bindings"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/ironcalc/ironcalc"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]

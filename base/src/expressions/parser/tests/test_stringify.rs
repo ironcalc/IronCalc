@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use crate::expressions::parser::stringify::to_string;
 use crate::expressions::parser::Parser;
+use crate::expressions::parser::stringify::to_string;
 use crate::expressions::types::CellReferenceRC;
 
 #[test]

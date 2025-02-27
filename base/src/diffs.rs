@@ -2,7 +2,7 @@ use crate::{
     expressions::{
         parser::{
             move_formula::ref_is_in_area,
-            stringify::{to_string, to_string_displaced, DisplaceData},
+            stringify::{DisplaceData, to_string, to_string_displaced},
             walk::forward_references,
         },
         types::{Area, CellReferenceIndex, CellReferenceRC},

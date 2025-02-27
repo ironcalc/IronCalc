@@ -16,8 +16,8 @@ use std::{
 use roxmltree::Node;
 
 use ironcalc_base::{
-    types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
     Model,
+    types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
 };
 
 use crate::error::XlsxError;
@@ -28,7 +28,7 @@ use metadata::load_metadata;
 use styles::load_styles;
 use util::get_attribute;
 use workbook::load_workbook;
-use worksheets::{load_sheets, Relationship};
+use worksheets::{Relationship, load_sheets};
 
 fn load_relationships<R: Read + std::io::Seek>(
     archive: &mut zip::ZipArchive<R>,

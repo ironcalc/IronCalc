@@ -179,52 +179,60 @@ fn test_move_formula_rectangle() {
         width: 2,
         height: 20,
     };
-    assert!(model
-        .move_cell_value_to_area(
-            value,
-            &CellReferenceIndex {
-                sheet: 0,
-                column: 3,
-                row: 1,
-            },
-            target,
-            area
-        )
-        .is_err());
-    assert!(model
-        .move_cell_value_to_area(
-            value,
-            &CellReferenceIndex {
-                sheet: 0,
-                column: 2,
-                row: 1,
-            },
-            target,
-            area
-        )
-        .is_ok());
-    assert!(model
-        .move_cell_value_to_area(
-            value,
-            &CellReferenceIndex {
-                sheet: 0,
-                column: 1,
-                row: 20,
-            },
-            target,
-            area
-        )
-        .is_ok());
-    assert!(model
-        .move_cell_value_to_area(
-            value,
-            &CellReferenceIndex {
-                sheet: 0,
-                column: 1,
-                row: 21,
-            },
-            target,
-            area
-        )
-        .is_err());
+    assert!(
+        model
+            .move_cell_value_to_area(
+                value,
+                &CellReferenceIndex {
+                    sheet: 0,
+                    column: 3,
+                    row: 1,
+                },
+                target,
+                area
+            )
+            .is_err()
+    );
+    assert!(
+        model
+            .move_cell_value_to_area(
+                value,
+                &CellReferenceIndex {
+                    sheet: 0,
+                    column: 2,
+                    row: 1,
+                },
+                target,
+                area
+            )
+            .is_ok()
+    );
+    assert!(
+        model
+            .move_cell_value_to_area(
+                value,
+                &CellReferenceIndex {
+                    sheet: 0,
+                    column: 1,
+                    row: 20,
+                },
+                target,
+                area
+            )
+            .is_ok()
+    );
+    assert!(
+        model
+            .move_cell_value_to_area(
+                value,
+                &CellReferenceIndex {
+                    sheet: 0,
+                    column: 1,
+                    row: 21,
+                },
+                target,
+                area
+            )
+            .is_err()
+    );
 }

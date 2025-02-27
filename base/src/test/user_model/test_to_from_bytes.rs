@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{test::util::new_empty_model, UserModel};
+use crate::{UserModel, test::util::new_empty_model};
 
 #[test]
 fn basic() {
