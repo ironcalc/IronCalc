@@ -112,6 +112,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     updateRangeStyle("alignment.vertical", value);
   };
 
+  const onToggleWrapText = (value: boolean) => {
+    updateRangeStyle("alignment.wrap_text", `${value}`);
+  };
+
   const onTextColorPicked = (hex: string) => {
     updateRangeStyle("font.color", hex);
   };
@@ -532,6 +536,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onToggleStrike={onToggleStrike}
         onToggleHorizontalAlign={onToggleHorizontalAlign}
         onToggleVerticalAlign={onToggleVerticalAlign}
+        onToggleWrapText={onToggleWrapText}
         onCopyStyles={onCopyStyles}
         onTextColorPicked={onTextColorPicked}
         onFillColorPicked={onFillColorPicked}
@@ -639,6 +644,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         verticalAlign={
           style.alignment?.vertical ? style.alignment.vertical : "bottom"
         }
+        wrapText={style.alignment?.wrap_text || false}
         canEdit={true}
         numFmt={style.num_fmt}
         showGridLines={model.getShowGridLines(model.getSelectedSheet())}
