@@ -34,7 +34,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ runner.os }}-${{ matrix.target }}
           path: bindings/python/dist
 
   windows:
@@ -58,7 +58,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ runner.os }}-${{ matrix.target }}
           path: bindings/python/dist
 
   macos:
@@ -81,7 +81,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ runner.os }}-${{ matrix.target }}
           path: bindings/python/dist
 
   sdist:
@@ -97,7 +97,7 @@ jobs:
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ runner.os }}-sdist
           path: bindings/python/dist
 
   publish-to-test-pypi:
@@ -107,9 +107,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [linux, windows, macos, sdist]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          name: wheels
           path: bindings/python/
       - name: Publish distribution 📦 to Test PyPI
         uses: PyO3/maturin-action@v1
@@ -128,9 +127,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [linux, windows, macos, sdist]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          name: wheels
           path: bindings/python/
       - name: Publish distribution 📦 to PyPI
         uses: PyO3/maturin-action@v1
