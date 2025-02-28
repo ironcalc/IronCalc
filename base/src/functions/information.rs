@@ -249,7 +249,7 @@ impl Model {
         // The arg could be a defined name or a table
         // let  = &args[0];
         match &args[0] {
-            Node::DefinedNameKind((name, scope)) => {
+            Node::DefinedNameKind((name, scope, _)) => {
                 // Let's see if it is a defined name
                 if let Some(defined_name) = self
                     .parsed_defined_names
