@@ -23,6 +23,9 @@ import InsertRowBelow from "./insert-row-below.svg?react";
 import IronCalcIcon from "./ironcalc_icon.svg?react";
 import IronCalcLogo from "./orange+black.svg?react";
 
+import MergeCellsIcon from "./merge-cells.svg?react";
+import UnmergeCellsIcon from "./unmerge-cells.svg?react";
+
 import Fx from "./fx.svg?react";
 
 export {
@@ -47,5 +50,7 @@ export {
   InsertRowBelow,
   IronCalcIcon,
   IronCalcLogo,
+  MergeCellsIcon,
+  UnmergeCellsIcon,
   Fx,
 };

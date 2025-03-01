@@ -110,7 +110,7 @@ pub struct Worksheet {
     pub sheet_id: u32,
     pub state: SheetState,
     pub color: Option<String>,
-    pub merge_cells: Vec<String>,
+    pub merged_cells: HashMap<(i32, i32), (i32, i32)>,
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
     pub frozen_columns: i32,
@@ -217,7 +217,10 @@ pub enum Cell {
         // Error Message: "Not implemented function"
         m: String,
     },
-    // TODO: Array formulas
+    Merged {
+        r: i32,
+        c: i32,
+    }, // TODO: Array formulas
 }
 
 impl Default for Cell {

@@ -611,6 +611,29 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           downloadLink.download = "ironcalc.png";
           downloadLink.click();
         }}
+        onMergeCells={() => {
+          const {
+            sheet,
+            range: [rowStart, columnStart, rowEnd, columnEnd],
+          } = model.getSelectedView();
+          const row = Math.min(rowStart, rowEnd);
+          const column = Math.min(columnStart, columnEnd);
+
+          const width = Math.abs(columnEnd - columnStart) + 1;
+          const height = Math.abs(rowEnd - rowStart) + 1;
+          model.mergeCells(sheet, row, column, width, height);
+          setRedrawId((id) => id + 1);
+        }}
+        onUnmergeCells={() => {
+          const {
+            sheet,
+            range: [rowStart, columnStart, rowEnd, columnEnd],
+          } = model.getSelectedView();
+          const row = Math.min(rowStart, rowEnd);
+          const column = Math.min(columnStart, columnEnd);
+          model.unmergeCells(sheet, row, column);
+          setRedrawId((id) => id + 1);
+        }}
         onBorderChanged={(border: BorderOptions): void => {
           const {
             sheet,

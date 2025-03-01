@@ -216,7 +216,7 @@ export interface SelectedView {
 // };
 
 // type ClipboardData = Record<string, Record <string, ClipboardCell>>;
-type ClipboardData = Map<number, Map <number, ClipboardCell>>;
+type ClipboardData = Map<number, Map<number, ClipboardCell>>;
 
 export interface ClipboardCell {
   text: string;
@@ -234,3 +234,8 @@ export interface DefinedName {
   scope?: number;
   formula: string;
 }
+
+export type CellStructure =
+  | "Simple"
+  | { Merged: { row: number; column: number } }
+  | { MergedRoot: { width: number; height: number } };

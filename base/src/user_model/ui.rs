@@ -2,7 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::expressions::utils::{is_valid_column_number, is_valid_row};
+use crate::{
+    expressions::utils::{is_valid_column_number, is_valid_row},
+    CellStructure,
+};
 
 use super::common::UserModel;
 
@@ -97,26 +100,47 @@ impl UserModel {
         if !is_valid_row(row) {
             return Err(format!("Invalid row: '{row}'"));
         }
-        if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
-        }
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&0) {
-                view.row = row;
-                view.column = column;
-                view.range = [row, column, row, column];
+        let worksheet = self.model.workbook.worksheet_mut(sheet)?;
+        let structure = worksheet.get_cell_structure(row, column)?;
+        // check if the selected cell is a merged cell
+        let [row_start, columns_start, row_end, columns_end] = match structure {
+            CellStructure::Simple => [row, column, row, column],
+            CellStructure::Merged {
+                row: row_start,
+                column: column_start,
+            } => {
+                let (width, height) = match worksheet.merged_cells.get(&(row_start, column_start)) {
+                    Some(s) => s,
+                    None => return Err(format!("Merged cell not found: ({row_start}, {column_start}) when clicking at ({row}, {column}).")),
+                };
+                let row_end = row_start + height - 1;
+                let column_end = column_start + width - 1;
+                [row_start, column_start, row_end, column_end]
             }
+            CellStructure::MergedRoot { width, height } => {
+                let row_start = row;
+                let columns_start = column;
+                let row_end = row + height - 1;
+                let columns_end = column + width - 1;
+                [row_start, columns_start, row_end, columns_end]
+            }
+        };
+        if let Some(view) = worksheet.views.get_mut(&0) {
+            view.row = row_start;
+            view.column = columns_start;
+            view.range = [row_start, columns_start, row_end, columns_end];
         }
+
         Ok(())
     }
 
     /// Sets the selected range. Note that the selected cell must be in one of the corners.
     pub fn set_selected_range(
         &mut self,
-        start_row: i32,
-        start_column: i32,
-        end_row: i32,
-        end_column: i32,
+        row_start: i32,
+        column_start: i32,
+        row_end: i32,
+        column_end: i32,
     ) -> Result<(), String> {
         let sheet = if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
             view.sheet
@@ -124,42 +148,72 @@ impl UserModel {
             0
         };
 
-        if !is_valid_column_number(start_column) {
-            return Err(format!("Invalid column: '{start_column}'"));
+        if !is_valid_column_number(column_start) {
+            return Err(format!("Invalid column: '{column_start}'"));
         }
-        if !is_valid_row(start_row) {
-            return Err(format!("Invalid row: '{start_row}'"));
+        if !is_valid_row(row_start) {
+            return Err(format!("Invalid row: '{row_start}'"));
         }
 
-        if !is_valid_column_number(end_column) {
-            return Err(format!("Invalid column: '{end_column}'"));
+        if !is_valid_column_number(column_end) {
+            return Err(format!("Invalid column: '{column_end}'"));
         }
-        if !is_valid_row(end_row) {
-            return Err(format!("Invalid row: '{end_row}'"));
+        if !is_valid_row(row_end) {
+            return Err(format!("Invalid row: '{row_end}'"));
         }
-        if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
-        }
-        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
-            if let Some(view) = worksheet.views.get_mut(&0) {
-                let selected_row = view.row;
-                let selected_column = view.column;
-                // The selected cells must be on one of the corners of the selected range:
-                if selected_row != start_row && selected_row != end_row {
-                    return Err(format!(
-                        "The selected cells is not in one of the corners. Row: '{}' and row range '({}, {})'",
-                        selected_row, start_row, end_row
-                    ));
+        let mut start_row = row_start;
+        let mut start_column = column_start;
+        let mut end_row = row_end;
+        let mut end_column = column_end;
+        let worksheet = self.model.workbook.worksheet_mut(sheet)?;
+        let merged_cells = &worksheet.merged_cells;
+        if !merged_cells.is_empty() {
+            // We need to check if there are merged cells in the selected range
+            for row in row_start..=row_end {
+                for column in column_start..=column_end {
+                    let structure = &worksheet.get_cell_structure(row, column)?;
+                    match structure {
+                        CellStructure::Simple => {}
+                        CellStructure::Merged { row: r, column: c } => {
+                            // The selected range must contain the merged cell
+                            let (width, height) = match merged_cells.get(&(*r, *c)) {
+                                Some(s) => s,
+                                None => return Err(format!("Merged cell not found: ({r}, {c}) when selecting range ({start_row}, {start_column}, {end_row}, {end_column}).")),
+                            };
+                            start_row = start_row.min(*r);
+                            start_column = start_column.min(*c);
+                            end_row = end_row.max(*r + height - 1);
+                            end_column = end_column.max(*c + width - 1);
+
+                        }
+                        CellStructure::MergedRoot { width, height } => {
+                            // The selected range must contain the merged cell
+                            end_row = end_row.max(row + height - 1);
+                            end_column = end_column.max(column + width - 1);
+                        }
+                    }
                 }
-                if selected_column != start_column && selected_column != end_column {
-                    return Err(format!(
-                        "The selected cells is not in one of the corners. Column '{}' and column range '({}, {})'",
-                        selected_column, start_column, end_column
-                    ));
-                }
-                view.range = [start_row, start_column, end_row, end_column];
             }
         }
+        if let Some(view) = worksheet.views.get_mut(&0) {
+            // let selected_row = view.row;
+            // let selected_column = view.column;
+            // // The selected cells must be on one of the corners of the selected range:
+            // if selected_row != start_row && selected_row != end_row {
+            //     return Err(format!(
+            //             "The selected cells is not in one of the corners. Row: '{}' and row range '({}, {})'",
+            //             selected_row, start_row, end_row
+            //         ));
+            // }
+            // if selected_column != start_column && selected_column != end_column {
+            //     return Err(format!(
+            //             "The selected cells is not in one of the corners. Column '{}' and column range '({}, {})'",
+            //             selected_column, start_column, end_column
+            //         ));
+            // }
+            view.range = [start_row, start_column, end_row, end_column];
+        }
+
         Ok(())
     }
 

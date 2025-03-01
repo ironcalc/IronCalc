@@ -40,6 +40,8 @@ import {
   ArrowMiddleFromLine,
   DecimalPlacesDecreaseIcon,
   DecimalPlacesIncreaseIcon,
+  MergeCellsIcon,
+  UnmergeCellsIcon,
 } from "../../icons";
 import { theme } from "../../theme";
 import BorderPicker from "../BorderPicker/BorderPicker";
@@ -74,6 +76,8 @@ type ToolbarProperties = {
   onClearFormatting: () => void;
   onIncreaseFontSize: (delta: number) => void;
   onDownloadPNG: () => void;
+  onMergeCells: () => void;
+  onUnmergeCells: () => void;
   fillColor: string;
   fontColor: string;
   fontSize: number;
@@ -428,6 +432,28 @@ function Toolbar(properties: ToolbarProperties) {
         title={t("toolbar.selected_png")}
       >
         <ImageDown />
+      </StyledButton>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        disabled={!canEdit}
+        onClick={() => {
+          properties.onMergeCells();
+        }}
+        title={t("toolbar.merge_cells")}
+      >
+        <MergeCellsIcon /> 
+      </StyledButton>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        disabled={!canEdit}
+        onClick={() => {
+          properties.onUnmergeCells();
+        }}
+        title={t("toolbar.unmerge_cells")}
+      >
+        <UnmergeCellsIcon /> 
       </StyledButton>
 
       <ColorPicker

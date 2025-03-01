@@ -161,7 +161,21 @@ pub(crate) enum Diff {
         new_scope: Option<u32>,
         new_formula: String,
     },
-    // FIXME: we are missing SetViewDiffs
+    MergeCells {
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+        old_data: Vec<(Cell, Style)>,
+    },
+    UnmergeCells {
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+    }, // FIXME: we are missing SetViewDiffs
 }
 
 pub(crate) type DiffList = Vec<Diff>;

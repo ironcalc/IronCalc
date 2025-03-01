@@ -386,10 +386,29 @@ export default class WorksheetCanvas {
     column: number,
     x: number,
     y: number,
-    width: number,
-    height: number,
+    width1: number,
+    height1: number,
   ): void {
     const selectedSheet = this.model.getSelectedSheet();
+    const structure = this.model.getCellStructure(selectedSheet, row, column);
+    if (typeof structure === 'object' && 'Merged' in structure) {
+      // We don't render merged cells
+      return;
+    }
+    let width = width1;
+    let height = height1;
+    if (typeof structure === 'object' && 'MergedRoot' in structure) {
+      const root = structure.MergedRoot;
+      const columns = root.width;
+      const rows = root.height;
+      for (let i = 1; i < columns; i += 1) {
+        width += this.getColumnWidth(selectedSheet, column + i);
+      }
+      for (let i = 1; i < rows; i += 1) {
+        height += this.getRowHeight(selectedSheet, row + i);
+      }
+    };
+
     const style = this.model.getCellStyle(selectedSheet, row, column);
 
     let backgroundColor = "#FFFFFF";

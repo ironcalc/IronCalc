@@ -1,6 +1,7 @@
 use crate::constants::{self, LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::{is_valid_column_number, is_valid_row};
+use crate::CellStructure;
 use crate::{expressions::token::Error, types::*};
 
 use std::collections::HashMap;
@@ -36,6 +37,24 @@ impl Worksheet {
 
     pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
         self.sheet_data.get(&row)?.get(&column)
+    }
+
+    pub fn get_cell_structure(&self, row: i32, column: i32) -> Result<CellStructure, String> {
+        if let Some((width, height)) = self.merged_cells.get(&(row, column)) {
+            return Ok(CellStructure::MergedRoot {
+                width: *width,
+                height: *height,
+            });
+        }
+        let cell = self.cell(row, column);
+        if let Some(Cell::Merged { r, c }) = cell {
+            return Ok(CellStructure::Merged {
+                row: *r,
+                column: *c,
+            });
+        }
+
+        Ok(CellStructure::Simple)
     }
 
     pub(crate) fn cell_mut(&mut self, row: i32, column: i32) -> Option<&mut Cell> {

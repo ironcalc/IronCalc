@@ -31,6 +31,7 @@ use crate::{
 };
 
 use chrono_tz::Tz;
+use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -70,6 +71,27 @@ pub(crate) enum CellState {
     Evaluated,
     /// The cell is being evaluated
     Evaluating,
+}
+
+/// Cell structure indicates if the cell is part of a merged cell or not
+#[derive(Clone, Serialize, Deserialize)]
+pub enum CellStructure {
+    /// The cell is not part of a merged cell
+    Simple,
+    /// The cell is part of a merged cell, and teh root cell is (row, column)
+    Merged {
+        /// Row of the root cell
+        row: i32,
+        /// Column of the root cell
+        column: i32,
+    },
+    /// The cell is the root of a merged cell of dimensions (width, height)
+    MergedRoot {
+        /// Width of the merged cell
+        width: i32,
+        /// Height of the merged cell
+        height: i32,
+    },
 }
 
 /// A parsed formula for a defined name
@@ -751,6 +773,7 @@ impl Model {
                     }
                 }
             }
+            Merged { .. } => CalcResult::EmptyCell,
         }
     }
 
@@ -1438,6 +1461,10 @@ impl Model {
         value: String,
     ) -> Result<(), String> {
         // If value starts with "'" then we force the style to be quote_prefix
+        let cell = self.workbook.worksheet(sheet)?.cell(row, column);
+        if matches!(cell, Some(Cell::Merged { .. })) {
+            return Err("Cannot set value on merged cell".to_string());
+        }
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         if let Some(new_value) = value.strip_prefix('\'') {
             // First check if it needs quoting
@@ -2257,6 +2284,91 @@ impl Model {
     /// Deletes the style of a row if there is any
     pub fn delete_row_style(&mut self, sheet: u32, row: i32) -> Result<(), String> {
         self.workbook.worksheet_mut(sheet)?.delete_row_style(row)
+    }
+
+    /// Returns the geometric structure of a cell
+    pub fn get_cell_structure(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<CellStructure, String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        worksheet.get_cell_structure(row, column)
+    }
+
+    /// Merges cells
+    pub fn merge_cells(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), String> {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        let sheet_data = &mut worksheet.sheet_data;
+        // First check that it is possible to merge the cells
+        for r in row..(row + height) {
+            for c in column..(column + width) {
+                if let Some(Cell::Merged { .. }) =
+                    sheet_data.get(&r).and_then(|row_data| row_data.get(&c))
+                {
+                    return Err("Cannot merge cells".to_string());
+                }
+            }
+        }
+        worksheet
+            .merged_cells
+            .insert((row, column), (width, height));
+        for r in row..(row + height) {
+            for c in column..(column + width) {
+                // We remove everything except the "root" cell:
+                if r == row && c == column {
+                    continue;
+                }
+                if let Some(row_data) = sheet_data.get_mut(&r) {
+                    row_data.remove(&c);
+                    row_data.insert(c, Cell::Merged { r: row, c: column });
+                } else {
+                    let mut row_data = HashMap::new();
+                    row_data.insert(c, Cell::Merged { r: row, c: column });
+                    sheet_data.insert(r, row_data);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Unmerges cells
+    pub fn unmerge_cells(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        let s = self.get_cell_style_index(sheet, row, column)?;
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        let sheet_data = &mut worksheet.sheet_data;
+        let (width, height) = match worksheet.merged_cells.get(&(row, column)) {
+            Some((w, h)) => (*w, *h),
+            None => return Ok(()),
+        };
+        worksheet.merged_cells.remove(&(row, column));
+        for r in row..(row + width) {
+            for c in column..(column + height) {
+                // We remove everything except the "root" cell:
+                if r == row && c == column {
+                    continue;
+                }
+                if let Some(row_data) = sheet_data.get_mut(&r) {
+                    row_data.remove(&c);
+                    if s != 0 {
+                        row_data.insert(c, Cell::EmptyCell { s });
+                    }
+                } else if s != 0 {
+                    let mut row_data = HashMap::new();
+                    row_data.insert(c, Cell::EmptyCell { s });
+                    sheet_data.insert(r, row_data);
+                }
+            }
+        }
+        Ok(())
     }
 }
 

@@ -989,7 +989,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         sheet_data.insert(row_index, data_row);
     }
 
-    let merge_cells = load_merge_cells(ws)?;
+    let merged_cells = load_merged_cells(ws)?;
 
     // Conditional Formatting
     // <conditionalFormatting sqref="B1:B9">
@@ -1028,7 +1028,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             sheet_id,
             state: state.to_owned(),
             color,
-            merge_cells,
+            merged_cells,
             comments: settings.comments,
             frozen_rows: sheet_view.frozen_rows,
             frozen_columns: sheet_view.frozen_columns,

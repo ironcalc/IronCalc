@@ -11,7 +11,7 @@ use crate::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
     },
-    model::Model,
+    model::{CellStructure, Model},
     types::{
         Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, SheetState,
         Style, VerticalAlignment,
@@ -1869,6 +1869,57 @@ impl UserModel {
         Ok(())
     }
 
+    /// Merges cells
+    pub fn merge_cells(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), String> {
+        let old_data = Vec::new();
+        let diff_list = vec![Diff::MergeCells {
+            sheet,
+            row,
+            column,
+            width,
+            height,
+            old_data,
+        }];
+        self.model.merge_cells(sheet, row, column, width, height)?;
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Check if cell is part of a merged cell
+    pub fn get_cell_structure(&self, sheet: u32, row: i32, column: i32) -> Result<CellStructure, String> {
+        self.model.get_cell_structure(sheet, row, column)
+    }
+
+    /// Unmerges cells
+    pub fn unmerge_cells(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        let (width, height) = self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .merged_cells
+            .get(&(row, column))
+            .ok_or("No merged cells found")?;
+        let diff_list = vec![Diff::UnmergeCells {
+            sheet,
+            row,
+            column,
+            width: *width,
+            height: *height,
+        }];
+        self.model.unmerge_cells(sheet, row, column)?;
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
     // **** Private methods ****** //
 
     pub(crate) fn push_diff_list(&mut self, diff_list: DiffList) {
@@ -2112,7 +2163,6 @@ impl UserModel {
                     worksheet.frozen_rows = old_data.frozen_rows;
                     worksheet.state = old_data.state.clone();
                     worksheet.color = old_data.color.clone();
-                    worksheet.merge_cells = old_data.merge_cells.clone();
                     worksheet.shared_formulas = old_data.shared_formulas.clone();
                     self.model.reset_parsed_structures();
 
@@ -2162,6 +2212,34 @@ impl UserModel {
                     } else {
                         self.model.delete_row_style(*sheet, *row)?;
                     }
+                }
+                Diff::MergeCells {
+                    sheet,
+                    row,
+                    column,
+                    width,
+                    height,
+                    old_data,
+                } => {
+                    needs_evaluation = true;
+                    self.model.unmerge_cells(*sheet, *row, *column)?;
+                    // for (r, c, v) in old_data.iter() {
+                    //     self.model
+                    //         .workbook
+                    //         .worksheet_mut(*sheet)?
+                    //         .update_cell(*r, *c, v.clone())?;
+                    // }
+                }
+                Diff::UnmergeCells {
+                    sheet,
+                    row,
+                    column,
+                    width,
+                    height,
+                } => {
+                    needs_evaluation = true;
+                    self.model
+                        .merge_cells(*sheet, *row, *column, *width, *height)?;
                 }
             }
         }
@@ -2363,6 +2441,34 @@ impl UserModel {
                     old_value: _,
                 } => {
                     self.model.delete_row_style(*sheet, *row)?;
+                }
+                Diff::MergeCells {
+                    sheet,
+                    row,
+                    column,
+                    width,
+                    height,
+                    old_data: _,
+                } => {
+                    needs_evaluation = true;
+                    self.model
+                        .merge_cells(*sheet, *row, *column, *width, *height)?;
+                    // for (r, c, v) in old_data.iter() {
+                    //     self.model
+                    //         .workbook
+                    //         .worksheet_mut(*sheet)?
+                    //         .update_cell(*r, *c, v.clone())?;
+                    // }
+                }
+                Diff::UnmergeCells {
+                    sheet,
+                    row,
+                    column,
+                    width,
+                    height,
+                } => {
+                    needs_evaluation = true;
+                    self.model.unmerge_cells(*sheet, *row, *column)?;
                 }
             }
         }

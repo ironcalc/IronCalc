@@ -89,6 +89,8 @@ impl Cell {
             Cell::CellFormulaNumber { s, .. } => *s = style,
             Cell::CellFormulaString { s, .. } => *s = style,
             Cell::CellFormulaError { s, .. } => *s = style,
+            // Should we throw an error here?
+            Cell::Merged { .. } => {}
         };
     }
 
@@ -104,6 +106,8 @@ impl Cell {
             Cell::CellFormulaNumber { s, .. } => *s,
             Cell::CellFormulaString { s, .. } => *s,
             Cell::CellFormulaError { s, .. } => *s,
+            // A merged cell has no style
+            Cell::Merged { .. } => 0,
         }
     }
 
@@ -119,6 +123,7 @@ impl Cell {
             Cell::CellFormulaNumber { .. } => CellType::Number,
             Cell::CellFormulaString { .. } => CellType::Text,
             Cell::CellFormulaError { .. } => CellType::ErrorValue,
+            Cell::Merged { .. } => CellType::Number,
         }
     }
 
@@ -156,6 +161,7 @@ impl Cell {
                 let v = ei.to_localized_error_string(language);
                 CellValue::String(v)
             }
+            Cell::Merged { .. } => CellValue::None,
         }
     }
 

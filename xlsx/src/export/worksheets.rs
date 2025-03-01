@@ -220,6 +220,7 @@ pub(crate) fn get_worksheet_xml(
                         "<c r=\"{cell_name}\" t=\"e\"{style}><f>{formula}</f><v>{ei}</v></c>"
                     ));
                 }
+                Cell::Merged { .. } => { /* do nothing */ }
             }
         }
         let row_style_str = match row_style_dict.get(row_index) {
@@ -247,7 +248,7 @@ pub(crate) fn get_worksheet_xml(
     }
     let sheet_data = sheet_data_str.join("");
 
-    for merge_cell_ref in &worksheet.merge_cells {
+    for merge_cell_ref in &worksheet.merged_cells {
         merged_cells_str.push(format!("<mergeCell ref=\"{merge_cell_ref}\"/>"))
     }
     let merged_cells_count = merged_cells_str.len();

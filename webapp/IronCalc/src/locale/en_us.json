@@ -27,6 +27,8 @@
     "vertical_align_top": "Align top",
     "selected_png": "Export Selected area as PNG",
     "wrap_text": "Wrap text",
+    "merge_cells": "Merge cells",
+    "unmerge_cells": "Unmerge cells",
     "format_menu": {
       "auto": "Auto",
       "number": "Number",

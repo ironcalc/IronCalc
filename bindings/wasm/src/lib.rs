@@ -5,9 +5,7 @@ use wasm_bindgen::{
 };
 
 use ironcalc_base::{
-    expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
-    types::{CellType, Style},
-    BorderArea, ClipboardData, UserModel as BaseModel,
+    expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column}, types::{CellType, Style}, BorderArea, ClipboardData, UserModel as BaseModel
 };
 
 fn to_js_error(error: String) -> JsError {
@@ -671,5 +669,37 @@ impl Model {
         self.model
             .delete_defined_name(name, scope)
             .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "mergeCells")]
+    pub fn merge_cells(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .merge_cells(sheet, row, column, width, height)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "unmergeCells")]
+    pub fn unmerge_cells(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), JsError> {
+        self.model
+            .unmerge_cells(sheet, row, column)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "getCellStructure")]
+    pub fn get_cell_structure(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<JsValue, JsError> {
+        let data = self.model.get_cell_structure(sheet, row, column).map_err(|e| to_js_error(e.to_string()))?;
+        serde_wasm_bindgen::to_value(&data).map_err(|e| to_js_error(e.to_string()))
     }
 }
