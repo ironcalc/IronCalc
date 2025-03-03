@@ -101,7 +101,8 @@ function computeWrappedLines(
   for (const line of rawLines) {
     const words = line.split(" ");
     let currentLine = words[0];
-    for (const word of words) {
+    for (let i = 1; i < words.length; i += 1) {
+      const word = words[i];
       const testLine = `${currentLine} ${word}`;
       const textWidth = context.measureText(testLine).width;
       if (textWidth < width) {
