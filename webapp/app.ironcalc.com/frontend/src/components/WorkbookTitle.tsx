@@ -1,89 +1,105 @@
 import styled from "@emotion/styled";
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
-export function WorkbookTitle(props: {
+// This element has a in situ editable text
+// We use a virtual element to compute the size of the input
+
+export function WorkbookTitle(properties: {
   name: string;
   onNameChange: (name: string) => void;
+  maxWidth: number;
 }) {
   const [width, setWidth] = useState(0);
-  const [value, setValue] = useState(props.name);
+  const [name, setName] = useState(properties.name);
   const mirrorDivRef = useRef<HTMLDivElement>(null);
 
-  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(event.target.value);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setName(event.target.value);
     if (mirrorDivRef.current) {
       setWidth(mirrorDivRef.current.scrollWidth);
     }
   };
 
   useEffect(() => {
+    setName(properties.name);
+  }, [properties.name]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We need to change the width with every value change
+  useLayoutEffect(() => {
     if (mirrorDivRef.current) {
       setWidth(mirrorDivRef.current.scrollWidth);
     }
-  }, []);
-
-  useEffect(() => {
-    setValue(props.name);
-  }, [props.name]);
+  }, [name]);
 
   return (
-    <div
+    <Container
       style={{
-        position: "absolute",
-        left: "50%",
-        textAlign: "center",
-        transform: "translateX(-50%)",
-        // height: "60px",
-        // lineHeight: "60px",
-        padding: "8px",
-        fontSize: "14px",
-        fontWeight: "700",
-        fontFamily: "Inter",
-        width,
+        width: Math.min(width, properties.maxWidth),
       }}
     >
-      <TitleWrapper
-        value={value}
-        rows={1}
-        onChange={handleChange}
+      <TitleInput
+        value={name}
+        onInput={handleChange}
         onBlur={(event) => {
-          props.onNameChange(event.target.value);
+          properties.onNameChange(event.target.value);
         }}
-        style={{ width: width }}
+        onKeyDown={(event) => {
+          switch (event.key) {
+            case "Enter": {
+              // If we hit "Enter" finish editing
+              event.currentTarget.blur();
+              break;
+            }
+            case "Escape": {
+              // revert changes
+              setName(properties.name);
+              break;
+            }
+          }
+        }}
+        style={{ width: Math.min(width, properties.maxWidth) }}
         spellCheck="false"
-      >
-        {value}
-      </TitleWrapper>
-      <div
-        ref={mirrorDivRef}
-        style={{
-          position: "absolute",
-          top: "-9999px",
-          left: "-9999px",
-          whiteSpace: "pre-wrap",
-          textWrap: "nowrap",
-          visibility: "hidden",
-          fontFamily: "inherit",
-          fontSize: "inherit",
-          lineHeight: "inherit",
-          padding: "inherit",
-          border: "inherit",
-        }}
-      >
-        {value}
-      </div>
-    </div>
+      />
+      <MirrorDiv ref={mirrorDivRef}>{name}</MirrorDiv>
+    </Container>
   );
 }
 
-const TitleWrapper = styled("textarea")`
+const Container = styled("div")`
+  text-align: center;
+  padding: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: Inter;
+`;
+
+const MirrorDiv = styled("div")`
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  white-space: pre-wrap;
+  text-wrap: nowrap;
+  visibility: hidden;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: inherit;
+  border: inherit;
+`;
+
+const TitleInput = styled("input")`
   vertical-align: middle;
   text-align: center;
   height: 20px;
   line-height: 20px;
   border-radius: 4px;
   padding: inherit;
-  overflow: hidden;
   outline: none;
   resize: none;
   text-wrap: nowrap;
@@ -97,8 +113,6 @@ const TitleWrapper = styled("textarea")`
   font-weight: inherit;
   font-family: inherit;
   font-size: inherit;
-  max-width: 520px;
-  overflow: hidden;
+  overflow: ellipsis;
   white-space: nowrap;
-  text-overflow: ellipsis;
 `;

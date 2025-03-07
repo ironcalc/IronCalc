@@ -1,13 +1,27 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
 import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { FileMenu } from "./FileMenu";
 import { ShareButton } from "./ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
 import { WorkbookTitle } from "./WorkbookTitle";
 import { downloadModel } from "./rpc";
 import { updateNameSelectedWorkbook } from "./storage";
+
+// This hook is used to get the width of the window
+function useWindowWidth() {
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    function updateWidth() {
+      setWidth(window.innerWidth);
+    }
+    window.addEventListener("resize", updateWidth);
+    updateWidth();
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
+  return width;
+}
 
 export function FileBar(properties: {
   model: Model;
@@ -16,8 +30,19 @@ export function FileBar(properties: {
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
 }) {
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const spacerRef = useRef<HTMLDivElement>(null);
+  const [maxTitleWidth, setMaxTitleWidth] = useState(0);
+  const width = useWindowWidth();
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
+  useLayoutEffect(() => {
+    const el = spacerRef.current;
+    if (el) {
+      const bb = el.getBoundingClientRect();
+      setMaxTitleWidth(bb.right - bb.left - 50);
+    }
+  }, [width]);
 
   return (
     <FileBarWrapper>
@@ -41,19 +66,17 @@ export function FileBar(properties: {
       >
         Help
       </HelpButton>
-      <WorkbookTitle
-        name={properties.model.getName()}
-        onNameChange={(name) => {
-          properties.model.setName(name);
-          updateNameSelectedWorkbook(properties.model, name);
-        }}
-      />
-      <input
-        ref={hiddenInputRef}
-        type="text"
-        style={{ position: "absolute", left: -9999, top: -9999 }}
-      />
-      <div style={{ marginLeft: "auto" }} />
+      <WorkbookTitleWrapper>
+        <WorkbookTitle
+          name={properties.model.getName()}
+          onNameChange={(name) => {
+            properties.model.setName(name);
+            updateNameSelectedWorkbook(properties.model, name);
+          }}
+          maxWidth={maxTitleWidth}
+        />
+      </WorkbookTitleWrapper>
+      <Spacer ref={spacerRef} />
       <DialogContainer>
         <ShareButton onClick={() => setIsDialogOpen(true)} />
         {isDialogOpen && (
@@ -67,6 +90,19 @@ export function FileBar(properties: {
     </FileBarWrapper>
   );
 }
+
+// We want the workbook title to be exactly an the center of the page,
+// so we need an absolute position
+const WorkbookTitleWrapper = styled("div")`
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+`;
+
+// The "Spacer" component occupies as much space as possible between the menu and the share button
+const Spacer = styled("div")`
+  flex-grow: 1;
+`;
 
 const StyledDesktopLogo = styled(IronCalcLogo)`
   width: 120px;
@@ -103,14 +139,15 @@ const Divider = styled("div")`
   border-left: 1px solid #e0e0e0;
 `;
 
+// The container must be relative positioned so we can position the title absolutely
 const FileBarWrapper = styled("div")`
+  position: relative;
   height: 60px;
   width: 100%;
   background: #fff;
   display: flex;
   align-items: center;
   border-bottom: 1px solid #e0e0e0;
-  position: relative;
   justify-content: space-between;
 `;
 
