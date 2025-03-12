@@ -67,7 +67,7 @@ type ToolbarProperties = {
   onToggleVerticalAlign: (v: string) => void;
   onToggleWrapText: (v: boolean) => void;
   onCopyStyles: () => void;
-  onTextColorPicked: (hex: string) => void;
+  onTextColorPicked: (hex: string | null) => void;
   onFillColorPicked: (hex: string) => void;
   onNumberFormatPicked: (numberFmt: string) => void;
   onBorderChanged: (border: BorderOptions) => void;
@@ -410,10 +410,10 @@ function Toolbar(properties: ToolbarProperties) {
       <StyledButton
         type="button"
         $pressed={false}
-        disabled={!canEdit}
         onClick={() => {
           properties.onClearFormatting();
         }}
+        disabled={!canEdit}
         title={t("toolbar.clear_formatting")}
       >
         <RemoveFormatting />
@@ -421,13 +421,24 @@ function Toolbar(properties: ToolbarProperties) {
       <StyledButton
         type="button"
         $pressed={false}
-        disabled={!canEdit}
         onClick={() => {
           properties.onDownloadPNG();
         }}
+        disabled={!canEdit}
         title={t("toolbar.selected_png")}
       >
         <ImageDown />
+      </StyledButton>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        onClick={() => {
+          // Add your onClick handler logic here
+        }}
+        disabled={!canEdit}
+        title={t("toolbar.new_button")}
+      >
+        {/* Add your button icon or text here */}
       </StyledButton>
 
       <ColorPicker
@@ -445,7 +456,9 @@ function Toolbar(properties: ToolbarProperties) {
       <ColorPicker
         color={properties.fillColor}
         onChange={(color): void => {
-          properties.onFillColorPicked(color);
+          if (color !== null) {
+            properties.onFillColorPicked(color);
+          }
           setFillColorPickerOpen(false);
         }}
         onClose={() => {
