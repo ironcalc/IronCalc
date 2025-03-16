@@ -32,6 +32,7 @@ export function FileBar(properties: {
   onDelete: () => void;
   isDrawerOpen: boolean;
   setIsDrawerOpen: (open: boolean) => void;
+  refreshModelsData: () => void; // Add this new prop
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,7 @@ export function FileBar(properties: {
           onNameChange={(name) => {
             properties.model.setName(name);
             updateNameSelectedWorkbook(properties.model, name);
+            properties.refreshModelsData();
           }}
           maxWidth={maxTitleWidth}
         />
@@ -108,10 +110,15 @@ const Spacer = styled("div")`
 
 const DrawerButton = styled(IconButton)`
   margin-left: 8px;
-  height: 24px;
-  width: 24px;
-  padding: 4px;
+  height: 32px;
+  width: 32px;
+  padding: 8px;
   border-radius: 4px;
+  svg {
+    stroke: #757575;
+    width: 16px;
+    height: 16px;
+  }
 `;
 
 const HelpButton = styled("div")`
