@@ -90,6 +90,7 @@ export function FileMenu(props: {
             Download (.xlsx)
           </MenuItemText>
         </MenuItemWrapper>
+        <MenuDivider />
         <MenuItemWrapper
           onClick={() => {
             setDeleteDialogOpen(true);
@@ -99,8 +100,6 @@ export function FileMenu(props: {
           <StyledTrash />
           <MenuItemText>Delete workbook</MenuItemText>
         </MenuItemWrapper>
-        <MenuDivider />
-        {elements}
       </Menu>
       <Modal
         open={isImportMenuOpen}
