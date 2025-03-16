@@ -1,0 +1,179 @@
+import styled from "@emotion/styled";
+import { IronCalcLogo } from "@ironcalc/workbook";
+import { Drawer, IconButton, MenuItem } from "@mui/material";
+import { EllipsisVertical, Plus } from "lucide-react";
+import type React from "react";
+
+interface LeftDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  newModel: () => void;
+  setModel: (key: string) => void;
+  models: { [key: string]: string };
+  selectedUuid: string | null;
+}
+
+const LeftDrawer: React.FC<LeftDrawerProps> = ({
+  open,
+  onClose,
+  newModel,
+  setModel,
+  models,
+  selectedUuid,
+}) => {
+  const elements = Object.keys(models).map((uuid) => (
+    <MenuItemWrapper
+      key={uuid}
+      onClick={() => {
+        setModel(uuid);
+      }}
+      selected={uuid === selectedUuid}
+    >
+      <MenuItemText
+        style={{
+          maxWidth: "240px",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {models[uuid]}
+      </MenuItemText>
+      <EllipsisButton
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+        size="small"
+      >
+        <EllipsisVertical />
+      </EllipsisButton>
+    </MenuItemWrapper>
+  ));
+
+  return (
+    <DrawerWrapper
+      variant="persistent"
+      anchor="left"
+      open={open}
+      onClose={onClose}
+      sx={{ width: 264, height: "100%" }}
+    >
+      <DrawerHeader>
+        <StyledDesktopLogo />
+        <AddButton
+          onClick={() => {
+            newModel();
+          }}
+        >
+          <PlusIcon />
+        </AddButton>
+      </DrawerHeader>
+      <DrawerContent>{elements}</DrawerContent>
+    </DrawerWrapper>
+  );
+};
+
+const DrawerWrapper = styled(Drawer)`
+  width: 264px;
+  flex-shrink: 0;
+
+  .MuiDrawer-paper {
+    width: 264px;
+    background-color: #f5f5f5;
+    overflow: hidden;
+    border-right: 1px solid #e0e0e0;
+  }
+`;
+
+const DrawerHeader = styled("div")`
+  display: flex;
+  align-items: center;
+  padding: 12px 8px 12px 16px;
+  justify-content: space-between;
+  max-height: 60px;
+  border-bottom: 1px solid #e0e0e0;
+`;
+
+const StyledDesktopLogo = styled(IronCalcLogo)`
+  width: 120px;
+  height: 36px;
+`;
+
+const AddButton = styled(IconButton)`
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  height: 36px;
+  width: 36px;
+  border-radius: 8px;
+  margin-left: 10px;
+  color: #333333;
+  stroke-width: 2px;
+  &:hover {
+    background-color: #e0e0e0;
+  }
+`;
+
+const PlusIcon = styled(Plus)`
+  width: 16px;
+  height: 16px;
+`;
+
+const DrawerContent = styled("div")`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  height: 100%;
+  overflow: scroll;
+`;
+
+const MenuItemWrapper = styled(MenuItem)<{ selected: boolean }>`
+  display: flex;
+  gap: 0px;
+  justify-content: flex-start;
+  font-size: 14px;
+  width: 100%;
+  min-width: 172px;
+  border-radius: 8px;
+  padding: 8px 4px 8px 8px;
+  height: 32px;
+  transition: padding-left 0.5s;
+  background-color: ${({ selected }) =>
+    selected ? "#e0e0e0 !important" : "transparent"};
+  &:hover {
+    padding-left: 12px;
+    transition: padding-left 0.1s;
+  }
+`;
+
+const MenuItemText = styled("div")`
+  color: #000;
+  font-size: 13px;
+  width: 100%;
+`;
+
+const EllipsisButton = styled(IconButton)`
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  height: 24px;
+  width: 24px;
+  border-radius: 8px;
+  color: #333333;
+  stroke-width: 2px;
+  opacity: 0.4;
+  &:hover {
+    background: none;
+    opacity: 1;
+  }
+`;
+
+export default LeftDrawer;

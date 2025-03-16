@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
 import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
+import { IconButton } from "@mui/material";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { FileMenu } from "./FileMenu";
 import { ShareButton } from "./ShareButton";
@@ -29,6 +31,8 @@ export function FileBar(properties: {
   setModel: (key: string) => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
+  isDrawerOpen: boolean;
+  setIsDrawerOpen: (open: boolean) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -46,6 +50,11 @@ export function FileBar(properties: {
 
   return (
     <FileBarWrapper>
+      <DrawerButton
+        onClick={() => properties.setIsDrawerOpen(!properties.isDrawerOpen)}
+      >
+        {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+      </DrawerButton>
       <StyledDesktopLogo />
       <StyledIronCalcIcon />
       <Divider />
@@ -118,6 +127,14 @@ const StyledIronCalcIcon = styled(IronCalcIcon)`
   @media (min-width: 769px) {
     display: none;
   }
+`;
+
+const DrawerButton = styled(IconButton)`
+  margin-left: 8px;
+  height: 24px;
+  width: 24px;
+  padding: 4px;
+  border-radius: 4px;
 `;
 
 const HelpButton = styled("div")`
