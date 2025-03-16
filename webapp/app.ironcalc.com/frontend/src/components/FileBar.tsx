@@ -3,7 +3,7 @@ import type { Model } from "@ironcalc/workbook";
 import { IconButton } from "@mui/material";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
-import { FileMenu } from "./FileMenu";
+import { ParentMenu } from "./FileMenu";
 import { ShareButton } from "./ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
 import { WorkbookTitle } from "./WorkbookTitle";
@@ -35,9 +35,11 @@ export function FileBar(properties: {
   refreshModelsData: () => void; // Add this new prop
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // Add state for menu visibility
   const spacerRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
+  const menuAnchorRef = useRef<HTMLButtonElement>(null); // Add ref for menu anchor
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -66,8 +68,8 @@ export function FileBar(properties: {
           maxWidth={maxTitleWidth}
         />
       </WorkbookTitleWrapper>
-      <Divider />
-      <FileMenu
+
+      <ParentMenu
         newModel={properties.newModel}
         setModel={properties.setModel}
         onModelUpload={properties.onModelUpload}
@@ -79,11 +81,7 @@ export function FileBar(properties: {
         }}
         onDelete={properties.onDelete}
       />
-      <HelpButton
-        onClick={() => window.open("https://docs.ironcalc.com", "_blank")}
-      >
-        Help
-      </HelpButton>
+
       <Spacer ref={spacerRef} />
       <DialogContainer>
         <ShareButton onClick={() => setIsDialogOpen(true)} />
@@ -115,29 +113,11 @@ const DrawerButton = styled(IconButton)`
   padding: 8px;
   border-radius: 4px;
   svg {
+    stroke-width: 2px;
     stroke: #757575;
     width: 16px;
     height: 16px;
   }
-`;
-
-const HelpButton = styled("div")`
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  font-family: Inter;
-  padding: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  &:hover {
-    background-color: #f2f2f2;
-  }
-`;
-
-const Divider = styled("div")`
-  margin: 0px 8px 0px 16px;
-  height: 12px;
-  border-left: 1px solid #e0e0e0;
 `;
 
 // The container must be relative positioned so we can position the title absolutely
@@ -151,6 +131,7 @@ const FileBarWrapper = styled("div")`
   align-items: center;
   border-bottom: 1px solid #e0e0e0;
   justify-content: space-between;
+  box-sizing: border-box;
 `;
 
 const DialogContainer = styled("div")`
