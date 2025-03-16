@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { IronCalcLogo } from "@ironcalc/workbook";
-import { Drawer, IconButton, MenuItem } from "@mui/material";
+import { Avatar, Drawer, IconButton, MenuItem } from "@mui/material";
 import { EllipsisVertical, Plus } from "lucide-react";
 import type React from "react";
 
@@ -68,6 +68,19 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
         </AddButton>
       </DrawerHeader>
       <DrawerContent>{elements}</DrawerContent>
+      <DrawerFooter>
+        <UserWrapper>
+          <StyledAvatar
+            alt="Tom Hemy"
+            src="/path/to/avatar.jpg"
+            sx={{ bgcolor: "#f2994a", width: 24, height: 24 }}
+          />
+          <Username>Tom Hemy</Username>
+          <EllipsisButton size="small">
+            <EllipsisVertical />
+          </EllipsisButton>
+        </UserWrapper>
+      </DrawerFooter>
     </DrawerWrapper>
   );
 };
@@ -75,6 +88,7 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
 const DrawerWrapper = styled(Drawer)`
   width: 264px;
   flex-shrink: 0;
+  font-family: "Inter", sans-serif;
 
   .MuiDrawer-paper {
     width: 264px;
@@ -174,6 +188,33 @@ const EllipsisButton = styled(IconButton)`
     background: none;
     opacity: 1;
   }
+`;
+
+const DrawerFooter = styled("div")`
+  display: flex;
+  align-items: center;
+  padding: 12px 8px 12px 16px;
+  justify-content: space-between;
+  max-height: 60px;
+  height: 60px;
+  border-top: 1px solid #e0e0e0;
+  box-sizing: border-box;
+`;
+
+const UserWrapper = styled("div")`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-grow: 1;
+`;
+
+const StyledAvatar = styled(Avatar)`
+  font-size: 14px;
+`;
+
+const Username = styled("div")`
+  font-size: 14px;
+  flex-grow: 1;
 `;
 
 export default LeftDrawer;
