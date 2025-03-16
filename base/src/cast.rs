@@ -14,7 +14,7 @@ impl Model {
         self.cast_to_number(result, cell)
     }
 
-    fn cast_to_number(
+    pub(crate) fn cast_to_number(
         &mut self,
         result: CalcResult,
         cell: CellReferenceIndex,

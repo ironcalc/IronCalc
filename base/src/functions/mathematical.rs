@@ -103,6 +103,18 @@ impl Model {
         CalcResult::Number(result)
     }
 
+    /// SUM(number1, [number2], ...)
+    ///
+    /// The SUM function adds values. You can add individual values, cell references or ranges or a mix of all three.
+    ///
+    /// # Details
+    /// Generally each argument is evaluated and the result is converted to a number. However there are some special
+    /// cases:
+    /// - **Args evaluating to CalcResult::Range**: The sum of all the numbers in the range is calculated. No
+    ///   conversions are performed, non-numeric values are ignored and errors are propagated.
+    /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaulated value of the
+    ///   referenced cell and errors are propagated.
+    /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
     pub(crate) fn fn_sum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -110,8 +122,31 @@ impl Model {
 
         let mut result = 0.0;
         for arg in args {
+            // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
+            let arg = match arg {
+                Node::ReferenceKind {
+                    column,
+                    absolute_column,
+                    row,
+                    absolute_row,
+                    sheet_index,
+                    sheet_name,
+                } => &Node::RangeKind {
+                    sheet_name: sheet_name.clone(),
+                    sheet_index: *sheet_index,
+                    absolute_row1: *absolute_row,
+                    absolute_column1: *absolute_column,
+                    row1: *row,
+                    column1: *column,
+                    absolute_row2: *absolute_row,
+                    absolute_column2: *absolute_column,
+                    row2: *row,
+                    column2: *column,
+                },
+                _ => arg,
+            };
+
             match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => result += value,
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -170,26 +205,66 @@ impl Model {
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
+                calc_result => {
+                    let cast_result = self.cast_to_number(calc_result, cell);
+                    match cast_result {
+                        Ok(f) => result += f,
+                        Err(s) => return s,
+                    }
                 }
             };
         }
         CalcResult::Number(result)
     }
 
+    /// PRODUCT(number1, [number2], ...)
+    ///
+    /// The PRODUCT function multiplies values. You can add individual values, cell references or ranges or a mix of all
+    /// three.
+    ///
+    /// # Details
+    /// Generally each argument is evaluated and the result is converted to a number. However there are some special
+    /// cases:
+    /// - **Args evaluating to CalcResult::Range**: The product of all the numbers in the range is calculated. No
+    ///   conversions are performed, non-numeric values are ignored and errors are propagated.
+    /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaulated value of the
+    ///   referenced cell and errors are propagated.
+    /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
     pub(crate) fn fn_product(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
         let mut result = 1.0;
         let mut seen_value = false;
+
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => {
-                    seen_value = true;
-                    result *= value;
-                }
+            // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
+            let arg = match arg {
+                Node::ReferenceKind {
+                    column,
+                    absolute_column,
+                    row,
+                    absolute_row,
+                    sheet_index,
+                    sheet_name,
+                } => &Node::RangeKind {
+                    sheet_name: sheet_name.clone(),
+                    sheet_index: *sheet_index,
+                    absolute_row1: *absolute_row,
+                    absolute_column1: *absolute_column,
+                    row1: *row,
+                    column1: *column,
+                    absolute_row2: *absolute_row,
+                    absolute_column2: *absolute_column,
+                    row2: *row,
+                    column2: *column,
+                },
+                _ => arg,
+            };
+
+            let cell_value = self.evaluate_node_in_context(arg, cell);
+
+            match cell_value {
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -198,6 +273,8 @@ impl Model {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
+
+                    // TODO: We should do this for all functions that run through ranges. See fn_sum for more details
                     let row1 = left.row;
                     let mut row2 = right.row;
                     let column1 = left.column;
@@ -228,11 +305,12 @@ impl Model {
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
+                            let cell_value = self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
-                            }) {
+                            });
+                            match cell_value {
                                 CalcResult::Number(value) => {
                                     seen_value = true;
                                     result *= value;
@@ -246,8 +324,13 @@ impl Model {
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
+                calc_result => {
+                    seen_value = true;
+                    let cast_result = self.cast_to_number(calc_result, cell);
+                    match cast_result {
+                        Ok(f) => result *= f,
+                        Err(s) => return s,
+                    }
                 }
             };
         }
