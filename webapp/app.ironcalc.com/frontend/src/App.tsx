@@ -136,13 +136,14 @@ function App() {
             const newModel = Model.from_bytes(bytes);
             saveModelToStorage(newModel);
             setModel(newModel);
-            refreshModelsData(); // Refresh after model change
+            refreshModelsData();
           }}
           newModel={handleNewModel}
           setModel={handleSetModel}
           onDelete={handleDeleteModel}
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
+          refreshModelsData={refreshModelsData}
         />
         <IronCalc model={model} />
       </MainContent>
