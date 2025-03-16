@@ -62,7 +62,10 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
           <PlusIcon />
         </AddButton>
       </DrawerHeader>
-      <DrawerContent>{elements}</DrawerContent>
+      <DrawerContent>
+        <DrawerContentTitle>Your workbooks</DrawerContentTitle>
+        {elements}
+      </DrawerContent>
       <DrawerFooter>
         <UserWrapper>
           <StyledAvatar
@@ -135,9 +138,17 @@ const DrawerContent = styled("div")`
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 16px;
+  padding: 20px 16px;
   height: 100%;
   overflow: scroll;
+`;
+
+const DrawerContentTitle = styled("div")`
+  font-size: 12px;
+  font-weight: 600;
+  color: #9e9e9e;
+  margin-bottom: 8px;
+  padding: 0px 8px;
 `;
 
 const StorageIndicator = styled("div")`
