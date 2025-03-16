@@ -55,8 +55,16 @@ export function FileBar(properties: {
       >
         {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
       </DrawerButton>
-      <StyledDesktopLogo />
-      <StyledIronCalcIcon />
+      <WorkbookTitleWrapper>
+        <WorkbookTitle
+          name={properties.model.getName()}
+          onNameChange={(name) => {
+            properties.model.setName(name);
+            updateNameSelectedWorkbook(properties.model, name);
+          }}
+          maxWidth={maxTitleWidth}
+        />
+      </WorkbookTitleWrapper>
       <Divider />
       <FileMenu
         newModel={properties.newModel}
@@ -75,16 +83,6 @@ export function FileBar(properties: {
       >
         Help
       </HelpButton>
-      <WorkbookTitleWrapper>
-        <WorkbookTitle
-          name={properties.model.getName()}
-          onNameChange={(name) => {
-            properties.model.setName(name);
-            updateNameSelectedWorkbook(properties.model, name);
-          }}
-          maxWidth={maxTitleWidth}
-        />
-      </WorkbookTitleWrapper>
       <Spacer ref={spacerRef} />
       <DialogContainer>
         <ShareButton onClick={() => setIsDialogOpen(true)} />
@@ -103,9 +101,7 @@ export function FileBar(properties: {
 // We want the workbook title to be exactly an the center of the page,
 // so we need an absolute position
 const WorkbookTitleWrapper = styled("div")`
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
 `;
 
 // The "Spacer" component occupies as much space as possible between the menu and the share button
@@ -160,6 +156,7 @@ const Divider = styled("div")`
 const FileBarWrapper = styled("div")`
   position: relative;
   height: 60px;
+  min-height: 60px;
   width: 100%;
   background: #fff;
   display: flex;
