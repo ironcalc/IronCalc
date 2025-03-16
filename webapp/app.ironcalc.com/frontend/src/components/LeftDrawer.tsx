@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { IronCalcLogo } from "@ironcalc/workbook";
 import { Avatar, Drawer, IconButton, MenuItem } from "@mui/material";
-import { EllipsisVertical, Plus } from "lucide-react";
+import { Check, EllipsisVertical, Plus } from "lucide-react";
 import type React from "react";
 
 interface LeftDrawerProps {
@@ -29,6 +29,9 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
       }}
       selected={uuid === selectedUuid}
     >
+      <CheckIndicator>
+        {uuid === selectedUuid ? <StyledCheck /> : ""}
+      </CheckIndicator>
       <MenuItemText
         style={{
           maxWidth: "240px",
@@ -38,14 +41,6 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
       >
         {models[uuid]}
       </MenuItemText>
-      <EllipsisButton
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-        size="small"
-      >
-        <EllipsisVertical />
-      </EllipsisButton>
     </MenuItemWrapper>
   ));
 
@@ -71,11 +66,11 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
       <DrawerFooter>
         <UserWrapper>
           <StyledAvatar
-            alt="Tom Hemy"
+            alt="Nikola Tesla"
             src="/path/to/avatar.jpg"
             sx={{ bgcolor: "#f2994a", width: 24, height: 24 }}
           />
-          <Username>Tom Hemy</Username>
+          <Username>Nikola Tesla</Username>
           <EllipsisButton size="small">
             <EllipsisVertical />
           </EllipsisButton>
@@ -84,6 +79,18 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
     </DrawerWrapper>
   );
 };
+
+const StyledCheck = styled(Check)`
+  width: 16px;
+  height: 16px;
+  color: #333333;
+`;
+
+const CheckIndicator = styled("span")`
+  display: flex;
+  justify-content: center;
+  min-width: 26px;
+`;
 
 const DrawerWrapper = styled(Drawer)`
   width: 264px;
@@ -120,9 +127,9 @@ const AddButton = styled(IconButton)`
   align-items: center;
   justify-content: center;
   padding: 8px;
-  height: 36px;
-  width: 36px;
-  border-radius: 8px;
+  height: 32px;
+  width: 32px;
+  border-radius: 4px;
   margin-left: 10px;
   color: #333333;
   stroke-width: 2px;
@@ -155,12 +162,12 @@ const MenuItemWrapper = styled(MenuItem)<{ selected: boolean }>`
   border-radius: 8px;
   padding: 8px 4px 8px 8px;
   height: 32px;
-  transition: padding-left 0.5s;
+  transition: gap 0.5s;
   background-color: ${({ selected }) =>
     selected ? "#e0e0e0 !important" : "transparent"};
   &:hover {
-    padding-left: 12px;
-    transition: padding-left 0.1s;
+    gap: 4px;
+    transition: gap 0.1s;
   }
 `;
 

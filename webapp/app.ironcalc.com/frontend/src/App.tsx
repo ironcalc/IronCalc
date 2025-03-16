@@ -1,6 +1,6 @@
 import "./App.css";
 import styled from "@emotion/styled";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FileBar } from "./components/FileBar";
 import LeftDrawer from "./components/LeftDrawer";
 import {
@@ -11,6 +11,8 @@ import {
 import {
   createNewModel,
   deleteSelectedModel,
+  getModelsMetadata,
+  getSelectedUuid,
   loadModelFromStorageOrCreate,
   saveModelToStorage,
   saveSelectedModelInStorage,
@@ -23,6 +25,13 @@ import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/workbook";
 function App() {
   const [model, setModel] = useState<Model | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [modelsMetadata, setModelsMetadata] = useState(getModelsMetadata());
+  const [selectedUuid, setSelectedUuid] = useState(getSelectedUuid());
+
+  const refreshModelsData = useCallback(() => {
+    setModelsMetadata(getModelsMetadata());
+    setSelectedUuid(getSelectedUuid());
+  }, []);
 
   useEffect(() => {
     async function start() {
@@ -40,6 +49,7 @@ function App() {
           const importedModel = Model.from_bytes(model_bytes);
           localStorage.removeItem("selected");
           setModel(importedModel);
+          refreshModelsData();
         } catch (e) {
           alert("Model not found, or failed to load");
         }
@@ -49,6 +59,7 @@ function App() {
           const importedModel = Model.from_bytes(model_bytes);
           localStorage.removeItem("selected");
           setModel(importedModel);
+          refreshModelsData();
         } catch (e) {
           alert("Example file not found, or failed to load");
         }
@@ -56,10 +67,11 @@ function App() {
         // try to load from local storage
         const newModel = loadModelFromStorageOrCreate();
         setModel(newModel);
+        refreshModelsData();
       }
     }
     start();
-  }, []);
+  }, [refreshModelsData]);
 
   if (!model) {
     return (
@@ -81,20 +93,38 @@ function App() {
   // We could use context for model, but the problem is that it should initialized to null.
   // Passing the property down makes sure it is always defined.
 
+  // Handlers for model changes that also update our models state
+  const handleNewModel = () => {
+    const newModel = createNewModel();
+    setModel(newModel);
+    refreshModelsData();
+  };
+
+  const handleSetModel = (uuid: string) => {
+    const newModel = selectModelFromStorage(uuid);
+    if (newModel) {
+      setModel(newModel);
+      refreshModelsData();
+    }
+  };
+
+  const handleDeleteModel = () => {
+    const newModel = deleteSelectedModel();
+    if (newModel) {
+      setModel(newModel);
+      refreshModelsData();
+    }
+  };
+
   return (
     <AppContainer>
       <LeftDrawer
         open={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        newModel={createNewModel}
-        setModel={(uuid) => {
-          const newModel = selectModelFromStorage(uuid);
-          if (newModel) {
-            setModel(newModel);
-          }
-        }}
-        models={{}} // Pass actual models here
-        selectedUuid={null} // Pass actual selectedUuid here
+        newModel={handleNewModel}
+        setModel={handleSetModel}
+        models={modelsMetadata}
+        selectedUuid={selectedUuid}
       />
 
       <MainContent isDrawerOpen={isDrawerOpen}>
@@ -106,22 +136,11 @@ function App() {
             const newModel = Model.from_bytes(bytes);
             saveModelToStorage(newModel);
             setModel(newModel);
+            refreshModelsData(); // Refresh after model change
           }}
-          newModel={() => {
-            setModel(createNewModel());
-          }}
-          setModel={(uuid: string) => {
-            const newModel = selectModelFromStorage(uuid);
-            if (newModel) {
-              setModel(newModel);
-            }
-          }}
-          onDelete={() => {
-            const newModel = deleteSelectedModel();
-            if (newModel) {
-              setModel(newModel);
-            }
-          }}
+          newModel={handleNewModel}
+          setModel={handleSetModel}
+          onDelete={handleDeleteModel}
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
         />
