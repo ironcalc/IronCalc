@@ -19,40 +19,8 @@ export function FileMenu(props: {
   const [isImportMenuOpen, setImportMenuOpen] = useState(false);
   const anchorElement = useRef<HTMLButtonElement>(null);
   const models = getModelsMetadata();
-  const uuids = Object.keys(models);
   const selectedUuid = getSelectedUuid();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const elements = [];
-  for (const uuid of uuids) {
-    elements.push(
-      <MenuItemWrapper
-        key={uuid}
-        onClick={() => {
-          props.setModel(uuid);
-          setMenuOpen(false);
-        }}
-      >
-        <CheckIndicator>
-          {uuid === selectedUuid ? (
-            <StyledIcon>
-              <Check />
-            </StyledIcon>
-          ) : (
-            ""
-          )}
-        </CheckIndicator>
-        <MenuItemText
-          style={{
-            maxWidth: "240px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {models[uuid]}
-        </MenuItemText>
-      </MenuItemWrapper>,
-    );
-  }
 
   return (
     <>
@@ -135,8 +103,6 @@ export function FileMenu(props: {
           </StyledIcon>
           <MenuItemText>Delete workbook</MenuItemText>
         </MenuItemWrapper>
-        <MenuDivider />
-        {elements}
       </Menu>
       <Modal
         open={isImportMenuOpen}
@@ -162,7 +128,7 @@ export function FileMenu(props: {
         <DeleteWorkbookDialog
           onClose={() => setDeleteDialogOpen(false)}
           onConfirm={props.onDelete}
-          workbookName={selectedUuid ? models[selectedUuid] : ""}
+          workbookName={selectedUuid ? models[selectedUuid].name : ""}
         />
       </Modal>
     </>

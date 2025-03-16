@@ -2,6 +2,7 @@ import "./App.css";
 import styled from "@emotion/styled";
 import { useEffect, useState } from "react";
 import { FileBar } from "./components/FileBar";
+import LeftDrawer from "./components/LeftDrawer/LeftDrawer";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
 import {
   get_documentation_model,
@@ -10,6 +11,7 @@ import {
 } from "./components/rpc";
 import {
   createNewModel,
+  deleteModelByUuid,
   deleteSelectedModel,
   isStorageEmpty,
   loadSelectedModelFromStorage,
@@ -27,6 +29,7 @@ function App() {
   const [model, setModel] = useState<Model | null>(null);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
     async function start() {
@@ -88,43 +91,68 @@ function App() {
     }
   }, 1000);
 
+  // Handlers for model changes that also update our models state
+  const handleNewModel = () => {
+    const newModel = createNewModel();
+    setModel(newModel);
+  };
+
+  const handleSetModel = (uuid: string) => {
+    const newModel = selectModelFromStorage(uuid);
+    if (newModel) {
+      setModel(newModel);
+    }
+  };
+
+  const handleDeleteModel = () => {
+    const newModel = deleteSelectedModel();
+    if (newModel) {
+      setModel(newModel);
+    }
+  };
+
+  const handleDeleteModelByUuid = (uuid: string) => {
+    const newModel = deleteModelByUuid(uuid);
+    if (newModel) {
+      setModel(newModel);
+    }
+  };
+
   // We could use context for model, but the problem is that it should initialized to null.
   // Passing the property down makes sure it is always defined.
 
   return (
     <Wrapper>
-      <FileBar
-        model={model}
-        onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
-          const blob = await uploadFile(arrayBuffer, fileName);
-
-          const bytes = new Uint8Array(await blob.arrayBuffer());
-          const newModel = Model.from_bytes(bytes);
-          saveModelToStorage(newModel);
-
-          setModel(newModel);
-        }}
-        newModel={() => {
-          const createdModel = createNewModel();
-          setModel(createdModel);
-        }}
-        newModelFromTemplate={() => {
-          setTemplatesDialogOpen(true);
-        }}
-        setModel={(uuid: string) => {
-          const newModel = selectModelFromStorage(uuid);
-          if (newModel) {
-            setModel(newModel);
-          }
-        }}
-        onDelete={() => {
-          const newModel = deleteSelectedModel();
-          if (newModel) {
-            setModel(newModel);
-          }
-        }}
+      <LeftDrawer
+        open={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        newModel={handleNewModel}
+        setModel={handleSetModel}
+        onDelete={handleDeleteModelByUuid}
       />
-      <IronCalc model={model} />
+      <MainContent isDrawerOpen={isDrawerOpen}>
+        <FileBar
+          model={model}
+          onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
+            const blob = await uploadFile(arrayBuffer, fileName);
+
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            const newModel = Model.from_bytes(bytes);
+            saveModelToStorage(newModel);
+
+            setModel(newModel);
+          }}
+          newModel={handleNewModel}
+          newModelFromTemplate={() => {
+            setTemplatesDialogOpen(true);
+          }}
+          setModel={handleSetModel}
+          onDelete={handleDeleteModel}
+          isDrawerOpen={isDrawerOpen}
+          setIsDrawerOpen={setIsDrawerOpen}
+        />
+        <IronCalc model={model} />
+      </MainContent>
       {showWelcomeDialog && (
         <WelcomeDialog
           onClose={() => {
@@ -175,13 +203,20 @@ function App() {
 }
 
 const Wrapper = styled("div")`
-  margin: 0px;
-  padding: 0px;
+  display: flex;
   width: 100%;
   height: 100%;
+  position: relative;
+  overflow: hidden;
+`;
+
+const MainContent = styled("div")<{ isDrawerOpen: boolean }>`
+  margin-left: ${({ isDrawerOpen }) => (isDrawerOpen ? "0px" : "-264px")};
+  transition: margin-left 0.3s ease;
+  width: ${({ isDrawerOpen }) =>
+    isDrawerOpen ? "calc(100% - 264px)" : "100%"};
   display: flex;
   flex-direction: column;
-  position: absolute;
 `;
 
 const Loading = styled("div")`

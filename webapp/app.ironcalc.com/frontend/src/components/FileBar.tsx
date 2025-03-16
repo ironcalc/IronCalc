@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
-import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
+import { IconButton } from "@mui/material";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
@@ -31,6 +32,8 @@ export function FileBar(properties: {
   setModel: (key: string) => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
+  isDrawerOpen: boolean;
+  setIsDrawerOpen: (open: boolean) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -48,8 +51,14 @@ export function FileBar(properties: {
 
   return (
     <FileBarWrapper>
-      <StyledDesktopLogo />
-      <StyledIronCalcIcon />
+      <DrawerButton
+        // $isDrawerOpen={properties.isDrawerOpen}
+        onClick={() => properties.setIsDrawerOpen(!properties.isDrawerOpen)}
+        disableRipple
+        title="Toggle sidebar"
+      >
+        {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+      </DrawerButton>
       <Divider />
       <FileMenu
         newModel={properties.newModel}
@@ -103,19 +112,26 @@ const Spacer = styled("div")`
   flex-grow: 1;
 `;
 
-const StyledDesktopLogo = styled(IronCalcLogo)`
-  width: 120px;
-  margin-left: 12px;
-  @media (max-width: 769px) {
-    display: none;
-  }
-`;
+// const DrawerButton = styled(IconButton)<{ $isDrawerOpen: boolean }>`
+// cursor: ${(props) => (props.$isDrawerOpen ? "w-resize" : "e-resize")};
+const DrawerButton = styled(IconButton)`
+  margin-left: 8px;
+  height: 32px;
+  width: 32px;
+  padding: 8px;
+  border-radius: 4px;
 
-const StyledIronCalcIcon = styled(IronCalcIcon)`
-  width: 36px;
-  margin-left: 10px;
-  @media (min-width: 769px) {
-    display: none;
+  svg {
+    stroke-width: 2px;
+    stroke: #757575;
+    width: 16px;
+    height: 16px;
+  }
+  &:hover {
+    background-color: #f2f2f2;
+  }
+  &:active {
+    background-color: #e0e0e0;
   }
 `;
 

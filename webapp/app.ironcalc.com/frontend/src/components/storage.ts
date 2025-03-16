@@ -3,7 +3,7 @@ import { base64ToBytes, bytesToBase64 } from "./util";
 
 const MAX_WORKBOOKS = 50;
 
-type ModelsMetadata = Record<string, string>;
+type ModelsMetadata = Record<string, { name: string; createdAt: number }>;
 
 export function updateNameSelectedWorkbook(model: Model, newName: string) {
   const uuid = localStorage.getItem("selected");
@@ -12,7 +12,11 @@ export function updateNameSelectedWorkbook(model: Model, newName: string) {
     if (modelsJson) {
       try {
         const models = JSON.parse(modelsJson);
-        models[uuid] = newName;
+        if (models[uuid]) {
+          models[uuid].name = newName;
+        } else {
+          models[uuid] = { name: newName, createdAt: Date.now() };
+        }
         localStorage.setItem("models", JSON.stringify(models));
       } catch (e) {
         console.warn("Failed saving new name");
@@ -28,7 +32,26 @@ export function getModelsMetadata(): ModelsMetadata {
   if (!modelsJson) {
     modelsJson = "{}";
   }
-  return JSON.parse(modelsJson);
+  const models = JSON.parse(modelsJson);
+
+  // Migrate old format to new format
+  const migratedModels: ModelsMetadata = {};
+  for (const [uuid, value] of Object.entries(models)) {
+    if (typeof value === "string") {
+      // Old format: just the name string
+      migratedModels[uuid] = { name: value, createdAt: Date.now() };
+    } else if (typeof value === "object" && value !== null && "name" in value) {
+      // New format: object with name and createdAt
+      migratedModels[uuid] = value as { name: string; createdAt: number };
+    }
+  }
+
+  // Save migrated data back to localStorage
+  if (JSON.stringify(models) !== JSON.stringify(migratedModels)) {
+    localStorage.setItem("models", JSON.stringify(migratedModels));
+  }
+
+  return migratedModels;
 }
 
 // Pick a different name Workbook{N} where N = 1, 2, 3
@@ -48,14 +71,14 @@ function getNewName(existingNames: string[]): string {
 
 export function createNewModel(): Model {
   const models = getModelsMetadata();
-  const name = getNewName(Object.values(models));
+  const name = getNewName(Object.values(models).map((m) => m.name));
 
   const model = new Model(name, "en", "UTC");
   const uuid = crypto.randomUUID();
   localStorage.setItem("selected", uuid);
   localStorage.setItem(uuid, bytesToBase64(model.toBytes()));
 
-  models[uuid] = name;
+  models[uuid] = { name, createdAt: Date.now() };
   localStorage.setItem("models", JSON.stringify(models));
   return model;
 }
@@ -103,7 +126,7 @@ export function saveModelToStorage(model: Model) {
     modelsJson = "{}";
   }
   const models = JSON.parse(modelsJson);
-  models[uuid] = model.getName();
+  models[uuid] = { name: model.getName(), createdAt: Date.now() };
   localStorage.setItem("models", JSON.stringify(models));
 }
 
@@ -134,4 +157,38 @@ export function deleteSelectedModel(): Model | null {
     return createNewModel();
   }
   return selectModelFromStorage(uuids[0]);
+}
+
+export function deleteModelByUuid(uuid: string): Model | null {
+  localStorage.removeItem(uuid);
+  const metadata = getModelsMetadata();
+  delete metadata[uuid];
+  localStorage.setItem("models", JSON.stringify(metadata));
+
+  // If this was the selected model, we need to select a different one
+  const selectedUuid = localStorage.getItem("selected");
+  if (selectedUuid === uuid) {
+    const uuids = Object.keys(metadata);
+    if (uuids.length === 0) {
+      return createNewModel();
+    }
+    // Find the newest workbook by creation timestamp
+    const newestUuid = uuids.reduce((newest, current) => {
+      const newestTime = metadata[newest]?.createdAt || 0;
+      const currentTime = metadata[current]?.createdAt || 0;
+      return currentTime > newestTime ? current : newest;
+    });
+    return selectModelFromStorage(newestUuid);
+  }
+
+  // If it wasn't the selected model, return the currently selected model
+  if (selectedUuid) {
+    const modelBytesString = localStorage.getItem(selectedUuid);
+    if (modelBytesString) {
+      return Model.from_bytes(base64ToBytes(modelBytesString));
+    }
+  }
+
+  // Fallback to creating a new model if no valid selected model
+  return createNewModel();
 }
