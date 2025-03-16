@@ -102,12 +102,14 @@ const DrawerHeader = styled("div")`
   padding: 12px 8px 12px 16px;
   justify-content: space-between;
   max-height: 60px;
+  min-height: 60px;
   border-bottom: 1px solid #e0e0e0;
+  box-sizing: border-box;
 `;
 
 const StyledDesktopLogo = styled(IronCalcLogo)`
   width: 120px;
-  height: 36px;
+  height: 28px;
 `;
 
 const AddButton = styled(IconButton)`
@@ -138,13 +140,13 @@ const DrawerContent = styled("div")`
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 20px 16px;
+  padding: 16px 12px;
   height: 100%;
   overflow: scroll;
+  font-size: 12px;
 `;
 
 const DrawerContentTitle = styled("div")`
-  font-size: 12px;
   font-weight: 600;
   color: #9e9e9e;
   margin-bottom: 8px;
@@ -182,7 +184,7 @@ const MenuItemWrapper = styled(MenuItem)<{ selected: boolean }>`
 
 const MenuItemText = styled("div")`
   color: #000;
-  font-size: 13px;
+  font-size: 12px;
   width: 100%;
 `;
 
