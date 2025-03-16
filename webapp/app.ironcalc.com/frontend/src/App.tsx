@@ -2,6 +2,7 @@ import "./App.css";
 import styled from "@emotion/styled";
 import { useEffect, useState } from "react";
 import { FileBar } from "./components/FileBar";
+import LeftDrawer from "./components/LeftDrawer/LeftDrawer";
 import {
   get_documentation_model,
   get_model,
@@ -9,7 +10,10 @@ import {
 } from "./components/rpc";
 import {
   createNewModel,
+  deleteModelByUuid,
   deleteSelectedModel,
+  // getModelsMetadata,
+  // getSelectedUuid,
   loadModelFromStorageOrCreate,
   saveModelToStorage,
   saveSelectedModelInStorage,
@@ -21,6 +25,7 @@ import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/workbook";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
     async function start() {
@@ -79,48 +84,80 @@ function App() {
   // We could use context for model, but the problem is that it should initialized to null.
   // Passing the property down makes sure it is always defined.
 
+  // Handlers for model changes that also update our models state
+  const handleNewModel = () => {
+    const newModel = createNewModel();
+    setModel(newModel);
+  };
+
+  const handleSetModel = (uuid: string) => {
+    const newModel = selectModelFromStorage(uuid);
+    if (newModel) {
+      setModel(newModel);
+    }
+  };
+
+  const handleDeleteModel = () => {
+    const newModel = deleteSelectedModel();
+    if (newModel) {
+      setModel(newModel);
+    }
+  };
+
+  const handleDeleteModelByUuid = (uuid: string) => {
+    const newModel = deleteModelByUuid(uuid);
+    if (newModel) {
+      setModel(newModel);
+    }
+  };
+
   return (
-    <Wrapper>
-      <FileBar
-        model={model}
-        onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
-          const blob = await uploadFile(arrayBuffer, fileName);
-
-          const bytes = new Uint8Array(await blob.arrayBuffer());
-          const newModel = Model.from_bytes(bytes);
-          saveModelToStorage(newModel);
-
-          setModel(newModel);
-        }}
-        newModel={() => {
-          setModel(createNewModel());
-        }}
-        setModel={(uuid: string) => {
-          const newModel = selectModelFromStorage(uuid);
-          if (newModel) {
-            setModel(newModel);
-          }
-        }}
-        onDelete={() => {
-          const newModel = deleteSelectedModel();
-          if (newModel) {
-            setModel(newModel);
-          }
-        }}
+    <AppContainer>
+      <LeftDrawer
+        open={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        newModel={handleNewModel}
+        setModel={handleSetModel}
+        onDelete={handleDeleteModelByUuid}
       />
-      <IronCalc model={model} />
-    </Wrapper>
+
+      <MainContent isDrawerOpen={isDrawerOpen}>
+        <FileBar
+          model={model}
+          onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
+            const blob = await uploadFile(arrayBuffer, fileName);
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            const newModel = Model.from_bytes(bytes);
+            saveModelToStorage(newModel);
+            setModel(newModel);
+          }}
+          newModel={handleNewModel}
+          setModel={handleSetModel}
+          onDelete={handleDeleteModel}
+          isDrawerOpen={isDrawerOpen}
+          setIsDrawerOpen={setIsDrawerOpen}
+        />
+        <IronCalc model={model} />
+      </MainContent>
+    </AppContainer>
   );
 }
 
-const Wrapper = styled("div")`
-  margin: 0px;
-  padding: 0px;
+const AppContainer = styled("div")`
+  display: flex;
   width: 100%;
   height: 100%;
+  position: relative;
+  overflow: hidden;
+`;
+
+const MainContent = styled("div")<{ isDrawerOpen: boolean }>`
+  margin-left: ${({ isDrawerOpen }) => (isDrawerOpen ? "0px" : "-264px")};
+  transition: margin-left 0.3s ease;
+  width: ${({ isDrawerOpen }) =>
+    isDrawerOpen ? "calc(100% - 264px)" : "100%"};
   display: flex;
   flex-direction: column;
-  position: absolute;
 `;
 
 const Loading = styled("div")`
