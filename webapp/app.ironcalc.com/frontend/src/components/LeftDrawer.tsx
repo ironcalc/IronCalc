@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { IronCalcLogo } from "@ironcalc/workbook";
 import { Avatar, Drawer, IconButton, MenuItem } from "@mui/material";
-import { Check, EllipsisVertical, Plus } from "lucide-react";
+import { EllipsisVertical, HardDrive, Plus } from "lucide-react";
 import type React from "react";
 
 interface LeftDrawerProps {
@@ -29,9 +29,9 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
       }}
       selected={uuid === selectedUuid}
     >
-      <CheckIndicator>
-        {uuid === selectedUuid ? <StyledCheck /> : ""}
-      </CheckIndicator>
+      <StorageIndicator>
+        <HardDrive />
+      </StorageIndicator>
       <MenuItemText
         style={{
           maxWidth: "240px",
@@ -79,18 +79,6 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
     </DrawerWrapper>
   );
 };
-
-const StyledCheck = styled(Check)`
-  width: 16px;
-  height: 16px;
-  color: #333333;
-`;
-
-const CheckIndicator = styled("span")`
-  display: flex;
-  justify-content: center;
-  min-width: 26px;
-`;
 
 const DrawerWrapper = styled(Drawer)`
   width: 264px;
@@ -152,9 +140,19 @@ const DrawerContent = styled("div")`
   overflow: scroll;
 `;
 
+const StorageIndicator = styled("div")`
+  height: 16px;
+  width: 16px;
+  svg {
+    height: 16px;
+    width: 16px;
+    stroke: #757575;
+  }
+`;
+
 const MenuItemWrapper = styled(MenuItem)<{ selected: boolean }>`
   display: flex;
-  gap: 0px;
+  gap: 8px;
   justify-content: flex-start;
   font-size: 14px;
   width: 100%;
@@ -166,7 +164,7 @@ const MenuItemWrapper = styled(MenuItem)<{ selected: boolean }>`
   background-color: ${({ selected }) =>
     selected ? "#e0e0e0 !important" : "transparent"};
   &:hover {
-    gap: 4px;
+    gap: 12px;
     transition: gap 0.1s;
   }
 `;
@@ -220,7 +218,7 @@ const StyledAvatar = styled(Avatar)`
 `;
 
 const Username = styled("div")`
-  font-size: 14px;
+  font-size: 12px;
   flex-grow: 1;
 `;
 
