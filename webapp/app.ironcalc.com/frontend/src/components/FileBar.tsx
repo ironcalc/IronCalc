@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
-import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
 import { IconButton } from "@mui/material";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -98,8 +97,6 @@ export function FileBar(properties: {
   );
 }
 
-// We want the workbook title to be exactly an the center of the page,
-// so we need an absolute position
 const WorkbookTitleWrapper = styled("div")`
   position: relative;
 `;
@@ -107,22 +104,6 @@ const WorkbookTitleWrapper = styled("div")`
 // The "Spacer" component occupies as much space as possible between the menu and the share button
 const Spacer = styled("div")`
   flex-grow: 1;
-`;
-
-const StyledDesktopLogo = styled(IronCalcLogo)`
-  width: 120px;
-  margin-left: 12px;
-  @media (max-width: 769px) {
-    display: none;
-  }
-`;
-
-const StyledIronCalcIcon = styled(IronCalcIcon)`
-  width: 36px;
-  margin-left: 10px;
-  @media (min-width: 769px) {
-    display: none;
-  }
 `;
 
 const DrawerButton = styled(IconButton)`
