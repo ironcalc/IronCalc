@@ -1,8 +1,9 @@
+import React, { useState } from "react";
 import styled from "@emotion/styled";
 import { IronCalcLogo } from "@ironcalc/workbook";
-import { Avatar, Drawer, IconButton, MenuItem } from "@mui/material";
-import { EllipsisVertical, HardDrive, Plus } from "lucide-react";
-import type React from "react";
+import { Avatar, Drawer, IconButton, MenuItem, Menu } from "@mui/material";
+import { EllipsisVertical, HardDrive, Plus, Trash2 } from "lucide-react";
+import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
 
 interface LeftDrawerProps {
   open: boolean;
@@ -11,6 +12,7 @@ interface LeftDrawerProps {
   setModel: (key: string) => void;
   models: { [key: string]: string };
   selectedUuid: string | null;
+  setDeleteDialogOpen: (open: boolean) => void;
 }
 
 const LeftDrawer: React.FC<LeftDrawerProps> = ({
@@ -20,7 +22,29 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
   setModel,
   models,
   selectedUuid,
+  setDeleteDialogOpen,
 }) => {
+  const [hoveredUuid, setHoveredUuid] = useState<string | null>(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedWorkbookUuid, setSelectedWorkbookUuid] = useState<
+    string | null
+  >(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const handleMenuOpen = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    uuid: string
+  ) => {
+    event.stopPropagation();
+    setSelectedWorkbookUuid(uuid);
+    setMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+    setSelectedWorkbookUuid(null);
+  };
+
   const elements = Object.keys(models).map((uuid) => (
     <MenuItemWrapper
       key={uuid}
@@ -28,6 +52,9 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
         setModel(uuid);
       }}
       selected={uuid === selectedUuid}
+      onMouseEnter={() => setHoveredUuid(uuid)}
+      onMouseLeave={() => setHoveredUuid(null)}
+      disableRipple
     >
       <StorageIndicator>
         <HardDrive />
@@ -41,6 +68,11 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
       >
         {models[uuid]}
       </MenuItemText>
+      {hoveredUuid === uuid && (
+        <EllipsisButton onClick={(e) => handleMenuOpen(e, uuid)}>
+          <EllipsisVertical />
+        </EllipsisButton>
+      )}
     </MenuItemWrapper>
   ));
 
@@ -65,6 +97,52 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
       <DrawerContent>
         <DrawerContentTitle>Your workbooks</DrawerContentTitle>
         {elements}
+        <Menu
+          anchorEl={menuAnchorEl}
+          open={Boolean(menuAnchorEl)}
+          onClose={handleMenuClose}
+          MenuListProps={{
+            dense: true,
+          }}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "right",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "right",
+          }}
+          disablePortal
+          sx={{
+            "& .MuiPaper-root": {
+              minWidth: "auto",
+              boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
+            },
+          }}
+        >
+          <MenuItem
+            onClick={() => {
+              handleMenuClose();
+              setIsDeleteDialogOpen(true);
+            }}
+            sx={{ gap: 1, fontSize: 14 }}
+          >
+            <Trash2 size={16} />
+            Delete workbook
+          </MenuItem>
+        </Menu>
+        {isDeleteDialogOpen && (
+          <DeleteWorkbookDialog
+            workbookName={
+              selectedWorkbookUuid ? models[selectedWorkbookUuid] : ""
+            }
+            onClose={() => setIsDeleteDialogOpen(false)}
+            onConfirm={() => {
+              // Handle delete confirmation
+              console.log("Delete workbook:", selectedWorkbookUuid);
+            }}
+          />
+        )}
       </DrawerContent>
       <DrawerFooter>
         <UserWrapper>
@@ -163,6 +241,27 @@ const StorageIndicator = styled("div")`
   }
 `;
 
+const EllipsisButton = styled(IconButton)`
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  height: 24px;
+  width: 24px;
+  border-radius: 8px;
+  color: #333333;
+  stroke-width: 2px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  &:hover {
+    background: none;
+    opacity: 1;
+  }
+`;
+
 const MenuItemWrapper = styled(MenuItem)<{ selected: boolean }>`
   display: flex;
   gap: 8px;
@@ -186,26 +285,6 @@ const MenuItemText = styled("div")`
   color: #000;
   font-size: 12px;
   width: 100%;
-`;
-
-const EllipsisButton = styled(IconButton)`
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  height: 24px;
-  width: 24px;
-  border-radius: 8px;
-  color: #333333;
-  stroke-width: 2px;
-  opacity: 0.4;
-  &:hover {
-    background: none;
-    opacity: 1;
-  }
 `;
 
 const DrawerFooter = styled("div")`

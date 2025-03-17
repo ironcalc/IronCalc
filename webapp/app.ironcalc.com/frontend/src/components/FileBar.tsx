@@ -35,11 +35,9 @@ export function FileBar(properties: {
   refreshModelsData: () => void; // Add this new prop
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // Add state for menu visibility
   const spacerRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
-  const menuAnchorRef = useRef<HTMLButtonElement>(null); // Add ref for menu anchor
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -54,6 +52,7 @@ export function FileBar(properties: {
     <FileBarWrapper>
       <DrawerButton
         onClick={() => properties.setIsDrawerOpen(!properties.isDrawerOpen)}
+        disableRipple
       >
         {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
       </DrawerButton>

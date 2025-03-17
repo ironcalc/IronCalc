@@ -125,6 +125,7 @@ function App() {
         setModel={handleSetModel}
         models={modelsMetadata}
         selectedUuid={selectedUuid}
+        setDeleteDialogOpen={() => {}}
       />
 
       <MainContent isDrawerOpen={isDrawerOpen}>

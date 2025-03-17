@@ -23,10 +23,10 @@ export function ParentMenu(props: {
   const [isParentMenuOpen, setParentMenuOpen] = useState(false);
   const [isFileMenuOpen, setFileMenuOpen] = useState(false);
   const anchorElement = useRef<HTMLButtonElement>(
-    null as unknown as HTMLButtonElement,
+    null as unknown as HTMLButtonElement
   );
   const [fileMenuAnchorEl, setFileMenuAnchorEl] = useState<HTMLElement | null>(
-    null,
+    null
   );
 
   return (
@@ -34,6 +34,7 @@ export function ParentMenu(props: {
       <MenuButton
         onClick={(): void => setParentMenuOpen(true)}
         ref={anchorElement}
+        disableRipple
       >
         <Ellipsis />
       </MenuButton>
@@ -52,12 +53,16 @@ export function ParentMenu(props: {
             setFileMenuAnchorEl(event.currentTarget);
           }}
           onClick={(event) => {
-            // Keep current click behavior as fallback
             setFileMenuOpen(true);
             setFileMenuAnchorEl(event.currentTarget);
           }}
+          disableRipple
         >
           <MenuItemText>File</MenuItemText>
+          <ChevronRight />
+        </MenuItemWrapper>
+        <MenuItemWrapper>
+          <MenuItemText>Edit</MenuItemText>
           <ChevronRight />
         </MenuItemWrapper>
         <MenuDivider />
@@ -66,6 +71,7 @@ export function ParentMenu(props: {
             window.open("https://docs.ironcalc.com", "_blank");
             setParentMenuOpen(false);
           }}
+          disableRipple
         >
           <MenuItemText>Help</MenuItemText>
         </MenuItemWrapper>
@@ -124,7 +130,12 @@ export function FileMenu(props: {
           }
         }}
         sx={{
-          "& .MuiPaper-root": { borderRadius: "8px", padding: "4px 0px" },
+          "& .MuiPaper-root": {
+            borderRadius: "8px",
+            padding: "4px 0px",
+            marginTop: "-4px",
+            marginLeft: "4px",
+          },
           "& .MuiList-root": { padding: "0" },
         }}
       >
@@ -134,6 +145,7 @@ export function FileMenu(props: {
             props.setFileMenuOpen(false);
             props.setParentMenuOpen(false);
           }}
+          disableRipple
         >
           <StyledPlus />
           <MenuItemText>New</MenuItemText>
@@ -144,6 +156,7 @@ export function FileMenu(props: {
             props.setFileMenuOpen(false);
             props.setParentMenuOpen(false);
           }}
+          disableRipple
         >
           <StyledFileUp />
           <MenuItemText>Import</MenuItemText>
@@ -153,6 +166,7 @@ export function FileMenu(props: {
             props.onDownload();
             props.setParentMenuOpen(false);
           }}
+          disableRipple
         >
           <StyledFileDown />
           <MenuItemText>Download (.xlsx)</MenuItemText>
@@ -164,6 +178,7 @@ export function FileMenu(props: {
             props.setFileMenuOpen(false);
             props.setParentMenuOpen(false);
           }}
+          disableRipple
         >
           <StyledTrash />
           <MenuItemText>Delete workbook</MenuItemText>
