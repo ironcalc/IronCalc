@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem } from "@mui/material";
 import { Plus } from "lucide-react";
-import { type JSX, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import ColorPicker from "./ColorPicker";
@@ -11,10 +11,6 @@ type ColorMenuProps = {
   anchorEl: React.RefObject<HTMLButtonElement | null>;
   open: boolean;
   onClose: () => void;
-  renderMenuItem: (
-    color: string,
-    handleColorSelect: (color: string | null) => void,
-  ) => JSX.Element;
 };
 
 const ColorMenu = ({
@@ -22,9 +18,7 @@ const ColorMenu = ({
   anchorEl,
   open,
   onClose,
-  renderMenuItem,
 }: ColorMenuProps) => {
-  const [color, setColor] = useState<string | null>(theme.palette.common.black);
   const recentColors = useRef<string[]>([]);
   const [isPickerOpen, setPickerOpen] = useState(false);
   const { t } = useTranslation();
@@ -107,7 +101,6 @@ const ColorMenu = ({
         />
       ) : (
         <StyledMenu anchorEl={anchorEl.current} open={open} onClose={onClose}>
-          {renderMenuItem(theme.palette.common.black, handleColorSelect)}
           <HorizontalDivider />
           <ColorsWrapper>
             <ColorList>
@@ -116,14 +109,13 @@ const ColorMenu = ({
                   key={presetColor}
                   $color={presetColor}
                   onClick={(): void => {
-                    setColor(presetColor);
                     handleColorSelect(presetColor);
                   }}
                 />
               ))}
             </ColorList>
             <ColorGrid>
-              {toneArrays.map((tones, index) => (
+              {toneArrays.map((tones) => (
                 <ColorGridCol key={tones.join("-")}>
                   {tones.map((presetColor) => (
                     <RecentColorButton
@@ -146,7 +138,6 @@ const ColorMenu = ({
                     key={recentColor}
                     $color={recentColor}
                     onClick={(): void => {
-                      setColor(recentColor);
                       handleColorSelect(recentColor);
                     }}
                   />
