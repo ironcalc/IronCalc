@@ -443,6 +443,7 @@ function Toolbar(properties: ToolbarProperties) {
 
       <ColorPicker
         color={properties.fontColor}
+        defaultColor="#000000"
         title={t("color_picker.default")}
         onChange={(color): void => {
           properties.onTextColorPicked(color);
@@ -456,6 +457,7 @@ function Toolbar(properties: ToolbarProperties) {
       />
       <ColorPicker
         color={properties.fillColor}
+        defaultColor="#FFFFFF"
         title={t("color_picker.default")}
         onChange={(color): void => {
           if (color !== null) {
