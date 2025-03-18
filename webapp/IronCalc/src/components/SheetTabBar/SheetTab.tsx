@@ -138,6 +138,7 @@ function SheetTab(props: SheetTabProps) {
       />
       <ColorPicker
         color={color}
+        defaultColor="#FFFFFF"
         title={t("color_picker.no_fill")}
         onChange={(color): void => {
           props.onColorChanged(color);
