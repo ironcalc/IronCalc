@@ -56,6 +56,7 @@ export function FileBar(properties: {
       >
         {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
       </DrawerButton>
+      <Spacer ref={spacerRef} />
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}

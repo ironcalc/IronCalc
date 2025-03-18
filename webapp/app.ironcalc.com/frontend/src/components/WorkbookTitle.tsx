@@ -74,7 +74,7 @@ export function WorkbookTitle(properties: {
 const Container = styled("div")`
   text-align: left;
   padding: 6px 4px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   font-family: Inter;
 `;
