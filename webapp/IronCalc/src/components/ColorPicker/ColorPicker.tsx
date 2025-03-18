@@ -9,6 +9,7 @@ import { theme } from "../../theme";
 // Types
 type ColorPickerProps = {
   color: string;
+  title: string;
   onChange: (color: string) => void;
   onClose: () => void;
   anchorEl: React.RefObject<HTMLElement | null>;
@@ -22,6 +23,7 @@ const colorPickerWidth = 240;
 // Main Component
 const ColorPicker = ({
   color,
+  title,
   onChange,
   onClose,
   anchorEl,
@@ -177,7 +179,7 @@ const ColorPicker = ({
         >
           <MenuItemWrapper onClick={() => handleColorSelect(color)}>
             <MenuItemSquare style={{ backgroundColor: color }} />
-            <MenuItemText>{t("color_picker.default")}</MenuItemText>
+            <MenuItemText>{title}</MenuItemText>
           </MenuItemWrapper>
           <HorizontalDivider />
           <ColorsWrapper>
