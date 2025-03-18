@@ -2,6 +2,7 @@ import { Button, Menu, MenuItem, styled } from "@mui/material";
 import type { MenuItemProps } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import ColorPicker from "../ColorPicker/ColorPicker";
 import { isInReferenceMode } from "../Editor/util";
@@ -28,6 +29,7 @@ function SheetTab(props: SheetTabProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const colorButton = useRef<HTMLDivElement>(null);
   const open = Boolean(anchorEl);
+  const { t } = useTranslation();
   const handleOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -136,6 +138,7 @@ function SheetTab(props: SheetTabProps) {
       />
       <ColorPicker
         color={color}
+        title={t("color_picker.no_fill")}
         onChange={(color): void => {
           props.onColorChanged(color);
           setColorPickerOpen(false);

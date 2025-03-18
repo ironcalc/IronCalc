@@ -262,6 +262,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
         </BorderPickerDialog>
         <ColorPicker
           color={borderColor}
+          title={t("color_picker.no_fill")}
           onChange={(color): void => {
             setBorderColor(color);
             setColorPickerOpen(false);
