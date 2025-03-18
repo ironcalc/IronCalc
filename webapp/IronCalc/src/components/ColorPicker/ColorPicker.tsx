@@ -1,38 +1,33 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Popover, type PopoverOrigin } from "@mui/material";
 import { Check, Plus } from "lucide-react";
-import { type JSX, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 
 // Types
 type ColorPickerProps = {
-  color?: string;
-  onChange: (color: string | null) => void;
-  onClose?: () => void;
+  color: string;
+  onChange: (color: string) => void;
+  onClose: () => void;
   anchorEl: React.RefObject<HTMLElement | null>;
   anchorOrigin?: PopoverOrigin;
   transformOrigin?: PopoverOrigin;
   open: boolean;
-  renderMenuItem?: (
-    color: string,
-    handleColorSelect: (color: string | null) => void,
-  ) => JSX.Element;
 };
 
 const colorPickerWidth = 240;
 
 // Main Component
 const ColorPicker = ({
-  color = theme.palette.common.black,
+  color,
   onChange,
   onClose,
   anchorEl,
   anchorOrigin,
   transformOrigin,
   open,
-  renderMenuItem,
 }: ColorPickerProps) => {
   const [selectedColor, setSelectedColor] = useState<string>(color);
   const [isPickerOpen, setPickerOpen] = useState(false);
@@ -48,8 +43,8 @@ const ColorPicker = ({
     setMenuOpen(open && !isPickerOpen);
   }, [open, isPickerOpen]);
 
-  const handleColorSelect = (color: string | null) => {
-    if (color && !recentColors.current.includes(color)) {
+  const handleColorSelect = (color: string) => {
+    if (!recentColors.current.includes(color)) {
       const maxRecentColors = 14;
       recentColors.current = [color, ...recentColors.current].slice(
         0,
@@ -118,17 +113,6 @@ const ColorPicker = ({
     blueTones,
   ];
 
-  // Default menu item renderer
-  const defaultRenderMenuItem = (
-    color: string,
-    handleColorSelect: (color: string | null) => void,
-  ) => (
-    <MenuItemWrapper onClick={() => handleColorSelect(color)}>
-      <MenuItemSquare />
-      <MenuItemText>{t("color_picker.default")}</MenuItemText>
-    </MenuItemWrapper>
-  );
-
   // Render color picker or menu
   return (
     <>
@@ -191,10 +175,10 @@ const ColorPicker = ({
           open={isMenuOpen}
           onClose={handleClose}
         >
-          {(renderMenuItem || defaultRenderMenuItem)(
-            theme.palette.common.black,
-            handleColorSelect,
-          )}
+          <MenuItemWrapper onClick={() => handleColorSelect(color)}>
+            <MenuItemSquare style={{ backgroundColor: color }} />
+            <MenuItemText>{t("color_picker.default")}</MenuItemText>
+          </MenuItemWrapper>
           <HorizontalDivider />
           <ColorsWrapper>
             <ColorList>
@@ -210,7 +194,7 @@ const ColorPicker = ({
               ))}
             </ColorList>
             <ColorGrid>
-              {toneArrays.map((tones, index) => (
+              {toneArrays.map((tones) => (
                 <ColorGridCol key={tones.join("-")}>
                   {tones.map((presetColor) => (
                     <RecentColorButton
@@ -301,7 +285,6 @@ const MenuItemText = styled("div")`
 const MenuItemSquare = styled.div`
   width: 16px;
   height: 16px;
-  background-color: ${theme.palette.common.black};
   box-sizing: border-box;
   margin-top: 0px;
   border-radius: 4px;
