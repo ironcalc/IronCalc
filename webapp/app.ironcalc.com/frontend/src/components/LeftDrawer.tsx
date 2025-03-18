@@ -4,6 +4,7 @@ import { IronCalcLogo } from "@ironcalc/workbook";
 import { Avatar, Drawer, IconButton, MenuItem, Menu } from "@mui/material";
 import { EllipsisVertical, HardDrive, Plus, Trash2 } from "lucide-react";
 import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
+import UserMenu from "./UserMenu";
 
 interface LeftDrawerProps {
   open: boolean;
@@ -30,6 +31,9 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
     string | null
   >(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userMenuAnchorEl, setUserMenuAnchorEl] = useState<null | HTMLElement>(
+    null
+  );
 
   const handleMenuOpen = (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -43,6 +47,14 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
     setSelectedWorkbookUuid(null);
+  };
+
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchorEl(null);
   };
 
   const elements = Object.keys(models).map((uuid) => (
@@ -145,17 +157,30 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
         )}
       </DrawerContent>
       <DrawerFooter>
-        <UserWrapper>
+        <UserWrapper
+          disableRipple
+          onClick={handleUserMenuOpen}
+          selected={Boolean(userMenuAnchorEl)}
+        >
           <StyledAvatar
             alt="Nikola Tesla"
             src="/path/to/avatar.jpg"
             sx={{ bgcolor: "#f2994a", width: 24, height: 24 }}
           />
           <Username>Nikola Tesla</Username>
-          <EllipsisButton size="small">
-            <EllipsisVertical />
-          </EllipsisButton>
         </UserWrapper>
+        <UserMenu
+          anchorEl={userMenuAnchorEl}
+          onClose={handleUserMenuClose}
+          onPreferences={() => {
+            console.log("Preferences clicked");
+            handleUserMenuClose();
+          }}
+          onLogout={() => {
+            console.log("Logout clicked");
+            handleUserMenuClose();
+          }}
+        />
       </DrawerFooter>
     </DrawerWrapper>
   );
@@ -290,7 +315,7 @@ const MenuItemText = styled("div")`
 const DrawerFooter = styled("div")`
   display: flex;
   align-items: center;
-  padding: 12px 8px 12px 16px;
+  padding: 12px;
   justify-content: space-between;
   max-height: 60px;
   height: 60px;
@@ -298,11 +323,16 @@ const DrawerFooter = styled("div")`
   box-sizing: border-box;
 `;
 
-const UserWrapper = styled("div")`
+const UserWrapper = styled(MenuItem)<{ selected: boolean }>`
   display: flex;
   align-items: center;
   gap: 8px;
   flex-grow: 1;
+  padding: 8px;
+  border-radius: 8px;
+  max-width: 100%;
+  background-color: ${({ selected }) =>
+    selected ? "#e0e0e0 !important" : "transparent"};
 `;
 
 const StyledAvatar = styled(Avatar)`
@@ -312,6 +342,9 @@ const StyledAvatar = styled(Avatar)`
 const Username = styled("div")`
   font-size: 12px;
   flex-grow: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 export default LeftDrawer;
