@@ -1,185 +1,275 @@
 import styled from "@emotion/styled";
-import Popover, { type PopoverOrigin } from "@mui/material/Popover";
-import { Check } from "lucide-react";
-import type React from "react";
+import { Menu, MenuItem, type PopoverOrigin } from "@mui/material";
+import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { HexColorInput, HexColorPicker } from "react-colorful";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
+import AdvancedColorPicker from "./AdvancedColorPicker";
 
 type ColorPickerProps = {
   color: string;
+  defaultColor: string;
+  title: string;
   onChange: (color: string) => void;
   onClose: () => void;
   anchorEl: React.RefObject<HTMLElement | null>;
-  anchorOrigin?: PopoverOrigin;
-  transformOrigin?: PopoverOrigin;
+  anchorOrigin: PopoverOrigin;
+  transformOrigin: PopoverOrigin;
   open: boolean;
 };
 
-const colorPickerWidth = 240;
-const colorfulHeight = 240;
-
-const ColorPicker = (properties: ColorPickerProps) => {
-  const [color, setColor] = useState<string>(properties.color);
+const ColorPicker = ({
+  color,
+  defaultColor,
+  title,
+  onChange,
+  onClose,
+  anchorEl,
+  anchorOrigin,
+  transformOrigin,
+  open,
+}: ColorPickerProps) => {
+  const [selectedColor, setSelectedColor] = useState<string>(color);
+  const [isPickerOpen, setPickerOpen] = useState(false);
   const recentColors = useRef<string[]>([]);
-
   const { t } = useTranslation();
 
-  const closePicker = (newColor: string): void => {
-    const maxRecentColors = 14;
-    const colors = recentColors.current.filter((c) => c !== newColor);
-    recentColors.current = [newColor, ...colors].slice(0, maxRecentColors);
-    properties.onChange(newColor);
-  };
-
-  const handleClose = (): void => {
-    properties.onClose();
-  };
-
   useEffect(() => {
-    setColor(properties.color);
-  }, [properties.color]);
+    setSelectedColor(color);
+  }, [color]);
 
-  const presetColors = [
+  const handleColorSelect = (color: string) => {
+    if (!recentColors.current.includes(color)) {
+      const maxRecentColors = 14;
+      recentColors.current = [color, ...recentColors.current].slice(
+        0,
+        maxRecentColors,
+      );
+    }
+    setSelectedColor(color || theme.palette.common.black);
+    onChange(color);
+    setPickerOpen(false);
+  };
+
+  const handleClose = () => {
+    setPickerOpen(false);
+    onClose();
+  };
+
+  // Colors definitions
+  const mainColors = [
     "#FFFFFF",
+    "#272525",
     "#1B717E",
-    "#59B9BC",
     "#3BB68A",
     "#8CB354",
     "#F8CD3C",
     "#F2994A",
     "#EC5753",
-    "#D03627",
     "#523E93",
     "#3358B7",
   ];
 
+  const lightTones = [
+    theme.palette.grey[50],
+    theme.palette.grey[100],
+    theme.palette.grey[200],
+    theme.palette.grey[300],
+    theme.palette.grey[400],
+  ];
+
+  const darkTones = [
+    theme.palette.grey[500],
+    theme.palette.grey[600],
+    theme.palette.grey[700],
+    theme.palette.grey[800],
+    theme.palette.grey[900],
+  ];
+
+  const tealTones = ["#BBD4D8", "#82B1B8", "#498D98", "#1E5A63", "#224348"];
+  const greenTones = ["#C4E9DC", "#93D7BF", "#62C5A1", "#358A6C", "#2F5F4D"];
+  const limeTones = ["#DDE8CC", "#C0D5A1", "#A3C276", "#6E8846", "#4F5E38"];
+  const yellowTones = ["#FDF0C5", "#FBE394", "#F9D764", "#B99A36", "#7A682E"];
+  const orangeTones = ["#FBE0C9", "#F8C79B", "#F5AD6E", "#B5763F", "#785334"];
+  const redTones = ["#F9CDCB", "#F5A3A0", "#F07975", "#B14845", "#763937"];
+  const purpleTones = ["#CBC5DF", "#A095C4", "#7565A9", "#453672", "#382F51"];
+  const blueTones = ["#C2CDE9", "#8FA3D7", "#5D79C5", "#30498B", "#2C395F"];
+
+  const toneArrays = [
+    lightTones,
+    darkTones,
+    tealTones,
+    greenTones,
+    limeTones,
+    yellowTones,
+    orangeTones,
+    redTones,
+    purpleTones,
+    blueTones,
+  ];
+
+  if (!open) {
+    return null;
+  }
+
+  if (isPickerOpen) {
+    return (
+      <AdvancedColorPicker
+        color={selectedColor}
+        onAccept={handleColorSelect}
+        onCancel={() => setPickerOpen(false)}
+        anchorEl={anchorEl}
+        anchorOrigin={anchorOrigin}
+        transformOrigin={transformOrigin}
+        open={true}
+      />
+    );
+  }
+
   return (
-    <Popover
-      open={properties.open}
+    <StyledMenu
+      anchorEl={anchorEl.current}
+      open={true}
       onClose={handleClose}
-      anchorEl={properties.anchorEl.current}
-      anchorOrigin={
-        properties.anchorOrigin || { vertical: "bottom", horizontal: "left" }
-      }
-      transformOrigin={
-        properties.transformOrigin || { vertical: "top", horizontal: "left" }
-      }
+      anchorOrigin={anchorOrigin}
+      transformOrigin={transformOrigin}
     >
-      <ColorPickerDialog>
-        <HexColorPicker
-          color={color}
-          onChange={(newColor): void => {
-            setColor(newColor);
-          }}
-        />
-        <HorizontalDivider />
-        <ColorPickerInput>
-          <HexWrapper>
-            <HexLabel>{"Hex"}</HexLabel>
-            <HexColorInputBox>
-              <HashLabel>{"#"}</HashLabel>
-              <HexColorInput
-                color={color}
-                onChange={(newColor): void => {
-                  setColor(newColor);
-                }}
-              />
-            </HexColorInputBox>
-          </HexWrapper>
-          <Swatch $color={color} />
-        </ColorPickerInput>
-        <HorizontalDivider />
+      <MenuItemWrapper onClick={() => handleColorSelect(defaultColor)}>
+        <MenuItemSquare style={{ backgroundColor: defaultColor }} />
+        <MenuItemText>{title}</MenuItemText>
+      </MenuItemWrapper>
+      <HorizontalDivider />
+      <ColorsWrapper>
         <ColorList>
-          {presetColors.map((presetColor) => (
-            <RecentColorButton
+          {mainColors.map((presetColor) => (
+            <ColorSwatch
               key={presetColor}
               $color={presetColor}
               onClick={(): void => {
-                setColor(presetColor);
+                setSelectedColor(presetColor);
+                handleColorSelect(presetColor);
               }}
             />
           ))}
         </ColorList>
-
-        {recentColors.current.length > 0 ? (
-          <>
-            <HorizontalDivider />
-            <RecentLabel>{"Recent"}</RecentLabel>
-            <ColorList>
-              {recentColors.current.map((recentColor) => (
-                <RecentColorButton
-                  key={recentColor}
-                  $color={recentColor}
+        <ColorGrid>
+          {toneArrays.map((tones) => (
+            <ColorGridCol key={tones.join("-")}>
+              {tones.map((presetColor) => (
+                <ColorSwatch
+                  key={presetColor}
+                  $color={presetColor}
                   onClick={(): void => {
-                    setColor(recentColor);
+                    setSelectedColor(presetColor);
+                    handleColorSelect(presetColor);
                   }}
                 />
               ))}
-            </ColorList>
+            </ColorGridCol>
+          ))}
+        </ColorGrid>
+      </ColorsWrapper>
+      <HorizontalDivider />
+      <RecentLabel>{t("color_picker.custom")}</RecentLabel>
+      <RecentColorsList>
+        {recentColors.current.length > 0 ? (
+          <>
+            {recentColors.current.map((recentColor) => (
+              <ColorSwatch
+                key={recentColor}
+                $color={recentColor}
+                onClick={(): void => {
+                  setSelectedColor(recentColor);
+                  handleColorSelect(recentColor);
+                }}
+              />
+            ))}
           </>
         ) : (
-          <div />
+          <EmptyContainer />
         )}
-        <Buttons>
-          <StyledButton
-            onClick={(): void => {
-              closePicker(color);
-            }}
-          >
-            <Check
-              style={{ width: "16px", height: "16px", marginRight: "8px" }}
-            />
-            {t("color_picker.apply")}
-          </StyledButton>
-        </Buttons>
-      </ColorPickerDialog>
-    </Popover>
+        <StyledPlusButton
+          onClick={() => setPickerOpen(true)}
+          title={t("color_picker.add")}
+        >
+          <Plus />
+        </StyledPlusButton>
+      </RecentColorsList>
+    </StyledMenu>
   );
 };
 
-const Buttons = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  margin: 8px;
-`;
-
-const StyledButton = styled("div")`
-  cursor: pointer;
-  color: #ffffff;
-  background: #f2994a;
-  padding: 0px 10px;
-  height: 36px;
-  line-height: 36px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  font-family: "Inter";
-  font-size: 14px;
-  &:hover {
-    background: #d68742;
+// Styled Components
+const StyledMenu = styled(Menu)`
+  & .MuiPaper-root {
+    border-radius: 8px;
+    padding: 4px 0px;
+    margin-left: -4px;
+    max-width: 220px;
+  }
+  & .MuiList-root {
+    padding: 0;
   }
 `;
 
-const RecentLabel = styled.div`
-  font-family: "Inter";
+const MenuItemWrapper = styled(MenuItem)`
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
   font-size: 12px;
-  font-family: Inter;
-  margin: 8px 8px 0px 8px;
-  color: ${theme.palette.text.secondary};
+  gap: 8px;
+  width: calc(100% - 8px);
+  min-width: 172px;
+  margin: 0px 4px 4px 4px;
+  border-radius: 4px;
+  padding: 8px;
+  height: 32px;
+`;
+
+const MenuItemText = styled("div")`
+  color: #000;
+`;
+
+const MenuItemSquare = styled.div`
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  margin-top: 0px;
+  border: 1px solid ${theme.palette.grey["300"]};
+  border-radius: 4px;
+`;
+
+const ColorsWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  margin: 4px;
 `;
 
 const ColorList = styled.div`
   display: flex;
   flex-wrap: wrap;
   flex-direction: row;
-  margin: 8px;
+  margin: 8px 8px 0px 8px;
   justify-content: flex-start;
-  gap: 4.7px;
+  gap: 4px;
 `;
 
-const RecentColorButton = styled.button<{ $color: string }>`
+const ColorGrid = styled.div`
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  margin: 8px;
+  gap: 4px;
+`;
+
+const ColorGridCol = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 4px;
+`;
+
+const ColorSwatch = styled.button<{ $color: string }>`
   width: 16px;
   height: 16px;
   ${({ $color }): string => {
@@ -189,7 +279,7 @@ const RecentColorButton = styled.button<{ $color: string }>`
     return `border: 1px solid ${$color};`;
   }}
   background-color: ${({ $color }): string => {
-    return $color;
+    return $color === "transparent" ? "none" : $color;
   }};
   box-sizing: border-box;
   margin-top: 0px;
@@ -207,111 +297,50 @@ const HorizontalDivider = styled.div`
   border-top: 1px solid ${theme.palette.grey["200"]};
 `;
 
-const ColorPickerDialog = styled.div`
-  background: ${theme.palette.background.default};
-  width: ${colorPickerWidth}px;
-  padding: 0px;
-  display: flex;
-  flex-direction: column;
-
-  & .react-colorful {
-    height: ${colorfulHeight}px;
-    width: ${colorPickerWidth}px;
-  }
-  & .react-colorful__saturation {
-    border-bottom: none;
-    border-radius: 0px;
-  }
-  & .react-colorful__hue {
-    height: 8px;
-    margin: 8px;
-    border-radius: 5px;
-  }
-  & .react-colorful__saturation-pointer {
-    width: 14px;
-    height: 14px;
-  }
-  & .react-colorful__hue-pointer {
-    width: 7px;
-    border-radius: 8px;
-    height: 16px;
-    width: 16px;
-    border-bottom: 1px solid #eee;
-  }
-`;
-
-const HashLabel = styled.div`
-  margin: auto 0px auto 10px;
-  font-size: 13px;
-  color: #333;
-  font-family: ${theme.typography.button.fontFamily};
-`;
-
-const HexLabel = styled.div`
-  margin: auto 0px;
+const RecentLabel = styled.div`
+  font-family: "Inter";
   font-size: 12px;
-  display: inline-flex;
-  font-family: ${theme.typography.button.fontFamily};
+  font-family: Inter;
+  margin: 8px 12px 0px 12px;
+  color: ${theme.palette.text.secondary};
 `;
 
-const HexColorInputBox = styled.div`
-  display: inline-flex;
-  flex-grow: 1;
-  width: 140px;
-  height: 28px;
-  border: 1px solid ${theme.palette.grey["300"]};
-  border-radius: 5px;
-  &:hover {
-    border: 1px solid ${theme.palette.grey["600"]};
+const RecentColorsList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  padding: 8px;
+  margin: 0px 4px;
+  justify-content: flex-start;
+  gap: 4px;
+`;
+
+const StyledPlusButton = styled("button")`
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: center;
+  border: none;
+  background: none;
+  font-size: 12px;
+  height: 16px;
+  width: 16px;
+  margin: 0;
+  padding: 0;
+  border-radius: 4px;
+  svg {
+    width: 16px;
+    height: 16px;
   }
-  &:focus-within {
-    outline: 2px solid ${theme.palette.secondary.main};
+  &:hover {
+    cursor: pointer;
+    outline: 1px solid ${theme.palette.grey["300"]};
     outline-offset: 1px;
   }
 `;
 
-const HexWrapper = styled.div`
-  display: flex;
-  gap: 8px;
-  flex-grow: 1;
-  & input {
-    min-width: 0px;
-    border: 0px;
-    background: ${theme.palette.background.default};
-    outline: none;
-    font-family: ${theme.typography.button.fontFamily};
-    font-size: 12px;
-    text-transform: uppercase;
-    text-align: right;
-    padding-right: 10px;
-    border-radius: 5px;
-  }
-
-  & input:focus {
-    border-color: #4298ef;
-  }
-`;
-
-const Swatch = styled.div<{ $color: string }>`
-  display: inline-flex;
-  ${({ $color }): string => {
-    if ($color.toUpperCase() === "#FFFFFF") {
-      return `border: 1px solid ${theme.palette.grey["300"]};`;
-    }
-    return `border: 1px solid ${$color};`;
-  }}
-  background-color: ${({ $color }): string => $color};
-  width: 28px;
-  height: 28px;
-  border-radius: 5px;
-`;
-
-const ColorPickerInput = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  margin: 8px;
-  gap: 8px;
+const EmptyContainer = styled.div`
+  display: none;
 `;
 
 export default ColorPicker;

@@ -121,6 +121,11 @@
     "insert_column": "Insert column"
   },
   "color_picker": {
-    "apply": "Apply"
+    "apply": "Add color",
+    "cancel": "Cancel",
+    "add": "Add new color",
+    "default": "Default color",
+    "no_fill": "No fill",
+    "custom": "Custom"
   }
 }
