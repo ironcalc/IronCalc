@@ -454,6 +454,8 @@ function Toolbar(properties: ToolbarProperties) {
         }}
         anchorEl={fontColorButton}
         open={fontColorPickerOpen}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
       />
       <ColorPicker
         color={properties.fillColor}
@@ -470,6 +472,8 @@ function Toolbar(properties: ToolbarProperties) {
         }}
         anchorEl={fillColorButton}
         open={fillColorPickerOpen}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
       />
       <BorderPicker
         onChange={(border): void => {

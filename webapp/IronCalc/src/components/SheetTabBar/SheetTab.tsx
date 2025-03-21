@@ -149,6 +149,8 @@ function SheetTab(props: SheetTabProps) {
         }}
         anchorEl={colorButton}
         open={colorPickerOpen}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "bottom", horizontal: "left" }}
       />
       <SheetDeleteDialog
         open={deleteDialogOpen}

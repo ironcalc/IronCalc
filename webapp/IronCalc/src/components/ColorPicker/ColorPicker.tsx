@@ -14,8 +14,8 @@ type ColorPickerProps = {
   onChange: (color: string) => void;
   onClose: () => void;
   anchorEl: React.RefObject<HTMLElement | null>;
-  anchorOrigin?: PopoverOrigin;
-  transformOrigin?: PopoverOrigin;
+  anchorOrigin: PopoverOrigin;
+  transformOrigin: PopoverOrigin;
   open: boolean;
 };
 
@@ -35,17 +35,12 @@ const ColorPicker = ({
 }: ColorPickerProps) => {
   const [selectedColor, setSelectedColor] = useState<string>(color);
   const [isPickerOpen, setPickerOpen] = useState(false);
-  const [isMenuOpen, setMenuOpen] = useState(open && !isPickerOpen);
   const recentColors = useRef<string[]>([]);
   const { t } = useTranslation();
 
   useEffect(() => {
     setSelectedColor(color);
   }, [color]);
-
-  useEffect(() => {
-    setMenuOpen(open && !isPickerOpen);
-  }, [open, isPickerOpen]);
 
   const handleColorSelect = (color: string) => {
     if (!recentColors.current.includes(color)) {
@@ -62,7 +57,7 @@ const ColorPicker = ({
 
   const handleClose = () => {
     setPickerOpen(false);
-    if (onClose) onClose();
+    onClose();
   };
 
   // Colors definitions
@@ -120,17 +115,13 @@ const ColorPicker = ({
   // Render color picker or menu
   return (
     <>
-      {isPickerOpen ? (
+      {isPickerOpen && open ? (
         <StylePopover
           open={isPickerOpen}
           onClose={handleClose}
           anchorEl={anchorEl.current}
-          anchorOrigin={
-            anchorOrigin || { vertical: "bottom", horizontal: "left" }
-          }
-          transformOrigin={
-            transformOrigin || { vertical: "top", horizontal: "left" }
-          }
+          anchorOrigin={anchorOrigin}
+          transformOrigin={transformOrigin}
         >
           <ColorPickerDialog>
             <HexColorPicker
@@ -158,7 +149,7 @@ const ColorPicker = ({
             </ColorPickerInput>
             <HorizontalDivider />
             <Buttons>
-              <CancelButton onClick={handleClose}>
+              <CancelButton onClick={() => setPickerOpen(false)}>
                 {t("color_picker.cancel")}
               </CancelButton>
               <StyledButton
@@ -176,8 +167,10 @@ const ColorPicker = ({
       ) : (
         <StyledMenu
           anchorEl={anchorEl.current}
-          open={isMenuOpen}
+          open={open && !isPickerOpen}
           onClose={handleClose}
+          anchorOrigin={anchorOrigin}
+          transformOrigin={transformOrigin}
         >
           <MenuItemWrapper onClick={() => handleColorSelect(defaultColor)}>
             <MenuItemSquare style={{ backgroundColor: defaultColor }} />
