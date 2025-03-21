@@ -235,6 +235,7 @@ const MenuItemSquare = styled.div`
   height: 16px;
   box-sizing: border-box;
   margin-top: 0px;
+  border: 1px solid ${theme.palette.grey["300"]};
   border-radius: 4px;
 `;
 
