@@ -13,6 +13,7 @@ import type { WorkbookState } from "../workbookState";
 type FormulaBarProps = {
   cellAddress: string;
   formulaValue: string;
+  isPartOfArray: boolean;
   model: Model;
   workbookState: WorkbookState;
   onChange: () => void;
@@ -23,6 +24,7 @@ function FormulaBar(properties: FormulaBarProps) {
   const {
     cellAddress,
     formulaValue,
+    isPartOfArray,
     model,
     onChange,
     onTextUpdated,
@@ -61,6 +63,9 @@ function FormulaBar(properties: FormulaBarProps) {
             });
             event.stopPropagation();
             event.preventDefault();
+          }}
+          sx={{
+            color: isPartOfArray ? "grey" : "black",
           }}
         >
           <Editor

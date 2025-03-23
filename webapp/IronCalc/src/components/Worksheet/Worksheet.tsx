@@ -14,6 +14,7 @@ import {
   LAST_COLUMN,
   LAST_ROW,
   ROW_HEIGH_SCALE,
+  cellArrayStructureColor,
   outlineBackgroundColor,
   outlineColor,
 } from "../WorksheetCanvas/constants";
@@ -60,6 +61,7 @@ const Worksheet = forwardRef(
     const cellOutline = useRef<HTMLDivElement>(null);
     const areaOutline = useRef<HTMLDivElement>(null);
     const cellOutlineHandle = useRef<HTMLDivElement>(null);
+    const cellArrayStructure = useRef<HTMLDivElement>(null);
     const extendToOutline = useRef<HTMLDivElement>(null);
     const columnResizeGuide = useRef<HTMLDivElement>(null);
     const rowResizeGuide = useRef<HTMLDivElement>(null);
@@ -87,6 +89,7 @@ const Worksheet = forwardRef(
       const outline = cellOutline.current;
       const handle = cellOutlineHandle.current;
       const area = areaOutline.current;
+      const arrayStructure = cellArrayStructure.current;
       const extendTo = extendToOutline.current;
       const editor = editorElement.current;
 
@@ -101,7 +104,8 @@ const Worksheet = forwardRef(
         !area ||
         !extendTo ||
         !scrollElement.current ||
-        !editor
+        !editor ||
+        !arrayStructure
       )
         return;
       // FIXME: This two need to be computed.
@@ -119,6 +123,7 @@ const Worksheet = forwardRef(
           columnHeaders: columnHeadersRef,
           cellOutline: outline,
           cellOutlineHandle: handle,
+          cellArrayStructure: arrayStructure,
           areaOutline: area,
           extendToOutline: extendTo,
           editor: editor,
@@ -462,6 +467,7 @@ const Worksheet = forwardRef(
             />
           </EditorWrapper>
           <AreaOutline ref={areaOutline} />
+          <CellArrayStructure ref={cellArrayStructure} />
           <ExtendToOutline ref={extendToOutline} />
           <CellOutlineHandle
             ref={cellOutlineHandle}
@@ -629,6 +635,12 @@ const AreaOutline = styled("div")`
   border: 1px solid ${outlineColor};
   border-radius: 3px;
   background-color: ${outlineBackgroundColor};
+`;
+
+const CellArrayStructure = styled("div")`
+  position: absolute;
+  border: 1px solid ${cellArrayStructureColor};
+  border-radius: 3px;
 `;
 
 const CellOutline = styled("div")`

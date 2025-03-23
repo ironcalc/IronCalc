@@ -13,8 +13,8 @@ use crate::{
     },
     model::Model,
     types::{
-        Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, SheetState,
-        Style, VerticalAlignment,
+        Alignment, BorderItem, Cell, CellType, Col, HorizontalAlignment, SheetProperties,
+        SheetState, Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
 };
@@ -24,6 +24,18 @@ use crate::user_model::history::{
 };
 
 use super::border_utils::is_max_border;
+
+#[derive(Serialize, Deserialize)]
+pub enum CellArrayStructure {
+    // It s just a single cell
+    SingleCell,
+    // It is part o a dynamic array
+    // (mother_row, mother_column, width, height)
+    DynamicChild(i32, i32, i32, i32),
+    // Mother of a dynamic array (width, height)
+    DynamicMother(i32, i32),
+}
+
 /// Data for the clipboard
 pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
 
@@ -627,6 +639,7 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
@@ -656,6 +669,7 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
@@ -1595,6 +1609,65 @@ impl UserModel {
         Ok(self.model.workbook.worksheet(sheet)?.show_grid_lines)
     }
 
+    /// Returns the geometric structure of a cell
+    pub fn get_cell_array_structure(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<CellArrayStructure, String> {
+        let cell = self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .cell(row, column)
+            .cloned()
+            .unwrap_or_default();
+        match cell {
+            Cell::EmptyCell { .. }
+            | Cell::BooleanCell { .. }
+            | Cell::NumberCell { .. }
+            | Cell::ErrorCell { .. }
+            | Cell::SharedString { .. }
+            | Cell::CellFormula { .. }
+            | Cell::CellFormulaBoolean { .. }
+            | Cell::CellFormulaNumber { .. }
+            | Cell::CellFormulaString { .. }
+            | Cell::CellFormulaError { .. } => Ok(CellArrayStructure::SingleCell),
+            Cell::SpillNumberCell { m, .. }
+            | Cell::SpillBooleanCell { m, .. }
+            | Cell::SpillErrorCell { m, .. }
+            | Cell::SpillStringCell { m, .. } => {
+                let (m_row, m_column) = m;
+                let m_cell = self
+                    .model
+                    .workbook
+                    .worksheet(sheet)?
+                    .cell(m_row, m_column)
+                    .cloned()
+                    .unwrap_or_default();
+                let (width, height) = match m_cell {
+                    Cell::DynamicCellFormula { r, .. }
+                    | Cell::DynamicCellFormulaBoolean { r, .. }
+                    | Cell::DynamicCellFormulaNumber { r, .. }
+                    | Cell::DynamicCellFormulaString { r, .. }
+                    | Cell::DynamicCellFormulaError { r, .. } => (r.0, r.1),
+                    _ => return Err("Invalid structure".to_string()),
+                };
+                Ok(CellArrayStructure::DynamicChild(
+                    m_row, m_column, width, height,
+                ))
+            }
+            Cell::DynamicCellFormula { r, .. }
+            | Cell::DynamicCellFormulaBoolean { r, .. }
+            | Cell::DynamicCellFormulaNumber { r, .. }
+            | Cell::DynamicCellFormulaString { r, .. }
+            | Cell::DynamicCellFormulaError { r, .. } => {
+                Ok(CellArrayStructure::DynamicMother(r.0, r.1))
+            }
+        }
+    }
+
     /// Returns a copy of the selected area
     pub fn copy_to_clipboard(&self) -> Result<Clipboard, String> {
         let selected_area = self.get_selected_view();
@@ -1897,6 +1970,24 @@ impl UserModel {
                     old_value,
                 } => {
                     needs_evaluation = true;
+                    let cell = self
+                        .model
+                        .workbook
+                        .worksheet(*sheet)?
+                        .cell(*row, *column)
+                        .cloned()
+                        .unwrap_or_default();
+                    if let Some((width, height)) = cell.get_dynamic_range() {
+                        for r in *row..*row + height {
+                            for c in *column..*column + width {
+                                // skip the "mother" cell
+                                if r == *row && c == *column {
+                                    continue;
+                                }
+                                self.model.cell_clear_contents(*sheet, r, c)?;
+                            }
+                        }
+                    }
                     match *old_value.clone() {
                         Some(value) => {
                             self.model
