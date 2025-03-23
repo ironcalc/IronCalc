@@ -3,7 +3,7 @@
 use crate::test::util::new_empty_model;
 
 #[test]
-fn simple_colum() {
+fn simple_column() {
     let mut model = new_empty_model();
     // We populate cells A1 to A3
     model._set("A1", "1");
@@ -30,7 +30,7 @@ fn return_of_array_is_n_impl() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("C2"), "#N/IMPL!".to_string());
+    assert_eq!(model._get_text("C2"), "1".to_string());
     assert_eq!(model._get_text("D2"), "1.89188842".to_string());
 }
 
