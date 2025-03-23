@@ -164,12 +164,10 @@ pub enum Cell {
     EmptyCell {
         s: i32,
     },
-
     BooleanCell {
         v: bool,
         s: i32,
     },
-
     NumberCell {
         v: f64,
         s: i32,
@@ -189,13 +187,11 @@ pub enum Cell {
         f: i32,
         s: i32,
     },
-
     CellFormulaBoolean {
         f: i32,
         v: bool,
         s: i32,
     },
-
     CellFormulaNumber {
         f: i32,
         v: f64,
@@ -207,7 +203,6 @@ pub enum Cell {
         v: String,
         s: i32,
     },
-
     CellFormulaError {
         f: i32,
         ei: Error,
@@ -217,7 +212,65 @@ pub enum Cell {
         // Error Message: "Not implemented function"
         m: String,
     },
-    // TODO: Array formulas
+    // All Spill/dynamic cells have a boolean, a for array, if true it is an array formula
+    // Spill cells point to a mother cell (row, column)
+    SpillNumberCell {
+        v: f64,
+        s: i32,
+        m: (i32, i32),
+    },
+    SpillBooleanCell {
+        v: bool,
+        s: i32,
+        m: (i32, i32),
+    },
+    SpillErrorCell {
+        ei: Error,
+        s: i32,
+        m: (i32, i32),
+    },
+    SpillStringCell {
+        v: String,
+        s: i32,
+        m: (i32, i32),
+    },
+    // Dynamic cell formulas have a range (width, height)
+    DynamicCellFormula {
+        f: i32,
+        s: i32,
+        r: (i32, i32),
+        a: bool,
+    },
+    DynamicCellFormulaBoolean {
+        f: i32,
+        v: bool,
+        s: i32,
+        r: (i32, i32),
+        a: bool,
+    },
+    DynamicCellFormulaNumber {
+        f: i32,
+        v: f64,
+        s: i32,
+        r: (i32, i32),
+        a: bool,
+    },
+    DynamicCellFormulaString {
+        f: i32,
+        v: String,
+        s: i32,
+        r: (i32, i32),
+        a: bool,
+    },
+    DynamicCellFormulaError {
+        f: i32,
+        ei: Error,
+        s: i32,
+        o: String,
+        m: String,
+        r: (i32, i32),
+        a: bool,
+    },
 }
 
 impl Default for Cell {

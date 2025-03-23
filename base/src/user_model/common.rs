@@ -627,6 +627,7 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
@@ -656,6 +657,7 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
@@ -1897,6 +1899,24 @@ impl UserModel {
                     old_value,
                 } => {
                     needs_evaluation = true;
+                    let cell = self
+                        .model
+                        .workbook
+                        .worksheet(*sheet)?
+                        .cell(*row, *column)
+                        .cloned()
+                        .unwrap_or_default();
+                    if let Some((width, height)) = cell.get_dynamic_range() {
+                        for r in *row..*row + height {
+                            for c in *column..*column + width {
+                                // skip the "mother" cell
+                                if r == *row && c == *column {
+                                    continue;
+                                }
+                                self.model.cell_clear_contents(*sheet, r, c)?;
+                            }
+                        }
+                    }
                     match *old_value.clone() {
                         Some(value) => {
                             self.model
