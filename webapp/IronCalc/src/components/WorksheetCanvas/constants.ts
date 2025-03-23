@@ -13,6 +13,7 @@ export const defaultTextColor = "#2E414D";
 
 export const outlineColor = "#F2994A";
 export const outlineBackgroundColor = "#F2994A1A";
+export const cellArrayStructureColor = "#64BDFDA1";
 
 export const LAST_COLUMN = 16_384;
 export const LAST_ROW = 1_048_576;

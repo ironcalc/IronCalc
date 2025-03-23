@@ -182,7 +182,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
     };
 }
 
-pub(crate) enum StaticResult {
+pub enum StaticResult {
     Scalar,
     Array(i32, i32),
     Range(i32, i32),
@@ -218,7 +218,7 @@ fn static_analysis_op_nodes(left: &Node, right: &Node) -> StaticResult {
 //  * Array(a, b) if we know it will be an a x b array.
 //  * Range(a, b) if we know it will be a a x b range.
 //  * Unknown if we cannot guaranty either
-fn run_static_analysis_on_node(node: &Node) -> StaticResult {
+pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
     match node {
         Node::BooleanKind(_)
         | Node::NumberKind(_)

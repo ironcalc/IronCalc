@@ -109,6 +109,11 @@ export interface MarkedToken {
   end: number;
 }
 
+export type CellArrayStructure =
+  | "SingleCell"
+  | { DynamicChild: [number, number, number, number] }
+  | { DynamicMother: [number, number] };
+
 export interface WorksheetProperties {
   name: string;
   color: string;
@@ -216,7 +221,7 @@ export interface SelectedView {
 // };
 
 // type ClipboardData = Record<string, Record <string, ClipboardCell>>;
-type ClipboardData = Map<number, Map <number, ClipboardCell>>;
+type ClipboardData = Map<number, Map<number, ClipboardCell>>;
 
 export interface ClipboardCell {
   text: string;

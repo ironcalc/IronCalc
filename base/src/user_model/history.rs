@@ -5,18 +5,21 @@ use bitcode::{Decode, Encode};
 use crate::types::{Cell, Col, Row, SheetState, Style, Worksheet};
 
 #[derive(Clone, Encode, Decode)]
+#[cfg_attr(debug_assertions, derive(Debug))]
 pub(crate) struct RowData {
     pub(crate) row: Option<Row>,
     pub(crate) data: HashMap<i32, Cell>,
 }
 
 #[derive(Clone, Encode, Decode)]
+#[cfg_attr(debug_assertions, derive(Debug))]
 pub(crate) struct ColumnData {
     pub(crate) column: Option<Col>,
     pub(crate) data: HashMap<i32, Cell>,
 }
 
 #[derive(Clone, Encode, Decode)]
+#[cfg_attr(debug_assertions, derive(Debug))]
 pub(crate) enum Diff {
     // Cell diffs
     SetCellValue {

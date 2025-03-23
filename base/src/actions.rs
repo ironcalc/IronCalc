@@ -22,7 +22,7 @@ impl Model {
             .cell(row, column)
             .and_then(|c| c.get_formula())
         {
-            let node = &self.parsed_formulas[sheet as usize][f as usize].clone();
+            let node = &self.parsed_formulas[sheet as usize][f as usize].0.clone();
             let cell_reference = CellReferenceRC {
                 sheet: self.workbook.worksheets[sheet as usize].get_name(),
                 row,
