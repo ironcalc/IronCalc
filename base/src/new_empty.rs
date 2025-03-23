@@ -8,6 +8,7 @@ use crate::{
     expressions::{
         lexer::LexerMode,
         parser::{
+            static_analysis::run_static_analysis_on_node,
             stringify::{rename_sheet_in_node, to_rc_format, to_string},
             Parser,
         },
@@ -94,7 +95,8 @@ impl Model {
             let mut parse_formula = Vec::new();
             for formula in shared_formulas {
                 let t = self.parser.parse(formula, &cell_reference);
-                parse_formula.push(t);
+                let static_result = run_static_analysis_on_node(&t);
+                parse_formula.push((t, static_result));
             }
             self.parsed_formulas.push(parse_formula);
         }

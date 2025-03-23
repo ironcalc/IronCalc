@@ -31,6 +31,8 @@ export interface CanvasSettings {
     canvas: HTMLCanvasElement;
     cellOutline: HTMLDivElement;
     areaOutline: HTMLDivElement;
+    cellOutlineHandle: HTMLDivElement;
+    cellArrayStructure: HTMLDivElement;
     extendToOutline: HTMLDivElement;
     columnGuide: HTMLDivElement;
     rowGuide: HTMLDivElement;
@@ -90,6 +92,8 @@ export default class WorksheetCanvas {
 
   cellOutlineHandle: HTMLDivElement;
 
+  cellArrayStructure: HTMLDivElement;
+
   extendToOutline: HTMLDivElement;
 
   workbookState: WorkbookState;
@@ -124,6 +128,8 @@ export default class WorksheetCanvas {
     this.refresh = options.refresh;
 
     this.cellOutline = options.elements.cellOutline;
+    this.cellOutlineHandle = options.elements.cellOutlineHandle;
+    this.cellArrayStructure = options.elements.cellArrayStructure;
     this.areaOutline = options.elements.areaOutline;
     this.extendToOutline = options.elements.extendToOutline;
     this.rowGuide = options.elements.rowGuide;
@@ -1515,16 +1521,20 @@ export default class WorksheetCanvas {
   }
 
   private drawCellOutline(): void {
-    const { cellOutline, areaOutline, cellOutlineHandle } = this;
+    const { cellArrayStructure, cellOutline, areaOutline, cellOutlineHandle } =
+      this;
     if (this.workbookState.getEditingCell()) {
       cellOutline.style.visibility = "hidden";
       cellOutlineHandle.style.visibility = "hidden";
       areaOutline.style.visibility = "hidden";
+      cellArrayStructure.style.visibility = "hidden";
       return;
     }
     cellOutline.style.visibility = "visible";
     cellOutlineHandle.style.visibility = "visible";
     areaOutline.style.visibility = "visible";
+    // This one is hidden by default
+    cellArrayStructure.style.visibility = "hidden";
 
     const [selectedSheet, selectedRow, selectedColumn] =
       this.model.getSelectedCell();
@@ -1580,6 +1590,34 @@ export default class WorksheetCanvas {
       [handleX, handleY] = this.getCoordinatesByCell(rowStart, columnStart);
       handleX += this.getColumnWidth(selectedSheet, columnStart);
       handleY += this.getRowHeight(selectedSheet, rowStart);
+      // we draw the array structure if needed only in this case
+      const arrayStructure = this.model.getCellArrayStructure(
+        selectedSheet,
+        selectedRow,
+        selectedColumn,
+      );
+      let array = null;
+      if (arrayStructure === "SingleCell") {
+        // nothing to see here
+      } else if ("DynamicMother" in arrayStructure) {
+        cellArrayStructure.style.visibility = "visible";
+        const [arrayWidth, arrayHeight] = arrayStructure.DynamicMother;
+        array = [selectedRow, selectedColumn, arrayWidth, arrayHeight];
+      } else {
+        cellArrayStructure.style.visibility = "visible";
+        array = arrayStructure.DynamicChild;
+      }
+      if (array !== null) {
+        const [arrayX, arrayY] = this.getCoordinatesByCell(array[0], array[1]);
+        const [arrayX1, arrayY1] = this.getCoordinatesByCell(
+          array[0] + array[3],
+          array[1] + array[2],
+        );
+        cellArrayStructure.style.left = `${arrayX}px`;
+        cellArrayStructure.style.top = `${arrayY}px`;
+        cellArrayStructure.style.width = `${arrayX1 - arrayX}px`;
+        cellArrayStructure.style.height = `${arrayY1 - arrayY}px`;
+      }
     } else {
       areaOutline.style.visibility = "visible";
       cellOutlineHandle.style.visibility = "visible";
