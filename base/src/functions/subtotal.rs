@@ -96,7 +96,7 @@ impl Model {
 
         match cell.get_formula() {
             Some(f) => {
-                let node = &self.parsed_formulas[sheet_index as usize][f as usize];
+                let node = &self.parsed_formulas[sheet_index as usize][f as usize].0;
                 matches!(
                     node,
                     Node::FunctionKind {

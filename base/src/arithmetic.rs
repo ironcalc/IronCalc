@@ -77,8 +77,6 @@ impl Model {
                         match to_f64(&node) {
                             Ok(f2) => match op(f1, f2) {
                                 Ok(x) => data_row.push(ArrayNode::Number(x)),
-                                Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
-                                Err(Error::VALUE) => data_row.push(ArrayNode::Error(Error::VALUE)),
                                 Err(e) => data_row.push(ArrayNode::Error(e)),
                             },
                             Err(err) => data_row.push(ArrayNode::Error(err)),
@@ -100,8 +98,6 @@ impl Model {
                         match to_f64(&node) {
                             Ok(f1) => match op(f1, f2) {
                                 Ok(x) => data_row.push(ArrayNode::Number(x)),
-                                Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
-                                Err(Error::VALUE) => data_row.push(ArrayNode::Error(Error::VALUE)),
                                 Err(e) => data_row.push(ArrayNode::Error(e)),
                             },
                             Err(err) => data_row.push(ArrayNode::Error(err)),
@@ -137,10 +133,6 @@ impl Model {
                             (Some(v1), Some(v2)) => match (to_f64(v1), to_f64(v2)) {
                                 (Ok(f1), Ok(f2)) => match op(f1, f2) {
                                     Ok(x) => data_row.push(ArrayNode::Number(x)),
-                                    Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
-                                    Err(Error::VALUE) => {
-                                        data_row.push(ArrayNode::Error(Error::VALUE))
-                                    }
                                     Err(e) => data_row.push(ArrayNode::Error(e)),
                                 },
                                 (Err(e), _) | (_, Err(e)) => data_row.push(ArrayNode::Error(e)),

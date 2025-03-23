@@ -362,6 +362,19 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     return model.getCellContent(sheet, row, column);
   };
 
+  // returns true if it is either single cell or the root cell of an array
+  const isRootCellOfArray = () => {
+    const { sheet, row, column } = model.getSelectedView();
+    const r = model.getCellArrayStructure(sheet, row, column);
+    if (r === "SingleCell") {
+      return false;
+    }
+    if ("DynamicMother" in r) {
+      return false;
+    }
+    return true;
+  };
+
   const getCellStyle = useCallback(() => {
     const { sheet, row, column } = model.getSelectedView();
     return model.getCellStyle(sheet, row, column);
@@ -705,6 +718,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
         model={model}
         workbookState={workbookState}
+        isPartOfArray={isRootCellOfArray()}
       />
       <Worksheet
         model={model}

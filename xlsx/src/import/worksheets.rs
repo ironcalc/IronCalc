@@ -303,13 +303,15 @@ fn from_a1_to_rc(
     context: String,
     tables: HashMap<String, Table>,
     defined_names: Vec<DefinedNameS>,
+    is_array: bool,
 ) -> Result<String, XlsxError> {
     let mut parser = Parser::new(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
     let mut t = parser.parse(&formula, &cell_reference);
-    add_implicit_intersection(&mut t, true);
-
+    if !is_array {
+        add_implicit_intersection(&mut t, true);
+    }
     Ok(to_rc_format(&t))
 }
 
@@ -837,6 +839,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             };
 
             let cell_metadata = cell.attribute("cm");
+            let is_dynamic_array = cell_metadata == Some("1");
 
             // type, the default type being "n" for number
             // If the cell does not have a value is an empty cell
@@ -903,6 +906,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                                     context,
                                     tables.clone(),
                                     defined_names.clone(),
+                                    is_dynamic_array,
                                 )?;
                                 match index_map.get(&si) {
                                     Some(index) => {
@@ -951,7 +955,6 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                         return Err(XlsxError::NotImplemented("data table formulas".to_string()));
                     }
                     "array" | "normal" => {
-                        let is_dynamic_array = cell_metadata == Some("1");
                         if formula_type == "array" && !is_dynamic_array {
                             // Dynamic formulas in Excel are formulas of type array with the cm=1, those we support.
                             // On the other hand the old CSE formulas or array formulas are not supported in IronCalc for the time being
@@ -966,6 +969,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                             context,
                             tables.clone(),
                             defined_names.clone(),
+                            is_dynamic_array,
                         )?;
 
                         match get_formula_index(&formula, &shared_formulas) {

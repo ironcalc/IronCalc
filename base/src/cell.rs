@@ -64,12 +64,50 @@ impl Cell {
     /// Returns the formula of a cell if any.
     pub fn get_formula(&self) -> Option<i32> {
         match self {
-            Cell::CellFormula { f, .. } => Some(*f),
-            Cell::CellFormulaBoolean { f, .. } => Some(*f),
-            Cell::CellFormulaNumber { f, .. } => Some(*f),
-            Cell::CellFormulaString { f, .. } => Some(*f),
-            Cell::CellFormulaError { f, .. } => Some(*f),
-            _ => None,
+            Cell::CellFormula { f, .. }
+            | Cell::CellFormulaBoolean { f, .. }
+            | Cell::CellFormulaNumber { f, .. }
+            | Cell::CellFormulaString { f, .. }
+            | Cell::CellFormulaError { f, .. }
+            | Cell::DynamicCellFormula { f, .. }
+            | Cell::DynamicCellFormulaBoolean { f, .. }
+            | Cell::DynamicCellFormulaNumber { f, .. }
+            | Cell::DynamicCellFormulaString { f, .. }
+            | Cell::DynamicCellFormulaError { f, .. } => Some(*f),
+            Cell::EmptyCell { .. }
+            | Cell::BooleanCell { .. }
+            | Cell::NumberCell { .. }
+            | Cell::ErrorCell { .. }
+            | Cell::SharedString { .. }
+            | Cell::SpillNumberCell { .. }
+            | Cell::SpillBooleanCell { .. }
+            | Cell::SpillErrorCell { .. }
+            | Cell::SpillStringCell { .. } => None,
+        }
+    }
+
+    /// Returns the dynamic range of a cell if any.
+    pub fn get_dynamic_range(&self) -> Option<(i32, i32)> {
+        match self {
+            Cell::DynamicCellFormula { r, .. } => Some(*r),
+            Cell::DynamicCellFormulaBoolean { r, .. } => Some(*r),
+            Cell::DynamicCellFormulaNumber { r, .. } => Some(*r),
+            Cell::DynamicCellFormulaString { r, .. } => Some(*r),
+            Cell::DynamicCellFormulaError { r, .. } => Some(*r),
+            Cell::EmptyCell { .. }
+            | Cell::BooleanCell { .. }
+            | Cell::NumberCell { .. }
+            | Cell::ErrorCell { .. }
+            | Cell::SharedString { .. }
+            | Cell::CellFormula { .. }
+            | Cell::CellFormulaBoolean { .. }
+            | Cell::CellFormulaNumber { .. }
+            | Cell::CellFormulaString { .. }
+            | Cell::CellFormulaError { .. }
+            | Cell::SpillNumberCell { .. }
+            | Cell::SpillBooleanCell { .. }
+            | Cell::SpillErrorCell { .. }
+            | Cell::SpillStringCell { .. } => None,
         }
     }
 
@@ -89,6 +127,15 @@ impl Cell {
             Cell::CellFormulaNumber { s, .. } => *s = style,
             Cell::CellFormulaString { s, .. } => *s = style,
             Cell::CellFormulaError { s, .. } => *s = style,
+            Cell::SpillBooleanCell { s, .. } => *s = style,
+            Cell::SpillNumberCell { s, .. } => *s = style,
+            Cell::SpillStringCell { s, .. } => *s = style,
+            Cell::SpillErrorCell { s, .. } => *s = style,
+            Cell::DynamicCellFormula { s, .. } => *s = style,
+            Cell::DynamicCellFormulaBoolean { s, .. } => *s = style,
+            Cell::DynamicCellFormulaNumber { s, .. } => *s = style,
+            Cell::DynamicCellFormulaString { s, .. } => *s = style,
+            Cell::DynamicCellFormulaError { s, .. } => *s = style,
         };
     }
 
@@ -104,6 +151,15 @@ impl Cell {
             Cell::CellFormulaNumber { s, .. } => *s,
             Cell::CellFormulaString { s, .. } => *s,
             Cell::CellFormulaError { s, .. } => *s,
+            Cell::SpillBooleanCell { s, .. } => *s,
+            Cell::SpillNumberCell { s, .. } => *s,
+            Cell::SpillStringCell { s, .. } => *s,
+            Cell::SpillErrorCell { s, .. } => *s,
+            Cell::DynamicCellFormula { s, .. } => *s,
+            Cell::DynamicCellFormulaBoolean { s, .. } => *s,
+            Cell::DynamicCellFormulaNumber { s, .. } => *s,
+            Cell::DynamicCellFormulaString { s, .. } => *s,
+            Cell::DynamicCellFormulaError { s, .. } => *s,
         }
     }
 
@@ -119,6 +175,15 @@ impl Cell {
             Cell::CellFormulaNumber { .. } => CellType::Number,
             Cell::CellFormulaString { .. } => CellType::Text,
             Cell::CellFormulaError { .. } => CellType::ErrorValue,
+            Cell::SpillBooleanCell { .. } => CellType::LogicalValue,
+            Cell::SpillNumberCell { .. } => CellType::Number,
+            Cell::SpillStringCell { .. } => CellType::Text,
+            Cell::SpillErrorCell { .. } => CellType::ErrorValue,
+            Cell::DynamicCellFormula { .. } => CellType::Number,
+            Cell::DynamicCellFormulaBoolean { .. } => CellType::LogicalValue,
+            Cell::DynamicCellFormulaNumber { .. } => CellType::Number,
+            Cell::DynamicCellFormulaString { .. } => CellType::Text,
+            Cell::DynamicCellFormulaError { .. } => CellType::ErrorValue,
         }
     }
 
@@ -136,7 +201,7 @@ impl Cell {
             Cell::EmptyCell { .. } => CellValue::None,
             Cell::BooleanCell { v, s: _ } => CellValue::Boolean(*v),
             Cell::NumberCell { v, s: _ } => CellValue::Number(*v),
-            Cell::ErrorCell { ei, .. } => {
+            Cell::ErrorCell { ei, .. } | Cell::SpillErrorCell { ei, .. } => {
                 let v = ei.to_localized_error_string(language);
                 CellValue::String(v)
             }
@@ -148,14 +213,25 @@ impl Cell {
                 };
                 CellValue::String(v)
             }
-            Cell::CellFormula { .. } => CellValue::String("#ERROR!".to_string()),
-            Cell::CellFormulaBoolean { v, .. } => CellValue::Boolean(*v),
-            Cell::CellFormulaNumber { v, .. } => CellValue::Number(*v),
-            Cell::CellFormulaString { v, .. } => CellValue::String(v.clone()),
-            Cell::CellFormulaError { ei, .. } => {
+            Cell::DynamicCellFormula { .. } | Cell::CellFormula { .. } => {
+                CellValue::String("#ERROR!".to_string())
+            }
+            Cell::DynamicCellFormulaBoolean { v, .. } | Cell::CellFormulaBoolean { v, .. } => {
+                CellValue::Boolean(*v)
+            }
+            Cell::DynamicCellFormulaNumber { v, .. } | Cell::CellFormulaNumber { v, .. } => {
+                CellValue::Number(*v)
+            }
+            Cell::DynamicCellFormulaString { v, .. } | Cell::CellFormulaString { v, .. } => {
+                CellValue::String(v.clone())
+            }
+            Cell::DynamicCellFormulaError { ei, .. } | Cell::CellFormulaError { ei, .. } => {
                 let v = ei.to_localized_error_string(language);
                 CellValue::String(v)
             }
+            Cell::SpillBooleanCell { v, .. } => CellValue::Boolean(*v),
+            Cell::SpillNumberCell { v, .. } => CellValue::Number(*v),
+            Cell::SpillStringCell { v, .. } => CellValue::String(v.clone()),
         }
     }
 
