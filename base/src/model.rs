@@ -11,8 +11,9 @@ use crate::{
         lexer::LexerMode,
         parser::{
             move_formula::{move_formula, MoveContext},
+            static_analysis::{run_static_analysis_on_node, StaticResult},
             stringify::{rename_defined_name_in_node, to_rc_format, to_string},
-            Node, Parser,
+            ArrayNode, Node, Parser,
         },
         token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
         types::*,
@@ -99,7 +100,7 @@ pub struct Model {
     /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook,
     /// A list of parsed formulas
-    pub parsed_formulas: Vec<Vec<Node>>,
+    pub parsed_formulas: Vec<Vec<(Node, StaticResult)>>,
     /// A list of parsed defined names
     pub(crate) parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
     /// An optimization to lookup strings faster
@@ -522,14 +523,195 @@ impl Model {
         }
         Ok(format!("{}!{}{}", sheet.name, column, cell_reference.row))
     }
+
+    /// Sets sheet, target_row, target_column, (width, height), &v
+    #[allow(clippy::too_many_arguments)]
+    fn set_spill_cell_with_formula_value(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        r: (i32, i32),
+        v: &CalcResult,
+        s: i32,
+        f: i32,
+    ) -> Result<(), String> {
+        let new_cell = match v {
+            CalcResult::EmptyCell => Cell::DynamicCellFormulaNumber {
+                f,
+                v: 0.0,
+                s,
+                r,
+                a: false,
+            },
+            CalcResult::String(v) => Cell::DynamicCellFormulaString {
+                f,
+                v: v.clone(),
+                s,
+                r,
+                a: false,
+            },
+            CalcResult::Number(v) => Cell::DynamicCellFormulaNumber {
+                v: *v,
+                s,
+                r,
+                f,
+                a: false,
+            },
+            CalcResult::Boolean(b) => Cell::DynamicCellFormulaBoolean {
+                v: *b,
+                s,
+                r,
+                f,
+                a: false,
+            },
+            CalcResult::Error { error, .. } => Cell::DynamicCellFormulaError {
+                ei: error.clone(),
+                s,
+                r,
+                f,
+                a: false,
+                o: "".to_string(),
+                m: "".to_string(),
+            },
+
+            // These cannot happen
+            // FIXME: Maybe the type of get_cell_value should be different
+            CalcResult::Range { .. } | CalcResult::EmptyArg | CalcResult::Array(_) => {
+                Cell::DynamicCellFormulaError {
+                    ei: Error::ERROR,
+                    s,
+                    r,
+                    f,
+                    a: false,
+                    o: "".to_string(),
+                    m: "".to_string(),
+                }
+            }
+        };
+        let sheet_data = &mut self.workbook.worksheet_mut(sheet)?.sheet_data;
+
+        match sheet_data.get_mut(&row) {
+            Some(column_data) => match column_data.get(&column) {
+                Some(_cell) => {
+                    column_data.insert(column, new_cell);
+                }
+                None => {
+                    column_data.insert(column, new_cell);
+                }
+            },
+            None => {
+                let mut column_data = HashMap::new();
+                column_data.insert(column, new_cell);
+                sheet_data.insert(row, column_data);
+            }
+        }
+        Ok(())
+    }
+
+    /// Sets a cell with a "spill" value
+    fn set_spill_cell_with_value(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        m: (i32, i32),
+        v: &CalcResult,
+    ) -> Result<(), String> {
+        let style_index = self.get_cell_style_index(sheet, row, column)?;
+        let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
+            self.workbook
+                .styles
+                .get_style_without_quote_prefix(style_index)?
+        } else {
+            style_index
+        };
+        let new_cell = match v {
+            CalcResult::EmptyCell => Cell::SpillNumberCell {
+                v: 0.0,
+                s: style_index,
+                m,
+            },
+            CalcResult::String(s) => Cell::SpillStringCell {
+                v: s.clone(),
+                s: new_style_index,
+                m,
+            },
+            CalcResult::Number(f) => Cell::SpillNumberCell {
+                v: *f,
+                s: new_style_index,
+                m,
+            },
+            CalcResult::Boolean(b) => Cell::SpillBooleanCell {
+                v: *b,
+                s: new_style_index,
+                m,
+            },
+            CalcResult::Error { error, .. } => Cell::SpillErrorCell {
+                ei: error.clone(),
+                s: style_index,
+                m,
+            },
+
+            // These cannot happen
+            // FIXME: Maybe the type of get_cell_value should be different
+            CalcResult::Range { .. } | CalcResult::EmptyArg | CalcResult::Array(_) => {
+                Cell::SpillErrorCell {
+                    ei: Error::ERROR,
+                    s: style_index,
+                    m,
+                }
+            }
+        };
+        let sheet_data = &mut self.workbook.worksheet_mut(sheet)?.sheet_data;
+
+        match sheet_data.get_mut(&row) {
+            Some(column_data) => match column_data.get(&column) {
+                Some(_cell) => {
+                    column_data.insert(column, new_cell);
+                }
+                None => {
+                    column_data.insert(column, new_cell);
+                }
+            },
+            None => {
+                let mut column_data = HashMap::new();
+                column_data.insert(column, new_cell);
+                sheet_data.insert(row, column_data);
+            }
+        }
+        Ok(())
+    }
+
     /// Sets `result` in the cell given by `sheet` sheet index, row and column
     /// Note that will panic if the cell does not exist
     /// It will do nothing if the cell does not have a formula
     #[allow(clippy::expect_used)]
-    fn set_cell_value(&mut self, cell_reference: CellReferenceIndex, result: &CalcResult) {
+    fn set_cell_value(
+        &mut self,
+        cell_reference: CellReferenceIndex,
+        result: &CalcResult,
+    ) -> Result<(), String> {
         let CellReferenceIndex { sheet, column, row } = cell_reference;
-        let cell = &self.workbook.worksheets[sheet as usize].sheet_data[&row][&column];
+        let cell = self
+            .workbook
+            .worksheet(sheet)?
+            .cell(row, column)
+            .cloned()
+            .unwrap_or_default();
         let s = cell.get_style();
+        // If the cell is a dynamic cell we need to delete all the cells in the range
+        if let Some((width, height)) = cell.get_dynamic_range() {
+            for r in row..row + height {
+                for c in column..column + width {
+                    // skip the "mother" cell
+                    if r == row && c == column {
+                        continue;
+                    }
+                    self.cell_clear_contents(sheet, r, c)?;
+                }
+            }
+        }
         if let Some(f) = cell.get_formula() {
             match result {
                 CalcResult::Number(value) => {
@@ -594,19 +776,138 @@ impl Model {
                         ei: error.clone(),
                     };
                 }
+                CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                    *self.workbook.worksheets[sheet as usize]
+                        .sheet_data
+                        .get_mut(&row)
+                        .expect("expected a row")
+                        .get_mut(&column)
+                        .expect("expected a column") = Cell::CellFormulaNumber { f, s, v: 0.0 };
+                }
                 CalcResult::Range { left, right } => {
                     if left.sheet == right.sheet
                         && left.row == right.row
                         && left.column == right.column
                     {
-                        let intersection_cell = CellReferenceIndex {
+                        // There is only one cell
+                        let single_cell = CellReferenceIndex {
                             sheet: left.sheet,
                             column: left.column,
                             row: left.row,
                         };
-                        let v = self.evaluate_cell(intersection_cell);
-                        self.set_cell_value(cell_reference, &v);
+                        let v = self.evaluate_cell(single_cell);
+                        self.set_cell_value(cell_reference, &v)?;
                     } else {
+                        // We need to check if all the cells are empty, otherwise we mark the cell as #SPILL!
+                        let mut all_empty = true;
+                        for r in row..=row + right.row - left.row {
+                            for c in column..=column + right.column - left.column {
+                                if r == row && c == column {
+                                    continue;
+                                }
+                                if !self.is_empty_cell(sheet, r, c).unwrap_or(false) {
+                                    all_empty = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if !all_empty {
+                            let o = match self.cell_reference_to_string(&cell_reference) {
+                                Ok(s) => s,
+                                Err(_) => "".to_string(),
+                            };
+                            *self.workbook.worksheets[sheet as usize]
+                                .sheet_data
+                                .get_mut(&row)
+                                .expect("expected a row")
+                                .get_mut(&column)
+                                .expect("expected a column") = Cell::DynamicCellFormulaError {
+                                f,
+                                s,
+                                o,
+                                m: "Result would spill to non empty cells".to_string(),
+                                ei: Error::SPILL,
+                                r: (1, 1),
+                                a: false,
+                            };
+                            return Ok(());
+                        }
+                        // evaluate all the cells in that range
+                        for r in left.row..=right.row {
+                            for c in left.column..=right.column {
+                                let cell_reference = CellReferenceIndex {
+                                    sheet: left.sheet,
+                                    row: r,
+                                    column: c,
+                                };
+                                // FIXME: We ned to return an error
+                                self.evaluate_cell(cell_reference);
+                            }
+                        }
+                        // now write the result in the target
+                        for r in left.row..=right.row {
+                            let row_delta = r - left.row;
+                            for c in left.column..=right.column {
+                                let column_delta = c - left.column;
+                                // We need to put whatever is in (left.sheet, r, c) in
+                                // (sheet, row + row_delta, column + column_delta)
+                                // But we need to preserve the style
+                                let target_row = row + row_delta;
+                                let target_column = column + column_delta;
+                                let cell = self
+                                    .workbook
+                                    .worksheet(left.sheet)?
+                                    .cell(r, c)
+                                    .cloned()
+                                    .unwrap_or_default();
+                                let cell_reference = CellReferenceIndex {
+                                    sheet: left.sheet,
+                                    row: r,
+                                    column: c,
+                                };
+                                let v = self.get_cell_value(&cell, cell_reference);
+                                if row == target_row && column == target_column {
+                                    // let cell_reference = CellReferenceIndex { sheet, row, column };
+                                    // self.set_cell_value(cell_reference, &v);
+                                    self.set_spill_cell_with_formula_value(
+                                        sheet,
+                                        target_row,
+                                        target_column,
+                                        (right.column - left.column + 1, right.row - left.row + 1),
+                                        &v,
+                                        s,
+                                        f,
+                                    )?;
+                                    continue;
+                                }
+                                self.set_spill_cell_with_value(
+                                    sheet,
+                                    target_row,
+                                    target_column,
+                                    (row, column),
+                                    &v,
+                                )?;
+                            }
+                        }
+                    }
+                }
+                CalcResult::Array(array) => {
+                    let width = array[0].len() as i32;
+                    let height = array.len() as i32;
+                    // First we check that we don't spill:
+                    let mut all_empty = true;
+                    for r in row..row + height {
+                        for c in column..column + width {
+                            if r == row && c == column {
+                                continue;
+                            }
+                            if !self.is_empty_cell(sheet, r, c).unwrap_or(false) {
+                                all_empty = false;
+                                break;
+                            }
+                        }
+                    }
+                    if !all_empty {
                         let o = match self.cell_reference_to_string(&cell_reference) {
                             Ok(s) => s,
                             Err(_) => "".to_string(),
@@ -620,57 +921,65 @@ impl Model {
                             f,
                             s,
                             o,
-                            m: "Implicit Intersection not implemented".to_string(),
-                            ei: Error::NIMPL,
+                            m: "Result would spill to non empty cells".to_string(),
+                            ei: Error::SPILL,
                         };
+                        return Ok(());
                     }
-                    // if let Some(intersection_cell) = implicit_intersection(&cell_reference, &range)
-                    // {
-                    //     let v = self.evaluate_cell(intersection_cell);
-                    //     self.set_cell_value(cell_reference, &v);
-                    // } else {
-                    //     let o = match self.cell_reference_to_string(&cell_reference) {
-                    //         Ok(s) => s,
-                    //         Err(_) => "".to_string(),
-                    //     };
-                    //     *self.workbook.worksheets[sheet as usize]
-                    //         .sheet_data
-                    //         .get_mut(&row)
-                    //         .expect("expected a row")
-                    //         .get_mut(&column)
-                    //         .expect("expected a column") = Cell::CellFormulaError {
-                    //         f,
-                    //         s,
-                    //         o,
-                    //         m: "Invalid reference".to_string(),
-                    //         ei: Error::VALUE,
-                    //     };
-                    // }
-                }
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                    *self.workbook.worksheets[sheet as usize]
-                        .sheet_data
-                        .get_mut(&row)
-                        .expect("expected a row")
-                        .get_mut(&column)
-                        .expect("expected a column") = Cell::CellFormulaNumber { f, s, v: 0.0 };
-                }
-                CalcResult::Array(_) => {
-                    *self.workbook.worksheets[sheet as usize]
-                        .sheet_data
-                        .get_mut(&row)
-                        .expect("expected a row")
-                        .get_mut(&column)
-                        .expect("expected a column") = Cell::CellFormulaError {
-                        f,
-                        s,
-                        o: "".to_string(),
-                        m: "Arrays not supported yet".to_string(),
-                        ei: Error::NIMPL,
-                    };
+                    let mut target_row = row;
+                    for data_row in array {
+                        let mut target_column = column;
+                        for value in data_row {
+                            if row == target_row && column == target_column {
+                                // This is the root cell of the dynamic array
+                                let cell_reference = CellReferenceIndex { sheet, row, column };
+                                let v = match value {
+                                    ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
+                                    ArrayNode::Number(f) => CalcResult::Number(*f),
+                                    ArrayNode::String(s) => CalcResult::String(s.clone()),
+                                    ArrayNode::Error(error) => CalcResult::new_error(
+                                        error.clone(),
+                                        cell_reference,
+                                        error.to_localized_error_string(&self.language),
+                                    ),
+                                };
+                                self.set_spill_cell_with_formula_value(
+                                    sheet,
+                                    target_row,
+                                    target_column,
+                                    (width, height),
+                                    &v,
+                                    s,
+                                    f,
+                                )?;
+                                target_column += 1;
+                                continue;
+                            }
+                            let v = match value {
+                                ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
+                                ArrayNode::Number(f) => CalcResult::Number(*f),
+                                ArrayNode::String(s) => CalcResult::String(s.clone()),
+                                ArrayNode::Error(error) => CalcResult::new_error(
+                                    error.clone(),
+                                    cell_reference,
+                                    error.to_localized_error_string(&self.language),
+                                ),
+                            };
+                            self.set_spill_cell_with_value(
+                                sheet,
+                                target_row,
+                                target_column,
+                                (row, column),
+                                &v,
+                            )?;
+                            target_column += 1;
+                        }
+                        target_row += 1;
+                    }
                 }
             }
         }
+        Ok(())
     }
 
     /// Sets the color of the sheet tab.
@@ -714,16 +1023,18 @@ impl Model {
         Ok(())
     }
 
+    // EmptyCell, Boolean, Number, String, Error
     fn get_cell_value(&self, cell: &Cell, cell_reference: CellReferenceIndex) -> CalcResult {
         use Cell::*;
         match cell {
             EmptyCell { .. } => CalcResult::EmptyCell,
-            BooleanCell { v, .. } => CalcResult::Boolean(*v),
-            NumberCell { v, .. } => CalcResult::Number(*v),
-            ErrorCell { ei, .. } => {
+            BooleanCell { v, .. } | SpillBooleanCell { v, .. } => CalcResult::Boolean(*v),
+            NumberCell { v, .. } | SpillNumberCell { v, .. } => CalcResult::Number(*v),
+            ErrorCell { ei, .. } | SpillErrorCell { ei, .. } => {
                 let message = ei.to_localized_error_string(&self.language);
                 CalcResult::new_error(ei.clone(), cell_reference, message)
             }
+            SpillStringCell { v, .. } => CalcResult::String(v.clone()),
             SharedString { si, .. } => {
                 if let Some(s) = self.workbook.shared_strings.get(*si as usize) {
                     CalcResult::String(s.clone())
@@ -732,15 +1043,21 @@ impl Model {
                     CalcResult::new_error(Error::ERROR, cell_reference, message)
                 }
             }
-            CellFormula { .. } => CalcResult::Error {
+            DynamicCellFormula { .. } | CellFormula { .. } => CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell_reference,
                 message: "Unevaluated formula".to_string(),
             },
-            CellFormulaBoolean { v, .. } => CalcResult::Boolean(*v),
-            CellFormulaNumber { v, .. } => CalcResult::Number(*v),
-            CellFormulaString { v, .. } => CalcResult::String(v.clone()),
-            CellFormulaError { ei, o, m, .. } => {
+            DynamicCellFormulaBoolean { v, .. } | CellFormulaBoolean { v, .. } => {
+                CalcResult::Boolean(*v)
+            }
+            DynamicCellFormulaNumber { v, .. } | CellFormulaNumber { v, .. } => {
+                CalcResult::Number(*v)
+            }
+            DynamicCellFormulaString { v, .. } | CellFormulaString { v, .. } => {
+                CalcResult::String(v.clone())
+            }
+            DynamicCellFormulaError { ei, o, m, .. } | CellFormulaError { ei, o, m, .. } => {
                 if let Some(cell_reference) = self.parse_reference(o) {
                     CalcResult::new_error(ei.clone(), cell_reference, m.clone())
                 } else {
@@ -810,9 +1127,10 @@ impl Model {
                         self.cells.insert(key, CellState::Evaluating);
                     }
                 }
-                let node = &self.parsed_formulas[cell_reference.sheet as usize][f as usize].clone();
-                let result = self.evaluate_node_in_context(node, cell_reference);
-                self.set_cell_value(cell_reference, &result);
+                let (node, _static_result) =
+                    &self.parsed_formulas[cell_reference.sheet as usize][f as usize];
+                let result = self.evaluate_node_in_context(&node.clone(), cell_reference);
+                let _ = self.set_cell_value(cell_reference, &result);
                 // mark cell as evaluated
                 self.cells.insert(key, CellState::Evaluated);
                 result
@@ -1100,7 +1418,7 @@ impl Model {
             Some(cell) => match cell.get_formula() {
                 None => cell.get_text(&self.workbook.shared_strings, &self.language),
                 Some(i) => {
-                    let formula = &self.parsed_formulas[sheet as usize][i as usize];
+                    let formula = &self.parsed_formulas[sheet as usize][i as usize].0;
                     let cell_ref = CellReferenceRC {
                         sheet: self.workbook.worksheets[sheet as usize].get_name(),
                         row: target_row,
@@ -1203,7 +1521,8 @@ impl Model {
                         .get(sheet as usize)
                         .ok_or("missing sheet")?
                         .get(formula_index as usize)
-                        .ok_or("missing formula")?;
+                        .ok_or("missing formula")?
+                        .0;
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
                         row,
@@ -1437,6 +1756,25 @@ impl Model {
         column: i32,
         value: String,
     ) -> Result<(), String> {
+        // We need to check if the cell is part of a dynamic array
+        let cell = self
+            .workbook
+            .worksheet(sheet)?
+            .cell(row, column)
+            .cloned()
+            .unwrap_or_default();
+        // If the cell is a dynamic cell we need to delete all the cells in the range
+        if let Some((width, height)) = cell.get_dynamic_range() {
+            for r in row..row + height {
+                for c in column..column + width {
+                    // skip the "mother" cell
+                    if r == row && c == column {
+                        continue;
+                    }
+                    self.cell_clear_contents(sheet, r, c)?;
+                }
+            }
+        }
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         if let Some(new_value) = value.strip_prefix('\'') {
@@ -1462,7 +1800,8 @@ impl Model {
                     self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
                 // Update the style if needed
                 let cell = CellReferenceIndex { sheet, row, column };
-                let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
+                let parsed_formula =
+                    &self.parsed_formulas[sheet as usize][formula_index as usize].0;
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
                     let new_style_index = self
                         .workbook
@@ -1544,6 +1883,7 @@ impl Model {
                 _ => parsed_formula = new_parsed_formula,
             }
         }
+        let static_result = run_static_analysis_on_node(&parsed_formula);
 
         let s = to_rc_format(&parsed_formula);
         let mut formula_index: i32 = -1;
@@ -1552,7 +1892,7 @@ impl Model {
         }
         if formula_index == -1 {
             shared_formulas.push(s);
-            self.parsed_formulas[sheet as usize].push(parsed_formula);
+            self.parsed_formulas[sheet as usize].push((parsed_formula, static_result));
             formula_index = (shared_formulas.len() as i32) - 1;
         }
         worksheet.set_cell_with_formula(row, column, formula_index, style)?;
@@ -1747,7 +2087,7 @@ impl Model {
         };
         match cell.get_formula() {
             Some(formula_index) => {
-                let formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
+                let formula = &self.parsed_formulas[sheet as usize][formula_index as usize].0;
                 let cell_ref = CellReferenceRC {
                     sheet: worksheet.get_name(),
                     row,
@@ -1818,9 +2158,22 @@ impl Model {
     /// # }
     /// ```
     pub fn cell_clear_contents(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
-        self.workbook
-            .worksheet_mut(sheet)?
-            .cell_clear_contents(row, column)?;
+        // If it has a spill formula we need to delete the contents of all the spilled cells
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        if let Some(cell) = worksheet.cell(row, column) {
+            if let Some((width, height)) = cell.get_dynamic_range() {
+                for r in row..row + height {
+                    for c in column..column + width {
+                        if row == r && column == c {
+                            // we skip the root cell
+                            continue;
+                        }
+                        worksheet.cell_clear_contents(r, c)?;
+                    }
+                }
+            }
+        }
+        worksheet.cell_clear_contents(row, column)?;
         Ok(())
     }
 
@@ -1845,6 +2198,18 @@ impl Model {
     /// # }
     pub fn cell_clear_all(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
+        // Delete the contents of spilled cells if any
+        if let Some(cell) = worksheet.cell(row, column) {
+            if let Some((width, height)) = cell.get_dynamic_range() {
+                for r in row..row + height {
+                    for c in column..column + width {
+                        if row == r && c == column {
+                            worksheet.cell_clear_contents(r, c)?;
+                        }
+                    }
+                }
+            }
+        }
 
         let sheet_data = &mut worksheet.sheet_data;
         if let Some(row_data) = sheet_data.get_mut(&row) {
