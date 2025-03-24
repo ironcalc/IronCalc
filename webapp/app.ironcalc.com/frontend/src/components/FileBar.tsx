@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
-import { IconButton } from "@mui/material";
+import { Button, IconButton } from "@mui/material";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
-import { ParentMenu } from "./FileMenu";
+import { DesktopMenu, MobileMenu } from "./FileMenu";
 import { ShareButton } from "./ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
 import { WorkbookTitle } from "./WorkbookTitle";
@@ -38,6 +38,7 @@ export function FileBar(properties: {
   const spacerRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
+  const fileButtonRef = useRef<HTMLButtonElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -48,6 +49,14 @@ export function FileBar(properties: {
     }
   }, [width]);
 
+  // Common handler functions for both menu types
+  const handleDownload = async () => {
+    const model = properties.model;
+    const bytes = model.toBytes();
+    const fileName = model.getName();
+    await downloadModel(bytes, fileName);
+  };
+
   return (
     <FileBarWrapper>
       <DrawerButton
@@ -56,6 +65,30 @@ export function FileBar(properties: {
       >
         {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
       </DrawerButton>
+      <DesktopButtonsWrapper>
+        <DesktopMenu
+          newModel={properties.newModel}
+          setModel={properties.setModel}
+          onModelUpload={properties.onModelUpload}
+          onDownload={handleDownload}
+          onDelete={properties.onDelete}
+        />
+        <FileBarButton
+          disableRipple
+          onClick={() => window.open("https://docs.ironcalc.com", "_blank")}
+        >
+          Help
+        </FileBarButton>
+      </DesktopButtonsWrapper>
+      <MobileButtonsWrapper>
+        <MobileMenu
+          newModel={properties.newModel}
+          setModel={properties.setModel}
+          onModelUpload={properties.onModelUpload}
+          onDownload={handleDownload}
+          onDelete={properties.onDelete}
+        />
+      </MobileButtonsWrapper>
       <Spacer ref={spacerRef} />
       <WorkbookTitleWrapper>
         <WorkbookTitle
@@ -68,20 +101,6 @@ export function FileBar(properties: {
           maxWidth={maxTitleWidth}
         />
       </WorkbookTitleWrapper>
-
-      <ParentMenu
-        newModel={properties.newModel}
-        setModel={properties.setModel}
-        onModelUpload={properties.onModelUpload}
-        onDownload={async () => {
-          const model = properties.model;
-          const bytes = model.toBytes();
-          const fileName = model.getName();
-          await downloadModel(bytes, fileName);
-        }}
-        onDelete={properties.onDelete}
-      />
-
       <Spacer ref={spacerRef} />
       <DialogContainer>
         <ShareButton onClick={() => setIsDialogOpen(true)} />
@@ -118,6 +137,12 @@ const DrawerButton = styled(IconButton)`
     width: 16px;
     height: 16px;
   }
+  &:hover {
+    background-color: #f2f2f2;
+  }
+  &:active {
+    background-color: #e0e0e0;
+  }
 `;
 
 // The container must be relative positioned so we can position the title absolutely
@@ -132,6 +157,51 @@ const FileBarWrapper = styled("div")`
   border-bottom: 1px solid #e0e0e0;
   justify-content: space-between;
   box-sizing: border-box;
+`;
+
+const DesktopButtonsWrapper = styled("div")`
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+  @media (max-width: 600px) {
+    display: none;
+  }
+`;
+
+const MobileButtonsWrapper = styled("div")`
+  display: flex;
+  gap: 4px;
+  @media (min-width: 601px) {
+    display: none;
+  }
+  @media (max-width: 600px) {
+    display: flex;
+  }
+`;
+
+const FileBarButtonContainer = styled("div")`
+  position: relative;
+  display: inline-block;
+`;
+
+const FileBarButton = styled(Button)`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: 12px;
+  height: 32px;
+  width: auto;
+  padding: 4px 8px;
+  font-weight: 400;
+  min-width: 0px;
+  text-transform: capitalize;
+  color: #333333;
+  &:hover {
+    background-color: #f2f2f2;
+  }
+  &:active {
+    background-color: #e0e0e0;
+  }
 `;
 
 const DialogContainer = styled("div")`

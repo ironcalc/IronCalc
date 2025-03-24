@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
-import { IconButton, Menu, MenuItem, Modal } from "@mui/material";
+import { Button, IconButton, Menu, MenuItem, Modal } from "@mui/material";
 import {
   ChevronRight,
-  Ellipsis,
+  EllipsisVertical,
   FileDown,
   FileUp,
   Plus,
@@ -13,45 +13,74 @@ import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
 import UploadFileDialog from "./UploadFileDialog";
 import { getModelsMetadata, getSelectedUuid } from "./storage";
 
-export function ParentMenu(props: {
+export function DesktopMenu(props: {
   newModel: () => void;
   setModel: (key: string) => void;
   onDownload: () => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
 }) {
-  const [isParentMenuOpen, setParentMenuOpen] = useState(false);
   const [isFileMenuOpen, setFileMenuOpen] = useState(false);
   const anchorElement = useRef<HTMLButtonElement>(
-    null as unknown as HTMLButtonElement
+    null as unknown as HTMLButtonElement,
+  );
+
+  return (
+    <>
+      <FileBarButton
+        onClick={(): void => setFileMenuOpen(!isFileMenuOpen)}
+        ref={anchorElement}
+        disableRipple
+        isOpen={isFileMenuOpen}
+      >
+        File
+      </FileBarButton>
+      <FileMenu
+        newModel={props.newModel}
+        setModel={props.setModel}
+        onDownload={props.onDownload}
+        onModelUpload={props.onModelUpload}
+        onDelete={props.onDelete}
+        isFileMenuOpen={isFileMenuOpen}
+        setFileMenuOpen={setFileMenuOpen}
+        setMobileMenuOpen={() => {}}
+        anchorElement={anchorElement}
+      />
+    </>
+  );
+}
+
+export function MobileMenu(props: {
+  newModel: () => void;
+  setModel: (key: string) => void;
+  onDownload: () => void;
+  onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
+  onDelete: () => void;
+}) {
+  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isFileMenuOpen, setFileMenuOpen] = useState(false);
+  const anchorElement = useRef<HTMLButtonElement>(
+    null as unknown as HTMLButtonElement,
   );
   const [fileMenuAnchorEl, setFileMenuAnchorEl] = useState<HTMLElement | null>(
-    null
+    null,
   );
 
   return (
     <>
       <MenuButton
-        onClick={(): void => setParentMenuOpen(true)}
+        onClick={(): void => setMobileMenuOpen(true)}
         ref={anchorElement}
         disableRipple
       >
-        <Ellipsis />
+        <EllipsisVertical />
       </MenuButton>
-      <Menu
-        open={isParentMenuOpen}
-        onClose={(): void => setParentMenuOpen(false)}
+      <StyledMenu
+        open={isMobileMenuOpen}
+        onClose={(): void => setMobileMenuOpen(false)}
         anchorEl={anchorElement.current}
-        sx={{
-          "& .MuiPaper-root": { borderRadius: "8px", padding: "4px 0px" },
-          "& .MuiList-root": { padding: "0" },
-        }}
       >
         <MenuItemWrapper
-          onMouseEnter={(event) => {
-            setFileMenuOpen(true);
-            setFileMenuAnchorEl(event.currentTarget);
-          }}
           onClick={(event) => {
             setFileMenuOpen(true);
             setFileMenuAnchorEl(event.currentTarget);
@@ -61,21 +90,17 @@ export function ParentMenu(props: {
           <MenuItemText>File</MenuItemText>
           <ChevronRight />
         </MenuItemWrapper>
-        <MenuItemWrapper>
-          <MenuItemText>Edit</MenuItemText>
-          <ChevronRight />
-        </MenuItemWrapper>
         <MenuDivider />
         <MenuItemWrapper
           onClick={() => {
             window.open("https://docs.ironcalc.com", "_blank");
-            setParentMenuOpen(false);
+            setMobileMenuOpen(false);
           }}
           disableRipple
         >
           <MenuItemText>Help</MenuItemText>
         </MenuItemWrapper>
-      </Menu>
+      </StyledMenu>
       <FileMenu
         newModel={props.newModel}
         setModel={props.setModel}
@@ -84,9 +109,8 @@ export function ParentMenu(props: {
         onDelete={props.onDelete}
         isFileMenuOpen={isFileMenuOpen}
         setFileMenuOpen={setFileMenuOpen}
-        setParentMenuOpen={setParentMenuOpen} // Pass setParentMenuOpen as a prop
+        setMobileMenuOpen={setMobileMenuOpen}
         anchorElement={anchorElement}
-        fileMenuAnchorEl={fileMenuAnchorEl}
       />
     </>
   );
@@ -100,9 +124,8 @@ export function FileMenu(props: {
   onDelete: () => void;
   isFileMenuOpen: boolean;
   setFileMenuOpen: (open: boolean) => void;
-  setParentMenuOpen: (open: boolean) => void; // Add setParentMenuOpen to props
+  setMobileMenuOpen: (open: boolean) => void;
   anchorElement: React.RefObject<HTMLButtonElement>;
-  fileMenuAnchorEl: HTMLElement | null;
 }) {
   const [isImportMenuOpen, setImportMenuOpen] = useState(false);
   const models = getModelsMetadata();
@@ -111,13 +134,13 @@ export function FileMenu(props: {
 
   return (
     <>
-      <Menu
+      <StyledMenu
         open={props.isFileMenuOpen}
         onClose={(): void => props.setFileMenuOpen(false)}
-        anchorEl={props.fileMenuAnchorEl || props.anchorElement.current}
+        anchorEl={props.anchorElement.current}
         anchorOrigin={{
-          vertical: "top",
-          horizontal: "right",
+          vertical: "bottom",
+          horizontal: "left",
         }}
         transformOrigin={{
           vertical: "top",
@@ -129,21 +152,12 @@ export function FileMenu(props: {
             props.setFileMenuOpen(false);
           }
         }}
-        sx={{
-          "& .MuiPaper-root": {
-            borderRadius: "8px",
-            padding: "4px 0px",
-            marginTop: "-4px",
-            marginLeft: "4px",
-          },
-          "& .MuiList-root": { padding: "0" },
-        }}
       >
         <MenuItemWrapper
           onClick={() => {
             props.newModel();
             props.setFileMenuOpen(false);
-            props.setParentMenuOpen(false);
+            props.setMobileMenuOpen(false);
           }}
           disableRipple
         >
@@ -154,7 +168,7 @@ export function FileMenu(props: {
           onClick={() => {
             setImportMenuOpen(true);
             props.setFileMenuOpen(false);
-            props.setParentMenuOpen(false);
+            props.setMobileMenuOpen(false);
           }}
           disableRipple
         >
@@ -164,7 +178,7 @@ export function FileMenu(props: {
         <MenuItemWrapper
           onClick={() => {
             props.onDownload();
-            props.setParentMenuOpen(false);
+            props.setMobileMenuOpen(false);
           }}
           disableRipple
         >
@@ -176,14 +190,14 @@ export function FileMenu(props: {
           onClick={() => {
             setDeleteDialogOpen(true);
             props.setFileMenuOpen(false);
-            props.setParentMenuOpen(false);
+            props.setMobileMenuOpen(false);
           }}
           disableRipple
         >
           <StyledTrash />
           <MenuItemText>Delete workbook</MenuItemText>
         </MenuItemWrapper>
-      </Menu>
+      </StyledMenu>
       <Modal
         open={isImportMenuOpen}
         onClose={() => {
@@ -216,7 +230,6 @@ export function FileMenu(props: {
 }
 
 const MenuButton = styled(IconButton)`
-  margin-left: 8px;
   height: 32px;
   width: 32px;
   padding: 8px;
@@ -226,6 +239,33 @@ const MenuButton = styled(IconButton)`
     stroke: #757575;
     width: 16px;
     height: 16px;
+  }
+  &:hover {
+    background-color: #f2f2f2;
+  }
+  &:active {
+    background-color: #e0e0e0;
+  }
+`;
+
+const FileBarButton = styled(Button)<{ isOpen: boolean }>`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: 12px;
+  height: 32px;
+  width: auto;
+  padding: 4px 8px;
+  font-weight: 400;
+  min-width: 0px;
+  text-transform: capitalize;
+  color: #333333;
+  background-color: ${({ isOpen }) => (isOpen ? "#f2f2f2" : "none")};
+  &:hover {
+    background-color: #f2f2f2;
+  }
+  &:active {
+    background-color: #e0e0e0;
   }
 `;
 
@@ -281,8 +321,19 @@ const MenuItemWrapper = styled(MenuItem)`
   border-radius: 4px;
   padding: 8px;
   height: 32px;
+  min-height: 32px;
   svg {
     width: 16px;
     height: 16px;
   }
+`;
+
+const StyledMenu = styled(Menu)`
+  .MuiPaper-root {
+    border-radius: 8px;
+    padding: 4px 0px;
+  },
+  .MuiList-root {
+    padding: 0;
+  },
 `;
