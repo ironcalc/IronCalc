@@ -1,9 +1,15 @@
-import React, { useState } from "react";
 import styled from "@emotion/styled";
 import { IronCalcLogo } from "@ironcalc/workbook";
-import { Avatar, Drawer, IconButton, MenuItem, Menu } from "@mui/material";
-import { EllipsisVertical, HardDrive, Plus, Trash2 } from "lucide-react";
-import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
+import { Avatar, Drawer, IconButton, Menu, MenuItem } from "@mui/material";
+import {
+  Database,
+  EllipsisVertical,
+  FileDown,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 import UserMenu from "./UserMenu";
 
 interface LeftDrawerProps {
@@ -13,7 +19,6 @@ interface LeftDrawerProps {
   setModel: (key: string) => void;
   models: { [key: string]: string };
   selectedUuid: string | null;
-  setDeleteDialogOpen: (open: boolean) => void;
 }
 
 const LeftDrawer: React.FC<LeftDrawerProps> = ({
@@ -23,22 +28,21 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
   setModel,
   models,
   selectedUuid,
-  setDeleteDialogOpen,
 }) => {
   const [hoveredUuid, setHoveredUuid] = useState<string | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedWorkbookUuid, setSelectedWorkbookUuid] = useState<
     string | null
   >(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState<null | HTMLElement>(
-    null
+    null,
   );
 
   const handleMenuOpen = (
     event: React.MouseEvent<HTMLButtonElement>,
-    uuid: string
+    uuid: string,
   ) => {
+    console.log("Menu open", uuid);
     event.stopPropagation();
     setSelectedWorkbookUuid(uuid);
     setMenuAnchorEl(event.currentTarget);
@@ -57,36 +61,74 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
     setUserMenuAnchorEl(null);
   };
 
-  const elements = Object.keys(models).map((uuid) => (
-    <MenuItemWrapper
-      key={uuid}
-      onClick={() => {
-        setModel(uuid);
-      }}
-      selected={uuid === selectedUuid}
-      onMouseEnter={() => setHoveredUuid(uuid)}
-      onMouseLeave={() => setHoveredUuid(null)}
-      disableRipple
-    >
-      <StorageIndicator>
-        <HardDrive />
-      </StorageIndicator>
-      <MenuItemText
-        style={{
-          maxWidth: "240px",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {models[uuid]}
-      </MenuItemText>
-      {hoveredUuid === uuid && (
-        <EllipsisButton onClick={(e) => handleMenuOpen(e, uuid)}>
-          <EllipsisVertical />
-        </EllipsisButton>
-      )}
-    </MenuItemWrapper>
-  ));
+  const elements = Object.keys(models)
+    .reverse()
+    .map((uuid) => {
+      const isMenuOpen = menuAnchorEl !== null && selectedWorkbookUuid === uuid;
+      return (
+        <WorkbookListItem
+          key={uuid}
+          onClick={() => {
+            setModel(uuid);
+          }}
+          selected={uuid === selectedUuid}
+          onMouseEnter={() => setHoveredUuid(uuid)}
+          onMouseLeave={() => setHoveredUuid(null)}
+          disableRipple
+        >
+          <StorageIndicator>
+            <Database />
+          </StorageIndicator>
+          <WorkbookListText>{models[uuid]}</WorkbookListText>
+          <EllipsisButton
+            onClick={(e) => handleMenuOpen(e, uuid)}
+            disableRipple
+            isOpen={isMenuOpen}
+          >
+            <EllipsisVertical />
+          </EllipsisButton>
+
+          <StyledMenu
+            anchorEl={menuAnchorEl}
+            open={Boolean(menuAnchorEl)}
+            onClose={handleMenuClose}
+            MenuListProps={{
+              dense: true,
+            }}
+            anchorOrigin={{
+              vertical: "bottom",
+              horizontal: "right",
+            }}
+            transformOrigin={{
+              vertical: "top",
+              horizontal: "right",
+            }}
+            disablePortal
+          >
+            <MenuItemWrapper
+              onClick={() => {
+                handleMenuClose();
+              }}
+              disableRipple
+            >
+              <FileDown />
+              Download (.xlsx)
+            </MenuItemWrapper>
+            <MenuDivider />
+            <MenuItemWrapper
+              selected={false}
+              onClick={() => {
+                handleMenuClose();
+              }}
+              disableRipple
+            >
+              <Trash2 size={16} />
+              Delete workbook
+            </MenuItemWrapper>
+          </StyledMenu>
+        </WorkbookListItem>
+      );
+    });
 
   return (
     <DrawerWrapper
@@ -94,7 +136,6 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
       anchor="left"
       open={open}
       onClose={onClose}
-      sx={{ width: 264, height: "100%" }}
     >
       <DrawerHeader>
         <StyledDesktopLogo />
@@ -109,52 +150,6 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
       <DrawerContent>
         <DrawerContentTitle>Your workbooks</DrawerContentTitle>
         {elements}
-        <Menu
-          anchorEl={menuAnchorEl}
-          open={Boolean(menuAnchorEl)}
-          onClose={handleMenuClose}
-          MenuListProps={{
-            dense: true,
-          }}
-          anchorOrigin={{
-            vertical: "bottom",
-            horizontal: "right",
-          }}
-          transformOrigin={{
-            vertical: "top",
-            horizontal: "right",
-          }}
-          disablePortal
-          sx={{
-            "& .MuiPaper-root": {
-              minWidth: "auto",
-              boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
-            },
-          }}
-        >
-          <MenuItem
-            onClick={() => {
-              handleMenuClose();
-              setIsDeleteDialogOpen(true);
-            }}
-            sx={{ gap: 1, fontSize: 14 }}
-          >
-            <Trash2 size={16} />
-            Delete workbook
-          </MenuItem>
-        </Menu>
-        {isDeleteDialogOpen && (
-          <DeleteWorkbookDialog
-            workbookName={
-              selectedWorkbookUuid ? models[selectedWorkbookUuid] : ""
-            }
-            onClose={() => setIsDeleteDialogOpen(false)}
-            onConfirm={() => {
-              // Handle delete confirmation
-              console.log("Delete workbook:", selectedWorkbookUuid);
-            }}
-          />
-        )}
       </DrawerContent>
       <DrawerFooter>
         <UserWrapper
@@ -188,6 +183,7 @@ const LeftDrawer: React.FC<LeftDrawerProps> = ({
 
 const DrawerWrapper = styled(Drawer)`
   width: 264px;
+  height: 100%;
   flex-shrink: 0;
   font-family: "Inter", sans-serif;
 
@@ -262,11 +258,11 @@ const StorageIndicator = styled("div")`
   svg {
     height: 16px;
     width: 16px;
-    stroke: #757575;
+    stroke: #9e9e9e;
   }
 `;
 
-const EllipsisButton = styled(IconButton)`
+const EllipsisButton = styled(IconButton)<{ isOpen: boolean }>`
   background: none;
   border: none;
   cursor: pointer;
@@ -276,18 +272,23 @@ const EllipsisButton = styled(IconButton)`
   padding: 4px;
   height: 24px;
   width: 24px;
-  border-radius: 8px;
+  border-radius: 4px;
   color: #333333;
   stroke-width: 2px;
-  opacity: 0;
-  transition: opacity 0.3s;
+  background-color: ${({ isOpen }) => (isOpen ? "#E0E0E0" : "none")};
+  opacity: ${({ isOpen }) => (isOpen ? "1" : "0.5")};
+  transition: opacity 0.3s, background-color 0.3s;
   &:hover {
     background: none;
     opacity: 1;
   }
+  &:active {
+    background: #bdbdbd;
+    opacity: 1;
+  }
 `;
 
-const MenuItemWrapper = styled(MenuItem)<{ selected: boolean }>`
+const WorkbookListItem = styled(MenuItem)<{ selected: boolean }>`
   display: flex;
   gap: 8px;
   justify-content: flex-start;
@@ -297,23 +298,59 @@ const MenuItemWrapper = styled(MenuItem)<{ selected: boolean }>`
   border-radius: 8px;
   padding: 8px 4px 8px 8px;
   height: 32px;
+  min-height: 32px;
   transition: gap 0.5s;
   background-color: ${({ selected }) =>
     selected ? "#e0e0e0 !important" : "transparent"};
-  &:hover {
-    gap: 12px;
-    transition: gap 0.1s;
-  }
 `;
 
-const MenuItemText = styled("div")`
+const WorkbookListText = styled("div")`
   color: #000;
   font-size: 12px;
   width: 100%;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const StyledMenu = styled(Menu)`
+  .MuiPaper-root {
+    border-radius: 8px;
+    padding: 4px 0px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.01);
+  },
+  .MuiList-root {
+    padding: 0;
+  },
+`;
+
+const MenuDivider = styled("div")`
+  width: 100%;
+  margin: auto;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-top: 1px solid #eeeeee;
+`;
+
+const MenuItemWrapper = styled(MenuItem)`
+  display: flex;
+  justify-content: flex-start;
+  font-size: 12px;
+  width: calc(100% - 8px);
+  min-width: 140px;
+  margin: 0px 4px;
+  border-radius: 4px;
+  padding: 8px;
+  height: 32px;
+  gap: 8px;
+  svg {
+    width: 16px;
+    height: 16px;
+  }
 `;
 
 const DrawerFooter = styled("div")`
-  display: flex;
+  display: none;
   align-items: center;
   padding: 12px;
   justify-content: space-between;
