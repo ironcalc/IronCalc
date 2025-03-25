@@ -67,7 +67,7 @@ type ToolbarProperties = {
   onToggleVerticalAlign: (v: string) => void;
   onToggleWrapText: (v: boolean) => void;
   onCopyStyles: () => void;
-  onTextColorPicked: (hex: string | null) => void;
+  onTextColorPicked: (hex: string) => void;
   onFillColorPicked: (hex: string) => void;
   onNumberFormatPicked: (numberFmt: string) => void;
   onBorderChanged: (border: BorderOptions) => void;
@@ -428,17 +428,6 @@ function Toolbar(properties: ToolbarProperties) {
         title={t("toolbar.selected_png")}
       >
         <ImageDown />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={() => {
-          // Add your onClick handler logic here
-        }}
-        disabled={!canEdit}
-        title={t("toolbar.new_button")}
-      >
-        {/* Add your button icon or text here */}
       </StyledButton>
 
       <ColorPicker
