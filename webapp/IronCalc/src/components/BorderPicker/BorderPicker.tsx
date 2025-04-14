@@ -361,7 +361,7 @@ const MediumLine = styled("div")`
 `;
 const ThickLine = styled("div")`
   width: 68px;
-  border-top: 1px solid ${theme.palette.grey["900"]};
+  border-top: 3px solid ${theme.palette.grey["900"]};
 `;
 
 const Divider = styled("div")`
