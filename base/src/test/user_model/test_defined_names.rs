@@ -423,3 +423,30 @@ fn change_scope_to_first_sheet() {
         Ok("#NAME?".to_string())
     );
 }
+
+#[test]
+fn rename_sheet() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model.new_sheet().unwrap();
+    model.set_user_input(0, 1, 1, "Hello").unwrap();
+
+    model
+        .new_defined_name("myName", None, "Sheet1!$A$1")
+        .unwrap();
+
+    model
+        .set_user_input(0, 2, 1, r#"=CONCATENATE(MyName, " world!")"#)
+        .unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 1),
+        Ok("Hello world!".to_string())
+    );
+
+    model.rename_sheet(0, "AnotherName").unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 2, 1),
+        Ok("Hello world!".to_string())
+    );
+}

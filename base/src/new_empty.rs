@@ -8,7 +8,7 @@ use crate::{
     expressions::{
         lexer::LexerMode,
         parser::{
-            stringify::{rename_sheet_in_node, to_rc_format},
+            stringify::{rename_sheet_in_node, to_rc_format, to_string},
             Parser,
         },
         types::CellReferenceRC,
@@ -17,7 +17,8 @@ use crate::{
     locale::get_locale,
     model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
     types::{
-        Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet, WorksheetView,
+        DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
+        WorksheetView,
     },
     utils::ParsedReference,
 };
@@ -238,7 +239,7 @@ impl Model {
 
     /// Renames a sheet and updates all existing references to that sheet.
     /// It can fail if:
-    ///   * The original index is too large
+    ///   * The original index is out of bounds
     ///   * The target sheet name already exists
     ///   * The target sheet name is invalid
     pub fn rename_sheet_by_index(
@@ -252,17 +253,15 @@ impl Model {
         if self.get_sheet_index_by_name(new_name).is_some() {
             return Err(format!("Sheet already exists: '{}'.", new_name));
         }
-        let worksheets = &self.workbook.worksheets;
-        let sheet_count = worksheets.len() as u32;
-        if sheet_index >= sheet_count {
-            return Err("Sheet index out of bounds".to_string());
-        }
+        // Gets the new name and checks that a sheet with that index exists
+        let old_name = self.workbook.worksheet(sheet_index)?.get_name();
+
         // Parse all formulas with the old name
         // All internal formulas are R1C1
         self.parser.set_lexer_mode(LexerMode::R1C1);
-        // We use iter because the default would be a mut_iter and we don't need a mutable reference
-        let worksheets = &mut self.workbook.worksheets;
-        for worksheet in worksheets {
+
+        for worksheet in &mut self.workbook.worksheets {
+            // R1C1 formulas are not tied to a cell (but are tied to a cell)
             let cell_reference = &CellReferenceRC {
                 sheet: worksheet.get_name(),
                 row: 1,
@@ -276,11 +275,32 @@ impl Model {
             }
             worksheet.shared_formulas = formulas;
         }
-        // Se the mode back to A1
+
+        // Set the mode back to A1
         self.parser.set_lexer_mode(LexerMode::A1);
+
+        // We reparse all the defined names formulas
+        let mut defined_names = Vec::new();
+        // Defined names do not have a context, we can use anything
+        let cell_reference = &CellReferenceRC {
+            sheet: old_name.clone(),
+            row: 1,
+            column: 1,
+        };
+        for defined_name in &mut self.workbook.defined_names {
+            let mut t = self.parser.parse(&defined_name.formula, cell_reference);
+            rename_sheet_in_node(&mut t, sheet_index, new_name);
+            let formula = to_string(&t, cell_reference);
+            defined_names.push(DefinedName {
+                name: defined_name.name.clone(),
+                formula,
+                sheet_id: defined_name.sheet_id,
+            });
+        }
+        self.workbook.defined_names = defined_names;
+
         // Update the name of the worksheet
-        let worksheets = &mut self.workbook.worksheets;
-        worksheets[sheet_index as usize].set_name(new_name);
+        self.workbook.worksheet_mut(sheet_index)?.set_name(new_name);
         self.reset_parsed_structures();
         Ok(())
     }
