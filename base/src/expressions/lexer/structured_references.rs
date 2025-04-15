@@ -23,19 +23,19 @@ impl Lexer {
             // TODO(TD): There are better ways of doing this :)
             let rest_of_formula: String = self.chars[self.position..self.len].iter().collect();
             let specifier = if rest_of_formula.starts_with("#This Row]") {
-                self.position += "#This Row]".bytes().len();
+                self.position += "#This Row]".len();
                 TableSpecifier::ThisRow
             } else if rest_of_formula.starts_with("#All]") {
-                self.position += "#All]".bytes().len();
+                self.position += "#All]".len();
                 TableSpecifier::All
             } else if rest_of_formula.starts_with("#Data]") {
-                self.position += "#Data]".bytes().len();
+                self.position += "#Data]".len();
                 TableSpecifier::Data
             } else if rest_of_formula.starts_with("#Headers]") {
-                self.position += "#Headers]".bytes().len();
+                self.position += "#Headers]".len();
                 TableSpecifier::Headers
             } else if rest_of_formula.starts_with("#Totals]") {
-                self.position += "#Totals]".bytes().len();
+                self.position += "#Totals]".len();
                 TableSpecifier::Totals
             } else {
                 return Err(LexerError {
