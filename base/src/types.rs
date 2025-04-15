@@ -62,8 +62,8 @@ pub struct DefinedName {
 }
 
 /// * state:
-///    18.18.68 ST_SheetState (Sheet Visibility Types)
-///    hidden, veryHidden, visible
+///   18.18.68 ST_SheetState (Sheet Visibility Types)
+///   hidden, veryHidden, visible
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub enum SheetState {
     Visible,
