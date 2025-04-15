@@ -197,7 +197,7 @@ pub fn is_english_error_string(name: &str) -> bool {
         "#REF!", "#NAME?", "#VALUE!", "#DIV/0!", "#N/A", "#NUM!", "#ERROR!", "#N/IMPL!", "#SPILL!",
         "#CALC!", "#CIRC!", "#NULL!",
     ];
-    names.iter().any(|e| *e == name)
+    names.contains(&name)
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]

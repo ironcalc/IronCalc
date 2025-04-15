@@ -75,30 +75,21 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
 
     // style index of the header row of the table
     let header_row_dxf_id = if let Some(index_str) = table.attribute("headerRowDxfId") {
-        match index_str.parse::<u32>() {
-            Ok(i) => Some(i),
-            Err(_) => None,
-        }
+        index_str.parse::<u32>().ok()
     } else {
         None
     };
 
     // style index of the header row of the table
     let data_dxf_id = if let Some(index_str) = table.attribute("headerRowDxfId") {
-        match index_str.parse::<u32>() {
-            Ok(i) => Some(i),
-            Err(_) => None,
-        }
+        index_str.parse::<u32>().ok()
     } else {
         None
     };
 
     // style index of the totals row of the table
     let totals_row_dxf_id = if let Some(index_str) = table.attribute("totalsRowDxfId") {
-        match index_str.parse::<u32>() {
-            Ok(i) => Some(i),
-            Err(_) => None,
-        }
+        index_str.parse::<u32>().ok()
     } else {
         None
     };
@@ -143,30 +134,21 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
 
         // style index of the header row of the table
         let header_row_dxf_id = if let Some(index_str) = table_column.attribute("headerRowDxfId") {
-            match index_str.parse::<u32>() {
-                Ok(i) => Some(i),
-                Err(_) => None,
-            }
+            index_str.parse::<u32>().ok()
         } else {
             None
         };
 
         // style index of the header row of the table column
         let data_dxf_id = if let Some(index_str) = table_column.attribute("headerRowDxfId") {
-            match index_str.parse::<u32>() {
-                Ok(i) => Some(i),
-                Err(_) => None,
-            }
+            index_str.parse::<u32>().ok()
         } else {
             None
         };
 
         // style index of the totals row of the table column
         let totals_row_dxf_id = if let Some(index_str) = table_column.attribute("totalsRowDxfId") {
-            match index_str.parse::<u32>() {
-                Ok(i) => Some(i),
-                Err(_) => None,
-            }
+            index_str.parse::<u32>().ok()
         } else {
             None
         };

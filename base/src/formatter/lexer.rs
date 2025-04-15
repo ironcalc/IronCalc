@@ -178,10 +178,7 @@ impl Lexer {
             }
         }
         self.position = position;
-        match chars.parse::<f64>() {
-            Err(_) => None,
-            Ok(v) => Some(v),
-        }
+        chars.parse::<f64>().ok()
     }
 
     fn consume_condition(&mut self) -> Option<(Compare, f64)> {
