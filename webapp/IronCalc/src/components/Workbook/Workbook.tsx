@@ -348,7 +348,15 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       return workbookState.getEditingText();
     }
     const { sheet, row, column } = model.getSelectedView();
-    return model.getCellContent(sheet, row, column);
+    const r = model.getCellArrayStructure(sheet, row, column);
+    if (r === "SingleCell") {
+      return model.getCellContent(sheet, row, column);
+    }
+    if ("DynamicMother" in r) {
+      return model.getCellContent(sheet, row, column);
+    }
+    const [mother_row, mother_column, _] = r.DynamicChild; 
+    return model.getCellContent(sheet, mother_row, mother_column);
   };
 
   // returns true if it is either single cell or the root cell of an array

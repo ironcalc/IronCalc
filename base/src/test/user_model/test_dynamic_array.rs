@@ -65,7 +65,7 @@ fn basic_undo_redo() {
 #[test]
 fn mixed_spills() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
-    // D9 => ={1,2,3}
+    // D9 => ={34,35,3}
     model.set_user_input(0, 9, 4, "={34,35,3}").unwrap();
     // F6 => ={1;2;3;4}
     model.set_user_input(0, 6, 6, "={1;2;3;4}").unwrap();

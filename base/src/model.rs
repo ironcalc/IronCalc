@@ -2102,6 +2102,14 @@ impl Model {
     /// Returns a list of all cells
     pub fn get_all_cells(&self) -> Vec<CellIndex> {
         let mut cells = Vec::new();
+        for (sheet, row, column) in &self.workbook.calc_chain {
+            let cell = CellIndex {
+                row: *row,
+                column: *column,
+                index: *sheet,
+            };
+            cells.push(cell);
+        }
         for (index, sheet) in self.workbook.worksheets.iter().enumerate() {
             let mut sorted_rows: Vec<_> = sheet.sheet_data.keys().collect();
             sorted_rows.sort_unstable();
@@ -2128,6 +2136,8 @@ impl Model {
 
         let cells = self.get_all_cells();
 
+        // First evaluate all dynamic arrays
+        
         for cell in cells {
             self.evaluate_cell(CellReferenceIndex {
                 sheet: cell.index,

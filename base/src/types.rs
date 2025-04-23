@@ -51,6 +51,9 @@ pub struct Workbook {
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
     pub views: HashMap<u32, WorkbookView>,
+    /// Calculation chain of the dynamic arrays.
+    /// List of tuples (sheet_id, row, column)
+    pub calc_chain: Vec<(u32, i32, i32)>,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
