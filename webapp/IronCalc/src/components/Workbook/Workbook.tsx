@@ -567,19 +567,15 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           const {
             range: [rowStart, columnStart, rowEnd, columnEnd],
           } = model.getSelectedView();
-          const { topLeftCell, bottomRightCell } =
-            worksheetCanvas.getVisibleCells();
-          const firstRow = Math.max(rowStart, topLeftCell.row);
-          const firstColumn = Math.max(columnStart, topLeftCell.column);
-          const lastRow = Math.min(rowEnd, bottomRightCell.row);
-          const lastColumn = Math.min(columnEnd, bottomRightCell.column);
+          // NB: cells outside of the displayed area are not rendered
+          // I think the only reasonable way to do this would be server side.
           let [x, y] = worksheetCanvas.getCoordinatesByCell(
-            firstRow,
-            firstColumn,
+            rowStart,
+            columnStart,
           );
           const [x1, y1] = worksheetCanvas.getCoordinatesByCell(
-            lastRow + 1,
-            lastColumn + 1,
+            rowEnd,
+            columnEnd,
           );
           const width = (x1 - x) * devicePixelRatio;
           const height = (y1 - y) * devicePixelRatio;
