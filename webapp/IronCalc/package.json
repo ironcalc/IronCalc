@@ -1,6 +1,6 @@
 {
   "name": "@ironcalc/workbook",
-  "version": "0.3.2",
+  "version": "0.5.1",
   "type": "module",
   "main": "./dist/ironcalc.js",
   "module": "./dist/ironcalc.js",
@@ -17,7 +17,7 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
-    "@ironcalc/wasm": "file:../../bindings/wasm/pkg",
+    "@ironcalc/wasm": "0.5.0",
     "@mui/material": "^6.4",
     "@mui/system": "^6.4",
     "i18next": "^23.11.1",
