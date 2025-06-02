@@ -110,6 +110,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         metadata,
         tables,
         views,
+        users: Vec::new(),
     })
 }
 

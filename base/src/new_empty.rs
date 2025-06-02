@@ -405,6 +405,7 @@ impl Model {
             },
             tables: HashMap::new(),
             views,
+            users: Vec::new(),
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;

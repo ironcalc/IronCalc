@@ -39,6 +39,14 @@ pub struct WorkbookView {
     pub window_height: i64,
 }
 
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub struct WebUser {
+    pub id: String,
+    pub sheet: u32,
+    pub row: i32,
+    pub column: i32,
+}
+
 /// An internal representation of an IronCalc Workbook
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Workbook {
@@ -51,6 +59,7 @@ pub struct Workbook {
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
     pub views: HashMap<u32, WorkbookView>,
+    pub users: Vec<WebUser>
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local

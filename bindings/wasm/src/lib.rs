@@ -6,7 +6,7 @@ use wasm_bindgen::{
 
 use ironcalc_base::{
     expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
-    types::{CellType, Style},
+    types::{CellType, Style, WebUser},
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
@@ -671,5 +671,19 @@ impl Model {
         self.model
             .delete_defined_name(name, scope)
             .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "setUsers")]
+    pub fn set_users(&mut self, users: JsValue) -> Result<(), JsError> {
+        let users: Vec<WebUser> =
+            serde_wasm_bindgen::from_value(users).map_err(|e| to_js_error(e.to_string()))?;
+        self.model.set_users(&users);
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "getUsers")]
+    pub fn get_users(&self) -> Result<JsValue, JsError> {
+        let users = self.model.get_model().workbook.users.clone();
+        serde_wasm_bindgen::to_value(&users).map_err(|e| to_js_error(e.to_string()))
     }
 }

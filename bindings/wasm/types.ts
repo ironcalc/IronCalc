@@ -234,3 +234,10 @@ export interface DefinedName {
   scope?: number;
   formula: string;
 }
+
+export interface WebUser {
+  id: string;
+  sheet: number;
+  row: number;
+  column: number;
+}

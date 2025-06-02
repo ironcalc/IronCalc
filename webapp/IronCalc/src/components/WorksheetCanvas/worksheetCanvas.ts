@@ -19,6 +19,13 @@ import {
   outlineColor,
 } from "./constants";
 
+export interface UserSelection {
+  userId: string;
+  color: string;
+  selection: [number, number, number, number, number]; // [sheet, rowStart, columnStart, rowEnd, columnEnd]
+  div: HTMLDivElement;
+}
+
 export interface CanvasSettings {
   model: Model;
   width: number;
@@ -1244,6 +1251,34 @@ export default class WorksheetCanvas {
     editor.style.height = `${height - 1}px`;
   }
 
+  private drawUsersSelection(): void {
+    const users = this.model.getUsers();
+    for (const handle of document.querySelectorAll(
+      ".user-selection-ironcalc",
+    ))
+      handle.remove();
+      const colors = [];
+    users.forEach((user, index) => {
+      const { sheet, row, column } = user;
+      if (sheet !== this.model.getSelectedSheet()) {
+        return;
+      }
+      const [x, y] = this.getCoordinatesByCell(row, column);
+      const width = this.getColumnWidth(sheet, column);
+      const height = this.getRowHeight(sheet, row);
+      const div = document.createElement("div");
+      const color = getColor(index + 1);
+      div.className = "user-selection-ironcalc";
+      div.style.left = `${x}px`;
+      div.style.top = `${y}px`;
+      div.style.width = `${width}px`;
+      div.style.height = `${height}px`;
+      div.style.border = `1px solid ${color}`;
+      div.style.position = "absolute";
+      this.canvas.parentElement?.appendChild(div);
+    });
+  }
+
   private drawCellOutline(): void {
     const { cellOutline, areaOutline, cellOutlineHandle } = this;
     if (this.workbookState.getEditingCell()) {
@@ -1595,6 +1630,7 @@ export default class WorksheetCanvas {
     context.stroke();
 
     this.drawCellOutline();
+    this.drawUsersSelection();
     this.drawCellEditor();
     this.drawExtendToArea();
     this.drawActiveRanges(topLeftCell, bottomRightCell);

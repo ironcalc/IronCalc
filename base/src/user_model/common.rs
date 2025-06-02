@@ -14,7 +14,7 @@ use crate::{
     model::Model,
     types::{
         Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, SheetState,
-        Style, VerticalAlignment,
+        Style, VerticalAlignment, WebUser,
     },
     utils::is_valid_hex_color,
 };
@@ -291,6 +291,11 @@ impl UserModel {
     /// Sets the name of a workbook
     pub fn set_name(&mut self, name: &str) {
         self.model.workbook.name = name.to_string();
+    }
+
+    /// Set users
+    pub fn set_users(&mut self, users: &[WebUser]) {
+        self.model.workbook.users = users.to_vec();
     }
 
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
