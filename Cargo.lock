@@ -784,7 +784,7 @@ dependencies = [
 
 [[package]]
 name = "pyroncalc"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "ironcalc",
  "pyo3",
