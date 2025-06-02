@@ -574,8 +574,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             columnStart,
           );
           const [x1, y1] = worksheetCanvas.getCoordinatesByCell(
-            rowEnd,
-            columnEnd,
+            rowEnd + 1,
+            columnEnd + 1,
           );
           const width = (x1 - x) * devicePixelRatio;
           const height = (y1 - y) * devicePixelRatio;
