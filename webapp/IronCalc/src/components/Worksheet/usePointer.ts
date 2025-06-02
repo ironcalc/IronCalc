@@ -236,9 +236,16 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           );
           // we continue to select the new cell
         }
-        options.onCellSelected(cell, event);
-        isSelecting.current = true;
-        worksheetWrapper.setPointerCapture(event.pointerId);
+        if (event.shiftKey) {
+          // We are extending the selection
+          options.onAreaSelecting(cell);
+          options.onAreaSelected();
+        } else {
+          // We are selecting a single cell
+          options.onCellSelected(cell, event);
+          isSelecting.current = true;
+          worksheetWrapper.setPointerCapture(event.pointerId);
+        }
       }
     },
     [options],
