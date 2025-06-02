@@ -1,6 +1,6 @@
 [project]
 name = "ironcalc"
-version = "0.5.3"
+version = "0.5.4"
 description = "Create, edit and evaluate Excel spreadsheets"
 requires-python = ">=3.10"
 keywords = [

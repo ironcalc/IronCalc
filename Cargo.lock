@@ -783,7 +783,7 @@ dependencies = [
 
 [[package]]
 name = "pyroncalc"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "bitcode",
  "ironcalc",
