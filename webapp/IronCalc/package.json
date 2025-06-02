@@ -1,6 +1,6 @@
 {
   "name": "@ironcalc/workbook",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "type": "module",
   "main": "./dist/ironcalc.js",
   "module": "./dist/ironcalc.js",

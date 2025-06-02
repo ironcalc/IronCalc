@@ -1257,7 +1257,6 @@ export default class WorksheetCanvas {
       ".user-selection-ironcalc",
     ))
       handle.remove();
-      const colors = [];
     users.forEach((user, index) => {
       const { sheet, row, column } = user;
       if (sheet !== this.model.getSelectedSheet()) {

@@ -2,7 +2,7 @@ use pyo3::exceptions::PyException;
 use pyo3::{create_exception, prelude::*, wrap_pyfunction};
 
 use types::{PySheetProperty, PyStyle};
-use xlsx::base::types::Style;
+use xlsx::base::types::{Style, Workbook};
 use xlsx::base::{Model, UserModel};
 
 use xlsx::export::{save_to_icalc, save_to_xlsx};
@@ -79,6 +79,12 @@ impl PyModel {
     /// Saves the model to file in the internal binary ic format
     pub fn save_to_icalc(&self, file: &str) -> PyResult<()> {
         save_to_icalc(&self.model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    /// To bytes
+    pub fn to_bytes(&self) -> PyResult<Vec<u8>> {
+        let bytes = self.model.to_bytes();
+        Ok(bytes)
     }
 
     /// Evaluates the workbook
@@ -298,6 +304,15 @@ pub fn load_from_icalc(file_name: &str) -> PyResult<PyModel> {
     Ok(PyModel { model })
 }
 
+#[pyfunction]
+pub fn load_from_bytes(bytes: &[u8]) -> PyResult<PyModel> {
+    let workbook: Workbook =
+        bitcode::decode(bytes).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model =
+        Model::from_workbook(workbook).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    Ok(PyModel { model })
+}
+
 /// Creates an empty model
 #[pyfunction]
 pub fn create(name: &str, locale: &str, tz: &str) -> PyResult<PyModel> {
@@ -348,6 +363,7 @@ fn ironcalc(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create, m)?)?;
     m.add_function(wrap_pyfunction!(load_from_xlsx, m)?)?;
     m.add_function(wrap_pyfunction!(load_from_icalc, m)?)?;
+    m.add_function(wrap_pyfunction!(load_from_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(test_panic, m)?)?;
 
     // User model functions

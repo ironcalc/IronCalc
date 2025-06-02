@@ -783,8 +783,9 @@ dependencies = [
 
 [[package]]
 name = "pyroncalc"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
+ "bitcode",
  "ironcalc",
  "pyo3",
  "serde",

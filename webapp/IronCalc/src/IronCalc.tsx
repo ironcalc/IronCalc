@@ -11,10 +11,6 @@ interface IronCalcProperties {
 }
 
 function IronCalc(properties: IronCalcProperties) {
-  properties.model.setUsers([
-    { id: "john@doe.com", sheet: 0, row: 5, column: 6 },
-    { id: "micheal@doe.com", sheet: 0, row: 1, column: 6 },
-  ]);
   return (
     <ThemeProvider theme={theme}>
       <Workbook model={properties.model} workbookState={new WorkbookState()} />

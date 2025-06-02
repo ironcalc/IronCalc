@@ -7,6 +7,12 @@ def test_simple():
 
     assert model.get_formatted_cell_value(0, 1, 1) == "3"
 
+    bytes = model.to_bytes()
+
+    model2 = ic.load_from_bytes(bytes)
+    assert model2.get_formatted_cell_value(0, 1, 1) == "3"
+
+
 def test_simple_user():
     model = ic.create_user_model("model", "en", "UTC")
     model.set_user_input(0, 1, 1, "=1+2")
