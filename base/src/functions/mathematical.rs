@@ -510,9 +510,13 @@ impl Model {
         let subset_array: CalcResult = self.fn_sum(&[args[0].clone()], cell);
         let total_array: CalcResult = self.fn_sum(&[args[1].clone()], cell);
 
-        let subset_total = subset_array.into_number().unwrap();
-        let total_total = total_array.into_number().unwrap();
+        let subset_total = subset_array
+            .into_number()
+            .expect("None value where Number is expected");
+        let total_total = total_array
+            .into_number()
+            .expect("None value where Number is expected");
 
-        CalcResult::Number((subset_total / total_total) * 100 as f64)
+        CalcResult::Number((subset_total / total_total) * 100_f64)
     }
 }
