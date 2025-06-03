@@ -523,9 +523,8 @@ impl Model {
                 return CalcResult::Error {
                     error: Error::NUM,
                     origin: cell,
-                    message: format!(
-                        "SUM for Subset Total cannot be calculated, results in a null value!"
-                    ),
+                    message: "SUM for Subset Total cannot be calculated, results in a null value!"
+                        .to_string(),
                 }
             }
         };
@@ -538,9 +537,8 @@ impl Model {
                 return CalcResult::Error {
                     error: Error::NUM,
                     origin: cell,
-                    message: format!(
-                        "SUM for Total cannot be calculated, results in a null value!"
-                    ),
+                    message: "SUM for Total cannot be calculated, results in a null value!"
+                        .to_string(),
                 }
             }
         };
