@@ -61,6 +61,11 @@ impl PyUserModel {
             .get_formatted_cell_value(sheet, row, column)
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
+
+    pub fn to_bytes(&self) -> PyResult<Vec<u8>> {
+        let bytes = self.model.to_bytes();
+        Ok(bytes)
+    }
 }
 
 /// This is a model implementing the 'raw' API
