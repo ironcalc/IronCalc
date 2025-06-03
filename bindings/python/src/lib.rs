@@ -354,6 +354,16 @@ pub fn create_user_model_from_icalc(file_name: &str) -> PyResult<PyUserModel> {
 }
 
 #[pyfunction]
+pub fn create_user_model_from_bytes(bytes: &[u8]) -> PyResult<PyUserModel> {
+    let workbook: Workbook =
+        bitcode::decode(bytes).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model =
+        Model::from_workbook(workbook).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let user_model = UserModel::from_model(model);
+    Ok(PyUserModel { model: user_model })
+}
+
+#[pyfunction]
 #[allow(clippy::panic)]
 pub fn test_panic() {
     panic!("This function panics for testing panic handling");
@@ -373,6 +383,7 @@ fn ironcalc(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // User model functions
     m.add_function(wrap_pyfunction!(create_user_model, m)?)?;
+    m.add_function(wrap_pyfunction!(create_user_model_from_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(create_user_model_from_xlsx, m)?)?;
     m.add_function(wrap_pyfunction!(create_user_model_from_icalc, m)?)?;
 
