@@ -45,6 +45,13 @@ impl CalcResult {
     pub fn is_error(&self) -> bool {
         matches!(self, CalcResult::Error { .. })
     }
+
+    pub fn into_number(&self) -> Option<f64> {
+        match self {
+            Self::Number(s) => Some(s.to_owned()),
+            _ => None,
+        }
+    }
 }
 
 impl Ord for CalcResult {

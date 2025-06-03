@@ -501,4 +501,18 @@ impl Model {
         }
         CalcResult::Number((x + random() * (y - x)).floor())
     }
+
+    pub(crate) fn fn_percentof(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let subset_array: CalcResult = self.fn_sum(&[args[0].clone()], cell);
+        let total_array: CalcResult = self.fn_sum(&[args[1].clone()], cell);
+
+        let subset_total = subset_array.into_number().unwrap();
+        let total_total = total_array.into_number().unwrap();
+
+        CalcResult::Number((subset_total / total_total) * 100 as f64)
+    }
 }
