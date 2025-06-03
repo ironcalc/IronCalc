@@ -510,13 +510,32 @@ impl Model {
         let subset_array: CalcResult = self.fn_sum(&[args[0].clone()], cell);
         let total_array: CalcResult = self.fn_sum(&[args[1].clone()], cell);
 
-        let subset_total = subset_array
-            .into_number()
-            .expect("None value where Number is expected");
-        let total_total = total_array
-            .into_number()
-            .expect("None value where Number is expected");
+        let subset_total = subset_array.into_number();
 
-        CalcResult::Number((subset_total / total_total) * 100_f64)
+        let subset_value = match subset_total {
+            Some(number) => number,
+            None => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: format!(""),
+                }
+            }
+        };
+
+        let total_total = total_array.into_number();
+
+        let total_value = match total_total {
+            Some(number) => number,
+            None => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: format!(""),
+                }
+            }
+        };
+
+        CalcResult::Number((subset_value / total_value) * 100_f64)
     }
 }

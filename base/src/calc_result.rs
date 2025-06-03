@@ -46,7 +46,7 @@ impl CalcResult {
         matches!(self, CalcResult::Error { .. })
     }
 
-    pub fn into_number(&self) -> Option<f64> {
+    pub fn into_number(self) -> Option<f64> {
         match self {
             Self::Number(s) => Some(s.to_owned()),
             _ => None,
