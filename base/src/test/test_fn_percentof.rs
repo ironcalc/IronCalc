@@ -19,6 +19,6 @@ fn test_fn_percentof_arguments() {
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 
     // Success
-    assert_eq!(model._get_text("A3"), *"10");
-    assert_eq!(model._get_text("A4"), *"50")
+    assert_eq!(model._get_text("A3"), *"0.1");
+    assert_eq!(model._get_text("A4"), *"0.5")
 }

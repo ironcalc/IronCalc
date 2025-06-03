@@ -503,6 +503,11 @@ impl Model {
     }
 
     pub(crate) fn fn_percentof(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // Function is `=PERCENTOF(array1, array2)` == `=PERCENTOF((=SUM(subset) / =SUM(total)) * 100)`
+        // Implementation is the same as in Excel docs found here:
+        // https://support.microsoft.com/en-us/office/percentof-function-7c66da0a-ac30-45d0-bfc7-834a8bd7c962
+        // `Note: PERCENTOF is logically equivalent to =SUM(data_subset)/SUM(data_all)`
+        // They rely on formatting for converting into a percentage e.g. 0.1 = SUM(10) / SUM(100) before formatting
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -518,7 +523,9 @@ impl Model {
                 return CalcResult::Error {
                     error: Error::NUM,
                     origin: cell,
-                    message: format!(""),
+                    message: format!(
+                        "SUM for Subset Total cannot be calculated, results in a null value!"
+                    ),
                 }
             }
         };
@@ -531,11 +538,13 @@ impl Model {
                 return CalcResult::Error {
                     error: Error::NUM,
                     origin: cell,
-                    message: format!(""),
+                    message: format!(
+                        "SUM for Total cannot be calculated, results in a null value!"
+                    ),
                 }
             }
         };
 
-        CalcResult::Number((subset_value / total_value) * 100_f64)
+        CalcResult::Number(subset_value / total_value)
     }
 }
