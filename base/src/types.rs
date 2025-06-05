@@ -303,7 +303,14 @@ impl Default for Styles {
         Styles {
             num_fmts: vec![],
             fonts: vec![Default::default()],
-            fills: vec![Default::default()],
+            fills: vec![
+                Default::default(),
+                Fill {
+                    pattern_type: "gray125".to_string(),
+                    fg_color: None,
+                    bg_color: None,
+                },
+            ],
             borders: vec![Default::default()],
             cell_style_xfs: vec![Default::default()],
             cell_xfs: vec![Default::default()],
