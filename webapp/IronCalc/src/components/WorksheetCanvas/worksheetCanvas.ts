@@ -18,6 +18,8 @@ import {
   headerTextColor,
   outlineColor,
 } from "./constants";
+import { attachOutlineHandle } from "./outlineHandle";
+import { computeWrappedLines, hexToRGBA10Percent } from "./util";
 
 export interface CanvasSettings {
   model: Model;
