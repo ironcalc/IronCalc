@@ -19,6 +19,7 @@ import InsertColumnLeftIcon from "./insert-column-left.svg?react";
 import InsertColumnRightIcon from "./insert-column-right.svg?react";
 import InsertRowAboveIcon from "./insert-row-above.svg?react";
 import InsertRowBelow from "./insert-row-below.svg?react";
+import Markdown from "./markdown.svg?react";
 
 import IronCalcIcon from "./ironcalc_icon.svg?react";
 import IronCalcLogo from "./orange+black.svg?react";
@@ -48,4 +49,5 @@ export {
   IronCalcIcon,
   IronCalcLogo,
   Fx,
+  Markdown,
 };

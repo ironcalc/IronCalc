@@ -672,4 +672,18 @@ impl Model {
             .delete_defined_name(name, scope)
             .map_err(|e| to_js_error(e.to_string()))
     }
+
+    #[wasm_bindgen(js_name = "getSheetMarkup")]
+    pub fn get_sheet_markup(
+        &self,
+        sheet: u32,
+        start_row: i32,
+        start_column: i32,
+        end_row: i32,
+        end_column: i32,
+    ) -> Result<String, JsError> {
+        self.model
+            .get_sheet_markup(sheet, start_row, start_column, end_row, end_column)
+            .map_err(to_js_error)
+    }
 }

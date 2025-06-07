@@ -40,6 +40,7 @@ import {
   ArrowMiddleFromLine,
   DecimalPlacesDecreaseIcon,
   DecimalPlacesIncreaseIcon,
+  Markdown,
 } from "../../icons";
 import { theme } from "../../theme";
 import BorderPicker from "../BorderPicker/BorderPicker";
@@ -74,6 +75,7 @@ type ToolbarProperties = {
   onClearFormatting: () => void;
   onIncreaseFontSize: (delta: number) => void;
   onDownloadPNG: () => void;
+  onCopyMarkdown: () => void;
   fillColor: string;
   fontColor: string;
   fontSize: number;
@@ -428,6 +430,17 @@ function Toolbar(properties: ToolbarProperties) {
         title={t("toolbar.selected_png")}
       >
         <ImageDown />
+      </StyledButton>
+      <StyledButton
+        type="button"
+        $pressed={false}
+        onClick={() => {
+          properties.onCopyMarkdown();
+        }}
+        disabled={!canEdit}
+        title={t("toolbar.selected_markdown")}
+      >
+        <Markdown />
       </StyledButton>
 
       <ColorPicker
