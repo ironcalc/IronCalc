@@ -293,6 +293,19 @@ impl UserModel {
         self.model.workbook.name = name.to_string();
     }
 
+    /// Get area markdown
+    pub fn get_sheet_markup(
+        &self,
+        sheet: u32,
+        row_start: i32,
+        column_start: i32,
+        row_end: i32,
+        column_end: i32,
+    ) -> Result<String, String> {
+        self.model
+            .get_sheet_markup(sheet, row_start, column_start, row_end, column_end)
+    }
+
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
     ///
     /// See also:

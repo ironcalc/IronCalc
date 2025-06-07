@@ -558,6 +558,26 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onIncreaseFontSize={(delta: number) => {
           onIncreaseFontSize(delta);
         }}
+        onCopyMarkdown={async () => {
+          const {
+            sheet,
+            range: [rowStart, columnStart, rowEnd, columnEnd],
+          } = model.getSelectedView();
+          const row = Math.min(rowStart, rowEnd);
+          const column = Math.min(columnStart, columnEnd);
+          const width = Math.abs(columnEnd - columnStart) + 1;
+          const height = Math.abs(rowEnd - rowStart) + 1;
+          const markdown = model.getSheetMarkup(
+            sheet,
+            row,
+            column,
+            width,
+            height,
+          );
+          // Copy to clipboard
+          // NB: This will not work in non secure contexts or in iframes (i.e storybook)
+          await navigator.clipboard.writeText(markdown);
+        }}
         onDownloadPNG={() => {
           // creates a new canvas element in the visible part of the the selected area
           const worksheetCanvas = worksheetRef.current?.getCanvas();
