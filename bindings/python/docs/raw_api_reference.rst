@@ -1,6 +1,6 @@
 
-API Reference
--------------
+Raw API Reference
+-----------------
 
 In general methods in IronCalc use a 0-index base for the the sheet index and 1-index base for the row and column indexes.
 
@@ -28,7 +28,7 @@ In general methods in IronCalc use a 0-index base for the the sheet index and 1-
 
 .. method:: get_cell_content(sheet: int, row: int, column: int) -> str
 
-      Returns the raw content of a cell. If the cell contains a formula, 
+      Returns the raw content of a cell. If the cell contains a formula,
       the returned string starts with ``"="``.
 
       :param sheet: The sheet index (0-based).
@@ -47,7 +47,7 @@ In general methods in IronCalc use a 0-index base for the the sheet index and 1-
 
 .. method:: get_formatted_cell_value(sheet: int, row: int, column: int) -> str
 
-      Returns the cell’s value as a formatted string, taking into 
+      Returns the cell’s value as a formatted string, taking into
       account any number/currency/date formatting.
 
       :param sheet: The sheet index (0-based).
@@ -167,7 +167,7 @@ In general methods in IronCalc use a 0-index base for the the sheet index and 1-
 
 .. method:: get_worksheets_properties() -> List[PySheetProperty]
 
-      Returns a list of :class:`PySheetProperty` describing each worksheet’s 
+      Returns a list of :class:`PySheetProperty` describing each worksheet’s
       name, visibility state, ID, and tab color.
 
       :rtype: list of PySheetProperty
@@ -204,7 +204,7 @@ In general methods in IronCalc use a 0-index base for the the sheet index and 1-
 
 .. method:: test_panic()
 
-      A test method that deliberately panics in Rust. 
+      A test method that deliberately panics in Rust.
       Used for testing panic handling at the method level.
 
       :raises WorkbookError: (wrapped Rust panic)
