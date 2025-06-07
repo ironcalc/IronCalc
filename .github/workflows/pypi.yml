@@ -117,7 +117,7 @@ jobs:
           MATURIN_REPOSITORY_URL: "https://test.pypi.org/legacy/"
         with:
           command: upload
-          args: "--skip-existing **/*.whl"
+          args: "--skip-existing **/*.whl **/*.tar.gz"
           working-directory: bindings/python
 
   publish-pypi:
@@ -137,5 +137,5 @@ jobs:
           MATURIN_REPOSITORY_URL: "https://upload.pypi.org/legacy/"
         with:
           command: upload
-          args: "--skip-existing **/*.whl"
+          args: "--skip-existing **/*.whl **/*.tar.gz"
           working-directory: bindings/python

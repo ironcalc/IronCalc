@@ -2,8 +2,8 @@ use pyo3::exceptions::PyException;
 use pyo3::{create_exception, prelude::*, wrap_pyfunction};
 
 use types::{PySheetProperty, PyStyle};
-use xlsx::base::types::Style;
-use xlsx::base::Model;
+use xlsx::base::types::{Style, Workbook};
+use xlsx::base::{Model, UserModel};
 
 use xlsx::export::{save_to_icalc, save_to_xlsx};
 use xlsx::import;
@@ -13,6 +13,60 @@ mod types;
 use crate::types::PyCellType;
 
 create_exception!(_ironcalc, WorkbookError, PyException);
+
+#[pyclass]
+pub struct PyUserModel {
+    /// The user model, which is a wrapper around the Model
+    pub model: UserModel,
+}
+
+#[pymethods]
+impl PyUserModel {
+    /// Saves the user model to an xlsx file
+    pub fn save_to_xlsx(&self, file: &str) -> PyResult<()> {
+        let model = self.model.get_model();
+        save_to_xlsx(model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    /// Saves the user model to file in the internal binary ic format
+    pub fn save_to_icalc(&self, file: &str) -> PyResult<()> {
+        let model = self.model.get_model();
+        save_to_icalc(model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    pub fn apply_external_diffs(&mut self, external_diffs: &[u8]) -> PyResult<()> {
+        self.model
+            .apply_external_diffs(external_diffs)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    pub fn flush_send_queue(&mut self) -> Vec<u8> {
+        self.model.flush_send_queue()
+    }
+
+    pub fn set_user_input(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+    ) -> PyResult<()> {
+        self.model
+            .set_user_input(sheet, row, column, value)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    pub fn get_formatted_cell_value(&self, sheet: u32, row: i32, column: i32) -> PyResult<String> {
+        self.model
+            .get_formatted_cell_value(sheet, row, column)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    pub fn to_bytes(&self) -> PyResult<Vec<u8>> {
+        let bytes = self.model.to_bytes();
+        Ok(bytes)
+    }
+}
 
 /// This is a model implementing the 'raw' API
 #[pyclass]
@@ -30,6 +84,12 @@ impl PyModel {
     /// Saves the model to file in the internal binary ic format
     pub fn save_to_icalc(&self, file: &str) -> PyResult<()> {
         save_to_icalc(&self.model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    /// To bytes
+    pub fn to_bytes(&self) -> PyResult<Vec<u8>> {
+        let bytes = self.model.to_bytes();
+        Ok(bytes)
     }
 
     /// Evaluates the workbook
@@ -249,12 +309,67 @@ pub fn load_from_icalc(file_name: &str) -> PyResult<PyModel> {
     Ok(PyModel { model })
 }
 
-/// Creates an empty model
+/// Loads a function from bytes
+/// This function expects the bytes to be in the internal binary ic format
+/// which is the same format used by the `save_to_icalc` function.
+#[pyfunction]
+pub fn load_from_bytes(bytes: &[u8]) -> PyResult<PyModel> {
+    let workbook: Workbook =
+        bitcode::decode(bytes).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model =
+        Model::from_workbook(workbook).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    Ok(PyModel { model })
+}
+
+/// Creates an empty model in the raw API
 #[pyfunction]
 pub fn create(name: &str, locale: &str, tz: &str) -> PyResult<PyModel> {
     let model =
         Model::new_empty(name, locale, tz).map_err(|e| WorkbookError::new_err(e.to_string()))?;
     Ok(PyModel { model })
+}
+
+/// Creates a model with the user model API
+#[pyfunction]
+pub fn create_user_model(name: &str, locale: &str, tz: &str) -> PyResult<PyUserModel> {
+    let model = UserModel::new_empty(name, locale, tz)
+        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    Ok(PyUserModel { model })
+}
+
+/// Creates a user model from an Excel file
+#[pyfunction]
+pub fn create_user_model_from_xlsx(
+    file_path: &str,
+    locale: &str,
+    tz: &str,
+) -> PyResult<PyUserModel> {
+    let model = import::load_from_xlsx(file_path, locale, tz)
+        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = UserModel::from_model(model);
+    Ok(PyUserModel { model })
+}
+
+/// Creates a user model from an icalc file
+#[pyfunction]
+pub fn create_user_model_from_icalc(file_name: &str) -> PyResult<PyUserModel> {
+    let model =
+        import::load_from_icalc(file_name).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = UserModel::from_model(model);
+    Ok(PyUserModel { model })
+}
+
+/// Creates a user model from bytes
+/// This function expects the bytes to be in the internal binary ic format
+/// which is the same format used by the `save_to_icalc` function.
+#[pyfunction]
+pub fn create_user_model_from_bytes(bytes: &[u8]) -> PyResult<PyUserModel> {
+    let workbook: Workbook =
+        bitcode::decode(bytes).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model =
+        Model::from_workbook(workbook).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let user_model = UserModel::from_model(model);
+    Ok(PyUserModel { model: user_model })
 }
 
 #[pyfunction]
@@ -272,7 +387,14 @@ fn ironcalc(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create, m)?)?;
     m.add_function(wrap_pyfunction!(load_from_xlsx, m)?)?;
     m.add_function(wrap_pyfunction!(load_from_icalc, m)?)?;
+    m.add_function(wrap_pyfunction!(load_from_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(test_panic, m)?)?;
+
+    // User model functions
+    m.add_function(wrap_pyfunction!(create_user_model, m)?)?;
+    m.add_function(wrap_pyfunction!(create_user_model_from_bytes, m)?)?;
+    m.add_function(wrap_pyfunction!(create_user_model_from_xlsx, m)?)?;
+    m.add_function(wrap_pyfunction!(create_user_model_from_icalc, m)?)?;
 
     Ok(())
 }
