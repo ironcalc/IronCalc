@@ -1,6 +1,6 @@
 import "./index.css";
 import type { Model } from "@ironcalc/wasm";
-import ThemeProvider from "@mui/material/styles/ThemeProvider";
+import { ThemeProvider } from "@mui/material";
 import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
 import { theme } from "./theme.ts";
