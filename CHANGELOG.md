@@ -13,6 +13,7 @@
 - Add python bindings for all platforms
 - Add is split into the product and widget
 - Add Python documentation [#260]
+- New function PERCENTOF ([]())
 
 ### Fixed
 
