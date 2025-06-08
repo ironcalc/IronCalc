@@ -11,7 +11,7 @@ use crate::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
     },
-    model::{Model, CellReference},
+    model::{CellReference, Model},
     types::{
         Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, SheetState,
         Style, VerticalAlignment,

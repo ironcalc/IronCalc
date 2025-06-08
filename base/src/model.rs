@@ -35,7 +35,7 @@ use chrono_tz::Tz;
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Number of milliseconds since January 1, 1970
 /// Used by time and date functions. It takes the value from the environment:
@@ -2271,7 +2271,10 @@ impl Model {
 
     /// Returns a list of all cells that have been changed or are being evaluated
     pub fn get_changed_cells(&self) -> Vec<CellReference> {
-        self.cells.keys().map(|&(sheet, row, column)| CellReference { sheet, row, column }).collect()
+        self.cells
+            .keys()
+            .map(|&(sheet, row, column)| CellReference { sheet, row, column })
+            .collect()
     }
 }
 
