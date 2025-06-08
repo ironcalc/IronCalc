@@ -106,15 +106,15 @@ pub struct Model {
     pub(crate) shared_strings: HashMap<String, usize>,
     /// An instance of the parser
     pub(crate) parser: Parser,
-    /// The list of cells with formulas that are evaluated of being evaluated
+    /// The list of cells with formulas that are evaluated or being evaluated
     pub(crate) cells: HashMap<(u32, i32, i32), CellState>,
     /// The locale of the model
     pub(crate) locale: Locale,
-    /// Tha language used
+    /// The language used
     pub(crate) language: Language,
     /// The timezone used to evaluate the model
     pub(crate) tz: Tz,
-    /// The view id. A view consist of a selected sheet and ranges.
+    /// The view id. A view consists of a selected sheet and ranges.
     pub(crate) view_id: u32,
 }
 
