@@ -1931,16 +1931,32 @@ impl Model {
     }
 
     /// Returns markup representation of the given `sheet`.
-    pub fn get_sheet_markup(&self, sheet: u32) -> Result<String, String> {
-        let worksheet = self.workbook.worksheet(sheet)?;
-        let dimension = worksheet.dimension();
+    pub fn get_sheet_markup(
+        &self,
+        sheet: u32,
+        start_row: i32,
+        start_column: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<String, String> {
+        let mut table: Vec<Vec<String>> = Vec::new();
+        if start_row < 1 || start_column < 1 {
+            return Err("Start row and column must be positive".to_string());
+        }
+        if start_row + height >= LAST_ROW || start_column + width >= LAST_COLUMN {
+            return Err("Start row and column exceed the maximum allowed".to_string());
+        }
+        if height <= 0 || width <= 0 {
+            return Err("Height must be positive and width must be positive".to_string());
+        }
 
-        let mut rows = Vec::new();
+        // a mutable vector to store the column widths of length `width + 1`
+        let mut column_widths: Vec<f64> = vec![0.0; (width + 1) as usize];
 
-        for row in 1..(dimension.max_row + 1) {
+        for row in start_row..(start_row + height + 1) {
             let mut row_markup: Vec<String> = Vec::new();
 
-            for column in 1..(dimension.max_column + 1) {
+            for column in start_column..(start_column + width + 1) {
                 let mut cell_markup = match self.get_cell_formula(sheet, row, column)? {
                     Some(formula) => formula,
                     None => self.get_formatted_cell_value(sheet, row, column)?,
@@ -1949,12 +1965,34 @@ impl Model {
                 if style.font.b {
                     cell_markup = format!("**{cell_markup}**")
                 }
+                column_widths[(column - start_column) as usize] =
+                    column_widths[(column - start_column) as usize].max(cell_markup.len() as f64);
                 row_markup.push(cell_markup);
             }
 
-            rows.push(row_markup.join("|"));
+            table.push(row_markup);
         }
+        let mut rows = Vec::new();
+        for (j, row) in table.iter().enumerate() {
+            if j == 1 {
+                let mut row_markup = String::new();
+                for i in 0..(width + 1) {
+                    row_markup.push('|');
+                    let wide = column_widths[i as usize] as usize;
+                    row_markup.push_str(&"-".repeat(wide));
+                }
+                rows.push(row_markup);
+            }
+            let mut row_markup = String::new();
 
+            for (i, cell) in row.iter().enumerate() {
+                row_markup.push('|');
+                let wide = column_widths[i] as usize;
+                // Add padding to the cell content
+                row_markup.push_str(&format!("{:<wide$}", cell, wide = wide));
+            }
+            rows.push(row_markup);
+        }
         Ok(rows.join("\n"))
     }
 
