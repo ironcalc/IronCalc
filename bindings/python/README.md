@@ -10,9 +10,6 @@ You can add cell values, retrieve them and most importantly you can evaluate spr
 pip install ironcalc
 ```
 
-
-
-
 ## Compile and test
 
 To compile this and test it:
@@ -29,3 +26,17 @@ examples $ python example.py
 From there if you use `python` you can `import ironcalc`. You can either create a new file, read it from a JSON string or import from Excel.
 
 Hopefully the API is straightforward.
+
+## Creating documentation
+
+We use sphinx
+
+```
+python -m venv venv
+source venv/bin/activate
+pip install maturin
+pip install sphinx
+maturin develop
+sphinx-build -M html docs html
+python -m http.server --directory html/html/
+```
