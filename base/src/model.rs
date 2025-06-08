@@ -35,6 +35,8 @@ use chrono_tz::Tz;
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
 
+use serde::{Serialize, Deserialize};
+
 /// Number of milliseconds since January 1, 1970
 /// Used by time and date functions. It takes the value from the environment:
 /// * The Operative System
@@ -106,15 +108,15 @@ pub struct Model {
     pub(crate) shared_strings: HashMap<String, usize>,
     /// An instance of the parser
     pub(crate) parser: Parser,
-    /// The list of cells with formulas that are evaluated of being evaluated
+    /// The list of cells with formulas that are evaluated or being evaluated
     pub(crate) cells: HashMap<(u32, i32, i32), CellState>,
     /// The locale of the model
     pub(crate) locale: Locale,
-    /// Tha language used
+    /// The language used
     pub(crate) language: Language,
     /// The timezone used to evaluate the model
     pub(crate) tz: Tz,
-    /// The view id. A view consist of a selected sheet and ranges.
+    /// The view id. A view consists of a selected sheet and ranges.
     pub(crate) view_id: u32,
 }
 
@@ -126,6 +128,14 @@ pub struct CellIndex {
     /// Row index
     pub row: i32,
     /// Column index
+    pub column: i32,
+}
+
+// Struct to represent a cell reference for serialization
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CellReference {
+    pub sheet: u32,
+    pub row: i32,
     pub column: i32,
 }
 
@@ -2257,6 +2267,11 @@ impl Model {
     /// Deletes the style of a row if there is any
     pub fn delete_row_style(&mut self, sheet: u32, row: i32) -> Result<(), String> {
         self.workbook.worksheet_mut(sheet)?.delete_row_style(row)
+    }
+
+    /// Returns a list of all cells that have been changed or are being evaluated
+    pub fn get_changed_cells(&self) -> Vec<CellReference> {
+        self.cells.keys().map(|&(sheet, row, column)| CellReference { sheet, row, column }).collect()
     }
 }
 

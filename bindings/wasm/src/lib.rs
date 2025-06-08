@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use wasm_bindgen::{
     prelude::{wasm_bindgen, JsError},
     JsValue,
@@ -672,4 +672,18 @@ impl Model {
             .delete_defined_name(name, scope)
             .map_err(|e| to_js_error(e.to_string()))
     }
+
+    #[wasm_bindgen(js_name = "getChangedCells")]
+    pub fn get_changed_cells(&self) -> JsValue {
+        let changed_cells = self.model.get_changed_cells();
+        serde_wasm_bindgen::to_value(&changed_cells).unwrap()
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CellReference {
+    pub sheet: u32,
+    pub row: i32,
+    pub column: i32,
 }

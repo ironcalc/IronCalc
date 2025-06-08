@@ -130,5 +130,65 @@ test("autofill", () => {
     assert.strictEqual(result, "23");
 });
 
+test('Track changed cells', () => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    model.setUserInput(0, 1, 1, "10");
+    model.setUserInput(0, 1, 2, "=A1*2");
+    model.evaluate();
+
+    const changedCells = model.getChangedCells();
+    assert.strictEqual(changedCells.length, 1, 'Changed cells should include directly set cell and dependent cell');
+    assert.deepEqual(changedCells[0], { sheet: 0, row: 1, column: 2 }, 'Second changed cell should be B1');
+});
+
+test('Track changed cells - Circular Dependency with External Dependent', (t) => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    // Setup circular dependency: A1 -> B1 -> C1 -> A1
+    model.setUserInput(0, 1, 1, "=B1");
+    model.setUserInput(0, 1, 2, "=C1");
+    model.setUserInput(0, 1, 3, "=A1");
+    // Setup external dependent: D1 depends on A1
+    model.setUserInput(0, 1, 4, "=A1+1");
+    // Evaluate to set initial state
+    model.evaluate();
+    // Update A1 to trigger circular dependency error
+    model.setUserInput(0, 1, 1, "=B1+10");
+    model.evaluate();
+    // Get changed cells
+    const changedCells = model.getChangedCells();
+    // Check if dependent cells are tracked as changed, excluding A1 which was directly updated
+    assert.strictEqual(changedCells.some(c => c.sheet === 0 && c.row === 1 && c.column === 2), true, 'B1 should be tracked as changed due to circular dependency');
+    assert.strictEqual(changedCells.some(c => c.sheet === 0 && c.row === 1 && c.column === 3), true, 'C1 should be tracked as changed due to circular dependency');
+    assert.strictEqual(changedCells.some(c => c.sheet === 0 && c.row === 1 && c.column === 4), true, 'D1 should be tracked as changed due to dependency on A1');
+});
+
+test('Track changed cells - Multi-Sheet Cascading with Defined Name', (t) => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    // Add additional sheets
+    model.newSheet();
+    model.renameSheet(1, "Sheet2");
+    model.newSheet();
+    model.renameSheet(2, "Sheet3");
+    // Define a name 'TotalSales' for Sheet1!A1:A2
+    model.newDefinedName("TotalSales", 0, "=Sheet1!A1:A2");
+    // Set values in Sheet1
+    model.setUserInput(0, 1, 1, "100");
+    model.setUserInput(0, 2, 1, "200");
+    // Set formula in Sheet2 using defined name
+    model.setUserInput(1, 2, 2, "=SUM(TotalSales)");
+    // Set formula in Sheet3 referencing Sheet2!B2
+    model.setUserInput(2, 3, 3, "=Sheet2!B2*2");
+    // Evaluate initial state
+    model.evaluate();
+    // Update Sheet1!A1 to trigger cascading changes
+    model.setUserInput(0, 1, 1, "150");
+    model.evaluate();
+    // Get changed cells
+    const changedCells = model.getChangedCells();
+    // Verify only dependent cells are tracked, excluding Sheet1!A1 which was directly updated
+    assert.strictEqual(changedCells.some(c => c.sheet === 1 && c.row === 2 && c.column === 2), true, 'Sheet2!B2 should be tracked as changed');
+    assert.strictEqual(changedCells.some(c => c.sheet === 2 && c.row === 3 && c.column === 3), true, 'Sheet3!C3 should be tracked as changed');
+});
+
 
 
