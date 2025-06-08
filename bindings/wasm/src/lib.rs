@@ -676,7 +676,7 @@ impl Model {
     #[wasm_bindgen(js_name = "getChangedCells")]
     pub fn get_changed_cells(&self) -> JsValue {
         let changed_cells = self.model.get_changed_cells();
-        serde_wasm_bindgen::to_value(&changed_cells).unwrap()
+        serde_wasm_bindgen::to_value(&changed_cells).unwrap_or_else(|_| JsValue::undefined())
     }
 }
 
