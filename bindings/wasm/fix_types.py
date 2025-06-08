@@ -167,6 +167,20 @@ clipboard_types = r"""
   copyToClipboard(): Clipboard;
 """
 
+get_changed_cells = r"""
+/**
+* @returns {any}
+*/
+  getChangedCells(): any;
+"""
+
+get_changed_cells_types = r"""
+/**
+* @returns {ChangedCell[]}
+*/
+  getChangedCells(): ChangedCell[];
+"""
+
 paste_from_clipboard = r"""
 /**
 * @param {number} source_sheet
@@ -213,6 +227,7 @@ def fix_types(text):
     text = text.replace(set_area_border, set_area_border_types)
     text = text.replace(paste_csv_string, paste_csv_string_types)
     text = text.replace(clipboard, clipboard_types)
+    text = text.replace(get_changed_cells, get_changed_cells_types)
     text = text.replace(paste_from_clipboard, paste_from_clipboard_types)
     text = text.replace(defined_name_list, defined_name_list_types)
     with open("types.ts") as f:
@@ -221,6 +236,9 @@ def fix_types(text):
     text = text.replace(header, header_types)
     if text.find("any") != -1:
         print("There are 'unfixed' types. Please check.")
+        for i, line in enumerate(text.splitlines()):
+            if 'any' in line:
+                print(f"Line {i+1}: {line}")
         exit(1)
     return text
     
