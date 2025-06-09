@@ -201,6 +201,22 @@ defined_name_list_types = r"""
   getDefinedNameList(): DefinedName[];
 """
 
+get_sheet_dimensions = r"""
+/**
+* @param {number} sheet
+* @returns {any}
+*/
+  getSheetDimensions(sheet: number): any;
+"""
+
+get_sheet_dimensions_types = r"""
+/**
+* @param {number} sheet
+* @returns {WorksheetDimension}
+*/
+  getSheetDimensions(sheet: number): WorksheetDimension;
+"""
+
 def fix_types(text):
     text = text.replace(get_tokens_str, get_tokens_str_types)
     text = text.replace(update_style_str, update_style_str_types)
@@ -215,6 +231,7 @@ def fix_types(text):
     text = text.replace(clipboard, clipboard_types)
     text = text.replace(paste_from_clipboard, paste_from_clipboard_types)
     text = text.replace(defined_name_list, defined_name_list_types)
+    text = text.replace(get_sheet_dimensions, get_sheet_dimensions_types)
     with open("types.ts") as f:
         types_str = f.read()
         header_types = "{}\n\n{}".format(header, types_str)

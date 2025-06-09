@@ -335,6 +335,19 @@ impl Model {
             .unwrap_or_default())
     }
 
+    #[wasm_bindgen(js_name = "getSheetDimensions")]
+    pub fn get_sheet_dimensions(&self, sheet: u32) -> Result<JsValue, JsError> {
+        let dimension = self
+            .model
+            .get_model()
+            .workbook
+            .worksheet(sheet)
+            .map_err(to_js_error)?
+            .dimension();
+
+        serde_wasm_bindgen::to_value(&dimension).map_err(|e| to_js_error(e.to_string()))
+    }
+
     #[wasm_bindgen(js_name = "updateRangeStyle")]
     pub fn update_range_style(
         &mut self,
