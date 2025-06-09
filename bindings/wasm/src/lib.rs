@@ -675,6 +675,7 @@ impl Model {
 
     #[wasm_bindgen(js_name = "getRecentDiffs")]
     pub fn get_recent_diffs(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.model.get_recent_diffs()).unwrap_or_else(|_| JsValue::undefined())
+        serde_wasm_bindgen::to_value(&self.model.get_recent_diffs())
+            .unwrap_or_else(|_| JsValue::undefined())
     }
 }
