@@ -37,6 +37,12 @@ struct DefinedName {
     formula: String,
 }
 
+#[derive(Serialize)]
+struct NewSheetResult {
+    name: String,
+    sheet_index: u32,
+}
+
 #[wasm_bindgen]
 pub struct Model {
     model: BaseModel,
@@ -105,8 +111,15 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "newSheet")]
-    pub fn new_sheet(&mut self) -> Result<(), JsError> {
-        self.model.new_sheet().map_err(to_js_error)
+    pub fn new_sheet(&mut self) -> Result<JsValue, JsError> {
+        let (name, sheet_index) = self.model.new_sheet().map_err(to_js_error)?;
+        
+        let result = NewSheetResult {
+            name,
+            sheet_index,
+        };
+        
+        serde_wasm_bindgen::to_value(&result).map_err(|e| to_js_error(e.to_string()))
     }
 
     #[wasm_bindgen(js_name = "deleteSheet")]

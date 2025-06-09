@@ -116,6 +116,11 @@ export interface WorksheetProperties {
   state: string;
 }
 
+export interface NewSheetResult {
+  name: string;
+  sheet_index: number;
+}
+
 interface CellStyleFill {
   pattern_type: string;
   fg_color?: string;
