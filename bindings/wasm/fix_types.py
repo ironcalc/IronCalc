@@ -236,6 +236,9 @@ def fix_types(text):
     text = text.replace(header, header_types)
     if text.find("any") != -1:
         print("There are 'unfixed' types. Please check.")
+        for i, line in enumerate(text.splitlines()):
+            if 'any' in line:
+                print(f"Line {i+1}: {line}")
         exit(1)
     return text
     

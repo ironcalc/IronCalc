@@ -209,6 +209,14 @@ export interface SelectedView {
   left_column: number;
 }
 
+export interface WorksheetView {
+  row: number;
+  column: number;
+  range: [number, number, number, number];
+  top_row: number;
+  left_column: number;
+}
+
 // type ClipboardData = {
 //   [row: number]: {
 //       [column: number]: ClipboardCell;
@@ -306,7 +314,7 @@ export interface Worksheet {
   comments: Array<{ text: string; author_name: string; author_id?: string; cell_ref: string }>;
   frozen_rows: number;
   frozen_columns: number;
-  views: Record<number, any>;
+  views: Record<number, WorksheetView>;
   show_grid_lines: boolean;
 }
 
@@ -337,7 +345,7 @@ export interface CellClearAllDiff {
 export interface CellClearFormattingDiff {
   sheet: number;
   row: number;
-  column: number;
+  column: number
   old_style?: Style | null;
 }
 
