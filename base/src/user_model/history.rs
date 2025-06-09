@@ -17,9 +17,12 @@ pub struct ColumnData {
     pub(crate) data: HashMap<i32, Cell>,
 }
 
+/// Represents the type of a diff operation
 #[derive(Clone, Encode, Decode, Serialize)]
 pub enum DiffType {
+    /// An undo operation
     Undo,
+    /// A redo operation
     Redo,
 }
 
@@ -206,8 +209,12 @@ impl History {
     }
 }
 
+/// A collection of diffs that can be applied to a model.
+/// This represents a single operation that can be undone or redone.
 #[derive(Clone, Encode, Decode, Serialize)]
 pub struct QueueDiffs {
+    /// The type of operation this represents (Undo or Redo)
     pub r#type: DiffType,
+    /// The list of individual diffs that make up this operation
     pub list: DiffList,
 }

@@ -13,3 +13,5 @@ pub use ui::SelectedView;
 
 pub use common::BorderArea;
 pub use common::ClipboardData;
+pub use history::QueueDiffs;
+pub use history::DiffType;

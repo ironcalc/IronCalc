@@ -653,7 +653,10 @@ impl UserModel {
   }
 
   #[napi(js_name = "getRecentDiffs")]
-  pub fn get_recent_diffs(&self) -> Vec<QueueDiffs> {
-    self.model.get_recent_diffs()
+  pub fn get_recent_diffs(&self, env: Env) -> Result<JsUnknown> {
+    let diffs = self.model.get_recent_diffs();
+    env
+      .to_js_value(&diffs)
+      .map_err(|e| to_js_error(e.to_string()))
   }
 }
