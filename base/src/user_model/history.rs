@@ -1,23 +1,30 @@
 use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
+use serde::Serialize;
 
 use crate::types::{Cell, Col, Row, SheetState, Style, Worksheet};
 
-#[derive(Clone, Encode, Decode)]
-pub(crate) struct RowData {
+#[derive(Clone, Encode, Decode, Serialize)]
+pub struct RowData {
     pub(crate) row: Option<Row>,
     pub(crate) data: HashMap<i32, Cell>,
 }
 
-#[derive(Clone, Encode, Decode)]
-pub(crate) struct ColumnData {
+#[derive(Clone, Encode, Decode, Serialize)]
+pub struct ColumnData {
     pub(crate) column: Option<Col>,
     pub(crate) data: HashMap<i32, Cell>,
 }
 
-#[derive(Clone, Encode, Decode)]
-pub(crate) enum Diff {
+#[derive(Clone, Encode, Decode, Serialize)]
+pub enum DiffType {
+    Undo,
+    Redo,
+}
+
+#[derive(Clone, Encode, Decode, Serialize)]
+pub enum Diff {
     // Cell diffs
     SetCellValue {
         sheet: u32,
@@ -199,13 +206,7 @@ impl History {
     }
 }
 
-#[derive(Clone, Encode, Decode)]
-pub enum DiffType {
-    Undo,
-    Redo,
-}
-
-#[derive(Clone, Encode, Decode)]
+#[derive(Clone, Encode, Decode, Serialize)]
 pub struct QueueDiffs {
     pub r#type: DiffType,
     pub list: DiffList,

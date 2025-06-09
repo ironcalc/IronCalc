@@ -672,4 +672,9 @@ impl Model {
             .delete_defined_name(name, scope)
             .map_err(|e| to_js_error(e.to_string()))
     }
+
+    #[wasm_bindgen(js_name = "getRecentDiffs")]
+    pub fn get_recent_diffs(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.model.get_recent_diffs()).unwrap_or_else(|_| JsValue::undefined())
+    }
 }

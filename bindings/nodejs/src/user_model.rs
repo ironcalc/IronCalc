@@ -651,4 +651,9 @@ impl UserModel {
       .delete_defined_name(&name, scope)
       .map_err(|e| to_js_error(e.to_string()))
   }
+
+  #[napi(js_name = "getRecentDiffs")]
+  pub fn get_recent_diffs(&self) -> Vec<QueueDiffs> {
+    self.model.get_recent_diffs()
+  }
 }
