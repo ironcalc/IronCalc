@@ -1868,7 +1868,6 @@ impl UserModel {
         self.evaluate_if_not_paused();
         Ok(())
     }
-
     // **** Private methods ****** //
 
     pub(crate) fn push_diff_list(&mut self, diff_list: DiffList) {
@@ -2371,6 +2370,16 @@ impl UserModel {
             self.evaluate_if_not_paused();
         }
         Ok(())
+    }
+
+    /// Returns the current send queue as a vector of QueueDiffs without removing the diffs.
+    ///
+    /// This is used to inspect recent changes without affecting the queue.
+    ///
+    /// See also:
+    /// * [UserModel::flush_send_queue]
+    pub fn get_recent_diffs(&self) -> Vec<QueueDiffs> {
+        self.send_queue.clone()
     }
 }
 

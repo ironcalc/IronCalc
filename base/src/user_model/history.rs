@@ -1,23 +1,33 @@
 use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
+use serde::Serialize;
 
 use crate::types::{Cell, Col, Row, SheetState, Style, Worksheet};
 
-#[derive(Clone, Encode, Decode)]
-pub(crate) struct RowData {
+#[derive(Clone, Encode, Decode, Serialize)]
+pub struct RowData {
     pub(crate) row: Option<Row>,
     pub(crate) data: HashMap<i32, Cell>,
 }
 
-#[derive(Clone, Encode, Decode)]
-pub(crate) struct ColumnData {
+#[derive(Clone, Encode, Decode, Serialize)]
+pub struct ColumnData {
     pub(crate) column: Option<Col>,
     pub(crate) data: HashMap<i32, Cell>,
 }
 
-#[derive(Clone, Encode, Decode)]
-pub(crate) enum Diff {
+/// Represents the type of a diff operation
+#[derive(Clone, Encode, Decode, Serialize)]
+pub enum DiffType {
+    /// An undo operation
+    Undo,
+    /// A redo operation
+    Redo,
+}
+
+#[derive(Clone, Encode, Decode, Serialize)]
+pub enum Diff {
     // Cell diffs
     SetCellValue {
         sheet: u32,
@@ -199,14 +209,12 @@ impl History {
     }
 }
 
-#[derive(Clone, Encode, Decode)]
-pub enum DiffType {
-    Undo,
-    Redo,
-}
-
-#[derive(Clone, Encode, Decode)]
+/// A collection of diffs that can be applied to a model.
+/// This represents a single operation that can be undone or redone.
+#[derive(Clone, Encode, Decode, Serialize)]
 pub struct QueueDiffs {
+    /// The type of operation this represents (Undo or Redo)
     pub r#type: DiffType,
+    /// The list of individual diffs that make up this operation
     pub list: DiffList,
 }

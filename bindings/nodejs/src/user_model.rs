@@ -651,4 +651,12 @@ impl UserModel {
       .delete_defined_name(&name, scope)
       .map_err(|e| to_js_error(e.to_string()))
   }
+
+  #[napi(js_name = "getRecentDiffs")]
+  pub fn get_recent_diffs(&self, env: Env) -> Result<JsUnknown> {
+    let diffs = self.model.get_recent_diffs();
+    env
+      .to_js_value(&diffs)
+      .map_err(|e| to_js_error(e.to_string()))
+  }
 }

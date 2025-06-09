@@ -201,6 +201,20 @@ defined_name_list_types = r"""
   getDefinedNameList(): DefinedName[];
 """
 
+get_recent_diffs = r"""
+/**
+* @returns {any}
+*/
+  getRecentDiffs(): any;
+"""
+
+get_recent_diffs_types = r"""
+/**
+* @returns {QueueDiffs[]}
+*/
+  getRecentDiffs(): QueueDiffs[];
+"""
+
 def fix_types(text):
     text = text.replace(get_tokens_str, get_tokens_str_types)
     text = text.replace(update_style_str, update_style_str_types)
@@ -215,12 +229,16 @@ def fix_types(text):
     text = text.replace(clipboard, clipboard_types)
     text = text.replace(paste_from_clipboard, paste_from_clipboard_types)
     text = text.replace(defined_name_list, defined_name_list_types)
+    text = text.replace(get_recent_diffs, get_recent_diffs_types)
     with open("types.ts") as f:
         types_str = f.read()
         header_types = "{}\n\n{}".format(header, types_str)
     text = text.replace(header, header_types)
     if text.find("any") != -1:
         print("There are 'unfixed' types. Please check.")
+        for i, line in enumerate(text.splitlines()):
+            if 'any' in line:
+                print(f"Line {i+1}: {line}")
         exit(1)
     return text
     
