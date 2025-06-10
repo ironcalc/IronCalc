@@ -2,16 +2,47 @@ use serde::Serialize;
 use wasm_bindgen::{
     prelude::{wasm_bindgen, JsError},
     JsValue,
+    JsCast,
 };
+use js_sys::Function;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use ironcalc_base::{
     expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
     types::{CellType, Style},
-    BorderArea, ClipboardData, UserModel as BaseModel,
+    BorderArea, ClipboardData, UserModel as BaseModel, Subscription,
 };
+
+use ironcalc_base::Diff;
 
 fn to_js_error(error: String) -> JsError {
     JsError::new(&error.to_string())
+}
+
+/// WASM wrapper for the Rust Subscription that allows JavaScript to unsubscribe
+#[wasm_bindgen]
+pub struct DiffSubscription {
+    subscription: Rc<RefCell<Option<Subscription<Diff>>>>,
+}
+
+#[wasm_bindgen]
+impl DiffSubscription {
+    /// Unsubscribe from diff events
+    pub fn unsubscribe(&mut self) {
+        if let Ok(mut sub) = self.subscription.try_borrow_mut() {
+            if let Some(subscription) = sub.take() {
+                subscription.unsubscribe();
+            }
+        }
+    }
+}
+
+impl Drop for DiffSubscription {
+    fn drop(&mut self) {
+        // Ensure unsubscription on drop as well
+        self.unsubscribe();
+    }
 }
 
 /// Return an array with a list of all the tokens from a formula
@@ -81,6 +112,38 @@ impl Model {
     #[wasm_bindgen(js_name = "resumeEvaluation")]
     pub fn resume_evaluation(&mut self) {
         self.model.resume_evaluation()
+    }
+
+    #[wasm_bindgen(js_name = "onDiffs")]
+    pub fn on_diffs(&mut self, callback: Function) -> Function {
+        let subscription = self.model.subscribe(move |diff| {
+            match serde_wasm_bindgen::to_value(diff) {
+                Ok(js_diff) => {
+                    let _ = callback.call1(&JsValue::NULL, &js_diff);
+                }
+                Err(_e) => {
+                    // Silent skip: if serialization fails, we skip this diff event
+                }
+            }
+        });
+        
+        // Store subscription in an Rc<RefCell<>> so it can be moved into the closure
+        let subscription_rc = Rc::new(RefCell::new(Some(subscription)));
+        let subscription_clone = subscription_rc.clone();
+        
+        // Create the unsubscribe function
+        let unsubscribe_fn = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+            if let Ok(mut sub) = subscription_clone.try_borrow_mut() {
+                if let Some(subscription) = sub.take() {
+                    subscription.unsubscribe();
+                }
+            }
+        }) as Box<dyn FnMut()>);
+        
+        let js_function = unsubscribe_fn.as_ref().unchecked_ref::<Function>().clone();
+        unsubscribe_fn.forget(); // Prevent the closure from being dropped
+        
+        js_function
     }
 
     pub fn evaluate(&mut self) {

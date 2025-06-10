@@ -1,23 +1,25 @@
 use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
+use serde::Serialize;
 
 use crate::types::{Cell, Col, Row, SheetState, Style, Worksheet};
 
-#[derive(Clone, Encode, Decode)]
-pub(crate) struct RowData {
-    pub(crate) row: Option<Row>,
-    pub(crate) data: HashMap<i32, Cell>,
+#[derive(Clone, Encode, Decode, Serialize)]
+pub struct RowData {
+    pub row: Option<Row>,
+    pub data: HashMap<i32, Cell>,
 }
 
-#[derive(Clone, Encode, Decode)]
-pub(crate) struct ColumnData {
-    pub(crate) column: Option<Col>,
-    pub(crate) data: HashMap<i32, Cell>,
+#[derive(Clone, Encode, Decode, Serialize)]
+pub struct ColumnData {
+    pub column: Option<Col>,
+    pub data: HashMap<i32, Cell>,
 }
 
-#[derive(Clone, Encode, Decode)]
-pub(crate) enum Diff {
+#[allow(missing_docs)]
+#[derive(Clone, Encode, Decode, Serialize)]
+pub enum Diff {
     // Cell diffs
     SetCellValue {
         sheet: u32,

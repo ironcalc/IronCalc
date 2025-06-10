@@ -24,6 +24,7 @@ use crate::user_model::history::{
 };
 
 use super::border_utils::is_max_border;
+use super::event::{EventEmitter, Subscription};
 /// Data for the clipboard
 pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
 
@@ -223,6 +224,7 @@ pub struct UserModel {
     history: History,
     send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
+    event_emitter: EventEmitter<Diff>,
 }
 
 impl Debug for UserModel {
@@ -239,6 +241,7 @@ impl UserModel {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            event_emitter: EventEmitter::default(),
         }
     }
 
@@ -253,6 +256,7 @@ impl UserModel {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            event_emitter: EventEmitter::default(),
         })
     }
 
@@ -267,6 +271,7 @@ impl UserModel {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            event_emitter: EventEmitter::default(),
         })
     }
 
@@ -349,6 +354,26 @@ impl UserModel {
     /// * [UserModel::pause_evaluation]
     pub fn resume_evaluation(&mut self) {
         self.pause_evaluation = false;
+    }
+
+    /// Subscribes to diff events.
+    /// Returns a Subscription handle that automatically unsubscribes when dropped.
+    #[cfg(target_arch = "wasm32")]
+    pub fn subscribe<F>(&self, listener: F) -> Subscription<Diff>
+    where
+        F: Fn(&Diff) + 'static,
+    {
+        self.event_emitter.subscribe(listener)
+    }
+
+    /// Subscribes to diff events.
+    /// Returns a Subscription handle that automatically unsubscribes when dropped.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn subscribe<F>(&self, listener: F) -> Subscription<Diff>
+    where
+        F: Fn(&Diff) + Send + Sync + 'static,
+    {
+        self.event_emitter.subscribe(listener)
     }
 
     /// Forces an evaluation of the model
@@ -1872,6 +1897,11 @@ impl UserModel {
     // **** Private methods ****** //
 
     pub(crate) fn push_diff_list(&mut self, diff_list: DiffList) {
+        // Emit events for each diff before storing them
+        for diff in &diff_list {
+            self.event_emitter.emit(diff);
+        }
+        
         self.send_queue.push(QueueDiffs {
             r#type: DiffType::Redo,
             list: diff_list.clone(),
@@ -1888,6 +1918,7 @@ impl UserModel {
     fn apply_undo_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list.iter().rev() {
+            self.event_emitter.emit(diff);
             match diff {
                 Diff::SetCellValue {
                     sheet,
@@ -2175,6 +2206,7 @@ impl UserModel {
     fn apply_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list {
+            self.event_emitter.emit(diff);
             match diff {
                 Diff::SetCellValue {
                     sheet,
@@ -2412,3 +2444,4 @@ mod tests {
         }
     }
 }
+

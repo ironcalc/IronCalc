@@ -1073,6 +1073,7 @@ name = "wasm"
 version = "0.5.0"
 dependencies = [
  "ironcalc_base",
+ "js-sys",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",
