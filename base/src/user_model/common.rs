@@ -358,7 +358,7 @@ impl UserModel {
 
     /// Subscribes to diff events.
     /// Returns a Subscription handle that automatically unsubscribes when dropped.
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(target_arch = "wasm32", feature = "single_threaded"))]
     pub fn subscribe<F>(&self, listener: F) -> Subscription<Diff>
     where
         F: Fn(&Diff) + 'static,
@@ -368,7 +368,7 @@ impl UserModel {
 
     /// Subscribes to diff events.
     /// Returns a Subscription handle that automatically unsubscribes when dropped.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(any(target_arch = "wasm32", feature = "single_threaded")))]
     pub fn subscribe<F>(&self, listener: F) -> Subscription<Diff>
     where
         F: Fn(&Diff) + Send + Sync + 'static,
@@ -1901,7 +1901,7 @@ impl UserModel {
         for diff in &diff_list {
             self.event_emitter.emit(diff);
         }
-        
+
         self.send_queue.push(QueueDiffs {
             r#type: DiffType::Redo,
             list: diff_list.clone(),
@@ -2444,4 +2444,3 @@ mod tests {
         }
     }
 }
-

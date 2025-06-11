@@ -1,48 +1,20 @@
-use serde::Serialize;
-use wasm_bindgen::{
-    prelude::{wasm_bindgen, JsError},
-    JsValue,
-    JsCast,
-};
 use js_sys::Function;
+use serde::Serialize;
 use std::cell::RefCell;
 use std::rc::Rc;
+use wasm_bindgen::{
+    prelude::{wasm_bindgen, JsError},
+    JsCast, JsValue,
+};
 
 use ironcalc_base::{
     expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
     types::{CellType, Style},
-    BorderArea, ClipboardData, UserModel as BaseModel, Subscription,
+    BorderArea, ClipboardData, UserModel as BaseModel,
 };
-
-use ironcalc_base::Diff;
 
 fn to_js_error(error: String) -> JsError {
     JsError::new(&error.to_string())
-}
-
-/// WASM wrapper for the Rust Subscription that allows JavaScript to unsubscribe
-#[wasm_bindgen]
-pub struct DiffSubscription {
-    subscription: Rc<RefCell<Option<Subscription<Diff>>>>,
-}
-
-#[wasm_bindgen]
-impl DiffSubscription {
-    /// Unsubscribe from diff events
-    pub fn unsubscribe(&mut self) {
-        if let Ok(mut sub) = self.subscription.try_borrow_mut() {
-            if let Some(subscription) = sub.take() {
-                subscription.unsubscribe();
-            }
-        }
-    }
-}
-
-impl Drop for DiffSubscription {
-    fn drop(&mut self) {
-        // Ensure unsubscription on drop as well
-        self.unsubscribe();
-    }
 }
 
 /// Return an array with a list of all the tokens from a formula
@@ -126,11 +98,11 @@ impl Model {
                 }
             }
         });
-        
+
         // Store subscription in an Rc<RefCell<>> so it can be moved into the closure
         let subscription_rc = Rc::new(RefCell::new(Some(subscription)));
         let subscription_clone = subscription_rc.clone();
-        
+
         // Create the unsubscribe function
         let unsubscribe_fn = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
             if let Ok(mut sub) = subscription_clone.try_borrow_mut() {
@@ -139,10 +111,10 @@ impl Model {
                 }
             }
         }) as Box<dyn FnMut()>);
-        
+
         let js_function = unsubscribe_fn.as_ref().unchecked_ref::<Function>().clone();
         unsubscribe_fn.forget(); // Prevent the closure from being dropped
-        
+
         js_function
     }
 

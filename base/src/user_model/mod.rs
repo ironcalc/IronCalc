@@ -3,8 +3,8 @@
 mod border;
 mod border_utils;
 mod common;
-mod history;
 mod event;
+mod history;
 mod ui;
 
 pub use common::UserModel;

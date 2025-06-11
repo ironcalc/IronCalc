@@ -6,6 +6,12 @@ use std::{
     },
 };
 
+// Type alias to reduce complexity
+#[cfg(any(target_arch = "wasm32", feature = "single_threaded"))]
+type ListenerMap<T> = HashMap<u32, Box<dyn Fn(&T) + 'static>>;
+#[cfg(not(any(target_arch = "wasm32", feature = "single_threaded")))]
+type ListenerMap<T> = HashMap<u32, Box<dyn Fn(&T) + Send + Sync + 'static>>;
+
 /// RAII handle: dropping it (or calling `.unsubscribe()`) removes the listener.
 pub struct Subscription<T> {
     id: u32,
@@ -16,7 +22,9 @@ impl<T> Subscription<T> {
     /// explicitly unsubscribe early
     pub fn unsubscribe(self) {
         if let Some(inner) = self.inner.upgrade() {
-            inner.listeners.write().unwrap().remove(&self.id);
+            if let Ok(mut listeners) = inner.listeners.write() {
+                listeners.remove(&self.id);
+            }
         }
     }
 }
@@ -24,16 +32,15 @@ impl<T> Subscription<T> {
 impl<T> Drop for Subscription<T> {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.upgrade() {
-            inner.listeners.write().unwrap().remove(&self.id);
+            if let Ok(mut listeners) = inner.listeners.write() {
+                listeners.remove(&self.id);
+            }
         }
     }
 }
 
 struct Inner<T> {
-    #[cfg(target_arch = "wasm32")]
-    listeners: RwLock<HashMap<u32, Box<dyn Fn(&T) + 'static>>>,
-    #[cfg(not(target_arch = "wasm32"))]
-    listeners: RwLock<HashMap<u32, Box<dyn Fn(&T) + Send + Sync + 'static>>>,
+    listeners: RwLock<ListenerMap<T>>,
     next_id: AtomicU32,
 }
 
@@ -56,17 +63,15 @@ impl<T> EventEmitter<T> {
 
     /// Subscribe to events carrying `&T`.
     /// Returns a `Subscription` which unsubscribes on drop.
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(target_arch = "wasm32", feature = "single_threaded"))]
     pub fn subscribe<F>(&self, listener: F) -> Subscription<T>
     where
         F: Fn(&T) + 'static,
     {
         let id = self.inner.next_id.fetch_add(1, Ordering::Relaxed);
-        self.inner
-            .listeners
-            .write()
-            .unwrap()
-            .insert(id, Box::new(listener));
+        if let Ok(mut listeners) = self.inner.listeners.write() {
+            listeners.insert(id, Box::new(listener));
+        }
 
         Subscription {
             id,
@@ -76,17 +81,15 @@ impl<T> EventEmitter<T> {
 
     /// Subscribe to events carrying `&T`.
     /// Returns a `Subscription` which unsubscribes on drop.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(any(target_arch = "wasm32", feature = "single_threaded")))]
     pub fn subscribe<F>(&self, listener: F) -> Subscription<T>
     where
         F: Fn(&T) + Send + Sync + 'static,
     {
         let id = self.inner.next_id.fetch_add(1, Ordering::Relaxed);
-        self.inner
-            .listeners
-            .write()
-            .unwrap()
-            .insert(id, Box::new(listener));
+        if let Ok(mut listeners) = self.inner.listeners.write() {
+            listeners.insert(id, Box::new(listener));
+        }
 
         Subscription {
             id,
@@ -96,16 +99,21 @@ impl<T> EventEmitter<T> {
 
     /// Manually unsubscribe by ID. Returns `true` if removed.
     pub fn unsubscribe(&self, id: u32) -> bool {
-        self.inner.listeners.write().unwrap().remove(&id).is_some()
+        if let Ok(mut listeners) = self.inner.listeners.write() {
+            listeners.remove(&id).is_some()
+        } else {
+            false
+        }
     }
 
     /// Emit a payload to all current listeners.
     pub fn emit(&self, payload: &T) {
         // Call listeners directly under read lock
         // This is safe because we're not modifying the map during iteration
-        let read = self.inner.listeners.read().unwrap();
-        for callback in read.values() {
-            callback(payload);
+        if let Ok(read) = self.inner.listeners.read() {
+            for callback in read.values() {
+                callback(payload);
+            }
         }
     }
 }
