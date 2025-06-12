@@ -12,7 +12,9 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-zip = "0.6"
+zip = { version = "0.6.6", default-features = false, features = ["deflate", "time"] }
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
+time = { version = "0.3", features = ["wasm-bindgen"] }
 roxmltree = "0.19"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

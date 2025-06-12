@@ -1,6 +1,6 @@
 # IronCalc Web bindings
 
-This package contains web bindings for IronCalc. Note that it does not contain the xlsx writer and reader, only the engine.
+This package contains web bindings for IronCalc. It exposes the engine and helper functions to import or export workbooks as XLSX or IronCalc (icalc) byte arrays, but it does not bundle a full XLSX reader.
 
 
 ## Usage
@@ -30,4 +30,22 @@ function compute() {
 }
 
 compute();
+```
+
+### Importing and exporting bytes
+
+The `Model` class provides helpers to load or save workbooks as raw byte arrays.
+
+```ts
+// create a new workbook and export as XLSX bytes
+const model = new Model('Workbook1', 'en', 'UTC');
+model.setUserInput(0, 1, 1, '42');
+const xlsxBytes = model.saveToXlsx();
+
+// load from those bytes
+const roundTripped = Model.fromXlsxBytes(xlsxBytes, 'Workbook1', 'en', 'UTC');
+
+// same helpers exist for IronCalc's internal format
+const icalcBytes = model.saveToIcalc();
+const restored = Model.fromIcalcBytes(icalcBytes);
 ```

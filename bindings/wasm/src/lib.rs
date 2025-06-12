@@ -4,11 +4,15 @@ use wasm_bindgen::{
     JsValue,
 };
 
+use ironcalc::{
+    base::Model as BaseWorkbookModel, export::save_xlsx_to_writer, import::load_from_xlsx_bytes,
+};
 use ironcalc_base::{
     expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
     types::{CellType, Style},
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
+use std::io::{BufWriter, Cursor};
 
 fn to_js_error(error: String) -> JsError {
     JsError::new(&error.to_string())
@@ -53,6 +57,27 @@ impl Model {
     pub fn from_bytes(bytes: &[u8]) -> Result<Model, JsError> {
         let model = BaseModel::from_bytes(bytes).map_err(to_js_error)?;
         Ok(Model { model })
+    }
+
+    #[wasm_bindgen(js_name = "fromICalcBytes")]
+    pub fn from_icalc_bytes(bytes: &[u8]) -> Result<Model, JsError> {
+        let model = BaseModel::from_bytes(bytes).map_err(to_js_error)?;
+        Ok(Model { model })
+    }
+
+    #[wasm_bindgen(js_name = "fromXLSXBytes")]
+    pub fn from_xlsx_bytes(
+        bytes: &[u8],
+        name: &str,
+        locale: &str,
+        timezone: &str,
+    ) -> Result<Model, JsError> {
+        let workbook = load_from_xlsx_bytes(bytes, name, locale, timezone)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        let base_model =
+            BaseWorkbookModel::from_workbook(workbook).map_err(|e| to_js_error(e.to_string()))?;
+        let user_model = BaseModel::from_model(base_model);
+        Ok(Model { model: user_model })
     }
 
     pub fn undo(&mut self) -> Result<(), JsError> {
@@ -577,6 +602,21 @@ impl Model {
     #[wasm_bindgen(js_name = "toBytes")]
     pub fn to_bytes(&self) -> Vec<u8> {
         self.model.to_bytes()
+    }
+
+    #[wasm_bindgen(js_name = "saveToICalc")]
+    pub fn save_to_icalc(&self) -> Vec<u8> {
+        self.model.to_bytes()
+    }
+
+    #[wasm_bindgen(js_name = "saveToXLSX")]
+    pub fn save_to_xlsx(&self) -> Result<Vec<u8>, JsError> {
+        let mut buffer: Vec<u8> = Vec::new();
+        let cursor = Cursor::new(&mut buffer);
+        let writer = BufWriter::new(cursor);
+        save_xlsx_to_writer(self.model.get_model(), writer)
+            .map_err(|e| JsError::new(&e.to_string()))?;
+        Ok(buffer)
     }
 
     #[wasm_bindgen(js_name = "getName")]
