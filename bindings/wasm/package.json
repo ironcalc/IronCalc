@@ -1,0 +1,28 @@
+{
+  "name": "@ironcalc/wasm",
+  "version": "0.3.2",
+  "description": "IronCalc WebAssembly bindings (core engine + optional XLSX helpers)",
+  "private": false,
+  "main": "./pkg/ironcalc.js",
+  "types": "./pkg/ironcalc.d.ts",
+  "exports": {
+    ".": {
+      "require": "./pkg/ironcalc.js",
+      "import": "./pkg/ironcalc.js",
+      "types": "./pkg/ironcalc.d.ts"
+    },
+    "./xlsx": {
+      "require": "./pkg/xlsx.js",
+      "import": "./pkg/xlsx.js",
+      "types": "./pkg/xlsx.d.ts"
+    }
+  },
+  "files": [
+    "pkg"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ironcalc/ironcalc"
+  },
+  "license": "MIT OR Apache-2.0"
+} 

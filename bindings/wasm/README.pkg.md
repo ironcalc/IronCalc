@@ -1,7 +1,6 @@
 # IronCalc Web bindings
 
-This package contains web bindings for IronCalc. It exposes the engine and helper functions to import or export workbooks as XLSX or IronCalc (icalc) byte arrays. The built-in XLSX support focuses on core spreadsheet features like cell values, formulas, and styling.
-
+This crate is used to build the web bindings for IronCalc.
 
 ## Usage
 
@@ -15,8 +14,11 @@ And then in your TypeScript
 
 ```TypeScript
 import init, { Model } from "@ironcalc/wasm";
+import initXLSX, { toXLSXBytes, fromXLSXBytes } from "@ironcalc/wasm/xlsx";
+
 
 await init();
+await initXLSX();
 
 function compute() {
     const model = new Model('en', 'UTC');
@@ -30,23 +32,15 @@ function compute() {
 }
 
 compute();
-```
 
-### Importing and exporting bytes
-
-The `Model` class provides helpers to load or save workbooks as raw byte arrays.
-
-```ts
 // create a new workbook and export as XLSX bytes
 const model = new Model('Workbook1', 'en', 'UTC');
 model.setUserInput(0, 1, 1, '42');
-const xlsxBytes = model.saveToXlsx();
+const xlsxBytes = toXLSXBytes(model.toBytes());
 
 // load from those bytes
-const roundTripped = Model.fromXlsxBytes(xlsxBytes, 'Workbook1', 'en', 'UTC');
+const roundTrippedBytes = fromXLSXBytes(xlsxBytes, 'Workbook1', 'en', 'UTC');
+const roundTripped = Model.fromBytes(roundTrippedBytes);
 
-// same helpers exist for IronCalc's internal format
-const icalcBytes = model.saveToIcalc();
-const restored = Model.fromIcalcBytes(icalcBytes);
 ```
 

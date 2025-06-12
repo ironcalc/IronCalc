@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert'
-import { Model } from "../pkg/wasm.js";
+import { Model } from "../pkg/ironcalc.js";
+import { fromXLSXBytes, toXLSXBytes } from "../pkg/xlsx.js";
 
 const DEFAULT_ROW_HEIGHT = 28;
 
@@ -130,33 +131,34 @@ test("autofill", () => {
     assert.strictEqual(result, "23");
 });
 
-test('saveToXLSX returns data', () => {
+test('toXLSXBytes returns data', () => {
     const model = new Model('Workbook1', 'en', 'UTC');
-    const bytes = model.saveToXLSX();
+    const bytes = toXLSXBytes(model.toBytes());
     assert.ok(bytes instanceof Uint8Array);
     assert.ok(bytes.length > 0);
 });
 
-test('saveToICalc returns data', () => {
+test('toBytes returns data', () => {
     const model = new Model('Workbook1', 'en', 'UTC');
-    const bytes = model.saveToICalc();
+    const bytes = model.toBytes();
     assert.ok(bytes instanceof Uint8Array);
     assert.ok(bytes.length > 0);
 });
 
-test('fromICalcBytes loads model', () => {
+test('fromBytes loads model', () => {
     const model = new Model('Workbook1', 'en', 'UTC');
     model.setUserInput(0, 1, 1, '42');
-    const bytes = model.saveToICalc();
-    const m2 = Model.fromICalcBytes(bytes);
+    const bytes = model.toBytes();
+    const m2 = Model.fromBytes(bytes);
     assert.strictEqual(m2.getCellContent(0, 1, 1), '42');
 });
 
 test('fromXLSXBytes loads model', () => {
     const model = new Model('Workbook1', 'en', 'UTC');
     model.setUserInput(0, 1, 1, '5');
-    const bytes = model.saveToXLSX();
-    const m2 = Model.fromXLSXBytes(bytes, 'Workbook1', 'en', 'UTC');
+    const xlsxBytes = toXLSXBytes(model.toBytes());
+    const modelBytes = fromXLSXBytes(xlsxBytes, 'Workbook1', 'en', 'UTC');
+    const m2 = Model.fromBytes(modelBytes);
     assert.strictEqual(m2.getCellContent(0, 1, 1), '5');
 });
 
@@ -164,18 +166,19 @@ test('roundtrip via xlsx bytes', () => {
     const m1 = new Model('Workbook1', 'en', 'UTC');
     m1.setUserInput(0, 1, 1, '7');
     m1.setUserInput(0, 1, 2, '=A1*3');
-    const bytes = m1.saveToXLSX();
-    const m2 = Model.fromXLSXBytes(bytes, 'Workbook1', 'en', 'UTC');
+    const xlsxBytes = toXLSXBytes(m1.toBytes());
+    const m2Bytes = fromXLSXBytes(xlsxBytes, 'Workbook1', 'en', 'UTC');
+    const m2 = Model.fromBytes(m2Bytes);
     m2.evaluate();
     assert.strictEqual(m2.getFormattedCellValue(0, 1, 2), '21');
 });
 
-test('roundtrip via icalc bytes', () => {
+test('roundtrip via bytes', () => {
     const m1 = new Model('Workbook1', 'en', 'UTC');
     m1.setUserInput(0, 1, 1, '9');
     m1.setUserInput(0, 1, 2, '=A1*4');
-    const bytes = m1.saveToICalc();
-    const m2 = Model.fromICalcBytes(bytes);
+    const bytes = m1.toBytes();
+    const m2 = Model.fromBytes(bytes);
     m2.evaluate();
     assert.strictEqual(m2.getFormattedCellValue(0, 1, 2), '36');
 });

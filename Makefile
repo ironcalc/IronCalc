@@ -1,7 +1,8 @@
 .PHONY: lint
 lint:
 	cargo fmt -- --check
-	cargo clippy --all-targets --all-features -- -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings
+	cargo clippy --workspace --exclude wasm --all-targets --all-features -- -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings
+	cd bindings/wasm/ && cargo clippy --target wasm32-unknown-unknown -- -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings
 	cd webapp/IronCalc/ && npm install && npm run check
 	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run check
 
@@ -15,7 +16,12 @@ tests: lint
 	make remove-artifacts
 	# Regretabbly we need to build the wasm twice, once for the nodejs tests
 	# and a second one for the vitest.
-	cd bindings/wasm/ && wasm-pack build --target nodejs && node tests/test.mjs && make
+	cd bindings/wasm/ && \
+	  wasm-pack build --target nodejs --out-name ironcalc && \
+	  cargo build --release --target wasm32-unknown-unknown --bin xlsx_wasm && \
+	  wasm-bindgen --target nodejs --typescript --out-dir pkg --out-name xlsx ../../target/wasm32-unknown-unknown/release/xlsx_wasm.wasm && \
+	  node tests/test.mjs && \
+	  make
 	cd webapp/IronCalc/ && npm run test
 	cd bindings/python && ./run_tests.sh && ./run_examples.sh
 
