@@ -5,6 +5,13 @@ import { setTimeout } from 'node:timers/promises';
 
 const DEFAULT_ROW_HEIGHT = 28;
 
+// Helper to sort cells for consistent comparison
+const sortCells = (cells) => cells.sort((a, b) => {
+    if (a.sheet !== b.sheet) return a.sheet - b.sheet;
+    if (a.row !== b.row) return a.row - b.row;
+    return a.column - b.column;
+});
+
 test('Frozen rows and columns', () => {
     let model = new Model('Workbook1', 'en', 'UTC');
     assert.strictEqual(model.getFrozenRowsCount(0), 0);
@@ -512,4 +519,134 @@ test('onDiffs returns unregister function that works correctly', async () => {
     
     // Call the second unregister too
     unregister2();
+});
+
+test('onCellsEvaluated tracks formula evaluation', async () => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    const evaluatedCells = [];
+    
+    model.onCellsEvaluated(cells => {
+        evaluatedCells.push(...cells);
+    });
+    
+    // Set up a formula and its dependencies
+    model.setUserInput(0, 1, 1, '=A2+A3');  // A1 = A2 + A3
+    model.setUserInput(0, 2, 1, '10');       // A2 = 10
+    model.setUserInput(0, 3, 1, '20');       // A3 = 20
+    model.evaluate();
+    
+    // Update a dependency to trigger re-evaluation
+    model.setUserInput(0, 2, 1, '15');  // Change A2 from 10 to 15
+    model.evaluate();
+
+    await setTimeout(0);
+    
+    const expectedCells = [
+        // First evaluation of A1
+        { sheet: 0, row: 1, column: 1 },
+        // Re-evaluation of A1 after dependency changed
+        { sheet: 0, row: 1, column: 1 },
+    ];
+
+    assert.strictEqual(evaluatedCells.length, expectedCells.length, `Should have exactly ${expectedCells.length} cell evaluation events`);
+    assert.deepStrictEqual(sortCells(evaluatedCells), sortCells(expectedCells), 'The evaluated cells should match the expected cells');
+    
+    // Verify the formula calculated correctly
+    const result = model.getFormattedCellValue(0, 1, 1);
+    assert.strictEqual(result, '35', 'Formula should calculate 15 + 20 = 35');
+});
+
+test('onCellsEvaluated tracks complex formula dependencies', async () => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    const evaluatedCells = [];
+    
+    model.onCellsEvaluated(cells => {
+        evaluatedCells.push(...cells);
+    });
+    
+    // Set up a chain of formulas: A1 -> B1 -> C1
+    model.setUserInput(0, 1, 1, '10');        // A1 = 10 (base value)
+    model.setUserInput(0, 1, 2, '=A1*2');     // B1 = A1 * 2
+    model.setUserInput(0, 1, 3, '=B1+5');     // C1 = B1 + 5
+    model.evaluate();
+    
+    // Update the root value to trigger cascade re-evaluation
+    model.setUserInput(0, 1, 1, '5');  // Change A1 from 10 to 5
+    model.evaluate();
+    
+    await setTimeout(0);
+
+    const expectedCells = [
+        // Initial evaluation
+        { sheet: 0, row: 1, column: 2 }, // B1
+        { sheet: 0, row: 1, column: 3 }, // C1
+        // Re-evaluation after dependency change
+        { sheet: 0, row: 1, column: 2 }, // B1
+        { sheet: 0, row: 1, column: 3 }, // C1
+    ];
+    
+    assert.strictEqual(evaluatedCells.length, expectedCells.length, `Should have exactly ${expectedCells.length} cell evaluation events`);
+    assert.deepStrictEqual(sortCells(evaluatedCells), sortCells(expectedCells), 'The evaluated cells should match the expected cells');
+    
+    // Verify the formulas calculated correctly
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 2), '10', 'B1 should be 5 * 2 = 10');
+    assert.strictEqual(model.getFormattedCellValue(0, 1, 3), '15', 'C1 should be 10 + 5 = 15');
+});
+
+test('onCellsEvaluated only fires after evaluate', async () => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    const evaluatedCells = [];
+
+    model.onCellsEvaluated(cells => {
+        evaluatedCells.push(...cells);
+    });
+
+    // Set a formula
+    model.setUserInput(0, 1, 1, '=1+1');
+
+    // No cells should be evaluated yet because model.evaluate() has not been called
+    assert.strictEqual(evaluatedCells.length, 0, 'evaluatedCells should be empty before evaluate()');
+
+    // Now, trigger the evaluation
+    model.evaluate();
+    await setTimeout(0);
+
+    // Now, the cell should be evaluated
+    const expectedCells = [
+        { sheet: 0, row: 1, column: 1 },
+    ];
+
+    assert.deepStrictEqual(sortCells(evaluatedCells), sortCells(expectedCells), 'evaluatedCells should contain the evaluated cell after evaluate()');
+});
+
+test('onCellsEvaluated returns unsubscribe function', async () => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    const evaluatedCells = [];
+    
+    const unsubscribe = model.onCellsEvaluated(cells => {
+        evaluatedCells.push(...cells);
+    });
+    
+    assert.strictEqual(typeof unsubscribe, 'function', 'onCellsEvaluated should return a function');
+    
+    // Set up a formula
+    model.setUserInput(0, 1, 1, '=A2*2');
+    model.setUserInput(0, 2, 1, '5');
+    
+    model.evaluate();
+    await setTimeout(0);
+    
+    assert.ok(evaluatedCells.length > 0, 'Should have tracked evaluated cells');
+    
+    // Unsubscribe
+    unsubscribe();
+    evaluatedCells.length = 0;
+    
+    // Update to trigger re-evaluation
+    model.setUserInput(0, 2, 1, '10');
+    
+    model.evaluate();
+    await setTimeout(0);
+    
+    assert.strictEqual(evaluatedCells.length, 0, 'Should not track cells after unsubscribing');
 });

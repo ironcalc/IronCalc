@@ -88,13 +88,49 @@ impl Model {
 
     #[wasm_bindgen(js_name = "onDiffs")]
     pub fn on_diffs(&mut self, callback: Function) -> Function {
-        let subscription = self.model.subscribe(move |diff| {
-            match serde_wasm_bindgen::to_value(diff) {
-                Ok(js_diff) => {
-                    let _ = callback.call1(&JsValue::NULL, &js_diff);
+        let subscription = self.model.subscribe(move |event| {
+            if let ironcalc_base::ModelEvent::Diff(diff) = event {
+                match serde_wasm_bindgen::to_value(diff) {
+                    Ok(js_diff) => {
+                        let _ = callback.call1(&JsValue::NULL, &js_diff);
+                    }
+                    Err(_e) => {
+                        // Silent skip: if serialization fails, we skip this diff event
+                    }
                 }
-                Err(_e) => {
-                    // Silent skip: if serialization fails, we skip this diff event
+            }
+        });
+
+        // Store subscription in an Rc<RefCell<>> so it can be moved into the closure
+        let subscription_rc = Rc::new(RefCell::new(Some(subscription)));
+        let subscription_clone = subscription_rc.clone();
+
+        // Create the unsubscribe function
+        let unsubscribe_fn = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+            if let Ok(mut sub) = subscription_clone.try_borrow_mut() {
+                if let Some(subscription) = sub.take() {
+                    subscription.unsubscribe();
+                }
+            }
+        }) as Box<dyn FnMut()>);
+
+        let js_function = unsubscribe_fn.as_ref().unchecked_ref::<Function>().clone();
+        unsubscribe_fn.forget(); // Prevent the closure from being dropped
+
+        js_function
+    }
+
+    #[wasm_bindgen(js_name = "onCellsEvaluated")]
+    pub fn on_cells_evaluated(&mut self, callback: Function) -> Function {
+        let subscription = self.model.subscribe(move |event| {
+            if let ironcalc_base::ModelEvent::CellsEvaluated(cells) = event {
+                match serde_wasm_bindgen::to_value(cells) {
+                    Ok(js_cells) => {
+                        let _ = callback.call1(&JsValue::NULL, &js_cells);
+                    }
+                    Err(_e) => {
+                        // Silent skip: if serialization fails, we skip this event
+                    }
                 }
             }
         });

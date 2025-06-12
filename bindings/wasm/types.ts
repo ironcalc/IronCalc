@@ -235,6 +235,12 @@ export interface DefinedName {
   formula: string;
 }
 
+export interface CellReference {
+  sheet: number;
+  row: number;
+  column: number;
+}
+
 export interface Cell {
   type: string; // e.g., "NumberCell", "SharedString", "BooleanCell"
   v?: number | boolean | string; // value, if applicable
