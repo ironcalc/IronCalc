@@ -606,8 +606,8 @@ impl Model {
         self.model.to_bytes()
     }
 
-    #[wasm_bindgen(js_name = "saveToCalc")]
-    pub fn save_to_calc(&self) -> Vec<u8> {
+    #[wasm_bindgen(js_name = "saveToIcalc")]
+    pub fn save_to_icalc(&self) -> Vec<u8> {
         self.model.to_bytes()
     }
 

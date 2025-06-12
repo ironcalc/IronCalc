@@ -170,5 +170,15 @@ test('roundtrip via xlsx bytes', () => {
     assert.strictEqual(m2.getFormattedCellValue(0, 1, 2), '21');
 });
 
+test('roundtrip via icalc bytes', () => {
+    const m1 = new Model('Workbook1', 'en', 'UTC');
+    m1.setUserInput(0, 1, 1, '9');
+    m1.setUserInput(0, 1, 2, '=A1*4');
+    const bytes = m1.saveToIcalc();
+    const m2 = Model.fromIcalcBytes(bytes);
+    m2.evaluate();
+    assert.strictEqual(m2.getFormattedCellValue(0, 1, 2), '36');
+});
+
 
 
