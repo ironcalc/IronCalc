@@ -89,10 +89,10 @@ impl Model {
     #[wasm_bindgen(js_name = "onDiffs")]
     pub fn on_diffs(&mut self, callback: Function) -> Function {
         let subscription = self.model.subscribe(move |event| {
-            if let ironcalc_base::ModelEvent::Diff(diff) = event {
-                match serde_wasm_bindgen::to_value(diff) {
-                    Ok(js_diff) => {
-                        let _ = callback.call1(&JsValue::NULL, &js_diff);
+            if let ironcalc_base::ModelEvent::Diffs(diffs) = event {
+                match serde_wasm_bindgen::to_value(diffs) {
+                    Ok(js_diffs) => {
+                        let _ = callback.call1(&JsValue::NULL, &js_diffs);
                     }
                     Err(_e) => {
                         // Silent skip: if serialization fails, we skip this diff event

@@ -143,8 +143,8 @@ test('onDiffs', async () => {
     const model = new Model('Workbook1', 'en', 'UTC');
     const events = [];
     
-    model.onDiffs(diff => {
-        events.push(diff);
+    model.onDiffs(diffs => {
+        events.push(...diffs);
     });
     
     model.setUserInput(0, 1, 1, 'test');
@@ -176,8 +176,8 @@ test('onDiffs emits correct diff types for various operations', async () => {
     const model = new Model('Workbook1', 'en', 'UTC');
     const events = [];
     
-    model.onDiffs(diff => {
-        events.push(diff);
+    model.onDiffs(diffs => {
+        events.push(...diffs);
     });
     
     // Test various operations that should emit different diff types
@@ -274,8 +274,8 @@ test('onDiffs emits full diff objects for undo/redo operations', async () => {
     const model = new Model('Workbook1', 'en', 'UTC');
     const events = [];
     
-    model.onDiffs(diff => {
-        events.push(diff);
+    model.onDiffs(diffs => {
+        events.push(...diffs);
     });
     
     // Perform initial operations
@@ -366,8 +366,8 @@ test('onDiffs handles multiple subscribers and provides full diff objects', asyn
     const model = new Model('Workbook1', 'en', 'UTC');
     const events = [];
     
-    model.onDiffs(diff => {
-        events.push(diff);
+    model.onDiffs(diffs => {
+        events.push(...diffs);
     });
     
     // Perform complex operations that generate multiple diffs
@@ -484,12 +484,12 @@ test('onDiffs returns unregister function that works correctly', async () => {
     const events2 = [];
     
     // Register two listeners
-    const unregister1 = model.onDiffs(diff => {
-        events1.push(diff);
+    const unregister1 = model.onDiffs(diffs => {
+        events1.push(...diffs);
     });
     
-    const unregister2 = model.onDiffs(diff => {
-        events2.push(diff);
+    const unregister2 = model.onDiffs(diffs => {
+        events2.push(...diffs);
     });
     
     // Both should be functions
