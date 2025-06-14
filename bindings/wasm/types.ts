@@ -234,3 +234,274 @@ export interface DefinedName {
   scope?: number;
   formula: string;
 }
+
+export interface Cell {
+  type: string; // e.g., "NumberCell", "SharedString", "BooleanCell"
+  v?: number | boolean | string; // value, if applicable
+  s: number; // style index
+  f?: number; // formula index, if applicable
+  ei?: string; // error type, if applicable
+  o?: string; // origin, if applicable
+  m?: string; // error message, if applicable
+}
+
+export interface Style {
+  read_only?: boolean;
+  quote_prefix: boolean;
+  fill: {
+    pattern_type: string;
+    fg_color?: string;
+    bg_color?: string;
+  };
+  font: {
+    u: boolean;
+    b: boolean;
+    i: boolean;
+    strike: boolean;
+    sz: number;
+    color?: string;
+    name: string;
+    family: number;
+    scheme: string;
+  };
+  border: {
+    diagonal_up?: boolean;
+    diagonal_down?: boolean;
+    left?: { style: string; color?: string };
+    right?: { style: string; color?: string };
+    top?: { style: string; color?: string };
+    bottom?: { style: string; color?: string };
+    diagonal?: { style: string; color?: string };
+  };
+  num_fmt: string;
+  alignment?: {
+    horizontal: HorizontalAlignment;
+    vertical: VerticalAlignment;
+    wrap_text: boolean;
+  };
+}
+
+export interface RowData {
+  row?: { r: number; height: number; custom_format: boolean; custom_height: boolean; s: number; hidden: boolean };
+  data: Record<number, Cell>;
+}
+
+export interface ColumnData {
+  column?: { min: number; max: number; width: number; custom_width: boolean; style?: number };
+  data: Record<number, Cell>;
+}
+
+export interface Worksheet {
+  dimension: string;
+  cols: Array<{ min: number; max: number; width: number; custom_width: boolean; style?: number }>;
+  rows: Array<{ r: number; height: number; custom_format: boolean; custom_height: boolean; s: number; hidden: boolean }>;
+  name: string;
+  sheet_data: Record<number, Record<number, Cell>>;
+  shared_formulas: string[];
+  sheet_id: number;
+  state: string; // e.g., "Visible", "Hidden", "VeryHidden"
+  color?: string;
+  merge_cells: string[];
+  comments: Array<{ text: string; author_name: string; author_id?: string; cell_ref: string }>;
+  frozen_rows: number;
+  frozen_columns: number;
+  views: Record<number, SelectedView>;
+  show_grid_lines: boolean;
+}
+
+// Individual Diff type interfaces for better developer experience
+export interface SetCellValueDiff {
+  sheet: number;
+  row: number;
+  column: number;
+  new_value: string;
+  old_value?: Cell | null;
+}
+
+export interface CellClearContentsDiff {
+  sheet: number;
+  row: number;
+  column: number;
+  old_value?: Cell | null;
+}
+
+export interface CellClearAllDiff {
+  sheet: number;
+  row: number;
+  column: number;
+  old_value?: Cell | null;
+  old_style: Style;
+}
+
+export interface CellClearFormattingDiff {
+  sheet: number;
+  row: number;
+  column: number;
+  old_style?: Style | null;
+}
+
+export interface SetCellStyleDiff {
+  sheet: number;
+  row: number;
+  column: number;
+  old_value?: Style | null;
+  new_value: Style;
+}
+
+export interface SetColumnWidthDiff {
+  sheet: number;
+  column: number;
+  new_value: number;
+  old_value: number;
+}
+
+export interface SetRowHeightDiff {
+  sheet: number;
+  row: number;
+  new_value: number;
+  old_value: number;
+}
+
+export interface SetColumnStyleDiff {
+  sheet: number;
+  column: number;
+  old_value?: Style | null;
+  new_value: Style;
+}
+
+export interface SetRowStyleDiff {
+  sheet: number;
+  row: number;
+  old_value?: Style | null;
+  new_value: Style;
+}
+
+export interface DeleteColumnStyleDiff {
+  sheet: number;
+  column: number;
+  old_value?: Style | null;
+}
+
+export interface DeleteRowStyleDiff {
+  sheet: number;
+  row: number;
+  old_value?: Style | null;
+}
+
+export interface InsertRowDiff {
+  sheet: number;
+  row: number;
+}
+
+export interface DeleteRowDiff {
+  sheet: number;
+  row: number;
+  old_data: RowData;
+}
+
+export interface InsertColumnDiff {
+  sheet: number;
+  column: number;
+}
+
+export interface DeleteColumnDiff {
+  sheet: number;
+  column: number;
+  old_data: ColumnData;
+}
+
+export interface DeleteSheetDiff {
+  sheet: number;
+  old_data: Worksheet;
+}
+
+export interface SetFrozenRowsCountDiff {
+  sheet: number;
+  new_value: number;
+  old_value: number;
+}
+
+export interface SetFrozenColumnsCountDiff {
+  sheet: number;
+  new_value: number;
+  old_value: number;
+}
+
+export interface NewSheetDiff {
+  index: number;
+  name: string;
+}
+
+export interface RenameSheetDiff {
+  index: number;
+  old_value: string;
+  new_value: string;
+}
+
+export interface SetSheetColorDiff {
+  index: number;
+  old_value: string;
+  new_value: string;
+}
+
+export interface SetSheetStateDiff {
+  index: number;
+  old_value: string;
+  new_value: string;
+}
+
+export interface SetShowGridLinesDiff {
+  sheet: number;
+  old_value: boolean;
+  new_value: boolean;
+}
+
+export interface CreateDefinedNameDiff {
+  name: string;
+  scope?: number;
+  value: string;
+}
+
+export interface DeleteDefinedNameDiff {
+  name: string;
+  scope?: number;
+  old_value: string;
+}
+
+export interface UpdateDefinedNameDiff {
+  name: string;
+  scope?: number;
+  old_formula: string;
+  new_name: string;
+  new_scope?: number;
+  new_formula: string;
+}
+
+// Union type for all Diff variants - these are serialized as tagged enums with variant names as keys
+export type Diff =
+  | { SetCellValue: SetCellValueDiff }
+  | { CellClearContents: CellClearContentsDiff }
+  | { CellClearAll: CellClearAllDiff }
+  | { CellClearFormatting: CellClearFormattingDiff }
+  | { SetCellStyle: SetCellStyleDiff }
+  | { SetColumnWidth: SetColumnWidthDiff }
+  | { SetRowHeight: SetRowHeightDiff }
+  | { SetColumnStyle: SetColumnStyleDiff }
+  | { SetRowStyle: SetRowStyleDiff }
+  | { DeleteColumnStyle: DeleteColumnStyleDiff }
+  | { DeleteRowStyle: DeleteRowStyleDiff }
+  | { InsertRow: InsertRowDiff }
+  | { DeleteRow: DeleteRowDiff }
+  | { InsertColumn: InsertColumnDiff }
+  | { DeleteColumn: DeleteColumnDiff }
+  | { DeleteSheet: DeleteSheetDiff }
+  | { SetFrozenRowsCount: SetFrozenRowsCountDiff }
+  | { SetFrozenColumnsCount: SetFrozenColumnsCountDiff }
+  | { NewSheet: NewSheetDiff }
+  | { RenameSheet: RenameSheetDiff }
+  | { SetSheetColor: SetSheetColorDiff }
+  | { SetSheetState: SetSheetStateDiff }
+  | { SetShowGridLines: SetShowGridLinesDiff }
+  | { CreateDefinedName: CreateDefinedNameDiff }
+  | { DeleteDefinedName: DeleteDefinedNameDiff }
+  | { UpdateDefinedName: UpdateDefinedNameDiff };

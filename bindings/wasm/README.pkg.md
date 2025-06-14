@@ -31,3 +31,20 @@ function compute() {
 
 compute();
 ```
+
+To listen to model changes you can subscribe to diff events:
+
+```TypeScript
+import init, { Model } from "@ironcalc/wasm";
+
+await init();
+
+const model = new Model("Sheet1", "en", "UTC");
+
+model.onDiffs(() => {
+    // React to diff list updates
+    redraw();
+});
+
+model.setUserInput(0, 1, 1, "=1+1");
+```
