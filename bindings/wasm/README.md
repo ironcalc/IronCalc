@@ -1,7 +1,6 @@
 # IronCalc Web bindings
 
-This crate is used to build the web bindings for IronCalc.
-Note that it does not contain the xlsx writer and reader, only the engine.
+This package contains web bindings for IronCalc. It exposes the engine and helper functions to import or export workbooks as XLSX or IronCalc (icalc) byte arrays. The built-in XLSX support focuses on core spreadsheet features like cell values, formulas, and styling.
 
 https://www.npmjs.com/package/@ironcalc/wasm?activeTab=readme
 
