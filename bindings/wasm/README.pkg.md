@@ -31,3 +31,42 @@ function compute() {
 
 compute();
 ```
+
+To listen to model changes you can subscribe to diff events:
+
+```TypeScript
+import init, { Model } from "@ironcalc/wasm";
+
+await init();
+
+const model = new Model("Sheet1", "en", "UTC");
+
+model.onDiffs(() => {
+    // React to diff list updates
+    redraw();
+});
+
+model.setUserInput(0, 1, 1, "=1+1");
+```
+
+To listen to cells that change during evaluation (formulas that recalculate):
+
+```TypeScript
+import init, { Model } from "@ironcalc/wasm";
+
+await init();
+
+const model = new Model("Sheet1", "en", "UTC");
+
+model.onCellsEvaluated((cellReferences) => {
+    // cellReferences is an array of {sheet, row, column} objects
+    // that represent cells that were recalculated during evaluation
+    cellReferences.forEach(cell => {
+        console.log(`Cell ${cell.sheet}:${cell.row}:${cell.column} was evaluated`);
+    });
+});
+
+// Setting a formula will trigger evaluation
+model.setUserInput(0, 1, 1, "=SUM(A2:A5)");
+model.setUserInput(0, 2, 1, "10");  // This will trigger re-evaluation of A1
+```
