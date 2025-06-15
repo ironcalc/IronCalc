@@ -26,4 +26,4 @@ clean:
 	rm -rf pkg
 	rm -f types.js
 
-.PHONY: all lint clean
+.PHONY: all lint clean tests
