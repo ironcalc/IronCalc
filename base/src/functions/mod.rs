@@ -56,6 +56,7 @@ pub enum Function {
     Cosh,
     Max,
     Min,
+    PercentOf,
     Pi,
     Power,
     Product,
@@ -250,7 +251,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 195> {
+    pub fn into_iter() -> IntoIter<Function, 196> {
         [
             Function::And,
             Function::False,
@@ -283,6 +284,7 @@ impl Function {
             Function::Power,
             Function::Max,
             Function::Min,
+            Function::PercentOf,
             Function::Product,
             Function::Rand,
             Function::Randbetween,
@@ -715,6 +717,7 @@ impl Function {
             "GESTEP" => Some(Function::Gestep),
 
             "SUBTOTAL" => Some(Function::Subtotal),
+            "PERCENTOF" => Some(Function::PercentOf),
             _ => None,
         }
     }
@@ -920,6 +923,7 @@ impl fmt::Display for Function {
             Function::Gestep => write!(f, "GESTEP"),
 
             Function::Subtotal => write!(f, "SUBTOTAL"),
+            Function::PercentOf => write!(f, "PERCENTOF"),
         }
     }
 }
@@ -987,6 +991,7 @@ impl Model {
 
             Function::Max => self.fn_max(args, cell),
             Function::Min => self.fn_min(args, cell),
+            Function::PercentOf => self.fn_percentof(args, cell),
             Function::Product => self.fn_product(args, cell),
             Function::Rand => self.fn_rand(args, cell),
             Function::Randbetween => self.fn_randbetween(args, cell),
