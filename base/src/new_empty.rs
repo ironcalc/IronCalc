@@ -407,6 +407,7 @@ impl Model {
             },
             tables: HashMap::new(),
             views,
+            spill_cells: Vec::new(),
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
@@ -429,6 +430,9 @@ impl Model {
             language,
             tz,
             view_id: 0,
+            support_graph: HashMap::new(),
+            switch_cells: None,
+            stack: Vec::new(),
         };
         model.parse_formulas();
         Ok(model)

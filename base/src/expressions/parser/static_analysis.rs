@@ -186,6 +186,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
     };
 }
 
+#[derive(Clone)]
 pub enum StaticResult {
     Scalar,
     Array(i32, i32),

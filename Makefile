@@ -31,7 +31,12 @@ clean: remove-artifacts
 	rm -r -f base/target
 	rm -r -f xlsx/target
 	rm -r -f bindings/python/target
-	rm -r -f bindings/wasm/targets
+	rm -r -f bindings/wasm/target
+	rm -r -f bindings/wasm/pkg
+	rm -r -f webapp/IronCalc/node_modules
+	rm -r -f webapp/IronCalc/dist
+	rm -r -f webapp/app.ironcalc.com/frontend/node_modules
+	rm -r -f webapp/app.ironcalc.com/frontend/dist
 	rm -f cargo-test-*
 	rm -f base/cargo-test-*
 	rm -f xlsx/cargo-test-*

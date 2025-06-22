@@ -91,12 +91,12 @@ fn fn_or_xor() {
         model._set("A10", &format!("={func}(X99:Z99"));
 
         // Reference to cell with reference to empty range
-        model._set("B11", "=X99:Z99");
+        model._set("B11", "=@X99:Z99");
         model._set("A11", &format!("={func}(B11)"));
 
         // Reference to cell with non-empty range
         model._set("X12", "1");
-        model._set("B12", "=X12:Z12");
+        model._set("B12", "=@X12:Z12");
         model._set("A12", &format!("={func}(B12)"));
 
         // Reference to text cell

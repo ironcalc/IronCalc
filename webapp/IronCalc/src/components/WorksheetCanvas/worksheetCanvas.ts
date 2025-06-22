@@ -31,7 +31,6 @@ export interface CanvasSettings {
     canvas: HTMLCanvasElement;
     cellOutline: HTMLDivElement;
     areaOutline: HTMLDivElement;
-    cellOutlineHandle: HTMLDivElement;
     cellArrayStructure: HTMLDivElement;
     extendToOutline: HTMLDivElement;
     columnGuide: HTMLDivElement;
@@ -128,7 +127,6 @@ export default class WorksheetCanvas {
     this.refresh = options.refresh;
 
     this.cellOutline = options.elements.cellOutline;
-    this.cellOutlineHandle = options.elements.cellOutlineHandle;
     this.cellArrayStructure = options.elements.cellArrayStructure;
     this.areaOutline = options.elements.areaOutline;
     this.extendToOutline = options.elements.extendToOutline;

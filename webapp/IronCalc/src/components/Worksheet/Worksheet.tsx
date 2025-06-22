@@ -60,7 +60,6 @@ const Worksheet = forwardRef(
     const spacerElement = useRef<HTMLDivElement>(null);
     const cellOutline = useRef<HTMLDivElement>(null);
     const areaOutline = useRef<HTMLDivElement>(null);
-    const cellOutlineHandle = useRef<HTMLDivElement>(null);
     const cellArrayStructure = useRef<HTMLDivElement>(null);
     const extendToOutline = useRef<HTMLDivElement>(null);
     const columnResizeGuide = useRef<HTMLDivElement>(null);
@@ -120,7 +119,6 @@ const Worksheet = forwardRef(
           rowGuide: rowGuideRef,
           columnHeaders: columnHeadersRef,
           cellOutline: outline,
-          cellOutlineHandle: handle,
           cellArrayStructure: arrayStructure,
           areaOutline: area,
           extendToOutline: extendTo,
