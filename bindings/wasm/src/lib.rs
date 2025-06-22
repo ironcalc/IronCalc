@@ -767,7 +767,10 @@ impl Model {
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "getCellArrayStructure")]
+    #[wasm_bindgen(
+        js_name = "getCellArrayStructure",
+        unchecked_return_type = "CellArrayStructure"
+    )]
     pub fn get_cell_array_structure(
         &self,
         sheet: u32,
