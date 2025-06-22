@@ -107,8 +107,6 @@ pub struct Model {
     pub(crate) shared_strings: HashMap<String, usize>,
     /// An instance of the parser
     pub(crate) parser: Parser,
-    /// The list of cells with formulas that are evaluated or being evaluated
-    pub(crate) cells: HashMap<(u32, i32, i32), CellState>,
     /// The locale of the model
     pub(crate) locale: Locale,
     /// The language used
@@ -117,6 +115,15 @@ pub struct Model {
     pub(crate) tz: Tz,
     /// The view id. A view consists of a selected sheet and ranges.
     pub(crate) view_id: u32,
+    /// ** Runtime ***
+    /// The list of cells with formulas that are evaluated or being evaluated
+    pub(crate) cells: HashMap<(u32, i32, i32), CellState>,
+    /// The support graph
+    pub(crate) support_graph: HashMap<(u32, i32, i32), Vec<(u32, i32, i32)>>,
+    /// If the model is in a switch state then spill cells in the indices should be switched and recalculation redone
+    pub(crate) switch_cells: Option<(i32, i32)>,
+    /// Stack of cells being evaluated
+    pub(crate) stack: Vec<(u32, i32, i32)>,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -1240,6 +1247,9 @@ impl Model {
             locale,
             tz,
             view_id: 0,
+            support_graph: HashMap::new(),
+            switch_cells: None,
+            stack: Vec::new(),
         };
 
         model.parse_formulas();
@@ -1418,7 +1428,8 @@ impl Model {
             Some(cell) => match cell.get_formula() {
                 None => cell.get_text(&self.workbook.shared_strings, &self.language),
                 Some(i) => {
-                    let formula = &self.parsed_formulas[sheet as usize][i as usize].0;
+                    let (formula, static_result) =
+                        &self.parsed_formulas[sheet as usize][i as usize];
                     let cell_ref = CellReferenceRC {
                         sheet: self.workbook.worksheets[sheet as usize].get_name(),
                         row: target_row,
@@ -1800,15 +1811,23 @@ impl Model {
                     self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
                 // Update the style if needed
                 let cell = CellReferenceIndex { sheet, row, column };
-                let parsed_formula =
-                    &self.parsed_formulas[sheet as usize][formula_index as usize].0;
-                if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
+                let (parsed_formula, static_result) =
+                    self.parsed_formulas[sheet as usize][formula_index as usize].clone();
+                if let Some(units) = self.compute_node_units(&parsed_formula, &cell) {
                     let new_style_index = self
                         .workbook
                         .styles
                         .get_style_with_format(new_style_index, &units.get_num_fmt())?;
                     let style = self.workbook.styles.get_style(new_style_index)?;
                     self.set_cell_style(sheet, row, column, &style)?
+                }
+                match static_result {
+                    StaticResult::Scalar => {}
+                    StaticResult::Array(_, _)
+                    | StaticResult::Range(_, _)
+                    | StaticResult::Unknown => {
+                        self.workbook.spill_cells.push((sheet, row, column));
+                    }
                 }
             } else {
                 // The list of currencies is '$', '€' and the local currency
@@ -2123,8 +2142,29 @@ impl Model {
 
     /// Evaluates the model with a top-down recursive algorithm
     pub fn evaluate(&mut self) {
-        // clear all computation artifacts
-        self.cells.clear();
+        let mut computed = false;
+        while !computed {
+            computed = true;
+            // clear all computation artifacts
+            self.cells.clear();
+            // Evaluate all the cells that might spill
+            let spill_cells = self.workbook.spill_cells.clone();
+            for (sheet, row, column) in spill_cells {
+                self.evaluate_cell(CellReferenceIndex { sheet, row, column });
+                if self.switch_cells.is_some() {
+                    computed = false;
+                    break;
+                }
+            }
+            if let Some((index1, index2)) = self.switch_cells {
+                computed = false;
+                // switch the cells indices in the spill_cells
+                let cell1 = self.workbook.spill_cells[index1 as usize];
+                let cell2 = self.workbook.spill_cells[index2 as usize];
+                self.workbook.spill_cells[index1 as usize] = cell2;
+                self.workbook.spill_cells[index2 as usize] = cell1;
+            }
+        }
 
         let cells = self.get_all_cells();
 
