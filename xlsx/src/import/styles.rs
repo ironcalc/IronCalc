@@ -94,7 +94,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         let mut i = false;
         let mut strike = false;
         // Default color is black
-        let mut color = Some("000000FF".to_string());
+        let mut color = Some("#000000".to_string());
         let mut family = 2;
         let mut scheme = FontScheme::default();
         for feature in font.children() {
