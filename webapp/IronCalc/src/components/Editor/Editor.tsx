@@ -114,7 +114,7 @@ const Editor = (options: EditorOptions) => {
       }
     }
     if (type === cell.focus) {
-      textareaRef.current?.focus();
+      textareaRef.current?.focus({ preventScroll: true });
     }
   });
 
