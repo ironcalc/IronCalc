@@ -168,11 +168,11 @@ impl Model {
             .get_worksheet_names()
             .iter()
             .map(|s| s.to_uppercase())
-            .any(|x| x == format!("{}{}", base_name_uppercase, index))
+            .any(|x| x == format!("{base_name_uppercase}{index}"))
         {
             index += 1;
         }
-        let sheet_name = format!("{}{}", base_name, index);
+        let sheet_name = format!("{base_name}{index}");
         // Now we need a sheet_id
         let sheet_id = self.get_new_sheet_id();
         let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
@@ -192,7 +192,7 @@ impl Model {
         sheet_id: Option<u32>,
     ) -> Result<(), String> {
         if !is_valid_sheet_name(sheet_name) {
-            return Err(format!("Invalid name for a sheet: '{}'", sheet_name));
+            return Err(format!("Invalid name for a sheet: '{sheet_name}'"));
         }
         if self
             .workbook
@@ -234,7 +234,7 @@ impl Model {
         if let Some(sheet_index) = self.get_sheet_index_by_name(old_name) {
             return self.rename_sheet_by_index(sheet_index, new_name);
         }
-        Err(format!("Could not find sheet {}", old_name))
+        Err(format!("Could not find sheet {old_name}"))
     }
 
     /// Renames a sheet and updates all existing references to that sheet.
@@ -248,10 +248,10 @@ impl Model {
         new_name: &str,
     ) -> Result<(), String> {
         if !is_valid_sheet_name(new_name) {
-            return Err(format!("Invalid name for a sheet: '{}'.", new_name));
+            return Err(format!("Invalid name for a sheet: '{new_name}'."));
         }
         if self.get_sheet_index_by_name(new_name).is_some() {
-            return Err(format!("Sheet already exists: '{}'.", new_name));
+            return Err(format!("Sheet already exists: '{new_name}'."));
         }
         // Gets the new name and checks that a sheet with that index exists
         let old_name = self.workbook.worksheet(sheet_index)?.get_name();
@@ -362,14 +362,14 @@ impl Model {
         };
         let locale = match get_locale(locale_id) {
             Ok(l) => l.clone(),
-            Err(_) => return Err(format!("Invalid locale: {}", locale_id)),
+            Err(_) => return Err(format!("Invalid locale: {locale_id}")),
         };
 
         let milliseconds = get_milliseconds_since_epoch();
         let seconds = milliseconds / 1000;
         let dt = match DateTime::from_timestamp(seconds, 0) {
             Some(s) => s,
-            None => return Err(format!("Invalid timestamp: {}", milliseconds)),
+            None => return Err(format!("Invalid timestamp: {milliseconds}")),
         };
         // "2020-08-06T21:20:53Z
         let now = dt.format("%Y-%m-%dT%H:%M:%SZ").to_string();

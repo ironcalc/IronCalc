@@ -231,7 +231,7 @@ impl Model {
                             CalcResult::new_error(
                                 Error::ERROR,
                                 *cell,
-                                format!("Invalid worksheet index: '{}'", sheet),
+                                format!("Invalid worksheet index: '{sheet}'"),
                             )
                         })?
                         .dimension()
@@ -245,7 +245,7 @@ impl Model {
                             CalcResult::new_error(
                                 Error::ERROR,
                                 *cell,
-                                format!("Invalid worksheet index: '{}'", sheet),
+                                format!("Invalid worksheet index: '{sheet}'"),
                             )
                         })?
                         .dimension()

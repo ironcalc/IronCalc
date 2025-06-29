@@ -174,7 +174,7 @@ fn fn_or_xor_no_arguments() {
         println!("Testing function: {func}");
 
         let mut model = new_empty_model();
-        model._set("A1", &format!("={}()", func));
+        model._set("A1", &format!("={func}()"));
         model.evaluate();
         assert_eq!(model._get_text("A1"), *"#ERROR!");
     }

@@ -76,7 +76,7 @@ impl Model {
         if value < 0 {
             CalcResult::String(format!("{:0width$X}", HEX_MAX + value, width = 9))
         } else {
-            let result = format!("{:X}", value);
+            let result = format!("{value:X}");
             if let Some(places) = places {
                 if places < result.len() as i32 {
                     return CalcResult::new_error(
@@ -120,7 +120,7 @@ impl Model {
         if value < 0 {
             CalcResult::String(format!("{:0width$o}", OCT_MAX + value, width = 9))
         } else {
-            let result = format!("{:o}", value);
+            let result = format!("{value:o}");
             if let Some(places) = places {
                 if places < result.len() as i32 {
                     return CalcResult::new_error(
@@ -163,7 +163,7 @@ impl Model {
         if value < 0 {
             value += 1024;
         }
-        let result = format!("{:b}", value);
+        let result = format!("{value:b}");
         if let Some(places) = places {
             if value_raw > 0.0 && places < result.len() as i32 {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
@@ -202,7 +202,7 @@ impl Model {
         if value < 0 {
             value += HEX_MAX;
         }
-        let result = format!("{:X}", value);
+        let result = format!("{value:X}");
         if let Some(places) = places {
             if value_raw > 0.0 && places < result.len() as i32 {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
@@ -242,7 +242,7 @@ impl Model {
         if value < 0 {
             value += OCT_MAX;
         }
-        let result = format!("{:o}", value);
+        let result = format!("{value:o}");
         if let Some(places) = places {
             if value_raw > 0.0 && places < result.len() as i32 {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
@@ -301,7 +301,7 @@ impl Model {
         if value < 0 {
             value += 1024;
         }
-        let result = format!("{:b}", value);
+        let result = format!("{value:b}");
         if let Some(places) = places {
             if places <= 0 || (value > 0 && places < result.len() as i32) {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
@@ -391,7 +391,7 @@ impl Model {
         if value < 0 {
             value += OCT_MAX;
         }
-        let result = format!("{:o}", value);
+        let result = format!("{value:o}");
         if let Some(places) = places {
             if places <= 0 || (value > 0 && places < result.len() as i32) {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
@@ -446,7 +446,7 @@ impl Model {
         if value < 0 {
             value += 1024;
         }
-        let result = format!("{:b}", value);
+        let result = format!("{value:b}");
         if let Some(places) = places {
             if value < 512 && places < result.len() as i32 {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
@@ -532,7 +532,7 @@ impl Model {
         if value < 0 {
             value += HEX_MAX;
         }
-        let result = format!("{:X}", value);
+        let result = format!("{value:X}");
         if let Some(places) = places {
             if value < HEX_MAX_HALF && places < result.len() as i32 {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());

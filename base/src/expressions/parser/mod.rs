@@ -828,7 +828,7 @@ impl Parser {
             | TokenType::Percent => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
                 position: 0,
-                message: format!("Unexpected token: '{:?}'", next_token),
+                message: format!("Unexpected token: '{next_token:?}'"),
             },
             TokenType::LeftBracket => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),

@@ -215,7 +215,7 @@ impl Model {
                 _ => CalcResult::new_error(
                     Error::ERROR,
                     cell,
-                    format!("Error with Implicit Intersection in cell {:?}", cell),
+                    format!("Error with Implicit Intersection in cell {cell:?}"),
                 ),
             },
             _ => self.evaluate_node_in_context(node, cell),
@@ -355,7 +355,7 @@ impl Model {
                         return s;
                     }
                 };
-                let result = format!("{}{}", l, r);
+                let result = format!("{l}{r}");
                 CalcResult::String(result)
             }
             OpProductKind { kind, left, right } => match kind {
@@ -375,7 +375,7 @@ impl Model {
             }
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             InvalidFunctionKind { name, args: _ } => {
-                CalcResult::new_error(Error::ERROR, cell, format!("Invalid function: {}", name))
+                CalcResult::new_error(Error::ERROR, cell, format!("Invalid function: {name}"))
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
@@ -391,26 +391,26 @@ impl Model {
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
-                            format!("Defined name \"{}\" is not a reference.", name),
+                            format!("Defined name \"{name}\" is not a reference."),
                         ),
                     }
                 } else {
                     CalcResult::new_error(
                         Error::NAME,
                         cell,
-                        format!("Defined name \"{}\" not found.", name),
+                        format!("Defined name \"{name}\" not found."),
                     )
                 }
             }
             TableNameKind(s) => CalcResult::new_error(
                 Error::NAME,
                 cell,
-                format!("table name \"{}\" not supported.", s),
+                format!("table name \"{s}\" not supported."),
             ),
             WrongVariableKind(s) => CalcResult::new_error(
                 Error::NAME,
                 cell,
-                format!("Variable name \"{}\" not found.", s),
+                format!("Variable name \"{s}\" not found."),
             ),
             CompareKind { kind, left, right } => {
                 let l = self.evaluate_node_in_context(left, cell);
@@ -487,7 +487,7 @@ impl Model {
             } => CalcResult::new_error(
                 Error::ERROR,
                 cell,
-                format!("Error parsing {}: {}", formula, message),
+                format!("Error parsing {formula}: {message}"),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
             ImplicitIntersection {
@@ -500,7 +500,7 @@ impl Model {
                         None => CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error with Implicit Intersection in cell {:?}", cell),
+                            format!("Error with Implicit Intersection in cell {cell:?}"),
                         ),
                     }
                 }
@@ -697,7 +697,7 @@ impl Model {
             worksheet.color = Some(color.to_string());
             return Ok(());
         }
-        Err(format!("Invalid color: {}", color))
+        Err(format!("Invalid color: {color}"))
     }
 
     /// Changes the visibility of a sheet
@@ -1027,7 +1027,7 @@ impl Model {
         let source_sheet_name = self
             .workbook
             .worksheet(source.sheet)
-            .map_err(|e| format!("Could not find source worksheet: {}", e))?
+            .map_err(|e| format!("Could not find source worksheet: {e}"))?
             .get_name();
         if source.sheet != area.sheet {
             return Err("Source and area are in different sheets".to_string());
@@ -1041,7 +1041,7 @@ impl Model {
         let target_sheet_name = self
             .workbook
             .worksheet(target.sheet)
-            .map_err(|e| format!("Could not find target worksheet: {}", e))?
+            .map_err(|e| format!("Could not find target worksheet: {e}"))?
             .get_name();
         if let Some(formula) = value.strip_prefix('=') {
             let cell_reference = CellReferenceRC {
@@ -1061,7 +1061,7 @@ impl Model {
                     column_delta: target.column - source.column,
                 },
             );
-            Ok(format!("={}", formula_str))
+            Ok(format!("={formula_str}"))
         } else {
             Ok(value.to_string())
         }
@@ -1538,7 +1538,7 @@ impl Model {
         // If the formula fails to parse try adding a parenthesis
         // SUM(A1:A3  => SUM(A1:A3)
         if let Node::ParseErrorKind { .. } = parsed_formula {
-            let new_parsed_formula = self.parser.parse(&format!("{})", formula), &cell_reference);
+            let new_parsed_formula = self.parser.parse(&format!("{formula})"), &cell_reference);
             match new_parsed_formula {
                 Node::ParseErrorKind { .. } => {}
                 _ => parsed_formula = new_parsed_formula,
