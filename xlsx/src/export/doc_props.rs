@@ -37,11 +37,7 @@ pub(crate) fn get_core_xml(workbook: &Workbook, milliseconds: i64) -> Result<Str
     let seconds = milliseconds / 1000;
     let dt = match DateTime::from_timestamp(seconds, 0) {
         Some(s) => s,
-        None => {
-            return Err(XlsxError::Xml(format!(
-                "Invalid timestamp: {milliseconds}"
-            )))
-        }
+        None => return Err(XlsxError::Xml(format!("Invalid timestamp: {milliseconds}"))),
     };
     let last_modified = dt.format("%Y-%m-%dT%H:%M:%SZ").to_string();
     Ok(format!(

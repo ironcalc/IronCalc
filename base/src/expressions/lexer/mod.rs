@@ -572,9 +572,7 @@ impl Lexer {
         }
         self.position = position;
         match chars.parse::<f64>() {
-            Err(_) => {
-                Err(self.set_error(&format!("Failed to parse to double: {chars}"), position))
-            }
+            Err(_) => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
             Ok(v) => Ok(v),
         }
     }
