@@ -48,7 +48,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   );
   const focusWorkbook = useCallback(() => {
     if (rootRef.current) {
-      rootRef.current.focus();
+      rootRef.current.focus({ preventScroll: true });
       // HACK: We need to select something inside the root for onCopy to work
       const selection = window.getSelection();
       if (selection) {

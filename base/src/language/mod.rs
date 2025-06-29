@@ -39,6 +39,6 @@ static LANGUAGES: Lazy<HashMap<String, Language>> = Lazy::new(|| {
 pub fn get_language(id: &str) -> Result<&Language, String> {
     let language = LANGUAGES
         .get(id)
-        .ok_or(format!("Language is not supported: '{}'", id))?;
+        .ok_or(format!("Language is not supported: '{id}'"))?;
     Ok(language)
 }

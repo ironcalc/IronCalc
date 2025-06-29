@@ -40,7 +40,7 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
             Some("visible") | None => SheetState::Visible,
             Some("hidden") => SheetState::Hidden,
             Some("veryHidden") => SheetState::VeryHidden,
-            Some(state) => return Err(XlsxError::Xml(format!("Unknown sheet state: {}", state))),
+            Some(state) => return Err(XlsxError::Xml(format!("Unknown sheet state: {state}"))),
         };
         sheets.push(Sheet {
             name,

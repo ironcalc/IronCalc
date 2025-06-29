@@ -272,6 +272,7 @@ const ColorGridCol = styled.div`
 const ColorSwatch = styled.button<{ $color: string }>`
   width: 16px;
   height: 16px;
+  padding: 0px;
   ${({ $color }): string => {
     if ($color.toUpperCase() === "#FFFFFF") {
       return `border: 1px solid ${theme.palette.grey["300"]};`;

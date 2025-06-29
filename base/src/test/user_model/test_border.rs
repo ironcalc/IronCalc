@@ -50,10 +50,7 @@ fn check_borders(model: &UserModel) {
                         assert_eq!(
                             Some(top_border),
                             top_cell_style.border.bottom,
-                            "(Top). Sheet: {}, row: {}, column: {}",
-                            sheet,
-                            row,
-                            column
+                            "(Top). Sheet: {sheet}, row: {row}, column: {column}"
                         );
                     }
                 }
@@ -65,10 +62,7 @@ fn check_borders(model: &UserModel) {
                         assert_eq!(
                             Some(right_border),
                             right_cell_style.border.left,
-                            "(Right). Sheet: {}, row: {}, column: {}",
-                            sheet,
-                            row,
-                            column
+                            "(Right). Sheet: {sheet}, row: {row}, column: {column}"
                         );
                     }
                 }
@@ -80,10 +74,7 @@ fn check_borders(model: &UserModel) {
                         assert_eq!(
                             Some(bottom_border),
                             bottom_cell_style.border.top,
-                            "(Bottom). Sheet: {}, row: {}, column: {}",
-                            sheet,
-                            row,
-                            column
+                            "(Bottom). Sheet: {sheet}, row: {row}, column: {column}"
                         );
                     }
                 }
@@ -94,10 +85,7 @@ fn check_borders(model: &UserModel) {
                         assert_eq!(
                             Some(left_border),
                             left_cell_style.border.right,
-                            "(Left). Sheet: {}, row: {}, column: {}",
-                            sheet,
-                            row,
-                            column
+                            "(Left). Sheet: {sheet}, row: {row}, column: {column}"
                         );
                     }
                 }

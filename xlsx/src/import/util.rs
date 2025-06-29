@@ -21,7 +21,7 @@ where
 {
     let attr_name = attr_name.into();
     node.attribute(attr_name)
-        .ok_or_else(|| XlsxError::Xml(format!("Missing \"{:?}\" XML attribute", attr_name)))
+        .ok_or_else(|| XlsxError::Xml(format!("Missing \"{attr_name:?}\" XML attribute")))
 }
 
 pub(super) fn get_value_or_default(node: &Node, tag_name: &str, default: &str) -> String {
@@ -64,7 +64,7 @@ pub(super) fn get_color(node: Node) -> Result<Option<String>, XlsxError> {
         // A boolean value indicating the color is automatic and system color dependent.
         Ok(None)
     } else {
-        println!("Unexpected color node {:?}", node);
+        println!("Unexpected color node {node:?}");
         Ok(None)
     }
 }

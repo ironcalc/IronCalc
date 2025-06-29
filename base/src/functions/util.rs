@@ -110,7 +110,7 @@ pub(crate) fn from_wildcard_to_regex(
 
     // And we have a valid Perl regex! (As Kim Kardashian said before me: "I know, right?")
     if exact {
-        return regex::Regex::new(&format!("^{}$", reg));
+        return regex::Regex::new(&format!("^{reg}$"));
     }
     regex::Regex::new(reg)
 }

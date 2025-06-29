@@ -176,7 +176,7 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
                         diff.reason
                     );
                 }
-                Err(format!("Models are different: {}", message))
+                Err(format!("Models are different: {message}"))
             }
         }
         Err(r) => Err(format!("Models are different: {}", r.message)),
