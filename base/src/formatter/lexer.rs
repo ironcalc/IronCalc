@@ -333,7 +333,7 @@ impl Lexer {
                         } else if s == '-' {
                             Token::ScientificMinus
                         } else {
-                            self.set_error(&format!("Unexpected char: {}. Expected + or -", s));
+                            self.set_error(&format!("Unexpected char: {s}. Expected + or -"));
                             Token::ILLEGAL
                         }
                     } else {
@@ -385,14 +385,14 @@ impl Lexer {
                     for c in "eneral".chars() {
                         let cc = self.read_next_char();
                         if Some(c) != cc {
-                            self.set_error(&format!("Unexpected character: {}", x));
+                            self.set_error(&format!("Unexpected character: {x}"));
                             return Token::ILLEGAL;
                         }
                     }
                     Token::General
                 }
                 _ => {
-                    self.set_error(&format!("Unexpected character: {}", x));
+                    self.set_error(&format!("Unexpected character: {x}"));
                     Token::ILLEGAL
                 }
             },

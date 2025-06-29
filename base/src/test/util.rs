@@ -13,7 +13,7 @@ impl Model {
         if cell.contains('!') {
             self.parse_reference(cell).unwrap()
         } else {
-            self.parse_reference(&format!("Sheet1!{}", cell)).unwrap()
+            self.parse_reference(&format!("Sheet1!{cell}")).unwrap()
         }
     }
     pub fn _set(&mut self, cell: &str, value: &str) {

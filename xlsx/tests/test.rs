@@ -350,11 +350,11 @@ fn test_xlsx() {
     for file_path in entries {
         let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
         let file_path_str = file_path.to_str().unwrap();
-        println!("Testing file: {}", file_path_str);
+        println!("Testing file: {file_path_str}");
         if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
             if let Err(message) = test_file(file_path_str) {
                 println!("Error with file: '{file_path_str}'");
-                println!("{}", message);
+                println!("{message}");
                 is_error = true;
             }
             let t = test_load_and_saving(file_path_str, &dir);
@@ -389,11 +389,11 @@ fn no_export() {
     for file_path in entries {
         let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
         let file_path_str = file_path.to_str().unwrap();
-        println!("Testing file: {}", file_path_str);
+        println!("Testing file: {file_path_str}");
         if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
             if let Err(message) = test_file(file_path_str) {
                 println!("Error with file: '{file_path_str}'");
-                println!("{}", message);
+                println!("{message}");
                 is_error = true;
             }
         } else {
@@ -485,7 +485,7 @@ fn test_documentation_xlsx() {
     // Numerically unstable
     skip.push("TAN.xlsx");
     let skip: Vec<String> = skip.iter().map(|s| format!("tests/docs/{s}")).collect();
-    println!("{:?}", skip);
+    println!("{skip:?}");
     // dumb counter to make sure we are actually testing the files
     assert!(entries.len() > 7);
     let temp_folder = env::temp_dir();
@@ -497,13 +497,13 @@ fn test_documentation_xlsx() {
         let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
         let file_path_str = file_path.to_str().unwrap();
         if skip.contains(&file_path_str.to_string()) {
-            println!("Skipping file: {}", file_path_str);
+            println!("Skipping file: {file_path_str}");
             continue;
         }
-        println!("Testing file: {}", file_path_str);
+        println!("Testing file: {file_path_str}");
         if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
             if let Err(message) = test_file(file_path_str) {
-                println!("{}", message);
+                println!("{message}");
                 is_error = true;
             }
             assert!(test_load_and_saving(file_path_str, &dir).is_ok());

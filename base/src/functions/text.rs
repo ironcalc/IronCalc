@@ -55,14 +55,14 @@ impl Model {
         let mut result = "".to_string();
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::String(value) => result = format!("{}{}", result, value),
-                CalcResult::Number(value) => result = format!("{}{}", result, value),
+                CalcResult::String(value) => result = format!("{result}{value}"),
+                CalcResult::Number(value) => result = format!("{result}{value}"),
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                 CalcResult::Boolean(value) => {
                     if value {
-                        result = format!("{}TRUE", result);
+                        result = format!("{result}TRUE");
                     } else {
-                        result = format!("{}FALSE", result);
+                        result = format!("{result}FALSE");
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
@@ -82,16 +82,16 @@ impl Model {
                                 column,
                             }) {
                                 CalcResult::String(value) => {
-                                    result = format!("{}{}", result, value);
+                                    result = format!("{result}{value}");
                                 }
                                 CalcResult::Number(value) => {
-                                    result = format!("{}{}", result, value)
+                                    result = format!("{result}{value}")
                                 }
                                 CalcResult::Boolean(value) => {
                                     if value {
-                                        result = format!("{}TRUE", result);
+                                        result = format!("{result}TRUE");
                                     } else {
-                                        result = format!("{}FALSE", result);
+                                        result = format!("{result}FALSE");
                                     }
                                 }
                                 error @ CalcResult::Error { .. } => return error,
@@ -282,7 +282,7 @@ impl Model {
     pub(crate) fn fn_len(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => format!("{}", v),
+                CalcResult::Number(v) => format!("{v}"),
                 CalcResult::String(v) => v,
                 CalcResult::Boolean(b) => {
                     if b {
@@ -317,7 +317,7 @@ impl Model {
     pub(crate) fn fn_trim(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => format!("{}", v),
+                CalcResult::Number(v) => format!("{v}"),
                 CalcResult::String(v) => v,
                 CalcResult::Boolean(b) => {
                     if b {
@@ -352,7 +352,7 @@ impl Model {
     pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => format!("{}", v),
+                CalcResult::Number(v) => format!("{v}"),
                 CalcResult::String(v) => v,
                 CalcResult::Boolean(b) => {
                     if b {
@@ -387,7 +387,7 @@ impl Model {
     pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => format!("{}", v),
+                CalcResult::Number(v) => format!("{v}"),
                 CalcResult::String(v) => v,
                 CalcResult::Boolean(b) => {
                     if b {
@@ -441,7 +441,7 @@ impl Model {
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => format!("{}", v),
+                CalcResult::Number(v) => format!("{v}"),
                 CalcResult::String(v) => v,
                 CalcResult::Boolean(b) => {
                     if b {
@@ -478,7 +478,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let s = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Number(v) => format!("{}", v),
+            CalcResult::Number(v) => format!("{v}"),
             CalcResult::String(v) => v,
             CalcResult::Boolean(b) => {
                 if b {
@@ -560,7 +560,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let s = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Number(v) => format!("{}", v),
+            CalcResult::Number(v) => format!("{v}"),
             CalcResult::String(v) => v,
             CalcResult::Boolean(b) => {
                 if b {
@@ -642,7 +642,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let s = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Number(v) => format!("{}", v),
+            CalcResult::Number(v) => format!("{v}"),
             CalcResult::String(v) => v,
             CalcResult::Boolean(b) => {
                 if b {

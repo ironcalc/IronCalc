@@ -142,7 +142,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
                 }
                 "charset" => {}
                 _ => {
-                    println!("Unexpected feature {:?}", feature);
+                    println!("Unexpected feature {feature:?}");
                 }
             }
         }

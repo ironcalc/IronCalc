@@ -148,8 +148,8 @@ pub fn load_from_xlsx(file_name: &str, locale: &str, tz: &str) -> Result<Model, 
 /// Loads a [Model] from an `ic` file (a file in the IronCalc internal representation)
 pub fn load_from_icalc(file_name: &str) -> Result<Model, XlsxError> {
     let contents = fs::read(file_name)
-        .map_err(|e| XlsxError::IO(format!("Could not extract workbook name: {}", e)))?;
+        .map_err(|e| XlsxError::IO(format!("Could not extract workbook name: {e}")))?;
     let workbook: Workbook = bitcode::decode(&contents)
-        .map_err(|e| XlsxError::IO(format!("Failed to decode file: {}", e)))?;
+        .map_err(|e| XlsxError::IO(format!("Failed to decode file: {e}")))?;
     Model::from_workbook(workbook).map_err(XlsxError::Workbook)
 }

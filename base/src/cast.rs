@@ -159,7 +159,7 @@ impl Model {
         // FIXME: I think when casting a number we should convert it to_precision(x, 15)
         // See function Exact
         match result {
-            CalcResult::Number(f) => Ok(format!("{}", f)),
+            CalcResult::Number(f) => Ok(format!("{f}")),
             CalcResult::String(s) => Ok(s),
             CalcResult::Boolean(f) => {
                 if f {

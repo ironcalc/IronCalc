@@ -53,24 +53,24 @@ fn move_function(name: &str, args: &Vec<Node>, move_context: &MoveContext) -> St
             arguments = to_string_moved(el, move_context);
         }
     }
-    format!("{}({})", name, arguments)
+    format!("{name}({arguments})")
 }
 
 pub(crate) fn to_string_array_node(node: &ArrayNode) -> String {
     match node {
-        ArrayNode::Boolean(value) => format!("{}", value).to_ascii_uppercase(),
+        ArrayNode::Boolean(value) => format!("{value}").to_ascii_uppercase(),
         ArrayNode::Number(number) => to_excel_precision_str(*number),
-        ArrayNode::String(value) => format!("\"{}\"", value),
-        ArrayNode::Error(kind) => format!("{}", kind),
+        ArrayNode::String(value) => format!("\"{value}\""),
+        ArrayNode::Error(kind) => format!("{kind}"),
     }
 }
 
 fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
     use self::Node::*;
     match node {
-        BooleanKind(value) => format!("{}", value).to_ascii_uppercase(),
+        BooleanKind(value) => format!("{value}").to_ascii_uppercase(),
         NumberKind(number) => to_excel_precision_str(*number),
-        StringKind(value) => format!("\"{}\"", value),
+        StringKind(value) => format!("\"{value}\""),
         ReferenceKind {
             sheet_name,
             sheet_index,
@@ -241,7 +241,7 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
                 full_row,
                 full_column,
             );
-            format!("{}:{}", s1, s2)
+            format!("{s1}:{s2}")
         }
         WrongReferenceKind {
             sheet_name,
@@ -325,7 +325,7 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
                 full_row,
                 full_column,
             );
-            format!("{}:{}", s1, s2)
+            format!("{s1}:{s2}")
         }
         OpRangeKind { left, right } => format!(
             "{}:{}",
@@ -358,7 +358,7 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
                 }
                 _ => to_string_moved(right, move_context),
             };
-            format!("{}{}{}", x, kind, y)
+            format!("{x}{kind}{y}")
         }
         OpPowerKind { left, right } => format!(
             "{}^{}",
@@ -403,7 +403,7 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             }
 
             // Enclose the whole matrix in braces
-            format!("{{{}}}", matrix_string)
+            format!("{{{matrix_string}}}")
         }
         DefinedNameKind((name, ..)) => name.to_string(),
         TableNameKind(name) => name.to_string(),
@@ -418,7 +418,7 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             OpUnary::Minus => format!("-{}", to_string_moved(right, move_context)),
             OpUnary::Percentage => format!("{}%", to_string_moved(right, move_context)),
         },
-        ErrorKind(kind) => format!("{}", kind),
+        ErrorKind(kind) => format!("{kind}"),
         ParseErrorKind {
             formula,
             message: _,
