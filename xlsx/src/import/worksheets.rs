@@ -407,9 +407,7 @@ fn get_cell_from_excel(
             "empty" => Cell::EmptyCell { s: cell_style },
             _ => {
                 // error
-                println!(
-                    "Unexpected type ({cell_type}) in {sheet_name}!{cell_ref}"
-                );
+                println!("Unexpected type ({cell_type}) in {sheet_name}!{cell_ref}");
                 Cell::ErrorCell {
                     ei: Error::ERROR,
                     s: cell_style,
@@ -496,9 +494,7 @@ fn get_cell_from_excel(
             }
             _ => {
                 // error
-                println!(
-                    "Unexpected type ({cell_type}) in {sheet_name}!{cell_ref}"
-                );
+                println!("Unexpected type ({cell_type}) in {sheet_name}!{cell_ref}");
                 let o = format!("{sheet_name}!{cell_ref}");
                 let m = Error::ERROR.to_string();
                 Cell::CellFormulaError {

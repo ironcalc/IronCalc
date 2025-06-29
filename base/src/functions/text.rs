@@ -84,9 +84,7 @@ impl Model {
                                 CalcResult::String(value) => {
                                     result = format!("{result}{value}");
                                 }
-                                CalcResult::Number(value) => {
-                                    result = format!("{result}{value}")
-                                }
+                                CalcResult::Number(value) => result = format!("{result}{value}"),
                                 CalcResult::Boolean(value) => {
                                     if value {
                                         result = format!("{result}TRUE");
