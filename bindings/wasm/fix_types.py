@@ -33,5 +33,8 @@ if __name__ == "__main__":
     with open("types.js") as f:
         text_js = f.read()
 
-    with open(js_file, "wb") as f:
-        f.write(bytes("{}\n{}".format(text_js, text), "utf8"))
+    for js_file in js_files:
+        with open(js_file) as f:
+            text = f.read()
+        with open(js_file, "wb") as f:
+            f.write(bytes("{}\n{}".format(text_js, text), "utf8"))
