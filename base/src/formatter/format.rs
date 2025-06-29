@@ -120,7 +120,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             // We should have different codepaths for general formatting and errors
             let value_abs = value.abs();
             if (1.0e-8..1.0e+11).contains(&value_abs) {
-                let mut text = format!("{:.9}", value);
+                let mut text = format!("{value:.9}");
                 text = text.trim_end_matches('0').trim_end_matches('.').to_string();
                 Formatted {
                     text,
@@ -138,7 +138,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                 let exponent = value_abs.log10().floor();
                 value /= 10.0_f64.powf(exponent);
                 let sign = if exponent < 0.0 { '-' } else { '+' };
-                let s = format!("{:.5}", value);
+                let s = format!("{value:.5}");
                 Formatted {
                     text: format!(
                         "{}E{}{:02}",
@@ -167,33 +167,33 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
-                        text = format!("{}{}", text, c);
+                        text = format!("{text}{c}");
                     }
                     TextToken::Text(t) => {
-                        text = format!("{}{}", text, t);
+                        text = format!("{text}{t}");
                     }
                     TextToken::Ghost(_) => {
                         // we just leave a whitespace
                         // This is what the TEXT function does
-                        text = format!("{} ", text);
+                        text = format!("{text} ");
                     }
                     TextToken::Spacer(_) => {
                         // we just leave a whitespace
                         // This is what the TEXT function does
-                        text = format!("{} ", text);
+                        text = format!("{text} ");
                     }
                     TextToken::Raw => {
-                        text = format!("{}{}", text, value);
+                        text = format!("{text}{value}");
                     }
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
                     TextToken::Day => {
                         let day = date.day() as usize;
-                        text = format!("{}{}", text, day);
+                        text = format!("{text}{day}");
                     }
                     TextToken::DayPadded => {
                         let day = date.day() as usize;
-                        text = format!("{}{:02}", text, day);
+                        text = format!("{text}{day:02}");
                     }
                     TextToken::DayNameShort => {
                         let mut day = date.weekday().number_from_monday() as usize;
@@ -211,11 +211,11 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     }
                     TextToken::Month => {
                         let month = date.month() as usize;
-                        text = format!("{}{}", text, month);
+                        text = format!("{text}{month}");
                     }
                     TextToken::MonthPadded => {
                         let month = date.month() as usize;
-                        text = format!("{}{:02}", text, month);
+                        text = format!("{text}{month:02}");
                     }
                     TextToken::MonthNameShort => {
                         let month = date.month() as usize;
@@ -228,7 +228,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::MonthLetter => {
                         let month = date.month() as usize;
                         let months_letter = &locale.dates.months_letter[month - 1];
-                        text = format!("{}{}", text, months_letter);
+                        text = format!("{text}{months_letter}");
                     }
                     TextToken::YearShort => {
                         text = format!("{}{}", text, date.format("%y"));
@@ -247,7 +247,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Number(p) => {
             let mut text = "".to_string();
             if let Some(c) = p.currency {
-                text = format!("{}", c);
+                text = format!("{c}");
             }
             let tokens = &p.tokens;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
@@ -295,26 +295,26 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
-                        text = format!("{}{}", text, c);
+                        text = format!("{text}{c}");
                     }
                     TextToken::Text(t) => {
-                        text = format!("{}{}", text, t);
+                        text = format!("{text}{t}");
                     }
                     TextToken::Ghost(_) => {
                         // we just leave a whitespace
                         // This is what the TEXT function does
-                        text = format!("{} ", text);
+                        text = format!("{text} ");
                     }
                     TextToken::Spacer(_) => {
                         // we just leave a whitespace
                         // This is what the TEXT function does
-                        text = format!("{} ", text);
+                        text = format!("{text} ");
                     }
                     TextToken::Raw => {
-                        text = format!("{}{}", text, value);
+                        text = format!("{text}{value}");
                     }
                     TextToken::Period => {
-                        text = format!("{}{}", text, decimal_separator);
+                        text = format!("{text}{decimal_separator}");
                     }
                     TextToken::Digit(digit) => {
                         if digit.number == 'i' {
@@ -322,7 +322,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                             let index = digit.index;
                             let number_index = ln - digit_count + index;
                             if index == 0 && is_negative {
-                                text = format!("-{}", text);
+                                text = format!("-{text}");
                             }
                             if ln <= digit_count {
                                 // The number of digits is less or equal than the number of digit tokens
@@ -347,7 +347,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                     } else {
                                         ""
                                     };
-                                    text = format!("{}{}{}", text, c, sep);
+                                    text = format!("{text}{c}{sep}");
                                 }
                                 digit_index += 1;
                             } else {
@@ -373,18 +373,18 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                             if index < fract_part.len() {
                                 text = format!("{}{}", text, fract_part[index]);
                             } else if digit.kind == '0' {
-                                text = format!("{}0", text);
+                                text = format!("{text}0");
                             } else if digit.kind == '?' {
-                                text = format!("{} ", text);
+                                text = format!("{text} ");
                             }
                         } else if digit.number == 'e' {
                             // 3. Exponent part
                             let index = digit.index;
                             if index == 0 {
                                 if exponent_is_negative {
-                                    text = format!("{}E-", text);
+                                    text = format!("{text}E-");
                                 } else {
-                                    text = format!("{}E+", text);
+                                    text = format!("{text}E+");
                                 }
                             }
                             let number_index = l_exp - (p.exponent_digit_count - index);
@@ -400,7 +400,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                         exponent_part[number_index as usize]
                                     };
 
-                                    text = format!("{}{}", text, c);
+                                    text = format!("{text}{c}");
                                 }
                             } else {
                                 for i in 0..number_index + 1 {
@@ -614,7 +614,7 @@ pub(crate) fn parse_formatted_number(
 
     // check if it is a currency in currencies
     for currency in currencies {
-        if let Some(p) = value.strip_prefix(&format!("-{}", currency)) {
+        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
             let (f, options) = parse_number(p.trim())?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));

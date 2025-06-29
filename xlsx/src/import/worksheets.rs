@@ -81,7 +81,7 @@ fn parse_cell_reference(cell: &str) -> Result<(i32, i32), String> {
     if let Some(r) = parse_reference_a1(cell) {
         Ok((r.row, r.column))
     } else {
-        Err(format!("Invalid cell reference: '{}'", cell))
+        Err(format!("Invalid cell reference: '{cell}'"))
     }
 }
 
@@ -91,17 +91,17 @@ fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
         if let Some(r) = parse_reference_a1(parts[0]) {
             Ok((r.row, r.column, r.row, r.column))
         } else {
-            Err(format!("Invalid range: '{}'", range))
+            Err(format!("Invalid range: '{range}'"))
         }
     } else if parts.len() == 2 {
         match (parse_reference_a1(parts[0]), parse_reference_a1(parts[1])) {
             (Some(left), Some(right)) => {
                 return Ok((left.row, left.column, right.row, right.column));
             }
-            _ => return Err(format!("Invalid range: '{}'", range)),
+            _ => return Err(format!("Invalid range: '{range}'")),
         }
     } else {
-        return Err(format!("Invalid range: '{}'", range));
+        return Err(format!("Invalid range: '{range}'"));
     }
 }
 
@@ -390,7 +390,7 @@ fn get_cell_from_excel(
             }
             "d" => {
                 // Not implemented
-                println!("Invalid type (d) in {}!{}", sheet_name, cell_ref);
+                println!("Invalid type (d) in {sheet_name}!{cell_ref}");
                 Cell::ErrorCell {
                     ei: Error::NIMPL,
                     s: cell_style,
@@ -398,7 +398,7 @@ fn get_cell_from_excel(
             }
             "inlineStr" => {
                 // Not implemented
-                println!("Invalid type (inlineStr) in {}!{}", sheet_name, cell_ref);
+                println!("Invalid type (inlineStr) in {sheet_name}!{cell_ref}");
                 Cell::ErrorCell {
                     ei: Error::NIMPL,
                     s: cell_style,
@@ -407,10 +407,7 @@ fn get_cell_from_excel(
             "empty" => Cell::EmptyCell { s: cell_style },
             _ => {
                 // error
-                println!(
-                    "Unexpected type ({}) in {}!{}",
-                    cell_type, sheet_name, cell_ref
-                );
+                println!("Unexpected type ({cell_type}) in {sheet_name}!{cell_ref}");
                 Cell::ErrorCell {
                     ei: Error::ERROR,
                     s: cell_style,
@@ -444,15 +441,15 @@ fn get_cell_from_excel(
                     f: formula_index,
                     ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
                     s: cell_style,
-                    o: format!("{}!{}", sheet_name, cell_ref),
+                    o: format!("{sheet_name}!{cell_ref}"),
                     m: cell_value.unwrap_or("#ERROR!").to_string(),
                 }
             }
             "s" => {
                 // Not implemented
-                let o = format!("{}!{}", sheet_name, cell_ref);
+                let o = format!("{sheet_name}!{cell_ref}");
                 let m = Error::NIMPL.to_string();
-                println!("Invalid type (s) in {}!{}", sheet_name, cell_ref);
+                println!("Invalid type (s) in {sheet_name}!{cell_ref}");
                 Cell::CellFormulaError {
                     f: formula_index,
                     ei: Error::NIMPL,
@@ -471,8 +468,8 @@ fn get_cell_from_excel(
             }
             "d" => {
                 // Not implemented
-                println!("Invalid type (d) in {}!{}", sheet_name, cell_ref);
-                let o = format!("{}!{}", sheet_name, cell_ref);
+                println!("Invalid type (d) in {sheet_name}!{cell_ref}");
+                let o = format!("{sheet_name}!{cell_ref}");
                 let m = Error::NIMPL.to_string();
                 Cell::CellFormulaError {
                     f: formula_index,
@@ -484,9 +481,9 @@ fn get_cell_from_excel(
             }
             "inlineStr" => {
                 // Not implemented
-                let o = format!("{}!{}", sheet_name, cell_ref);
+                let o = format!("{sheet_name}!{cell_ref}");
                 let m = Error::NIMPL.to_string();
-                println!("Invalid type (inlineStr) in {}!{}", sheet_name, cell_ref);
+                println!("Invalid type (inlineStr) in {sheet_name}!{cell_ref}");
                 Cell::CellFormulaError {
                     f: formula_index,
                     ei: Error::NIMPL,
@@ -497,11 +494,8 @@ fn get_cell_from_excel(
             }
             _ => {
                 // error
-                println!(
-                    "Unexpected type ({}) in {}!{}",
-                    cell_type, sheet_name, cell_ref
-                );
-                let o = format!("{}!{}", sheet_name, cell_ref);
+                println!("Unexpected type ({cell_type}) in {sheet_name}!{cell_ref}");
+                let o = format!("{sheet_name}!{cell_ref}");
                 let m = Error::ERROR.to_string();
                 Cell::CellFormulaError {
                     f: formula_index,
@@ -886,7 +880,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                             Some(_) => {
                                 // It's the mother cell. We do not use the ref attribute in IronCalc
                                 let formula = fs[0].text().unwrap_or("").to_string();
-                                let context = format!("{}!{}", sheet_name, cell_ref);
+                                let context = format!("{sheet_name}!{cell_ref}");
                                 let formula = from_a1_to_rc(
                                     formula,
                                     worksheets,
@@ -949,7 +943,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                         }
                         // Its a cell with a simple formula
                         let formula = fs[0].text().unwrap_or("").to_string();
-                        let context = format!("{}!{}", sheet_name, cell_ref);
+                        let context = format!("{sheet_name}!{cell_ref}");
                         let formula = from_a1_to_rc(
                             formula,
                             worksheets,
@@ -968,8 +962,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                     }
                     _ => {
                         return Err(XlsxError::Xml(format!(
-                            "Invalid formula type {:?}.",
-                            formula_type,
+                            "Invalid formula type {formula_type:?}.",
                         )));
                     }
                 }

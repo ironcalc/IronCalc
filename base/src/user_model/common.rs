@@ -1487,10 +1487,10 @@ impl UserModel {
             return Err(format!("Invalid row: '{first_row}'"));
         }
         if !is_valid_column_number(last_column) {
-            return Err(format!("Invalid column: '{}'", last_column));
+            return Err(format!("Invalid column: '{last_column}'"));
         }
         if !is_valid_row(last_row) {
-            return Err(format!("Invalid row: '{}'", last_row));
+            return Err(format!("Invalid row: '{last_row}'"));
         }
 
         if !is_valid_row(to_column) {
@@ -1623,15 +1623,15 @@ impl UserModel {
                 text_row.push(text);
             }
             wtr.write_record(text_row)
-                .map_err(|e| format!("Error while processing csv: {}", e))?;
+                .map_err(|e| format!("Error while processing csv: {e}"))?;
             data.insert(row, data_row);
         }
 
         let csv = String::from_utf8(
             wtr.into_inner()
-                .map_err(|e| format!("Processing error: '{}'", e))?,
+                .map_err(|e| format!("Processing error: '{e}'"))?,
         )
-        .map_err(|e| format!("Error converting from utf8: '{}'", e))?;
+        .map_err(|e| format!("Error converting from utf8: '{e}'"))?;
 
         Ok(Clipboard {
             csv,
@@ -2391,7 +2391,7 @@ mod tests {
             VerticalAlignment::Top,
         ];
         for a in all {
-            assert_eq!(vertical(&format!("{}", a)), Ok(a));
+            assert_eq!(vertical(&format!("{a}")), Ok(a));
         }
     }
 
@@ -2408,7 +2408,7 @@ mod tests {
             HorizontalAlignment::Right,
         ];
         for a in all {
-            assert_eq!(horizontal(&format!("{}", a)), Ok(a));
+            assert_eq!(horizontal(&format!("{a}")), Ok(a));
         }
     }
 }

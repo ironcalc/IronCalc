@@ -21,14 +21,12 @@ fn is_date_within_range(date: NaiveDate) -> bool {
 pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
     if days < MINIMUM_DATE_SERIAL_NUMBER as i64 {
         return Err(format!(
-            "Excel date must be greater than {}",
-            MINIMUM_DATE_SERIAL_NUMBER
+            "Excel date must be greater than {MINIMUM_DATE_SERIAL_NUMBER}"
         ));
     };
     if days > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
         return Err(format!(
-            "Excel date must be less than {}",
-            MAXIMUM_DATE_SERIAL_NUMBER
+            "Excel date must be less than {MAXIMUM_DATE_SERIAL_NUMBER}"
         ));
     };
     #[allow(clippy::expect_used)]

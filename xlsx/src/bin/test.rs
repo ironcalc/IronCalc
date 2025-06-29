@@ -22,7 +22,7 @@ fn main() {
     let file_name = &args[1];
     println!("Testing file: {file_name}");
     if let Err(message) = test_file(file_name) {
-        println!("{}", message);
+        println!("{message}");
         panic!("Model was evaluated inconsistently with XLSX data.")
     }
 

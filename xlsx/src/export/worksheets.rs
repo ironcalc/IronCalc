@@ -35,7 +35,7 @@ fn get_cell_style_attribute(s: i32) -> String {
     if s == 0 {
         "".to_string()
     } else {
-        format!(" s=\"{}\"", s)
+        format!(" s=\"{s}\"")
     }
 }
 

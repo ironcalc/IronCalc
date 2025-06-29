@@ -126,7 +126,7 @@ pub fn to_precision_str(value: f64, precision: usize) -> String {
     let exponent = value.abs().log10().floor();
     let base = value / 10.0_f64.powf(exponent);
     let base = format!("{0:.1$}", base, precision - 1);
-    let value = format!("{}e{}", base, exponent).parse::<f64>().unwrap_or({
+    let value = format!("{base}e{exponent}").parse::<f64>().unwrap_or({
         // TODO: do this in a way that does not require a possible error
         0.0
     });
