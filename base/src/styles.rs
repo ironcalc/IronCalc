@@ -154,7 +154,7 @@ impl Styles {
                 return Ok(cell_style.xf_id);
             }
         }
-        Err(format!("Style '{}' not found", style_name))
+        Err(format!("Style '{style_name}' not found"))
     }
 
     pub fn create_named_style(&mut self, style_name: &str, style: &Style) -> Result<(), String> {

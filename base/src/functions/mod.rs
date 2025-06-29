@@ -1214,7 +1214,7 @@ mod tests {
         }
         // We make a list with their functions names, but we escape ".": ERROR.TYPE => ERRORTYPE
         let iter_list = Function::into_iter()
-            .map(|f| format!("{}", f).replace('.', ""))
+            .map(|f| format!("{f}").replace('.', ""))
             .collect::<Vec<_>>();
 
         let len = iter_list.len();

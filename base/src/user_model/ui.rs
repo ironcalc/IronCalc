@@ -76,7 +76,7 @@ impl UserModel {
     /// Sets the the selected sheet
     pub fn set_selected_sheet(&mut self, sheet: u32) -> Result<(), String> {
         if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
+            return Err(format!("Invalid worksheet index {sheet}"));
         }
         if let Some(view) = self.model.workbook.views.get_mut(&0) {
             view.sheet = sheet;
@@ -98,7 +98,7 @@ impl UserModel {
             return Err(format!("Invalid row: '{row}'"));
         }
         if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
+            return Err(format!("Invalid worksheet index {sheet}"));
         }
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
@@ -138,7 +138,7 @@ impl UserModel {
             return Err(format!("Invalid row: '{end_row}'"));
         }
         if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
+            return Err(format!("Invalid worksheet index {sheet}"));
         }
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
@@ -147,14 +147,12 @@ impl UserModel {
                 // The selected cells must be on one of the corners of the selected range:
                 if selected_row != start_row && selected_row != end_row {
                     return Err(format!(
-                        "The selected cells is not in one of the corners. Row: '{}' and row range '({}, {})'",
-                        selected_row, start_row, end_row
+                        "The selected cells is not in one of the corners. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
                     ));
                 }
                 if selected_column != start_column && selected_column != end_column {
                     return Err(format!(
-                        "The selected cells is not in one of the corners. Column '{}' and column range '({}, {})'",
-                        selected_column, start_column, end_column
+                        "The selected cells is not in one of the corners. Column '{selected_column}' and column range '({start_column}, {end_column})'"
                     ));
                 }
                 view.range = [start_row, start_column, end_row, end_column];
@@ -307,7 +305,7 @@ impl UserModel {
             return Err(format!("Invalid row: '{top_row}'"));
         }
         if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
+            return Err(format!("Invalid worksheet index {sheet}"));
         }
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
