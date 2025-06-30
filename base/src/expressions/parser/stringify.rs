@@ -28,6 +28,11 @@ pub enum DisplaceData {
         column: i32,
         delta: i32,
     },
+    RowMove {
+        sheet: u32,
+        row: i32,
+        delta: i32,
+    },
     ColumnMove {
         sheet: u32,
         column: i32,
@@ -156,6 +161,21 @@ pub(crate) fn stringify_reference(
                             }
                         } else if &row >= displace_row {
                             row += *delta;
+                        }
+                    }
+                }
+                DisplaceData::RowMove {
+                    sheet,
+                    row: move_row,
+                    delta,
+                } => {
+                    if sheet_index == *sheet {
+                        if row == *move_row {
+                            row += *delta;
+                        } else if (*delta > 0 && row > *move_row && row <= *move_row + *delta)
+                            || (*delta < 0 && row < *move_row && row >= *move_row + *delta)
+                        {
+                            row -= *delta;
                         }
                     }
                 }
