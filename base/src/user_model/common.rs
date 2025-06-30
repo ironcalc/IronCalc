@@ -1013,6 +1013,21 @@ impl UserModel {
         Ok(())
     }
 
+    /// Moves a column horizontally and adjusts formulas
+    pub fn move_column_action(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        self.model.move_column_action(sheet, column, delta)
+    }
+
+    /// Moves a row vertically and adjusts formulas
+    pub fn move_row_action(&mut self, sheet: u32, row: i32, delta: i32) -> Result<(), String> {
+        self.model.move_row_action(sheet, row, delta)
+    }
+
     /// Sets the width of a group of columns in a single diff list
     ///
     /// See also:
