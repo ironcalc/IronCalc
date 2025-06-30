@@ -209,6 +209,3 @@ test("move column", () => {
     assert.strictEqual(model.getCellContent(0, 6, 5), "=SUM(H3:H7)");
     assert.strictEqual(model.getCellContent(0, 7, 5), "=SUM(G3:G7)");
 });
-
-
-
