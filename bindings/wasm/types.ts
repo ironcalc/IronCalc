@@ -109,6 +109,11 @@ export interface MarkedToken {
   end: number;
 }
 
+export interface NewSheet {
+  name: string;
+  index: number;
+}
+
 export interface WorksheetProperties {
   name: string;
   color: string;
@@ -116,7 +121,7 @@ export interface WorksheetProperties {
   state: string;
 }
 
-export interface NewSheetResult {
+export interface NewSheet {
   name: string;
   sheet_index: number;
 }

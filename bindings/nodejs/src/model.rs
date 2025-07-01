@@ -33,6 +33,12 @@ pub struct Model {
   model: BaseModel,
 }
 
+#[napi(object)]
+pub struct NewSheet {
+  pub name: String,
+  pub index: u32,
+}
+
 #[napi]
 impl Model {
   #[napi(constructor)]
@@ -270,8 +276,9 @@ impl Model {
   }
 
   #[napi]
-  pub fn new_sheet(&mut self) {
-    self.model.new_sheet();
+  pub fn new_sheet(&mut self) -> NewSheet {
+    let (name, index) = self.model.new_sheet();
+    NewSheet { name, index }
   }
 
   #[napi]

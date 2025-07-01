@@ -99,3 +99,11 @@ fn new_sheet_selects_it() {
     model.new_sheet().unwrap();
     assert_eq!(model.get_selected_sheet(), 1);
 }
+
+#[test]
+fn new_sheet_returns_index_and_name() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let (name, index) = model.new_sheet().unwrap();
+    assert_eq!(name, "Sheet2");
+    assert_eq!(index, 1);
+}
