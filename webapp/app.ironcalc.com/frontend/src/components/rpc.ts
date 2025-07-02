@@ -1,3 +1,24 @@
+function sanitizeFileName(name: string): string {
+  const normalized = name.normalize("NFKC");
+
+  const safe = [...normalized]
+    .map((char) => {
+      const code = char.charCodeAt(0);
+      // Remove control chars and filesystem-unsafe chars
+      if (
+        code <= 0x1f || // ASCII control
+        code === 0x7f || // DEL
+        ["<", ">", ":", '"', "/", "\\", "|", "?", "*"].includes(char)
+      ) {
+        return "_";
+      }
+      return char;
+    })
+    .join("");
+
+  return safe.slice(0, 100).trim();
+}
+
 export async function uploadFile(
   arrayBuffer: ArrayBuffer,
   fileName: string,
@@ -30,11 +51,11 @@ export async function get_documentation_model(
 }
 
 export async function downloadModel(bytes: Uint8Array, fileName: string) {
+  const sanitizedFileName = sanitizeFileName(fileName);
   const response = await fetch("/api/download", {
     method: "POST",
     headers: {
       "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${fileName}"`,
     },
     body: bytes,
   });
@@ -49,8 +70,7 @@ export async function downloadModel(bytes: Uint8Array, fileName: string) {
   a.style.display = "none";
   a.href = url;
 
-  // Use the same filename or change as needed
-  a.download = `${fileName}.xlsx`;
+  a.download = `${sanitizedFileName}.xlsx`;
   document.body.appendChild(a);
   a.click();
 
