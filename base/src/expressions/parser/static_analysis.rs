@@ -2,15 +2,18 @@ use crate::functions::Function;
 
 use super::Node;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::OnceLock;
+
+static RE: OnceLock<Regex> = OnceLock::new();
 
 #[allow(clippy::expect_used)]
-static RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r":[A-Z]*[0-9]*$").expect("Regex is known to be valid"));
+fn get_re() -> &'static Regex {
+    RE.get_or_init(|| Regex::new(r":[A-Z]*[0-9]*$").expect("Regex is known to be valid"))
+}
 
 fn is_range_reference(s: &str) -> bool {
-    RE.is_match(s)
+    get_re().is_match(s)
 }
 
 /*
