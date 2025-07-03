@@ -5,11 +5,12 @@ use super::Node;
 use regex::Regex;
 use std::sync::OnceLock;
 
-static RE: OnceLock<Regex> = OnceLock::new();
+static RANGE_REFERENCE_REGEX: OnceLock<Regex> = OnceLock::new();
 
 #[allow(clippy::expect_used)]
 fn get_re() -> &'static Regex {
-    RE.get_or_init(|| Regex::new(r":[A-Z]*[0-9]*$").expect("Regex is known to be valid"))
+    RANGE_REFERENCE_REGEX
+        .get_or_init(|| Regex::new(r":[A-Z]*[0-9]*$").expect("Regex is known to be valid"))
 }
 
 fn is_range_reference(s: &str) -> bool {

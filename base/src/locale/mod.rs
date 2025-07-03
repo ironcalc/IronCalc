@@ -76,5 +76,5 @@ fn get_locales() -> &'static HashMap<String, Locale> {
 pub fn get_locale(id: &str) -> Result<&Locale, String> {
     get_locales()
         .get(id)
-        .ok_or_else(|| "Invalid locale".to_string())
+        .ok_or_else(|| format!("Invalid locale: '{id}'"))
 }
