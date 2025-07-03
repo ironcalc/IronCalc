@@ -1,3 +1,5 @@
+const MAX_FILENAME_LENGTH = 100;
+
 function sanitizeFileName(name: string): string {
   const normalized = name.normalize("NFKC");
 
@@ -16,7 +18,7 @@ function sanitizeFileName(name: string): string {
     })
     .join("");
 
-  return safe.slice(0, 100).trim();
+  return safe.slice(0, MAX_FILENAME_LENGTH).trim();
 }
 
 export async function uploadFile(
