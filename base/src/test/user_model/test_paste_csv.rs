@@ -167,7 +167,7 @@ fn copy_paste_internal() {
     let copy = model.copy_to_clipboard().unwrap();
     assert_eq!(
         copy.csv,
-        "42\t127\n\"A season of faith\t \"\"perfection\"\"\"\t\n"
+        "42\t127\n\"A season of faith\t \"\"perfection\"\"\""
     );
     assert_eq!(copy.range, (1, 1, 2, 2));
 

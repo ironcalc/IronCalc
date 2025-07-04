@@ -1641,7 +1641,7 @@ impl UserModel {
         .map_err(|e| format!("Error converting from utf8: '{e}'"))?;
 
         Ok(Clipboard {
-            csv,
+            csv: csv.trim().to_string(),
             data,
             sheet,
             range: (row_start, column_start, row_end, column_end),
