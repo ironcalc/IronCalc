@@ -249,6 +249,7 @@ const Editor = (options: EditorOptions) => {
           }
         }}
         onPaste={(event) => event.stopPropagation()}
+        onCopy={(event) => event.stopPropagation()}
       />
     </div>
   );
