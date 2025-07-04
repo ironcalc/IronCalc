@@ -1809,7 +1809,7 @@ impl UserModel {
         }
         self.push_diff_list(diff_list);
         // select the pasted area
-        self.set_selected_range(area.row, area.column, row, column)?;
+        self.set_selected_range(area.row, area.column, row - 1, column - 1)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
