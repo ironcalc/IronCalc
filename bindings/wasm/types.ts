@@ -234,3 +234,10 @@ export interface DefinedName {
   scope?: number;
   formula: string;
 }
+
+export interface WorksheetDimension {
+  min_row: number;
+  max_row: number;
+  min_column: number;
+  max_column: number;
+}
