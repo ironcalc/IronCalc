@@ -81,15 +81,11 @@ export async function downloadModel(bytes: Uint8Array, fileName: string) {
   a.remove();
 }
 
-export async function shareModel(
-  bytes: Uint8Array,
-  fileName: string,
-): Promise<string> {
+export async function shareModel(bytes: Uint8Array): Promise<string> {
   const response = await fetch("/api/share", {
     method: "POST",
     headers: {
       "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${fileName}"`,
     },
     body: bytes,
   });
