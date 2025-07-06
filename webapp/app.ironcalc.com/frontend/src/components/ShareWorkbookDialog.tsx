@@ -17,8 +17,7 @@ function ShareWorkbookDialog(properties: {
     const generateUrl = async () => {
       if (properties.model) {
         const bytes = properties.model.toBytes();
-        const fileName = properties.model.getName();
-        const hash = await shareModel(bytes, fileName);
+        const hash = await shareModel(bytes);
         setUrl(`${location.origin}/?model=${hash}`);
       }
     };
