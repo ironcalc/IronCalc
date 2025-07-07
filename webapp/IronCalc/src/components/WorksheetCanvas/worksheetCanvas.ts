@@ -54,6 +54,7 @@ export const defaultCellFontFamily = fonts.regular;
 export const headerFontFamily = fonts.regular;
 export const frozenSeparatorWidth = 3;
 
+type Tuple = [number, number];
 export default class WorksheetCanvas {
   sheetWidth: number;
 
@@ -93,6 +94,9 @@ export default class WorksheetCanvas {
 
   refresh: () => void;
 
+  spills: Map<string, boolean>;
+  spillCells: Map<Tuple, number>;
+
   constructor(options: CanvasSettings) {
     this.model = options.model;
     this.sheetWidth = 0;
@@ -116,6 +120,13 @@ export default class WorksheetCanvas {
     this.onRowHeightChanges = options.onRowHeightChanges;
     this.resetHeaders();
     this.cellOutlineHandle = attachOutlineHandle(this);
+    this.spills = new Map<string, boolean>();
+    this.spillCells = new Map<Tuple, number>();
+  }
+
+  removeSpills(): void {
+    this.spills.clear();
+    this.spillCells.clear();
   }
 
   setScrollPosition(scrollPosition: { left: number; top: number }): void {
@@ -318,6 +329,281 @@ export default class WorksheetCanvas {
     return left;
   }
 
+  private renderSpills(): void {
+    for (const [key, value] of this.spillCells) {
+      const [row, column] = key;
+      const selectedSheet = this.model.getSelectedSheet();
+      const [x, y] = this.getCoordinatesByCell(row, column);
+      const [x2, _] = this.getCoordinatesByCell(row, value);
+      const width = this.model.getColumnWidth(selectedSheet, column);
+      const textWidth = x2 - x + width;
+      const height = this.model.getRowHeight(selectedSheet, row);
+
+      const style = this.model.getCellStyle(selectedSheet, row, column);
+
+      const fontSize = style.font?.sz || 13;
+      let font = `${fontSize}px ${defaultCellFontFamily}`;
+      let textColor = defaultTextColor;
+      if (style.font) {
+        textColor = style.font.color;
+        font = style.font.b ? `bold ${font}` : `400 ${font}`;
+        if (style.font.i) {
+          font = `italic ${font}`;
+        }
+      }
+      let horizontalAlign = "general";
+      if (style.alignment?.horizontal) {
+        horizontalAlign = style.alignment.horizontal;
+      }
+      let verticalAlign = "bottom";
+      if (style.alignment?.vertical) {
+        verticalAlign = style.alignment.vertical;
+      }
+      const wrapText = style.alignment?.wrap_text || false;
+
+      const context = this.ctx;
+      context.font = font;
+      context.fillStyle = textColor;
+
+      // Number = 1,
+      // Text = 2,
+      // LogicalValue = 4,
+      // ErrorValue = 16,
+      // Array = 64,
+      // CompoundData = 128,
+
+      const cellType = this.model.getCellType(selectedSheet, row, column);
+      const fullText = this.model.getFormattedCellValue(
+        selectedSheet,
+        row,
+        column,
+      );
+
+      const padding = 4;
+      if (horizontalAlign === "general") {
+        if (cellType === 1) {
+          horizontalAlign = "right";
+        } else if (cellType === 4) {
+          horizontalAlign = "center";
+        } else {
+          horizontalAlign = "left";
+        }
+      }
+
+      // Create a rectangular clipping region
+      const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
+      if (frozenColumns > 0 && column > frozenColumns) {
+        // Create a rectangular clipping region
+        const [x2, y2] = this.getCoordinatesByCell(row, frozenColumns);
+        const width2 = this.model.getColumnWidth(selectedSheet, frozenColumns);
+        context.save();
+        context.beginPath();
+        context.rect(Math.max(x2 + width2 + 4, x), y2, textWidth, height);
+        context.clip();
+      } else {
+        context.save();
+        context.beginPath();
+        context.rect(x, y, textWidth, height);
+        context.clip();
+      }
+
+      // Is there any better to determine the line height?
+      const lineHeight = fontSize * 1.5;
+      const lines = computeWrappedLines(
+        fullText,
+        wrapText,
+        context,
+        width - padding,
+      );
+      const lineCount = lines.length;
+
+      lines.forEach((text, line) => {
+        const textWidth = context.measureText(text).width;
+        let textX: number;
+        let textY: number;
+        // The idea is that in the present font-size and default row heigh,
+        // top/bottom and center horizontalAlign coincide
+        const verticalPadding = 4;
+        if (horizontalAlign === "right") {
+          textX = width - padding + x - textWidth / 2;
+        } else if (horizontalAlign === "center") {
+          textX = x + width / 2;
+        } else {
+          // left aligned
+          textX = padding + x + textWidth / 2;
+        }
+        if (verticalAlign === "bottom") {
+          textY =
+            y +
+            height -
+            fontSize / 2 -
+            verticalPadding +
+            (line - lineCount + 1) * lineHeight;
+        } else if (verticalAlign === "center") {
+          textY = y + height / 2 + (line + (1 - lineCount) / 2) * lineHeight;
+        } else {
+          // aligned top
+          textY = y + fontSize / 2 + verticalPadding + line * lineHeight;
+        }
+        context.fillText(text, textX, textY);
+        if (style.font) {
+          if (style.font.u) {
+            // There are no text-decoration in canvas. You have to do the underline yourself.
+            const offset = Math.floor(fontSize / 2);
+            context.beginPath();
+            context.strokeStyle = textColor;
+            context.lineWidth = 1;
+            context.moveTo(textX - textWidth / 2, textY + offset);
+            context.lineTo(textX + textWidth / 2, textY + offset);
+            context.stroke();
+          }
+          if (style.font.strike) {
+            // There are no text-decoration in canvas. You have to do the strikethrough yourself.
+            context.beginPath();
+            context.strokeStyle = textColor;
+            context.lineWidth = 1;
+            context.moveTo(textX - textWidth / 2, textY);
+            context.lineTo(textX + textWidth / 2, textY);
+            context.stroke();
+          }
+        }
+      });
+      context.restore();
+    }
+  }
+
+  private markPreSpillCells() {
+    const { topLeftCell, bottomRightCell } = this.getVisibleCells();
+    const selectedSheet = this.model.getSelectedSheet();
+    for (let row = topLeftCell.row; row <= bottomRightCell.row; row += 1) {
+      const column = this.model.getLastNonEmptyInRowBeforeColumn(
+        selectedSheet,
+        row,
+        topLeftCell.column + 1,
+      );
+      if (!column) {
+        continue;
+      }
+      const cellType = this.model.getCellType(selectedSheet, row, column);
+      const fullText = this.model.getFormattedCellValue(
+        selectedSheet,
+        row,
+        column,
+      );
+      if (fullText === "") {
+        continue;
+      }
+      const [x, y] = this.getCoordinatesByCell(row, column);
+      const width = this.model.getColumnWidth(selectedSheet, column);
+      const height = this.model.getRowHeight(selectedSheet, row);
+      const style = this.model.getCellStyle(selectedSheet, row, column);
+      const fontSize = style.font?.sz || 13;
+      const context = this.ctx;
+
+      let font = `${fontSize}px ${defaultCellFontFamily}`;
+      if (style.font) {
+        font = style.font.b ? `bold ${font}` : `400 ${font}`;
+        if (style.font.i) {
+          font = `italic ${font}`;
+        }
+      }
+      let horizontalAlign = "general";
+      if (style.alignment?.horizontal) {
+        horizontalAlign = style.alignment.horizontal;
+      }
+      let verticalAlign = "bottom";
+      if (style.alignment?.vertical) {
+        verticalAlign = style.alignment.vertical;
+      }
+      const wrapText = style.alignment?.wrap_text || false;
+      if (wrapText) {
+        continue;
+      }
+
+      context.font = font;
+
+      const padding = 4;
+      if (horizontalAlign === "general") {
+        if (cellType === 1) {
+          horizontalAlign = "right";
+        } else if (cellType === 4) {
+          horizontalAlign = "center";
+        } else {
+          horizontalAlign = "left";
+        }
+      }
+
+      // Is there any better to determine the line height?
+      const lineHeight = fontSize * 1.5;
+      const lines = computeWrappedLines(
+        fullText,
+        wrapText,
+        context,
+        width - padding,
+      );
+      const lineCount = lines.length;
+      let maxWidth = 0;
+      const textList: [string, number, number, number][] = [];
+
+      lines.forEach((text, line) => {
+        const textWidth = context.measureText(text).width;
+        let textX: number;
+        let textY: number;
+        // The idea is that in the present font-size and default row heigh,
+        // top/bottom and center horizontalAlign coincide
+        const verticalPadding = 4;
+        if (horizontalAlign === "right") {
+          textX = width - padding + x - textWidth / 2;
+        } else if (horizontalAlign === "center") {
+          textX = x + width / 2;
+        } else {
+          // left aligned
+          textX = padding + x + textWidth / 2;
+        }
+        if (verticalAlign === "bottom") {
+          textY =
+            y +
+            height -
+            fontSize / 2 -
+            verticalPadding +
+            (line - lineCount + 1) * lineHeight;
+        } else if (verticalAlign === "center") {
+          textY = y + height / 2 + (line + (1 - lineCount) / 2) * lineHeight;
+        } else {
+          // aligned top
+          textY = y + fontSize / 2 + verticalPadding + line * lineHeight;
+        }
+        textList.push([text, textX, textY, textWidth]);
+        maxWidth = Math.max(maxWidth, textX + textWidth / 2 - x);
+      });
+      if (
+        maxWidth > width &&
+        this.model.getFormattedCellValue(selectedSheet, row, column + 1) === ""
+      ) {
+        let extraWidth = maxWidth - width;
+        let spillColumn = column + 1;
+        // Keep expanding the spill to the right until:
+        // 1. There is a non-empty cell
+        // 2. Reaches the end of the row
+        // 3. There is the end of frozen columns
+        const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
+        while (
+          extraWidth > 0 &&
+          this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
+            "" &&
+          spillColumn <= LAST_COLUMN &&
+          ((column < frozenColumns && spillColumn <= frozenColumns) ||
+            column > frozenColumns)
+        ) {
+          extraWidth -= this.model.getColumnWidth(selectedSheet, spillColumn);
+          this.spills.set(`${row}-${spillColumn}`, true);
+          spillColumn += 1;
+        }
+        this.spillCells.set([row, column], spillColumn - 1);
+      }
+    }
+  }
+
   private renderCell(
     row: number,
     column: number,
@@ -405,12 +691,14 @@ export default class WorksheetCanvas {
         borderLeftColor = leftStyle.fill.fg_color;
       }
     }
-    context.beginPath();
-    context.strokeStyle = borderLeftColor;
-    context.lineWidth = borderLeftWidth;
-    context.moveTo(x, y);
-    context.lineTo(x, y + height);
-    context.stroke();
+    if (this.spills.get(`${row}-${column}`) !== true) {
+      context.beginPath();
+      context.strokeStyle = borderLeftColor;
+      context.lineWidth = borderLeftWidth;
+      context.moveTo(x, y);
+      context.lineTo(x, y + height);
+      context.stroke();
+    }
 
     let borderTopColor = cellGridColor;
     let borderTopWidth = 1;
@@ -464,6 +752,10 @@ export default class WorksheetCanvas {
       row,
       column,
     );
+    if (this.spills.get(`${row}-${column}`)) {
+      // If the cell is empty and spill from previous we skip it
+      // return;
+    }
     const padding = 4;
     if (horizontalAlign === "general") {
       if (cellType === 1) {
@@ -490,6 +782,8 @@ export default class WorksheetCanvas {
       width - padding,
     );
     const lineCount = lines.length;
+    let maxWidth = 0;
+    const textList: [string, number, number, number][] = [];
 
     lines.forEach((text, line) => {
       const textWidth = context.measureText(text).width;
@@ -519,29 +813,59 @@ export default class WorksheetCanvas {
         // aligned top
         textY = y + fontSize / 2 + verticalPadding + line * lineHeight;
       }
-      context.fillText(text, textX, textY);
-      if (style.font) {
-        if (style.font.u) {
-          // There are no text-decoration in canvas. You have to do the underline yourself.
-          const offset = Math.floor(fontSize / 2);
-          context.beginPath();
-          context.strokeStyle = textColor;
-          context.lineWidth = 1;
-          context.moveTo(textX - textWidth / 2, textY + offset);
-          context.lineTo(textX + textWidth / 2, textY + offset);
-          context.stroke();
-        }
-        if (style.font.strike) {
-          // There are no text-decoration in canvas. You have to do the strikethrough yourself.
-          context.beginPath();
-          context.strokeStyle = textColor;
-          context.lineWidth = 1;
-          context.moveTo(textX - textWidth / 2, textY);
-          context.lineTo(textX + textWidth / 2, textY);
-          context.stroke();
+      textList.push([text, textX, textY, textWidth]);
+      maxWidth = Math.max(maxWidth, textX + textWidth / 2 - x);
+    });
+    if (
+      maxWidth > width &&
+      this.model.getFormattedCellValue(selectedSheet, row, column + 1) === ""
+    ) {
+      let extraWidth = maxWidth - width;
+      let spillColumn = column + 1;
+      // Keep expanding the spill to the right until:
+      // 1. There is a non-empty cell
+      // 2. Reaches the end of the row
+      // 3. There is the end of frozen columns
+      const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
+      while (
+        extraWidth > 0 &&
+        this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
+          "" &&
+        spillColumn <= LAST_COLUMN &&
+        ((column < frozenColumns && spillColumn <= frozenColumns) ||
+          column > frozenColumns)
+      ) {
+        extraWidth -= this.model.getColumnWidth(selectedSheet, spillColumn);
+        this.spills.set(`${row}-${spillColumn}`, true);
+        spillColumn += 1;
+      }
+      this.spillCells.set([row, column], spillColumn - 1);
+    } else {
+      for (const [text, textX, textY, textWidth] of textList) {
+        context.fillText(text, textX, textY);
+        if (style.font) {
+          if (style.font.u) {
+            // There are no text-decoration in canvas. You have to do the underline yourself.
+            const offset = Math.floor(fontSize / 2);
+            context.beginPath();
+            context.strokeStyle = textColor;
+            context.lineWidth = 1;
+            context.moveTo(textX - textWidth / 2, textY + offset);
+            context.lineTo(textX + textWidth / 2, textY + offset);
+            context.stroke();
+          }
+          if (style.font.strike) {
+            // There are no text-decoration in canvas. You have to do the strikethrough yourself.
+            context.beginPath();
+            context.strokeStyle = textColor;
+            context.lineWidth = 1;
+            context.moveTo(textX - textWidth / 2, textY);
+            context.lineTo(textX + textWidth / 2, textY);
+            context.stroke();
+          }
         }
       }
-    });
+    }
 
     // remove the clipping region
     context.restore();
@@ -1410,6 +1734,7 @@ export default class WorksheetCanvas {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     this.removeHandles();
+    this.removeSpills();
 
     const { topLeftCell, bottomRightCell } = this.getVisibleCells();
 
@@ -1495,6 +1820,8 @@ export default class WorksheetCanvas {
       y += rowHeight;
     }
 
+    this.markPreSpillCells();
+
     // Render all remaining cells (bottom-right pane)
     y = frozenY;
     for (let { row } = topLeftCell; row <= bottomRightCell.row; row += 1) {
@@ -1513,6 +1840,8 @@ export default class WorksheetCanvas {
       }
       y += rowHeight;
     }
+
+    this.renderSpills();
 
     // Draw column headers
     this.renderColumnHeaders(

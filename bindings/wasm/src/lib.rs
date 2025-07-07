@@ -690,4 +690,16 @@ impl Model {
             .delete_defined_name(name, scope)
             .map_err(|e| to_js_error(e.to_string()))
     }
+
+    #[wasm_bindgen(js_name = "getLastNonEmptyInRowBeforeColumn")]
+    pub fn get_last_non_empty_in_row_before_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, JsError> {
+        self.model
+            .get_last_non_empty_in_row_before_column(sheet, row, column)
+            .map_err(to_js_error)
+    }
 }

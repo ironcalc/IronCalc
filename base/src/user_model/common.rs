@@ -13,8 +13,7 @@ use crate::{
     },
     model::Model,
     types::{
-        Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, SheetState,
-        Style, VerticalAlignment,
+        Alignment, BorderItem, Cell, CellType, Col, HorizontalAlignment, SheetProperties, SheetState, Style, VerticalAlignment
     },
     utils::is_valid_hex_color,
 };
@@ -1600,6 +1599,35 @@ impl UserModel {
     /// Returns true in the grid lines for
     pub fn get_show_grid_lines(&self, sheet: u32) -> Result<bool, String> {
         Ok(self.model.workbook.worksheet(sheet)?.show_grid_lines)
+    }
+
+    /// Returns the largest column in the row less than a column whose cell has a non empty value.
+    /// If the row is empty, it returns `None`.
+    /// This is useful when rendering a part of a worksheet to know which cells spill over
+    pub fn get_last_non_empty_in_row_before_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, String> {
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let data = worksheet.sheet_data.get(&row);
+        if let Some(row_data) = data {
+            let mut last_column = None;
+            for &col in row_data.keys() {
+                if col < column {
+                    if let Some(cell) = worksheet.cell(row, col) {
+                        if matches!(cell, Cell::EmptyCell{..}) {
+                            continue;
+                        }
+                    }
+                    last_column = Some(col);
+                }
+            }
+            Ok(last_column)
+        } else {
+            Ok(None)
+        }
     }
 
     /// Returns a copy of the selected area
