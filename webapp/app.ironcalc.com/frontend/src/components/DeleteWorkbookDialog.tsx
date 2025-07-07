@@ -12,19 +12,9 @@ function DeleteWorkbookDialog(properties: DeleteWorkbookDialogProperties) {
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const root = document.getElementById("root");
-    if (root) {
-      root.style.filter = "blur(2px)";
-    }
     if (deleteButtonRef.current) {
       deleteButtonRef.current.focus();
     }
-    return () => {
-      const root = document.getElementById("root");
-      if (root) {
-        root.style.filter = "none";
-      }
-    };
   }, []);
 
   return (
