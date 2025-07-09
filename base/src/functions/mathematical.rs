@@ -501,4 +501,48 @@ impl Model {
         }
         CalcResult::Number((x + random() * (y - x)).floor())
     }
+
+    pub(crate) fn fn_percentof(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // Function is `=PERCENTOF(array1, array2)` == `=PERCENTOF((=SUM(subset) / =SUM(total)) * 100)`
+        // Implementation is the same as in Excel docs found here:
+        // https://support.microsoft.com/en-us/office/percentof-function-7c66da0a-ac30-45d0-bfc7-834a8bd7c962
+        // `Note: PERCENTOF is logically equivalent to =SUM(data_subset)/SUM(data_all)`
+        // They rely on formatting for converting into a percentage e.g. 0.1 = SUM(10) / SUM(100) before formatting
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let subset_array: CalcResult = self.fn_sum(&[args[0].clone()], cell);
+        let total_array: CalcResult = self.fn_sum(&[args[1].clone()], cell);
+
+        let subset_total = subset_array.into_number();
+
+        let subset_value = match subset_total {
+            Some(number) => number,
+            None => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "SUM for Subset Total cannot be calculated, results in a null value!"
+                        .to_string(),
+                }
+            }
+        };
+
+        let total_total = total_array.into_number();
+
+        let total_value = match total_total {
+            Some(number) => number,
+            None => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "SUM for Total cannot be calculated, results in a null value!"
+                        .to_string(),
+                }
+            }
+        };
+
+        CalcResult::Number(subset_value / total_value)
+    }
 }
