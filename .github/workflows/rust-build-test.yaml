@@ -18,6 +18,12 @@ jobs:
 
             - name: Install wasm-pack
               run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+           
+            - name: Install wasm-bindgen-cli
+              run: cargo install -f wasm-bindgen-cli --version 0.2.100
+            
+            - name: Add wasm32 target
+              run: rustup target add wasm32-unknown-unknown
 
             - name: Build
               run: cargo build --release --verbose
