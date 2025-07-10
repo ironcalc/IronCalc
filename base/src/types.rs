@@ -64,7 +64,7 @@ pub struct DefinedName {
 /// * state:
 ///   18.18.68 ST_SheetState (Sheet Visibility Types)
 ///   hidden, veryHidden, visible
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Serialize)]
 pub enum SheetState {
     Visible,
     Hidden,
@@ -84,7 +84,7 @@ impl Display for SheetState {
 /// Represents the state of the worksheet as seen by the user. This includes
 /// details such as the currently selected cell, the visible range, and the
 /// position of the viewport.
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone, Serialize)]
 pub struct WorksheetView {
     /// The row index of the currently selected cell.
     pub row: i32,
@@ -99,7 +99,7 @@ pub struct WorksheetView {
 }
 
 /// Internal representation of a worksheet Excel object
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone, Serialize)]
 pub struct Worksheet {
     pub dimension: String,
     pub cols: Vec<Col>,
@@ -124,7 +124,7 @@ pub struct Worksheet {
 pub type SheetData = HashMap<i32, HashMap<i32, Cell>>;
 
 // ECMA-376-1:2016 section 18.3.1.73
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone, Serialize)]
 pub struct Row {
     /// Row index
     pub r: i32,
@@ -136,7 +136,7 @@ pub struct Row {
 }
 
 // ECMA-376-1:2016 section 18.3.1.13
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone, Serialize)]
 pub struct Col {
     // Column definitions are defined on ranges, unlike rows which store unique, per-row entries.
     /// First column affected by this record. Settings apply to column in \[min, max\] range.
@@ -159,7 +159,7 @@ pub enum CellType {
     CompoundData = 128,
 }
 
-#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, PartialEq, Serialize)]
 pub enum Cell {
     EmptyCell {
         s: i32,
@@ -226,7 +226,7 @@ impl Default for Cell {
     }
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Serialize)]
 pub struct Comment {
     pub text: String,
     pub author_name: String,

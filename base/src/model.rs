@@ -1797,6 +1797,20 @@ impl Model {
         }
     }
 
+    /// Returns a list of all cells that have been changed or are being evaluated
+    pub fn get_changed_cells(&self) -> Vec<crate::user_model::history::CellReference> {
+        self.cells
+            .keys()
+            .map(
+                |&(sheet, row, column)| crate::user_model::history::CellReference {
+                    sheet,
+                    row,
+                    column,
+                },
+            )
+            .collect()
+    }
+
     /// Removes the content of the cell but leaves the style.
     ///
     /// See also:
