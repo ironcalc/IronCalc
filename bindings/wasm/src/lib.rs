@@ -216,6 +216,44 @@ impl Model {
         self.model.delete_column(sheet, column).map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "insertRows")]
+    pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), JsError> {
+        self.model
+            .insert_rows(sheet, row, row_count)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "insertColumns")]
+    pub fn insert_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .insert_columns(sheet, column, column_count)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "deleteRows")]
+    pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), JsError> {
+        self.model
+            .delete_rows(sheet, row, row_count)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "deleteColumns")]
+    pub fn delete_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .delete_columns(sheet, column, column_count)
+            .map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "setRowsHeight")]
     pub fn set_rows_height(
         &mut self,

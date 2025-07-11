@@ -130,5 +130,47 @@ test("autofill", () => {
     assert.strictEqual(result, "23");
 });
 
+test('insertRows shifts cells', () => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    model.setUserInput(0, 1, 1, '42');
+    model.insertRows(0, 1, 1);
+
+    assert.strictEqual(model.getCellContent(0, 1, 1), '');
+    assert.strictEqual(model.getCellContent(0, 2, 1), '42');
+});
+
+test('insertColumns shifts cells', () => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    model.setUserInput(0, 1, 1, 'A');
+    model.setUserInput(0, 1, 2, 'B');
+
+    model.insertColumns(0, 2, 1);
+
+    assert.strictEqual(model.getCellContent(0, 1, 2), '');
+    assert.strictEqual(model.getCellContent(0, 1, 3), 'B');
+});
+
+test('deleteRows removes cells', () => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    model.setUserInput(0, 1, 1, '1');
+    model.setUserInput(0, 2, 1, '2');
+
+    model.deleteRows(0, 1, 1);
+
+    assert.strictEqual(model.getCellContent(0, 1, 1), '2');
+    assert.strictEqual(model.getCellContent(0, 2, 1), '');
+});
+
+test('deleteColumns removes cells', () => {
+    const model = new Model('Workbook1', 'en', 'UTC');
+    model.setUserInput(0, 1, 1, 'A');
+    model.setUserInput(0, 1, 2, 'B');
+
+    model.deleteColumns(0, 1, 1);
+
+    assert.strictEqual(model.getCellContent(0, 1, 1), 'B');
+    assert.strictEqual(model.getCellContent(0, 1, 2), '');
+});
+
 
 
