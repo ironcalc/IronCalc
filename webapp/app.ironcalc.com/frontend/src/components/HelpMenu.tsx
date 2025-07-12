@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 
 export function HelpMenu() {
   const [isMenuOpen, setMenuOpen] = useState(false);
-  const anchorElement = useRef<HTMLDivElement>(null);
+  const anchorElement = useRef<HTMLButtonElement>(null);
 
   const handleClick = () => {
     setMenuOpen(true);
@@ -18,9 +18,11 @@ export function HelpMenu() {
   return (
     <div>
       <HelpButton
+        type="button"
         ref={anchorElement}
         id="help-button"
         aria-controls={isMenuOpen ? "help-menu" : undefined}
+        aria-haspopup="true"
         onClick={handleClick}
         $isActive={isMenuOpen}
       >
@@ -52,7 +54,11 @@ export function HelpMenu() {
         <MenuItemWrapper
           onClick={() => {
             handleClose();
-            window.open("https://docs.ironcalc.com", "_blank");
+            window.open(
+              "https://docs.ironcalc.com",
+              "_blank",
+              "noopener,noreferrer",
+            );
           }}
         >
           <StyledIcon>
@@ -66,6 +72,7 @@ export function HelpMenu() {
             window.open(
               "https://docs.ironcalc.com/features/keyboard-shortcuts.html",
               "_blank",
+              "noopener,noreferrer",
             );
           }}
         >
@@ -79,7 +86,7 @@ export function HelpMenu() {
   );
 }
 
-const HelpButton = styled.div<{ $isActive?: boolean }>`
+const HelpButton = styled.button<{ $isActive?: boolean }>`
   display: flex;
   align-items: center;
   font-size: 12px;
@@ -88,6 +95,8 @@ const HelpButton = styled.div<{ $isActive?: boolean }>`
   border-radius: 4px;
   cursor: pointer;
   background-color: ${(props) => (props.$isActive ? "#e6e6e6" : "transparent")};
+  border: none;
+  background: none;
   &:hover {
     background-color: #f2f2f2;
   }
