@@ -378,6 +378,16 @@ impl Model {
         }
     }
 
+    single_number_fn!(fn_log10, |f| if f <= 0.0 {
+        Err(Error::NUM)
+    } else {
+        Ok(f64::log10(f))
+    });
+    single_number_fn!(fn_ln, |f| if f <= 0.0 {
+        Err(Error::NUM)
+    } else {
+        Ok(f64::ln(f))
+    });
     single_number_fn!(fn_sin, |f| Ok(f64::sin(f)));
     single_number_fn!(fn_cos, |f| Ok(f64::cos(f)));
     single_number_fn!(fn_tan, |f| Ok(f64::tan(f)));
@@ -429,6 +439,47 @@ impl Model {
             };
         }
         CalcResult::Number(f64::atan2(y, x))
+    }
+
+    pub(crate) fn fn_log(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let n_args = args.len();
+        if !(1..=2).contains(&n_args) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let x = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let y = if n_args == 1 {
+            10.0
+        } else {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        };
+        if x <= 0.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Number must be positive".to_string(),
+            };
+        }
+        if y == 1.0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Logarithm base cannot be 1".to_string(),
+            };
+        }
+        if y <= 0.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Logarithm base must be positive".to_string(),
+            };
+        }
+        CalcResult::Number(f64::log(x, y))
     }
 
     pub(crate) fn fn_power(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
