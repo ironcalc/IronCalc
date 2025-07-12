@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::expressions::utils::column_to_number;
 use crate::language::get_language;
 use crate::locale::get_locale;
 
@@ -683,5 +684,31 @@ fn test_comparisons() {
     assert_eq!(lx.next_token(), Number(6.0));
     assert_eq!(lx.next_token(), Compare(OpCompare::NonEqual));
     assert_eq!(lx.next_token(), Number(7.0));
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_log10_is_cell_reference() {
+    let mut lx = new_lexer("LOG10", true);
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: None,
+            column: column_to_number("LOG").unwrap(),
+            row: 10,
+            absolute_column: false,
+            absolute_row: false,
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+}
+
+#[test]
+fn test_log10_is_function() {
+    let mut lx = new_lexer("LOG10(100)", true);
+    assert_eq!(lx.next_token(), Ident("LOG10".to_string()));
+    assert_eq!(lx.next_token(), LeftParenthesis);
+    assert_eq!(lx.next_token(), Number(100.0));
+    assert_eq!(lx.next_token(), RightParenthesis);
     assert_eq!(lx.next_token(), EOF);
 }
