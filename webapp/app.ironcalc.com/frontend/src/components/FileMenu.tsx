@@ -15,7 +15,7 @@ export function FileMenu(props: {
 }) {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isImportMenuOpen, setImportMenuOpen] = useState(false);
-  const anchorElement = useRef<HTMLDivElement>(null);
+  const anchorElement = useRef<HTMLButtonElement>(null);
   const models = getModelsMetadata();
   const uuids = Object.keys(models);
   const selectedUuid = getSelectedUuid();
@@ -56,10 +56,12 @@ export function FileMenu(props: {
   return (
     <>
       <FileMenuWrapper
+        type="button"
         id="file-menu-button"
         onClick={(): void => setMenuOpen(true)}
         ref={anchorElement}
         $isActive={isMenuOpen}
+        aria-haspopup="true"
       >
         File
       </FileMenuWrapper>
@@ -103,13 +105,11 @@ export function FileMenu(props: {
           </StyledIcon>
           <MenuItemText>Import</MenuItemText>
         </MenuItemWrapper>
-        <MenuItemWrapper>
+        <MenuItemWrapper onClick={props.onDownload}>
           <StyledIcon>
             <FileDown />
           </StyledIcon>
-          <MenuItemText onClick={props.onDownload}>
-            Download (.xlsx)
-          </MenuItemText>
+          <MenuItemText>Download (.xlsx)</MenuItemText>
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
@@ -192,7 +192,7 @@ const MenuItemWrapper = styled(MenuItem)`
   height: 32px;
 `;
 
-const FileMenuWrapper = styled.div<{ $isActive?: boolean }>`
+const FileMenuWrapper = styled.button<{ $isActive?: boolean }>`
   display: flex;
   align-items: center;
   font-size: 12px;
@@ -201,6 +201,8 @@ const FileMenuWrapper = styled.div<{ $isActive?: boolean }>`
   border-radius: 4px;
   cursor: pointer;
   background-color: ${(props) => (props.$isActive ? "#e6e6e6" : "transparent")};
+  border: none;
+  background: none;
   &:hover {
     background-color: #f2f2f2;
   }
