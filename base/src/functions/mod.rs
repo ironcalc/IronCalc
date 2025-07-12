@@ -54,6 +54,8 @@ pub enum Function {
     Columns,
     Cos,
     Cosh,
+    Log10,
+    Ln,
     Max,
     Min,
     Pi,
@@ -534,6 +536,9 @@ impl Function {
             "POWER" => Some(Function::Power),
             "ATAN2" => Some(Function::Atan2),
 
+            "LN" => Some(Function::Ln),
+            "LOG10" => Some(Function::Log10),
+
             "MAX" => Some(Function::Max),
             "MIN" => Some(Function::Min),
             "PRODUCT" => Some(Function::Product),
@@ -734,6 +739,8 @@ impl fmt::Display for Function {
             Function::Switch => write!(f, "SWITCH"),
             Function::True => write!(f, "TRUE"),
             Function::Xor => write!(f, "XOR"),
+            Function::Log10 => write!(f, "LOG10"),
+            Function::Ln => write!(f, "LN"),
             Function::Sin => write!(f, "SIN"),
             Function::Cos => write!(f, "COS"),
             Function::Tan => write!(f, "TAN"),
@@ -961,6 +968,8 @@ impl Model {
             Function::True => self.fn_true(args, cell),
             Function::Xor => self.fn_xor(args, cell),
             // Math and trigonometry
+            Function::Log10 => self.fn_log10(args, cell),
+            Function::Ln => self.fn_ln(args, cell),
             Function::Sin => self.fn_sin(args, cell),
             Function::Cos => self.fn_cos(args, cell),
             Function::Tan => self.fn_tan(args, cell),

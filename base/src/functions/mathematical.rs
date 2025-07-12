@@ -378,6 +378,16 @@ impl Model {
         }
     }
 
+    single_number_fn!(fn_log10, |f| if f < 0.0 {
+        Err(Error::NUM)
+    } else {
+        Ok(f64::log10(f))
+    });
+    single_number_fn!(fn_ln, |f| if f < 0.0 {
+        Err(Error::NUM)
+    } else {
+        Ok(f64::ln(f))
+    });
     single_number_fn!(fn_sin, |f| Ok(f64::sin(f)));
     single_number_fn!(fn_cos, |f| Ok(f64::cos(f)));
     single_number_fn!(fn_tan, |f| Ok(f64::tan(f)));
