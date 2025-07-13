@@ -14,6 +14,8 @@ import {
   ArrowUpToLine,
   Bold,
   ChevronDown,
+  DecimalsArrowLeft,
+  DecimalsArrowRight,
   Euro,
   Grid2X2,
   Grid2x2Check,
@@ -36,11 +38,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ArrowMiddleFromLine,
-  DecimalPlacesDecreaseIcon,
-  DecimalPlacesIncreaseIcon,
-} from "../../icons";
+import { ArrowMiddleFromLine } from "../../icons";
 import { theme } from "../../theme";
 import BorderPicker from "../BorderPicker/BorderPicker";
 import ColorPicker from "../ColorPicker/ColorPicker";
@@ -168,7 +166,7 @@ function Toolbar(properties: ToolbarProperties) {
         disabled={!canEdit}
         title={t("toolbar.decimal_places_decrease")}
       >
-        <DecimalPlacesDecreaseIcon />
+        <DecimalsArrowLeft />
       </StyledButton>
       <StyledButton
         type="button"
@@ -181,7 +179,7 @@ function Toolbar(properties: ToolbarProperties) {
         disabled={!canEdit}
         title={t("toolbar.decimal_places_increase")}
       >
-        <DecimalPlacesIncreaseIcon />
+        <DecimalsArrowRight />
       </StyledButton>
       <FormatMenu
         numFmt={properties.numFmt}
