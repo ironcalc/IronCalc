@@ -858,38 +858,6 @@ impl UserModel {
         Ok(())
     }
 
-    /// Inserts a row
-    ///
-    /// See also:
-    /// * [Model::insert_rows]
-    pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        self.insert_rows(sheet, row, 1)
-    }
-
-    /// Deletes a row
-    ///
-    /// See also:
-    /// * [Model::delete_rows]
-    pub fn delete_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        self.delete_rows(sheet, row, 1)
-    }
-
-    /// Inserts a column
-    ///
-    /// See also:
-    /// * [Model::insert_columns]
-    pub fn insert_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        self.insert_columns(sheet, column, 1)
-    }
-
-    /// Deletes a column
-    ///
-    /// See also:
-    /// * [Model::delete_columns]
-    pub fn delete_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        self.delete_columns(sheet, column, 1)
-    }
-
     /// Inserts several rows at once
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         let mut diff_list = Vec::new();

@@ -62,7 +62,7 @@ fn insert_remove_rows() {
     assert!(model.set_rows_height(0, 5, 5, 3.0 * height).is_ok());
 
     // remove the row
-    assert!(model.delete_row(0, 5).is_ok());
+    assert!(model.delete_rows(0, 5, 1).is_ok());
     // Row 5 has now the normal height
     assert_eq!(model.get_row_height(0, 5), Ok(height));
     // There is no value in A5
@@ -99,7 +99,7 @@ fn insert_remove_columns() {
     assert_eq!(model.get_column_width(0, 5).unwrap(), 3.0 * column_width);
 
     // remove the column
-    assert!(model.delete_column(0, 5).is_ok());
+    assert!(model.delete_columns(0, 5, 1).is_ok());
     // Column 5 has now the normal width
     assert_eq!(model.get_column_width(0, 5), Ok(column_width));
     // There is no value in E5
