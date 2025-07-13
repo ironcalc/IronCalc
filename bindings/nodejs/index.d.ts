@@ -59,10 +59,10 @@ export declare class UserModel {
   setSheetColor(sheet: number, color: string): void
   rangeClearAll(sheet: number, startRow: number, startColumn: number, endRow: number, endColumn: number): void
   rangeClearContents(sheet: number, startRow: number, startColumn: number, endRow: number, endColumn: number): void
-  insertRow(sheet: number, row: number): void
-  insertColumn(sheet: number, column: number): void
-  deleteRow(sheet: number, row: number): void
-  deleteColumn(sheet: number, column: number): void
+  insertRows(sheet: number, row: number, rowCount: number): void
+  insertColumns(sheet: number, column: number, columnCount: number): void
+  deleteRows(sheet: number, row: number, rowCount: number): void
+  deleteColumns(sheet: number, column: number, columnCount: number): void
   setRowHeight(sheet: number, row: number, height: number): void
   setColumnWidth(sheet: number, column: number, width: number): void
   getRowHeight(sheet: number, row: number): number

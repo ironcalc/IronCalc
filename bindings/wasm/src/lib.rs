@@ -196,26 +196,6 @@ impl Model {
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "insertRow")]
-    pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), JsError> {
-        self.model.insert_row(sheet, row).map_err(to_js_error)
-    }
-
-    #[wasm_bindgen(js_name = "insertColumn")]
-    pub fn insert_column(&mut self, sheet: u32, column: i32) -> Result<(), JsError> {
-        self.model.insert_column(sheet, column).map_err(to_js_error)
-    }
-
-    #[wasm_bindgen(js_name = "deleteRow")]
-    pub fn delete_row(&mut self, sheet: u32, row: i32) -> Result<(), JsError> {
-        self.model.delete_row(sheet, row).map_err(to_js_error)
-    }
-
-    #[wasm_bindgen(js_name = "deleteColumn")]
-    pub fn delete_column(&mut self, sheet: u32, column: i32) -> Result<(), JsError> {
-        self.model.delete_column(sheet, column).map_err(to_js_error)
-    }
-
     #[wasm_bindgen(js_name = "insertRows")]
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), JsError> {
         self.model
