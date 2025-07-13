@@ -863,11 +863,7 @@ impl UserModel {
     /// See also:
     /// * [Model::insert_rows]
     pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        let diff_list = vec![Diff::InsertRow { sheet, row }];
-        self.push_diff_list(diff_list);
-        self.model.insert_rows(sheet, row, 1)?;
-        self.evaluate_if_not_paused();
-        Ok(())
+        self.insert_rows(sheet, row, 1)
     }
 
     /// Deletes a row
@@ -875,31 +871,7 @@ impl UserModel {
     /// See also:
     /// * [Model::delete_rows]
     pub fn delete_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        let mut row_data = None;
-        let worksheet = self.model.workbook.worksheet(sheet)?;
-        for rd in &worksheet.rows {
-            if rd.r == row {
-                row_data = Some(rd.clone());
-                break;
-            }
-        }
-        let data = match worksheet.sheet_data.get(&row) {
-            Some(s) => s.clone(),
-            None => return Err(format!("Row number '{row}' is not valid.")),
-        };
-        let old_data = Box::new(RowData {
-            row: row_data,
-            data,
-        });
-        let diff_list = vec![Diff::DeleteRow {
-            sheet,
-            row,
-            old_data,
-        }];
-        self.push_diff_list(diff_list);
-        self.model.delete_rows(sheet, row, 1)?;
-        self.evaluate_if_not_paused();
-        Ok(())
+        self.delete_rows(sheet, row, 1)
     }
 
     /// Inserts a column
@@ -907,11 +879,7 @@ impl UserModel {
     /// See also:
     /// * [Model::insert_columns]
     pub fn insert_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        let diff_list = vec![Diff::InsertColumn { sheet, column }];
-        self.push_diff_list(diff_list);
-        self.model.insert_columns(sheet, column, 1)?;
-        self.evaluate_if_not_paused();
-        Ok(())
+        self.insert_columns(sheet, column, 1)
     }
 
     /// Deletes a column
@@ -919,46 +887,7 @@ impl UserModel {
     /// See also:
     /// * [Model::delete_columns]
     pub fn delete_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        let worksheet = self.model.workbook.worksheet(sheet)?;
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
-        }
-
-        let mut column_data = None;
-        for col in &worksheet.cols {
-            let min = col.min;
-            let max = col.max;
-            if column >= min && column <= max {
-                column_data = Some(Col {
-                    min: column,
-                    max: column,
-                    width: col.width,
-                    custom_width: col.custom_width,
-                    style: col.style,
-                });
-                break;
-            }
-        }
-
-        let mut data = HashMap::new();
-        for (row, row_data) in &worksheet.sheet_data {
-            if let Some(cell) = row_data.get(&column) {
-                data.insert(*row, cell.clone());
-            }
-        }
-
-        let diff_list = vec![Diff::DeleteColumn {
-            sheet,
-            column,
-            old_data: Box::new(ColumnData {
-                column: column_data,
-                data,
-            }),
-        }];
-        self.push_diff_list(diff_list);
-        self.model.delete_columns(sheet, column, 1)?;
-        self.evaluate_if_not_paused();
-        Ok(())
+        self.delete_columns(sheet, column, 1)
     }
 
     /// Inserts several rows at once
