@@ -24,6 +24,7 @@ fn csv_paste() {
         model.get_formatted_cell_value(0, 7, 7),
         Ok("21".to_string())
     );
+    assert_eq!([4, 2, 5, 4], model.get_selected_view().range);
 }
 
 #[test]
@@ -45,6 +46,7 @@ fn csv_paste_formula() {
         model.get_formatted_cell_value(0, 1, 1),
         Ok("2022".to_string())
     );
+    assert_eq!([1, 1, 1, 1], model.get_selected_view().range);
 }
 
 #[test]
@@ -69,6 +71,7 @@ fn tsv_crlf_paste() {
         model.get_formatted_cell_value(0, 7, 7),
         Ok("21".to_string())
     );
+    assert_eq!([4, 2, 5, 4], model.get_selected_view().range);
 }
 
 #[test]
@@ -164,7 +167,7 @@ fn copy_paste_internal() {
     let copy = model.copy_to_clipboard().unwrap();
     assert_eq!(
         copy.csv,
-        "42\t127\n\"A season of faith\t \"\"perfection\"\"\"\t\n"
+        "42\t127\n\"A season of faith\t \"\"perfection\"\"\""
     );
     assert_eq!(copy.range, (1, 1, 2, 2));
 

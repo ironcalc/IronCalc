@@ -179,6 +179,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       if (cell) {
         if (editingCell) {
           if (
+            model.getSelectedSheet() === editingCell.sheet &&
             cell.row === editingCell.row &&
             cell.column === editingCell.column
           ) {

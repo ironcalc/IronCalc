@@ -473,7 +473,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           sheet,
           clipboardId,
         });
-        event.clipboardData.setData("text/plain", data.csv);
+        event.clipboardData.setData("text/plain", data.csv.trim());
         event.clipboardData.setData("application/json", clipboardJsonStr);
         event.preventDefault();
         event.stopPropagation();

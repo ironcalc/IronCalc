@@ -1,7 +1,6 @@
-use bitcode::{Decode, Encode};
-use once_cell::sync::Lazy;
+use std::{collections::HashMap, sync::OnceLock};
 
-use std::collections::HashMap;
+use bitcode::{Decode, Encode};
 
 #[derive(Encode, Decode, Clone)]
 pub struct Locale {
@@ -65,12 +64,17 @@ pub struct DecimalFormats {
     pub standard: String,
 }
 
+static LOCALES: OnceLock<HashMap<String, Locale>> = OnceLock::new();
+
 #[allow(clippy::expect_used)]
-static LOCALES: Lazy<HashMap<String, Locale>> =
-    Lazy::new(|| bitcode::decode(include_bytes!("locales.bin")).expect("Failed parsing locale"));
+fn get_locales() -> &'static HashMap<String, Locale> {
+    LOCALES.get_or_init(|| {
+        bitcode::decode(include_bytes!("locales.bin")).expect("Failed parsing locale")
+    })
+}
 
 pub fn get_locale(id: &str) -> Result<&Locale, String> {
-    // TODO: pass the locale once we implement locales in Rust
-    let locale = LOCALES.get(id).ok_or("Invalid locale")?;
-    Ok(locale)
+    get_locales()
+        .get(id)
+        .ok_or_else(|| format!("Invalid locale: '{id}'"))
 }
