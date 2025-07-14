@@ -708,5 +708,31 @@ fn test_move_column_right_mixed_refs() {
     assert_eq!(model._get_formula("F4"), "=G$3");
 }
 
+#[test]
+fn test_move_row_height() {
+    let mut model = new_empty_model();
+    let sheet = 0;
+    let custom_height = DEFAULT_ROW_HEIGHT * 2.0;
+    // Set a custom height for row 3
+    model
+        .workbook
+        .worksheet_mut(sheet)
+        .unwrap()
+        .set_row_height(3, custom_height)
+        .unwrap();
+
+    // Record the original height of row 4 (should be the default)
+    let original_row4_height = model.get_row_height(sheet, 4).unwrap();
+
+    // Move row 3 down by one position
+    assert!(model.move_row_action(sheet, 3, 1).is_ok());
+
+    // The custom height should now be on row 4
+    assert_eq!(model.get_row_height(sheet, 4), Ok(custom_height));
+
+    // Row 3 should now have the previous height of row 4
+    assert_eq!(model.get_row_height(sheet, 3), Ok(original_row4_height));
+}
+
 // A  B  C  D  E  F  G   H  I  J   K   L   M   N   O   P   Q   R
 // 1  2  3  4  5  6  7   8  9  10  11  12  13  14  15  16  17  18
