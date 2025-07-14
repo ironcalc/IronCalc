@@ -10,6 +10,7 @@ mod test_date_and_time;
 mod test_error_propagation;
 mod test_fn_average;
 mod test_fn_averageifs;
+mod test_fn_ceiling_floor;
 mod test_fn_choose;
 mod test_fn_concatenate;
 mod test_fn_count;

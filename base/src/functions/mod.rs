@@ -61,6 +61,8 @@ pub enum Function {
     Product,
     Rand,
     Randbetween,
+    Ceiling,
+    Floor,
     Round,
     Rounddown,
     Roundup,
@@ -250,7 +252,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 195> {
+    pub fn into_iter() -> IntoIter<Function, 197> {
         [
             Function::And,
             Function::False,
@@ -286,6 +288,8 @@ impl Function {
             Function::Product,
             Function::Rand,
             Function::Randbetween,
+            Function::Ceiling,
+            Function::Floor,
             Function::Round,
             Function::Rounddown,
             Function::Roundup,
@@ -539,6 +543,8 @@ impl Function {
             "PRODUCT" => Some(Function::Product),
             "RAND" => Some(Function::Rand),
             "RANDBETWEEN" => Some(Function::Randbetween),
+            "CEILING" => Some(Function::Ceiling),
+            "FLOOR" => Some(Function::Floor),
             "ROUND" => Some(Function::Round),
             "ROUNDDOWN" => Some(Function::Rounddown),
             "ROUNDUP" => Some(Function::Roundup),
@@ -757,6 +763,8 @@ impl fmt::Display for Function {
             Function::Product => write!(f, "PRODUCT"),
             Function::Rand => write!(f, "RAND"),
             Function::Randbetween => write!(f, "RANDBETWEEN"),
+            Function::Ceiling => write!(f, "CEILING"),
+            Function::Floor => write!(f, "FLOOR"),
             Function::Round => write!(f, "ROUND"),
             Function::Rounddown => write!(f, "ROUNDDOWN"),
             Function::Roundup => write!(f, "ROUNDUP"),
@@ -990,6 +998,8 @@ impl Model {
             Function::Product => self.fn_product(args, cell),
             Function::Rand => self.fn_rand(args, cell),
             Function::Randbetween => self.fn_randbetween(args, cell),
+            Function::Ceiling => self.fn_ceiling(args, cell),
+            Function::Floor => self.fn_floor(args, cell),
             Function::Round => self.fn_round(args, cell),
             Function::Rounddown => self.fn_rounddown(args, cell),
             Function::Roundup => self.fn_roundup(args, cell),

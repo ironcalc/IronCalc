@@ -24,7 +24,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ATAN2           | <Badge type="tip" text="Available" />          | –             |
 | ATANH           | <Badge type="tip" text="Available" />          | –             |
 | BASE            | <Badge type="info" text="Not implemented yet" /> | –             |
-| CEILING         | <Badge type="info" text="Not implemented yet" /> | –             |
+| CEILING         | <Badge type="tip" text="Available" />          | [CEILING](math_and_trigonometry/ceiling) |
 | CEILING.MATH    | <Badge type="info" text="Not implemented yet" /> | –             |
 | CEILING.PRECISE | <Badge type="info" text="Not implemented yet" /> | –             |
 | COMBIN          | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -41,7 +41,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | EXP             | <Badge type="info" text="Not implemented yet" /> | –             |
 | FACT            | <Badge type="info" text="Not implemented yet" /> | –             |
 | FACTDOUBLE      | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR           | <Badge type="info" text="Not implemented yet" /> | –             |
+| FLOOR           | <Badge type="tip" text="Available" />          | [FLOOR](math_and_trigonometry/floor) |
 | FLOOR.MATH      | <Badge type="info" text="Not implemented yet" /> | –             |
 | FLOOR.PRECISE   | <Badge type="info" text="Not implemented yet" /> | –             |
 | GCD             | <Badge type="info" text="Not implemented yet" /> | –             |

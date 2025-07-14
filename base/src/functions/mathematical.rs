@@ -8,6 +8,21 @@ use crate::{
 };
 use std::f64::consts::PI;
 
+/// Specifies which rounding behaviour to apply when calling `round_to_multiple`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RoundKind {
+    Ceiling,
+    Floor,
+}
+
+/// Rounding mode used by the classic ROUND family (ROUND, ROUNDUP, ROUNDDOWN).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RoundDecimalKind {
+    Nearest, // ROUND
+    Up,      // ROUNDUP
+    Down,    // ROUNDDOWN
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 pub fn random() -> f64 {
     rand::random()
@@ -305,77 +320,123 @@ impl Model {
         CalcResult::Number(total)
     }
 
+    /// Shared implementation for Excel's ROUND / ROUNDUP / ROUNDDOWN functions
+    /// that round a scalar to a specified number of decimal digits.
+    fn round_decimal_fn(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        mode: RoundDecimalKind,
+    ) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        // Extract value and number_of_digits, propagating errors.
+        let value = match self.get_number(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let digits_raw = match self.get_number(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+
+        // Excel truncates non-integer digit counts toward zero.
+        let digits = if digits_raw > 0.0 {
+            digits_raw.floor()
+        } else {
+            digits_raw.ceil()
+        };
+
+        let scale = 10.0_f64.powf(digits);
+
+        let rounded = match mode {
+            RoundDecimalKind::Nearest => (value * scale).round() / scale,
+            RoundDecimalKind::Up => {
+                if value > 0.0 {
+                    (value * scale).ceil() / scale
+                } else {
+                    (value * scale).floor() / scale
+                }
+            }
+            RoundDecimalKind::Down => {
+                if value > 0.0 {
+                    (value * scale).floor() / scale
+                } else {
+                    (value * scale).ceil() / scale
+                }
+            }
+        };
+
+        CalcResult::Number(rounded)
+    }
+
+    /// Helper used by CEILING and FLOOR to round a value to the nearest multiple of
+    /// `significance`, taking into account the Excel sign rule.
+    fn round_to_multiple(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        kind: RoundKind,
+    ) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let value = match self.get_number(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let significance = match self.get_number(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+
+        if significance == 0.0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Divide by 0".to_string(),
+            };
+        }
+        if value.signum() * significance.signum() < 0.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Invalid sign".to_string(),
+            };
+        }
+
+        let quotient = value / significance;
+        let use_ceil = (significance > 0.0) == matches!(kind, RoundKind::Ceiling);
+        let rounded_multiple = if use_ceil {
+            quotient.ceil() * significance
+        } else {
+            quotient.floor() * significance
+        };
+
+        CalcResult::Number(rounded_multiple)
+    }
+
+    pub(crate) fn fn_ceiling(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round_to_multiple(args, cell, RoundKind::Ceiling)
+    }
+
+    pub(crate) fn fn_floor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round_to_multiple(args, cell, RoundKind::Floor)
+    }
+
     pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            // Incorrect number of arguments
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
-            Err(s) => return s,
-        };
-        let scale = 10.0_f64.powf(number_of_digits);
-        CalcResult::Number((value * scale).round() / scale)
+        self.round_decimal_fn(args, cell, RoundDecimalKind::Nearest)
     }
+
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
-            Err(s) => return s,
-        };
-        let scale = 10.0_f64.powf(number_of_digits);
-        if value > 0.0 {
-            CalcResult::Number((value * scale).ceil() / scale)
-        } else {
-            CalcResult::Number((value * scale).floor() / scale)
-        }
+        self.round_decimal_fn(args, cell, RoundDecimalKind::Up)
     }
+
     pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
-            Err(s) => return s,
-        };
-        let scale = 10.0_f64.powf(number_of_digits);
-        if value > 0.0 {
-            CalcResult::Number((value * scale).floor() / scale)
-        } else {
-            CalcResult::Number((value * scale).ceil() / scale)
-        }
+        self.round_decimal_fn(args, cell, RoundDecimalKind::Down)
     }
 
     single_number_fn!(fn_sin, |f| Ok(f64::sin(f)));
