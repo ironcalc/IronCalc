@@ -278,6 +278,7 @@ function Toolbar(properties: ToolbarProperties) {
         onClick={() => setFontColorPickerOpen(true)}
       >
         <Type />
+        <ColorLine color={properties.fontColor} />
       </StyledButton>
       <StyledButton
         type="button"
@@ -289,6 +290,7 @@ function Toolbar(properties: ToolbarProperties) {
         onClick={() => setFillColorPickerOpen(true)}
       >
         <PaintBucket />
+        <ColorLine color={properties.fillColor} />
       </StyledButton>
       <StyledButton
         type="button"
@@ -500,57 +502,64 @@ const ToolbarContainer = styled("div")`
 `;
 
 type TypeButtonProperties = { $pressed: boolean; $underlinedColor?: string };
-export const StyledButton = styled("button")<TypeButtonProperties>(
-  ({ disabled, $pressed, $underlinedColor }) => {
-    const result = {
-      width: "24px",
-      minWidth: "24px",
-      height: "24px",
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: "12px",
-      border: `0px solid ${theme.palette.common.white}`,
-      borderRadius: "4px",
-      transition: "all 0.2s",
-      outline: `1px solid ${theme.palette.common.white}`,
-      cursor: "pointer",
-      backgroundColor: "white",
-      padding: "0px",
-      svg: {
-        width: "16px",
-        height: "16px",
-      },
-    };
-    if (disabled) {
-      return {
-        ...result,
-        color: theme.palette.grey["400"],
-        cursor: "default",
-      };
-    }
+export const StyledButton = styled("button", {
+  shouldForwardProp: (prop) =>
+    prop !== "$pressed" && prop !== "$underlinedColor",
+})<TypeButtonProperties>(({ disabled, $pressed }) => {
+  const result = {
+    width: "24px",
+    minWidth: "24px",
+    height: "24px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "12px",
+    border: `0px solid ${theme.palette.common.white}`,
+    borderRadius: "4px",
+    transition: "all 0.2s",
+    outline: `1px solid ${theme.palette.common.white}`,
+    cursor: "pointer",
+    backgroundColor: "white",
+    padding: "0px",
+    position: "relative" as const,
+    svg: {
+      width: "16px",
+      height: "16px",
+    },
+  };
+  if (disabled) {
     return {
       ...result,
-      borderTop: $underlinedColor
-        ? `3px solid ${theme.palette.common.white}`
-        : "none",
-      borderBottom: $underlinedColor ? `3px solid ${$underlinedColor}` : "none",
-      color: theme.palette.grey["900"],
-      backgroundColor: $pressed
-        ? theme.palette.grey["300"]
-        : theme.palette.common.white,
-      "&:hover": {
-        transition: "all 0.2s",
-        outline: `1px solid ${theme.palette.grey["200"]}`,
-        borderTopColor: theme.palette.common.white,
-      },
-      "&:active": {
-        backgroundColor: theme.palette.grey["300"],
-        outline: `1px solid ${theme.palette.grey["300"]}`,
-      },
+      color: theme.palette.grey["400"],
+      cursor: "default",
     };
-  },
-);
+  }
+  return {
+    ...result,
+    color: theme.palette.grey["900"],
+    backgroundColor: $pressed
+      ? theme.palette.grey["300"]
+      : theme.palette.common.white,
+    "&:hover": {
+      transition: "all 0.2s",
+      outline: `1px solid ${theme.palette.grey["200"]}`,
+    },
+    "&:active": {
+      backgroundColor: theme.palette.grey["300"],
+      outline: `1px solid ${theme.palette.grey["300"]}`,
+    },
+  };
+});
+
+const ColorLine = styled("div")<{ color: string }>(({ color }) => ({
+  height: "3px",
+  width: "16px",
+  position: "absolute",
+  bottom: "0px",
+  left: "50%",
+  transform: "translateX(-50%)",
+  backgroundColor: color,
+}));
 
 const Divider = styled("div")({
   width: "0px",
