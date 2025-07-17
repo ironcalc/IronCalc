@@ -1,6 +1,3 @@
-import DecimalPlacesDecreaseIcon from "./decrease-decimal.svg?react";
-import DecimalPlacesIncreaseIcon from "./increase-decimal.svg?react";
-
 import BorderBottomIcon from "./border-bottom.svg?react";
 import BorderCenterHIcon from "./border-center-h.svg?react";
 import BorderCenterVIcon from "./border-center-v.svg?react";
@@ -27,8 +24,6 @@ import Fx from "./fx.svg?react";
 
 export {
   ArrowMiddleFromLine,
-  DecimalPlacesDecreaseIcon,
-  DecimalPlacesIncreaseIcon,
   BorderBottomIcon,
   BorderCenterHIcon,
   BorderCenterVIcon,
