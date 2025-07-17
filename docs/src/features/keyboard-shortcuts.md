@@ -10,7 +10,7 @@ From within your keyboard you can navigate and interact with the spreadsheet.
 
 ## Navigation Shortcuts
 
-| Action                  | Windows           | Mac            |
+| Action                  | Linux/Windows     | Mac            |
 | ----------------------- | ----------------- | -------------- |
 | Move one cell           | Arrow Keys        | Arrow Keys     |
 | Move down (Excel-style) | Enter             | Enter          |
@@ -26,7 +26,7 @@ From within your keyboard you can navigate and interact with the spreadsheet.
 
 ## Selection & Editing
 
-| Action               | Windows            | Mac                |
+| Action               | Linux/Windows      | Mac                |
 | -------------------- | ------------------ | ------------------ |
 | Expand selection     | Shift + Arrow Keys | Shift + Arrow Keys |
 | Start editing a cell | F2                 | F2                 |
@@ -34,29 +34,29 @@ From within your keyboard you can navigate and interact with the spreadsheet.
 
 ## Text Styling
 
-| Action    | Windows  | Mac   |
-| --------- | -------- | ----- |
-| Bold      | Ctrl + B | ⌘ + B |
-| Italic    | Ctrl + I | ⌘ + I |
-| Underline | Ctrl + U | ⌘ + U |
+| Action    | Linux/Windows  | Mac   |
+| --------- | -------------- | ----- |
+| Bold      | Ctrl + B       | ⌘ + B |
+| Italic    | Ctrl + I       | ⌘ + I |
+| Underline | Ctrl + U       | ⌘ + U |
 
 ## Undo / Redo
 
-| Action | Windows  | Mac           |
-| ------ | -------- | ------------- |
-| Undo   | Ctrl + Z | ⌘ + Z         |
-| Redo   | Ctrl + Y | ⌘ + Shift + Z |
+| Action | Linux/Windows                | Mac                    |
+| ------ | ---------------------------- | -----------------------|
+| Undo   | Ctrl + Z                     | ⌘ + Z                  |
+| Redo   | Ctrl + Y or Ctrl + Shift + Z | ⌘ + Shift + Z or ⌘ + Y |
 
 ## Sheet Navigation
 
-| Action         | Windows          | Mac            |
+| Action         | Linux/Windows    | Mac            |
 | -------------- | ---------------- | -------------- |
 | Next sheet     | Alt + Arrow Down | ⌥ + Arrow Down |
 | Previous sheet | Alt + Arrow Up   | ⌥ + Arrow Up   |
 
 ## Miscellaneous
 
-| Action        | Windows | Mac    |
-| ------------- | ------- | ------ |
-| Cancel action | Escape  | Escape |
-| Delete cells  | Delete  | Delete |
+| Action        | Linux/Windows/Mac    |
+| ------------- | -------------------- |
+| Cancel action | Escape               |
+| Delete cells  | Delete               |
