@@ -274,7 +274,6 @@ function Toolbar(properties: ToolbarProperties) {
         disabled={!canEdit}
         title={t("toolbar.font_color")}
         ref={fontColorButton}
-        $underlinedColor={properties.fontColor}
         onClick={() => setFontColorPickerOpen(true)}
       >
         <Type />
@@ -286,7 +285,6 @@ function Toolbar(properties: ToolbarProperties) {
         disabled={!canEdit}
         title={t("toolbar.fill_color")}
         ref={fillColorButton}
-        $underlinedColor={properties.fillColor}
         onClick={() => setFillColorPickerOpen(true)}
       >
         <PaintBucket />
@@ -501,10 +499,9 @@ const ToolbarContainer = styled("div")`
   scrollbar-width: none;
 `;
 
-type TypeButtonProperties = { $pressed: boolean; $underlinedColor?: string };
+type TypeButtonProperties = { $pressed: boolean };
 export const StyledButton = styled("button", {
-  shouldForwardProp: (prop) =>
-    prop !== "$pressed" && prop !== "$underlinedColor",
+  shouldForwardProp: (prop) => prop !== "$pressed",
 })<TypeButtonProperties>(({ disabled, $pressed }) => {
   const result = {
     width: "24px",
