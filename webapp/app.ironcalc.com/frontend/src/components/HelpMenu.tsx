@@ -55,7 +55,7 @@ export function HelpMenu() {
           onClick={() => {
             handleClose();
             window.open(
-              "https://docs.ironcalc.com",
+              "https://docs.ironcalc.com/web-application/about.html",
               "_blank",
               "noopener,noreferrer",
             );
