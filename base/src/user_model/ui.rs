@@ -2,7 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::expressions::utils::{is_valid_column_number, is_valid_row};
+use crate::{
+    constants::LAST_ROW,
+    expressions::utils::{is_valid_column_number, is_valid_row},
+    worksheet::NavigationDirection,
+};
 
 use super::common::UserModel;
 
@@ -472,7 +476,7 @@ impl UserModel {
         // if the row is not fully visible we 'scroll' down until it is
         let mut height = 0.0;
         let mut row = view.top_row;
-        while row <= new_row + 1 {
+        while row <= new_row + 1 && row <= LAST_ROW {
             height += self.model.get_row_height(sheet, row)?;
             row += 1;
         }
@@ -680,6 +684,96 @@ impl UserModel {
             }
         }
 
+        Ok(())
+    }
+
+    /// User navigates to the edge in the given direction
+    pub fn on_navigate_to_edge_in_direction(
+        &mut self,
+        direction: NavigationDirection,
+    ) -> Result<(), String> {
+        let (sheet, window_height, window_width) =
+            if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
+                (view.sheet, view.window_height, view.window_width)
+            } else {
+                return Err("View not found".to_string());
+            };
+        let worksheet = match self.model.workbook.worksheet(sheet) {
+            Ok(s) => s,
+            Err(_) => return Err("Worksheet not found".to_string()),
+        };
+        let view = match worksheet.views.get(&self.model.view_id) {
+            Some(s) => s,
+            None => return Err("View not found".to_string()),
+        };
+        let row = view.row;
+        let column = view.column;
+        if !is_valid_row(row) || !is_valid_column_number(column) {
+            return Err("Invalid row or column".to_string());
+        }
+        let (new_row, new_column) =
+            worksheet.navigate_to_edge_in_direction(row, column, direction)?;
+        if !is_valid_row(new_row) || !is_valid_column_number(new_column) {
+            return Err("Invalid row or column after navigation".to_string());
+        }
+        if new_row == row && new_column == column {
+            return Ok(()); // No change in selection
+        }
+
+        let mut top_row = view.top_row;
+        let mut left_column = view.left_column;
+
+        match direction {
+            NavigationDirection::Left | NavigationDirection::Right => {
+                // If the new column is not fully visible we 'scroll' until it is
+                // We need to check two conditions:
+                // 1. new_column > view.left_column
+                // 2. right_column < new_column
+                if new_column < view.left_column {
+                    left_column = new_column;
+                } else {
+                    let mut c = new_column;
+                    let mut width = self.model.get_column_width(sheet, c)?;
+                    while c > 1 && width <= window_width as f64 {
+                        c -= 1;
+                        width += self.model.get_column_width(sheet, c)?;
+                    }
+                    if c > view.left_column {
+                        left_column = c;
+                    }
+                }
+            }
+            NavigationDirection::Up | NavigationDirection::Down => {
+                // If the new row is not fully visible we 'scroll' until it is
+                // We need to check two conditions:
+                // 1. new_row > view.top_row
+                // 2. bottom_row < new_row
+                if new_row < view.top_row {
+                    top_row = new_row;
+                } else {
+                    let mut r = new_row;
+                    let mut height = self.model.get_row_height(sheet, r)?;
+                    while r > 1 && height <= window_height as f64 {
+                        r -= 1;
+                        height += self.model.get_row_height(sheet, r)?;
+                    }
+                    if r > view.top_row {
+                        top_row = r;
+                    }
+                }
+            }
+        }
+
+        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
+            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
+                view.row = new_row;
+                view.column = new_column;
+                view.range = [new_row, new_column, new_row, new_column];
+
+                view.top_row = top_row;
+                view.left_column = left_column;
+            }
+        }
         Ok(())
     }
 }

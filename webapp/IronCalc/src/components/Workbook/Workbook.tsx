@@ -249,8 +249,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       onToggleUnderline(!value);
     },
     onNavigationToEdge: (direction: NavigationKey): void => {
-      console.log(direction);
-      throw new Error("Function not implemented.");
+      model.onNavigateToEdgeInDirection(direction);
+      setRedrawId((id) => id + 1);
     },
     onPageDown: (): void => {
       model.onPageDown();

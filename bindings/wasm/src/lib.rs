@@ -7,6 +7,7 @@ use wasm_bindgen::{
 use ironcalc_base::{
     expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
     types::{CellType, Style},
+    worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
@@ -528,6 +529,20 @@ impl Model {
     #[wasm_bindgen(js_name = "onPageUp")]
     pub fn on_page_up(&mut self) -> Result<(), JsError> {
         self.model.on_page_up().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onNavigateToEdgeInDirection")]
+    pub fn on_navigate_to_edge_in_direction(&mut self, direction: &str) -> Result<(), JsError> {
+        let direction = match direction {
+            "ArrowLeft" => NavigationDirection::Left,
+            "ArrowRight" => NavigationDirection::Right,
+            "ArrowUp" => NavigationDirection::Up,
+            "ArrowDown" => NavigationDirection::Down,
+            _ => return Err(JsError::new(&format!("Invalid direction: {direction}"))),
+        };
+        self.model
+            .on_navigate_to_edge_in_direction(direction)
+            .map_err(to_js_error)
     }
 
     #[wasm_bindgen(js_name = "setWindowWidth")]
