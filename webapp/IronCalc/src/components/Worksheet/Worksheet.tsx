@@ -340,22 +340,22 @@ const Worksheet = forwardRef(
           anchorEl={cellOutline.current}
           onInsertRowAbove={(): void => {
             const view = model.getSelectedView();
-            model.insertRow(view.sheet, view.row);
+            model.insertRows(view.sheet, view.row, 1);
             setContextMenuOpen(false);
           }}
           onInsertRowBelow={(): void => {
             const view = model.getSelectedView();
-            model.insertRow(view.sheet, view.row + 1);
+            model.insertRows(view.sheet, view.row + 1, 1);
             setContextMenuOpen(false);
           }}
           onInsertColumnLeft={(): void => {
             const view = model.getSelectedView();
-            model.insertColumn(view.sheet, view.column);
+            model.insertColumns(view.sheet, view.column, 1);
             setContextMenuOpen(false);
           }}
           onInsertColumnRight={(): void => {
             const view = model.getSelectedView();
-            model.insertColumn(view.sheet, view.column + 1);
+            model.insertColumns(view.sheet, view.column + 1, 1);
             setContextMenuOpen(false);
           }}
           onFreezeColumns={(): void => {
@@ -380,12 +380,12 @@ const Worksheet = forwardRef(
           }}
           onDeleteRow={(): void => {
             const view = model.getSelectedView();
-            model.deleteRow(view.sheet, view.row);
+            model.deleteRows(view.sheet, view.row, 1);
             setContextMenuOpen(false);
           }}
           onDeleteColumn={(): void => {
             const view = model.getSelectedView();
-            model.deleteColumn(view.sheet, view.column);
+            model.deleteColumns(view.sheet, view.column, 1);
             setContextMenuOpen(false);
           }}
           row={model.getSelectedView().row}

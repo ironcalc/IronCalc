@@ -858,105 +858,124 @@ impl UserModel {
         Ok(())
     }
 
-    /// Inserts a row
-    ///
-    /// See also:
-    /// * [Model::insert_rows]
-    pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        let diff_list = vec![Diff::InsertRow { sheet, row }];
-        self.push_diff_list(diff_list);
-        self.model.insert_rows(sheet, row, 1)?;
-        self.evaluate_if_not_paused();
-        Ok(())
-    }
-
-    /// Deletes a row
-    ///
-    /// See also:
-    /// * [Model::delete_rows]
-    pub fn delete_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        let mut row_data = None;
-        let worksheet = self.model.workbook.worksheet(sheet)?;
-        for rd in &worksheet.rows {
-            if rd.r == row {
-                row_data = Some(rd.clone());
-                break;
-            }
+    /// Inserts several rows at once
+    pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        for r in 0..row_count {
+            diff_list.push(Diff::InsertRow {
+                sheet,
+                row: row + r,
+            });
         }
-        let data = match worksheet.sheet_data.get(&row) {
-            Some(s) => s.clone(),
-            None => return Err(format!("Row number '{row}' is not valid.")),
-        };
-        let old_data = Box::new(RowData {
-            row: row_data,
-            data,
-        });
-        let diff_list = vec![Diff::DeleteRow {
-            sheet,
-            row,
-            old_data,
-        }];
         self.push_diff_list(diff_list);
-        self.model.delete_rows(sheet, row, 1)?;
+        self.model.insert_rows(sheet, row, row_count)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
 
-    /// Inserts a column
-    ///
-    /// See also:
-    /// * [Model::insert_columns]
-    pub fn insert_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        let diff_list = vec![Diff::InsertColumn { sheet, column }];
-        self.push_diff_list(diff_list);
-        self.model.insert_columns(sheet, column, 1)?;
-        self.evaluate_if_not_paused();
-        Ok(())
-    }
-
-    /// Deletes a column
-    ///
-    /// See also:
-    /// * [Model::delete_columns]
-    pub fn delete_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        let worksheet = self.model.workbook.worksheet(sheet)?;
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
+    /// Inserts several columns at once
+    pub fn insert_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        for c in 0..column_count {
+            diff_list.push(Diff::InsertColumn {
+                sheet,
+                column: column + c,
+            });
         }
+        self.push_diff_list(diff_list);
+        self.model.insert_columns(sheet, column, column_count)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
 
-        let mut column_data = None;
-        for col in &worksheet.cols {
-            let min = col.min;
-            let max = col.max;
-            if column >= min && column <= max {
-                column_data = Some(Col {
-                    min: column,
-                    max: column,
-                    width: col.width,
-                    custom_width: col.custom_width,
-                    style: col.style,
+    /// Deletes several rows at once
+    pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        let diff_list = {
+            let worksheet = self.model.workbook.worksheet(sheet)?;
+            let mut diff_list = Vec::new();
+            for r in row..row + row_count {
+                let mut row_data = None;
+                for rd in &worksheet.rows {
+                    if rd.r == r {
+                        row_data = Some(rd.clone());
+                        break;
+                    }
+                }
+                let data = match worksheet.sheet_data.get(&r) {
+                    Some(s) => s.clone(),
+                    None => return Err(format!("Row number '{r}' is not valid.")),
+                };
+                diff_list.push(Diff::DeleteRow {
+                    sheet,
+                    row: r,
+                    old_data: Box::new(RowData {
+                        row: row_data,
+                        data,
+                    }),
                 });
-                break;
             }
-        }
-
-        let mut data = HashMap::new();
-        for (row, row_data) in &worksheet.sheet_data {
-            if let Some(cell) = row_data.get(&column) {
-                data.insert(*row, cell.clone());
-            }
-        }
-
-        let diff_list = vec![Diff::DeleteColumn {
-            sheet,
-            column,
-            old_data: Box::new(ColumnData {
-                column: column_data,
-                data,
-            }),
-        }];
+            diff_list
+        };
         self.push_diff_list(diff_list);
-        self.model.delete_columns(sheet, column, 1)?;
+        self.model.delete_rows(sheet, row, row_count)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Deletes several columns at once
+    pub fn delete_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), String> {
+        let diff_list = {
+            let worksheet = self.model.workbook.worksheet(sheet)?;
+            let mut diff_list = Vec::new();
+            for c in column..column + column_count {
+                if !is_valid_column_number(c) {
+                    return Err(format!("Column number '{c}' is not valid."));
+                }
+
+                let mut column_data = None;
+                for col in &worksheet.cols {
+                    if c >= col.min && c <= col.max {
+                        column_data = Some(Col {
+                            min: c,
+                            max: c,
+                            width: col.width,
+                            custom_width: col.custom_width,
+                            style: col.style,
+                        });
+                        break;
+                    }
+                }
+
+                let mut data = HashMap::new();
+                for (row_idx, row_data) in &worksheet.sheet_data {
+                    if let Some(cell) = row_data.get(&c) {
+                        data.insert(*row_idx, cell.clone());
+                    }
+                }
+
+                diff_list.push(Diff::DeleteColumn {
+                    sheet,
+                    column: c,
+                    old_data: Box::new(ColumnData {
+                        column: column_data,
+                        data,
+                    }),
+                });
+            }
+            diff_list
+        };
+        self.push_diff_list(diff_list);
+        self.model.delete_columns(sheet, column, column_count)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
