@@ -15,9 +15,14 @@ export async function uploadFile(
   return blob;
 }
 
+const buildApiUrl = (endpoint: string): string => {
+  const baseUrl: string = import.meta.env.API_BASE_URL || "";
+  return `${(baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl )}${endpoint}`;
+}
+
 export async function get_model(modelHash: string): Promise<Uint8Array> {
   return new Uint8Array(
-    await (await fetch(`/api/model/${modelHash}`)).arrayBuffer(),
+    await (await fetch(buildApiUrl(`/api/model/${modelHash}`))).arrayBuffer(),
   );
 }
 
@@ -25,12 +30,12 @@ export async function get_documentation_model(
   filename: string,
 ): Promise<Uint8Array> {
   return new Uint8Array(
-    await (await fetch(`/models/${filename}.ic`)).arrayBuffer(),
+    await (await fetch(buildApiUrl(`/models/${filename}.ic`))).arrayBuffer(),
   );
 }
 
 export async function downloadModel(bytes: Uint8Array, fileName: string) {
-  const response = await fetch("/api/download", {
+  const response = await fetch(buildApiUrl("/api/download"), {
     method: "POST",
     headers: {
       "Content-Type": "application/octet-stream",
