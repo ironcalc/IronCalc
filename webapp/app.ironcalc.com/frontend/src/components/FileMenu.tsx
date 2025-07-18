@@ -192,7 +192,7 @@ const MenuItemWrapper = styled(MenuItem)`
   height: 32px;
 `;
 
-const FileMenuWrapper = styled.button<{ $isActive?: boolean }>`
+const FileMenuWrapper = styled.button<{ $isActive: boolean }>`
   display: flex;
   align-items: center;
   font-size: 12px;
