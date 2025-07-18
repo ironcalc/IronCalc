@@ -26,7 +26,7 @@ fn set_user_input_errors() {
 #[test]
 fn user_model_debug_message() {
     let model = UserModel::new_empty("model", "en", "UTC").unwrap();
-    let s = &format!("{:?}", model);
+    let s = &format!("{model:?}");
     assert_eq!(s, "UserModel");
 }
 

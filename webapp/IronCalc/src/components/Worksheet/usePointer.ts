@@ -20,8 +20,6 @@ interface PointerSettings {
   onAllSheetSelected: () => void;
   onAreaSelecting: (cell: Cell) => void;
   onAreaSelected: () => void;
-  onExtendToCell: (cell: Cell) => void;
-  onExtendToEnd: () => void;
   model: Model;
   workbookState: WorkbookState;
   refresh: () => void;
@@ -31,12 +29,10 @@ interface PointerEvents {
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
-  onPointerHandleDown: (event: PointerEvent) => void;
 }
 
 const usePointer = (options: PointerSettings): PointerEvents => {
   const isSelecting = useRef(false);
-  const isExtending = useRef(false);
   const isInsertingRef = useRef(false);
 
   const onPointerMove = useCallback(
@@ -47,9 +43,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         return;
       }
 
-      if (
-        !(isSelecting.current || isExtending.current || isInsertingRef.current)
-      ) {
+      if (!(isSelecting.current || isInsertingRef.current)) {
         return;
       }
       const { canvasElement, model, worksheetCanvas } = options;
@@ -70,8 +64,6 @@ const usePointer = (options: PointerSettings): PointerEvents => {
 
       if (isSelecting.current) {
         options.onAreaSelecting(cell);
-      } else if (isExtending.current) {
-        options.onExtendToCell(cell);
       } else if (isInsertingRef.current) {
         const { refresh, workbookState } = options;
         const editingCell = workbookState.getEditingCell();
@@ -103,11 +95,6 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         isSelecting.current = false;
         worksheetElement.current?.releasePointerCapture(event.pointerId);
         options.onAreaSelected();
-      } else if (isExtending.current) {
-        const { worksheetElement } = options;
-        isExtending.current = false;
-        worksheetElement.current?.releasePointerCapture(event.pointerId);
-        options.onExtendToEnd();
       } else if (isInsertingRef.current) {
         const { worksheetElement } = options;
         isInsertingRef.current = false;
@@ -120,8 +107,12 @@ const usePointer = (options: PointerSettings): PointerEvents => {
   const onPointerDown = useCallback(
     (event: PointerEvent) => {
       const target = event.target as HTMLElement;
-      if (target !== null && target.className === "column-resize-handle") {
+      if (target.className === "column-resize-handle") {
         // we are resizing a column
+        return;
+      }
+      if (target.className.includes("ironcalc-cell-handle")) {
+        // we are extending values
         return;
       }
       let x = event.clientX;
@@ -188,6 +179,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       if (cell) {
         if (editingCell) {
           if (
+            model.getSelectedSheet() === editingCell.sheet &&
             cell.row === editingCell.row &&
             cell.column === editingCell.column
           ) {
@@ -251,26 +243,10 @@ const usePointer = (options: PointerSettings): PointerEvents => {
     [options],
   );
 
-  const onPointerHandleDown = useCallback(
-    (event: PointerEvent) => {
-      const worksheetWrapper = options.worksheetElement.current;
-      // Silence the linter
-      if (!worksheetWrapper) {
-        return;
-      }
-      isExtending.current = true;
-      worksheetWrapper.setPointerCapture(event.pointerId);
-      event.stopPropagation();
-      event.preventDefault();
-    },
-    [options],
-  );
-
   return {
     onPointerDown,
     onPointerMove,
     onPointerUp,
-    onPointerHandleDown,
   };
 };
 

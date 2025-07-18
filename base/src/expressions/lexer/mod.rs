@@ -142,7 +142,7 @@ impl Lexer {
     pub fn expect(&mut self, tk: TokenType) -> Result<()> {
         let nt = self.next_token();
         if mem::discriminant(&nt) != mem::discriminant(&tk) {
-            return Err(self.set_error(&format!("Error, expected {:?}", tk), self.position));
+            return Err(self.set_error(&format!("Error, expected {tk:?}"), self.position));
         }
         Ok(())
     }
@@ -313,6 +313,9 @@ impl Lexer {
                                 return TokenType::Boolean(true);
                             } else if name_upper == self.language.booleans.r#false {
                                 return TokenType::Boolean(false);
+                            }
+                            if self.peek_char() == Some('(') {
+                                return TokenType::Ident(name);
                             }
                             if self.mode == LexerMode::A1 {
                                 let parsed_reference = utils::parse_reference_a1(&name_upper);
@@ -511,7 +514,7 @@ impl Lexer {
         self.position = position;
         chars.parse::<i32>().map_err(|_| LexerError {
             position,
-            message: format!("Failed to parse to int: {}", chars),
+            message: format!("Failed to parse to int: {chars}"),
         })
     }
 
@@ -572,9 +575,7 @@ impl Lexer {
         }
         self.position = position;
         match chars.parse::<f64>() {
-            Err(_) => {
-                Err(self.set_error(&format!("Failed to parse to double: {}", chars), position))
-            }
+            Err(_) => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
             Ok(v) => Ok(v),
         }
     }

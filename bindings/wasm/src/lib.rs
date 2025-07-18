@@ -7,6 +7,7 @@ use wasm_bindgen::{
 use ironcalc_base::{
     expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
     types::{CellType, Style},
+    worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
@@ -16,7 +17,7 @@ fn to_js_error(error: String) -> JsError {
 
 /// Return an array with a list of all the tokens from a formula
 /// This is used by the UI to color them according to a theme.
-#[wasm_bindgen(js_name = "getTokens")]
+#[wasm_bindgen(js_name = "getTokens", unchecked_return_type = "MarkedToken[]")]
 pub fn get_tokens(formula: &str) -> Result<JsValue, JsError> {
     let tokens = tokenizer(formula);
     serde_wasm_bindgen::to_value(&tokens).map_err(JsError::from)
@@ -338,7 +339,7 @@ impl Model {
     #[wasm_bindgen(js_name = "updateRangeStyle")]
     pub fn update_range_style(
         &mut self,
-        range: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "Area")] range: JsValue,
         style_path: &str,
         value: &str,
     ) -> Result<(), JsError> {
@@ -349,7 +350,7 @@ impl Model {
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "getCellStyle")]
+    #[wasm_bindgen(js_name = "getCellStyle", unchecked_return_type = "CellStyle")]
     pub fn get_cell_style(
         &mut self,
         sheet: u32,
@@ -365,7 +366,10 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "onPasteStyles")]
-    pub fn on_paste_styles(&mut self, styles: JsValue) -> Result<(), JsError> {
+    pub fn on_paste_styles(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "CellStyle[][]")] styles: JsValue,
+    ) -> Result<(), JsError> {
         let styles: &Vec<Vec<Style>> =
             &serde_wasm_bindgen::from_value(styles).map_err(|e| to_js_error(e.to_string()))?;
         self.model.on_paste_styles(styles).map_err(to_js_error)
@@ -391,7 +395,10 @@ impl Model {
 
     // I don't _think_ serializing to JsValue can't fail
     // FIXME: Remove this clippy directive
-    #[wasm_bindgen(js_name = "getWorksheetsProperties")]
+    #[wasm_bindgen(
+        js_name = "getWorksheetsProperties",
+        unchecked_return_type = "WorksheetProperties[]"
+    )]
     #[allow(clippy::unwrap_used)]
     pub fn get_worksheets_properties(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.model.get_worksheets_properties()).unwrap()
@@ -410,7 +417,7 @@ impl Model {
 
     // I don't _think_ serializing to JsValue can't fail
     // FIXME: Remove this clippy directive
-    #[wasm_bindgen(js_name = "getSelectedView")]
+    #[wasm_bindgen(js_name = "getSelectedView", unchecked_return_type = "SelectedView")]
     #[allow(clippy::unwrap_used)]
     pub fn get_selected_view(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.model.get_selected_view()).unwrap()
@@ -469,7 +476,11 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "autoFillRows")]
-    pub fn auto_fill_rows(&mut self, source_area: JsValue, to_row: i32) -> Result<(), JsError> {
+    pub fn auto_fill_rows(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Area")] source_area: JsValue,
+        to_row: i32,
+    ) -> Result<(), JsError> {
         let area: Area =
             serde_wasm_bindgen::from_value(source_area).map_err(|e| to_js_error(e.to_string()))?;
         self.model
@@ -480,7 +491,7 @@ impl Model {
     #[wasm_bindgen(js_name = "autoFillColumns")]
     pub fn auto_fill_columns(
         &mut self,
-        source_area: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "Area")] source_area: JsValue,
         to_column: i32,
     ) -> Result<(), JsError> {
         let area: Area =
@@ -518,6 +529,20 @@ impl Model {
     #[wasm_bindgen(js_name = "onPageUp")]
     pub fn on_page_up(&mut self) -> Result<(), JsError> {
         self.model.on_page_up().map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "onNavigateToEdgeInDirection")]
+    pub fn on_navigate_to_edge_in_direction(&mut self, direction: &str) -> Result<(), JsError> {
+        let direction = match direction {
+            "ArrowLeft" => NavigationDirection::Left,
+            "ArrowRight" => NavigationDirection::Right,
+            "ArrowUp" => NavigationDirection::Up,
+            "ArrowDown" => NavigationDirection::Down,
+            _ => return Err(JsError::new(&format!("Invalid direction: {direction}"))),
+        };
+        self.model
+            .on_navigate_to_edge_in_direction(direction)
+            .map_err(to_js_error)
     }
 
     #[wasm_bindgen(js_name = "setWindowWidth")]
@@ -561,8 +586,8 @@ impl Model {
     #[wasm_bindgen(js_name = "setAreaWithBorder")]
     pub fn set_area_with_border(
         &mut self,
-        area: JsValue,
-        border_area: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "Area")] area: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "BorderArea")] border_area: JsValue,
     ) -> Result<(), JsError> {
         let range: Area =
             serde_wasm_bindgen::from_value(area).map_err(|e| to_js_error(e.to_string()))?;
@@ -589,7 +614,7 @@ impl Model {
         self.model.set_name(name);
     }
 
-    #[wasm_bindgen(js_name = "copyToClipboard")]
+    #[wasm_bindgen(js_name = "copyToClipboard", unchecked_return_type = "Clipboard")]
     pub fn copy_to_clipboard(&self) -> Result<JsValue, JsError> {
         let data = self
             .model
@@ -603,8 +628,9 @@ impl Model {
     pub fn paste_from_clipboard(
         &mut self,
         source_sheet: u32,
+        #[wasm_bindgen(unchecked_param_type = "[number, number, number, number]")]
         source_range: JsValue,
-        clipboard: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "ClipboardData")] clipboard: JsValue,
         is_cut: bool,
     ) -> Result<(), JsError> {
         let source_range: (i32, i32, i32, i32) =
@@ -617,7 +643,11 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "pasteCsvText")]
-    pub fn paste_csv_string(&mut self, area: JsValue, csv: &str) -> Result<(), JsError> {
+    pub fn paste_csv_string(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "Area")] area: JsValue,
+        csv: &str,
+    ) -> Result<(), JsError> {
         let range: Area =
             serde_wasm_bindgen::from_value(area).map_err(|e| to_js_error(e.to_string()))?;
         self.model
@@ -625,7 +655,10 @@ impl Model {
             .map_err(|e| to_js_error(e.to_string()))
     }
 
-    #[wasm_bindgen(js_name = "getDefinedNameList")]
+    #[wasm_bindgen(
+        js_name = "getDefinedNameList",
+        unchecked_return_type = "DefinedName[]"
+    )]
     pub fn get_defined_name_list(&self) -> Result<JsValue, JsError> {
         let data: Vec<DefinedName> = self
             .model

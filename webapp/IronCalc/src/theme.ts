@@ -46,8 +46,8 @@ export const theme = createTheme({
       contrastText: "#FFF",
     },
     grey: {
-      "50": "#F2F2F2",
-      "100": "#F5F5F5",
+      "50": "#F5F5F5",
+      "100": "#F2F2F2",
       "200": "#EEEEEE",
       "300": "#E0E0E0",
       "400": "#BDBDBD",

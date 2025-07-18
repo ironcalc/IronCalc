@@ -11,11 +11,10 @@ impl UserModel {
             r##"{{
                 "item": {{
                     "style": "thin",
-                    "color": "{}"
+                    "color": "{color}"
                 }},
                 "type": "All"
-            }}"##,
-            color
+            }}"##
         ))
         .unwrap();
         let range = &Area {
@@ -40,11 +39,10 @@ impl UserModel {
             r##"{{
                 "item": {{
                     "style": "thin",
-                    "color": "{}"
+                    "color": "{color}"
                 }},
-                "type": "{}"
-            }}"##,
-            color, kind
+                "type": "{kind}"
+            }}"##
         ))
         .unwrap();
         let range = &Area {

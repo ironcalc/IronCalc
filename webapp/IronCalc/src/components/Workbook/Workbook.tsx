@@ -48,7 +48,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   );
   const focusWorkbook = useCallback(() => {
     if (rootRef.current) {
-      rootRef.current.focus();
+      rootRef.current.focus({ preventScroll: true });
       // HACK: We need to select something inside the root for onCopy to work
       const selection = window.getSelection();
       if (selection) {
@@ -249,8 +249,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       onToggleUnderline(!value);
     },
     onNavigationToEdge: (direction: NavigationKey): void => {
-      console.log(direction);
-      throw new Error("Function not implemented.");
+      model.onNavigateToEdgeInDirection(direction);
+      setRedrawId((id) => id + 1);
     },
     onPageDown: (): void => {
       model.onPageDown();
@@ -473,7 +473,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           sheet,
           clipboardId,
         });
-        event.clipboardData.setData("text/plain", data.csv);
+        event.clipboardData.setData("text/plain", data.csv.trim());
         event.clipboardData.setData("application/json", clipboardJsonStr);
         event.preventDefault();
         event.stopPropagation();

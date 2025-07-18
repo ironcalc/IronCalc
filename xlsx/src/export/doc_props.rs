@@ -19,10 +19,9 @@ pub(crate) fn get_app_xml(_: &Workbook) -> String {
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
 <Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\" \
             xmlns:vt=\"http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes\">\
-  <Application>{}</Application>\
-  <AppVersion>{}</AppVersion>\
-</Properties>",
-        APPLICATION, APP_VERSION
+  <Application>{APPLICATION}</Application>\
+  <AppVersion>{APP_VERSION}</AppVersion>\
+</Properties>"
     )
 }
 
@@ -38,12 +37,7 @@ pub(crate) fn get_core_xml(workbook: &Workbook, milliseconds: i64) -> Result<Str
     let seconds = milliseconds / 1000;
     let dt = match DateTime::from_timestamp(seconds, 0) {
         Some(s) => s,
-        None => {
-            return Err(XlsxError::Xml(format!(
-                "Invalid timestamp: {}",
-                milliseconds
-            )))
-        }
+        None => return Err(XlsxError::Xml(format!("Invalid timestamp: {milliseconds}"))),
     };
     let last_modified = dt.format("%Y-%m-%dT%H:%M:%SZ").to_string();
     Ok(format!(
@@ -54,16 +48,15 @@ pub(crate) fn get_core_xml(workbook: &Workbook, milliseconds: i64) -> Result<Str
  xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" \
  xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"> \
 <dc:title></dc:title><dc:subject></dc:subject>\
-<dc:creator>{}</dc:creator>\
+<dc:creator>{creator}</dc:creator>\
 <cp:keywords></cp:keywords>\
 <dc:description></dc:description>\
-<cp:lastModifiedBy>{}</cp:lastModifiedBy>\
+<cp:lastModifiedBy>{last_modified_by}</cp:lastModifiedBy>\
 <cp:revision></cp:revision>\
-<dcterms:created xsi:type=\"dcterms:W3CDTF\">{}</dcterms:created>\
-<dcterms:modified xsi:type=\"dcterms:W3CDTF\">{}</dcterms:modified>\
+<dcterms:created xsi:type=\"dcterms:W3CDTF\">{created}</dcterms:created>\
+<dcterms:modified xsi:type=\"dcterms:W3CDTF\">{last_modified}</dcterms:modified>\
 <cp:category></cp:category>\
 <cp:contentStatus></cp:contentStatus>\
-</cp:coreProperties>",
-        creator, last_modified_by, created, last_modified
+</cp:coreProperties>"
     ))
 }

@@ -62,3 +62,17 @@ fn test_create_named_style() {
     let style = model.get_style_for_cell(0, 1, 1).unwrap();
     assert!(style.font.b);
 }
+
+#[test]
+fn empty_models_have_two_fills() {
+    let model = new_empty_model();
+    assert_eq!(model.workbook.styles.fills.len(), 2);
+    assert_eq!(
+        model.workbook.styles.fills[0].pattern_type,
+        "none".to_string()
+    );
+    assert_eq!(
+        model.workbook.styles.fills[1].pattern_type,
+        "gray125".to_string()
+    );
+}

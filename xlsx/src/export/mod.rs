@@ -59,7 +59,7 @@ fn get_content_types_xml(workbook: &Workbook) -> String {
 pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
     let file_path = std::path::Path::new(&file_name);
     if file_path.exists() {
-        return Err(XlsxError::IO(format!("file {} already exists", file_name)));
+        return Err(XlsxError::IO(format!("file {file_name} already exists")));
     }
     let file = fs::File::create(file_path).unwrap();
     let writer = BufWriter::new(file);
@@ -140,7 +140,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
 pub fn save_to_icalc(model: &Model, file_name: &str) -> Result<(), XlsxError> {
     let file_path = std::path::Path::new(&file_name);
     if file_path.exists() {
-        return Err(XlsxError::IO(format!("file {} already exists", file_name)));
+        return Err(XlsxError::IO(format!("file {file_name} already exists")));
     }
     let s = bitcode::encode(&model.workbook);
     let mut file = fs::File::create(file_path)?;

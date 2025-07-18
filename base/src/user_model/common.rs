@@ -659,8 +659,12 @@ impl UserModel {
         Ok(())
     }
 
-    fn clear_column_formatting(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        let mut diff_list = Vec::new();
+    fn clear_column_formatting(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
         let old_value = self.model.get_column_style(sheet, column)?;
         self.model.delete_column_style(sheet, column)?;
         diff_list.push(Diff::DeleteColumnStyle {
@@ -739,12 +743,15 @@ impl UserModel {
                 }
             }
         }
-        self.push_diff_list(diff_list);
         Ok(())
     }
 
-    fn clear_row_formatting(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        let mut diff_list = Vec::new();
+    fn clear_row_formatting(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
         let old_value = self.model.get_row_style(sheet, row)?;
         self.model.delete_row_style(sheet, row)?;
         diff_list.push(Diff::DeleteRowStyle {
@@ -791,8 +798,6 @@ impl UserModel {
                 }
             }
         }
-        self.push_diff_list(diff_list);
-
         Ok(())
     }
 
@@ -803,19 +808,21 @@ impl UserModel {
     /// * [UserModel::range_clear_contents]
     pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
+        let mut diff_list = Vec::new();
         if range.row == 1 && range.height == LAST_ROW {
             for column in range.column..range.column + range.width {
-                self.clear_column_formatting(sheet, column)?;
+                self.clear_column_formatting(sheet, column, &mut diff_list)?;
             }
+            self.push_diff_list(diff_list);
             return Ok(());
         }
         if range.column == 1 && range.width == LAST_COLUMN {
             for row in range.row..range.row + range.height {
-                self.clear_row_formatting(sheet, row)?;
+                self.clear_row_formatting(sheet, row, &mut diff_list)?;
             }
+            self.push_diff_list(diff_list);
             return Ok(());
         }
-        let mut diff_list = Vec::new();
         for row in range.row..range.row + range.height {
             for column in range.column..range.column + range.width {
                 if let Some(old_style) = self.model.get_cell_style_or_none(sheet, row, column)? {
@@ -1487,10 +1494,10 @@ impl UserModel {
             return Err(format!("Invalid row: '{first_row}'"));
         }
         if !is_valid_column_number(last_column) {
-            return Err(format!("Invalid column: '{}'", last_column));
+            return Err(format!("Invalid column: '{last_column}'"));
         }
         if !is_valid_row(last_row) {
-            return Err(format!("Invalid row: '{}'", last_row));
+            return Err(format!("Invalid row: '{last_row}'"));
         }
 
         if !is_valid_row(to_column) {
@@ -1623,18 +1630,18 @@ impl UserModel {
                 text_row.push(text);
             }
             wtr.write_record(text_row)
-                .map_err(|e| format!("Error while processing csv: {}", e))?;
+                .map_err(|e| format!("Error while processing csv: {e}"))?;
             data.insert(row, data_row);
         }
 
         let csv = String::from_utf8(
             wtr.into_inner()
-                .map_err(|e| format!("Processing error: '{}'", e))?,
+                .map_err(|e| format!("Processing error: '{e}'"))?,
         )
-        .map_err(|e| format!("Error converting from utf8: '{}'", e))?;
+        .map_err(|e| format!("Error converting from utf8: '{e}'"))?;
 
         Ok(Clipboard {
-            csv,
+            csv: csv.trim().to_string(),
             data,
             sheet,
             range: (row_start, column_start, row_end, column_end),
@@ -1802,7 +1809,7 @@ impl UserModel {
         }
         self.push_diff_list(diff_list);
         // select the pasted area
-        self.set_selected_range(area.row, area.column, row, column)?;
+        self.set_selected_range(area.row, area.column, row - 1, column - 1)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -2391,7 +2398,7 @@ mod tests {
             VerticalAlignment::Top,
         ];
         for a in all {
-            assert_eq!(vertical(&format!("{}", a)), Ok(a));
+            assert_eq!(vertical(&format!("{a}")), Ok(a));
         }
     }
 
@@ -2408,7 +2415,7 @@ mod tests {
             HorizontalAlignment::Right,
         ];
         for a in all {
-            assert_eq!(horizontal(&format!("{}", a)), Ok(a));
+            assert_eq!(horizontal(&format!("{a}")), Ok(a));
         }
     }
 }

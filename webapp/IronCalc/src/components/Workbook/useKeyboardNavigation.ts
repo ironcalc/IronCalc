@@ -74,7 +74,11 @@ const useKeyboardNavigation = (
       if (event.metaKey || event.ctrlKey) {
         switch (key) {
           case "z": {
-            options.onUndo();
+            if (event.shiftKey) {
+              options.onRedo();
+            } else {
+              options.onUndo();
+            }
             event.stopPropagation();
             event.preventDefault();
 

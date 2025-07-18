@@ -114,7 +114,7 @@ const Editor = (options: EditorOptions) => {
       }
     }
     if (type === cell.focus) {
-      textareaRef.current?.focus();
+      textareaRef.current?.focus({ preventScroll: true });
     }
   });
 
@@ -249,6 +249,9 @@ const Editor = (options: EditorOptions) => {
           }
         }}
         onPaste={(event) => event.stopPropagation()}
+        onCopy={(event) => event.stopPropagation()}
+        onDoubleClick={(event) => event.stopPropagation()}
+        onCut={(event) => event.stopPropagation()}
       />
     </div>
   );

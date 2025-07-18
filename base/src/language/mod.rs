@@ -1,7 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::OnceLock};
 
 use bitcode::{Decode, Encode};
-use once_cell::sync::Lazy;
 
 #[derive(Encode, Decode, Clone)]
 pub struct Booleans {
@@ -31,14 +30,17 @@ pub struct Language {
     pub errors: Errors,
 }
 
+static LANGUAGES: OnceLock<HashMap<String, Language>> = OnceLock::new();
+
 #[allow(clippy::expect_used)]
-static LANGUAGES: Lazy<HashMap<String, Language>> = Lazy::new(|| {
-    bitcode::decode(include_bytes!("language.bin")).expect("Failed parsing language file")
-});
+fn get_languages() -> &'static HashMap<String, Language> {
+    LANGUAGES.get_or_init(|| {
+        bitcode::decode(include_bytes!("language.bin")).expect("Failed parsing language file")
+    })
+}
 
 pub fn get_language(id: &str) -> Result<&Language, String> {
-    let language = LANGUAGES
+    get_languages()
         .get(id)
-        .ok_or(format!("Language is not supported: '{}'", id))?;
-    Ok(language)
+        .ok_or_else(|| format!("Language is not supported: '{id}'"))
 }
