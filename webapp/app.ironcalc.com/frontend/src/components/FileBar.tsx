@@ -117,19 +117,6 @@ const StyledIronCalcIcon = styled(IronCalcIcon)`
   }
 `;
 
-const HelpButton = styled("div")`
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  font-family: Inter;
-  padding: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  &:hover {
-    background-color: #f2f2f2;
-  }
-`;
-
 const Divider = styled("div")`
   margin: 0px 8px 0px 16px;
   height: 12px;
