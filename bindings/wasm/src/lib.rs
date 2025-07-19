@@ -51,6 +51,7 @@ impl Model {
         Ok(Model { model })
     }
 
+    #[wasm_bindgen(js_name = "fromBytes")]
     pub fn from_bytes(bytes: &[u8]) -> Result<Model, JsError> {
         let model = BaseModel::from_bytes(bytes).map_err(to_js_error)?;
         Ok(Model { model })
