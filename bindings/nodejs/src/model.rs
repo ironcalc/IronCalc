@@ -340,4 +340,20 @@ impl Model {
       .delete_defined_name(&name, scope)
       .map_err(|e| to_js_error(e.to_string()))
   }
+
+  #[napi(js_name = "moveColumn")]
+  pub fn move_column(&mut self, sheet: u32, column: i32, delta: i32) -> Result<()> {
+    self
+      .model
+      .move_column_action(sheet, column, delta)
+      .map_err(to_js_error)
+  }
+
+  #[napi(js_name = "moveRow")]
+  pub fn move_row(&mut self, sheet: u32, row: i32, delta: i32) -> Result<()> {
+    self
+      .model
+      .move_row_action(sheet, row, delta)
+      .map_err(to_js_error)
+  }
 }
