@@ -388,13 +388,15 @@ export default class WorksheetCanvas {
     topLeftCell: Cell,
     bottomRightCell: Cell,
   ): void {
+    const frozenColumnsCount = this.model.getFrozenColumnsCount(selectedSheet);
     // First compute the text to the left of the viewport
     const columnToTheLeft = this.model.getLastNonEmptyInRowBeforeColumn(
       selectedSheet,
       row,
       topLeftCell.column,
     );
-    if (columnToTheLeft) {
+    // If it is one of the frozen columns it is already computed
+    if (columnToTheLeft && columnToTheLeft > frozenColumnsCount) {
       const columnWidth = this.getColumnWidth(selectedSheet, columnToTheLeft);
       const [textX, textY] = this.getCoordinatesByCell(row, columnToTheLeft);
       this.computeCellText(
