@@ -392,7 +392,7 @@ export default class WorksheetCanvas {
     const columnToTheLeft = this.model.getLastNonEmptyInRowBeforeColumn(
       selectedSheet,
       row,
-      topLeftCell.column + 1,
+      topLeftCell.column,
     );
     if (columnToTheLeft) {
       const columnWidth = this.getColumnWidth(selectedSheet, columnToTheLeft);
