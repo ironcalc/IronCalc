@@ -12,12 +12,19 @@ use super::common::UserModel;
 
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, Debug))]
+/// Represents the user's current view of the worksheet, including selection and scroll position.
 pub struct SelectedView {
+    /// The index of the selected sheet.
     pub sheet: u32,
+    /// The selected row.
     pub row: i32,
+    /// The selected column.
     pub column: i32,
+    /// The selected range, as `[start_row, start_column, end_row, end_column]`.
     pub range: [i32; 4],
+    /// The first row visible in the viewport.
     pub top_row: i32,
+    /// The first column visible in the viewport.
     pub left_column: i32,
 }
 

@@ -59,6 +59,10 @@ pub mod mock_time;
 
 pub use model::get_milliseconds_since_epoch;
 pub use model::Model;
-pub use user_model::BorderArea;
-pub use user_model::ClipboardData;
-pub use user_model::UserModel;
+pub use user_model::{
+    common::{BorderArea, ClipboardData, ModelEvent},
+    event::{EventEmitter, Subscription},
+    history::Diff,
+    ui::SelectedView,
+    UserModel,
+};

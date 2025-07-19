@@ -6,7 +6,7 @@ use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    constants::{self, LAST_COLUMN, LAST_ROW},
+    constants::{COLUMN_WIDTH_FACTOR, LAST_COLUMN, LAST_ROW},
     expressions::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
@@ -16,14 +16,25 @@ use crate::{
         Alignment, BorderItem, Cell, CellType, Col, HorizontalAlignment, SheetProperties,
         SheetState, Style, VerticalAlignment,
     },
+    user_model::{
+        event::{EventEmitter, Subscription},
+        history::{
+            CellReference, ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
+        },
+    },
     utils::is_valid_hex_color,
 };
 
-use crate::user_model::history::{
-    ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
-};
-
 use super::border_utils::is_max_border;
+
+/// Events that the `UserModel` can emit.
+pub enum ModelEvent {
+    /// A list of diffs (a single user action) that can be undone/redone.
+    Diffs(DiffList),
+    /// An informational event that cells have been evaluated.
+    CellsEvaluated(Vec<CellReference>),
+}
+
 /// Data for the clipboard
 pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
 
@@ -223,6 +234,7 @@ pub struct UserModel {
     history: History,
     send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
+    event_emitter: EventEmitter<ModelEvent>,
 }
 
 impl Debug for UserModel {
@@ -239,6 +251,7 @@ impl UserModel {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            event_emitter: EventEmitter::default(),
         }
     }
 
@@ -253,6 +266,7 @@ impl UserModel {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            event_emitter: EventEmitter::default(),
         })
     }
 
@@ -267,6 +281,7 @@ impl UserModel {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
+            event_emitter: EventEmitter::default(),
         })
     }
 
@@ -351,13 +366,48 @@ impl UserModel {
         self.pause_evaluation = false;
     }
 
+    /// Subscribes to diff events.
+    /// Returns a Subscription handle that automatically unsubscribes when dropped.
+    #[cfg(any(target_arch = "wasm32", feature = "single_threaded"))]
+    pub fn subscribe<F>(&self, listener: F) -> Subscription<ModelEvent>
+    where
+        F: Fn(&ModelEvent) + 'static,
+    {
+        self.event_emitter.subscribe(listener)
+    }
+
+    /// Subscribes to diff events.
+    /// Returns a Subscription handle that automatically unsubscribes when dropped.
+    #[cfg(not(any(target_arch = "wasm32", feature = "single_threaded")))]
+    pub fn subscribe<F>(&self, listener: F) -> Subscription<ModelEvent>
+    where
+        F: Fn(&ModelEvent) + Send + Sync + 'static,
+    {
+        self.event_emitter.subscribe(listener)
+    }
+
     /// Forces an evaluation of the model
     ///
     /// See also:
     /// * [Model::evaluate]
     /// * [UserModel::pause_evaluation]
     pub fn evaluate(&mut self) {
-        self.model.evaluate()
+        // Perform evaluation
+        self.model.evaluate();
+
+        // Get the list of cells that were just evaluated
+        let evaluated_cells = self.model.get_changed_cells();
+
+        // Emit cells evaluated event if there are any cells that were evaluated
+        if !evaluated_cells.is_empty() {
+            self.event_emitter
+                .emit(&ModelEvent::CellsEvaluated(evaluated_cells));
+        }
+    }
+
+    /// Returns a list of all cells that have been changed or are being evaluated
+    pub fn get_changed_cells(&self) -> Vec<CellReference> {
+        self.model.get_changed_cells()
     }
 
     /// Returns the list of pending diffs and removes them from the queue
@@ -708,7 +758,7 @@ impl UserModel {
                         sheet,
                         row,
                         column,
-                        old_style: Box::new(None),
+                        old_style: Box::new(Some(old_style)),
                     });
                 }
             }
@@ -738,7 +788,7 @@ impl UserModel {
                         sheet,
                         row: row.r,
                         column,
-                        old_style: Box::new(None),
+                        old_style: Box::new(Some(old_style)),
                     });
                 }
             }
@@ -793,7 +843,7 @@ impl UserModel {
                         sheet,
                         row,
                         column,
-                        old_style: Box::new(None),
+                        old_style: Box::new(Some(old_style)),
                     });
                 }
             }
@@ -848,7 +898,7 @@ impl UserModel {
                             sheet,
                             row,
                             column,
-                            old_style: Box::new(None),
+                            old_style: Box::new(Some(old_style)),
                         });
                     }
                 }
@@ -1747,13 +1797,13 @@ impl UserModel {
                 // remain in the copied area
                 let source = &CellReferenceIndex {
                     sheet,
-                    column: *source_column,
                     row: *source_row,
+                    column: *source_column,
                 };
                 let target = &CellReferenceIndex {
                     sheet,
-                    column: target_column,
                     row: target_row,
+                    column: target_column,
                 };
                 let new_value = if is_cut {
                     self.model
@@ -1943,6 +1993,8 @@ impl UserModel {
             r#type: DiffType::Redo,
             list: diff_list.clone(),
         });
+        self.event_emitter
+            .emit(&ModelEvent::Diffs(diff_list.clone()));
         self.history.push(diff_list);
     }
 
@@ -2070,7 +2122,7 @@ impl UserModel {
                     }
                     // makes sure that the width and style is correct
                     if let Some(col) = &old_data.column {
-                        let width = col.width * constants::COLUMN_WIDTH_FACTOR;
+                        let width = col.width * COLUMN_WIDTH_FACTOR;
                         let style = col.style;
                         worksheet.set_column_width_and_style(*column, width, style)?;
                     }
@@ -2222,16 +2274,14 @@ impl UserModel {
                 Diff::DeleteRowStyle {
                     sheet,
                     row,
-                    old_value,
+                    old_value: _,
                 } => {
-                    if let Some(s) = old_value.as_ref() {
-                        self.model.set_row_style(*sheet, *row, s)?;
-                    } else {
-                        self.model.delete_row_style(*sheet, *row)?;
-                    }
+                    self.model.delete_row_style(*sheet, *row)?;
                 }
             }
         }
+        self.event_emitter
+            .emit(&ModelEvent::Diffs(diff_list.clone()));
         if needs_evaluation {
             self.evaluate_if_not_paused();
         }
@@ -2433,7 +2483,8 @@ impl UserModel {
                 }
             }
         }
-
+        self.event_emitter
+            .emit(&ModelEvent::Diffs(diff_list.clone()));
         if needs_evaluation {
             self.evaluate_if_not_paused();
         }
