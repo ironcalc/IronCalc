@@ -1603,7 +1603,7 @@ impl UserModel {
     }
 
     /// Returns the largest column in the row less than a column whose cell has a non empty value.
-    /// If the row is empty, it returns `None`.
+    /// If there are none it returns `None`.
     /// This is useful when rendering a part of a worksheet to know which cells spill over
     pub fn get_last_non_empty_in_row_before_column(
         &self,
@@ -1633,7 +1633,9 @@ impl UserModel {
         }
     }
 
-    /// Returns the largest column in the row greater than a column whose cell has a non empty value.
+    /// Returns the smallest column in the row larger than "column" whose cell has a non empty value.
+    /// If there are none it returns `None`.
+    /// This is useful when rendering a part of a worksheet to know which cells spill over
     pub fn get_first_non_empty_in_row_after_column(
         &self,
         sheet: u32,
