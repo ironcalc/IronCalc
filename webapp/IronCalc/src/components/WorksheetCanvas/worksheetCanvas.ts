@@ -55,8 +55,6 @@ export const defaultCellFontFamily = fonts.regular;
 export const headerFontFamily = fonts.regular;
 export const frozenSeparatorWidth = 3;
 
-type Tuple = [number, number];
-
 interface TextProperties {
   row: number;
   column: number;
@@ -136,14 +134,9 @@ export default class WorksheetCanvas {
     this.onRowHeightChanges = options.onRowHeightChanges;
     this.resetHeaders();
     this.cellOutlineHandle = attachOutlineHandle(this);
-    // +1 means the cell is filled with a spill from a cell in the left
-    // -1 means the cell is filled with a spill from a cell in the right
-    this.spills = new Map<string, number>();
-    this.cells = [];
-  }
 
-  removeSpills(): void {
-    this.spills.clear();
+    // a cell marked as "spill" means its left border should be skipped
+    this.spills = new Map<string, number>();
     this.cells = [];
   }
 
@@ -685,12 +678,14 @@ export default class WorksheetCanvas {
         leftColumnX > minX &&
         this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
           "" &&
-        spillColumn > 0 &&
+        spillColumn >= 1 &&
         ((column <= frozenColumnsCount && spillColumn <= frozenColumnsCount) ||
           column > frozenColumnsCount)
       ) {
         leftColumnX -= this.getColumnWidth(selectedSheet, spillColumn);
-        // marks (row, spillColumn) as spilling so we don't draw a border to the left
+        // This is tricky but correct. The reason is we only draw the left borders of the cells
+        // (because the left border of a cell MUST be the right border of the one to the left).
+        // So if we want to remove the right border of this cell we need to skip the left border of the next.
         this.spills.set(`${row}-${spillColumn + 1}`, 1);
         spillColumn -= 1;
       }
@@ -1735,12 +1730,6 @@ export default class WorksheetCanvas {
   }
 
   renderSheet(): void {
-    console.time("renderSheet");
-    this._renderSheet();
-    console.timeEnd("renderSheet");
-  }
-
-  _renderSheet(): void {
     const context = this.ctx;
     const { canvas } = this;
     const selectedSheet = this.model.getSelectedSheet();
