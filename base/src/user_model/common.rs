@@ -1020,12 +1020,24 @@ impl UserModel {
         column: i32,
         delta: i32,
     ) -> Result<(), String> {
-        self.model.move_column_action(sheet, column, delta)
+        let diff_list = vec![Diff::MoveColumn {
+            sheet,
+            column,
+            delta,
+        }];
+        self.push_diff_list(diff_list);
+        self.model.move_column_action(sheet, column, delta)?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Moves a row vertically and adjusts formulas
     pub fn move_row_action(&mut self, sheet: u32, row: i32, delta: i32) -> Result<(), String> {
-        self.model.move_row_action(sheet, row, delta)
+        let diff_list = vec![Diff::MoveRow { sheet, row, delta }];
+        self.push_diff_list(diff_list);
+        self.model.move_row_action(sheet, row, delta)?;
+        self.evaluate_if_not_paused();
+        Ok(())
     }
 
     /// Sets the width of a group of columns in a single diff list
@@ -2308,6 +2320,21 @@ impl UserModel {
                         self.model.delete_row_style(*sheet, *row)?;
                     }
                 }
+                Diff::MoveColumn {
+                    sheet,
+                    column,
+                    delta,
+                } => {
+                    // For undo, we apply the opposite move
+                    self.model
+                        .move_column_action(*sheet, *column + *delta, -*delta)?;
+                    needs_evaluation = true;
+                }
+                Diff::MoveRow { sheet, row, delta } => {
+                    // For undo, we apply the opposite move
+                    self.model.move_row_action(*sheet, *row + *delta, -*delta)?;
+                    needs_evaluation = true;
+                }
             }
         }
         if needs_evaluation {
@@ -2514,6 +2541,18 @@ impl UserModel {
                     old_value: _,
                 } => {
                     self.model.delete_row_style(*sheet, *row)?;
+                }
+                Diff::MoveColumn {
+                    sheet,
+                    column,
+                    delta,
+                } => {
+                    self.model.move_column_action(*sheet, *column, *delta)?;
+                    needs_evaluation = true;
+                }
+                Diff::MoveRow { sheet, row, delta } => {
+                    self.model.move_row_action(*sheet, *row, *delta)?;
+                    needs_evaluation = true;
                 }
             }
         }
