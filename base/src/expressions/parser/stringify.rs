@@ -172,10 +172,18 @@ pub(crate) fn stringify_reference(
                     if sheet_index == *sheet {
                         if row == *move_row {
                             row += *delta;
-                        } else if (*delta > 0 && row > *move_row && row <= *move_row + *delta)
-                            || (*delta < 0 && row < *move_row && row >= *move_row + *delta)
-                        {
-                            row -= *delta;
+                        } else if *delta > 0 {
+                            // Moving the row downwards
+                            if row > *move_row && row <= *move_row + *delta {
+                                // Intermediate rows move up by one position
+                                row -= 1;
+                            }
+                        } else if *delta < 0 {
+                            // Moving the row upwards
+                            if row < *move_row && row >= *move_row + *delta {
+                                // Intermediate rows move down by one position
+                                row += 1;
+                            }
                         }
                     }
                 }
@@ -187,14 +195,18 @@ pub(crate) fn stringify_reference(
                     if sheet_index == *sheet {
                         if column == *move_column {
                             column += *delta;
-                        } else if (*delta > 0
-                            && column > *move_column
-                            && column <= *move_column + *delta)
-                            || (*delta < 0
-                                && column < *move_column
-                                && column >= *move_column + *delta)
-                        {
-                            column -= *delta;
+                        } else if *delta > 0 {
+                            // Moving the column to the right
+                            if column > *move_column && column <= *move_column + *delta {
+                                // Intermediate columns move left by one position
+                                column -= 1;
+                            }
+                        } else if *delta < 0 {
+                            // Moving the column to the left
+                            if column < *move_column && column >= *move_column + *delta {
+                                // Intermediate columns move right by one position
+                                column += 1;
+                            }
                         }
                     }
                 }
