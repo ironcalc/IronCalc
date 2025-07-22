@@ -165,6 +165,16 @@ pub(crate) enum Diff {
         new_scope: Option<u32>,
         new_formula: String,
     },
+    MoveColumn {
+        sheet: u32,
+        column: i32,
+        delta: i32,
+    },
+    MoveRow {
+        sheet: u32,
+        row: i32,
+        delta: i32,
+    },
     // FIXME: we are missing SetViewDiffs
 }
 
