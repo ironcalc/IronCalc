@@ -734,5 +734,51 @@ fn test_move_row_height() {
     assert_eq!(model.get_row_height(sheet, 3), Ok(original_row4_height));
 }
 
+/// Moving a row down by two positions should shift formulas on intermediate
+/// rows by only one (the row that gets skipped), not by the full delta ‒ this
+/// guards against the regression fixed in the RowMove displacement logic.
+#[test]
+fn test_row_move_down_two_updates_intermediate_refs_by_one() {
+    let mut model = new_empty_model();
+    populate_table(&mut model);
+    // Set up formulas to verify intermediate rows shift by 1 (not full delta).
+    model._set("E3", "=G3"); // target row
+    model._set("E4", "=G4"); // intermediate row
+    model._set("E5", "=SUM(G3:J3)");
+    model.evaluate();
+
+    // Move row 3 down by two positions (row 3 -> row 5)
+    assert!(model.move_row_action(0, 3, 2).is_ok());
+    model.evaluate();
+
+    // Assert that references for the moved row and intermediate row are correct.
+    assert_eq!(model._get_formula("E3"), "=G3");
+    assert_eq!(model._get_formula("E5"), "=G5");
+    assert_eq!(model._get_formula("E4"), "=SUM(G5:J5)");
+}
+
+/// Moving a column right by two positions should shift formulas on
+/// intermediate columns by only one, ensuring the ColumnMove displacement
+/// logic handles multi-position moves correctly.
+#[test]
+fn test_column_move_right_two_updates_intermediate_refs_by_one() {
+    let mut model = new_empty_model();
+    populate_table(&mut model);
+    // Set up formulas to verify intermediate columns shift by 1 (not full delta).
+    model._set("E3", "=$G3"); // target column
+    model._set("E4", "=$H3"); // intermediate column
+    model._set("E5", "=SUM($G3:$J7)");
+    model.evaluate();
+
+    // Move column G (7) right by two positions (G -> I)
+    assert!(model.move_column_action(0, 7, 2).is_ok());
+    model.evaluate();
+
+    // Assert that references for moved and intermediate columns are correct.
+    assert_eq!(model._get_formula("E3"), "=$I3");
+    assert_eq!(model._get_formula("E4"), "=$G3");
+    assert_eq!(model._get_formula("E5"), "=SUM($I3:$J7)");
+}
+
 // A  B  C  D  E  F  G   H  I  J   K   L   M   N   O   P   Q   R
 // 1  2  3  4  5  6  7   8  9  10  11  12  13  14  15  16  17  18
