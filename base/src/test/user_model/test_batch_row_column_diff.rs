@@ -564,7 +564,7 @@ fn bulk_delete_with_styles() {
 
     // Set up data with various styles
     for r in 5..10 {
-        model.set_user_input(0, r, 1, &format!("Row{}", r)).unwrap();
+        model.set_user_input(0, r, 1, &format!("Row{r}")).unwrap();
         model.set_rows_height(0, r, r, (r * 10) as f64).unwrap();
     }
 
@@ -576,7 +576,7 @@ fn bulk_delete_with_styles() {
     for r in 5..10 {
         assert_eq!(
             model.get_formatted_cell_value(0, r, 1).unwrap(),
-            format!("Row{}", r)
+            format!("Row{r}")
         );
         assert_eq!(model.get_row_height(0, r).unwrap(), (r * 10) as f64);
     }
