@@ -924,6 +924,10 @@ impl UserModel {
             // Collect diffs from bottom to top so that `undo` re-inserts rows
             // in the correct order (top to bottom).
             for r in (row..row + row_count).rev() {
+                if !is_valid_row(r) {
+                    return Err(format!("Row number '{r}' is not valid."));
+                }
+
                 let mut row_data = None;
                 for rd in &worksheet.rows {
                     if rd.r == r {

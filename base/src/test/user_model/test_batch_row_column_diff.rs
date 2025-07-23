@@ -4,6 +4,7 @@
 use bitcode::decode;
 
 use crate::{
+    constants::{LAST_COLUMN, LAST_ROW},
     test::util::new_empty_model,
     user_model::history::{Diff, QueueDiffs},
     UserModel,
@@ -224,4 +225,22 @@ fn delete_mixed_empty_and_filled_rows() {
     assert_eq!(model.get_formatted_cell_value(0, 7, 1).unwrap(), "Row7");
     assert_eq!(model.get_formatted_cell_value(0, 9, 1).unwrap(), "Row9");
     assert_eq!(model.get_formatted_cell_value(0, 10, 1).unwrap(), "After");
+}
+
+#[test]
+fn boundary_validation() {
+    let base = new_empty_model();
+    let mut model = UserModel::from_model(base);
+
+    // Test deleting rows beyond valid range
+    assert!(model.delete_rows(0, LAST_ROW, 2).is_err());
+    assert!(model.delete_rows(0, LAST_ROW + 1, 1).is_err());
+
+    // Test deleting columns beyond valid range
+    assert!(model.delete_columns(0, LAST_COLUMN, 2).is_err());
+    assert!(model.delete_columns(0, LAST_COLUMN + 1, 1).is_err());
+
+    // Test valid boundary deletions (should work with our empty row fix)
+    assert!(model.delete_rows(0, LAST_ROW, 1).is_ok());
+    assert!(model.delete_columns(0, LAST_COLUMN, 1).is_ok());
 }
