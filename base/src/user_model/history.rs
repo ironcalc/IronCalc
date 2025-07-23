@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
@@ -17,6 +19,7 @@ pub(crate) struct ColumnData {
 }
 
 #[derive(Clone, Encode, Decode)]
+#[allow(deprecated)]
 pub(crate) enum Diff {
     // Cell diffs
     SetCellValue {
@@ -87,23 +90,83 @@ pub(crate) enum Diff {
         row: i32,
         old_value: Box<Option<Style>>,
     },
+    /// **DEPRECATED**: Use `InsertRows` with count=1 instead.
+    ///
+    /// This variant is kept for backward compatibility to handle old persisted diffs.
+    /// New code should always use `InsertRows` even for single row insertions.
+    #[deprecated(since = "0.5.0", note = "Use InsertRows with count=1 instead")]
+    #[allow(dead_code)]
+    #[allow(deprecated)]
     InsertRow {
+        #[allow(deprecated)]
         sheet: u32,
+        #[allow(deprecated)]
         row: i32,
     },
+    /// **DEPRECATED**: Use `DeleteRows` with count=1 instead.
+    ///
+    /// This variant is kept for backward compatibility to handle old persisted diffs.
+    /// New code should always use `DeleteRows` even for single row deletions.
+    #[deprecated(since = "0.5.0", note = "Use DeleteRows with count=1 instead")]
+    #[allow(dead_code)]
+    #[allow(deprecated)]
     DeleteRow {
+        #[allow(deprecated)]
         sheet: u32,
+        #[allow(deprecated)]
         row: i32,
+        #[allow(deprecated)]
         old_data: Box<RowData>,
     },
+    /// **DEPRECATED**: Use `InsertColumns` with count=1 instead.
+    ///
+    /// This variant is kept for backward compatibility to handle old persisted diffs.
+    /// New code should always use `InsertColumns` even for single column insertions.
+    #[deprecated(since = "0.5.0", note = "Use InsertColumns with count=1 instead")]
+    #[allow(dead_code)]
+    #[allow(deprecated)]
     InsertColumn {
+        #[allow(deprecated)]
         sheet: u32,
+        #[allow(deprecated)]
         column: i32,
     },
+    /// **DEPRECATED**: Use `DeleteColumns` with count=1 instead.
+    ///
+    /// This variant is kept for backward compatibility to handle old persisted diffs.
+    /// New code should always use `DeleteColumns` even for single column deletions.
+    #[deprecated(since = "0.5.0", note = "Use DeleteColumns with count=1 instead")]
+    #[allow(dead_code)]
+    #[allow(deprecated)]
     DeleteColumn {
+        #[allow(deprecated)]
+        sheet: u32,
+        #[allow(deprecated)]
+        column: i32,
+        #[allow(deprecated)]
+        old_data: Box<ColumnData>,
+    },
+    InsertRows {
+        sheet: u32,
+        row: i32,
+        count: i32,
+    },
+    DeleteRows {
+        sheet: u32,
+        row: i32,
+        count: i32,
+        old_data: Vec<RowData>,
+    },
+    InsertColumns {
         sheet: u32,
         column: i32,
-        old_data: Box<ColumnData>,
+        count: i32,
+    },
+    DeleteColumns {
+        sheet: u32,
+        column: i32,
+        count: i32,
+        old_data: Vec<ColumnData>,
     },
     DeleteSheet {
         sheet: u32,

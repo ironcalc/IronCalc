@@ -874,10 +874,11 @@ impl UserModel {
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         self.model.insert_rows(sheet, row, row_count)?;
 
-        let mut diff_list = Vec::new();
-        for _ in 0..row_count {
-            diff_list.push(Diff::InsertRow { sheet, row });
-        }
+        let diff_list = vec![Diff::InsertRows {
+            sheet,
+            row,
+            count: row_count,
+        }];
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
@@ -903,10 +904,11 @@ impl UserModel {
     ) -> Result<(), String> {
         self.model.insert_columns(sheet, column, column_count)?;
 
-        let mut diff_list = Vec::new();
-        for _ in 0..column_count {
-            diff_list.push(Diff::InsertColumn { sheet, column });
-        }
+        let diff_list = vec![Diff::InsertColumns {
+            sheet,
+            column,
+            count: column_count,
+        }];
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
@@ -921,9 +923,9 @@ impl UserModel {
     /// See also [`Model::delete_rows`].
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
-        let mut diff_list = Vec::new();
-        // Bottom to top order prevents index drift during undo
-        for r in (row..row + row_count).rev() {
+        let mut old_data = Vec::new();
+        // Collect data for all rows to be deleted
+        for r in row..row + row_count {
             let mut row_data = None;
             for rd in &worksheet.rows {
                 if rd.r == r {
@@ -935,18 +937,20 @@ impl UserModel {
                 Some(s) => s.clone(),
                 None => HashMap::new(),
             };
-            diff_list.push(Diff::DeleteRow {
-                sheet,
-                row: r,
-                old_data: Box::new(RowData {
-                    row: row_data,
-                    data,
-                }),
+            old_data.push(RowData {
+                row: row_data,
+                data,
             });
         }
 
         self.model.delete_rows(sheet, row, row_count)?;
 
+        let diff_list = vec![Diff::DeleteRows {
+            sheet,
+            row,
+            count: row_count,
+            old_data,
+        }];
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
@@ -966,9 +970,9 @@ impl UserModel {
         column_count: i32,
     ) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
-        let mut diff_list = Vec::new();
-        // Right to left order prevents index drift during undo
-        for c in (column..column + column_count).rev() {
+        let mut old_data = Vec::new();
+        // Collect data for all columns to be deleted
+        for c in column..column + column_count {
             let mut column_data = None;
             for col in &worksheet.cols {
                 if c >= col.min && c <= col.max {
@@ -990,18 +994,20 @@ impl UserModel {
                 }
             }
 
-            diff_list.push(Diff::DeleteColumn {
-                sheet,
-                column: c,
-                old_data: Box::new(ColumnData {
-                    column: column_data,
-                    data,
-                }),
+            old_data.push(ColumnData {
+                column: column_data,
+                data,
             });
         }
 
         self.model.delete_columns(sheet, column, column_count)?;
 
+        let diff_list = vec![Diff::DeleteColumns {
+            sheet,
+            column,
+            count: column_count,
+            old_data,
+        }];
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
@@ -2001,6 +2007,7 @@ impl UserModel {
     fn apply_undo_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list.iter().rev() {
+            #[allow(deprecated)]
             match diff {
                 Diff::SetCellValue {
                     sheet,
@@ -2119,6 +2126,58 @@ impl UserModel {
                         let width = col.width * constants::COLUMN_WIDTH_FACTOR;
                         let style = col.style;
                         worksheet.set_column_width_and_style(*column, width, style)?;
+                    }
+                }
+                Diff::InsertRows { sheet, row, count } => {
+                    self.model.delete_rows(*sheet, *row, *count)?;
+                    needs_evaluation = true;
+                }
+                Diff::DeleteRows {
+                    sheet,
+                    row,
+                    count: _,
+                    old_data,
+                } => {
+                    needs_evaluation = true;
+                    self.model
+                        .insert_rows(*sheet, *row, old_data.len() as i32)?;
+                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
+                    for (i, row_data) in old_data.iter().enumerate() {
+                        let r = *row + i as i32;
+                        if let Some(row_style) = row_data.row.clone() {
+                            worksheet.rows.push(row_style);
+                        }
+                        worksheet.sheet_data.insert(r, row_data.data.clone());
+                    }
+                }
+                Diff::InsertColumns {
+                    sheet,
+                    column,
+                    count,
+                } => {
+                    self.model.delete_columns(*sheet, *column, *count)?;
+                    needs_evaluation = true;
+                }
+                Diff::DeleteColumns {
+                    sheet,
+                    column,
+                    count: _,
+                    old_data,
+                } => {
+                    needs_evaluation = true;
+                    self.model
+                        .insert_columns(*sheet, *column, old_data.len() as i32)?;
+                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
+                    for (i, col_data) in old_data.iter().enumerate() {
+                        let c = *column + i as i32;
+                        for (row, cell) in &col_data.data {
+                            worksheet.update_cell(*row, c, cell.clone())?;
+                        }
+                        if let Some(col) = &col_data.column {
+                            let width = col.width * constants::COLUMN_WIDTH_FACTOR;
+                            let style = col.style;
+                            worksheet.set_column_width_and_style(c, width, style)?;
+                        }
                     }
                 }
                 Diff::SetFrozenRowsCount {
@@ -2288,6 +2347,7 @@ impl UserModel {
     fn apply_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list {
+            #[allow(deprecated)]
             match diff {
                 Diff::SetCellValue {
                     sheet,
@@ -2366,6 +2426,36 @@ impl UserModel {
                     old_data: _,
                 } => {
                     self.model.delete_columns(*sheet, *column, 1)?;
+                    needs_evaluation = true;
+                }
+                Diff::InsertRows { sheet, row, count } => {
+                    self.model.insert_rows(*sheet, *row, *count)?;
+                    needs_evaluation = true;
+                }
+                Diff::DeleteRows {
+                    sheet,
+                    row,
+                    count,
+                    old_data: _,
+                } => {
+                    self.model.delete_rows(*sheet, *row, *count)?;
+                    needs_evaluation = true;
+                }
+                Diff::InsertColumns {
+                    sheet,
+                    column,
+                    count,
+                } => {
+                    self.model.insert_columns(*sheet, *column, *count)?;
+                    needs_evaluation = true;
+                }
+                Diff::DeleteColumns {
+                    sheet,
+                    column,
+                    count,
+                    old_data: _,
+                } => {
+                    self.model.delete_columns(*sheet, *column, *count)?;
                     needs_evaluation = true;
                 }
                 Diff::SetFrozenRowsCount {
