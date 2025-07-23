@@ -933,7 +933,7 @@ impl UserModel {
                 }
                 let data = match worksheet.sheet_data.get(&r) {
                     Some(s) => s.clone(),
-                    None => return Err(format!("Row number '{r}' is not valid.")),
+                    None => HashMap::new(),
                 };
                 diff_list.push(Diff::DeleteRow {
                     sheet,
