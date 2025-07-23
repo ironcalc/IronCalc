@@ -872,12 +872,13 @@ impl UserModel {
     ///
     /// See also [`Model::insert_rows`].
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        self.model.insert_rows(sheet, row, row_count)?;
+
         let mut diff_list = Vec::new();
         for _ in 0..row_count {
             diff_list.push(Diff::InsertRow { sheet, row });
         }
         self.push_diff_list(diff_list);
-        self.model.insert_rows(sheet, row, row_count)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -900,12 +901,13 @@ impl UserModel {
         column: i32,
         column_count: i32,
     ) -> Result<(), String> {
+        self.model.insert_columns(sheet, column, column_count)?;
+
         let mut diff_list = Vec::new();
         for _ in 0..column_count {
             diff_list.push(Diff::InsertColumn { sheet, column });
         }
         self.push_diff_list(diff_list);
-        self.model.insert_columns(sheet, column, column_count)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -918,40 +920,34 @@ impl UserModel {
     ///
     /// See also [`Model::delete_rows`].
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
-        let diff_list = {
-            let worksheet = self.model.workbook.worksheet(sheet)?;
-            let mut diff_list = Vec::new();
-            // Collect diffs from bottom to top so that `undo` re-inserts rows
-            // in the correct order (top to bottom).
-            for r in (row..row + row_count).rev() {
-                if !is_valid_row(r) {
-                    return Err(format!("Row number '{r}' is not valid."));
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let mut diff_list = Vec::new();
+        // Bottom to top order prevents index drift during undo
+        for r in (row..row + row_count).rev() {
+            let mut row_data = None;
+            for rd in &worksheet.rows {
+                if rd.r == r {
+                    row_data = Some(rd.clone());
+                    break;
                 }
-
-                let mut row_data = None;
-                for rd in &worksheet.rows {
-                    if rd.r == r {
-                        row_data = Some(rd.clone());
-                        break;
-                    }
-                }
-                let data = match worksheet.sheet_data.get(&r) {
-                    Some(s) => s.clone(),
-                    None => HashMap::new(),
-                };
-                diff_list.push(Diff::DeleteRow {
-                    sheet,
-                    row: r,
-                    old_data: Box::new(RowData {
-                        row: row_data,
-                        data,
-                    }),
-                });
             }
-            diff_list
-        };
-        self.push_diff_list(diff_list);
+            let data = match worksheet.sheet_data.get(&r) {
+                Some(s) => s.clone(),
+                None => HashMap::new(),
+            };
+            diff_list.push(Diff::DeleteRow {
+                sheet,
+                row: r,
+                old_data: Box::new(RowData {
+                    row: row_data,
+                    data,
+                }),
+            });
+        }
+
         self.model.delete_rows(sheet, row, row_count)?;
+
+        self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -969,49 +965,44 @@ impl UserModel {
         column: i32,
         column_count: i32,
     ) -> Result<(), String> {
-        let diff_list = {
-            let worksheet = self.model.workbook.worksheet(sheet)?;
-            let mut diff_list = Vec::new();
-            // Iterate from right-to-left so `undo` restores from left-to-right.
-            for c in (column..column + column_count).rev() {
-                if !is_valid_column_number(c) {
-                    return Err(format!("Column number '{c}' is not valid."));
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let mut diff_list = Vec::new();
+        // Right to left order prevents index drift during undo
+        for c in (column..column + column_count).rev() {
+            let mut column_data = None;
+            for col in &worksheet.cols {
+                if c >= col.min && c <= col.max {
+                    column_data = Some(Col {
+                        min: c,
+                        max: c,
+                        width: col.width,
+                        custom_width: col.custom_width,
+                        style: col.style,
+                    });
+                    break;
                 }
-
-                let mut column_data = None;
-                for col in &worksheet.cols {
-                    if c >= col.min && c <= col.max {
-                        column_data = Some(Col {
-                            min: c,
-                            max: c,
-                            width: col.width,
-                            custom_width: col.custom_width,
-                            style: col.style,
-                        });
-                        break;
-                    }
-                }
-
-                let mut data = HashMap::new();
-                for (row_idx, row_data) in &worksheet.sheet_data {
-                    if let Some(cell) = row_data.get(&c) {
-                        data.insert(*row_idx, cell.clone());
-                    }
-                }
-
-                diff_list.push(Diff::DeleteColumn {
-                    sheet,
-                    column: c,
-                    old_data: Box::new(ColumnData {
-                        column: column_data,
-                        data,
-                    }),
-                });
             }
-            diff_list
-        };
-        self.push_diff_list(diff_list);
+
+            let mut data = HashMap::new();
+            for (row_idx, row_data) in &worksheet.sheet_data {
+                if let Some(cell) = row_data.get(&c) {
+                    data.insert(*row_idx, cell.clone());
+                }
+            }
+
+            diff_list.push(Diff::DeleteColumn {
+                sheet,
+                column: c,
+                old_data: Box::new(ColumnData {
+                    column: column_data,
+                    data,
+                }),
+            });
+        }
+
         self.model.delete_columns(sheet, column, column_count)?;
+
+        self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
         Ok(())
     }
