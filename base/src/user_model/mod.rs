@@ -3,7 +3,7 @@
 mod border;
 mod border_utils;
 mod common;
-mod history;
+pub(crate) mod history;
 mod ui;
 
 pub use common::UserModel;

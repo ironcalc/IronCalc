@@ -858,14 +858,23 @@ impl UserModel {
         Ok(())
     }
 
-    /// Inserts several rows at once
+    /// Inserts `row_count` blank rows starting at `row` (both 0-based).
+    ///
+    /// Parameters
+    /// * `sheet` – worksheet index.
+    /// * `row` – first row to insert.
+    /// * `row_count` – number of rows (> 0).
+    ///
+    /// History: the method pushes `row_count` [`crate::user_model::history::Diff::InsertRow`]
+    /// items **all using the same `row` index**.  Replaying those diffs (undo / redo)
+    /// is therefore immune to the row-shifts that happen after each individual
+    /// insertion.
+    ///
+    /// See also [`Model::insert_rows`].
     pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         let mut diff_list = Vec::new();
-        for r in 0..row_count {
-            diff_list.push(Diff::InsertRow {
-                sheet,
-                row: row + r,
-            });
+        for _ in 0..row_count {
+            diff_list.push(Diff::InsertRow { sheet, row });
         }
         self.push_diff_list(diff_list);
         self.model.insert_rows(sheet, row, row_count)?;
@@ -873,7 +882,18 @@ impl UserModel {
         Ok(())
     }
 
-    /// Inserts several columns at once
+    /// Inserts `column_count` blank columns starting at `column` (0-based).
+    ///
+    /// Parameters
+    /// * `sheet` – worksheet index.
+    /// * `column` – first column to insert.
+    /// * `column_count` – number of columns (> 0).
+    ///
+    /// History: pushes one [`crate::user_model::history::Diff::InsertColumn`]
+    /// per inserted column, all with the same `column` value, preventing index
+    /// drift when the diffs are reapplied.
+    ///
+    /// See also [`Model::insert_columns`].
     pub fn insert_columns(
         &mut self,
         sheet: u32,
@@ -881,11 +901,8 @@ impl UserModel {
         column_count: i32,
     ) -> Result<(), String> {
         let mut diff_list = Vec::new();
-        for c in 0..column_count {
-            diff_list.push(Diff::InsertColumn {
-                sheet,
-                column: column + c,
-            });
+        for _ in 0..column_count {
+            diff_list.push(Diff::InsertColumn { sheet, column });
         }
         self.push_diff_list(diff_list);
         self.model.insert_columns(sheet, column, column_count)?;
@@ -893,12 +910,20 @@ impl UserModel {
         Ok(())
     }
 
-    /// Deletes several rows at once
+    /// Deletes `row_count` rows starting at `row`.
+    ///
+    /// History: a [`crate::user_model::history::Diff::DeleteRow`] is created for
+    /// each row, ordered **bottom → top**.  Undo therefore recreates rows from
+    /// top → bottom and redo removes them bottom → top, avoiding index drift.
+    ///
+    /// See also [`Model::delete_rows`].
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         let diff_list = {
             let worksheet = self.model.workbook.worksheet(sheet)?;
             let mut diff_list = Vec::new();
-            for r in row..row + row_count {
+            // Collect diffs from bottom to top so that `undo` re-inserts rows
+            // in the correct order (top to bottom).
+            for r in (row..row + row_count).rev() {
                 let mut row_data = None;
                 for rd in &worksheet.rows {
                     if rd.r == r {
@@ -927,7 +952,13 @@ impl UserModel {
         Ok(())
     }
 
-    /// Deletes several columns at once
+    /// Deletes `column_count` columns starting at `column`.
+    ///
+    /// History: pushes one [`crate::user_model::history::Diff::DeleteColumn`]
+    /// per column, **right → left**, so replaying the list is always safe with
+    /// respect to index shifts.
+    ///
+    /// See also [`Model::delete_columns`].
     pub fn delete_columns(
         &mut self,
         sheet: u32,
@@ -937,7 +968,8 @@ impl UserModel {
         let diff_list = {
             let worksheet = self.model.workbook.worksheet(sheet)?;
             let mut diff_list = Vec::new();
-            for c in column..column + column_count {
+            // Iterate from right-to-left so `undo` restores from left-to-right.
+            for c in (column..column + column_count).rev() {
                 if !is_valid_column_number(c) {
                     return Err(format!("Column number '{c}' is not valid."));
                 }
@@ -2497,4 +2529,6 @@ mod tests {
             assert_eq!(horizontal(&format!("{a}")), Ok(a));
         }
     }
+
+    // (batch diff tests moved to separate file)
 }
