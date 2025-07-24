@@ -2007,7 +2007,6 @@ impl UserModel {
     fn apply_undo_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list.iter().rev() {
-            #[allow(deprecated)]
             match diff {
                 Diff::SetCellValue {
                     sheet,
@@ -2085,47 +2084,6 @@ impl UserModel {
                     } else {
                         // If the cell did not have a style there was nothing on it
                         self.model.cell_clear_all(*sheet, *row, *column)?;
-                    }
-                }
-                Diff::InsertRow { sheet, row } => {
-                    self.model.delete_rows(*sheet, *row, 1)?;
-                    needs_evaluation = true;
-                }
-                Diff::DeleteRow {
-                    sheet,
-                    row,
-                    old_data,
-                } => {
-                    needs_evaluation = true;
-                    self.model.insert_rows(*sheet, *row, 1)?;
-                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
-                    if let Some(row_data) = old_data.row.clone() {
-                        worksheet.rows.push(row_data);
-                    }
-                    worksheet.sheet_data.insert(*row, old_data.data.clone());
-                }
-                Diff::InsertColumn { sheet, column } => {
-                    self.model.delete_columns(*sheet, *column, 1)?;
-                    needs_evaluation = true;
-                }
-                Diff::DeleteColumn {
-                    sheet,
-                    column,
-                    old_data,
-                } => {
-                    needs_evaluation = true;
-                    // inserts an empty column
-                    self.model.insert_columns(*sheet, *column, 1)?;
-                    // puts all the data back
-                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
-                    for (row, cell) in &old_data.data {
-                        worksheet.update_cell(*row, *column, cell.clone())?;
-                    }
-                    // makes sure that the width and style is correct
-                    if let Some(col) = &old_data.column {
-                        let width = col.width * constants::COLUMN_WIDTH_FACTOR;
-                        let style = col.style;
-                        worksheet.set_column_width_and_style(*column, width, style)?;
                     }
                 }
                 Diff::InsertRows { sheet, row, count } => {
@@ -2347,7 +2305,6 @@ impl UserModel {
     fn apply_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list {
-            #[allow(deprecated)]
             match diff {
                 Diff::SetCellValue {
                     sheet,
@@ -2404,30 +2361,6 @@ impl UserModel {
                 } => self
                     .model
                     .set_cell_style(*sheet, *row, *column, new_value)?,
-                Diff::InsertRow { sheet, row } => {
-                    self.model.insert_rows(*sheet, *row, 1)?;
-                    needs_evaluation = true;
-                }
-                Diff::DeleteRow {
-                    sheet,
-                    row,
-                    old_data: _,
-                } => {
-                    self.model.delete_rows(*sheet, *row, 1)?;
-                    needs_evaluation = true;
-                }
-                Diff::InsertColumn { sheet, column } => {
-                    needs_evaluation = true;
-                    self.model.insert_columns(*sheet, *column, 1)?;
-                }
-                Diff::DeleteColumn {
-                    sheet,
-                    column,
-                    old_data: _,
-                } => {
-                    self.model.delete_columns(*sheet, *column, 1)?;
-                    needs_evaluation = true;
-                }
                 Diff::InsertRows { sheet, row, count } => {
                     self.model.insert_rows(*sheet, *row, *count)?;
                     needs_evaluation = true;
@@ -2614,6 +2547,4 @@ mod tests {
             assert_eq!(horizontal(&format!("{a}")), Ok(a));
         }
     }
-
-    // (batch diff tests moved to separate file)
 }

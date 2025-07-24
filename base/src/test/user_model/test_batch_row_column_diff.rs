@@ -26,14 +26,14 @@ fn diff_invariant_insert_rows() {
 
     let list = last_diff_list(&mut model);
     assert_eq!(list.len(), 1);
-    match &list[0] {
-        Diff::InsertRows { sheet, row, count } => {
-            assert_eq!(*sheet, 0);
-            assert_eq!(*row, 5);
-            assert_eq!(*count, 3);
+    assert!(matches!(
+        &list[0],
+        Diff::InsertRows {
+            sheet: 0,
+            row: 5,
+            count: 3
         }
-        _ => panic!("Unexpected diff variant"),
-    }
+    ));
 }
 
 #[test]
@@ -44,18 +44,14 @@ fn diff_invariant_insert_columns() {
     assert!(model.insert_columns(0, 2, 4).is_ok());
     let list = last_diff_list(&mut model);
     assert_eq!(list.len(), 1);
-    match &list[0] {
+    assert!(matches!(
+        &list[0],
         Diff::InsertColumns {
-            sheet,
-            column,
-            count,
-        } => {
-            assert_eq!(*sheet, 0);
-            assert_eq!(*column, 2);
-            assert_eq!(*count, 4);
+            sheet: 0,
+            column: 2,
+            count: 4
         }
-        _ => panic!("Unexpected diff variant"),
-    }
+    ));
 }
 
 #[test]
@@ -280,14 +276,14 @@ fn bulk_insert_rows_undo_redo() {
     // Check diff structure
     let list = last_diff_list(&mut model);
     assert_eq!(list.len(), 1);
-    match &list[0] {
-        Diff::InsertRows { sheet, row, count } => {
-            assert_eq!(*sheet, 0);
-            assert_eq!(*row, 3);
-            assert_eq!(*count, 3);
+    assert!(matches!(
+        &list[0],
+        Diff::InsertRows {
+            sheet: 0,
+            row: 3,
+            count: 3
         }
-        _ => panic!("Expected InsertRows diff"),
-    }
+    ));
 
     // Undo
     model.undo().unwrap();
@@ -319,18 +315,14 @@ fn bulk_insert_columns_undo_redo() {
     // Check diff structure
     let list = last_diff_list(&mut model);
     assert_eq!(list.len(), 1);
-    match &list[0] {
+    assert!(matches!(
+        &list[0],
         Diff::InsertColumns {
-            sheet,
-            column,
-            count,
-        } => {
-            assert_eq!(*sheet, 0);
-            assert_eq!(*column, 3);
-            assert_eq!(*count, 3);
+            sheet: 0,
+            column: 3,
+            count: 3
         }
-        _ => panic!("Expected InsertColumns diff"),
-    }
+    ));
 
     // Undo
     model.undo().unwrap();
@@ -601,12 +593,14 @@ fn bulk_operations_large_count() {
     // Check diff
     let list = last_diff_list(&mut model);
     assert_eq!(list.len(), 1);
-    match &list[0] {
-        Diff::InsertRows { count, .. } => {
-            assert_eq!(*count, 100);
+    assert!(matches!(
+        &list[0],
+        Diff::InsertRows {
+            sheet: 0,
+            row: 50,
+            count: 100
         }
-        _ => panic!("Expected InsertRows diff"),
-    }
+    ));
 
     // Undo and redo
     model.undo().unwrap();
