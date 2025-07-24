@@ -607,7 +607,7 @@ impl Model {
                 .set_cell_style(target_row, c, style_idx)?;
         }
 
-        let worksheet = &mut self.workbook.worksheets[sheet as usize];
+        let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
         let mut new_rows = Vec::new();
         for r in worksheet.rows.iter() {
             if r.r == row {

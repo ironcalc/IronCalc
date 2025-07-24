@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    constants::LAST_ROW,
+    constants::{LAST_COLUMN, LAST_ROW},
     expressions::utils::{is_valid_column_number, is_valid_row},
     worksheet::NavigationDirection,
 };
@@ -114,7 +114,7 @@ impl UserModel {
         Ok(())
     }
 
-    /// Sets the selected range. Note that the selected cell must be in one of the corners.
+    /// Sets the selected range. Note that the selected cell must be in the selected range.
     pub fn set_selected_range(
         &mut self,
         start_row: i32,
@@ -148,16 +148,32 @@ impl UserModel {
             if let Some(view) = worksheet.views.get_mut(&0) {
                 let selected_row = view.row;
                 let selected_column = view.column;
-                // The selected cells must be on one of the corners of the selected range:
-                if selected_row != start_row && selected_row != end_row {
-                    return Err(format!(
-                        "The selected cells is not in one of the corners. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
+                if start_row == 1 && end_row == LAST_ROW {
+                    // full row selected. The cell must be at the top or the bottom of the range
+                    if selected_column != start_column && selected_column != end_column {
+                        return Err(format!(
+                            "The selected cell is not the column edge. Column '{selected_column}' and column range '({start_column}, {end_column})'"
+                        ));
+                    }
+                } else if start_column == 1 && end_column == LAST_COLUMN {
+                    // full column selected. The cell must be at the left or the right of the range
+                    if selected_row != start_row && selected_row != end_row {
+                        return Err(format!(
+                            "The selected cell is not in the row edge. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
+                        ));
+                    }
+                } else {
+                    // The selected cells must be on one of the corners of the selected range:
+                    if selected_row != start_row && selected_row != end_row {
+                        return Err(format!(
+                        "The selected cell is not in one of the corners. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
                     ));
-                }
-                if selected_column != start_column && selected_column != end_column {
-                    return Err(format!(
-                        "The selected cells is not in one of the corners. Column '{selected_column}' and column range '({start_column}, {end_column})'"
+                    }
+                    if selected_column != start_column && selected_column != end_column {
+                        return Err(format!(
+                        "The selected cell is not in one of the corners. Column '{selected_column}' and column range '({start_column}, {end_column})'"
                     ));
+                    }
                 }
                 view.range = [start_row, start_column, end_row, end_column];
             }
@@ -194,6 +210,15 @@ impl UserModel {
                 return Ok(());
             };
         let [row_start, column_start, row_end, column_end] = range;
+        if ["ArrowUp", "ArrowDown"].contains(&key) && row_start == 1 && row_end == LAST_ROW {
+            // full column selected, nothing to do
+            return Ok(());
+        }
+        if ["ArrowRight", "ArrowLeft"].contains(&key) && column_start == 1 && column_end == LAST_COLUMN
+        {
+            // full row selected, nothing to do
+            return Ok(());
+        }
 
         match key {
             "ArrowRight" => {
