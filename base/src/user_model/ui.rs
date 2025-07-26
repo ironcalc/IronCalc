@@ -163,7 +163,7 @@ impl UserModel {
                         ));
                     }
                 } else {
-                    // The selected cells must be on one of the corners of the selected range:
+                    // The selected cell must be on one of the corners of the selected range:
                     if selected_row != start_row && selected_row != end_row {
                         return Err(format!(
                         "The selected cell is not in one of the corners. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
@@ -214,7 +214,9 @@ impl UserModel {
             // full column selected, nothing to do
             return Ok(());
         }
-        if ["ArrowRight", "ArrowLeft"].contains(&key) && column_start == 1 && column_end == LAST_COLUMN
+        if ["ArrowRight", "ArrowLeft"].contains(&key)
+            && column_start == 1
+            && column_end == LAST_COLUMN
         {
             // full row selected, nothing to do
             return Ok(());
