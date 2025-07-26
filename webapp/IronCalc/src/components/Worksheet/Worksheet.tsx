@@ -358,6 +358,26 @@ const Worksheet = forwardRef(
             model.insertColumns(view.sheet, view.column + 1, 1);
             setContextMenuOpen(false);
           }}
+          onMoveColumnLeft={(): void => {
+            const view = model.getSelectedView();
+            model.moveColumn(view.sheet, view.column, -1);
+            setContextMenuOpen(false);
+          }}
+          onMoveColumnRight={(): void => {
+            const view = model.getSelectedView();
+            model.moveColumn(view.sheet, view.column, 1);
+            setContextMenuOpen(false);
+          }}
+          onMoveRowUp={(): void => {
+            const view = model.getSelectedView();
+            model.moveRow(view.sheet, view.row, -1);
+            setContextMenuOpen(false);
+          }}
+          onMoveRowDown={(): void => {
+            const view = model.getSelectedView();
+            model.moveRow(view.sheet, view.row, 1);
+            setContextMenuOpen(false);
+          }}
           onFreezeColumns={(): void => {
             const view = model.getSelectedView();
             model.setFrozenColumnsCount(view.sheet, view.column);
