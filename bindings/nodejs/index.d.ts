@@ -63,10 +63,10 @@ export declare class UserModel {
   rangeClearAll(sheet: number, startRow: number, startColumn: number, endRow: number, endColumn: number): void
   rangeClearContents(sheet: number, startRow: number, startColumn: number, endRow: number, endColumn: number): void
   rangeClearFormatting(sheet: number, startRow: number, startColumn: number, endRow: number, endColumn: number): void
-  insertRow(sheet: number, row: number): void
-  insertColumn(sheet: number, column: number): void
-  deleteRow(sheet: number, row: number): void
-  deleteColumn(sheet: number, column: number): void
+  insertRows(sheet: number, row: number, rowCount: number): void
+  insertColumns(sheet: number, column: number, columnCount: number): void
+  deleteRows(sheet: number, row: number, rowCount: number): void
+  deleteColumns(sheet: number, column: number, columnCount: number): void
   setRowsHeight(sheet: number, rowStart: number, rowEnd: number, height: number): void
   setColumnsWidth(sheet: number, columnStart: number, columnEnd: number, width: number): void
   getRowHeight(sheet: number, row: number): number

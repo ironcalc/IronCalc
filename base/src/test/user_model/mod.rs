@@ -1,6 +1,7 @@
 mod test_add_delete_sheets;
 mod test_autofill_columns;
 mod test_autofill_rows;
+mod test_batch_row_column_diff;
 mod test_border;
 mod test_clear_cells;
 mod test_column_style;
@@ -11,6 +12,8 @@ mod test_evaluation;
 mod test_general;
 mod test_grid_lines;
 mod test_keyboard_navigation;
+mod test_last_empty_cell;
+mod test_multi_row_column;
 mod test_on_area_selection;
 mod test_on_expand_selected_range;
 mod test_on_paste_styles;

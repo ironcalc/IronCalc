@@ -87,23 +87,27 @@ pub(crate) enum Diff {
         row: i32,
         old_value: Box<Option<Style>>,
     },
-    InsertRow {
+    InsertRows {
         sheet: u32,
         row: i32,
+        count: i32,
     },
-    DeleteRow {
+    DeleteRows {
         sheet: u32,
         row: i32,
-        old_data: Box<RowData>,
+        count: i32,
+        old_data: Vec<RowData>,
     },
-    InsertColumn {
+    InsertColumns {
         sheet: u32,
         column: i32,
+        count: i32,
     },
-    DeleteColumn {
+    DeleteColumns {
         sheet: u32,
         column: i32,
-        old_data: Box<ColumnData>,
+        count: i32,
+        old_data: Vec<ColumnData>,
     },
     DeleteSheet {
         sheet: u32,
@@ -160,6 +164,16 @@ pub(crate) enum Diff {
         new_name: String,
         new_scope: Option<u32>,
         new_formula: String,
+    },
+    MoveColumn {
+        sheet: u32,
+        column: i32,
+        delta: i32,
+    },
+    MoveRow {
+        sheet: u32,
+        row: i32,
+        delta: i32,
     },
     // FIXME: we are missing SetViewDiffs
 }

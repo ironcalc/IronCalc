@@ -3,6 +3,34 @@ import type { Area, Cell } from "./types";
 import { type SelectedView, columnNameFromNumber } from "@ironcalc/wasm";
 import { LAST_COLUMN, LAST_ROW } from "./WorksheetCanvas/constants";
 
+// FIXME: Use the `quoteName` function from the wasm module
+function nameNeedsQuoting(name: string): boolean {
+  // it contains any of these characters: ()'$,;-+{} or space
+  for (const char of name) {
+    if (" ()'$,;-+{}".includes(char)) {
+      return true;
+    }
+  }
+
+  // TODO:
+  // - cell reference in A1 notation, e.g. B1048576 is quoted, B1048577 is not
+  // - cell reference in R1C1 notation, e.g. RC, RC2, R5C, R-4C, RC-8, R, C
+  // - integers
+
+  return false;
+}
+
+/**
+ * Quotes a string sheet name if it needs to
+ * NOTE: Invalid characters in a sheet name: \, /, *, [, ], :, ?
+ */
+export function quoteName(name: string): string {
+  if (nameNeedsQuoting(name)) {
+    return `'${name.replace(/'/g, "''")}'`;
+  }
+  return name;
+}
+
 /**
  *  Returns true if the keypress should start editing
  */
@@ -66,7 +94,8 @@ export function rangeToStr(
   referenceName: string,
 ): string {
   const { sheet, rowStart, rowEnd, columnStart, columnEnd } = range;
-  const sheetName = sheet === referenceSheet ? "" : `'${referenceName}'!`;
+  const sheetName =
+    sheet === referenceSheet ? "" : `${quoteName(referenceName)}!`;
   if (rowStart === rowEnd && columnStart === columnEnd) {
     return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}`;
   }
@@ -82,7 +111,7 @@ export function getFullRangeToString(
   worksheetNames: string[],
 ): string {
   const [rowStart, columnStart, rowEnd, columnEnd] = selectedView.range;
-  const sheetName = `${worksheetNames[selectedView.sheet]}`;
+  const sheetName = quoteName(worksheetNames[selectedView.sheet]);
 
   if (rowStart === rowEnd && columnStart === columnEnd) {
     return `${sheetName}!$${columnNameFromNumber(columnStart)}$${rowStart}`;

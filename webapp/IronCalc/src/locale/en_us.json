@@ -118,7 +118,13 @@
     "delete_column": "Delete column '{{column}}'",
     "freeze": "Freeze",
     "insert_row": "Insert row",
-    "insert_column": "Insert column"
+    "insert_column": "Insert column",
+    "move_row": "Move row",
+    "move_column": "Move column",
+    "move_row_up": "Move row up",
+    "move_row_down": "Move row down",
+    "move_column_left": "Move column left",
+    "move_column_right": "Move column right"
   },
   "color_picker": {
     "apply": "Add color",

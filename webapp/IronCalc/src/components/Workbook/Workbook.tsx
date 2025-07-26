@@ -13,6 +13,7 @@ import Worksheet from "../Worksheet/Worksheet";
 import {
   COLUMN_WIDTH_SCALE,
   LAST_COLUMN,
+  LAST_ROW,
   ROW_HEIGH_SCALE,
 } from "../WorksheetCanvas/constants";
 import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
@@ -249,8 +250,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       onToggleUnderline(!value);
     },
     onNavigationToEdge: (direction: NavigationKey): void => {
-      console.log(direction);
-      throw new Error("Function not implemented.");
+      model.onNavigateToEdgeInDirection(direction);
+      setRedrawId((id) => id + 1);
     },
     onPageDown: (): void => {
       model.onPageDown();
@@ -316,6 +317,16 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     },
     onEscape: (): void => {
       workbookState.clearCutRange();
+      setRedrawId((id) => id + 1);
+    },
+    onSelectColumn: (): void => {
+      const { column } = model.getSelectedView();
+      model.setSelectedRange(1, column, LAST_ROW, column);
+      setRedrawId((id) => id + 1);
+    },
+    onSelectRow: (): void => {
+      const { row } = model.getSelectedView();
+      model.setSelectedRange(row, 1, row, LAST_COLUMN);
       setRedrawId((id) => id + 1);
     },
     root: rootRef,
@@ -473,7 +484,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           sheet,
           clipboardId,
         });
-        event.clipboardData.setData("text/plain", data.csv);
+        event.clipboardData.setData("text/plain", data.csv.trim());
         event.clipboardData.setData("application/json", clipboardJsonStr);
         event.preventDefault();
         event.stopPropagation();

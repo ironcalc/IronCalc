@@ -6,23 +6,57 @@ lang: en-US
 
 # Keyboard Shortcuts
 
-From within your keyboard you can navigate and interact with the spreadsheet. This is a fairly interesting feature for power users.
+From within your keyboard you can navigate and interact with the spreadsheet.
 
-## Common Actions
+## Navigation Shortcuts
 
-| Action | Windows  | Mac   |
-| ------ | -------- | ----- |
-| Copy   | ctrl + c | ⌘ + c |
-| Paste  | ctrl + v | ⌘ + v |
-| Cut    | ctrl + x | ⌘ + x |
-| Undo   | ctrl + z | ⌘ + z |
-| Redo   | ctrl + y | ⌘ + y |
+| Action                  | Linux/Windows     | Mac            |
+| ----------------------- | ----------------- | -------------- |
+| Move one cell           | Arrow Keys        | Arrow Keys     |
+| Move down (Excel-style) | Enter             | Enter          |
+| Move right              | Tab               | Tab            |
+| Move left               | Shift + Tab       | Shift + Tab    |
+| Jump to first column    | Home              | Fn + ←         |
+| Jump to last column     | End               | Fn + →         |
+| Scroll one screen down  | PageDown          | Fn + ↓         |
+| Scroll one screen up    | PageUp            | Fn + ↑         |
+| Jump to cell edge       | Ctrl + Arrow Keys | ⌘ + Arrow Keys |
+| Jump to start of sheet  | Ctrl + Home       | ⌘ + Fn + ←     |
+| Jump to end of sheet    | Ctrl + End        | ⌘ + Fn + →     |
 
-## Navigation
+## Selection & Editing
 
-| <div style="width:200px">Action</div> | <div style="width:80px">Windows</div> | <div style="width:80px">Mac</div> |
-| ------------------------------------- | ------------------------------------- | --------------------------------- |
-| Move to beginning of row              | ???                                   | Fn + Left Arrow                   |
-| Move to end of row                    | ???                                   | Fn + Right Arrow                  |
-| Move to previous sheet                | Option + Arrow Up                     | Option + Arrow Up                 |
-| Move to next sheet                    | Option + Arrow Down                   | Option + Arrow Down               |
+| Action               | Linux/Windows      | Mac                |
+| -------------------- | ------------------ | ------------------ |
+| Expand selection     | Shift + Arrow Keys | Shift + Arrow Keys |
+| Start editing a cell | F2                 | F2                 |
+| Edit directly        | Any key            | Any key            |
+
+## Text Styling
+
+| Action    | Linux/Windows  | Mac   |
+| --------- | -------------- | ----- |
+| Bold      | Ctrl + B       | ⌘ + B |
+| Italic    | Ctrl + I       | ⌘ + I |
+| Underline | Ctrl + U       | ⌘ + U |
+
+## Undo / Redo
+
+| Action | Linux/Windows                | Mac                    |
+| ------ | ---------------------------- | -----------------------|
+| Undo   | Ctrl + Z                     | ⌘ + Z                  |
+| Redo   | Ctrl + Y or Ctrl + Shift + Z | ⌘ + Shift + Z or ⌘ + Y |
+
+## Sheet Navigation
+
+| Action         | Linux/Windows    | Mac            |
+| -------------- | ---------------- | -------------- |
+| Next sheet     | Alt + Arrow Down | ⌥ + Arrow Down |
+| Previous sheet | Alt + Arrow Up   | ⌥ + Arrow Up   |
+
+## Miscellaneous
+
+| Action        | Linux/Windows/Mac    |
+| ------------- | -------------------- |
+| Cancel action | Escape               |
+| Delete cells  | Delete               |

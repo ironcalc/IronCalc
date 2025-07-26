@@ -15,7 +15,7 @@ export function FileMenu(props: {
 }) {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isImportMenuOpen, setImportMenuOpen] = useState(false);
-  const anchorElement = useRef<HTMLDivElement>(null);
+  const anchorElement = useRef<HTMLButtonElement>(null);
   const models = getModelsMetadata();
   const uuids = Object.keys(models);
   const selectedUuid = getSelectedUuid();
@@ -32,7 +32,13 @@ export function FileMenu(props: {
         }}
       >
         <CheckIndicator>
-          {uuid === selectedUuid ? <StyledCheck /> : ""}
+          {uuid === selectedUuid ? (
+            <StyledIcon>
+              <Check />
+            </StyledIcon>
+          ) : (
+            ""
+          )}
         </CheckIndicator>
         <MenuItemText
           style={{
@@ -50,8 +56,12 @@ export function FileMenu(props: {
   return (
     <>
       <FileMenuWrapper
+        type="button"
+        id="file-menu-button"
         onClick={(): void => setMenuOpen(true)}
         ref={anchorElement}
+        $isActive={isMenuOpen}
+        aria-haspopup="true"
       >
         File
       </FileMenuWrapper>
@@ -59,12 +69,19 @@ export function FileMenu(props: {
         open={isMenuOpen}
         onClose={(): void => setMenuOpen(false)}
         anchorEl={anchorElement.current}
+        autoFocus={false}
+        disableRestoreFocus={true}
         sx={{
           "& .MuiPaper-root": { borderRadius: "8px", padding: "4px 0px" },
           "& .MuiList-root": { padding: "0" },
+          transform: "translate(-4px, 4px)",
         }}
-
-        // anchorOrigin={properties.anchorOrigin}
+        slotProps={{
+          list: {
+            "aria-labelledby": "file-menu-button",
+            tabIndex: -1,
+          },
+        }}
       >
         <MenuItemWrapper
           onClick={() => {
@@ -72,7 +89,9 @@ export function FileMenu(props: {
             setMenuOpen(false);
           }}
         >
-          <StyledPlus />
+          <StyledIcon>
+            <Plus />
+          </StyledIcon>
           <MenuItemText>New</MenuItemText>
         </MenuItemWrapper>
         <MenuItemWrapper
@@ -81,14 +100,16 @@ export function FileMenu(props: {
             setMenuOpen(false);
           }}
         >
-          <StyledFileUp />
+          <StyledIcon>
+            <FileUp />
+          </StyledIcon>
           <MenuItemText>Import</MenuItemText>
         </MenuItemWrapper>
-        <MenuItemWrapper>
-          <StyledFileDown />
-          <MenuItemText onClick={props.onDownload}>
-            Download (.xlsx)
-          </MenuItemText>
+        <MenuItemWrapper onClick={props.onDownload}>
+          <StyledIcon>
+            <FileDown />
+          </StyledIcon>
+          <MenuItemText>Download (.xlsx)</MenuItemText>
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
@@ -96,7 +117,9 @@ export function FileMenu(props: {
             setMenuOpen(false);
           }}
         >
-          <StyledTrash />
+          <StyledIcon>
+            <Trash2 />
+          </StyledIcon>
           <MenuItemText>Delete workbook</MenuItemText>
         </MenuItemWrapper>
         <MenuDivider />
@@ -133,42 +156,18 @@ export function FileMenu(props: {
   );
 }
 
-const StyledPlus = styled(Plus)`
-  width: 16px;
-  height: 16px;
-  color: #333333;
-  padding-right: 10px;
+const StyledIcon = styled.div`
+  display: flex;
+  align-items: center;
+  svg {
+    width: 16px;
+    height: 100%;
+    color: #757575;
+    padding-right: 10px;
+  }
 `;
 
-const StyledFileDown = styled(FileDown)`
-  width: 16px;
-  height: 16px;
-  color: #333333;
-  padding-right: 10px;
-`;
-
-const StyledFileUp = styled(FileUp)`
-  width: 16px;
-  height: 16px;
-  color: #333333;
-  padding-right: 10px;
-`;
-
-const StyledTrash = styled(Trash2)`
-  width: 16px;
-  height: 16px;
-  color: #333333;
-  padding-right: 10px;
-`;
-
-const StyledCheck = styled(Check)`
-  width: 16px;
-  height: 16px;
-  color: #333333;
-  padding-right: 10px;
-`;
-
-const MenuDivider = styled("div")`
+const MenuDivider = styled.div`
   width: 100%;
   margin: auto;
   margin-top: 4px;
@@ -176,7 +175,7 @@ const MenuDivider = styled("div")`
   border-top: 1px solid #eeeeee;
 `;
 
-const MenuItemText = styled("div")`
+const MenuItemText = styled.div`
   color: #000;
   font-size: 12px;
 `;
@@ -193,7 +192,7 @@ const MenuItemWrapper = styled(MenuItem)`
   height: 32px;
 `;
 
-const FileMenuWrapper = styled("div")`
+const FileMenuWrapper = styled.button<{ $isActive: boolean }>`
   display: flex;
   align-items: center;
   font-size: 12px;
@@ -201,12 +200,15 @@ const FileMenuWrapper = styled("div")`
   padding: 8px;
   border-radius: 4px;
   cursor: pointer;
+  background-color: ${(props) => (props.$isActive ? "#e6e6e6" : "transparent")};
+  border: none;
+  background: none;
   &:hover {
     background-color: #f2f2f2;
   }
 `;
 
-const CheckIndicator = styled("span")`
+const CheckIndicator = styled.span`
   display: flex;
   justify-content: center;
   min-width: 26px;

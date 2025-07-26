@@ -7,6 +7,7 @@ use wasm_bindgen::{
 use ironcalc_base::{
     expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
     types::{CellType, Style},
+    worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
@@ -203,24 +204,61 @@ impl Model {
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "insertRow")]
-    pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), JsError> {
-        self.model.insert_row(sheet, row).map_err(to_js_error)
+    #[wasm_bindgen(js_name = "insertRows")]
+    pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), JsError> {
+        self.model
+            .insert_rows(sheet, row, row_count)
+            .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "insertColumn")]
-    pub fn insert_column(&mut self, sheet: u32, column: i32) -> Result<(), JsError> {
-        self.model.insert_column(sheet, column).map_err(to_js_error)
+    #[wasm_bindgen(js_name = "insertColumns")]
+    pub fn insert_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .insert_columns(sheet, column, column_count)
+            .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "deleteRow")]
-    pub fn delete_row(&mut self, sheet: u32, row: i32) -> Result<(), JsError> {
-        self.model.delete_row(sheet, row).map_err(to_js_error)
+    #[wasm_bindgen(js_name = "deleteRows")]
+    pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), JsError> {
+        self.model
+            .delete_rows(sheet, row, row_count)
+            .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "deleteColumn")]
-    pub fn delete_column(&mut self, sheet: u32, column: i32) -> Result<(), JsError> {
-        self.model.delete_column(sheet, column).map_err(to_js_error)
+    #[wasm_bindgen(js_name = "deleteColumns")]
+    pub fn delete_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .delete_columns(sheet, column, column_count)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "moveColumn")]
+    pub fn move_column_action(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        delta: i32,
+    ) -> Result<(), JsError> {
+        self.model
+            .move_column_action(sheet, column, delta)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "moveRow")]
+    pub fn move_row_action(&mut self, sheet: u32, row: i32, delta: i32) -> Result<(), JsError> {
+        self.model
+            .move_row_action(sheet, row, delta)
+            .map_err(to_js_error)
     }
 
     #[wasm_bindgen(js_name = "setRowsHeight")]
@@ -538,6 +576,20 @@ impl Model {
         self.model.on_page_up().map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "onNavigateToEdgeInDirection")]
+    pub fn on_navigate_to_edge_in_direction(&mut self, direction: &str) -> Result<(), JsError> {
+        let direction = match direction {
+            "ArrowLeft" => NavigationDirection::Left,
+            "ArrowRight" => NavigationDirection::Right,
+            "ArrowUp" => NavigationDirection::Up,
+            "ArrowDown" => NavigationDirection::Down,
+            _ => return Err(JsError::new(&format!("Invalid direction: {direction}"))),
+        };
+        self.model
+            .on_navigate_to_edge_in_direction(direction)
+            .map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "setWindowWidth")]
     pub fn set_window_width(&mut self, window_width: f64) {
         self.model.set_window_width(window_width);
@@ -697,5 +749,29 @@ impl Model {
         self.model
             .delete_defined_name(name, scope)
             .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "getLastNonEmptyInRowBeforeColumn")]
+    pub fn get_last_non_empty_in_row_before_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, JsError> {
+        self.model
+            .get_last_non_empty_in_row_before_column(sheet, row, column)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "getFirstNonEmptyInRowAfterColumn")]
+    pub fn get_first_non_empty_in_row_after_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, JsError> {
+        self.model
+            .get_first_non_empty_in_row_after_column(sheet, row, column)
+            .map_err(to_js_error)
     }
 }

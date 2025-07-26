@@ -32,6 +32,8 @@ interface Options {
   onNextSheet: () => void;
   onPreviousSheet: () => void;
   onEscape: () => void;
+  onSelectColumn: () => void;
+  onSelectRow: () => void;
   root: RefObject<HTMLDivElement | null>;
 }
 
@@ -51,6 +53,16 @@ interface Options {
 // * Ctrl+u/i/b: style
 // * Ctrl+z/y: undo/redo
 // * F2: start editing
+// * Ctrl+Space: select column
+// * Shift+Space: select row
+//
+// # Not implemented yet:
+// * Ctrl+a: select all (continuous area around the selection, if it exists,
+//   otherwise select whole sheet)
+// * Ctrl+Shift+Arrows: select to edge
+// * Ctrl+Shift+Home/End: select to end
+// * Ctrl+Shift++: (after selecting) insert row/column (also Alt+I, R or C)
+// * Ctrl+-: (after selecting) delete row/column
 
 // References:
 // In Google Sheets: Ctrl+/ shows the list of keyboard shortcuts
@@ -63,6 +75,7 @@ const useKeyboardNavigation = (
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
       const { key } = event;
+      const lowerKey = key.toLowerCase();
       const { root } = options;
       // Silence the linter
       if (!root.current) {
@@ -71,41 +84,40 @@ const useKeyboardNavigation = (
       if (event.target !== root.current) {
         return;
       }
-      if (event.metaKey || event.ctrlKey) {
-        switch (key) {
+      const isCtrl = event.metaKey || event.ctrlKey;
+      const isShift = event.shiftKey;
+      const isAlt = event.altKey;
+      if (isCtrl && !isShift && !isAlt) {
+        // Ctrl+...
+        switch (lowerKey) {
           case "z": {
             options.onUndo();
             event.stopPropagation();
             event.preventDefault();
-
             break;
           }
           case "y": {
             options.onRedo();
             event.stopPropagation();
             event.preventDefault();
-
             break;
           }
           case "b": {
             options.onBold();
             event.stopPropagation();
             event.preventDefault();
-
             break;
           }
           case "i": {
             options.onItalic();
             event.stopPropagation();
             event.preventDefault();
-
             break;
           }
           case "u": {
             options.onUnderline();
             event.stopPropagation();
             event.preventDefault();
-
             break;
           }
           case "a": {
@@ -115,18 +127,61 @@ const useKeyboardNavigation = (
             event.preventDefault();
             break;
           }
+          case " ": {
+            options.onSelectColumn();
+            event.stopPropagation();
+            event.preventDefault();
+            break;
+          }
           // No default
         }
         if (isNavigationKey(key)) {
           // Ctrl+Arrows, Ctrl+Home/End
           options.onNavigationToEdge(key);
-          // navigate_to_edge_in_direction
           event.stopPropagation();
           event.preventDefault();
         }
         return;
       }
-      if (event.altKey) {
+      if (isCtrl && isShift && !isAlt) {
+        // Ctrl+Shift+...
+        switch (lowerKey) {
+          case "z": {
+            options.onRedo();
+            event.stopPropagation();
+            event.preventDefault();
+            break;
+          }
+        }
+        return;
+      }
+      if (isShift && !isAlt && !isCtrl) {
+        // Shift+...
+        switch (key) {
+          case " ": {
+            options.onSelectRow();
+            event.stopPropagation();
+            event.preventDefault();
+            break;
+          }
+          case "ArrowRight":
+          case "ArrowLeft":
+          case "ArrowUp":
+          case "ArrowDown": {
+            options.onExpandAreaSelectedKeyboard(key);
+            break;
+          }
+          case "Tab": {
+            options.onArrowLeft();
+            event.stopPropagation();
+            event.preventDefault();
+            break;
+          }
+        }
+        return;
+      }
+      if (isAlt && !isCtrl && !isShift) {
+        // Alt+...
         switch (key) {
           case "ArrowDown": {
             // select next sheet
@@ -143,6 +198,12 @@ const useKeyboardNavigation = (
             break;
           }
         }
+        return;
+      }
+      // At this point we know that no modifier keys are pressed
+      if (isCtrl || isShift || isAlt) {
+        // If any modifier key is pressed, we do not handle the key
+        return;
       }
       if (key === "F2") {
         options.onCellEditStart();
@@ -158,67 +219,43 @@ const useKeyboardNavigation = (
         return;
       }
       // Worksheet Navigation
-      if (event.shiftKey) {
-        if (
-          key === "ArrowRight" ||
-          key === "ArrowLeft" ||
-          key === "ArrowUp" ||
-          key === "ArrowDown"
-        ) {
-          options.onExpandAreaSelectedKeyboard(key);
-        } else if (key === "Tab") {
-          options.onArrowLeft();
-          event.stopPropagation();
-          event.preventDefault();
-        }
-        return;
-      }
       switch (key) {
         case "ArrowRight":
         case "Tab": {
           options.onArrowRight();
-
           break;
         }
         case "ArrowLeft": {
           options.onArrowLeft();
-
           break;
         }
         case "ArrowDown":
         case "Enter": {
           options.onArrowDown();
-
           break;
         }
         case "ArrowUp": {
           options.onArrowUp();
-
           break;
         }
         case "End": {
           options.onKeyEnd();
-
           break;
         }
         case "Home": {
           options.onKeyHome();
-
           break;
         }
         case "Delete": {
           options.onCellsDeleted();
-
           break;
         }
         case "PageDown": {
           options.onPageDown();
-
           break;
         }
         case "PageUp": {
           options.onPageUp();
-
           break;
         }
         case "Escape": {

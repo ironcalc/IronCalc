@@ -89,6 +89,44 @@ fn test_values() {
 }
 
 #[test]
+fn frozen_rows() {
+    let mut model = new_empty_model();
+    model.set_frozen_rows(0, 23).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_frozen_rows.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
+    assert_eq!(model.get_frozen_rows_count(0).unwrap(), 23);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
+fn frozen_columns() {
+    let mut model = new_empty_model();
+    model.set_frozen_columns(0, 42).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_frozen_columns.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
+    assert_eq!(model.get_frozen_columns_count(0).unwrap(), 42);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
+fn frozen_rows_and_columns() {
+    let mut model = new_empty_model();
+    model.set_frozen_rows(0, 23).unwrap();
+    model.set_frozen_columns(0, 42).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_frozen_rows_and_columns.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
+    assert_eq!(model.get_frozen_rows_count(0).unwrap(), 23);
+    assert_eq!(model.get_frozen_columns_count(0).unwrap(), 42);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
 fn test_formulas() {
     let mut model = new_empty_model();
     model.set_user_input(0, 1, 1, "5.5".to_string()).unwrap();
