@@ -314,6 +314,9 @@ impl Lexer {
                             } else if name_upper == self.language.booleans.r#false {
                                 return TokenType::Boolean(false);
                             }
+                            if self.peek_char() == Some('(') {
+                                return TokenType::Ident(name);
+                            }
                             if self.mode == LexerMode::A1 {
                                 let parsed_reference = utils::parse_reference_a1(&name_upper);
                                 if parsed_reference.is_some()

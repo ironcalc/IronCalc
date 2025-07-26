@@ -3,6 +3,7 @@ import type { Model } from "@ironcalc/workbook";
 import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
 import { useLayoutEffect, useRef, useState } from "react";
 import { FileMenu } from "./FileMenu";
+import { HelpMenu } from "./HelpMenu";
 import { ShareButton } from "./ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
 import { WorkbookTitle } from "./WorkbookTitle";
@@ -61,11 +62,7 @@ export function FileBar(properties: {
         }}
         onDelete={properties.onDelete}
       />
-      <HelpButton
-        onClick={() => window.open("https://docs.ironcalc.com", "_blank")}
-      >
-        Help
-      </HelpButton>
+      <HelpMenu />
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}
@@ -117,19 +114,6 @@ const StyledIronCalcIcon = styled(IronCalcIcon)`
   margin-left: 10px;
   @media (min-width: 769px) {
     display: none;
-  }
-`;
-
-const HelpButton = styled("div")`
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  font-family: Inter;
-  padding: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  &:hover {
-    background-color: #f2f2f2;
   }
 `;
 

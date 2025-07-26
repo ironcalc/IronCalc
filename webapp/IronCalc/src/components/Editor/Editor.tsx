@@ -249,6 +249,9 @@ const Editor = (options: EditorOptions) => {
           }
         }}
         onPaste={(event) => event.stopPropagation()}
+        onCopy={(event) => event.stopPropagation()}
+        onDoubleClick={(event) => event.stopPropagation()}
+        onCut={(event) => event.stopPropagation()}
       />
     </div>
   );

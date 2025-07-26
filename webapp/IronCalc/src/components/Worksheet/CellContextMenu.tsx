@@ -1,5 +1,7 @@
 import { Menu, MenuItem, styled } from "@mui/material";
 import {
+  ArrowLeftRight,
+  ArrowUpDown,
   BetweenHorizontalStart,
   BetweenVerticalStart,
   ChevronRight,
@@ -26,6 +28,10 @@ interface CellContextMenuProps {
   onUnfreezeRows: () => void;
   onDeleteRow: () => void;
   onDeleteColumn: () => void;
+  onMoveColumnLeft: () => void;
+  onMoveColumnRight: () => void;
+  onMoveRowUp: () => void;
+  onMoveRowDown: () => void;
   row: number;
   column: string;
 }
@@ -46,6 +52,10 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
     onUnfreezeRows,
     onDeleteRow,
     onDeleteColumn,
+    onMoveColumnLeft,
+    onMoveColumnRight,
+    onMoveRowUp,
+    onMoveRowDown,
     row,
     column,
   } = properties;
@@ -57,6 +67,12 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
 
   const [insertColumnMenuOpen, setInsertColumnMenuOpen] = useState(false);
   const insertColumnRef = useRef(null);
+
+  const [moveRowMenuOpen, setMoveRowMenuOpen] = useState(false);
+  const moveRowRef = useRef(null);
+
+  const [moveColumnMenuOpen, setMoveColumnMenuOpen] = useState(false);
+  const moveColumnRef = useRef(null);
 
   return (
     <>
@@ -87,6 +103,23 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
         >
           <BetweenHorizontalStartStyled />
           <ItemNameStyled>{t("cell_context.insert_row")}</ItemNameStyled>
+          <ChevronRightStyled />
+        </StyledMenuItem>
+        <MenuDivider />
+        <StyledMenuItem
+          ref={moveRowRef}
+          onClick={() => setMoveRowMenuOpen(true)}
+        >
+          <ArrowUpDownStyled />
+          <ItemNameStyled>{t("cell_context.move_row")}</ItemNameStyled>
+          <ChevronRightStyled />
+        </StyledMenuItem>
+        <StyledMenuItem
+          ref={moveColumnRef}
+          onClick={() => setMoveColumnMenuOpen(true)}
+        >
+          <ArrowLeftRightStyled />
+          <ItemNameStyled>{t("cell_context.move_column")}</ItemNameStyled>
           <ChevronRightStyled />
         </StyledMenuItem>
         <MenuDivider />
@@ -166,6 +199,58 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
         </StyledMenuItem>
       </StyledMenu>
       <StyledMenu
+        open={moveRowMenuOpen}
+        onClose={() => setMoveRowMenuOpen(false)}
+        anchorEl={moveRowRef.current}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+      >
+        <StyledMenuItem
+          onClick={() => {
+            onMoveRowUp();
+            setMoveRowMenuOpen(false);
+          }}
+        >
+          <ItemNameStyled>{t("cell_context.move_row_up")}</ItemNameStyled>
+        </StyledMenuItem>
+        <StyledMenuItem
+          onClick={() => {
+            onMoveRowDown();
+            setMoveRowMenuOpen(false);
+          }}
+        >
+          <ItemNameStyled>{t("cell_context.move_row_down")}</ItemNameStyled>
+        </StyledMenuItem>
+      </StyledMenu>
+      <StyledMenu
+        open={moveColumnMenuOpen}
+        onClose={() => setMoveColumnMenuOpen(false)}
+        anchorEl={moveColumnRef.current}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+      >
+        <StyledMenuItem
+          onClick={() => {
+            onMoveColumnLeft();
+            setMoveColumnMenuOpen(false);
+          }}
+        >
+          <ItemNameStyled>{t("cell_context.move_column_left")}</ItemNameStyled>
+        </StyledMenuItem>
+        <StyledMenuItem
+          onClick={() => {
+            onMoveColumnRight();
+            setMoveColumnMenuOpen(false);
+          }}
+        >
+          <ItemNameStyled>{t("cell_context.move_column_right")}</ItemNameStyled>
+        </StyledMenuItem>
+      </StyledMenu>
+      <StyledMenu
         open={freezeMenuOpen}
         onClose={() => setFreezeMenuOpen(false)}
         anchorEl={freezeRef.current}
@@ -224,6 +309,20 @@ const BetweenVerticalStartStyled = styled(BetweenVerticalStart)`
 `;
 
 const BetweenHorizontalStartStyled = styled(BetweenHorizontalStart)`
+  width: 16px;
+  height: 16px;
+  color: ${theme.palette.grey[900]};
+  padding-right: 10px;
+`;
+
+const ArrowLeftRightStyled = styled(ArrowLeftRight)`
+  width: 16px;
+  height: 16px;
+  color: ${theme.palette.grey[900]};
+  padding-right: 10px;
+`;
+
+const ArrowUpDownStyled = styled(ArrowUpDown)`
   width: 16px;
   height: 16px;
   color: ${theme.palette.grey[900]};
