@@ -365,7 +365,7 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match self.from_excel_date(serial_number, cell) {
+        let date = match self.excel_date(serial_number, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -382,7 +382,7 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match self.from_excel_date(serial_number, cell) {
+        let date = match self.excel_date(serial_number, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -409,7 +409,7 @@ impl Model {
             }
             Err(s) => return s,
         };
-        let date = match self.from_excel_date(serial_number, cell) {
+        let date = match self.excel_date(serial_number, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -508,7 +508,7 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match self.from_excel_date(serial_number, cell) {
+        let date = match self.excel_date(serial_number, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -526,7 +526,7 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match self.from_excel_date(serial_number, cell) {
+        let date = match self.excel_date(serial_number, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -566,10 +566,8 @@ impl Model {
         match self.evaluate_node_in_context(arg, cell) {
             CalcResult::Number(v) => {
                 let date_serial = v.floor() as i64;
-                match self.from_excel_date(date_serial, cell) {
-                    Ok(d) => d,
-                    Err(e) => return Err(e),
-                };
+                // Validate date serial; propagate any error immediately.
+                self.excel_date(date_serial, cell)?;
                 values.push(date_serial);
             }
             CalcResult::Range { left, right } => {
@@ -589,10 +587,8 @@ impl Model {
                         }) {
                             CalcResult::Number(v) => {
                                 let date_serial = v.floor() as i64;
-                                match self.from_excel_date(date_serial, cell) {
-                                    Ok(d) => d,
-                                    Err(e) => return Err(e),
-                                };
+                                // Ensure each date serial is valid; if not, propagate error.
+                                self.excel_date(date_serial, cell)?;
                                 values.push(date_serial);
                             }
                             CalcResult::EmptyCell => {
@@ -662,7 +658,7 @@ impl Model {
         };
         let mut count = 0i64;
         for serial in from..=to {
-            let date = match self.from_excel_date(serial, cell) {
+            let date = match self.excel_date(serial, cell) {
                 Ok(d) => d,
                 Err(e) => return e,
             };
@@ -675,7 +671,8 @@ impl Model {
         CalcResult::Number(count as f64 * sign)
     }
 
-    fn from_excel_date(
+    #[allow(clippy::wrong_self_convention)]
+    fn excel_date(
         &self,
         serial: i64,
         cell: CellReferenceIndex,
@@ -821,7 +818,7 @@ impl Model {
         };
         let mut count = 0i64;
         for serial in from..=to {
-            let date = match self.from_excel_date(serial, cell) {
+            let date = match self.excel_date(serial, cell) {
                 Ok(d) => d,
                 Err(e) => return e,
             };
@@ -1051,11 +1048,11 @@ impl Model {
                 message: "Start date greater than end date".to_string(),
             };
         }
-        let start = match self.from_excel_date(start_serial, cell) {
+        let start = match self.excel_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
-        let end = match self.from_excel_date(end_serial, cell) {
+        let end = match self.excel_date(end_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -1175,11 +1172,11 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        match self.from_excel_date(start_serial, cell) {
+        match self.excel_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
-        match self.from_excel_date(end_serial, cell) {
+        match self.excel_date(end_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -1206,11 +1203,11 @@ impl Model {
         } else {
             false
         };
-        let start_date = match self.from_excel_date(start_serial, cell) {
+        let start_date = match self.excel_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
-        let end_date = match self.from_excel_date(end_serial, cell) {
+        let end_date = match self.excel_date(end_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -1261,7 +1258,7 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match self.from_excel_date(serial, cell) {
+        let date = match self.excel_date(serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -1286,7 +1283,7 @@ impl Model {
                 return CalcResult::new_error(Error::VALUE, cell, "Invalid return_type".to_string())
             }
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
-        } as u32;
+        };
         CalcResult::Number(num as f64)
     }
 
@@ -1298,7 +1295,7 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match self.from_excel_date(serial, cell) {
+        let date = match self.excel_date(serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -1341,7 +1338,7 @@ impl Model {
         while first.weekday() != start_offset {
             first -= chrono::Duration::days(1);
         }
-        let week = ((date - first).num_days() / 7 + 1) as i64;
+        let week = (date - first).num_days() / 7 + 1;
         CalcResult::Number(week as f64)
     }
 
@@ -1353,7 +1350,7 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match self.from_excel_date(serial, cell) {
+        let date = match self.excel_date(serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -1380,7 +1377,7 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let mut date = match self.from_excel_date(start_serial, cell) {
+        let mut date = match self.excel_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -1590,7 +1587,7 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let mut date = match self.from_excel_date(start_serial, cell) {
+        let mut date = match self.excel_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -1645,11 +1642,11 @@ impl Model {
         } else {
             0
         };
-        let start_date = match self.from_excel_date(start_serial, cell) {
+        let start_date = match self.excel_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
-        let end_date = match self.from_excel_date(end_serial, cell) {
+        let end_date = match self.excel_date(end_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
