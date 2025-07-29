@@ -152,6 +152,11 @@ pub enum Function {
     Edate,
     Eomonth,
     Month,
+    Time,
+    Timevalue,
+    Hour,
+    Minute,
+    Second,
     Now,
     Today,
     Year,
@@ -255,7 +260,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 200> {
+    pub fn into_iter() -> IntoIter<Function, 205> {
         [
             Function::And,
             Function::False,
@@ -367,6 +372,11 @@ impl Function {
             Function::Edate,
             Function::Networkdays,
             Function::NetworkdaysIntl,
+            Function::Time,
+            Function::Timevalue,
+            Function::Hour,
+            Function::Minute,
+            Function::Second,
             Function::Today,
             Function::Now,
             Function::Pmt,
@@ -638,6 +648,11 @@ impl Function {
             "EDATE" => Some(Function::Edate),
             "NETWORKDAYS" => Some(Function::Networkdays),
             "NETWORKDAYS.INTL" => Some(Function::NetworkdaysIntl),
+            "TIME" => Some(Function::Time),
+            "TIMEVALUE" => Some(Function::Timevalue),
+            "HOUR" => Some(Function::Hour),
+            "MINUTE" => Some(Function::Minute),
+            "SECOND" => Some(Function::Second),
             "TODAY" => Some(Function::Today),
             "NOW" => Some(Function::Now),
             // Financial
@@ -850,6 +865,11 @@ impl fmt::Display for Function {
             Function::Edate => write!(f, "EDATE"),
             Function::Networkdays => write!(f, "NETWORKDAYS"),
             Function::NetworkdaysIntl => write!(f, "NETWORKDAYS.INTL"),
+            Function::Time => write!(f, "TIME"),
+            Function::Timevalue => write!(f, "TIMEVALUE"),
+            Function::Hour => write!(f, "HOUR"),
+            Function::Minute => write!(f, "MINUTE"),
+            Function::Second => write!(f, "SECOND"),
             Function::Today => write!(f, "TODAY"),
             Function::Now => write!(f, "NOW"),
             Function::Pmt => write!(f, "PMT"),
@@ -1093,6 +1113,11 @@ impl Model {
             Function::Edate => self.fn_edate(args, cell),
             Function::Networkdays => self.fn_networkdays(args, cell),
             Function::NetworkdaysIntl => self.fn_networkdays_intl(args, cell),
+            Function::Time => self.fn_time(args, cell),
+            Function::Timevalue => self.fn_timevalue(args, cell),
+            Function::Hour => self.fn_hour(args, cell),
+            Function::Minute => self.fn_minute(args, cell),
+            Function::Second => self.fn_second(args, cell),
             Function::Today => self.fn_today(args, cell),
             Function::Now => self.fn_now(args, cell),
             // Financial
