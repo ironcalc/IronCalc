@@ -799,6 +799,10 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Median => vec![Signature::Vector; arg_count],
         Function::StdevS => vec![Signature::Vector; arg_count],
         Function::StdevP => vec![Signature::Vector; arg_count],
+        Function::Stdeva => vec![Signature::Vector; arg_count],
+        Function::Stdevpa => vec![Signature::Vector; arg_count],
+        Function::Vara => vec![Signature::Vector; arg_count],
+        Function::Varpa => vec![Signature::Vector; arg_count],
     }
 }
 
@@ -1010,5 +1014,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Median => not_implemented(args),
         Function::StdevS => not_implemented(args),
         Function::StdevP => not_implemented(args),
+        Function::Stdeva => not_implemented(args),
+        Function::Stdevpa => not_implemented(args),
+        Function::Vara => not_implemented(args),
+        Function::Varpa => not_implemented(args),
     }
 }

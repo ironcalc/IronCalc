@@ -101,9 +101,10 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SMALL                    | <Badge type="tip" text="Available" />            | –             |
 | STANDARDIZE              | <Badge type="info" text="Not implemented yet" /> | –             |
 | STDEV.P                  | <Badge type="tip" text="Available" />            | –             |
-| STDEV.S                  | <Badge type="tip" text="Available" />            | –             |
-| STDEVA                   | <Badge type="info" text="Not implemented yet" /> | –             |
-| STDEVPA                  | <Badge type="info" text="Not implemented yet" /> | –             |
+| STDEV.S                  | <Badge type="tip" text="Available" />            | 
+–             |
+| STDEVA                   | <Badge type="tip" text="Available" />            | –             |
+| STDEVPA                  | <Badge type="tip" text="Available" />            | –             |
 | STEYX                    | <Badge type="info" text="Not implemented yet" /> | –             |
 | T.DIST                   | <Badge type="info" text="Not implemented yet" /> | –             |
 | T.DIST.2T                | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -115,7 +116,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | TRIMMEAN                 | <Badge type="info" text="Not implemented yet" /> | –             |
 | VAR.P                    | <Badge type="tip" text="Available" /> | –             |
 | VAR.S                    | <Badge type="tip" text="Available" /> | –             |
-| VARA                     | <Badge type="info" text="Not implemented yet" /> | –             |
-| VARPA                    | <Badge type="info" text="Not implemented yet" /> | –             |
+| VARA                     | <Badge type="tip" text="Available" />            | –             |
+| VARPA                    | <Badge type="tip" text="Available" />            | –             |
 | WEIBULL.DIST             | <Badge type="info" text="Not implemented yet" /> | –             |
 | Z.TEST                   | <Badge type="info" text="Not implemented yet" /> | –             |

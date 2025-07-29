@@ -1138,4 +1138,185 @@ impl Model {
         variance /= n as f64;
         CalcResult::Number(variance.sqrt())
     }
+
+    fn get_a_values(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
+        let mut values = Vec::new();
+        for arg in args {
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        ));
+                    }
+                    for row in left.row..=right.row {
+                        for column in left.column..=right.column {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(v) => values.push(v),
+                                CalcResult::Boolean(b) => {
+                                    values.push(if b { 1.0 } else { 0.0 });
+                                }
+                                CalcResult::String(_) => values.push(0.0),
+                                error @ CalcResult::Error { .. } => return Err(error),
+                                CalcResult::Range { .. } => {
+                                    return Err(CalcResult::new_error(
+                                        Error::ERROR,
+                                        cell,
+                                        "Unexpected Range".to_string(),
+                                    ))
+                                }
+                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
+                                CalcResult::Array(_) => {
+                                    return Err(CalcResult::Error {
+                                        error: Error::NIMPL,
+                                        origin: cell,
+                                        message: "Arrays not supported yet".to_string(),
+                                    })
+                                }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Number(v) => values.push(v),
+                CalcResult::Boolean(b) => values.push(if b { 1.0 } else { 0.0 }),
+                CalcResult::String(s) => {
+                    if let Node::ReferenceKind { .. } = arg {
+                        values.push(0.0);
+                    } else if let Ok(t) = s.parse::<f64>() {
+                        values.push(t);
+                    } else {
+                        return Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Argument cannot be cast into number".to_string(),
+                        ));
+                    }
+                }
+                error @ CalcResult::Error { .. } => return Err(error),
+                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
+                CalcResult::Array(_) => {
+                    return Err(CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    })
+                }
+            }
+        }
+        Ok(values)
+    }
+
+    pub(crate) fn fn_stdeva(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match self.get_a_values(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let l = values.len();
+        if l < 2 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Division by 0".to_string(),
+            };
+        }
+        let sum: f64 = values.iter().sum();
+        let mean = sum / l as f64;
+        let mut var = 0.0;
+        for v in &values {
+            var += (v - mean).powi(2);
+        }
+        var /= l as f64 - 1.0;
+        CalcResult::Number(var.sqrt())
+    }
+
+    pub(crate) fn fn_stdevpa(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match self.get_a_values(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let l = values.len();
+        if l == 0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Division by 0".to_string(),
+            };
+        }
+        let sum: f64 = values.iter().sum();
+        let mean = sum / l as f64;
+        let mut var = 0.0;
+        for v in &values {
+            var += (v - mean).powi(2);
+        }
+        var /= l as f64;
+        CalcResult::Number(var.sqrt())
+    }
+
+    pub(crate) fn fn_vara(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match self.get_a_values(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let l = values.len();
+        if l < 2 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Division by 0".to_string(),
+            };
+        }
+        let sum: f64 = values.iter().sum();
+        let mean = sum / l as f64;
+        let mut var = 0.0;
+        for v in &values {
+            var += (v - mean).powi(2);
+        }
+        var /= l as f64 - 1.0;
+        CalcResult::Number(var)
+    }
+
+    pub(crate) fn fn_varpa(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match self.get_a_values(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let l = values.len();
+        if l == 0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Division by 0".to_string(),
+            };
+        }
+        let sum: f64 = values.iter().sum();
+        let mean = sum / l as f64;
+        let mut var = 0.0;
+        for v in &values {
+            var += (v - mean).powi(2);
+        }
+        var /= l as f64;
+        CalcResult::Number(var)
+    }
 }
