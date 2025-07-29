@@ -159,6 +159,12 @@ pub enum Function {
     Varpa,
     Skew,
     SkewP,
+    Quartile,
+    QuartileExc,
+    QuartileInc,
+    Rank,
+    RankAvg,
+    RankEq,
 
     // Date and time
     Date,
@@ -267,7 +273,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 212> {
+    pub fn into_iter() -> IntoIter<Function, 218> {
         [
             Function::And,
             Function::False,
@@ -385,6 +391,12 @@ impl Function {
             Function::Varpa,
             Function::Skew,
             Function::SkewP,
+            Function::Quartile,
+            Function::QuartileExc,
+            Function::QuartileInc,
+            Function::Rank,
+            Function::RankAvg,
+            Function::RankEq,
             Function::Year,
             Function::Day,
             Function::Month,
@@ -667,6 +679,12 @@ impl Function {
             "VARPA" => Some(Function::Varpa),
             "SKEW" => Some(Function::Skew),
             "SKEW.P" | "_XLFN.SKEW.P" => Some(Function::SkewP),
+            "QUARTILE" => Some(Function::Quartile),
+            "QUARTILE.EXC" => Some(Function::QuartileExc),
+            "QUARTILE.INC" => Some(Function::QuartileInc),
+            "RANK" => Some(Function::Rank),
+            "RANK.AVG" => Some(Function::RankAvg),
+            "RANK.EQ" => Some(Function::RankEq),
             // Date and Time
             "YEAR" => Some(Function::Year),
             "DAY" => Some(Function::Day),
@@ -892,6 +910,12 @@ impl fmt::Display for Function {
             Function::Varpa => write!(f, "VARPA"),
             Function::Skew => write!(f, "SKEW"),
             Function::SkewP => write!(f, "SKEW.P"),
+            Function::Quartile => write!(f, "QUARTILE"),
+            Function::QuartileExc => write!(f, "QUARTILE.EXC"),
+            Function::QuartileInc => write!(f, "QUARTILE.INC"),
+            Function::Rank => write!(f, "RANK"),
+            Function::RankAvg => write!(f, "RANK.AVG"),
+            Function::RankEq => write!(f, "RANK.EQ"),
             Function::Year => write!(f, "YEAR"),
             Function::Day => write!(f, "DAY"),
             Function::Month => write!(f, "MONTH"),
@@ -1146,6 +1170,12 @@ impl Model {
             Function::Varpa => self.fn_varpa(args, cell),
             Function::Skew => self.fn_skew(args, cell),
             Function::SkewP => self.fn_skew_p(args, cell),
+            Function::Quartile => self.fn_quartile(args, cell),
+            Function::QuartileExc => self.fn_quartile_exc(args, cell),
+            Function::QuartileInc => self.fn_quartile_inc(args, cell),
+            Function::Rank => self.fn_rank(args, cell),
+            Function::RankAvg => self.fn_rank_avg(args, cell),
+            Function::RankEq => self.fn_rank_eq(args, cell),
             // Date and Time
             Function::Year => self.fn_year(args, cell),
             Function::Day => self.fn_day(args, cell),

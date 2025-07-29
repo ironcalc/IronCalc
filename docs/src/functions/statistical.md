@@ -90,10 +90,12 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | PHI                      | <Badge type="info" text="Not implemented yet" /> | –             |
 | POISSON.DIST             | <Badge type="info" text="Not implemented yet" /> | –             |
 | PROB                     | <Badge type="info" text="Not implemented yet" /> | –             |
-| QUARTILE.EXC             | <Badge type="info" text="Not implemented yet" /> | –             |
-| QUARTILE.INC             | <Badge type="info" text="Not implemented yet" /> | –             |
-| RANK.AVG                 | <Badge type="info" text="Not implemented yet" /> | –             |
-| RANK.EQ                  | <Badge type="info" text="Not implemented yet" /> | –             |
+| QUARTILE                 | <Badge type="tip" text="Available" />            | –             |
+| QUARTILE.EXC             | <Badge type="tip" text="Available" />            | –             |
+| QUARTILE.INC             | <Badge type="tip" text="Available" />            | –             |
+| RANK                     | <Badge type="tip" text="Available" />            | –             |
+| RANK.AVG                 | <Badge type="tip" text="Available" />            | –             |
+| RANK.EQ                  | <Badge type="tip" text="Available" />            | –             |
 | RSQ                      | <Badge type="info" text="Not implemented yet" /> | –             |
 | SKEW                     | <Badge type="info" text="Available" />            | –             |
 | SKEW.P                   | <Badge type="info" text="Available" />            | –             |

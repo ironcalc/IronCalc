@@ -583,6 +583,16 @@ fn args_signature_xnpv(arg_count: usize) -> Vec<Signature> {
     }
 }
 
+fn args_signature_rank(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Scalar, Signature::Vector]
+    } else if arg_count == 3 {
+        vec![Signature::Scalar, Signature::Vector, Signature::Scalar]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
 // FIXME: This is terrible duplications of efforts. We use the signature in at least three different places:
 // 1. When computing the function
 // 2. Checking the arguments to see if we need to insert the implicit intersection operator
@@ -804,6 +814,14 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Vara => vec![Signature::Vector; arg_count],
         Function::Varpa => vec![Signature::Vector; arg_count],
         Function::Skew | Function::SkewP => vec![Signature::Vector; arg_count],
+        Function::Quartile | Function::QuartileExc | Function::QuartileInc => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::Rank | Function::RankAvg | Function::RankEq => args_signature_rank(arg_count),
     }
 }
 
@@ -1020,5 +1038,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Vara => not_implemented(args),
         Function::Varpa => not_implemented(args),
         Function::Skew | Function::SkewP => not_implemented(args),
+        Function::Quartile | Function::QuartileExc | Function::QuartileInc => not_implemented(args),
+        Function::Rank | Function::RankAvg | Function::RankEq => scalar_arguments(args),
     }
 }
