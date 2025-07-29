@@ -341,7 +341,8 @@ fn static_analysis_offset(args: &[Node]) -> StaticResult {
         }
         _ => return StaticResult::Unknown,
     };
-    StaticResult::Unknown
+    // Both height and width are explicitly 1, so OFFSET will return a single cell
+    StaticResult::Scalar
 }
 
 // fn static_analysis_choose(_args: &[Node]) -> StaticResult {
