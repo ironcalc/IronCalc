@@ -71,6 +71,68 @@ use crate::{
     model::Model,
 };
 
+#[derive(Debug, Clone, Copy)]
+enum WeekendPattern {
+    SatSun,
+    SunMon,
+    MonTue,
+    TueWed,
+    WedThu,
+    ThuFri,
+    FriSat,
+    SunOnly,
+    MonOnly,
+    TueOnly,
+    WedOnly,
+    ThuOnly,
+    FriOnly,
+    SatOnly,
+}
+
+impl std::convert::TryFrom<i32> for WeekendPattern {
+    type Error = ();
+    fn try_from(code: i32) -> Result<Self, Self::Error> {
+        Ok(match code {
+            1 => Self::SatSun,
+            2 => Self::SunMon,
+            3 => Self::MonTue,
+            4 => Self::TueWed,
+            5 => Self::WedThu,
+            6 => Self::ThuFri,
+            7 => Self::FriSat,
+            11 => Self::SunOnly,
+            12 => Self::MonOnly,
+            13 => Self::TueOnly,
+            14 => Self::WedOnly,
+            15 => Self::ThuOnly,
+            16 => Self::FriOnly,
+            17 => Self::SatOnly,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl WeekendPattern {
+    fn to_mask(self) -> [bool; 7] {
+        match self {
+            Self::SatSun => [false, false, false, false, false, true, true],
+            Self::SunMon => [true, false, false, false, false, false, true],
+            Self::MonTue => [true, true, false, false, false, false, false],
+            Self::TueWed => [false, true, true, false, false, false, false],
+            Self::WedThu => [false, false, true, true, false, false, false],
+            Self::ThuFri => [false, false, false, true, true, false, false],
+            Self::FriSat => [false, false, false, false, true, true, false],
+            Self::SunOnly => [false, false, false, false, false, false, true],
+            Self::MonOnly => [true, false, false, false, false, false, false],
+            Self::TueOnly => [false, true, false, false, false, false, false],
+            Self::WedOnly => [false, false, true, false, false, false, false],
+            Self::ThuOnly => [false, false, false, true, false, false, false],
+            Self::FriOnly => [false, false, false, false, true, false, false],
+            Self::SatOnly => [false, false, false, false, false, true, false],
+        }
+    }
+}
+
 fn parse_time_string(text: &str) -> Option<f64> {
     let text = text.trim();
 
@@ -765,22 +827,9 @@ impl Model {
                         "Invalid weekend".to_string(),
                     ));
                 }
-                weekend = match code {
-                    1 => [false, false, false, false, false, true, true], // Saturday-Sunday
-                    2 => [true, false, false, false, false, false, true], // Sunday-Monday
-                    3 => [true, true, false, false, false, false, false], // Monday-Tuesday
-                    4 => [false, true, true, false, false, false, false], // Tuesday-Wednesday
-                    5 => [false, false, true, true, false, false, false], // Wednesday-Thursday
-                    6 => [false, false, false, true, true, false, false], // Thursday-Friday
-                    7 => [false, false, false, false, true, true, false], // Friday-Saturday
-                    11 => [false, false, false, false, false, false, true], // Sunday only
-                    12 => [true, false, false, false, false, false, false], // Monday only
-                    13 => [false, true, false, false, false, false, false], // Tuesday only
-                    14 => [false, false, true, false, false, false, false], // Wednesday only
-                    15 => [false, false, false, true, false, false, false], // Thursday only
-                    16 => [false, false, false, false, true, false, false], // Friday only
-                    17 => [false, false, false, false, false, true, false], // Saturday only
-                    _ => {
+                weekend = match WeekendPattern::try_from(code) {
+                    Ok(pattern) => pattern.to_mask(),
+                    Err(_) => {
                         return Err(CalcResult::new_error(
                             Error::NUM,
                             cell,
