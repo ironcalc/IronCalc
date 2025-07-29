@@ -95,8 +95,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | RANK.AVG                 | <Badge type="info" text="Not implemented yet" /> | –             |
 | RANK.EQ                  | <Badge type="info" text="Not implemented yet" /> | –             |
 | RSQ                      | <Badge type="info" text="Not implemented yet" /> | –             |
-| SKEW                     | <Badge type="info" text="Not implemented yet" /> | –             |
-| SKEW.P                   | <Badge type="info" text="Not implemented yet" /> | –             |
+| SKEW                     | <Badge type="info" text="Available" />            | –             |
+| SKEW.P                   | <Badge type="info" text="Available" />            | –             |
 | SLOPE                    | <Badge type="info" text="Not implemented yet" /> | –             |
 | SMALL                    | <Badge type="tip" text="Available" />            | –             |
 | STANDARDIZE              | <Badge type="info" text="Not implemented yet" /> | –             |

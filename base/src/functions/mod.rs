@@ -157,6 +157,8 @@ pub enum Function {
     Stdevpa,
     Vara,
     Varpa,
+    Skew,
+    SkewP,
 
     // Date and time
     Date,
@@ -265,7 +267,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 206> {
+    pub fn into_iter() -> IntoIter<Function, 212> {
         [
             Function::And,
             Function::False,
@@ -381,6 +383,8 @@ impl Function {
             Function::Stdevpa,
             Function::Vara,
             Function::Varpa,
+            Function::Skew,
+            Function::SkewP,
             Function::Year,
             Function::Day,
             Function::Month,
@@ -661,6 +665,8 @@ impl Function {
             "STDEVPA" => Some(Function::Stdevpa),
             "VARA" => Some(Function::Vara),
             "VARPA" => Some(Function::Varpa),
+            "SKEW" => Some(Function::Skew),
+            "SKEW.P" | "_XLFN.SKEW.P" => Some(Function::SkewP),
             // Date and Time
             "YEAR" => Some(Function::Year),
             "DAY" => Some(Function::Day),
@@ -884,6 +890,8 @@ impl fmt::Display for Function {
             Function::Stdevpa => write!(f, "STDEVPA"),
             Function::Vara => write!(f, "VARA"),
             Function::Varpa => write!(f, "VARPA"),
+            Function::Skew => write!(f, "SKEW"),
+            Function::SkewP => write!(f, "SKEW.P"),
             Function::Year => write!(f, "YEAR"),
             Function::Day => write!(f, "DAY"),
             Function::Month => write!(f, "MONTH"),
@@ -1136,6 +1144,8 @@ impl Model {
             Function::Stdevpa => self.fn_stdevpa(args, cell),
             Function::Vara => self.fn_vara(args, cell),
             Function::Varpa => self.fn_varpa(args, cell),
+            Function::Skew => self.fn_skew(args, cell),
+            Function::SkewP => self.fn_skew_p(args, cell),
             // Date and Time
             Function::Year => self.fn_year(args, cell),
             Function::Day => self.fn_day(args, cell),

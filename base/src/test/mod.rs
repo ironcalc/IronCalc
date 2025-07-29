@@ -71,6 +71,7 @@ mod test_log10;
 mod test_median;
 mod test_percentage;
 mod test_set_functions_error_handling;
+mod test_skew;
 mod test_stdev;
 mod test_today;
 mod test_types;

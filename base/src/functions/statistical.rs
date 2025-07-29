@@ -1319,4 +1319,174 @@ impl Model {
         var /= l as f64;
         CalcResult::Number(var)
     }
+
+    pub(crate) fn fn_skew(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut values = Vec::new();
+        for arg in args {
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Number(value) => values.push(value),
+                CalcResult::Boolean(b) => {
+                    if !matches!(arg, Node::ReferenceKind { .. }) {
+                        values.push(if b { 1.0 } else { 0.0 });
+                    }
+                }
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    for row in left.row..=right.row {
+                        for column in left.column..=right.column {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(v) => values.push(v),
+                                CalcResult::Boolean(_)
+                                | CalcResult::EmptyCell
+                                | CalcResult::EmptyArg => {}
+                                CalcResult::Range { .. } => {
+                                    return CalcResult::new_error(
+                                        Error::ERROR,
+                                        cell,
+                                        "Unexpected Range".to_string(),
+                                    );
+                                }
+                                error @ CalcResult::Error { .. } => return error,
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                CalcResult::String(s) => {
+                    if !matches!(arg, Node::ReferenceKind { .. }) {
+                        if let Ok(t) = s.parse::<f64>() {
+                            values.push(t);
+                        } else {
+                            return CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "Argument cannot be cast into number".to_string(),
+                            );
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let n = values.len();
+        if n < 3 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
+        }
+
+        let mean = values.iter().sum::<f64>() / n as f64;
+        let mut var = 0.0;
+        for &v in &values {
+            var += (v - mean).powi(2);
+        }
+        let std = (var / (n as f64 - 1.0)).sqrt();
+        if std == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "division by 0".to_string());
+        }
+        let mut sum3 = 0.0;
+        for &v in &values {
+            sum3 += ((v - mean) / std).powi(3);
+        }
+        let result = n as f64 / ((n as f64 - 1.0) * (n as f64 - 2.0)) * sum3;
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_skew_p(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut values = Vec::new();
+        for arg in args {
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Number(value) => values.push(value),
+                CalcResult::Boolean(b) => {
+                    if !matches!(arg, Node::ReferenceKind { .. }) {
+                        values.push(if b { 1.0 } else { 0.0 });
+                    }
+                }
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    for row in left.row..=right.row {
+                        for column in left.column..=right.column {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(v) => values.push(v),
+                                CalcResult::Boolean(_)
+                                | CalcResult::EmptyCell
+                                | CalcResult::EmptyArg => {}
+                                CalcResult::Range { .. } => {
+                                    return CalcResult::new_error(
+                                        Error::ERROR,
+                                        cell,
+                                        "Unexpected Range".to_string(),
+                                    );
+                                }
+                                error @ CalcResult::Error { .. } => return error,
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                CalcResult::String(s) => {
+                    if !matches!(arg, Node::ReferenceKind { .. }) {
+                        if let Ok(t) = s.parse::<f64>() {
+                            values.push(t);
+                        } else {
+                            return CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "Argument cannot be cast into number".to_string(),
+                            );
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let n = values.len();
+        if n == 0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
+        }
+
+        let mean = values.iter().sum::<f64>() / n as f64;
+        let mut var = 0.0;
+        for &v in &values {
+            var += (v - mean).powi(2);
+        }
+        let std = (var / n as f64).sqrt();
+        if std == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "division by 0".to_string());
+        }
+        let mut sum3 = 0.0;
+        for &v in &values {
+            sum3 += ((v - mean) / std).powi(3);
+        }
+        let result = sum3 / n as f64;
+        CalcResult::Number(result)
+    }
 }
