@@ -5,6 +5,57 @@ use chrono::NaiveDateTime;
 use chrono::NaiveTime;
 use chrono::Timelike;
 
+// ---------------------------------------------------------------------------
+// Helper macros to eliminate boilerplate in date/time component extraction
+// functions (DAY, MONTH, YEAR, HOUR, MINUTE, SECOND).
+// ---------------------------------------------------------------------------
+
+// Generate DAY / MONTH / YEAR helpers – simply convert the serial number to a
+// NaiveDate and return the requested component as a number.
+macro_rules! date_part_fn {
+    ($name:ident, $method:ident) => {
+        pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+            if args.len() != 1 {
+                return CalcResult::new_args_number_error(cell);
+            }
+            let serial_number = match self.get_number(&args[0], cell) {
+                Ok(num) => num.floor() as i64,
+                Err(e) => return e,
+            };
+            let date = match self.excel_date(serial_number, cell) {
+                Ok(d) => d,
+                Err(e) => return e,
+            };
+            CalcResult::Number(date.$method() as f64)
+        }
+    };
+}
+
+// Generate HOUR / MINUTE / SECOND helpers – extract the desired component from
+// a day-fraction value. We pass an extraction closure so each helper can keep
+// its own formula while sharing the surrounding boilerplate.
+macro_rules! time_part_fn {
+    ($name:ident, $extract:expr) => {
+        pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+            if args.len() != 1 {
+                return CalcResult::new_args_number_error(cell);
+            }
+            let value = match self.get_number(&args[0], cell) {
+                Ok(v) => v,
+                Err(e) => return e,
+            };
+            if value < 0.0 {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Invalid time".to_string(),
+                };
+            }
+            CalcResult::Number(($extract)(value))
+        }
+    };
+}
+
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
@@ -356,39 +407,12 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_day(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let serial_number = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let date = match self.excel_date(serial_number, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let day = date.day() as f64;
-        CalcResult::Number(day)
-    }
-
-    pub(crate) fn fn_month(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let serial_number = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let date = match self.excel_date(serial_number, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let month = date.month() as f64;
-        CalcResult::Number(month)
-    }
+    // -----------------------------------------------------------------------
+    // Auto-generated DATE part helpers (DAY / MONTH / YEAR)
+    // -----------------------------------------------------------------------
+    date_part_fn!(fn_day, day);
+    date_part_fn!(fn_month, month);
+    date_part_fn!(fn_year, year);
 
     pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
@@ -497,23 +521,6 @@ impl Model {
                 message,
             },
         }
-    }
-
-    pub(crate) fn fn_year(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let serial_number = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let date = match self.excel_date(serial_number, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let year = date.year() as f64;
-        CalcResult::Number(year)
     }
 
     // date, months
@@ -891,6 +898,10 @@ impl Model {
         CalcResult::Number(days_from_1900 as f64 + days.fract())
     }
 
+    // -----------------------------------------------------------------------
+    // Auto-generated TIME part helpers (HOUR / MINUTE / SECOND)
+    // -----------------------------------------------------------------------
+
     pub(crate) fn fn_time(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
@@ -920,6 +931,16 @@ impl Model {
         CalcResult::Number(secs / day_seconds)
     }
 
+    time_part_fn!(fn_hour, |v: f64| (v.rem_euclid(1.0) * 24.0).floor());
+    time_part_fn!(fn_minute, |v: f64| {
+        let total_seconds = (v.rem_euclid(1.0) * 86400.0).floor();
+        ((total_seconds / 60.0) as i64 % 60) as f64
+    });
+    time_part_fn!(fn_second, |v: f64| {
+        let total_seconds = (v.rem_euclid(1.0) * 86400.0).floor();
+        (total_seconds as i64 % 60) as f64
+    });
+
     pub(crate) fn fn_timevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -936,65 +957,6 @@ impl Model {
                 message: "Invalid time".to_string(),
             },
         }
-    }
-
-    pub(crate) fn fn_hour(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if value < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid time".to_string(),
-            };
-        }
-        let hours = (value.rem_euclid(1.0) * 24.0).floor();
-        CalcResult::Number(hours)
-    }
-
-    pub(crate) fn fn_minute(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if value < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid time".to_string(),
-            };
-        }
-        let total_seconds = (value.rem_euclid(1.0) * 86400.0).floor();
-        let minutes = ((total_seconds / 60.0) as i64 % 60) as f64;
-        CalcResult::Number(minutes)
-    }
-
-    pub(crate) fn fn_second(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if value < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid time".to_string(),
-            };
-        }
-        let total_seconds = (value.rem_euclid(1.0) * 86400.0).floor();
-        let seconds = (total_seconds as i64 % 60) as f64;
-        CalcResult::Number(seconds)
     }
 
     pub(crate) fn fn_datevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
