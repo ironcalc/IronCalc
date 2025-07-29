@@ -12,8 +12,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | Function         | Status                                         | Documentation |
 | ---------------- | ---------------------------------------------- | ------------- |
 | DATE             | <Badge type="tip" text="Available" />          | –             |
-| DATEDIF          | <Badge type="info" text="Not implemented yet" /> | –             |
-| DATEVALUE        | <Badge type="info" text="Not implemented yet" /> | –             |
+| DATEDIF          | <Badge type="tip" text="Available" />          | [DATEDIF](date_and_time/datedif) |
+| DATEVALUE        | <Badge type="tip" text="Available" />          | [DATEVALUE](date_and_time/datevalue) |
 | DAY              | <Badge type="tip" text="Available" />          | [DAY](date_and_time/day) |
 | DAYS             | <Badge type="info" text="Not implemented yet" /> | –             |
 | DAYS360          | <Badge type="info" text="Not implemented yet" /> | –             |
