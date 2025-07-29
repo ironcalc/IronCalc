@@ -23,8 +23,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ISOWEEKNUM       | <Badge type="info" text="Not implemented yet" /> | –             |
 | MINUTE           | <Badge type="info" text="Not implemented yet" /> | –             |
 | MONTH            | <Badge type="tip" text="Available" />          | [MONTH](date_and_time/month) |
-| NETWORKDAYS      | <Badge type="info" text="Not implemented yet" /> | –             |
-| NETWORKDAYS.INTL | <Badge type="info" text="Not implemented yet" /> | –             |
+| NETWORKDAYS      | <Badge type="tip" text="Available" />          | [NETWORKDAYS](date_and_time/networkdays) |
+| NETWORKDAYS.INTL | <Badge type="tip" text="Available" />          | [NETWORKDAYS.INTL](date_and_time/networkdays.intl) |
 | NOW              | <Badge type="tip" text="Available" />          | –             |
 | SECOND           | <Badge type="info" text="Not implemented yet" /> | –             |
 | TIME             | <Badge type="info" text="Not implemented yet" /> | –             |

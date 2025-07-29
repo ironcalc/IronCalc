@@ -155,6 +155,8 @@ pub enum Function {
     Now,
     Today,
     Year,
+    Networkdays,
+    NetworkdaysIntl,
 
     // Financial
     Cumipmt,
@@ -253,7 +255,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 198> {
+    pub fn into_iter() -> IntoIter<Function, 200> {
         [
             Function::And,
             Function::False,
@@ -363,6 +365,8 @@ impl Function {
             Function::Eomonth,
             Function::Date,
             Function::Edate,
+            Function::Networkdays,
+            Function::NetworkdaysIntl,
             Function::Today,
             Function::Now,
             Function::Pmt,
@@ -632,6 +636,8 @@ impl Function {
             "MONTH" => Some(Function::Month),
             "DATE" => Some(Function::Date),
             "EDATE" => Some(Function::Edate),
+            "NETWORKDAYS" => Some(Function::Networkdays),
+            "NETWORKDAYS.INTL" => Some(Function::NetworkdaysIntl),
             "TODAY" => Some(Function::Today),
             "NOW" => Some(Function::Now),
             // Financial
@@ -842,6 +848,8 @@ impl fmt::Display for Function {
             Function::Eomonth => write!(f, "EOMONTH"),
             Function::Date => write!(f, "DATE"),
             Function::Edate => write!(f, "EDATE"),
+            Function::Networkdays => write!(f, "NETWORKDAYS"),
+            Function::NetworkdaysIntl => write!(f, "NETWORKDAYS.INTL"),
             Function::Today => write!(f, "TODAY"),
             Function::Now => write!(f, "NOW"),
             Function::Pmt => write!(f, "PMT"),
@@ -1083,6 +1091,8 @@ impl Model {
             Function::Month => self.fn_month(args, cell),
             Function::Date => self.fn_date(args, cell),
             Function::Edate => self.fn_edate(args, cell),
+            Function::Networkdays => self.fn_networkdays(args, cell),
+            Function::NetworkdaysIntl => self.fn_networkdays_intl(args, cell),
             Function::Today => self.fn_today(args, cell),
             Function::Now => self.fn_now(args, cell),
             // Financial

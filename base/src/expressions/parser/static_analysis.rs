@@ -575,6 +575,37 @@ fn args_signature_xnpv(arg_count: usize) -> Vec<Signature> {
     }
 }
 
+// NETWORKDAYS(start_date, end_date, [holidays])
+// Parameters: start_date (scalar), end_date (scalar), holidays (optional vector)
+fn args_signature_networkdays(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Scalar, Signature::Scalar]
+    } else if arg_count == 3 {
+        vec![Signature::Scalar, Signature::Scalar, Signature::Vector]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
+// NETWORKDAYS.INTL(start_date, end_date, [weekend], [holidays])
+// Parameters: start_date (scalar), end_date (scalar), weekend (optional scalar), holidays (optional vector)
+fn args_signature_networkdays_intl(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Scalar, Signature::Scalar]
+    } else if arg_count == 3 {
+        vec![Signature::Scalar, Signature::Scalar, Signature::Scalar]
+    } else if arg_count == 4 {
+        vec![
+            Signature::Scalar,
+            Signature::Scalar,
+            Signature::Scalar,
+            Signature::Vector,
+        ]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
 // FIXME: This is terrible duplications of efforts. We use the signature in at least three different places:
 // 1. When computing the function
 // 2. Checking the arguments to see if we need to insert the implicit intersection operator
@@ -785,6 +816,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
         Function::Unicode => args_signature_scalars(arg_count, 1, 0),
         Function::Geomean => vec![Signature::Vector; arg_count],
+        Function::Networkdays => args_signature_networkdays(arg_count),
+        Function::NetworkdaysIntl => args_signature_networkdays_intl(arg_count),
     }
 }
 
@@ -990,5 +1023,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Eomonth => scalar_arguments(args),
         Function::Formulatext => not_implemented(args),
         Function::Geomean => not_implemented(args),
+        Function::Networkdays => not_implemented(args),
+        Function::NetworkdaysIntl => not_implemented(args),
     }
 }

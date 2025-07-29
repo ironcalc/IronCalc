@@ -247,6 +247,285 @@ impl Model {
         CalcResult::Number(serial_number as f64)
     }
 
+    fn get_array_of_dates(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<i64>, CalcResult> {
+        let mut values = Vec::new();
+        match self.evaluate_node_in_context(arg, cell) {
+            CalcResult::Number(v) => {
+                let date_serial = v.floor() as i64;
+                if from_excel_date(date_serial).is_err() {
+                    return Err(CalcResult::Error {
+                        error: Error::NUM,
+                        origin: cell,
+                        message: "Out of range parameters for date".to_string(),
+                    });
+                }
+                values.push(date_serial);
+            }
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                for row in left.row..=right.row {
+                    for column in left.column..=right.column {
+                        match self.evaluate_cell(CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        }) {
+                            CalcResult::Number(v) => {
+                                let date_serial = v.floor() as i64;
+                                if from_excel_date(date_serial).is_err() {
+                                    return Err(CalcResult::Error {
+                                        error: Error::NUM,
+                                        origin: cell,
+                                        message: "Out of range parameters for date".to_string(),
+                                    });
+                                }
+                                values.push(date_serial);
+                            }
+                            CalcResult::EmptyCell => {
+                                // Empty cells are ignored in holiday lists
+                            }
+                            e @ CalcResult::Error { .. } => return Err(e),
+                            _ => {
+                                // Non-numeric values in holiday lists should cause VALUE error
+                                return Err(CalcResult::Error {
+                                    error: Error::VALUE,
+                                    origin: cell,
+                                    message: "Invalid holiday date".to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            CalcResult::String(_) => {
+                // String holidays should cause VALUE error
+                return Err(CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Invalid holiday date".to_string(),
+                });
+            }
+            e @ CalcResult::Error { .. } => return Err(e),
+            _ => {
+                // Other non-numeric types should cause VALUE error
+                return Err(CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Invalid holiday date".to_string(),
+                });
+            }
+        }
+        Ok(values)
+    }
+
+    pub(crate) fn fn_networkdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(2..=3).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let start_serial = match self.get_number(&args[0], cell) {
+            Ok(n) => n.floor() as i64,
+            Err(e) => return e,
+        };
+        let end_serial = match self.get_number(&args[1], cell) {
+            Ok(n) => n.floor() as i64,
+            Err(e) => return e,
+        };
+        let mut holidays: std::collections::HashSet<i64> = std::collections::HashSet::new();
+        if args.len() == 3 {
+            let values = match self.get_array_of_dates(&args[2], cell) {
+                Ok(v) => v,
+                Err(e) => return e,
+            };
+            for v in values {
+                holidays.insert(v);
+            }
+        }
+
+        let (from, to, sign) = if start_serial <= end_serial {
+            (start_serial, end_serial, 1.0)
+        } else {
+            (end_serial, start_serial, -1.0)
+        };
+        let mut count = 0i64;
+        for serial in from..=to {
+            let date = match from_excel_date(serial) {
+                Ok(d) => d,
+                Err(_) => {
+                    return CalcResult::Error {
+                        error: Error::NUM,
+                        origin: cell,
+                        message: "Out of range parameters for date".to_string(),
+                    }
+                }
+            };
+            let weekday = date.weekday().number_from_monday();
+            let is_weekend = matches!(weekday, 6 | 7);
+            if !is_weekend && !holidays.contains(&serial) {
+                count += 1;
+            }
+        }
+        CalcResult::Number(count as f64 * sign)
+    }
+
+    fn parse_weekend_pattern(
+        &mut self,
+        node: Option<&Node>,
+        cell: CellReferenceIndex,
+    ) -> Result<[bool; 7], CalcResult> {
+        // Default: Saturday-Sunday weekend (pattern 1)
+        let mut weekend = [false, false, false, false, false, true, true];
+        if node.is_none() {
+            return Ok(weekend);
+        }
+        let node_ref = match node {
+            Some(n) => n,
+            None => return Ok(weekend),
+        };
+
+        match self.evaluate_node_in_context(node_ref, cell) {
+            CalcResult::Number(n) => {
+                let code = n.trunc() as i32;
+                if (n - n.trunc()).abs() > f64::EPSILON {
+                    return Err(CalcResult::new_error(
+                        Error::NUM,
+                        cell,
+                        "Invalid weekend".to_string(),
+                    ));
+                }
+                weekend = match code {
+                    1 | 0 => [false, false, false, false, false, true, true], // Saturday-Sunday
+                    2 => [true, false, false, false, false, false, true],     // Sunday-Monday
+                    3 => [true, true, false, false, false, false, false],     // Monday-Tuesday
+                    4 => [false, true, true, false, false, false, false],     // Tuesday-Wednesday
+                    5 => [false, false, true, true, false, false, false],     // Wednesday-Thursday
+                    6 => [false, false, false, true, true, false, false],     // Thursday-Friday
+                    7 => [false, false, false, false, true, true, false],     // Friday-Saturday
+                    11 => [false, false, false, false, false, false, true],   // Sunday only
+                    12 => [true, false, false, false, false, false, false],   // Monday only
+                    13 => [false, true, false, false, false, false, false],   // Tuesday only
+                    14 => [false, false, true, false, false, false, false],   // Wednesday only
+                    15 => [false, false, false, true, false, false, false],   // Thursday only
+                    16 => [false, false, false, false, true, false, false],   // Friday only
+                    17 => [false, false, false, false, false, true, false],   // Saturday only
+                    _ => {
+                        return Err(CalcResult::new_error(
+                            Error::NUM,
+                            cell,
+                            "Invalid weekend".to_string(),
+                        ))
+                    }
+                };
+                Ok(weekend)
+            }
+            CalcResult::String(s) => {
+                if s.len() != 7 {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Invalid weekend".to_string(),
+                    ));
+                }
+                if !s.chars().all(|c| c == '0' || c == '1') {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Invalid weekend".to_string(),
+                    ));
+                }
+                weekend = [false; 7];
+                for (i, ch) in s.chars().enumerate() {
+                    weekend[i] = ch == '1';
+                }
+                Ok(weekend)
+            }
+            CalcResult::Boolean(_) => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Invalid weekend".to_string(),
+            )),
+            e @ CalcResult::Error { .. } => Err(e),
+            CalcResult::Range { .. } => Err(CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Invalid weekend".to_string(),
+            }),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(weekend),
+            CalcResult::Array(_) => Err(CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Invalid weekend".to_string(),
+            }),
+        }
+    }
+
+    pub(crate) fn fn_networkdays_intl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if !(2..=4).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let start_serial = match self.get_number(&args[0], cell) {
+            Ok(n) => n.floor() as i64,
+            Err(e) => return e,
+        };
+        let end_serial = match self.get_number(&args[1], cell) {
+            Ok(n) => n.floor() as i64,
+            Err(e) => return e,
+        };
+
+        let weekend_pattern = match self.parse_weekend_pattern(args.get(2), cell) {
+            Ok(p) => p,
+            Err(e) => return e,
+        };
+
+        let mut holidays: std::collections::HashSet<i64> = std::collections::HashSet::new();
+        if args.len() == 4 {
+            let values = match self.get_array_of_dates(&args[3], cell) {
+                Ok(v) => v,
+                Err(e) => return e,
+            };
+            for v in values {
+                holidays.insert(v);
+            }
+        }
+
+        let (from, to, sign) = if start_serial <= end_serial {
+            (start_serial, end_serial, 1.0)
+        } else {
+            (end_serial, start_serial, -1.0)
+        };
+        let mut count = 0i64;
+        for serial in from..=to {
+            let date = match from_excel_date(serial) {
+                Ok(d) => d,
+                Err(_) => {
+                    return CalcResult::Error {
+                        error: Error::NUM,
+                        origin: cell,
+                        message: "Out of range parameters for date".to_string(),
+                    }
+                }
+            };
+            let weekday = date.weekday().number_from_monday() as usize - 1;
+            if !weekend_pattern[weekday] && !holidays.contains(&serial) {
+                count += 1;
+            }
+        }
+        CalcResult::Number(count as f64 * sign)
+    }
+
     pub(crate) fn fn_today(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 0 {
