@@ -7,7 +7,7 @@ use crate::{
     model::Model,
 };
 
-use super::util::build_criteria;
+use super::util::{build_criteria, collect_numeric_values};
 
 impl Model {
     pub(crate) fn fn_average(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -654,80 +654,21 @@ impl Model {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut count = 0.0;
-        let mut product = 1.0;
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => {
-                    count += 1.0;
-                    product *= value;
-                }
-                CalcResult::Boolean(b) => {
-                    if let Node::ReferenceKind { .. } = arg {
-                    } else {
-                        product *= if b { 1.0 } else { 0.0 };
-                        count += 1.0;
-                    }
-                }
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    count += 1.0;
-                                    product *= value;
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                CalcResult::Range { .. } => {
-                                    return CalcResult::new_error(
-                                        Error::ERROR,
-                                        cell,
-                                        "Unexpected Range".to_string(),
-                                    );
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::String(s) => {
-                    if let Node::ReferenceKind { .. } = arg {
-                        // Do nothing
-                    } else if let Ok(t) = s.parse::<f64>() {
-                        product *= t;
-                        count += 1.0;
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Argument cannot be cast into number".to_string(),
-                        };
-                    }
-                }
-                _ => {
-                    // Ignore everything else
-                }
-            };
-        }
-        if count == 0.0 {
+        let values = match collect_numeric_values(self, args, cell) {
+            Ok(v) => v,
+            Err(err) => return err,
+        };
+
+        if values.is_empty() {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
                 message: "Division by Zero".to_string(),
             };
         }
+
+        let product: f64 = values.iter().product();
+        let count = values.len() as f64;
         CalcResult::Number(product.powf(1.0 / count))
     }
     pub(crate) fn fn_var_s(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1122,5 +1063,79 @@ impl Model {
         }
         values.sort_by(|a, b| a.total_cmp(b));
         CalcResult::Number(values[k - 1])
+    }
+
+    pub(crate) fn fn_median(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match collect_numeric_values(self, args, cell) {
+            Ok(v) => v,
+            Err(err) => return err,
+        };
+
+        // Filter out NaN values to ensure proper sorting
+        let mut values: Vec<f64> = values.into_iter().filter(|v| !v.is_nan()).collect();
+
+        if values.is_empty() {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Division by Zero".to_string(),
+            };
+        }
+
+        // Sort values - NaN values have been filtered out, but use unwrap_or for safety
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let len = values.len();
+        if len % 2 == 1 {
+            CalcResult::Number(values[len / 2])
+        } else {
+            CalcResult::Number((values[len / 2 - 1] + values[len / 2]) / 2.0)
+        }
+    }
+
+    pub(crate) fn fn_stdev_s(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match collect_numeric_values(self, args, cell) {
+            Ok(v) => v,
+            Err(err) => return err,
+        };
+        let n = values.len();
+        if n < 2 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+        }
+        let sum: f64 = values.iter().sum();
+        let mean = sum / n as f64;
+        let mut variance = 0.0;
+        for v in &values {
+            variance += (v - mean).powi(2);
+        }
+        variance /= n as f64 - 1.0;
+        CalcResult::Number(variance.sqrt())
+    }
+
+    pub(crate) fn fn_stdev_p(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match collect_numeric_values(self, args, cell) {
+            Ok(v) => v,
+            Err(err) => return err,
+        };
+        let n = values.len();
+        if n == 0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+        }
+        let sum: f64 = values.iter().sum();
+        let mean = sum / n as f64;
+        let mut variance = 0.0;
+        for v in &values {
+            variance += (v - mean).powi(2);
+        }
+        variance /= n as f64;
+        CalcResult::Number(variance.sqrt())
     }
 }

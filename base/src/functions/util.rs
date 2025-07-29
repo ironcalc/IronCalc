@@ -1,7 +1,15 @@
 #[cfg(feature = "use_regex_lite")]
 use regex_lite as regex;
 
-use crate::{calc_result::CalcResult, expressions::token::is_english_error_string};
+use crate::{
+    calc_result::CalcResult,
+    expressions::{
+        parser::Node,
+        token::{is_english_error_string, Error},
+        types::CellReferenceIndex,
+    },
+    model::Model,
+};
 
 /// This test for exact match (modulo case).
 ///   * strings are not cast into bools or numbers
@@ -397,4 +405,80 @@ pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResul
         CalcResult::Array(_) => Box::new(move |_x| false),
         CalcResult::EmptyCell | CalcResult::EmptyArg => Box::new(result_is_equal_to_empty),
     }
+}
+
+/// Collects all numeric values from a function’s argument list.
+///
+/// Traverses each Node, evaluates it in context, and returns the numeric
+/// scalars as `Ok(Vec<f64>)`.  Propagates the first error encountered.
+///
+/// Behaviour rules (Excel-compatible):
+/// • Booleans in literals become 1/0; booleans coming from cell references are ignored.
+/// • Strings that can be parsed as numbers are accepted when literal (not via reference).
+/// • Non-numeric values, empty cells, and text are skipped.
+/// • Encountered `#ERROR!` values are propagated immediately.
+/// • Ranges are flattened cell-by-cell; cross-sheet ranges trigger `#VALUE!`.
+///
+/// Requires `&mut Model` because range evaluation queries live cell state.
+pub(crate) fn collect_numeric_values(
+    model: &mut Model,
+    args: &[Node],
+    cell: CellReferenceIndex,
+) -> Result<Vec<f64>, CalcResult> {
+    let mut values = Vec::new();
+    for arg in args {
+        match model.evaluate_node_in_context(arg, cell) {
+            CalcResult::Number(v) => values.push(v),
+            CalcResult::Boolean(b) => {
+                if !matches!(arg, Node::ReferenceKind { .. }) {
+                    values.push(if b { 1.0 } else { 0.0 });
+                }
+            }
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                for row in left.row..=right.row {
+                    for column in left.column..=right.column {
+                        match model.evaluate_cell(CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        }) {
+                            CalcResult::Number(v) => values.push(v),
+                            error @ CalcResult::Error { .. } => return Err(error),
+                            CalcResult::Range { .. } => {
+                                return Err(CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    "Unexpected Range".to_string(),
+                                ));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            error @ CalcResult::Error { .. } => return Err(error),
+            CalcResult::String(s) => {
+                if !matches!(arg, Node::ReferenceKind { .. }) {
+                    if let Ok(t) = s.parse::<f64>() {
+                        values.push(t);
+                    } else {
+                        return Err(CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: "Argument cannot be cast into number".to_string(),
+                        });
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(values)
 }

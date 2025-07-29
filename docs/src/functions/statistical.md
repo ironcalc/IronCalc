@@ -72,7 +72,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MAX                      | <Badge type="tip" text="Available" />            | –             |
 | MAXA                     | <Badge type="info" text="Not implemented yet" /> | –             |
 | MAXIFS                   | <Badge type="tip" text="Available" />            | –             |
-| MEDIAN                   | <Badge type="info" text="Not implemented yet" /> | –             |
+| MEDIAN                   | <Badge type="tip" text="Available" />            | –             |
 | MODE.MULT                | <Badge type="info" text="Not implemented yet" /> | –             |
 | MODE.SNGL                | <Badge type="info" text="Not implemented yet" /> | –             |
 | NEGBINOM.DIST            | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -100,8 +100,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SLOPE                    | <Badge type="info" text="Not implemented yet" /> | –             |
 | SMALL                    | <Badge type="tip" text="Available" />            | –             |
 | STANDARDIZE              | <Badge type="info" text="Not implemented yet" /> | –             |
-| STDEV.P                  | <Badge type="info" text="Not implemented yet" /> | –             |
-| STDEV.S                  | <Badge type="info" text="Not implemented yet" /> | –             |
+| STDEV.P                  | <Badge type="tip" text="Available" />            | –             |
+| STDEV.S                  | <Badge type="tip" text="Available" />            | –             |
 | STDEVA                   | <Badge type="info" text="Not implemented yet" /> | –             |
 | STDEVPA                  | <Badge type="info" text="Not implemented yet" /> | –             |
 | STEYX                    | <Badge type="info" text="Not implemented yet" /> | –             |

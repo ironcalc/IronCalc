@@ -150,6 +150,9 @@ pub enum Function {
     Correl,
     Large,
     Small,
+    Median,
+    StdevS,
+    StdevP,
 
     // Date and time
     Date,
@@ -258,7 +261,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 203> {
+    pub fn into_iter() -> IntoIter<Function, 206> {
         [
             Function::And,
             Function::False,
@@ -367,6 +370,9 @@ impl Function {
             Function::Correl,
             Function::Large,
             Function::Small,
+            Function::Median,
+            Function::StdevS,
+            Function::StdevP,
             Function::Year,
             Function::Day,
             Function::Month,
@@ -640,6 +646,9 @@ impl Function {
             "CORREL" => Some(Function::Correl),
             "LARGE" => Some(Function::Large),
             "SMALL" => Some(Function::Small),
+            "MEDIAN" => Some(Function::Median),
+            "STDEV.S" => Some(Function::StdevS),
+            "STDEV.P" => Some(Function::StdevP),
             // Date and Time
             "YEAR" => Some(Function::Year),
             "DAY" => Some(Function::Day),
@@ -856,6 +865,9 @@ impl fmt::Display for Function {
             Function::Correl => write!(f, "CORREL"),
             Function::Large => write!(f, "LARGE"),
             Function::Small => write!(f, "SMALL"),
+            Function::Median => write!(f, "MEDIAN"),
+            Function::StdevS => write!(f, "STDEV.S"),
+            Function::StdevP => write!(f, "STDEV.P"),
             Function::Year => write!(f, "YEAR"),
             Function::Day => write!(f, "DAY"),
             Function::Month => write!(f, "MONTH"),
@@ -1101,6 +1113,9 @@ impl Model {
             Function::Correl => self.fn_correl(args, cell),
             Function::Large => self.fn_large(args, cell),
             Function::Small => self.fn_small(args, cell),
+            Function::Median => self.fn_median(args, cell),
+            Function::StdevS => self.fn_stdev_s(args, cell),
+            Function::StdevP => self.fn_stdev_p(args, cell),
             // Date and Time
             Function::Year => self.fn_year(args, cell),
             Function::Day => self.fn_day(args, cell),
