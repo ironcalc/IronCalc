@@ -1836,4 +1836,310 @@ impl Model {
     pub(crate) fn fn_rank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.fn_rank_eq(args, cell)
     }
+
+    fn get_array_of_numbers_stat(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
+        let mut values = Vec::new();
+        let result = self.evaluate_node_in_context(arg, cell);
+        match result {
+            CalcResult::Number(value) => values.push(value),
+            CalcResult::Boolean(b) => {
+                if !matches!(arg, Node::ReferenceKind { .. }) {
+                    values.push(if b { 1.0 } else { 0.0 });
+                }
+            }
+            CalcResult::String(s) => {
+                if !matches!(arg, Node::ReferenceKind { .. }) {
+                    if let Ok(v) = s.parse::<f64>() {
+                        values.push(v);
+                    } else {
+                        return Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Argument cannot be cast into number".to_string(),
+                        ));
+                    }
+                }
+            }
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                let row1 = left.row;
+                let mut row2 = right.row;
+                let column1 = left.column;
+                let mut column2 = right.column;
+                if row1 == 1 && row2 == LAST_ROW {
+                    row2 = self
+                        .workbook
+                        .worksheet(left.sheet)
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
+                        .dimension()
+                        .max_row;
+                }
+                if column1 == 1 && column2 == LAST_COLUMN {
+                    column2 = self
+                        .workbook
+                        .worksheet(left.sheet)
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
+                        .dimension()
+                        .max_column;
+                }
+                for row in row1..=row2 {
+                    for column in column1..=column2 {
+                        let v = self.evaluate_cell(CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        });
+                        match v {
+                            CalcResult::Number(num) => values.push(num),
+                            CalcResult::Error { .. } => return Err(v),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            CalcResult::Error { .. } => return Err(result),
+            CalcResult::Array(_) => {
+                return Err(CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                })
+            }
+            CalcResult::EmptyCell | CalcResult::EmptyArg => {}
+        }
+        Ok(values)
+    }
+
+    pub(crate) fn fn_percentile_inc(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut values = match self.get_array_of_numbers_stat(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if values.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
+        }
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+        let k = match self.get_number(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if !(0.0..=1.0).contains(&k) {
+            return CalcResult::new_error(Error::NUM, cell, "k out of range".to_string());
+        }
+        let n = values.len() as f64;
+        let pos = k * (n - 1.0) + 1.0;
+        let m = pos.floor();
+        let g = pos - m;
+        let idx = (m as usize).saturating_sub(1);
+        if idx >= values.len() - 1 {
+            let last_value = match values.last() {
+                Some(&v) => v,
+                None => return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string()),
+            };
+            return CalcResult::Number(last_value);
+        }
+        let result = values[idx] + g * (values[idx + 1] - values[idx]);
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_percentile_exc(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut values = match self.get_array_of_numbers_stat(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if values.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
+        }
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+        let k = match self.get_number(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let n = values.len() as f64;
+        if k <= 0.0 || k >= 1.0 {
+            return CalcResult::new_error(Error::NUM, cell, "k out of range".to_string());
+        }
+        let pos = k * (n + 1.0);
+        if pos < 1.0 || pos > n {
+            return CalcResult::new_error(Error::NUM, cell, "k out of range".to_string());
+        }
+        let m = pos.floor();
+        let g = pos - m;
+        let idx = (m as usize).saturating_sub(1);
+        if idx >= values.len() - 1 {
+            let last_value = match values.last() {
+                Some(&v) => v,
+                None => return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string()),
+            };
+            return CalcResult::Number(last_value);
+        }
+        let result = values[idx] + g * (values[idx + 1] - values[idx]);
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_percentrank_inc(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() < 2 || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut values = match self.get_array_of_numbers_stat(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if values.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
+        }
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+        let x = match self.get_number(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let decimals = if args.len() == 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(v) => v as i32,
+                Err(e) => return e,
+            }
+        } else {
+            3
+        };
+        let n = values.len() as f64;
+
+        // Handle single element array case
+        if n == 1.0 {
+            if (x - values[0]).abs() <= f64::EPSILON {
+                let factor = 10f64.powi(decimals);
+                let result = (0.5 * factor).round() / factor;
+                return CalcResult::Number(result);
+            } else {
+                return CalcResult::new_error(
+                    Error::NA,
+                    cell,
+                    "Value not found in single element array".to_string(),
+                );
+            }
+        }
+
+        if x < values[0] {
+            return CalcResult::Number(0.0);
+        }
+        if x > values[values.len() - 1] {
+            return CalcResult::Number(1.0);
+        }
+        let mut idx = 0;
+        while idx < values.len() && values[idx] < x {
+            idx += 1;
+        }
+
+        // Handle case where idx reaches end of array (should not happen due to bounds check above)
+        if idx >= values.len() {
+            return CalcResult::Number(1.0);
+        }
+
+        let rank = if (x - values[idx]).abs() <= f64::EPSILON {
+            // Exact match found
+            idx as f64
+        } else {
+            // Interpolation needed - ensure we don't go out of bounds
+            if idx == 0 {
+                // x is between the minimum and the first element, should not happen due to bounds check
+                return CalcResult::Number(0.0);
+            }
+            let lower = values[idx - 1];
+            let upper = values[idx];
+            (idx as f64 - 1.0) + (x - lower) / (upper - lower)
+        };
+
+        let mut result = rank / (n - 1.0);
+        let factor = 10f64.powi(decimals);
+        result = (result * factor).round() / factor;
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_percentrank_exc(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() < 2 || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut values = match self.get_array_of_numbers_stat(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if values.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
+        }
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+        let x = match self.get_number(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let decimals = if args.len() == 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(v) => v as i32,
+                Err(e) => return e,
+            }
+        } else {
+            3
+        };
+        let n = values.len();
+        if x <= values[0] || x >= values[n - 1] {
+            return CalcResult::new_error(Error::NUM, cell, "x out of range".to_string());
+        }
+        let mut idx = 0;
+        while idx < n && values[idx] < x {
+            idx += 1;
+        }
+        let rank = if (x - values[idx]).abs() > f64::EPSILON {
+            let lower = values[idx - 1];
+            let upper = values[idx];
+            idx as f64 + (x - lower) / (upper - lower)
+        } else {
+            (idx + 1) as f64
+        };
+        let mut result = rank / ((n + 1) as f64);
+        let factor = 10f64.powi(decimals);
+        result = (result * factor).round() / factor;
+        CalcResult::Number(result)
+    }
 }

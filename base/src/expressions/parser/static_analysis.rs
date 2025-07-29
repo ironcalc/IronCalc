@@ -821,6 +821,26 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
                 vec![Signature::Error; arg_count]
             }
         }
+        Function::PercentileExc => args_signature_vector_scalar(arg_count),
+        Function::PercentileInc => args_signature_vector_scalar(arg_count),
+        Function::PercentrankExc => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::PercentrankInc => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::Rank | Function::RankAvg | Function::RankEq => args_signature_rank(arg_count),
     }
 }
@@ -1040,5 +1060,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Skew | Function::SkewP => not_implemented(args),
         Function::Quartile | Function::QuartileExc | Function::QuartileInc => not_implemented(args),
         Function::Rank | Function::RankAvg | Function::RankEq => scalar_arguments(args),
+        Function::PercentileExc => not_implemented(args),
+        Function::PercentileInc => not_implemented(args),
+        Function::PercentrankExc => not_implemented(args),
+        Function::PercentrankInc => not_implemented(args),
     }
 }

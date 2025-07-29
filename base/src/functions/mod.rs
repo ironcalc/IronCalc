@@ -165,6 +165,10 @@ pub enum Function {
     Rank,
     RankAvg,
     RankEq,
+    PercentileExc,
+    PercentileInc,
+    PercentrankExc,
+    PercentrankInc,
 
     // Date and time
     Date,
@@ -273,7 +277,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 218> {
+    pub fn into_iter() -> IntoIter<Function, 222> {
         [
             Function::And,
             Function::False,
@@ -397,6 +401,10 @@ impl Function {
             Function::Rank,
             Function::RankAvg,
             Function::RankEq,
+            Function::PercentileExc,
+            Function::PercentileInc,
+            Function::PercentrankExc,
+            Function::PercentrankInc,
             Function::Year,
             Function::Day,
             Function::Month,
@@ -516,6 +524,10 @@ impl Function {
             Function::Unicode => "_xlfn.UNICODE".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
+            Function::PercentileExc => "_xlfn.PERCENTILE.EXC".to_string(),
+            Function::PercentileInc => "_xlfn.PERCENTILE.INC".to_string(),
+            Function::PercentrankExc => "_xlfn.PERCENTRANK.EXC".to_string(),
+            Function::PercentrankInc => "_xlfn.PERCENTRANK.INC".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),
             Function::Bitor => "_xlfn.BITOR".to_string(),
             Function::Bitxor => "_xlfn.BITXOR".to_string(),
@@ -685,6 +697,10 @@ impl Function {
             "RANK" => Some(Function::Rank),
             "RANK.AVG" => Some(Function::RankAvg),
             "RANK.EQ" => Some(Function::RankEq),
+            "PERCENTILE.EXC" | "_XLFN.PERCENTILE.EXC" => Some(Function::PercentileExc),
+            "PERCENTILE.INC" | "_XLFN.PERCENTILE.INC" => Some(Function::PercentileInc),
+            "PERCENTRANK.EXC" | "_XLFN.PERCENTRANK.EXC" => Some(Function::PercentrankExc),
+            "PERCENTRANK.INC" | "_XLFN.PERCENTRANK.INC" => Some(Function::PercentrankInc),
             // Date and Time
             "YEAR" => Some(Function::Year),
             "DAY" => Some(Function::Day),
@@ -916,6 +932,10 @@ impl fmt::Display for Function {
             Function::Rank => write!(f, "RANK"),
             Function::RankAvg => write!(f, "RANK.AVG"),
             Function::RankEq => write!(f, "RANK.EQ"),
+            Function::PercentileExc => write!(f, "PERCENTILE.EXC"),
+            Function::PercentileInc => write!(f, "PERCENTILE.INC"),
+            Function::PercentrankExc => write!(f, "PERCENTRANK.EXC"),
+            Function::PercentrankInc => write!(f, "PERCENTRANK.INC"),
             Function::Year => write!(f, "YEAR"),
             Function::Day => write!(f, "DAY"),
             Function::Month => write!(f, "MONTH"),
@@ -1176,6 +1196,10 @@ impl Model {
             Function::Rank => self.fn_rank(args, cell),
             Function::RankAvg => self.fn_rank_avg(args, cell),
             Function::RankEq => self.fn_rank_eq(args, cell),
+            Function::PercentileExc => self.fn_percentile_exc(args, cell),
+            Function::PercentileInc => self.fn_percentile_inc(args, cell),
+            Function::PercentrankExc => self.fn_percentrank_exc(args, cell),
+            Function::PercentrankInc => self.fn_percentrank_inc(args, cell),
             // Date and Time
             Function::Year => self.fn_year(args, cell),
             Function::Day => self.fn_day(args, cell),

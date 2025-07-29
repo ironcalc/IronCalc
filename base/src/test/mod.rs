@@ -72,6 +72,8 @@ mod test_log;
 mod test_log10;
 mod test_median;
 mod test_percentage;
+mod test_percentile;
+mod test_percentrank;
 mod test_set_functions_error_handling;
 mod test_skew;
 mod test_stdev;
