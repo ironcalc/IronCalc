@@ -145,6 +145,9 @@ pub enum Function {
     Maxifs,
     Minifs,
     Geomean,
+    VarP,
+    VarS,
+    Correl,
 
     // Date and time
     Date,
@@ -253,7 +256,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 198> {
+    pub fn into_iter() -> IntoIter<Function, 201> {
         [
             Function::And,
             Function::False,
@@ -357,6 +360,9 @@ impl Function {
             Function::Maxifs,
             Function::Minifs,
             Function::Geomean,
+            Function::VarP,
+            Function::VarS,
+            Function::Correl,
             Function::Year,
             Function::Day,
             Function::Month,
@@ -625,6 +631,9 @@ impl Function {
             "MAXIFS" | "_XLFN.MAXIFS" => Some(Function::Maxifs),
             "MINIFS" | "_XLFN.MINIFS" => Some(Function::Minifs),
             "GEOMEAN" => Some(Function::Geomean),
+            "VAR.P" => Some(Function::VarP),
+            "VAR.S" => Some(Function::VarS),
+            "CORREL" => Some(Function::Correl),
             // Date and Time
             "YEAR" => Some(Function::Year),
             "DAY" => Some(Function::Day),
@@ -836,6 +845,9 @@ impl fmt::Display for Function {
             Function::Maxifs => write!(f, "MAXIFS"),
             Function::Minifs => write!(f, "MINIFS"),
             Function::Geomean => write!(f, "GEOMEAN"),
+            Function::VarP => write!(f, "VAR.P"),
+            Function::VarS => write!(f, "VAR.S"),
+            Function::Correl => write!(f, "CORREL"),
             Function::Year => write!(f, "YEAR"),
             Function::Day => write!(f, "DAY"),
             Function::Month => write!(f, "MONTH"),
@@ -1076,6 +1088,9 @@ impl Model {
             Function::Maxifs => self.fn_maxifs(args, cell),
             Function::Minifs => self.fn_minifs(args, cell),
             Function::Geomean => self.fn_geomean(args, cell),
+            Function::VarP => self.fn_var_p(args, cell),
+            Function::VarS => self.fn_var_s(args, cell),
+            Function::Correl => self.fn_correl(args, cell),
             // Date and Time
             Function::Year => self.fn_year(args, cell),
             Function::Day => self.fn_day(args, cell),

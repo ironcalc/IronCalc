@@ -730,4 +730,279 @@ impl Model {
         }
         CalcResult::Number(product.powf(1.0 / count))
     }
+    pub(crate) fn fn_var_s(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.fn_var_generic(args, cell, true)
+    }
+
+    pub(crate) fn fn_var_p(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.fn_var_generic(args, cell, false)
+    }
+
+    fn fn_var_generic(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        sample: bool,
+    ) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut values = Vec::new();
+        for arg in args {
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Number(value) => values.push(value),
+                CalcResult::Boolean(b) => {
+                    if !matches!(arg, Node::ReferenceKind { .. }) {
+                        values.push(if b { 1.0 } else { 0.0 });
+                    }
+                }
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    let row1 = left.row;
+                    let mut row2 = right.row;
+                    let column1 = left.column;
+                    let mut column2 = right.column;
+                    if row1 == 1 && row2 == LAST_ROW {
+                        row2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_row,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
+                    }
+                    if column1 == 1 && column2 == LAST_COLUMN {
+                        column2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_column,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
+                    }
+                    for row in row1..=row2 {
+                        for column in column1..=column2 {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(v) => values.push(v),
+                                error @ CalcResult::Error { .. } => return error,
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                CalcResult::String(s) => {
+                    if !matches!(arg, Node::ReferenceKind { .. }) {
+                        if let Ok(t) = s.parse::<f64>() {
+                            values.push(t);
+                        } else {
+                            return CalcResult::Error {
+                                error: Error::VALUE,
+                                origin: cell,
+                                message: "Argument cannot be cast into number".to_string(),
+                            };
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                CalcResult::Array(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
+                _ => {}
+            }
+        }
+        let count = values.len() as f64;
+        if (sample && count < 2.0) || (!sample && count == 0.0) {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Division by 0".to_string(),
+            };
+        }
+        let mut sum = 0.0;
+        for v in &values {
+            sum += *v;
+        }
+        let mean = sum / count;
+        let mut var = 0.0;
+        for v in &values {
+            var += (*v - mean).powi(2);
+        }
+        if sample {
+            var /= count - 1.0;
+        } else {
+            var /= count;
+        }
+        CalcResult::Number(var)
+    }
+
+    pub(crate) fn fn_correl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let (data1, len1) = match self.correl_collect(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let (data2, len2) = match self.correl_collect(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if len1 != len2 {
+            return CalcResult::Error {
+                error: Error::NA,
+                origin: cell,
+                message: "Arrays must be of the same size".to_string(),
+            };
+        }
+        let mut pairs = Vec::new();
+        for i in 0..len1 {
+            if let (Some(x), Some(y)) = (data1[i], data2[i]) {
+                pairs.push((x, y));
+            }
+        }
+        let n = pairs.len() as f64;
+        if n < 2.0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Division by 0".to_string(),
+            };
+        }
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        for (x, y) in &pairs {
+            sum_x += *x;
+            sum_y += *y;
+        }
+        let mean_x = sum_x / n;
+        let mean_y = sum_y / n;
+        let mut num = 0.0;
+        let mut sx = 0.0;
+        let mut sy = 0.0;
+        for (x, y) in &pairs {
+            let dx = *x - mean_x;
+            let dy = *y - mean_y;
+            num += dx * dy;
+            sx += dx * dx;
+            sy += dy * dy;
+        }
+        if sx == 0.0 || sy == 0.0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Division by 0".to_string(),
+            };
+        }
+        CalcResult::Number(num / (sx.sqrt() * sy.sqrt()))
+    }
+
+    fn correl_collect(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(Vec<Option<f64>>, usize), CalcResult> {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Number(f) => Ok((vec![Some(f)], 1)),
+            CalcResult::Boolean(b) => {
+                if matches!(node, Node::ReferenceKind { .. }) {
+                    Ok((vec![None], 1))
+                } else {
+                    Ok((vec![Some(if b { 1.0 } else { 0.0 })], 1))
+                }
+            }
+            CalcResult::String(s) => {
+                if matches!(node, Node::ReferenceKind { .. }) {
+                    Ok((vec![None], 1))
+                } else if let Ok(t) = s.parse::<f64>() {
+                    Ok((vec![Some(t)], 1))
+                } else {
+                    Err(CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Argument cannot be cast into number".to_string(),
+                    })
+                }
+            }
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok((vec![None], 1)),
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                let row1 = left.row;
+                let mut row2 = right.row;
+                let column1 = left.column;
+                let mut column2 = right.column;
+                if row1 == 1 && row2 == LAST_ROW {
+                    row2 = match self.workbook.worksheet(left.sheet) {
+                        Ok(s) => s.dimension().max_row,
+                        Err(_) => {
+                            return Err(CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            ));
+                        }
+                    };
+                }
+                if column1 == 1 && column2 == LAST_COLUMN {
+                    column2 = match self.workbook.worksheet(left.sheet) {
+                        Ok(s) => s.dimension().max_column,
+                        Err(_) => {
+                            return Err(CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            ));
+                        }
+                    };
+                }
+                let mut v = Vec::new();
+                for row in row1..=row2 {
+                    for column in column1..=column2 {
+                        match self.evaluate_cell(CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        }) {
+                            CalcResult::Number(f) => v.push(Some(f)),
+                            error @ CalcResult::Error { .. } => return Err(error),
+                            _ => v.push(None),
+                        }
+                    }
+                }
+                let len = v.len();
+                Ok((v, len))
+            }
+            CalcResult::Array(_) => Err(CalcResult::Error {
+                error: Error::NIMPL,
+                origin: cell,
+                message: "Arrays not supported yet".to_string(),
+            }),
+            error @ CalcResult::Error { .. } => Err(error),
+        }
+    }
 }

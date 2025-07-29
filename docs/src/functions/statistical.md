@@ -28,7 +28,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | CHISQ.TEST               | <Badge type="info" text="Not implemented yet" /> | –             |
 | CONFIDENCE.NORM          | <Badge type="info" text="Not implemented yet" /> | –             |
 | CONFIDENCE.T             | <Badge type="info" text="Not implemented yet" /> | –             |
-| CORREL                   | <Badge type="info" text="Not implemented yet" /> | –             |
+| CORREL                   | <Badge type="tip" text="Available" /> | –             |
 | COUNT                    | <Badge type="tip" text="Available" />            | –             |
 | COUNTA                   | <Badge type="tip" text="Available" />            | –             |
 | COUNTBLANK               | <Badge type="tip" text="Available" />            | –             |
@@ -113,8 +113,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | T.TEST                   | <Badge type="info" text="Not implemented yet" /> | –             |
 | TREND                    | <Badge type="info" text="Not implemented yet" /> | –             |
 | TRIMMEAN                 | <Badge type="info" text="Not implemented yet" /> | –             |
-| VAR.P                    | <Badge type="info" text="Not implemented yet" /> | –             |
-| VAR.S                    | <Badge type="info" text="Not implemented yet" /> | –             |
+| VAR.P                    | <Badge type="tip" text="Available" /> | –             |
+| VAR.S                    | <Badge type="tip" text="Available" /> | –             |
 | VARA                     | <Badge type="info" text="Not implemented yet" /> | –             |
 | VARPA                    | <Badge type="info" text="Not implemented yet" /> | –             |
 | WEIBULL.DIST             | <Badge type="info" text="Not implemented yet" /> | –             |
