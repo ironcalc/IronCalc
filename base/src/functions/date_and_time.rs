@@ -669,6 +669,18 @@ impl Model {
         Ok(values)
     }
 
+    // Returns the current date/time as an Excel serial number in the model's configured timezone.
+    // Used by TODAY() and NOW().
+    fn current_excel_serial(&self) -> Option<f64> {
+        let seconds = get_milliseconds_since_epoch() / 1000;
+        DateTime::from_timestamp(seconds, 0).map(|dt| {
+            let local_time = dt.with_timezone(&self.tz);
+            let days_from_1900 = local_time.num_days_from_ce() - EXCEL_DATE_BASE;
+            let fraction = (local_time.num_seconds_from_midnight() as f64) / (60.0 * 60.0 * 24.0);
+            days_from_1900 as f64 + fraction
+        })
+    }
+
     pub(crate) fn fn_networkdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
@@ -872,69 +884,40 @@ impl Model {
     }
 
     pub(crate) fn fn_today(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count != 0 {
+        if !args.is_empty() {
             return CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell,
                 message: "Wrong number of arguments".to_string(),
             };
         }
-        // milliseconds since January 1, 1970 00:00:00 UTC.
-        let milliseconds = get_milliseconds_since_epoch();
-        let seconds = milliseconds / 1000;
-        let local_time = match DateTime::from_timestamp(seconds, 0) {
-            Some(dt) => dt.with_timezone(&self.tz),
-            None => {
-                return CalcResult::Error {
-                    error: Error::ERROR,
-                    origin: cell,
-                    message: "Invalid date".to_string(),
-                }
-            }
-        };
-        // 693_594 is computed as:
-        // NaiveDate::from_ymd(1900, 1, 1).num_days_from_ce() - 2
-        // The 2 days offset is because of Excel 1900 bug
-        let days_from_1900 = local_time.num_days_from_ce() - 693_594;
-
-        CalcResult::Number(days_from_1900 as f64)
+        match self.current_excel_serial() {
+            Some(serial) => CalcResult::Number(serial.floor()),
+            None => CalcResult::Error {
+                error: Error::ERROR,
+                origin: cell,
+                message: "Invalid date".to_string(),
+            },
+        }
     }
 
     pub(crate) fn fn_now(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count != 0 {
+        if !args.is_empty() {
             return CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell,
                 message: "Wrong number of arguments".to_string(),
             };
         }
-        // milliseconds since January 1, 1970 00:00:00 UTC.
-        let milliseconds = get_milliseconds_since_epoch();
-        let seconds = milliseconds / 1000;
-        let local_time = match DateTime::from_timestamp(seconds, 0) {
-            Some(dt) => dt.with_timezone(&self.tz),
-            None => {
-                return CalcResult::Error {
-                    error: Error::ERROR,
-                    origin: cell,
-                    message: "Invalid date".to_string(),
-                }
-            }
-        };
-        // 693_594 is computed as:
-        // NaiveDate::from_ymd(1900, 1, 1).num_days_from_ce() - 2
-        // The 2 days offset is because of Excel 1900 bug
-        let days_from_1900 = local_time.num_days_from_ce() - 693_594;
-        let days = (local_time.num_seconds_from_midnight() as f64) / (60.0 * 60.0 * 24.0);
-
-        CalcResult::Number(days_from_1900 as f64 + days.fract())
+        match self.current_excel_serial() {
+            Some(serial) => CalcResult::Number(serial),
+            None => CalcResult::Error {
+                error: Error::ERROR,
+                origin: cell,
+                message: "Invalid date".to_string(),
+            },
+        }
     }
-
-    // -----------------------------------------------------------------------
-    // Auto-generated TIME part helpers (HOUR / MINUTE / SECOND)
-    // -----------------------------------------------------------------------
 
     pub(crate) fn fn_time(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
@@ -964,6 +947,10 @@ impl Model {
         let secs = total_seconds.rem_euclid(day_seconds);
         CalcResult::Number(secs / day_seconds)
     }
+
+    // -----------------------------------------------------------------------
+    // Auto-generated TIME part helpers (HOUR / MINUTE / SECOND)
+    // -----------------------------------------------------------------------
 
     time_part_fn!(fn_hour, |v: f64| (v.rem_euclid(1.0) * 24.0).floor());
     time_part_fn!(fn_minute, |v: f64| {
