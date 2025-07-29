@@ -169,6 +169,8 @@ pub enum Function {
     PercentileInc,
     PercentrankExc,
     PercentrankInc,
+    Intercept,
+    Slope,
 
     // Date and time
     Date,
@@ -277,7 +279,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 222> {
+    pub fn into_iter() -> IntoIter<Function, 224> {
         [
             Function::And,
             Function::False,
@@ -405,6 +407,8 @@ impl Function {
             Function::PercentileInc,
             Function::PercentrankExc,
             Function::PercentrankInc,
+            Function::Intercept,
+            Function::Slope,
             Function::Year,
             Function::Day,
             Function::Month,
@@ -701,6 +705,8 @@ impl Function {
             "PERCENTILE.INC" | "_XLFN.PERCENTILE.INC" => Some(Function::PercentileInc),
             "PERCENTRANK.EXC" | "_XLFN.PERCENTRANK.EXC" => Some(Function::PercentrankExc),
             "PERCENTRANK.INC" | "_XLFN.PERCENTRANK.INC" => Some(Function::PercentrankInc),
+            "INTERCEPT" => Some(Function::Intercept),
+            "SLOPE" => Some(Function::Slope),
             // Date and Time
             "YEAR" => Some(Function::Year),
             "DAY" => Some(Function::Day),
@@ -936,6 +942,8 @@ impl fmt::Display for Function {
             Function::PercentileInc => write!(f, "PERCENTILE.INC"),
             Function::PercentrankExc => write!(f, "PERCENTRANK.EXC"),
             Function::PercentrankInc => write!(f, "PERCENTRANK.INC"),
+            Function::Intercept => write!(f, "INTERCEPT"),
+            Function::Slope => write!(f, "SLOPE"),
             Function::Year => write!(f, "YEAR"),
             Function::Day => write!(f, "DAY"),
             Function::Month => write!(f, "MONTH"),
@@ -1200,6 +1208,8 @@ impl Model {
             Function::PercentileInc => self.fn_percentile_inc(args, cell),
             Function::PercentrankExc => self.fn_percentrank_exc(args, cell),
             Function::PercentrankInc => self.fn_percentrank_inc(args, cell),
+            Function::Intercept => self.fn_intercept(args, cell),
+            Function::Slope => self.fn_slope(args, cell),
             // Date and Time
             Function::Year => self.fn_year(args, cell),
             Function::Day => self.fn_day(args, cell),

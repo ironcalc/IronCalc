@@ -4,7 +4,7 @@ use regex_lite as regex;
 use crate::{
     calc_result::CalcResult,
     expressions::{
-        parser::Node,
+        parser::{ArrayNode, Node},
         token::{is_english_error_string, Error},
         types::CellReferenceIndex,
     },
@@ -481,4 +481,110 @@ pub(crate) fn collect_numeric_values(
         }
     }
     Ok(values)
+}
+
+/// Collect a numeric series preserving positional information.
+///
+/// Given a single argument (range, reference, literal, or array), returns a
+/// vector with the same length as the flattened input. Each position contains
+/// `Some(f64)` when the corresponding element is numeric and `None` when it is
+/// non-numeric or empty. Errors are propagated immediately.
+///
+/// Behaviour mirrors Excel's rules used by paired-data statistical functions
+/// (SLOPE, INTERCEPT, CORREL, etc.):
+/// - Booleans/string literals are coerced to numbers, literals coming from
+///   references are ignored.
+/// - Non-numeric cells become `None`, keeping the alignment between two series.
+/// - Ranges crossing sheets cause a `#VALUE!` error.
+pub(crate) fn collect_series(
+    model: &mut Model,
+    node: &Node,
+    cell: CellReferenceIndex,
+) -> Result<Vec<Option<f64>>, CalcResult> {
+    let is_reference = matches!(
+        node,
+        Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. }
+    );
+
+    match model.evaluate_node_in_context(node, cell) {
+        CalcResult::Number(v) => Ok(vec![Some(v)]),
+        CalcResult::Boolean(b) => {
+            if is_reference {
+                Ok(vec![None])
+            } else {
+                Ok(vec![Some(if b { 1.0 } else { 0.0 })])
+            }
+        }
+        CalcResult::String(s) => {
+            if is_reference {
+                Ok(vec![None])
+            } else if let Ok(v) = s.parse::<f64>() {
+                Ok(vec![Some(v)])
+            } else {
+                Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Argument cannot be cast into number".to_string(),
+                ))
+            }
+        }
+        CalcResult::Range { left, right } => {
+            if left.sheet != right.sheet {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Ranges are in different sheets".to_string(),
+                ));
+            }
+            let mut values = Vec::new();
+            for row in left.row..=right.row {
+                for column in left.column..=right.column {
+                    let cell_result = model.evaluate_cell(CellReferenceIndex {
+                        sheet: left.sheet,
+                        row,
+                        column,
+                    });
+                    match cell_result {
+                        CalcResult::Number(n) => values.push(Some(n)),
+                        error @ CalcResult::Error { .. } => {
+                            return Err(error);
+                        }
+                        _ => values.push(None),
+                    }
+                }
+            }
+            Ok(values)
+        }
+        CalcResult::Array(arr) => {
+            let mut values = Vec::new();
+            for row in arr {
+                for val in row {
+                    match val {
+                        ArrayNode::Number(n) => values.push(Some(n)),
+                        ArrayNode::Boolean(b) => values.push(Some(if b { 1.0 } else { 0.0 })),
+                        ArrayNode::String(s) => match s.parse::<f64>() {
+                            Ok(v) => values.push(Some(v)),
+                            Err(_) => {
+                                return Err(CalcResult::new_error(
+                                    Error::VALUE,
+                                    cell,
+                                    "Argument cannot be cast into number".to_string(),
+                                ))
+                            }
+                        },
+                        ArrayNode::Error(e) => {
+                            return Err(CalcResult::Error {
+                                error: e,
+                                origin: cell,
+                                message: "Error in array".to_string(),
+                            })
+                        }
+                    }
+                }
+            }
+            Ok(values)
+        }
+        CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![None]),
+        error @ CalcResult::Error { .. } => Err(error),
+    }
 }

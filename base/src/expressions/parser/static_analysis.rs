@@ -842,6 +842,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             }
         }
         Function::Rank | Function::RankAvg | Function::RankEq => args_signature_rank(arg_count),
+        Function::Intercept | Function::Slope => vec![Signature::Vector; arg_count],
     }
 }
 
@@ -1064,5 +1065,6 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::PercentileInc => not_implemented(args),
         Function::PercentrankExc => not_implemented(args),
         Function::PercentrankInc => not_implemented(args),
+        Function::Intercept | Function::Slope => scalar_arguments(args),
     }
 }

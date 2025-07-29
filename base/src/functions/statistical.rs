@@ -7,7 +7,7 @@ use crate::{
     model::Model,
 };
 
-use super::util::{build_criteria, collect_numeric_values};
+use super::util::{build_criteria, collect_numeric_values, collect_series};
 use std::cmp::Ordering;
 
 impl Model {
@@ -2141,5 +2141,108 @@ impl Model {
         let factor = 10f64.powi(decimals);
         result = (result * factor).round() / factor;
         CalcResult::Number(result)
+    }
+
+    // collect_series method moved to functions::util::collect_series
+
+    pub(crate) fn fn_slope(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let ys = match collect_series(self, &args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let xs = match collect_series(self, &args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if ys.len() != xs.len() {
+            return CalcResult::new_error(
+                Error::NA,
+                cell,
+                "Ranges have different lengths".to_string(),
+            );
+        }
+        let mut pairs = Vec::new();
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        let mut n = 0.0;
+        for (y, x) in ys.iter().zip(xs.iter()) {
+            if let (Some(yy), Some(xx)) = (y, x) {
+                pairs.push((*yy, *xx));
+                sum_x += xx;
+                sum_y += yy;
+                n += 1.0;
+            }
+        }
+        if n == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
+        }
+        let mean_x = sum_x / n;
+        let mean_y = sum_y / n;
+        let mut numerator = 0.0;
+        let mut denominator = 0.0;
+        for (yy, xx) in pairs {
+            let dx = xx - mean_x;
+            let dy = yy - mean_y;
+            numerator += dx * dy;
+            denominator += dx * dx;
+        }
+        if denominator == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
+        }
+        CalcResult::Number(numerator / denominator)
+    }
+
+    pub(crate) fn fn_intercept(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let ys = match collect_series(self, &args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let xs = match collect_series(self, &args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if ys.len() != xs.len() {
+            return CalcResult::new_error(
+                Error::NA,
+                cell,
+                "Ranges have different lengths".to_string(),
+            );
+        }
+        let mut pairs = Vec::new();
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        let mut n = 0.0;
+        for (y, x) in ys.iter().zip(xs.iter()) {
+            if let (Some(yy), Some(xx)) = (y, x) {
+                pairs.push((*yy, *xx));
+                sum_x += xx;
+                sum_y += yy;
+                n += 1.0;
+            }
+        }
+        if n == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
+        }
+        let mean_x = sum_x / n;
+        let mean_y = sum_y / n;
+        let mut numerator = 0.0;
+        let mut denominator = 0.0;
+        for (yy, xx) in pairs {
+            let dx = xx - mean_x;
+            let dy = yy - mean_y;
+            numerator += dx * dy;
+            denominator += dx * dx;
+        }
+        if denominator == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
+        }
+        let slope = numerator / denominator;
+        CalcResult::Number(mean_y - slope * mean_x)
     }
 }
