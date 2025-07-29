@@ -56,6 +56,7 @@ mod test_escape_quotes;
 mod test_extend;
 mod test_fn_correl;
 mod test_fn_fv;
+mod test_fn_large_small;
 mod test_fn_type;
 mod test_fn_var;
 mod test_frozen_rows_and_columns;

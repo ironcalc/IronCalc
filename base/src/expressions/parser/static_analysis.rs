@@ -404,6 +404,14 @@ fn args_signature_sumif(arg_count: usize) -> Vec<Signature> {
     }
 }
 
+fn args_signature_vector_scalar(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Vector, Signature::Scalar]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
 // 1 or none scalars
 fn args_signature_sheet(arg_count: usize) -> Vec<Signature> {
     if arg_count == 0 {
@@ -786,6 +794,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Unicode => args_signature_scalars(arg_count, 1, 0),
         Function::Geomean => vec![Signature::Vector; arg_count],
         Function::VarP | Function::VarS | Function::Correl => vec![Signature::Vector; arg_count],
+        Function::Large => args_signature_vector_scalar(arg_count),
+        Function::Small => args_signature_vector_scalar(arg_count),
     }
 }
 
@@ -992,5 +1002,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Formulatext => not_implemented(args),
         Function::Geomean => not_implemented(args),
         Function::VarP | Function::VarS | Function::Correl => not_implemented(args),
+        Function::Large => not_implemented(args),
+        Function::Small => not_implemented(args),
     }
 }

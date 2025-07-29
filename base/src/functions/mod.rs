@@ -148,6 +148,8 @@ pub enum Function {
     VarP,
     VarS,
     Correl,
+    Large,
+    Small,
 
     // Date and time
     Date,
@@ -256,7 +258,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 201> {
+    pub fn into_iter() -> IntoIter<Function, 203> {
         [
             Function::And,
             Function::False,
@@ -363,6 +365,8 @@ impl Function {
             Function::VarP,
             Function::VarS,
             Function::Correl,
+            Function::Large,
+            Function::Small,
             Function::Year,
             Function::Day,
             Function::Month,
@@ -634,6 +638,8 @@ impl Function {
             "VAR.P" => Some(Function::VarP),
             "VAR.S" => Some(Function::VarS),
             "CORREL" => Some(Function::Correl),
+            "LARGE" => Some(Function::Large),
+            "SMALL" => Some(Function::Small),
             // Date and Time
             "YEAR" => Some(Function::Year),
             "DAY" => Some(Function::Day),
@@ -848,6 +854,8 @@ impl fmt::Display for Function {
             Function::VarP => write!(f, "VAR.P"),
             Function::VarS => write!(f, "VAR.S"),
             Function::Correl => write!(f, "CORREL"),
+            Function::Large => write!(f, "LARGE"),
+            Function::Small => write!(f, "SMALL"),
             Function::Year => write!(f, "YEAR"),
             Function::Day => write!(f, "DAY"),
             Function::Month => write!(f, "MONTH"),
@@ -1091,6 +1099,8 @@ impl Model {
             Function::VarP => self.fn_var_p(args, cell),
             Function::VarS => self.fn_var_s(args, cell),
             Function::Correl => self.fn_correl(args, cell),
+            Function::Large => self.fn_large(args, cell),
+            Function::Small => self.fn_small(args, cell),
             // Date and Time
             Function::Year => self.fn_year(args, cell),
             Function::Day => self.fn_day(args, cell),
