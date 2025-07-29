@@ -365,15 +365,9 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match from_excel_date(serial_number) {
-            Ok(date) => date,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                }
-            }
+        let date = match self.from_excel_date(serial_number, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
         let day = date.day() as f64;
         CalcResult::Number(day)
@@ -388,15 +382,9 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match from_excel_date(serial_number) {
-            Ok(date) => date,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                }
-            }
+        let date = match self.from_excel_date(serial_number, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
         let month = date.month() as f64;
         CalcResult::Number(month)
@@ -421,15 +409,9 @@ impl Model {
             }
             Err(s) => return s,
         };
-        let date = match from_excel_date(serial_number) {
-            Ok(date) => date,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                }
-            }
+        let date = match self.from_excel_date(serial_number, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
             return CalcResult::Error {
@@ -526,15 +508,9 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match from_excel_date(serial_number) {
-            Ok(date) => date,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                }
-            }
+        let date = match self.from_excel_date(serial_number, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
         let year = date.year() as f64;
         CalcResult::Number(year)
@@ -550,17 +526,10 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match from_excel_date(serial_number) {
-            Ok(date) => date,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                }
-            }
+        let date = match self.from_excel_date(serial_number, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
-
         let months = match self.get_number(&args[1], cell) {
             Ok(c) => {
                 let t = c.trunc();
@@ -597,13 +566,10 @@ impl Model {
         match self.evaluate_node_in_context(arg, cell) {
             CalcResult::Number(v) => {
                 let date_serial = v.floor() as i64;
-                if from_excel_date(date_serial).is_err() {
-                    return Err(CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Out of range parameters for date".to_string(),
-                    });
-                }
+                match self.from_excel_date(date_serial, cell) {
+                    Ok(d) => d,
+                    Err(e) => return Err(e),
+                };
                 values.push(date_serial);
             }
             CalcResult::Range { left, right } => {
@@ -623,13 +589,10 @@ impl Model {
                         }) {
                             CalcResult::Number(v) => {
                                 let date_serial = v.floor() as i64;
-                                if from_excel_date(date_serial).is_err() {
-                                    return Err(CalcResult::Error {
-                                        error: Error::NUM,
-                                        origin: cell,
-                                        message: "Out of range parameters for date".to_string(),
-                                    });
-                                }
+                                match self.from_excel_date(date_serial, cell) {
+                                    Ok(d) => d,
+                                    Err(e) => return Err(e),
+                                };
                                 values.push(date_serial);
                             }
                             CalcResult::EmptyCell => {
@@ -699,15 +662,9 @@ impl Model {
         };
         let mut count = 0i64;
         for serial in from..=to {
-            let date = match from_excel_date(serial) {
+            let date = match self.from_excel_date(serial, cell) {
                 Ok(d) => d,
-                Err(_) => {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Out of range parameters for date".to_string(),
-                    }
-                }
+                Err(e) => return e,
             };
             let weekday = date.weekday().number_from_monday();
             let is_weekend = matches!(weekday, 6 | 7);
@@ -716,6 +673,21 @@ impl Model {
             }
         }
         CalcResult::Number(count as f64 * sign)
+    }
+
+    fn from_excel_date(
+        &self,
+        serial: i64,
+        cell: CellReferenceIndex,
+    ) -> Result<chrono::NaiveDate, CalcResult> {
+        match from_excel_date(serial) {
+            Ok(date) => Ok(date),
+            Err(_) => Err(CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Out of range parameters for date".to_string(),
+            }),
+        }
     }
 
     fn parse_weekend_pattern(
@@ -849,15 +821,9 @@ impl Model {
         };
         let mut count = 0i64;
         for serial in from..=to {
-            let date = match from_excel_date(serial) {
+            let date = match self.from_excel_date(serial, cell) {
                 Ok(d) => d,
-                Err(_) => {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Out of range parameters for date".to_string(),
-                    }
-                }
+                Err(e) => return e,
             };
             let weekday = date.weekday().number_from_monday() as usize - 1;
             if !weekend_pattern[weekday] && !holidays.contains(&serial) {
@@ -1085,27 +1051,14 @@ impl Model {
                 message: "Start date greater than end date".to_string(),
             };
         }
-        let start = match from_excel_date(start_serial) {
+        let start = match self.from_excel_date(start_serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                }
-            }
+            Err(e) => return e,
         };
-        let end = match from_excel_date(end_serial) {
+        let end = match self.from_excel_date(end_serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                }
-            }
+            Err(e) => return e,
         };
-
         let unit = match self.get_string(&args[2], cell) {
             Ok(s) => s.to_ascii_uppercase(),
             Err(e) => return e,
@@ -1222,13 +1175,14 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        if from_excel_date(end_serial).is_err() || from_excel_date(start_serial).is_err() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Out of range parameters for date".to_string(),
-            };
-        }
+        match self.from_excel_date(start_serial, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+        match self.from_excel_date(end_serial, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
         CalcResult::Number((end_serial - start_serial) as f64)
     }
 
@@ -1252,27 +1206,14 @@ impl Model {
         } else {
             false
         };
-        let start_date = match from_excel_date(start_serial) {
+        let start_date = match self.from_excel_date(start_serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                };
-            }
+            Err(e) => return e,
         };
-        let end_date = match from_excel_date(end_serial) {
+        let end_date = match self.from_excel_date(end_serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                };
-            }
+            Err(e) => return e,
         };
-
         fn last_day_feb(year: i32) -> u32 {
             if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
                 29
@@ -1320,15 +1261,9 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match from_excel_date(serial) {
+        let date = match self.from_excel_date(serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                };
-            }
+            Err(e) => return e,
         };
         let return_type = if args.len() == 2 {
             match self.get_number(&args[1], cell) {
@@ -1363,15 +1298,9 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match from_excel_date(serial) {
+        let date = match self.from_excel_date(serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                };
-            }
+            Err(e) => return e,
         };
         let return_type = if args.len() == 2 {
             match self.get_number(&args[1], cell) {
@@ -1424,15 +1353,9 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match from_excel_date(serial) {
+        let date = match self.from_excel_date(serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                };
-            }
+            Err(e) => return e,
         };
         CalcResult::Number(date.iso_week().week() as f64)
     }
@@ -1457,15 +1380,9 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let mut date = match from_excel_date(start_serial) {
+        let mut date = match self.from_excel_date(start_serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                };
-            }
+            Err(e) => return e,
         };
         let mut days = match self.get_number(&args[1], cell) {
             Ok(f) => f as i32,
@@ -1673,15 +1590,9 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let mut date = match from_excel_date(start_serial) {
+        let mut date = match self.from_excel_date(start_serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Out of range parameters for date".to_string(),
-                };
-            }
+            Err(e) => return e,
         };
         let mut days = match self.get_number(&args[1], cell) {
             Ok(f) => f as i32,
@@ -1734,25 +1645,13 @@ impl Model {
         } else {
             0
         };
-        let start_date = match from_excel_date(start_serial) {
+        let start_date = match self.from_excel_date(start_serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Out of range parameters for date".to_string(),
-                )
-            }
+            Err(e) => return e,
         };
-        let end_date = match from_excel_date(end_serial) {
+        let end_date = match self.from_excel_date(end_serial, cell) {
             Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Out of range parameters for date".to_string(),
-                )
-            }
+            Err(e) => return e,
         };
         let days = (end_date - start_date).num_days() as f64;
         let result = match basis {
