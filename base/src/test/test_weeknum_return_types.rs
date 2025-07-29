@@ -24,7 +24,7 @@ fn test_weeknum_return_types_11_to_17_and_21() {
 
     // All 11-17 variations should yield 53
     for cell in ["A1", "A2", "A3", "A4", "A5", "A6", "A7"] {
-        assert_eq!(model._get_text(cell), *"53", "{} should be 53", cell);
+        assert_eq!(model._get_text(cell), *"53", "{cell} should be 53");
     }
     // ISO week (return_type 21)
     assert_eq!(model._get_text("A8"), *"52");
