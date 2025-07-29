@@ -786,7 +786,6 @@ impl Model {
         CalcResult::Number(count as f64 * sign)
     }
 
-    #[allow(clippy::wrong_self_convention)]
     fn excel_date(
         &self,
         serial: i64,
