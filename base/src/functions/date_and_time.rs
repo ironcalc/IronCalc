@@ -694,7 +694,7 @@ impl Model {
         }
     }
 
-    fn parse_weekend_pattern(
+    fn weekend_mask(
         &mut self,
         node: Option<&Node>,
         cell: CellReferenceIndex,
@@ -720,20 +720,20 @@ impl Model {
                     ));
                 }
                 weekend = match code {
-                    1 | 0 => [false, false, false, false, false, true, true], // Saturday-Sunday
-                    2 => [true, false, false, false, false, false, true],     // Sunday-Monday
-                    3 => [true, true, false, false, false, false, false],     // Monday-Tuesday
-                    4 => [false, true, true, false, false, false, false],     // Tuesday-Wednesday
-                    5 => [false, false, true, true, false, false, false],     // Wednesday-Thursday
-                    6 => [false, false, false, true, true, false, false],     // Thursday-Friday
-                    7 => [false, false, false, false, true, true, false],     // Friday-Saturday
-                    11 => [false, false, false, false, false, false, true],   // Sunday only
-                    12 => [true, false, false, false, false, false, false],   // Monday only
-                    13 => [false, true, false, false, false, false, false],   // Tuesday only
-                    14 => [false, false, true, false, false, false, false],   // Wednesday only
-                    15 => [false, false, false, true, false, false, false],   // Thursday only
-                    16 => [false, false, false, false, true, false, false],   // Friday only
-                    17 => [false, false, false, false, false, true, false],   // Saturday only
+                    1 => [false, false, false, false, false, true, true], // Saturday-Sunday
+                    2 => [true, false, false, false, false, false, true], // Sunday-Monday
+                    3 => [true, true, false, false, false, false, false], // Monday-Tuesday
+                    4 => [false, true, true, false, false, false, false], // Tuesday-Wednesday
+                    5 => [false, false, true, true, false, false, false], // Wednesday-Thursday
+                    6 => [false, false, false, true, true, false, false], // Thursday-Friday
+                    7 => [false, false, false, false, true, true, false], // Friday-Saturday
+                    11 => [false, false, false, false, false, false, true], // Sunday only
+                    12 => [true, false, false, false, false, false, false], // Monday only
+                    13 => [false, true, false, false, false, false, false], // Tuesday only
+                    14 => [false, false, true, false, false, false, false], // Wednesday only
+                    15 => [false, false, false, true, false, false, false], // Thursday only
+                    16 => [false, false, false, false, true, false, false], // Friday only
+                    17 => [false, false, false, false, false, true, false], // Saturday only
                     _ => {
                         return Err(CalcResult::new_error(
                             Error::NUM,
@@ -802,7 +802,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        let weekend_pattern = match self.parse_weekend_pattern(args.get(2), cell) {
+        let weekend_pattern = match self.weekend_mask(args.get(2), cell) {
             Ok(p) => p,
             Err(e) => return e,
         };
@@ -1475,68 +1475,6 @@ impl Model {
         Ok(holiday_set)
     }
 
-    fn weekend_from_arg(
-        &mut self,
-        arg: Option<&Node>,
-        cell: CellReferenceIndex,
-    ) -> Result<[bool; 7], CalcResult> {
-        if let Some(node) = arg {
-            match self.evaluate_node_in_context(node, cell) {
-                CalcResult::Number(n) => {
-                    let code = n as i32;
-                    let mask = match code {
-                        1 => [false, false, false, false, false, true, true],
-                        2 => [true, false, false, false, false, true, false],
-                        3 => [true, true, false, false, false, false, false],
-                        4 => [false, true, true, false, false, false, false],
-                        5 => [false, false, true, true, false, false, false],
-                        6 => [false, false, false, true, true, false, false],
-                        7 => [false, false, false, false, true, true, false],
-                        11 => [false, false, false, false, false, false, true],
-                        12 => [true, false, false, false, false, false, false],
-                        13 => [false, true, false, false, false, false, false],
-                        14 => [false, false, true, false, false, false, false],
-                        15 => [false, false, false, true, false, false, false],
-                        16 => [false, false, false, false, true, false, false],
-                        17 => [false, false, false, false, false, true, false],
-                        _ => {
-                            return Err(CalcResult::new_error(
-                                Error::NUM,
-                                cell,
-                                "Invalid weekend".to_string(),
-                            ))
-                        }
-                    };
-                    Ok(mask)
-                }
-                CalcResult::String(s) => {
-                    let bytes = s.as_bytes();
-                    if bytes.len() == 7 && bytes.iter().all(|c| *c == b'0' || *c == b'1') {
-                        let mut mask = [false; 7];
-                        for (i, b) in bytes.iter().enumerate() {
-                            mask[i] = *b == b'1';
-                        }
-                        Ok(mask)
-                    } else {
-                        Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Invalid weekend".to_string(),
-                        ))
-                    }
-                }
-                e @ CalcResult::Error { .. } => Err(e),
-                _ => Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Invalid weekend".to_string(),
-                )),
-            }
-        } else {
-            Ok([false, false, false, false, false, true, true])
-        }
-    }
-
     pub(crate) fn fn_workday_intl(
         &mut self,
         args: &[Node],
@@ -1557,7 +1495,7 @@ impl Model {
             Ok(f) => f as i32,
             Err(s) => return s,
         };
-        let weekend_mask = match self.weekend_from_arg(args.get(2), cell) {
+        let weekend_mask = match self.weekend_mask(args.get(2), cell) {
             Ok(m) => m,
             Err(e) => return e,
         };
