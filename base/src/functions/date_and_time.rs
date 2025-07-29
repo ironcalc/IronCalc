@@ -564,18 +564,23 @@ impl Model {
         CalcResult::Number(serial_number as f64)
     }
 
-    fn get_array_of_dates(
+    /// Walk a scalar / range / array node and invoke the provided closure with every
+    /// numeric date serial that is encountered.
+    fn collect_serial_numbers<F>(
         &mut self,
-        arg: &Node,
+        node: &Node,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<i64>, CalcResult> {
-        let mut values = Vec::new();
-        match self.evaluate_node_in_context(arg, cell) {
+        mut handle: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(i64) -> Result<(), CalcResult>,
+    {
+        match self.evaluate_node_in_context(node, cell) {
             CalcResult::Number(v) => {
-                let date_serial = v.floor() as i64;
-                // Validate date serial; propagate any error immediately.
-                self.excel_date(date_serial, cell)?;
-                values.push(date_serial);
+                let serial = v.floor() as i64;
+                // Validate serial is in bounds
+                self.excel_date(serial, cell)?;
+                handle(serial)?;
             }
             CalcResult::Range { left, right } => {
                 if left.sheet != right.sheet {
@@ -593,45 +598,74 @@ impl Model {
                             column,
                         }) {
                             CalcResult::Number(v) => {
-                                let date_serial = v.floor() as i64;
-                                // Ensure each date serial is valid; if not, propagate error.
-                                self.excel_date(date_serial, cell)?;
-                                values.push(date_serial);
+                                let serial = v.floor() as i64;
+                                self.excel_date(serial, cell)?;
+                                handle(serial)?;
                             }
                             CalcResult::EmptyCell => {
-                                // Empty cells are ignored in holiday lists
+                                // ignore empty cells
                             }
                             e @ CalcResult::Error { .. } => return Err(e),
                             _ => {
-                                // Non-numeric values in holiday lists should cause VALUE error
-                                return Err(CalcResult::Error {
-                                    error: Error::VALUE,
-                                    origin: cell,
-                                    message: "Invalid holiday date".to_string(),
-                                });
+                                return Err(CalcResult::new_error(
+                                    Error::VALUE,
+                                    cell,
+                                    "Invalid holiday date".to_string(),
+                                ))
                             }
                         }
                     }
                 }
             }
-            CalcResult::String(_) => {
-                // String holidays should cause VALUE error
-                return Err(CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid holiday date".to_string(),
-                });
+            CalcResult::Array(array) => {
+                for row in array {
+                    for value in row {
+                        match value {
+                            ArrayNode::Number(num) => {
+                                let serial = num.floor() as i64;
+                                self.excel_date(serial, cell)?;
+                                handle(serial)?;
+                            }
+                            ArrayNode::Error(error) => {
+                                return Err(CalcResult::Error {
+                                    error,
+                                    origin: cell,
+                                    message: "Error in array".to_string(),
+                                });
+                            }
+                            _ => {
+                                return Err(CalcResult::new_error(
+                                    Error::VALUE,
+                                    cell,
+                                    "Invalid holiday date".to_string(),
+                                ))
+                            }
+                        }
+                    }
+                }
             }
             e @ CalcResult::Error { .. } => return Err(e),
             _ => {
-                // Other non-numeric types should cause VALUE error
-                return Err(CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid holiday date".to_string(),
-                });
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Invalid holiday date".to_string(),
+                ))
             }
         }
+        Ok(())
+    }
+
+    fn get_array_of_dates(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<i64>, CalcResult> {
+        let mut values = Vec::new();
+        self.collect_serial_numbers(arg, cell, |serial| {
+            values.push(serial);
+            Ok(())
+        })?;
         Ok(values)
     }
 
@@ -1377,99 +1411,17 @@ impl Model {
         let mut holiday_set = std::collections::HashSet::new();
 
         if let Some(arg) = arg_option {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => {
-                    let serial = value.floor() as i64;
-                    match from_excel_date(serial) {
-                        Ok(date) => {
-                            holiday_set.insert(date);
-                        }
-                        Err(_) => {
-                            return Err(CalcResult::Error {
-                                error: Error::NUM,
-                                origin: cell,
-                                message: "Invalid holiday date".to_string(),
-                            });
-                        }
-                    }
+            self.collect_serial_numbers(arg, cell, |serial| match from_excel_date(serial) {
+                Ok(date) => {
+                    holiday_set.insert(date);
+                    Ok(())
                 }
-                CalcResult::Range { left, right } => {
-                    let sheet = left.sheet;
-                    for row in left.row..=right.row {
-                        for column in left.column..=right.column {
-                            let cell_ref = CellReferenceIndex { sheet, row, column };
-                            match self.evaluate_cell(cell_ref) {
-                                CalcResult::Number(value) => {
-                                    let serial = value.floor() as i64;
-                                    match from_excel_date(serial) {
-                                        Ok(date) => {
-                                            holiday_set.insert(date);
-                                        }
-                                        Err(_) => {
-                                            return Err(CalcResult::Error {
-                                                error: Error::NUM,
-                                                origin: cell,
-                                                message: "Invalid holiday date".to_string(),
-                                            });
-                                        }
-                                    }
-                                }
-                                CalcResult::EmptyCell => {
-                                    // Ignore empty cells
-                                }
-                                CalcResult::Error { .. } => {
-                                    // Propagate errors
-                                    return Err(CalcResult::Error {
-                                        error: Error::VALUE,
-                                        origin: cell,
-                                        message: "Error in holiday date".to_string(),
-                                    });
-                                }
-                                _ => {
-                                    // Ignore non-numeric values
-                                }
-                            }
-                        }
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(num) => {
-                                    let serial = num.floor() as i64;
-                                    match from_excel_date(serial) {
-                                        Ok(date) => {
-                                            holiday_set.insert(date);
-                                        }
-                                        Err(_) => {
-                                            return Err(CalcResult::Error {
-                                                error: Error::NUM,
-                                                origin: cell,
-                                                message: "Invalid holiday date".to_string(),
-                                            });
-                                        }
-                                    }
-                                }
-                                ArrayNode::Error(error) => {
-                                    return Err(CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in holiday array".to_string(),
-                                    });
-                                }
-                                _ => {
-                                    // Ignore non-numeric values
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return Err(error),
-                _ => {
-                    // Ignore other types
-                }
-            }
+                Err(_) => Err(CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Invalid holiday date".to_string(),
+                }),
+            })?;
         }
 
         Ok(holiday_set)
