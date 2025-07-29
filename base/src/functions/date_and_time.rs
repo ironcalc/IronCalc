@@ -1307,8 +1307,9 @@ impl Model {
             2 => weekday.number_from_monday(),
             3 => (weekday.number_from_monday() - 1) % 7, // 0-based Monday start
             11..=17 => {
-                let start = (return_type - 11) as u32; // 0 for Monday
-                ((weekday.number_from_monday() + 7 - start) % 7) + 1
+                let start = (return_type - 11) as u32; // 0 = Monday, 6 = Sunday
+                let zero_based = weekday.number_from_monday() - 1; // 0..6, Monday = 0
+                ((zero_based + 7 - start) % 7) + 1
             }
             0 => {
                 return CalcResult::new_error(Error::VALUE, cell, "Invalid return_type".to_string())
