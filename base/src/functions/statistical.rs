@@ -1488,190 +1488,6 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    pub(crate) fn fn_quartile_inc(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let mut values = Vec::new();
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    );
-                }
-                for row in left.row..=right.row {
-                    for column in left.column..=right.column {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(v) => values.push(v),
-                            CalcResult::Error { .. } => {
-                                return CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Invalid value".to_string(),
-                                )
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
-            CalcResult::Number(v) => values.push(v),
-            CalcResult::Boolean(b) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    values.push(if b { 1.0 } else { 0.0 });
-                }
-            }
-            CalcResult::String(s) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Ok(f) = s.parse::<f64>() {
-                        values.push(f);
-                    } else {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Argument cannot be cast into number".to_string(),
-                        );
-                    }
-                }
-            }
-            CalcResult::Error { .. } => {
-                return CalcResult::new_error(Error::VALUE, cell, "Invalid value".to_string())
-            }
-            _ => {}
-        }
-
-        if values.is_empty() {
-            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
-        }
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
-
-        let quart = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        if quart.fract() != 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid quart".to_string());
-        }
-        let q = quart as i32;
-        if !(0..=4).contains(&q) {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid quart".to_string());
-        }
-
-        let k = quart / 4.0;
-        let n = values.len() as f64;
-        let index = k * (n - 1.0);
-        let i = index.floor() as usize;
-        let fraction = index - (i as f64);
-        if i + 1 >= values.len() {
-            return CalcResult::Number(values[i]);
-        }
-        let result = values[i] + fraction * (values[i + 1] - values[i]);
-        CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_quartile_exc(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let mut values = Vec::new();
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    );
-                }
-                for row in left.row..=right.row {
-                    for column in left.column..=right.column {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(v) => values.push(v),
-                            CalcResult::Error { .. } => {
-                                return CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Invalid value".to_string(),
-                                )
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
-            CalcResult::Number(v) => values.push(v),
-            CalcResult::Boolean(b) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    values.push(if b { 1.0 } else { 0.0 });
-                }
-            }
-            CalcResult::String(s) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Ok(f) = s.parse::<f64>() {
-                        values.push(f);
-                    } else {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Argument cannot be cast into number".to_string(),
-                        );
-                    }
-                }
-            }
-            CalcResult::Error { .. } => {
-                return CalcResult::new_error(Error::VALUE, cell, "Invalid value".to_string())
-            }
-            _ => {}
-        }
-
-        if values.is_empty() {
-            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
-        }
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
-
-        let quart = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        if quart.fract() != 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid quart".to_string());
-        }
-        let q = quart as i32;
-        if !(1..=3).contains(&q) {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid quart".to_string());
-        }
-
-        let k = quart / 4.0;
-        let n = values.len() as f64;
-        let r = k * (n + 1.0);
-        if r <= 1.0 || r >= n {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid quart".to_string());
-        }
-        let i = r.floor() as usize;
-        let f = r - (i as f64);
-        let result = values[i - 1] + f * (values[i] - values[i - 1]);
-        CalcResult::Number(result)
-    }
-
     pub(crate) fn fn_quartile(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.fn_quartile_inc(args, cell)
     }
@@ -1937,35 +1753,17 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut values = match self.get_array_of_numbers_stat(&args[0], cell) {
+        let values = match self.get_array_of_numbers_stat(&args[0], cell) {
             Ok(v) => v,
-            Err(e) => return e,
+            Err(_) => {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid value".to_string())
+            }
         };
-        if values.is_empty() {
-            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
-        }
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
         let k = match self.get_number(&args[1], cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        if !(0.0..=1.0).contains(&k) {
-            return CalcResult::new_error(Error::NUM, cell, "k out of range".to_string());
-        }
-        let n = values.len() as f64;
-        let pos = k * (n - 1.0) + 1.0;
-        let m = pos.floor();
-        let g = pos - m;
-        let idx = (m as usize).saturating_sub(1);
-        if idx >= values.len() - 1 {
-            let last_value = match values.last() {
-                Some(&v) => v,
-                None => return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string()),
-            };
-            return CalcResult::Number(last_value);
-        }
-        let result = values[idx] + g * (values[idx + 1] - values[idx]);
-        CalcResult::Number(result)
+        self.percentile(values, k, true, cell)
     }
 
     pub(crate) fn fn_percentile_exc(
@@ -1976,38 +1774,17 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut values = match self.get_array_of_numbers_stat(&args[0], cell) {
+        let values = match self.get_array_of_numbers_stat(&args[0], cell) {
             Ok(v) => v,
-            Err(e) => return e,
+            Err(_) => {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid value".to_string())
+            }
         };
-        if values.is_empty() {
-            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
-        }
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
         let k = match self.get_number(&args[1], cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let n = values.len() as f64;
-        if k <= 0.0 || k >= 1.0 {
-            return CalcResult::new_error(Error::NUM, cell, "k out of range".to_string());
-        }
-        let pos = k * (n + 1.0);
-        if pos < 1.0 || pos > n {
-            return CalcResult::new_error(Error::NUM, cell, "k out of range".to_string());
-        }
-        let m = pos.floor();
-        let g = pos - m;
-        let idx = (m as usize).saturating_sub(1);
-        if idx >= values.len() - 1 {
-            let last_value = match values.last() {
-                Some(&v) => v,
-                None => return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string()),
-            };
-            return CalcResult::Number(last_value);
-        }
-        let result = values[idx] + g * (values[idx + 1] - values[idx]);
-        CalcResult::Number(result)
+        self.percentile(values, k, false, cell)
     }
 
     pub(crate) fn fn_percentrank_inc(
@@ -2018,14 +1795,12 @@ impl Model {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut values = match self.get_array_of_numbers_stat(&args[0], cell) {
+        let values = match self.get_array_of_numbers_stat(&args[0], cell) {
             Ok(v) => v,
-            Err(e) => return e,
+            Err(_) => {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid value".to_string())
+            }
         };
-        if values.is_empty() {
-            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
-        }
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
         let x = match self.get_number(&args[1], cell) {
             Ok(v) => v,
             Err(e) => return e,
@@ -2038,57 +1813,7 @@ impl Model {
         } else {
             3
         };
-        let n = values.len() as f64;
-
-        // Handle single element array case
-        if n == 1.0 {
-            if (x - values[0]).abs() <= f64::EPSILON {
-                let factor = 10f64.powi(decimals);
-                let result = (0.5 * factor).round() / factor;
-                return CalcResult::Number(result);
-            } else {
-                return CalcResult::new_error(
-                    Error::NA,
-                    cell,
-                    "Value not found in single element array".to_string(),
-                );
-            }
-        }
-
-        if x < values[0] {
-            return CalcResult::Number(0.0);
-        }
-        if x > values[values.len() - 1] {
-            return CalcResult::Number(1.0);
-        }
-        let mut idx = 0;
-        while idx < values.len() && values[idx] < x {
-            idx += 1;
-        }
-
-        // Handle case where idx reaches end of array (should not happen due to bounds check above)
-        if idx >= values.len() {
-            return CalcResult::Number(1.0);
-        }
-
-        let rank = if (x - values[idx]).abs() <= f64::EPSILON {
-            // Exact match found
-            idx as f64
-        } else {
-            // Interpolation needed - ensure we don't go out of bounds
-            if idx == 0 {
-                // x is between the minimum and the first element, should not happen due to bounds check
-                return CalcResult::Number(0.0);
-            }
-            let lower = values[idx - 1];
-            let upper = values[idx];
-            (idx as f64 - 1.0) + (x - lower) / (upper - lower)
-        };
-
-        let mut result = rank / (n - 1.0);
-        let factor = 10f64.powi(decimals);
-        result = (result * factor).round() / factor;
-        CalcResult::Number(result)
+        self.percentrank(values, x, true, decimals, cell)
     }
 
     pub(crate) fn fn_percentrank_exc(
@@ -2099,14 +1824,12 @@ impl Model {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut values = match self.get_array_of_numbers_stat(&args[0], cell) {
+        let values = match self.get_array_of_numbers_stat(&args[0], cell) {
             Ok(v) => v,
-            Err(e) => return e,
+            Err(_) => {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid value".to_string())
+            }
         };
-        if values.is_empty() {
-            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
-        }
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
         let x = match self.get_number(&args[1], cell) {
             Ok(v) => v,
             Err(e) => return e,
@@ -2119,28 +1842,50 @@ impl Model {
         } else {
             3
         };
-        let n = values.len();
-        if x <= values[0] || x >= values[n - 1] {
-            return CalcResult::new_error(Error::NUM, cell, "x out of range".to_string());
-        }
-        let mut idx = 0;
-        while idx < n && values[idx] < x {
-            idx += 1;
-        }
-        let rank = if (x - values[idx]).abs() > f64::EPSILON {
-            let lower = values[idx - 1];
-            let upper = values[idx];
-            idx as f64 + (x - lower) / (upper - lower)
-        } else {
-            (idx + 1) as f64
-        };
-        let mut result = rank / ((n + 1) as f64);
-        let factor = 10f64.powi(decimals);
-        result = (result * factor).round() / factor;
-        CalcResult::Number(result)
+        self.percentrank(values, x, false, decimals, cell)
     }
 
-    // collect_series method moved to functions::util::collect_series
+    pub(crate) fn fn_quartile_inc(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match self.get_array_of_numbers_stat(&args[0], cell) {
+            Ok(v) => v,
+            Err(_) => {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid value".to_string())
+            }
+        };
+        let quart = match self.get_number(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        self.quartile(values, quart, true, cell)
+    }
+
+    pub(crate) fn fn_quartile_exc(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match self.get_array_of_numbers_stat(&args[0], cell) {
+            Ok(v) => v,
+            Err(_) => {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid value".to_string())
+            }
+        };
+        let quart = match self.get_number(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        self.quartile(values, quart, false, cell)
+    }
 
     pub(crate) fn fn_slope(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
@@ -2241,5 +1986,175 @@ impl Model {
         }
         let slope = numerator / denominator;
         CalcResult::Number(mean_y - slope * mean_x)
+    }
+
+    // =============================================================================
+    // PERCENTILE / PERCENTRANK / QUARTILE shared helpers
+    // =============================================================================
+    fn percentile(
+        &self,
+        mut values: Vec<f64>,
+        k: f64,
+        inclusive: bool,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if values.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
+        }
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+        let n = values.len() as f64;
+        if inclusive {
+            if !(0.0..=1.0).contains(&k) {
+                return CalcResult::new_error(Error::NUM, cell, "k out of range".to_string());
+            }
+            let pos = k * (n - 1.0) + 1.0;
+            let m = pos.floor();
+            let g = pos - m;
+            let idx = (m as usize).saturating_sub(1);
+            if idx >= values.len() - 1 {
+                return CalcResult::Number(*values.last().unwrap());
+            }
+            let result = values[idx] + g * (values[idx + 1] - values[idx]);
+            CalcResult::Number(result)
+        } else {
+            if k <= 0.0 || k >= 1.0 {
+                return CalcResult::new_error(Error::NUM, cell, "k out of range".to_string());
+            }
+            let pos = k * (n + 1.0);
+            if pos < 1.0 || pos > n {
+                return CalcResult::new_error(Error::NUM, cell, "k out of range".to_string());
+            }
+            let m = pos.floor();
+            let g = pos - m;
+            let idx = (m as usize).saturating_sub(1);
+            if idx >= values.len() - 1 {
+                return CalcResult::Number(*values.last().unwrap());
+            }
+            let result = values[idx] + g * (values[idx + 1] - values[idx]);
+            CalcResult::Number(result)
+        }
+    }
+
+    fn percentrank(
+        &self,
+        mut values: Vec<f64>,
+        x: f64,
+        inclusive: bool,
+        decimals: i32,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        use std::cmp::Ordering;
+        if values.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
+        }
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+        let n_f = values.len() as f64;
+        let n_usize = values.len();
+        let factor = 10f64.powi(decimals);
+
+        if inclusive {
+            if n_usize == 1 {
+                if (x - values[0]).abs() <= f64::EPSILON {
+                    return CalcResult::Number((0.5 * factor).round() / factor);
+                }
+                return CalcResult::new_error(
+                    Error::NA,
+                    cell,
+                    "Value not found in single element array".to_string(),
+                );
+            }
+
+            if x < values[0] {
+                return CalcResult::Number(0.0);
+            }
+            if x > values[n_usize - 1] {
+                return CalcResult::Number(1.0);
+            }
+            let mut idx = 0usize;
+            while idx < n_usize && values[idx] < x {
+                idx += 1;
+            }
+            if idx >= n_usize {
+                return CalcResult::Number(1.0);
+            }
+            let rank = if (x - values[idx]).abs() <= f64::EPSILON {
+                idx as f64
+            } else {
+                if idx == 0 {
+                    0.0
+                } else {
+                    let lower = values[idx - 1];
+                    let upper = values[idx];
+                    (idx as f64 - 1.0) + (x - lower) / (upper - lower)
+                }
+            };
+            let mut result = rank / (n_f - 1.0);
+            result = (result * factor).round() / factor;
+            CalcResult::Number(result)
+        } else {
+            if x <= values[0] || x >= values[n_usize - 1] {
+                return CalcResult::new_error(Error::NUM, cell, "x out of range".to_string());
+            }
+            let mut idx = 0usize;
+            while idx < n_usize && values[idx] < x {
+                idx += 1;
+            }
+            let rank = if (x - values[idx]).abs() > f64::EPSILON {
+                let lower = values[idx - 1];
+                let upper = values[idx];
+                idx as f64 + (x - lower) / (upper - lower)
+            } else {
+                (idx + 1) as f64
+            };
+            let mut result = rank / (n_f + 1.0);
+            result = (result * factor).round() / factor;
+            CalcResult::Number(result)
+        }
+    }
+
+    fn quartile(
+        &self,
+        mut values: Vec<f64>,
+        quart: f64,
+        inclusive: bool,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        use std::cmp::Ordering;
+        if quart.fract() != 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid quart".to_string());
+        }
+        let q_int = quart as i32;
+        if inclusive {
+            if !(0..=4).contains(&q_int) {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid quart".to_string());
+            }
+        } else if !(1..=3).contains(&q_int) {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid quart".to_string());
+        }
+
+        if values.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string());
+        }
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+        let n = values.len() as f64;
+        let k = quart / 4.0;
+
+        if inclusive {
+            let index = k * (n - 1.0);
+            let i = index.floor() as usize;
+            let f = index - (i as f64);
+            if i + 1 >= values.len() {
+                return CalcResult::Number(values[i]);
+            }
+            CalcResult::Number(values[i] + f * (values[i + 1] - values[i]))
+        } else {
+            let r = k * (n + 1.0);
+            if r <= 1.0 || r >= n {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid quart".to_string());
+            }
+            let i = r.floor() as usize;
+            let f = r - (i as f64);
+            CalcResult::Number(values[i - 1] + f * (values[i] - values[i - 1]))
+        }
     }
 }
