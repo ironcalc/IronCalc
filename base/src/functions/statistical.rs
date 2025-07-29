@@ -2012,7 +2012,13 @@ impl Model {
             let g = pos - m;
             let idx = (m as usize).saturating_sub(1);
             if idx >= values.len() - 1 {
-                return CalcResult::Number(*values.last().unwrap());
+                let last_value = match values.last() {
+                    Some(&v) => v,
+                    None => {
+                        return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string())
+                    }
+                };
+                return CalcResult::Number(last_value);
             }
             let result = values[idx] + g * (values[idx + 1] - values[idx]);
             CalcResult::Number(result)
@@ -2028,7 +2034,13 @@ impl Model {
             let g = pos - m;
             let idx = (m as usize).saturating_sub(1);
             if idx >= values.len() - 1 {
-                return CalcResult::Number(*values.last().unwrap());
+                let last_value = match values.last() {
+                    Some(&v) => v,
+                    None => {
+                        return CalcResult::new_error(Error::NUM, cell, "Empty array".to_string())
+                    }
+                };
+                return CalcResult::Number(last_value);
             }
             let result = values[idx] + g * (values[idx + 1] - values[idx]);
             CalcResult::Number(result)
@@ -2079,14 +2091,12 @@ impl Model {
             }
             let rank = if (x - values[idx]).abs() <= f64::EPSILON {
                 idx as f64
+            } else if idx == 0 {
+                0.0
             } else {
-                if idx == 0 {
-                    0.0
-                } else {
-                    let lower = values[idx - 1];
-                    let upper = values[idx];
-                    (idx as f64 - 1.0) + (x - lower) / (upper - lower)
-                }
+                let lower = values[idx - 1];
+                let upper = values[idx];
+                (idx as f64 - 1.0) + (x - lower) / (upper - lower)
             };
             let mut result = rank / (n_f - 1.0);
             result = (result * factor).round() / factor;
