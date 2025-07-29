@@ -1891,101 +1891,20 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let ys = match collect_series(self, &args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let xs = match collect_series(self, &args[1], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if ys.len() != xs.len() {
-            return CalcResult::new_error(
-                Error::NA,
-                cell,
-                "Ranges have different lengths".to_string(),
-            );
+        match self.linear_regression_stats(&args[0], &args[1], cell) {
+            Ok((slope, _)) => CalcResult::Number(slope),
+            Err(e) => e,
         }
-        let mut pairs = Vec::new();
-        let mut sum_x = 0.0;
-        let mut sum_y = 0.0;
-        let mut n = 0.0;
-        for (y, x) in ys.iter().zip(xs.iter()) {
-            if let (Some(yy), Some(xx)) = (y, x) {
-                pairs.push((*yy, *xx));
-                sum_x += xx;
-                sum_y += yy;
-                n += 1.0;
-            }
-        }
-        if n == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
-        }
-        let mean_x = sum_x / n;
-        let mean_y = sum_y / n;
-        let mut numerator = 0.0;
-        let mut denominator = 0.0;
-        for (yy, xx) in pairs {
-            let dx = xx - mean_x;
-            let dy = yy - mean_y;
-            numerator += dx * dy;
-            denominator += dx * dx;
-        }
-        if denominator == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
-        }
-        CalcResult::Number(numerator / denominator)
     }
 
     pub(crate) fn fn_intercept(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let ys = match collect_series(self, &args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let xs = match collect_series(self, &args[1], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if ys.len() != xs.len() {
-            return CalcResult::new_error(
-                Error::NA,
-                cell,
-                "Ranges have different lengths".to_string(),
-            );
+        match self.linear_regression_stats(&args[0], &args[1], cell) {
+            Ok((_, intercept)) => CalcResult::Number(intercept),
+            Err(e) => e,
         }
-        let mut pairs = Vec::new();
-        let mut sum_x = 0.0;
-        let mut sum_y = 0.0;
-        let mut n = 0.0;
-        for (y, x) in ys.iter().zip(xs.iter()) {
-            if let (Some(yy), Some(xx)) = (y, x) {
-                pairs.push((*yy, *xx));
-                sum_x += xx;
-                sum_y += yy;
-                n += 1.0;
-            }
-        }
-        if n == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
-        }
-        let mean_x = sum_x / n;
-        let mean_y = sum_y / n;
-        let mut numerator = 0.0;
-        let mut denominator = 0.0;
-        for (yy, xx) in pairs {
-            let dx = xx - mean_x;
-            let dy = yy - mean_y;
-            numerator += dx * dy;
-            denominator += dx * dx;
-        }
-        if denominator == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
-        }
-        let slope = numerator / denominator;
-        CalcResult::Number(mean_y - slope * mean_x)
     }
 
     // =============================================================================
@@ -2166,5 +2085,73 @@ impl Model {
             let f = r - (i as f64);
             CalcResult::Number(values[i - 1] + f * (values[i] - values[i - 1]))
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Shared utility  – linear regression statistics (slope & intercept)
+    // -------------------------------------------------------------------------
+    /// Returns `(slope, intercept)` for the simple linear regression y = slope * x + intercept.
+    /// Propagates CalcResult errors for invalid inputs (length mismatch, div-by-zero, etc.).
+    fn linear_regression_stats(
+        &mut self,
+        ys_node: &Node,
+        xs_node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64), CalcResult> {
+        // Collect series while preserving order / Option<f64> placeholders
+        let ys = collect_series(self, ys_node, cell)?;
+        let xs = collect_series(self, xs_node, cell)?;
+
+        if ys.len() != xs.len() {
+            return Err(CalcResult::new_error(
+                Error::NA,
+                cell,
+                "Ranges have different lengths".to_string(),
+            ));
+        }
+
+        let mut pairs = Vec::new();
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        let mut n = 0.0;
+        for (y_opt, x_opt) in ys.iter().zip(xs.iter()) {
+            if let (Some(y), Some(x)) = (y_opt, x_opt) {
+                pairs.push((*y, *x));
+                sum_x += x;
+                sum_y += y;
+                n += 1.0;
+            }
+        }
+
+        if n == 0.0 {
+            return Err(CalcResult::new_error(
+                Error::DIV,
+                cell,
+                "Division by Zero".to_string(),
+            ));
+        }
+
+        let mean_x = sum_x / n;
+        let mean_y = sum_y / n;
+        let mut numerator = 0.0;
+        let mut denominator = 0.0;
+        for (y, x) in pairs {
+            let dx = x - mean_x;
+            let dy = y - mean_y;
+            numerator += dx * dy;
+            denominator += dx * dx;
+        }
+
+        if denominator == 0.0 {
+            return Err(CalcResult::new_error(
+                Error::DIV,
+                cell,
+                "Division by Zero".to_string(),
+            ));
+        }
+
+        let slope = numerator / denominator;
+        let intercept = mean_y - slope * mean_x;
+        Ok((slope, intercept))
     }
 }
