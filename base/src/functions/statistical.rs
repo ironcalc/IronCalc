@@ -1104,18 +1104,7 @@ impl Model {
             Ok(v) => v,
             Err(err) => return err,
         };
-        let n = values.len();
-        if n < 2 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
-        }
-        let sum: f64 = values.iter().sum();
-        let mean = sum / n as f64;
-        let mut variance = 0.0;
-        for v in &values {
-            variance += (v - mean).powi(2);
-        }
-        variance /= n as f64 - 1.0;
-        CalcResult::Number(variance.sqrt())
+        self.stdev(&values, true, cell)
     }
 
     pub(crate) fn fn_stdev_p(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1126,17 +1115,25 @@ impl Model {
             Ok(v) => v,
             Err(err) => return err,
         };
+        self.stdev(&values, false, cell)
+    }
+
+    fn stdev(&self, values: &[f64], sample: bool, cell: CellReferenceIndex) -> CalcResult {
         let n = values.len();
-        if n == 0 {
+        if (sample && n < 2) || (!sample && n == 0) {
             return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
         }
         let sum: f64 = values.iter().sum();
         let mean = sum / n as f64;
         let mut variance = 0.0;
-        for v in &values {
-            variance += (v - mean).powi(2);
+        for v in values {
+            variance += (*v - mean).powi(2);
         }
-        variance /= n as f64;
+        if sample {
+            variance /= n as f64 - 1.0;
+        } else {
+            variance /= n as f64;
+        }
         CalcResult::Number(variance.sqrt())
     }
 
