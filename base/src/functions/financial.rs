@@ -1623,6 +1623,140 @@ impl Model {
         CalcResult::Number(result)
     }
 
+    // PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])
+    pub(crate) fn fn_price(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(6..=7).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let yld = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[5], cell) {
+            Ok(f) => f.round() as i32,
+            Err(s) => return s,
+        };
+        if frequency != 1 && frequency != 2 && frequency != 4 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "frequency should be 1, 2 or 4".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+        if args.len() == 7 {
+            let _basis = match self.get_number_no_bools(&args[6], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            // basis is currently ignored
+        }
+        let days = maturity - settlement;
+        let periods = ((days * frequency as f64) / 365.0).round();
+        if periods <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "invalid dates".to_string());
+        }
+        let coupon = redemption * rate / frequency as f64;
+        let r = yld / frequency as f64;
+        let mut price = 0.0;
+        for i in 1..=(periods as i32) {
+            price += coupon / (1.0 + r).powf(i as f64);
+        }
+        price += redemption / (1.0 + r).powf(periods);
+        if price.is_nan() || price.is_infinite() {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid data".to_string());
+        }
+        CalcResult::Number(price)
+    }
+
+    // YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])
+    pub(crate) fn fn_yield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(6..=7).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let price = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[5], cell) {
+            Ok(f) => f.round() as i32,
+            Err(s) => return s,
+        };
+        if frequency != 1 && frequency != 2 && frequency != 4 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "frequency should be 1, 2 or 4".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+        if args.len() == 7 {
+            let _basis = match self.get_number_no_bools(&args[6], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            // basis ignored
+        }
+        let days = maturity - settlement;
+        let periods = ((days * frequency as f64) / 365.0).round();
+        if periods <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "invalid dates".to_string());
+        }
+        let coupon = redemption * rate / frequency as f64;
+        match compute_rate(-price, redemption, periods, coupon, 0, 0.1) {
+            Ok(r) => CalcResult::Number(r * frequency as f64),
+            Err(err) => CalcResult::Error {
+                error: err.0,
+                origin: cell,
+                message: err.1,
+            },
+        }
+    }
+
     // DOLLARDE(fractional_dollar, fraction)
     pub(crate) fn fn_dollarde(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
