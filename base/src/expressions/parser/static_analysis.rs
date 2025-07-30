@@ -366,13 +366,35 @@ enum Signature {
     Error,
 }
 
-fn args_signature_no_args(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 0 {
-        vec![]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
+/// Macro to generate signature helper functions with standard error handling
+///
+/// Usage examples:
+/// - `signature_fn!(name, 0 => [])` - no args function
+/// - `signature_fn!(name, 1 => [Scalar])` - single scalar
+/// - `signature_fn!(name, 2 => [Vector, Scalar])` - vector then scalar
+/// - `signature_fn!(name, 2 => [Vector, Scalar], 3 => [Vector, Scalar, Scalar])` - multiple patterns
+macro_rules! signature_fn {
+    ($name:ident, $($count:expr => [$($sig:ident),*]),+ $(,)?) => {
+        fn $name(arg_count: usize) -> Vec<Signature> {
+            match arg_count {
+                $(
+                    $count => vec![$(Signature::$sig),*],
+                )+
+                _ => vec![Signature::Error; arg_count],
+            }
+        }
+    };
 }
+
+// Generate signature helper functions using macros
+signature_fn!(args_signature_no_args, 0 => []);
+signature_fn!(args_signature_one_vector, 1 => [Vector]);
+signature_fn!(args_signature_two_vectors, 2 => [Vector, Vector]);
+signature_fn!(args_signature_sumif,
+    2 => [Vector, Scalar],
+    3 => [Vector, Scalar, Vector]
+);
+signature_fn!(args_signature_vector_scalar, 2 => [Vector, Scalar]);
 
 fn args_signature_scalars(
     arg_count: usize,
@@ -386,119 +408,43 @@ fn args_signature_scalars(
     }
 }
 
-fn args_signature_one_vector(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 1 {
-        vec![Signature::Vector]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
-
-fn args_signature_sumif(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Scalar]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Scalar, Signature::Vector]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
-
 // 1 or none scalars
-fn args_signature_sheet(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 0 {
-        vec![]
-    } else if arg_count == 1 {
-        vec![Signature::Scalar]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
+signature_fn!(args_signature_sheet,
+    0 => [],
+    1 => [Scalar]
+);
 
-fn args_signature_hlookup(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Scalar]
-    } else if arg_count == 4 {
-        vec![
-            Signature::Vector,
-            Signature::Vector,
-            Signature::Scalar,
-            Signature::Vector,
-        ]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
+signature_fn!(args_signature_hlookup,
+    3 => [Vector, Vector, Scalar],
+    4 => [Vector, Vector, Scalar, Vector]
+);
 
-fn args_signature_index(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Scalar]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-    } else if arg_count == 4 {
-        vec![
-            Signature::Vector,
-            Signature::Scalar,
-            Signature::Scalar,
-            Signature::Scalar,
-        ]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
+signature_fn!(args_signature_index,
+    2 => [Vector, Scalar],
+    3 => [Vector, Scalar, Scalar],
+    4 => [Vector, Scalar, Scalar, Scalar]
+);
 
-fn args_signature_lookup(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Vector]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Vector]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
+signature_fn!(args_signature_lookup,
+    2 => [Vector, Vector],
+    3 => [Vector, Vector, Vector]
+);
 
-fn args_signature_match(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Vector]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Scalar]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
+signature_fn!(args_signature_match,
+    2 => [Vector, Vector],
+    3 => [Vector, Vector, Scalar]
+);
 
-fn args_signature_offset(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 3 {
-        vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-    } else if arg_count == 4 {
-        vec![
-            Signature::Vector,
-            Signature::Scalar,
-            Signature::Scalar,
-            Signature::Scalar,
-        ]
-    } else if arg_count == 5 {
-        vec![
-            Signature::Vector,
-            Signature::Scalar,
-            Signature::Scalar,
-            Signature::Scalar,
-            Signature::Scalar,
-        ]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
+signature_fn!(args_signature_offset,
+    3 => [Vector, Scalar, Scalar],
+    4 => [Vector, Scalar, Scalar, Scalar],
+    5 => [Vector, Scalar, Scalar, Scalar, Scalar]
+);
 
-fn args_signature_row(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 0 {
-        vec![]
-    } else if arg_count == 1 {
-        vec![Signature::Vector]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
+signature_fn!(args_signature_row,
+    0 => [],
+    1 => [Vector]
+);
 
 fn args_signature_xlookup(arg_count: usize) -> Vec<Signature> {
     if !(3..=6).contains(&arg_count) {
@@ -539,41 +485,24 @@ fn args_signature_npv(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-fn args_signature_irr(arg_count: usize) -> Vec<Signature> {
-    if arg_count > 2 {
-        vec![Signature::Error; arg_count]
-    } else if arg_count == 1 {
-        vec![Signature::Vector]
-    } else {
-        vec![Signature::Vector, Signature::Scalar]
-    }
-}
+signature_fn!(args_signature_irr,
+    1 => [Vector],
+    2 => [Vector, Scalar]
+);
 
-fn args_signature_xirr(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector; arg_count]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Scalar]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
+signature_fn!(args_signature_xirr,
+    2 => [Vector, Vector],
+    3 => [Vector, Vector, Scalar]
+);
 
-fn args_signature_mirr(arg_count: usize) -> Vec<Signature> {
-    if arg_count != 3 {
-        vec![Signature::Error; arg_count]
-    } else {
-        vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-    }
-}
+signature_fn!(args_signature_mirr, 3 => [Vector, Scalar, Scalar]);
 
-fn args_signature_xnpv(arg_count: usize) -> Vec<Signature> {
-    if arg_count != 3 {
-        vec![Signature::Error; arg_count]
-    } else {
-        vec![Signature::Scalar, Signature::Vector, Signature::Vector]
-    }
-}
+signature_fn!(args_signature_xnpv, 3 => [Scalar, Vector, Vector]);
+
+signature_fn!(args_signature_rank,
+    2 => [Scalar, Vector],
+    3 => [Scalar, Vector, Scalar]
+);
 
 // FIXME: This is terrible duplications of efforts. We use the signature in at least three different places:
 // 1. When computing the function
@@ -785,6 +714,47 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
         Function::Unicode => args_signature_scalars(arg_count, 1, 0),
         Function::Geomean => vec![Signature::Vector; arg_count],
+        Function::VarP | Function::VarS => vec![Signature::Vector; arg_count],
+        Function::Correl => args_signature_two_vectors(arg_count),
+        Function::Large => args_signature_vector_scalar(arg_count),
+        Function::Small => args_signature_vector_scalar(arg_count),
+        Function::Median => vec![Signature::Vector; arg_count],
+        Function::StdevS => vec![Signature::Vector; arg_count],
+        Function::StdevP => vec![Signature::Vector; arg_count],
+        Function::Stdeva => vec![Signature::Vector; arg_count],
+        Function::Stdevpa => vec![Signature::Vector; arg_count],
+        Function::Vara => vec![Signature::Vector; arg_count],
+        Function::Varpa => vec![Signature::Vector; arg_count],
+        Function::Skew | Function::SkewP => vec![Signature::Vector; arg_count],
+        Function::Quartile | Function::QuartileExc | Function::QuartileInc => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::PercentileExc => args_signature_vector_scalar(arg_count),
+        Function::PercentileInc => args_signature_vector_scalar(arg_count),
+        Function::PercentrankExc => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::PercentrankInc => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::Rank | Function::RankAvg | Function::RankEq => args_signature_rank(arg_count),
+        Function::Intercept | Function::Slope => args_signature_two_vectors(arg_count),
     }
 }
 
@@ -990,5 +960,23 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Eomonth => scalar_arguments(args),
         Function::Formulatext => not_implemented(args),
         Function::Geomean => not_implemented(args),
+        Function::VarP | Function::VarS | Function::Correl => not_implemented(args),
+        Function::Large => not_implemented(args),
+        Function::Small => not_implemented(args),
+        Function::Median => not_implemented(args),
+        Function::StdevS => not_implemented(args),
+        Function::StdevP => not_implemented(args),
+        Function::Stdeva => not_implemented(args),
+        Function::Stdevpa => not_implemented(args),
+        Function::Vara => not_implemented(args),
+        Function::Varpa => not_implemented(args),
+        Function::Skew | Function::SkewP => not_implemented(args),
+        Function::Quartile | Function::QuartileExc | Function::QuartileInc => not_implemented(args),
+        Function::Rank | Function::RankAvg | Function::RankEq => scalar_arguments(args),
+        Function::PercentileExc => not_implemented(args),
+        Function::PercentileInc => not_implemented(args),
+        Function::PercentrankExc => not_implemented(args),
+        Function::PercentrankInc => not_implemented(args),
+        Function::Intercept | Function::Slope => scalar_arguments(args),
     }
 }
