@@ -620,6 +620,228 @@ impl Model {
         CalcResult::Number((numerator / denominator).trunc())
     }
 
+    pub(crate) fn fn_gcd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        fn gcd(mut a: u128, mut b: u128) -> u128 {
+            while b != 0 {
+                let r = a % b;
+                a = b;
+                b = r;
+            }
+            a
+        }
+
+        let mut result: Option<u128> = None;
+        let mut update = |value: f64| -> Result<(), CalcResult> {
+            if value < 0.0 {
+                return Err(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "numbers must be positive".to_string(),
+                ));
+            }
+            if !value.is_finite() {
+                return Err(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "value must be finite".to_string(),
+                ));
+            }
+            let truncated = value.trunc();
+            if truncated > u128::MAX as f64 {
+                return Err(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "value too large".to_string(),
+                ));
+            }
+            let v = truncated as u128;
+            result = Some(match result {
+                None => v,
+                Some(r) => gcd(r, v),
+            });
+            Ok(())
+        };
+
+        for arg in args {
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Number(v) => {
+                    if let Err(e) = update(v) {
+                        return e;
+                    }
+                }
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    for row in left.row..=right.row {
+                        for column in left.column..=right.column {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(v) => {
+                                    if let Err(e) = update(v) {
+                                        return e;
+                                    }
+                                }
+                                error @ CalcResult::Error { .. } => return error,
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                CalcResult::Array(arr) => {
+                    for row in arr {
+                        for value in row {
+                            match value {
+                                ArrayNode::Number(v) => {
+                                    if let Err(e) = update(v) {
+                                        return e;
+                                    }
+                                }
+                                ArrayNode::Error(err) => {
+                                    return CalcResult::Error {
+                                        error: err,
+                                        origin: cell,
+                                        message: "Error in array".to_string(),
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                _ => {}
+            }
+        }
+
+        CalcResult::Number(result.unwrap_or(0) as f64)
+    }
+
+    pub(crate) fn fn_lcm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        fn gcd(mut a: u128, mut b: u128) -> u128 {
+            while b != 0 {
+                let r = a % b;
+                a = b;
+                b = r;
+            }
+            a
+        }
+
+        let mut result: Option<u128> = None;
+        let mut update = |value: f64| -> Result<(), CalcResult> {
+            if value < 0.0 {
+                return Err(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "numbers must be positive".to_string(),
+                ));
+            }
+            if !value.is_finite() {
+                return Err(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "value must be finite".to_string(),
+                ));
+            }
+            let truncated = value.trunc();
+            if truncated > u128::MAX as f64 {
+                return Err(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "value too large".to_string(),
+                ));
+            }
+            let v = truncated as u128;
+            result = Some(match result {
+                None => v,
+                Some(r) => {
+                    if r == 0 || v == 0 {
+                        0
+                    } else {
+                        r / gcd(r, v) * v
+                    }
+                }
+            });
+            Ok(())
+        };
+
+        for arg in args {
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Number(v) => {
+                    if let Err(e) = update(v) {
+                        return e;
+                    }
+                }
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    for row in left.row..=right.row {
+                        for column in left.column..=right.column {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(v) => {
+                                    if let Err(e) = update(v) {
+                                        return e;
+                                    }
+                                }
+                                error @ CalcResult::Error { .. } => return error,
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                CalcResult::Array(arr) => {
+                    for row in arr {
+                        for value in row {
+                            match value {
+                                ArrayNode::Number(v) => {
+                                    if let Err(e) = update(v) {
+                                        return e;
+                                    }
+                                }
+                                ArrayNode::Error(err) => {
+                                    return CalcResult::Error {
+                                        error: err,
+                                        origin: cell,
+                                        message: "Error in array".to_string(),
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                _ => {}
+            }
+        }
+
+        CalcResult::Number(result.unwrap_or(0) as f64)
+    }
+
     pub(crate) fn fn_rand(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !args.is_empty() {
             return CalcResult::new_args_number_error(cell);
