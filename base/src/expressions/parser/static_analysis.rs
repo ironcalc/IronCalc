@@ -389,6 +389,7 @@ macro_rules! signature_fn {
 // Generate signature helper functions using macros
 signature_fn!(args_signature_no_args, 0 => []);
 signature_fn!(args_signature_one_vector, 1 => [Vector]);
+signature_fn!(args_signature_two_vectors, 2 => [Vector, Vector]);
 signature_fn!(args_signature_sumif,
     2 => [Vector, Scalar],
     3 => [Vector, Scalar, Vector]
@@ -713,7 +714,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
         Function::Unicode => args_signature_scalars(arg_count, 1, 0),
         Function::Geomean => vec![Signature::Vector; arg_count],
-        Function::VarP | Function::VarS | Function::Correl => vec![Signature::Vector; arg_count],
+        Function::VarP | Function::VarS => vec![Signature::Vector; arg_count],
+        Function::Correl => args_signature_two_vectors(arg_count),
         Function::Large => args_signature_vector_scalar(arg_count),
         Function::Small => args_signature_vector_scalar(arg_count),
         Function::Median => vec![Signature::Vector; arg_count],
@@ -752,7 +754,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             }
         }
         Function::Rank | Function::RankAvg | Function::RankEq => args_signature_rank(arg_count),
-        Function::Intercept | Function::Slope => vec![Signature::Vector; arg_count],
+        Function::Intercept | Function::Slope => args_signature_two_vectors(arg_count),
     }
 }
 
