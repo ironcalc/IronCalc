@@ -19,10 +19,9 @@ fn mround_wrong_argument_count() {
 #[test]
 fn mround_basic_rounding() {
     let mut model = new_empty_model();
-    // MROUND rounds to nearest multiple of significance
-    model._set("A1", "=MROUND(10, 3)"); // 9 (closest multiple of 3)
-    model._set("A2", "=MROUND(11, 3)"); // 12 (rounds up at midpoint)
-    model._set("A3", "=MROUND(1.3, 0.2)"); // 1.4 (decimal significance)
+    model._set("A1", "=MROUND(10, 3)"); // 9
+    model._set("A2", "=MROUND(11, 3)"); // 12
+    model._set("A3", "=MROUND(1.3, 0.2)"); // 1.4
 
     model.evaluate();
 
@@ -34,10 +33,10 @@ fn mround_basic_rounding() {
 #[test]
 fn mround_sign_validation() {
     let mut model = new_empty_model();
-    // Critical: number and significance must have same sign
-    model._set("A1", "=MROUND(10, -3)"); // positive number, negative significance
-    model._set("A2", "=MROUND(-10, 3)"); // negative number, positive significance
-    model._set("A3", "=MROUND(-10, -3)"); // both negative - valid
+    // Number and significance must have same sign
+    model._set("A1", "=MROUND(10, -3)"); // NUM error
+    model._set("A2", "=MROUND(-10, 3)"); // NUM error
+    model._set("A3", "=MROUND(-10, -3)"); // -9
 
     model.evaluate();
 
@@ -49,14 +48,39 @@ fn mround_sign_validation() {
 #[test]
 fn mround_special_cases() {
     let mut model = new_empty_model();
-    // Zero significance always returns 0
-    model._set("A1", "=MROUND(10, 0)");
-    model._set("A2", "=MROUND(0, 5)"); // zero rounds to zero
-    model._set("A3", "=MROUND(2.5, 5)"); // midpoint rounding (rounds up)
+    model._set("A1", "=MROUND(10, 0)"); // 0
+    model._set("A2", "=MROUND(0, 5)"); // 0
+    model._set("A3", "=MROUND(2.5, 5)"); // 5
+                                         // Zero number with any significance sign
+    model._set("A4", "=MROUND(0, -1)"); // 0
+    model._set("A5", "=MROUND(0, -5)"); // 0
 
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"0");
     assert_eq!(model._get_text("A2"), *"0");
     assert_eq!(model._get_text("A3"), *"5");
+    assert_eq!(model._get_text("A4"), *"0");
+    assert_eq!(model._get_text("A5"), *"0");
+}
+
+#[test]
+fn mround_precision_edge_cases() {
+    let mut model = new_empty_model();
+    // Floating-point precision at midpoints
+    model._set("A1", "=MROUND(1.5, 1)"); // 2
+    model._set("A2", "=MROUND(-1.5, -1)"); // -2
+    model._set("A3", "=MROUND(2.5, 1)"); // 3
+    model._set("A4", "=MROUND(-2.5, -1)"); // -3
+    model._set("A5", "=MROUND(0.15, 0.1)"); // 0.2
+    model._set("A6", "=MROUND(-0.15, -0.1)"); // -0.2
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(model._get_text("A2"), *"-2");
+    assert_eq!(model._get_text("A3"), *"3");
+    assert_eq!(model._get_text("A4"), *"-3");
+    assert_eq!(model._get_text("A5"), *"0.2");
+    assert_eq!(model._get_text("A6"), *"-0.2");
 }

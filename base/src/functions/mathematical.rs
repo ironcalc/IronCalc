@@ -780,20 +780,30 @@ impl Model {
         if significance == 0.0 {
             return CalcResult::Number(0.0);
         }
-        if (number > 0.0 && significance < 0.0) || (number < 0.0 && significance > 0.0) {
+        // Special case: zero number always returns 0 regardless of significance sign
+        if number == 0.0 {
+            return CalcResult::Number(0.0);
+        }
+        // Excel requires number and significance to have the same sign for non-zero numbers
+        if number.signum() != significance.signum() {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
                 message: "number and significance must have the same sign".to_string(),
             };
         }
-        let abs_sign = significance.abs();
-        let quotient = number / abs_sign;
-        let rounded = if quotient >= 0.0 {
-            (quotient + 0.5).floor()
+
+        // MROUND rounds ties away from zero (unlike Rust's round() which uses banker's rounding)
+        let quotient = number / significance;
+
+        // Add f64::EPSILON to handle floating-point precision at exact 0.5 boundaries
+        // e.g., when 0.15/0.1 gives 1.4999999999999998 instead of exactly 1.5
+        let rounded_quotient = if quotient >= 0.0 {
+            (quotient + 0.5 + f64::EPSILON).floor()
         } else {
-            (quotient - 0.5).ceil()
+            (quotient - 0.5 - f64::EPSILON).ceil()
         };
-        CalcResult::Number(rounded * abs_sign)
+
+        CalcResult::Number(rounded_quotient * significance)
     }
 }
