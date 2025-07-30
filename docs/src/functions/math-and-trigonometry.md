@@ -45,7 +45,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | FLOOR.MATH      | <Badge type="info" text="Not implemented yet" /> | –             |
 | FLOOR.PRECISE   | <Badge type="info" text="Not implemented yet" /> | –             |
 | GCD             | <Badge type="info" text="Not implemented yet" /> | –             |
-| INT             | <Badge type="info" text="Not implemented yet" /> | –             |
+| INT             | <Badge type="tip" text="Available" /> | [INT](math_and_trigonometry/int) |
 | ISO.CEILING     | <Badge type="info" text="Not implemented yet" /> | –             |
 | LCM             | <Badge type="info" text="Not implemented yet" /> | –             |
 | LET             | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -56,7 +56,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MINVERSE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | MMULT           | <Badge type="info" text="Not implemented yet" /> | –             |
 | MOD             | <Badge type="info" text="Not implemented yet" /> | –             |
-| MROUND          | <Badge type="info" text="Not implemented yet" /> | –             |
+| MROUND          | <Badge type="tip" text="Available" /> | [MROUND](math_and_trigonometry/mround) |
 | MULTINOMIAL     | <Badge type="info" text="Not implemented yet" /> | –             |
 | MUNIT           | <Badge type="info" text="Not implemented yet" /> | –             |
 | ODD             | <Badge type="info" text="Not implemented yet" /> | –             |

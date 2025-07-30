@@ -613,4 +613,38 @@ impl Model {
         }
         CalcResult::Number((x + random() * (y - x)).floor())
     }
+
+    single_number_fn!(fn_int, |f: f64| Ok(f.floor()));
+
+    pub(crate) fn fn_mround(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let number = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let significance = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if significance == 0.0 {
+            return CalcResult::Number(0.0);
+        }
+        if (number > 0.0 && significance < 0.0) || (number < 0.0 && significance > 0.0) {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "number and significance must have the same sign".to_string(),
+            };
+        }
+        let abs_sign = significance.abs();
+        let quotient = number / abs_sign;
+        let rounded = if quotient >= 0.0 {
+            (quotient + 0.5).floor()
+        } else {
+            (quotient - 0.5).ceil()
+        };
+        CalcResult::Number(rounded * abs_sign)
+    }
 }

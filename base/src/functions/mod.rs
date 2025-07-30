@@ -57,6 +57,7 @@ pub enum Function {
     Log,
     Log10,
     Ln,
+    Int,
     Max,
     Min,
     Pi,
@@ -66,6 +67,7 @@ pub enum Function {
     Randbetween,
     Ceiling,
     Floor,
+    Mround,
     Round,
     Rounddown,
     Roundup,
@@ -255,7 +257,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 200> {
+    pub fn into_iter() -> IntoIter<Function, 202> {
         [
             Function::And,
             Function::False,
@@ -283,6 +285,7 @@ impl Function {
             Function::Abs,
             Function::Pi,
             Function::Ln,
+            Function::Int,
             Function::Log,
             Function::Log10,
             Function::Sqrt,
@@ -296,6 +299,7 @@ impl Function {
             Function::Randbetween,
             Function::Ceiling,
             Function::Floor,
+            Function::Mround,
             Function::Round,
             Function::Rounddown,
             Function::Roundup,
@@ -545,6 +549,7 @@ impl Function {
             "ATAN2" => Some(Function::Atan2),
 
             "LN" => Some(Function::Ln),
+            "INT" => Some(Function::Int),
             "LOG" => Some(Function::Log),
             "LOG10" => Some(Function::Log10),
 
@@ -555,6 +560,7 @@ impl Function {
             "RANDBETWEEN" => Some(Function::Randbetween),
             "CEILING" => Some(Function::Ceiling),
             "FLOOR" => Some(Function::Floor),
+            "MROUND" => Some(Function::Mround),
             "ROUND" => Some(Function::Round),
             "ROUNDDOWN" => Some(Function::Rounddown),
             "ROUNDUP" => Some(Function::Roundup),
@@ -753,6 +759,7 @@ impl fmt::Display for Function {
             Function::Log => write!(f, "LOG"),
             Function::Log10 => write!(f, "LOG10"),
             Function::Ln => write!(f, "LN"),
+            Function::Int => write!(f, "INT"),
             Function::Sin => write!(f, "SIN"),
             Function::Cos => write!(f, "COS"),
             Function::Tan => write!(f, "TAN"),
@@ -778,6 +785,7 @@ impl fmt::Display for Function {
             Function::Randbetween => write!(f, "RANDBETWEEN"),
             Function::Ceiling => write!(f, "CEILING"),
             Function::Floor => write!(f, "FLOOR"),
+            Function::Mround => write!(f, "MROUND"),
             Function::Round => write!(f, "ROUND"),
             Function::Rounddown => write!(f, "ROUNDDOWN"),
             Function::Roundup => write!(f, "ROUNDUP"),
@@ -985,6 +993,7 @@ impl Model {
             Function::Log => self.fn_log(args, cell),
             Function::Log10 => self.fn_log10(args, cell),
             Function::Ln => self.fn_ln(args, cell),
+            Function::Int => self.fn_int(args, cell),
             Function::Sin => self.fn_sin(args, cell),
             Function::Cos => self.fn_cos(args, cell),
             Function::Tan => self.fn_tan(args, cell),
@@ -1016,6 +1025,7 @@ impl Model {
             Function::Randbetween => self.fn_randbetween(args, cell),
             Function::Ceiling => self.fn_ceiling(args, cell),
             Function::Floor => self.fn_floor(args, cell),
+            Function::Mround => self.fn_mround(args, cell),
             Function::Round => self.fn_round(args, cell),
             Function::Rounddown => self.fn_rounddown(args, cell),
             Function::Roundup => self.fn_roundup(args, cell),
