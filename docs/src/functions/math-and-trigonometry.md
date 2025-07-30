@@ -55,7 +55,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MDETERM         | <Badge type="info" text="Not implemented yet" /> | –             |
 | MINVERSE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | MMULT           | <Badge type="info" text="Not implemented yet" /> | –             |
-| MOD             | <Badge type="info" text="Not implemented yet" /> | –             |
+| MOD             | <Badge type="tip" text="Available" />          | –             |
 | MROUND          | <Badge type="tip" text="Available" /> | [MROUND](math_and_trigonometry/mround) |
 | MULTINOMIAL     | <Badge type="info" text="Not implemented yet" /> | –             |
 | MUNIT           | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -63,7 +63,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | PI              | <Badge type="info" text="Not implemented yet" /> | –             |
 | POWER           | <Badge type="tip" text="Available" />          | –             |
 | PRODUCT         | <Badge type="tip" text="Available" />          | –             |
-| QUOTIENT        | <Badge type="info" text="Not implemented yet" /> | –             |
+| QUOTIENT        | <Badge type="tip" text="Available" />          | –             |
 | RADIANS         | <Badge type="info" text="Not implemented yet" /> | –             |
 | RAND            | <Badge type="tip" text="Available" />          | –             |
 | RANDARRAY       | <Badge type="info" text="Not implemented yet" /> | –             |
