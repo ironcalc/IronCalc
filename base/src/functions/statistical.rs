@@ -7,7 +7,9 @@ use crate::{
     model::Model,
 };
 
-use super::util::{build_criteria, collect_numeric_values, collect_series, CollectOpts};
+use super::util::{
+    build_criteria, collect_numeric_values, collect_series, scan_range, CollectOpts, ScanRangeOpts,
+};
 use std::cmp::Ordering;
 
 impl Model {
@@ -699,54 +701,23 @@ impl Model {
                     }
                 }
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    let row1 = left.row;
-                    let mut row2 = right.row;
-                    let column1 = left.column;
-                    let mut column2 = right.column;
-                    if row1 == 1 && row2 == LAST_ROW {
-                        row2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_row,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_column,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    for row in row1..=row2 {
-                        for column in column1..=column2 {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(v) => values.push(v),
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {}
-                            }
-                        }
-                    }
+                    let range_values = match scan_range(
+                        self,
+                        &Range { left, right },
+                        cell,
+                        ScanRangeOpts {
+                            expand_full_ranges: true,
+                        },
+                        |cell_result| match cell_result {
+                            CalcResult::Number(v) => Ok(Some(*v)),
+                            CalcResult::Error { .. } => Err(cell_result.clone()),
+                            _ => Ok(None),
+                        },
+                    ) {
+                        Ok(v) => v,
+                        Err(e) => return e,
+                    };
+                    values.extend(range_values);
                 }
                 CalcResult::String(s) => {
                     if !matches!(arg, Node::ReferenceKind { .. }) {
@@ -867,26 +838,21 @@ impl Model {
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::Number(v) => values.push(v),
             CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    );
-                }
-                for row in left.row..=right.row {
-                    for column in left.column..=right.column {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(v) => values.push(v),
-                            error @ CalcResult::Error { .. } => return error,
-                            _ => {}
-                        }
-                    }
-                }
+                let range_values = match scan_range(
+                    self,
+                    &Range { left, right },
+                    cell,
+                    ScanRangeOpts::default(),
+                    |cell_result| match cell_result {
+                        CalcResult::Number(v) => Ok(Some(*v)),
+                        CalcResult::Error { .. } => Err(cell_result.clone()),
+                        _ => Ok(None),
+                    },
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return e,
+                };
+                values.extend(range_values);
             }
             error @ CalcResult::Error { .. } => return error,
             _ => {}
@@ -926,26 +892,21 @@ impl Model {
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::Number(v) => values.push(v),
             CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    );
-                }
-                for row in left.row..=right.row {
-                    for column in left.column..=right.column {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(v) => values.push(v),
-                            error @ CalcResult::Error { .. } => return error,
-                            _ => {}
-                        }
-                    }
-                }
+                let range_values = match scan_range(
+                    self,
+                    &Range { left, right },
+                    cell,
+                    ScanRangeOpts::default(),
+                    |cell_result| match cell_result {
+                        CalcResult::Number(v) => Ok(Some(*v)),
+                        CalcResult::Error { .. } => Err(cell_result.clone()),
+                        _ => Ok(None),
+                    },
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return e,
+                };
+                values.extend(range_values);
             }
             error @ CalcResult::Error { .. } => return error,
             _ => {}
@@ -1262,36 +1223,29 @@ impl Model {
                     }
                 }
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..=right.row {
-                        for column in left.column..=right.column {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(v) => values.push(v),
-                                CalcResult::Boolean(_)
-                                | CalcResult::EmptyCell
-                                | CalcResult::EmptyArg => {}
-                                CalcResult::Range { .. } => {
-                                    return CalcResult::new_error(
-                                        Error::ERROR,
-                                        cell,
-                                        "Unexpected Range".to_string(),
-                                    );
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {}
-                            }
-                        }
-                    }
+                    let range_values = match scan_range(
+                        self,
+                        &Range { left, right },
+                        cell,
+                        ScanRangeOpts::default(),
+                        |cell_result| match cell_result {
+                            CalcResult::Number(v) => Ok(Some(*v)),
+                            CalcResult::Boolean(_)
+                            | CalcResult::EmptyCell
+                            | CalcResult::EmptyArg => Ok(None),
+                            CalcResult::Range { .. } => Err(CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                "Unexpected Range".to_string(),
+                            )),
+                            CalcResult::Error { .. } => Err(cell_result.clone()),
+                            _ => Ok(None),
+                        },
+                    ) {
+                        Ok(v) => v,
+                        Err(e) => return e,
+                    };
+                    values.extend(range_values);
                 }
                 error @ CalcResult::Error { .. } => return error,
                 CalcResult::String(s) => {
@@ -1338,16 +1292,16 @@ impl Model {
     }
 
     /// Shared computation logic for RANK functions.
-    /// 
+    ///
     /// Computes the rank of `number` within `values` according to the specified ordering.
-    /// 
+    ///
     /// Parameters:
     /// - `values`: Vector of numeric values to rank within
     /// - `number`: The number to find the rank of
     /// - `ascending`: If true, rank in ascending order (1 = smallest); if false, descending (1 = largest)
     /// - `average_ties`: If true, average tied ranks (RANK.AVG); if false, return minimum rank (RANK.EQ)
     /// - `cell`: Cell reference for error reporting
-    /// 
+    ///
     /// Returns the computed rank as a CalcResult::Number, or an error if the number is not found.
     fn compute_rank(
         &self,
@@ -1363,7 +1317,7 @@ impl Model {
 
         let mut greater = 0;
         let mut equal = 0;
-        
+
         for &v in values {
             if ascending {
                 if v < number {
@@ -1387,7 +1341,7 @@ impl Model {
         } else {
             (greater + 1) as f64
         };
-        
+
         CalcResult::Number(rank)
     }
 
@@ -1398,52 +1352,38 @@ impl Model {
         range: &Range,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        if range.left.sheet != range.right.sheet {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Ranges are in different sheets".to_string(),
-            ));
-        }
-
-        let mut values = Vec::new();
-        for row in range.left.row..=range.right.row {
-            for column in range.left.column..=range.right.column {
-                match self.evaluate_cell(CellReferenceIndex {
-                    sheet: range.left.sheet,
-                    row,
-                    column,
-                }) {
-                    CalcResult::Number(v) => values.push(v),
-                    CalcResult::Error { .. } => {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Invalid value".to_string(),
-                        ))
-                    }
-                    _ => {}
-                }
-            }
-        }
-        Ok(values)
+        scan_range(
+            self,
+            range,
+            cell,
+            ScanRangeOpts::default(),
+            |cell_result| match cell_result {
+                CalcResult::Number(v) => Ok(Some(*v)),
+                CalcResult::Error { .. } => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Invalid value".to_string(),
+                )),
+                _ => Ok(None),
+            },
+        )
     }
 
     pub(crate) fn fn_rank_eq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        
+
         let number = match self.get_number_no_bools(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        
+
         let range = match self.get_reference(&args[1], cell) {
             Ok(r) => r,
             Err(e) => return e,
         };
-        
+
         let ascending = if args.len() == 3 {
             match self.get_number(&args[2], cell) {
                 Ok(f) => f != 0.0,
@@ -1465,17 +1405,17 @@ impl Model {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        
+
         let number = match self.get_number_no_bools(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        
+
         let range = match self.get_reference(&args[1], cell) {
             Ok(r) => r,
             Err(e) => return e,
         };
-        
+
         let ascending = if args.len() == 3 {
             match self.get_number(&args[2], cell) {
                 Ok(f) => f != 0.0,

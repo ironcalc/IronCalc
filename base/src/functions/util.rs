@@ -526,6 +526,105 @@ pub(crate) fn collect_numeric_values(
     Ok(values)
 }
 
+/// Options for scanning ranges
+#[derive(Clone, Copy, Default)]
+pub(crate) struct ScanRangeOpts {
+    /// Whether to expand whole-row/column ranges to actual data bounds
+    pub expand_full_ranges: bool,
+}
+
+/// Scans a range and applies a closure to each cell result, collecting results into a Vec.
+///
+/// This utility extracts the common pattern found in statistical functions like LARGE, SMALL,
+/// QUARTILE, PERCENTILE, RANK, etc. that need to:
+/// 1. Check cross-sheet ranges (returns error if different sheets)
+/// 2. Optionally expand whole-row/column ranges to actual data bounds
+/// 3. Iterate through each cell and apply custom logic
+/// 4. Collect results or propagate errors
+///
+/// # Arguments
+/// * `model` - The spreadsheet model
+/// * `range` - The range to scan
+/// * `cell` - The cell context for error reporting
+/// * `opts` - Options for scanning behavior
+/// * `cell_fn` - Closure that processes each cell result and returns an optional result
+///
+/// # Returns
+/// `Ok(Vec<T>)` with collected results, or `Err(CalcResult)` on error
+pub(crate) fn scan_range<T, F>(
+    model: &mut Model,
+    range: &crate::calc_result::Range,
+    cell: crate::expressions::types::CellReferenceIndex,
+    opts: ScanRangeOpts,
+    mut cell_fn: F,
+) -> Result<Vec<T>, CalcResult>
+where
+    F: FnMut(&CalcResult) -> Result<Option<T>, CalcResult>,
+{
+    use crate::constants::{LAST_COLUMN, LAST_ROW};
+
+    // Check cross-sheet ranges
+    if range.left.sheet != range.right.sheet {
+        return Err(CalcResult::new_error(
+            crate::expressions::token::Error::VALUE,
+            cell,
+            "Ranges are in different sheets".to_string(),
+        ));
+    }
+
+    let row1 = range.left.row;
+    let mut row2 = range.right.row;
+    let column1 = range.left.column;
+    let mut column2 = range.right.column;
+
+    // Expand whole-row/column ranges if requested
+    if opts.expand_full_ranges {
+        if row1 == 1 && row2 == LAST_ROW {
+            row2 = match model.workbook.worksheet(range.left.sheet) {
+                Ok(s) => s.dimension().max_row,
+                Err(_) => {
+                    return Err(CalcResult::new_error(
+                        crate::expressions::token::Error::ERROR,
+                        cell,
+                        format!("Invalid worksheet index: '{}'", range.left.sheet),
+                    ));
+                }
+            };
+        }
+        if column1 == 1 && column2 == LAST_COLUMN {
+            column2 = match model.workbook.worksheet(range.left.sheet) {
+                Ok(s) => s.dimension().max_column,
+                Err(_) => {
+                    return Err(CalcResult::new_error(
+                        crate::expressions::token::Error::ERROR,
+                        cell,
+                        format!("Invalid worksheet index: '{}'", range.left.sheet),
+                    ));
+                }
+            };
+        }
+    }
+
+    let mut results = Vec::new();
+
+    // Iterate through the range
+    for row in row1..=row2 {
+        for column in column1..=column2 {
+            let cell_result = model.evaluate_cell(crate::expressions::types::CellReferenceIndex {
+                sheet: range.left.sheet,
+                row,
+                column,
+            });
+
+            if let Some(value) = cell_fn(&cell_result)? {
+                results.push(value);
+            }
+        }
+    }
+
+    Ok(results)
+}
+
 /// Collect a numeric series preserving positional information.
 ///
 /// Given a single argument (range, reference, literal, or array), returns a
