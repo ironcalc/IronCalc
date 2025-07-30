@@ -44,10 +44,10 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | FLOOR           | <Badge type="tip" text="Available" />          | [FLOOR](math_and_trigonometry/floor) |
 | FLOOR.MATH      | <Badge type="info" text="Not implemented yet" /> | –             |
 | FLOOR.PRECISE   | <Badge type="info" text="Not implemented yet" /> | –             |
-| GCD             | <Badge type="info" text="Not implemented yet" /> | –             |
+| GCD             | <Badge type="tip" text="Available" />          | [GCD](math_and_trigonometry/gcd) |
 | INT             | <Badge type="tip" text="Available" /> | [INT](math_and_trigonometry/int) |
 | ISO.CEILING     | <Badge type="info" text="Not implemented yet" /> | –             |
-| LCM             | <Badge type="info" text="Not implemented yet" /> | –             |
+| LCM             | <Badge type="tip" text="Available" />          | [LCM](math_and_trigonometry/lcm) |
 | LET             | <Badge type="info" text="Not implemented yet" /> | –             |
 | LN              | <Badge type="info" text="Not implemented yet" /> | –             |
 | LOG             | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -55,7 +55,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MDETERM         | <Badge type="info" text="Not implemented yet" /> | –             |
 | MINVERSE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | MMULT           | <Badge type="info" text="Not implemented yet" /> | –             |
-| MOD             | <Badge type="tip" text="Available" />          | –             |
+| MOD             | <Badge type="tip" text="Available" />          | [MOD](math_and_trigonometry/mod) |
 | MROUND          | <Badge type="tip" text="Available" /> | [MROUND](math_and_trigonometry/mround) |
 | MULTINOMIAL     | <Badge type="info" text="Not implemented yet" /> | –             |
 | MUNIT           | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -63,7 +63,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | PI              | <Badge type="tip" text="Available" />          | [PI](math_and_trigonometry/pi) |
 | POWER           | <Badge type="tip" text="Available" />          | –             |
 | PRODUCT         | <Badge type="tip" text="Available" />          | –             |
-| QUOTIENT        | <Badge type="tip" text="Available" />          | –             |
+| QUOTIENT        | <Badge type="tip" text="Available" />          | [QUOTIENT](math_and_trigonometry/quotient) |
 | RADIANS         | <Badge type="tip" text="Available" />          | [RADIANS](math_and_trigonometry/radians) |
 | RAND            | <Badge type="tip" text="Available" />          | –             |
 | RANDARRAY       | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -84,8 +84,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SUBTOTAL        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUM             | <Badge type="tip" text="Available" />          | –             |
 | SUMIF           | <Badge type="tip" text="Available" />          | –             |
-| SUMIFS          | <Badge type="info" text="Not implemented yet" /> | –             |
-| SUMPRODUCT      | <Badge type="info" text="Not implemented yet" /> | –             |
+| SUMIFS          | <Badge type="tip" text="Available" />          | [SUMIFS](math_and_trigonometry/sumifs) |
+| SUMPRODUCT      | <Badge type="tip" text="Available" />          | [SUMPRODUCT](math_and_trigonometry/sumproduct) |
 | SUMSQ           | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMX2MY2        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMX2PY2        | <Badge type="info" text="Not implemented yet" /> | –             |
