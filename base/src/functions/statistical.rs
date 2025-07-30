@@ -7,7 +7,7 @@ use crate::{
     model::Model,
 };
 
-use super::util::{build_criteria, collect_numeric_values, collect_series};
+use super::util::{build_criteria, collect_numeric_values, collect_series, CollectOpts};
 use std::cmp::Ordering;
 
 impl Model {
@@ -655,7 +655,7 @@ impl Model {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let values = match collect_numeric_values(self, args, cell) {
+        let values = match collect_numeric_values(self, args, cell, CollectOpts::default()) {
             Ok(v) => v,
             Err(err) => return err,
         };
@@ -863,89 +863,9 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<(Vec<Option<f64>>, usize), CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Number(f) => Ok((vec![Some(f)], 1)),
-            CalcResult::Boolean(b) => {
-                if matches!(node, Node::ReferenceKind { .. }) {
-                    Ok((vec![None], 1))
-                } else {
-                    Ok((vec![Some(if b { 1.0 } else { 0.0 })], 1))
-                }
-            }
-            CalcResult::String(s) => {
-                if matches!(node, Node::ReferenceKind { .. }) {
-                    Ok((vec![None], 1))
-                } else if let Ok(t) = s.parse::<f64>() {
-                    Ok((vec![Some(t)], 1))
-                } else {
-                    Err(CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Argument cannot be cast into number".to_string(),
-                    })
-                }
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok((vec![None], 1)),
-            CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                let row1 = left.row;
-                let mut row2 = right.row;
-                let column1 = left.column;
-                let mut column2 = right.column;
-                if row1 == 1 && row2 == LAST_ROW {
-                    row2 = match self.workbook.worksheet(left.sheet) {
-                        Ok(s) => s.dimension().max_row,
-                        Err(_) => {
-                            return Err(CalcResult::new_error(
-                                Error::ERROR,
-                                cell,
-                                format!("Invalid worksheet index: '{}'", left.sheet),
-                            ));
-                        }
-                    };
-                }
-                if column1 == 1 && column2 == LAST_COLUMN {
-                    column2 = match self.workbook.worksheet(left.sheet) {
-                        Ok(s) => s.dimension().max_column,
-                        Err(_) => {
-                            return Err(CalcResult::new_error(
-                                Error::ERROR,
-                                cell,
-                                format!("Invalid worksheet index: '{}'", left.sheet),
-                            ));
-                        }
-                    };
-                }
-                let mut v = Vec::new();
-                for row in row1..=row2 {
-                    for column in column1..=column2 {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(f) => v.push(Some(f)),
-                            error @ CalcResult::Error { .. } => return Err(error),
-                            _ => v.push(None),
-                        }
-                    }
-                }
-                let len = v.len();
-                Ok((v, len))
-            }
-            CalcResult::Array(_) => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
-            error @ CalcResult::Error { .. } => Err(error),
-        }
+        let series = collect_series(self, node, cell)?;
+        let len = series.len();
+        Ok((series, len))
     }
 
     pub(crate) fn fn_large(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1070,7 +990,7 @@ impl Model {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let values = match collect_numeric_values(self, args, cell) {
+        let values = match collect_numeric_values(self, args, cell, CollectOpts::default()) {
             Ok(v) => v,
             Err(err) => return err,
         };
@@ -1100,7 +1020,7 @@ impl Model {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let values = match collect_numeric_values(self, args, cell) {
+        let values = match collect_numeric_values(self, args, cell, CollectOpts::default()) {
             Ok(v) => v,
             Err(err) => return err,
         };
@@ -1111,7 +1031,7 @@ impl Model {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let values = match collect_numeric_values(self, args, cell) {
+        let values = match collect_numeric_values(self, args, cell, CollectOpts::default()) {
             Ok(v) => v,
             Err(err) => return err,
         };
@@ -1142,76 +1062,11 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        let mut values = Vec::new();
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        ));
-                    }
-                    for row in left.row..=right.row {
-                        for column in left.column..=right.column {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(v) => values.push(v),
-                                CalcResult::Boolean(b) => {
-                                    values.push(if b { 1.0 } else { 0.0 });
-                                }
-                                CalcResult::String(_) => values.push(0.0),
-                                error @ CalcResult::Error { .. } => return Err(error),
-                                CalcResult::Range { .. } => {
-                                    return Err(CalcResult::new_error(
-                                        Error::ERROR,
-                                        cell,
-                                        "Unexpected Range".to_string(),
-                                    ))
-                                }
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                                CalcResult::Array(_) => {
-                                    return Err(CalcResult::Error {
-                                        error: Error::NIMPL,
-                                        origin: cell,
-                                        message: "Arrays not supported yet".to_string(),
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-                CalcResult::Number(v) => values.push(v),
-                CalcResult::Boolean(b) => values.push(if b { 1.0 } else { 0.0 }),
-                CalcResult::String(s) => {
-                    if let Node::ReferenceKind { .. } = arg {
-                        values.push(0.0);
-                    } else if let Ok(t) = s.parse::<f64>() {
-                        values.push(t);
-                    } else {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Argument cannot be cast into number".to_string(),
-                        ));
-                    }
-                }
-                error @ CalcResult::Error { .. } => return Err(error),
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                CalcResult::Array(_) => {
-                    return Err(CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    })
-                }
-            }
-        }
-        Ok(values)
+        let opts = CollectOpts {
+            include_bool_refs: true,
+            string_ref_as_zero: true,
+        };
+        collect_numeric_values(self, args, cell, opts)
     }
 
     pub(crate) fn fn_stdeva(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1655,94 +1510,12 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        let mut values = Vec::new();
-        let result = self.evaluate_node_in_context(arg, cell);
-        match result {
-            CalcResult::Number(value) => values.push(value),
-            CalcResult::Boolean(b) => {
-                if !matches!(arg, Node::ReferenceKind { .. }) {
-                    values.push(if b { 1.0 } else { 0.0 });
-                }
-            }
-            CalcResult::String(s) => {
-                if !matches!(arg, Node::ReferenceKind { .. }) {
-                    if let Ok(v) = s.parse::<f64>() {
-                        values.push(v);
-                    } else {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Argument cannot be cast into number".to_string(),
-                        ));
-                    }
-                }
-            }
-            CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                let row1 = left.row;
-                let mut row2 = right.row;
-                let column1 = left.column;
-                let mut column2 = right.column;
-                if row1 == 1 && row2 == LAST_ROW {
-                    row2 = self
-                        .workbook
-                        .worksheet(left.sheet)
-                        .map_err(|_| {
-                            CalcResult::new_error(
-                                Error::ERROR,
-                                cell,
-                                format!("Invalid worksheet index: '{}'", left.sheet),
-                            )
-                        })?
-                        .dimension()
-                        .max_row;
-                }
-                if column1 == 1 && column2 == LAST_COLUMN {
-                    column2 = self
-                        .workbook
-                        .worksheet(left.sheet)
-                        .map_err(|_| {
-                            CalcResult::new_error(
-                                Error::ERROR,
-                                cell,
-                                format!("Invalid worksheet index: '{}'", left.sheet),
-                            )
-                        })?
-                        .dimension()
-                        .max_column;
-                }
-                for row in row1..=row2 {
-                    for column in column1..=column2 {
-                        let v = self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        });
-                        match v {
-                            CalcResult::Number(num) => values.push(num),
-                            CalcResult::Error { .. } => return Err(v),
-                            _ => {}
-                        }
-                    }
-                }
-            }
-            CalcResult::Error { .. } => return Err(result),
-            CalcResult::Array(_) => {
-                return Err(CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Arrays not supported yet".to_string(),
-                })
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-        }
-        Ok(values)
+        collect_numeric_values(
+            self,
+            std::slice::from_ref(arg),
+            cell,
+            CollectOpts::default(),
+        )
     }
 
     pub(crate) fn fn_percentile_inc(

@@ -11,6 +11,26 @@ use crate::{
     model::Model,
 };
 
+#[derive(Clone, Copy, Debug)]
+pub struct CollectOpts {
+    /// When true booleans that come from *cell references* are converted to 1/0 and counted.
+    /// When false they are ignored (Excel behaviour for most statistical functions).
+    pub include_bool_refs: bool,
+    /// How to handle strings coming from *cell references* that are not parsable as numbers.
+    /// * false – propagate #VALUE! (default Excel statistical functions behaviour)
+    /// * true  – treat them as 0 (behaviour of the "…A" family – STDEVA, VARPA, …)
+    pub string_ref_as_zero: bool,
+}
+
+impl Default for CollectOpts {
+    fn default() -> Self {
+        Self {
+            include_bool_refs: false,
+            string_ref_as_zero: false,
+        }
+    }
+}
+
 /// This test for exact match (modulo case).
 ///   * strings are not cast into bools or numbers
 ///   * empty cell is not cast into empty string or zero
@@ -407,32 +427,51 @@ pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResul
     }
 }
 
-/// Collects all numeric values from a function’s argument list.
-///
-/// Traverses each Node, evaluates it in context, and returns the numeric
-/// scalars as `Ok(Vec<f64>)`.  Propagates the first error encountered.
-///
-/// Behaviour rules (Excel-compatible):
-/// • Booleans in literals become 1/0; booleans coming from cell references are ignored.
-/// • Strings that can be parsed as numbers are accepted when literal (not via reference).
-/// • Non-numeric values, empty cells, and text are skipped.
-/// • Encountered `#ERROR!` values are propagated immediately.
-/// • Ranges are flattened cell-by-cell; cross-sheet ranges trigger `#VALUE!`.
-///
-/// Requires `&mut Model` because range evaluation queries live cell state.
+// ---------------------------------------------------------------------------
+// Generic numeric collector with configurable behaviour
+// ---------------------------------------------------------------------------
+/// Walks every argument node applying Excel-compatible coercion rules and
+/// returns a flat `Vec<f64>`.
+/// Behaviour is controlled through `CollectOpts` so that one routine can serve
+/// AVERAGE, STDEVA, CORREL, etc.
 pub(crate) fn collect_numeric_values(
     model: &mut Model,
     args: &[Node],
     cell: CellReferenceIndex,
+    opts: CollectOpts,
 ) -> Result<Vec<f64>, CalcResult> {
     let mut values = Vec::new();
+
     for arg in args {
         match model.evaluate_node_in_context(arg, cell) {
             CalcResult::Number(v) => values.push(v),
             CalcResult::Boolean(b) => {
-                if !matches!(arg, Node::ReferenceKind { .. }) {
+                if matches!(arg, Node::ReferenceKind { .. }) {
+                    if opts.include_bool_refs {
+                        values.push(if b { 1.0 } else { 0.0 });
+                    }
+                } else {
                     values.push(if b { 1.0 } else { 0.0 });
                 }
+            }
+            CalcResult::String(s) => {
+                // String literals – we always try to coerce to number.
+                if !matches!(arg, Node::ReferenceKind { .. }) {
+                    if let Ok(t) = s.parse::<f64>() {
+                        values.push(t);
+                    } else {
+                        return Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Argument cannot be cast into number".to_string(),
+                        ));
+                    }
+                    continue;
+                }
+                // String coming from reference
+                if opts.string_ref_as_zero {
+                    values.push(0.0);
+                } // else: silently skip non-numeric string references (Excel behaviour)
             }
             CalcResult::Range { left, right } => {
                 if left.sheet != right.sheet {
@@ -450,36 +489,48 @@ pub(crate) fn collect_numeric_values(
                             column,
                         }) {
                             CalcResult::Number(v) => values.push(v),
+                            CalcResult::Boolean(b) => {
+                                if opts.include_bool_refs {
+                                    values.push(if b { 1.0 } else { 0.0 });
+                                }
+                            }
+                            CalcResult::String(_) => {
+                                if opts.string_ref_as_zero {
+                                    values.push(0.0);
+                                }
+                            }
                             error @ CalcResult::Error { .. } => return Err(error),
                             CalcResult::Range { .. } => {
                                 return Err(CalcResult::new_error(
                                     Error::ERROR,
                                     cell,
                                     "Unexpected Range".to_string(),
-                                ));
+                                ))
                             }
-                            _ => {}
+                            CalcResult::Array(_) => {
+                                return Err(CalcResult::Error {
+                                    error: Error::NIMPL,
+                                    origin: cell,
+                                    message: "Arrays not supported yet".to_string(),
+                                })
+                            }
+                            CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                         }
                     }
                 }
             }
             error @ CalcResult::Error { .. } => return Err(error),
-            CalcResult::String(s) => {
-                if !matches!(arg, Node::ReferenceKind { .. }) {
-                    if let Ok(t) = s.parse::<f64>() {
-                        values.push(t);
-                    } else {
-                        return Err(CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Argument cannot be cast into number".to_string(),
-                        });
-                    }
-                }
+            CalcResult::Array(_) => {
+                return Err(CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                })
             }
-            _ => {}
+            CalcResult::EmptyCell | CalcResult::EmptyArg => {}
         }
     }
+
     Ok(values)
 }
 
