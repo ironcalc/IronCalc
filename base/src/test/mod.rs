@@ -54,6 +54,7 @@ mod test_fn_offset;
 mod test_number_format;
 
 mod test_arrays;
+mod test_degrees_radians;
 mod test_escape_quotes;
 mod test_extend;
 mod test_fn_fv;

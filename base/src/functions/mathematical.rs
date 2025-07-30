@@ -461,6 +461,8 @@ impl Model {
     single_number_fn!(fn_asinh, |f| Ok(f64::asinh(f)));
     single_number_fn!(fn_acosh, |f| Ok(f64::acosh(f)));
     single_number_fn!(fn_atanh, |f| Ok(f64::atanh(f)));
+    single_number_fn!(fn_degrees, |f: f64| Ok(f.to_degrees()));
+    single_number_fn!(fn_radians, |f: f64| Ok(f.to_radians()));
     single_number_fn!(fn_abs, |f| Ok(f64::abs(f)));
     single_number_fn!(fn_sqrt, |f| if f < 0.0 {
         Err(Error::NUM)
