@@ -49,9 +49,9 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ISO.CEILING     | <Badge type="info" text="Not implemented yet" /> | –             |
 | LCM             | <Badge type="tip" text="Available" />          | [LCM](math_and_trigonometry/lcm) |
 | LET             | <Badge type="info" text="Not implemented yet" /> | –             |
-| LN              | <Badge type="info" text="Not implemented yet" /> | –             |
-| LOG             | <Badge type="info" text="Not implemented yet" /> | –             |
-| LOG10           | <Badge type="info" text="Not implemented yet" /> | –             |
+| LN              | <Badge type="tip" text="Available" />          | –             |
+| LOG             | <Badge type="tip" text="Available" />          | –             |
+| LOG10           | <Badge type="tip" text="Available" />          | –             |
 | MDETERM         | <Badge type="info" text="Not implemented yet" /> | –             |
 | MINVERSE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | MMULT           | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -80,12 +80,12 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SIN             | <Badge type="tip" text="Available" />          | [SIN](math_and_trigonometry/sin) |
 | SINH            | <Badge type="tip" text="Available" />          | –             |
 | SQRT            | <Badge type="tip" text="Available" />          | –             |
-| SQRTPI          | <Badge type="info" text="Not implemented yet" /> | –             |
-| SUBTOTAL        | <Badge type="info" text="Not implemented yet" /> | –             |
+| SQRTPI          | <Badge type="tip" text="Available" />          | –             |
+| SUBTOTAL        | <Badge type="tip" text="Available" />          | –             |
 | SUM             | <Badge type="tip" text="Available" />          | –             |
 | SUMIF           | <Badge type="tip" text="Available" />          | –             |
 | SUMIFS          | <Badge type="tip" text="Available" />          | [SUMIFS](math_and_trigonometry/sumifs) |
-| SUMPRODUCT      | <Badge type="tip" text="Available" />          | [SUMPRODUCT](math_and_trigonometry/sumproduct) |
+| SUMPRODUCT      | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMSQ           | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMX2MY2        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMX2PY2        | <Badge type="info" text="Not implemented yet" /> | –             |
