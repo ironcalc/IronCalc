@@ -691,81 +691,14 @@ impl Model {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut values = Vec::new();
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => values.push(value),
-                CalcResult::Boolean(b) => {
-                    if !matches!(arg, Node::ReferenceKind { .. }) {
-                        values.push(if b { 1.0 } else { 0.0 });
-                    }
-                }
-                CalcResult::Range { left, right } => {
-                    let range_values = match scan_range(
-                        self,
-                        &Range { left, right },
-                        cell,
-                        ScanRangeOpts {
-                            expand_full_ranges: true,
-                        },
-                        |cell_result| match cell_result {
-                            CalcResult::Number(v) => Ok(Some(*v)),
-                            CalcResult::Error { .. } => Err(cell_result.clone()),
-                            _ => Ok(None),
-                        },
-                    ) {
-                        Ok(v) => v,
-                        Err(e) => return e,
-                    };
-                    values.extend(range_values);
-                }
-                CalcResult::String(s) => {
-                    if !matches!(arg, Node::ReferenceKind { .. }) {
-                        if let Ok(t) = s.parse::<f64>() {
-                            values.push(t);
-                        } else {
-                            return CalcResult::Error {
-                                error: Error::VALUE,
-                                origin: cell,
-                                message: "Argument cannot be cast into number".to_string(),
-                            };
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::Array(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
-                _ => {}
-            }
+        let values = match collect_numeric_values(self, args, cell, CollectOpts::default()) {
+            Ok(v) => v,
+            Err(err) => return err,
+        };
+        match self.compute_mean_variance_std(&values, sample, cell) {
+            Ok((_, variance, _)) => CalcResult::Number(variance),
+            Err(error) => error,
         }
-        let count = values.len() as f64;
-        if (sample && count < 2.0) || (!sample && count == 0.0) {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by 0".to_string(),
-            };
-        }
-        let mut sum = 0.0;
-        for v in &values {
-            sum += *v;
-        }
-        let mean = sum / count;
-        let mut var = 0.0;
-        for v in &values {
-            var += (*v - mean).powi(2);
-        }
-        if sample {
-            var /= count - 1.0;
-        } else {
-            var /= count;
-        }
-        CalcResult::Number(var)
     }
 
     pub(crate) fn fn_correl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -989,23 +922,36 @@ impl Model {
         self.stdev(&values, false, cell)
     }
 
+    /// Computes mean, variance, and standard deviation for a dataset.
+    /// Returns (mean, variance, std_dev) or an error for insufficient data.
+    fn compute_mean_variance_std(
+        &self,
+        values: &[f64],
+        sample: bool,
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64, f64), CalcResult> {
+        let n = values.len() as f64;
+        if (sample && n < 2.0) || (!sample && n == 0.0) {
+            return Err(CalcResult::new_error(
+                Error::DIV,
+                cell,
+                "Division by Zero".to_string(),
+            ));
+        }
+
+        let mean = values.iter().sum::<f64>() / n;
+        let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>()
+            / if sample { n - 1.0 } else { n };
+        let std_dev = variance.sqrt();
+
+        Ok((mean, variance, std_dev))
+    }
+
     fn stdev(&self, values: &[f64], sample: bool, cell: CellReferenceIndex) -> CalcResult {
-        let n = values.len();
-        if (sample && n < 2) || (!sample && n == 0) {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+        match self.compute_mean_variance_std(values, sample, cell) {
+            Ok((_, _, std_dev)) => CalcResult::Number(std_dev),
+            Err(error) => error,
         }
-        let sum: f64 = values.iter().sum();
-        let mean = sum / n as f64;
-        let mut variance = 0.0;
-        for v in values {
-            variance += (*v - mean).powi(2);
-        }
-        if sample {
-            variance /= n as f64 - 1.0;
-        } else {
-            variance /= n as f64;
-        }
-        CalcResult::Number(variance.sqrt())
     }
 
     fn get_a_values(
@@ -1028,22 +974,10 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let l = values.len();
-        if l < 2 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by 0".to_string(),
-            };
+        match self.compute_mean_variance_std(&values, true, cell) {
+            Ok((_, _, std_dev)) => CalcResult::Number(std_dev),
+            Err(error) => error,
         }
-        let sum: f64 = values.iter().sum();
-        let mean = sum / l as f64;
-        let mut var = 0.0;
-        for v in &values {
-            var += (v - mean).powi(2);
-        }
-        var /= l as f64 - 1.0;
-        CalcResult::Number(var.sqrt())
     }
 
     pub(crate) fn fn_stdevpa(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1054,22 +988,10 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let l = values.len();
-        if l == 0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by 0".to_string(),
-            };
+        match self.compute_mean_variance_std(&values, false, cell) {
+            Ok((_, _, std_dev)) => CalcResult::Number(std_dev),
+            Err(error) => error,
         }
-        let sum: f64 = values.iter().sum();
-        let mean = sum / l as f64;
-        let mut var = 0.0;
-        for v in &values {
-            var += (v - mean).powi(2);
-        }
-        var /= l as f64;
-        CalcResult::Number(var.sqrt())
     }
 
     pub(crate) fn fn_vara(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1080,22 +1002,10 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let l = values.len();
-        if l < 2 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by 0".to_string(),
-            };
+        match self.compute_mean_variance_std(&values, true, cell) {
+            Ok((_, variance, _)) => CalcResult::Number(variance),
+            Err(error) => error,
         }
-        let sum: f64 = values.iter().sum();
-        let mean = sum / l as f64;
-        let mut var = 0.0;
-        for v in &values {
-            var += (v - mean).powi(2);
-        }
-        var /= l as f64 - 1.0;
-        CalcResult::Number(var)
     }
 
     pub(crate) fn fn_varpa(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1106,22 +1016,10 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let l = values.len();
-        if l == 0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by 0".to_string(),
-            };
+        match self.compute_mean_variance_std(&values, false, cell) {
+            Ok((_, variance, _)) => CalcResult::Number(variance),
+            Err(error) => error,
         }
-        let sum: f64 = values.iter().sum();
-        let mean = sum / l as f64;
-        let mut var = 0.0;
-        for v in &values {
-            var += (v - mean).powi(2);
-        }
-        var /= l as f64;
-        CalcResult::Number(var)
     }
 
     pub(crate) fn fn_skew(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1192,12 +1090,17 @@ impl Model {
             return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
         }
 
-        let mean = values.iter().sum::<f64>() / n as f64;
-        let mut var = 0.0;
-        for &v in &values {
-            var += (v - mean).powi(2);
-        }
-        let std = (var / (n as f64 - 1.0)).sqrt();
+        let (mean, std) = match self.compute_mean_variance_std(&values, true, cell) {
+            Ok((m, _v, s)) => (m, s),
+            Err(_) => {
+                // For skew, we need our own validation since n >= 3 is required
+                let mean = values.iter().sum::<f64>() / n as f64;
+                let variance =
+                    values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (n as f64 - 1.0);
+                (mean, variance.sqrt())
+            }
+        };
+
         if std == 0.0 {
             return CalcResult::new_error(Error::DIV, cell, "division by 0".to_string());
         }
@@ -1270,12 +1173,11 @@ impl Model {
             return CalcResult::new_error(Error::DIV, cell, "Division by Zero".to_string());
         }
 
-        let mean = values.iter().sum::<f64>() / n as f64;
-        let mut var = 0.0;
-        for &v in &values {
-            var += (v - mean).powi(2);
-        }
-        let std = (var / n as f64).sqrt();
+        let (mean, std) = match self.compute_mean_variance_std(&values, false, cell) {
+            Ok((m, _v, s)) => (m, s),
+            Err(error) => return error,
+        };
+
         if std == 0.0 {
             return CalcResult::new_error(Error::DIV, cell, "division by 0".to_string());
         }
