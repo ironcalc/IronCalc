@@ -801,15 +801,15 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (data1, len1) = match self.correl_collect(&args[0], cell) {
-            Ok(v) => v,
+        let series1 = match collect_series(self, &args[0], cell, true) {
+            Ok(s) => s,
             Err(e) => return e,
         };
-        let (data2, len2) = match self.correl_collect(&args[1], cell) {
-            Ok(v) => v,
+        let series2 = match collect_series(self, &args[1], cell, true) {
+            Ok(s) => s,
             Err(e) => return e,
         };
-        if len1 != len2 {
+        if series1.len() != series2.len() {
             return CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
@@ -817,8 +817,8 @@ impl Model {
             };
         }
         let mut pairs = Vec::new();
-        for i in 0..len1 {
-            if let (Some(x), Some(y)) = (data1[i], data2[i]) {
+        for i in 0..series1.len() {
+            if let (Some(x), Some(y)) = (series1[i], series2[i]) {
                 pairs.push((x, y));
             }
         }
@@ -858,15 +858,7 @@ impl Model {
         CalcResult::Number(num / (sx.sqrt() * sy.sqrt()))
     }
 
-    fn correl_collect(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<(Vec<Option<f64>>, usize), CalcResult> {
-        let series = collect_series(self, node, cell)?;
-        let len = series.len();
-        Ok((series, len))
-    }
+
 
     pub(crate) fn fn_large(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
@@ -1872,8 +1864,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<(f64, f64), CalcResult> {
         // Collect series while preserving order / Option<f64> placeholders
-        let ys = collect_series(self, ys_node, cell)?;
-        let xs = collect_series(self, xs_node, cell)?;
+        let ys = collect_series(self, ys_node, cell, true)?;
+        let xs = collect_series(self, xs_node, cell, true)?;
 
         if ys.len() != xs.len() {
             return Err(CalcResult::new_error(

@@ -3,6 +3,7 @@ use regex_lite as regex;
 
 use crate::{
     calc_result::CalcResult,
+    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{ArrayNode, Node},
         token::{is_english_error_string, Error},
@@ -11,7 +12,7 @@ use crate::{
     model::Model,
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct CollectOpts {
     /// When true booleans that come from *cell references* are converted to 1/0 and counted.
     /// When false they are ignored (Excel behaviour for most statistical functions).
@@ -20,15 +21,6 @@ pub struct CollectOpts {
     /// * false – propagate #VALUE! (default Excel statistical functions behaviour)
     /// * true  – treat them as 0 (behaviour of the "…A" family – STDEVA, VARPA, …)
     pub string_ref_as_zero: bool,
-}
-
-impl Default for CollectOpts {
-    fn default() -> Self {
-        Self {
-            include_bool_refs: false,
-            string_ref_as_zero: false,
-        }
-    }
 }
 
 /// This test for exact match (modulo case).
@@ -547,10 +539,13 @@ pub(crate) fn collect_numeric_values(
 ///   references are ignored.
 /// - Non-numeric cells become `None`, keeping the alignment between two series.
 /// - Ranges crossing sheets cause a `#VALUE!` error.
+/// - When `expand_full_rows_cols` is true, whole-row/whole-column ranges are
+///   reduced to the sheet's actual dimensions.
 pub(crate) fn collect_series(
     model: &mut Model,
     node: &Node,
     cell: CellReferenceIndex,
+    expand_full_rows_cols: bool,
 ) -> Result<Vec<Option<f64>>, CalcResult> {
     let is_reference = matches!(
         node,
@@ -587,9 +582,45 @@ pub(crate) fn collect_series(
                     "Ranges are in different sheets".to_string(),
                 ));
             }
+            let row1 = left.row;
+            let mut row2 = right.row;
+            let col1 = left.column;
+            let mut col2 = right.column;
+
+            if expand_full_rows_cols {
+                if row1 == 1 && row2 == LAST_ROW {
+                    row2 = model
+                        .workbook
+                        .worksheet(left.sheet)
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
+                        .dimension()
+                        .max_row;
+                }
+                if col1 == 1 && col2 == LAST_COLUMN {
+                    col2 = model
+                        .workbook
+                        .worksheet(left.sheet)
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            )
+                        })?
+                        .dimension()
+                        .max_column;
+                }
+            }
+
             let mut values = Vec::new();
-            for row in left.row..=right.row {
-                for column in left.column..=right.column {
+            for row in row1..=row2 {
+                for column in col1..=col2 {
                     let cell_result = model.evaluate_cell(CellReferenceIndex {
                         sheet: left.sheet,
                         row,
