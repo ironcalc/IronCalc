@@ -858,8 +858,6 @@ impl Model {
         CalcResult::Number(num / (sx.sqrt() * sy.sqrt()))
     }
 
-
-
     pub(crate) fn fn_large(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -1339,148 +1337,43 @@ impl Model {
         self.fn_quartile_inc(args, cell)
     }
 
-    pub(crate) fn fn_rank_eq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() < 2 || args.len() > 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let number = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let range = match self.get_reference(&args[1], cell) {
-            Ok(r) => r,
-            Err(e) => return e,
-        };
-        let order = if args.len() == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f != 0.0,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
-
-        let mut values = Vec::new();
-        if range.left.sheet != range.right.sheet {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Ranges are in different sheets".to_string(),
-            );
-        }
-        for row in range.left.row..=range.right.row {
-            for column in range.left.column..=range.right.column {
-                match self.evaluate_cell(CellReferenceIndex {
-                    sheet: range.left.sheet,
-                    row,
-                    column,
-                }) {
-                    CalcResult::Number(v) => values.push(v),
-                    CalcResult::Error { .. } => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Invalid value".to_string(),
-                        )
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        if values.is_empty() {
-            return CalcResult::new_error(Error::NUM, cell, "Empty range".to_string());
-        }
-
-        let mut greater = 0;
-        let mut found = false;
-        for v in &values {
-            if order {
-                if *v < number {
-                    greater += 1;
-                } else if (*v - number).abs() < f64::EPSILON {
-                    found = true;
-                }
-            } else if *v > number {
-                greater += 1;
-            } else if (*v - number).abs() < f64::EPSILON {
-                found = true;
-            }
-        }
-
-        if !found {
-            return CalcResult::new_error(Error::NA, cell, "Number not found in range".to_string());
-        }
-
-        let rank = (greater + 1) as f64;
-        CalcResult::Number(rank)
-    }
-
-    pub(crate) fn fn_rank_avg(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() < 2 || args.len() > 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let number = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let range = match self.get_reference(&args[1], cell) {
-            Ok(r) => r,
-            Err(e) => return e,
-        };
-        let order = if args.len() == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f != 0.0,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
-
-        if range.left.sheet != range.right.sheet {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Ranges are in different sheets".to_string(),
-            );
-        }
-        let mut values = Vec::new();
-        for row in range.left.row..=range.right.row {
-            for column in range.left.column..=range.right.column {
-                match self.evaluate_cell(CellReferenceIndex {
-                    sheet: range.left.sheet,
-                    row,
-                    column,
-                }) {
-                    CalcResult::Number(v) => values.push(v),
-                    CalcResult::Error { .. } => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Invalid value".to_string(),
-                        )
-                    }
-                    _ => {}
-                }
-            }
-        }
-
+    /// Shared computation logic for RANK functions.
+    /// 
+    /// Computes the rank of `number` within `values` according to the specified ordering.
+    /// 
+    /// Parameters:
+    /// - `values`: Vector of numeric values to rank within
+    /// - `number`: The number to find the rank of
+    /// - `ascending`: If true, rank in ascending order (1 = smallest); if false, descending (1 = largest)
+    /// - `average_ties`: If true, average tied ranks (RANK.AVG); if false, return minimum rank (RANK.EQ)
+    /// - `cell`: Cell reference for error reporting
+    /// 
+    /// Returns the computed rank as a CalcResult::Number, or an error if the number is not found.
+    fn compute_rank(
+        &self,
+        values: &[f64],
+        number: f64,
+        ascending: bool,
+        average_ties: bool,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         if values.is_empty() {
             return CalcResult::new_error(Error::NUM, cell, "Empty range".to_string());
         }
 
         let mut greater = 0;
         let mut equal = 0;
-        for v in &values {
-            if order {
-                if *v < number {
+        
+        for &v in values {
+            if ascending {
+                if v < number {
                     greater += 1;
-                } else if (*v - number).abs() < f64::EPSILON {
+                } else if (v - number).abs() < f64::EPSILON {
                     equal += 1;
                 }
-            } else if *v > number {
+            } else if v > number {
                 greater += 1;
-            } else if (*v - number).abs() < f64::EPSILON {
+            } else if (v - number).abs() < f64::EPSILON {
                 equal += 1;
             }
         }
@@ -1489,8 +1382,115 @@ impl Model {
             return CalcResult::new_error(Error::NA, cell, "Number not found in range".to_string());
         }
 
-        let rank = greater as f64 + ((equal as f64 + 1.0) / 2.0);
+        let rank = if average_ties {
+            greater as f64 + ((equal as f64 + 1.0) / 2.0)
+        } else {
+            (greater + 1) as f64
+        };
+        
         CalcResult::Number(rank)
+    }
+
+    /// Extract numeric values from a range reference for ranking functions.
+    /// Returns an error if ranges are in different sheets or contain invalid values.
+    fn extract_range_values(
+        &mut self,
+        range: &Range,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
+        if range.left.sheet != range.right.sheet {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Ranges are in different sheets".to_string(),
+            ));
+        }
+
+        let mut values = Vec::new();
+        for row in range.left.row..=range.right.row {
+            for column in range.left.column..=range.right.column {
+                match self.evaluate_cell(CellReferenceIndex {
+                    sheet: range.left.sheet,
+                    row,
+                    column,
+                }) {
+                    CalcResult::Number(v) => values.push(v),
+                    CalcResult::Error { .. } => {
+                        return Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Invalid value".to_string(),
+                        ))
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(values)
+    }
+
+    pub(crate) fn fn_rank_eq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        
+        let number = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        
+        let range = match self.get_reference(&args[1], cell) {
+            Ok(r) => r,
+            Err(e) => return e,
+        };
+        
+        let ascending = if args.len() == 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => f != 0.0,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+
+        let values = match self.extract_range_values(&range, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+
+        self.compute_rank(&values, number, ascending, false, cell)
+    }
+
+    pub(crate) fn fn_rank_avg(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        
+        let number = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        
+        let range = match self.get_reference(&args[1], cell) {
+            Ok(r) => r,
+            Err(e) => return e,
+        };
+        
+        let ascending = if args.len() == 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => f != 0.0,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+
+        let values = match self.extract_range_values(&range, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+
+        self.compute_rank(&values, number, ascending, true, cell)
     }
 
     pub(crate) fn fn_rank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
