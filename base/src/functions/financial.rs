@@ -1339,6 +1339,114 @@ impl Model {
         CalcResult::Number(result)
     }
 
+    // DURATION(settlement, maturity, coupon, yld, freq, [basis])
+    pub(crate) fn fn_duration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(5..=6).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let coupon = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let yld = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let freq = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 5 {
+            match self.get_number_no_bools(&args[5], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
+        };
+        if settlement >= maturity || coupon < 0.0 || yld < 0.0 || !matches!(freq, 1 | 2 | 4) {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
+        }
+
+        let days_in_year = match basis {
+            0 | 2 | 4 => 360.0,
+            1 | 3 => 365.0,
+            _ => 360.0,
+        };
+        let diff_days = maturity - settlement;
+        if diff_days <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
+        }
+        let yearfrac = diff_days / days_in_year;
+        let mut num_coupons = (yearfrac * freq as f64).ceil();
+        if num_coupons < 1.0 {
+            num_coupons = 1.0;
+        }
+
+        let cf = coupon * 100.0 / freq as f64;
+        let y = 1.0 + yld / freq as f64;
+        let ndiff = yearfrac * freq as f64 - num_coupons;
+        let mut dur = 0.0;
+        for t in 1..(num_coupons as i32) {
+            let tt = t as f64 + ndiff;
+            dur += tt * cf / y.powf(tt);
+        }
+        let last_t = num_coupons + ndiff;
+        dur += last_t * (cf + 100.0) / y.powf(last_t);
+
+        let mut price = 0.0;
+        for t in 1..(num_coupons as i32) {
+            let tt = t as f64 + ndiff;
+            price += cf / y.powf(tt);
+        }
+        price += (cf + 100.0) / y.powf(last_t);
+
+        if price == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+        }
+
+        let result = (dur / price) / freq as f64;
+        CalcResult::Number(result)
+    }
+
+    // MDURATION(settlement, maturity, coupon, yld, freq, [basis])
+    pub(crate) fn fn_mduration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let mut res = self.fn_duration(args, cell);
+        if let CalcResult::Number(ref mut d) = res {
+            let yld = match self.get_number_no_bools(&args[3], cell) {
+                Ok(f) => f,
+                Err(_) => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Invalid arguments".to_string(),
+                    )
+                }
+            };
+            let freq = match self.get_number_no_bools(&args[4], cell) {
+                Ok(f) => f.trunc(),
+                Err(_) => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Invalid arguments".to_string(),
+                    )
+                }
+            };
+            *d /= 1.0 + yld / freq;
+        }
+        res
+    }
+
     // This next three functions deal with Treasure Bills or T-Bills for short
     // They are zero-coupon that mature in one year or less.
     //  Definitions:
