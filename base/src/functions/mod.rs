@@ -232,6 +232,8 @@ pub enum Function {
     Nominal,
     Nper,
     Npv,
+    Duration,
+    Mduration,
     Pduration,
     Pmt,
     Ppmt,
@@ -313,7 +315,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 256> {
+    pub fn into_iter() -> IntoIter<Function, 258> {
         [
             Function::And,
             Function::False,
@@ -497,6 +499,8 @@ impl Function {
             Function::Syd,
             Function::Nominal,
             Function::Effect,
+            Function::Duration,
+            Function::Mduration,
             Function::Pduration,
             Function::Tbillyield,
             Function::Tbillprice,
@@ -832,6 +836,8 @@ impl Function {
             "SYD" => Some(Function::Syd),
             "NOMINAL" => Some(Function::Nominal),
             "EFFECT" => Some(Function::Effect),
+            "DURATION" => Some(Function::Duration),
+            "MDURATION" => Some(Function::Mduration),
             "PDURATION" | "_XLFN.PDURATION" => Some(Function::Pduration),
 
             "TBILLYIELD" => Some(Function::Tbillyield),
@@ -1075,6 +1081,8 @@ impl fmt::Display for Function {
             Function::Syd => write!(f, "SYD"),
             Function::Nominal => write!(f, "NOMINAL"),
             Function::Effect => write!(f, "EFFECT"),
+            Function::Duration => write!(f, "DURATION"),
+            Function::Mduration => write!(f, "MDURATION"),
             Function::Pduration => write!(f, "PDURATION"),
             Function::Tbillyield => write!(f, "TBILLYIELD"),
             Function::Tbillprice => write!(f, "TBILLPRICE"),
@@ -1352,6 +1360,8 @@ impl Model {
             Function::Syd => self.fn_syd(args, cell),
             Function::Nominal => self.fn_nominal(args, cell),
             Function::Effect => self.fn_effect(args, cell),
+            Function::Duration => self.fn_duration(args, cell),
+            Function::Mduration => self.fn_mduration(args, cell),
             Function::Pduration => self.fn_pduration(args, cell),
             Function::Tbillyield => self.fn_tbillyield(args, cell),
             Function::Tbillprice => self.fn_tbillprice(args, cell),

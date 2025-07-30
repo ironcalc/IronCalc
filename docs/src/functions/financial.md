@@ -28,7 +28,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | DISC       | <Badge type="info" text="Not implemented yet" /> | –                  |
 | DOLLARDE   | <Badge type="tip" text="Available" />          | –                  |
 | DOLLARFR   | <Badge type="tip" text="Available" />          | –                  |
-| DURATION   | <Badge type="info" text="Not implemented yet" /> | –                  |
+| DURATION   | <Badge type="tip" text="Available" />          | –                  |
 | EFFECT     | <Badge type="tip" text="Available" />          | –                  |
 | FV         | <Badge type="tip" text="Available" />          | [FV](financial/fv) |
 | FVSCHEDULE | <Badge type="info" text="Not implemented yet" /> | –                  |
@@ -36,7 +36,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | IPMT       | <Badge type="tip" text="Available" />          | –                  |
 | IRR        | <Badge type="tip" text="Available" />          | –                  |
 | ISPMT      | <Badge type="tip" text="Available" />          | –                  |
-| MDURATION  | <Badge type="info" text="Not implemented yet" /> | –                  |
+| MDURATION  | <Badge type="tip" text="Available" />          | –                  |
 | MIRR       | <Badge type="tip" text="Available" />          | –                  |
 | NOMINAL    | <Badge type="tip" text="Available" />          | –                  |
 | NPER       | <Badge type="tip" text="Available" />          | –                  |
