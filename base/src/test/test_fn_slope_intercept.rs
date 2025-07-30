@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::panic)]
 
+use crate::test::util::assert_approx_eq;
 use crate::test::util::new_empty_model;
 
 // =============================================================================
@@ -15,16 +16,6 @@ const STABILITY_TOLERANCE: f64 = 1e-6;
 // =============================================================================
 // TEST HELPER FUNCTIONS
 // =============================================================================
-
-fn assert_approx_eq(actual: &str, expected: f64, tolerance: f64) {
-    let actual_val: f64 = actual
-        .parse()
-        .unwrap_or_else(|_| panic!("Failed to parse result as number: {actual}"));
-    assert!(
-        (actual_val - expected).abs() < tolerance,
-        "Expected ~{expected}, got {actual}"
-    );
-}
 
 fn assert_slope_intercept_eq(
     model: &crate::Model,
