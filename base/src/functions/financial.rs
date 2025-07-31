@@ -10,13 +10,20 @@ use crate::{
 
 use super::financial_util::{compute_irr, compute_npv, compute_rate, compute_xirr, compute_xnpv};
 
+// Financial calculation constants
+const DAYS_30_360: i32 = 360;
+const DAYS_ACTUAL: i32 = 365;
+const DAYS_LEAP_YEAR: i32 = 366;
+const DAYS_PER_MONTH_360: i32 = 30;
+const TBILL_THRESHOLD_DAYS: f64 = 183.0;
+
 // See:
 // https://github.com/apache/openoffice/blob/c014b5f2b55cff8d4b0c952d5c16d62ecde09ca1/main/scaddins/source/analysis/financial.cxx
 
 fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bool, String> {
     let end = from_excel_date(end_date)?;
     let start = from_excel_date(start_date)?;
-    if end_date - start_date < 365 {
+    if end_date - start_date < DAYS_ACTUAL as i64 {
         return Ok(true);
     }
     let end_year = end.year();
@@ -61,20 +68,20 @@ fn days360_us(start: chrono::NaiveDate, end: chrono::NaiveDate) -> i32 {
 
     // Rule 1: If both date A and B fall on the last day of February, then date B will be changed to the 30th
     if is_last_day_of_feb(start) && is_last_day_of_feb(end) {
-        d2 = 30;
+        d2 = DAYS_PER_MONTH_360;
     }
 
     // Rule 2: If date A falls on the 31st of a month or last day of February, then date A will be changed to the 30th
     if d1 == 31 || is_last_day_of_feb(start) {
-        d1 = 30;
+        d1 = DAYS_PER_MONTH_360;
     }
 
     // Rule 3: If date A falls on the 30th after applying rule 2 and date B falls on the 31st, then date B will be changed to the 30th
-    if d1 == 30 && d2 == 31 {
-        d2 = 30;
+    if d1 == DAYS_PER_MONTH_360 && d2 == 31 {
+        d2 = DAYS_PER_MONTH_360;
     }
 
-    360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
+    DAYS_30_360 * (y2 - y1) + DAYS_PER_MONTH_360 * (m2 - m1) + (d2 - d1)
 }
 
 fn days360_eu(start: chrono::NaiveDate, end: chrono::NaiveDate) -> i32 {
@@ -86,13 +93,16 @@ fn days360_eu(start: chrono::NaiveDate, end: chrono::NaiveDate) -> i32 {
     let y2 = end.year();
 
     if d1 == 31 {
-        d1 = 30;
+        d1 = DAYS_PER_MONTH_360;
     }
     if d2 == 31 {
-        d2 = 30;
+        d2 = DAYS_PER_MONTH_360;
     }
 
-    d2 + m2 * 30 + y2 * 360 - d1 - m1 * 30 - y1 * 360
+    d2 + m2 * DAYS_PER_MONTH_360 + y2 * DAYS_30_360
+        - d1
+        - m1 * DAYS_PER_MONTH_360
+        - y1 * DAYS_30_360
 }
 
 fn days_30us_360(start: chrono::NaiveDate, end: chrono::NaiveDate) -> i32 {
@@ -107,20 +117,20 @@ fn days_30us_360(start: chrono::NaiveDate, end: chrono::NaiveDate) -> i32 {
 
     // Rule 1: If both date A and B fall on the last day of February, then date B will be changed to the 30th
     if is_last_day_of_feb(start) && is_last_day_of_feb(end) {
-        d2 = 30;
+        d2 = DAYS_PER_MONTH_360;
     }
 
     // Rule 2: If date A falls on the 31st of a month or last day of February, then date A will be changed to the 30th
     if d1 == 31 || is_last_day_of_feb(start) {
-        d1 = 30;
+        d1 = DAYS_PER_MONTH_360;
     }
 
     // Rule 3: If date A falls on the 30th after applying rule 2 and date B falls on the 31st, then date B will be changed to the 30th
-    if d1 == 30 && d2 == 31 {
-        d2 = 30;
+    if d1 == DAYS_PER_MONTH_360 && d2 == 31 {
+        d2 = DAYS_PER_MONTH_360;
     }
 
-    (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)
+    (y2 - y1) * DAYS_30_360 + (m2 - m1) * DAYS_PER_MONTH_360 + (d2 - d1)
 }
 
 fn days_30e_360(start: chrono::NaiveDate, end: chrono::NaiveDate) -> i32 {
@@ -131,12 +141,12 @@ fn days_30e_360(start: chrono::NaiveDate, end: chrono::NaiveDate) -> i32 {
     let y1 = start.year();
     let y2 = end.year();
     if d1 == 31 {
-        d1 = 30;
+        d1 = DAYS_PER_MONTH_360;
     }
     if d2 == 31 {
-        d2 = 30;
+        d2 = DAYS_PER_MONTH_360;
     }
-    (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)
+    (y2 - y1) * DAYS_30_360 + (m2 - m1) * DAYS_PER_MONTH_360 + (d2 - d1)
 }
 
 fn days_between(start: i64, end: i64, basis: i32) -> Result<i32, String> {
@@ -152,15 +162,15 @@ fn days_between(start: i64, end: i64, basis: i32) -> Result<i32, String> {
 
 fn days_in_year(date: chrono::NaiveDate, basis: i32) -> Result<i32, String> {
     Ok(match basis {
-        0 | 2 | 4 => 360,
+        0 | 2 | 4 => DAYS_30_360,
         1 => {
             if is_leap_year(date.year()) {
-                366
+                DAYS_LEAP_YEAR
             } else {
-                365
+                DAYS_ACTUAL
             }
         }
-        3 => 365,
+        3 => DAYS_ACTUAL,
         _ => return Err("invalid basis".to_string()),
     })
 }
@@ -182,11 +192,11 @@ fn year_fraction(
     basis: i32,
 ) -> Result<f64, String> {
     let days = match basis {
-        0 => days_30us_360(start, end) as f64 / 360.0,
-        1 => (end - start).num_days() as f64 / 365.0,
-        2 => (end - start).num_days() as f64 / 360.0,
-        3 => (end - start).num_days() as f64 / 365.0,
-        4 => days_30e_360(start, end) as f64 / 360.0,
+        0 => days_30us_360(start, end) as f64 / DAYS_30_360 as f64,
+        1 => (end - start).num_days() as f64 / DAYS_ACTUAL as f64,
+        2 => (end - start).num_days() as f64 / DAYS_30_360 as f64,
+        3 => (end - start).num_days() as f64 / DAYS_ACTUAL as f64,
+        4 => days_30e_360(start, end) as f64 / DAYS_30_360 as f64,
         _ => return Err("Invalid basis".to_string()),
     };
     Ok(days)
@@ -1777,9 +1787,9 @@ impl Model {
         }
 
         let days_in_year = match basis {
-            0 | 2 | 4 => 360.0,
-            1 | 3 => 365.0,
-            _ => 360.0,
+            0 | 2 | 4 => DAYS_30_360 as f64,
+            1 | 3 => DAYS_ACTUAL as f64,
+            _ => DAYS_30_360 as f64,
         };
         let diff_days = maturity - settlement;
         if diff_days <= 0.0 {
@@ -1902,14 +1912,18 @@ impl Model {
         }
         // days to maturity
         let d_m = maturity - settlement;
-        let result = if d_m < 183.0 {
-            365.0 * discount / (360.0 - discount * d_m)
+        let result = if d_m < TBILL_THRESHOLD_DAYS {
+            DAYS_ACTUAL as f64 * discount / (DAYS_30_360 as f64 - discount * d_m)
         } else {
             // Equation here is:
             // (1-days*rate/360)*(1+y/2)*(1+d_extra*y/year)=1
-            let year = if d_m == 366.0 { 366.0 } else { 365.0 };
+            let year = if d_m == DAYS_LEAP_YEAR as f64 {
+                DAYS_LEAP_YEAR as f64
+            } else {
+                DAYS_ACTUAL as f64
+            };
             let d_extra = d_m - year / 2.0;
-            let alpha = 1.0 - d_m * discount / 360.0;
+            let alpha = 1.0 - d_m * discount / DAYS_30_360 as f64;
             let beta = 0.5 + d_extra / year;
             // ay^2+by+c=0
             let a = d_extra * alpha / (year * 2.0);
@@ -1967,7 +1981,7 @@ impl Model {
         }
         // days to maturity
         let d_m = maturity - settlement;
-        let result = 100.0 * (1.0 - discount * d_m / 360.0);
+        let result = 100.0 * (1.0 - discount * d_m / DAYS_30_360 as f64);
         if result.is_infinite() {
             return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
         }
@@ -2017,7 +2031,7 @@ impl Model {
             return CalcResult::new_error(Error::NUM, cell, "discount should be >0".to_string());
         }
         let days = maturity - settlement;
-        let result = (100.0 - pr) * 360.0 / (pr * days);
+        let result = (100.0 - pr) * DAYS_30_360 as f64 / (pr * days);
 
         CalcResult::Number(result)
     }
@@ -2047,7 +2061,7 @@ impl Model {
             Err(s) => return s,
         };
         let frequency = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => f.round() as i32,
+            Ok(f) => f.trunc() as i32,
             Err(s) => return s,
         };
         if frequency != 1 && frequency != 2 && frequency != 4 {
@@ -2064,15 +2078,21 @@ impl Model {
                 "settlement should be < maturity".to_string(),
             );
         }
-        if args.len() == 7 {
-            let _basis = match self.get_number_no_bools(&args[6], cell) {
-                Ok(f) => f,
+        let basis = if args.len() == 7 {
+            match self.get_number_no_bools(&args[6], cell) {
+                Ok(f) => f.trunc() as i32,
                 Err(s) => return s,
-            };
-            // basis is currently ignored
-        }
+            }
+        } else {
+            0
+        };
+        let days_in_year = match basis {
+            0 | 2 | 4 => DAYS_30_360 as f64,
+            1 | 3 => DAYS_ACTUAL as f64,
+            _ => DAYS_30_360 as f64,
+        };
         let days = maturity - settlement;
-        let periods = ((days * frequency as f64) / 365.0).round();
+        let periods = ((days * frequency as f64) / days_in_year).round();
         if periods <= 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "invalid dates".to_string());
         }
@@ -2225,7 +2245,7 @@ impl Model {
             Err(s) => return s,
         };
         let frequency = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => f.round() as i32,
+            Ok(f) => f.trunc() as i32,
             Err(s) => return s,
         };
         if frequency != 1 && frequency != 2 && frequency != 4 {
@@ -2242,15 +2262,21 @@ impl Model {
                 "settlement should be < maturity".to_string(),
             );
         }
-        if args.len() == 7 {
-            let _basis = match self.get_number_no_bools(&args[6], cell) {
-                Ok(f) => f,
+        let basis = if args.len() == 7 {
+            match self.get_number_no_bools(&args[6], cell) {
+                Ok(f) => f.trunc() as i32,
                 Err(s) => return s,
-            };
-            // basis ignored
-        }
+            }
+        } else {
+            0
+        };
+        let days_in_year = match basis {
+            0 | 2 | 4 => DAYS_30_360 as f64,
+            1 | 3 => DAYS_ACTUAL as f64,
+            _ => DAYS_30_360 as f64,
+        };
         let days = maturity - settlement;
-        let periods = ((days * frequency as f64) / 365.0).round();
+        let periods = ((days * frequency as f64) / days_in_year).round();
         if periods <= 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "invalid dates".to_string());
         }
@@ -2611,7 +2637,7 @@ impl Model {
 
         let (pcd, ncd) = coupon_dates(settlement_date, maturity_date, frequency);
         let days = match basis {
-            0 | 4 => 360 / frequency,                 // 30/360 conventions
+            0 | 4 => DAYS_30_360 / frequency,         // 30/360 conventions
             _ => days_between_dates(pcd, ncd, basis), // Actual day counts
         };
         CalcResult::Number(days as f64)
