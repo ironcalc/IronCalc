@@ -531,3 +531,33 @@ fn test_user_model() {
     // we can still use the model afterwards
     model.set_rows_height(0, 1, 1, 100.0).unwrap();
 }
+
+// This is produced with:
+// from openpyxl import Workbook
+
+// # Create new workbook
+// wb = Workbook()
+// ws = wb.active
+
+// # Write text and formula
+// ws['A1'] = 'Hello, World!'
+// ws['A2'] = '=1+1'
+
+// ws['B1'] = '=CONCAT("It is", " what it is")'
+
+// # Save
+// wb.save('openpyxl_example.xlsx')
+#[test]
+fn test_pyopenxl_example() {
+    let mut model = load_from_xlsx("tests/openpyxl_example.xlsx", "en", "UTC").unwrap();
+    model.evaluate();
+
+    let a1 = model.get_formatted_cell_value(0, 1, 1).unwrap();
+    assert_eq!(a1, "Hello, World!");
+
+    let a2 = model.get_formatted_cell_value(0, 2, 1).unwrap();
+    assert_eq!(a2, "2");
+
+    let b1 = model.get_formatted_cell_value(0, 1, 2).unwrap();
+    assert_eq!(b1, "It is what it is");
+}
