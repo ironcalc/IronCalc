@@ -11,6 +11,8 @@ mod test_datedif_leap_month_end;
 mod test_days360_month_end;
 mod test_degrees_radians;
 mod test_error_propagation;
+mod test_fn_accrint;
+mod test_fn_accrintm;
 mod test_fn_average;
 mod test_fn_averageifs;
 mod test_fn_choose;

@@ -217,6 +217,8 @@ pub enum Function {
     Isoweeknum,
 
     // Financial
+    Accrint,
+    Accrintm,
     Cumipmt,
     Cumprinc,
     Db,
@@ -325,7 +327,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 268> {
+    pub fn into_iter() -> IntoIter<Function, 270> {
         [
             Function::And,
             Function::False,
@@ -486,6 +488,8 @@ impl Function {
             Function::WorkdayIntl,
             Function::Yearfrac,
             Function::Isoweeknum,
+            Function::Accrint,
+            Function::Accrintm,
             Function::Pmt,
             Function::Pv,
             Function::Rate,
@@ -837,6 +841,8 @@ impl Function {
             "YEARFRAC" => Some(Function::Yearfrac),
             "ISOWEEKNUM" | "_XLFN.ISOWEEKNUM" => Some(Function::Isoweeknum),
             // Financial
+            "ACCRINT" => Some(Function::Accrint),
+            "ACCRINTM" => Some(Function::Accrintm),
             "PMT" => Some(Function::Pmt),
             "PV" => Some(Function::Pv),
             "RATE" => Some(Function::Rate),
@@ -1088,6 +1094,8 @@ impl fmt::Display for Function {
             Function::WorkdayIntl => write!(f, "WORKDAY.INTL"),
             Function::Yearfrac => write!(f, "YEARFRAC"),
             Function::Isoweeknum => write!(f, "ISOWEEKNUM"),
+            Function::Accrint => write!(f, "ACCRINT"),
+            Function::Accrintm => write!(f, "ACCRINTM"),
             Function::Pmt => write!(f, "PMT"),
             Function::Pv => write!(f, "PV"),
             Function::Rate => write!(f, "RATE"),
@@ -1377,6 +1385,9 @@ impl Model {
             Function::WorkdayIntl => self.fn_workday_intl(args, cell),
             Function::Yearfrac => self.fn_yearfrac(args, cell),
             Function::Isoweeknum => self.fn_isoweeknum(args, cell),
+            // Financial
+            Function::Accrint => self.fn_accrint(args, cell),
+            Function::Accrintm => self.fn_accrintm(args, cell),
             Function::Pmt => self.fn_pmt(args, cell),
             Function::Pv => self.fn_pv(args, cell),
             Function::Rate => self.fn_rate(args, cell),
