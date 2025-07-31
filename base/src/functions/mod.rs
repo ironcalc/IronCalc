@@ -157,6 +157,8 @@ pub enum Function {
     Year,
 
     // Financial
+    Accrint,
+    Accrintm,
     Cumipmt,
     Cumprinc,
     Db,
@@ -265,7 +267,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 210> {
+    pub fn into_iter() -> IntoIter<Function, 212> {
         [
             Function::And,
             Function::False,
@@ -377,6 +379,8 @@ impl Function {
             Function::Edate,
             Function::Today,
             Function::Now,
+            Function::Accrint,
+            Function::Accrintm,
             Function::Pmt,
             Function::Pv,
             Function::Rate,
@@ -659,6 +663,8 @@ impl Function {
             "TODAY" => Some(Function::Today),
             "NOW" => Some(Function::Now),
             // Financial
+            "ACCRINT" => Some(Function::Accrint),
+            "ACCRINTM" => Some(Function::Accrintm),
             "PMT" => Some(Function::Pmt),
             "PV" => Some(Function::Pv),
             "RATE" => Some(Function::Rate),
@@ -880,6 +886,8 @@ impl fmt::Display for Function {
             Function::Edate => write!(f, "EDATE"),
             Function::Today => write!(f, "TODAY"),
             Function::Now => write!(f, "NOW"),
+            Function::Accrint => write!(f, "ACCRINT"),
+            Function::Accrintm => write!(f, "ACCRINTM"),
             Function::Pmt => write!(f, "PMT"),
             Function::Pv => write!(f, "PV"),
             Function::Rate => write!(f, "RATE"),
@@ -1134,6 +1142,8 @@ impl Model {
             Function::Today => self.fn_today(args, cell),
             Function::Now => self.fn_now(args, cell),
             // Financial
+            Function::Accrint => self.fn_accrint(args, cell),
+            Function::Accrintm => self.fn_accrintm(args, cell),
             Function::Pmt => self.fn_pmt(args, cell),
             Function::Pv => self.fn_pv(args, cell),
             Function::Rate => self.fn_rate(args, cell),
