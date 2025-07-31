@@ -31,7 +31,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | DURATION   | <Badge type="tip" text="Available" />          | –                  |
 | EFFECT     | <Badge type="tip" text="Available" />          | –                  |
 | FV         | <Badge type="tip" text="Available" />          | [FV](financial/fv) |
-| FVSCHEDULE | <Badge type="info" text="Not implemented yet" /> | –                  |
+| FVSCHEDULE | <Badge type="tip" text="Available" /> | [FVSCHEDULE](financial/fvschedule) |
 | INTRATE    | <Badge type="info" text="Not implemented yet" /> | –                  |
 | IPMT       | <Badge type="tip" text="Available" />          | –                  |
 | IRR        | <Badge type="tip" text="Available" />          | –                  |
