@@ -15,12 +15,12 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ACCRINTM   | <Badge type="tip" text="Available" />          | [ACCRINTM](financial/accrintm) |
 | AMORDEGRC  | <Badge type="info" text="Not implemented yet" /> | –                  |
 | AMORLINC   | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPDAYBS  | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPDAYS   | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPDAYSNC | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPNCD    | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPNUM    | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPPCD    | <Badge type="info" text="Not implemented yet" /> | –                  |
+| COUPDAYBS  | <Badge type="tip" text="Available" /> | –                  |
+| COUPDAYS   | <Badge type="tip" text="Available" /> | –                  |
+| COUPDAYSNC | <Badge type="tip" text="Available" /> | –                  |
+| COUPNCD    | <Badge type="tip" text="Available" /> | –                  |
+| COUPNUM    | <Badge type="tip" text="Available" /> | –                  |
+| COUPPCD    | <Badge type="tip" text="Available" /> | –                  |
 | CUMIPMT    | <Badge type="tip" text="Available" />          | –                  |
 | CUMPRINC   | <Badge type="tip" text="Available" />          | –                  |
 | DB         | <Badge type="tip" text="Available" />          | –                  |

@@ -18,6 +18,7 @@ mod test_fn_averageifs;
 mod test_fn_choose;
 mod test_fn_concatenate;
 mod test_fn_count;
+mod test_fn_coupon;
 mod test_fn_day;
 mod test_fn_duration;
 mod test_fn_exact;
