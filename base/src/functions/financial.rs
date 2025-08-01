@@ -105,17 +105,6 @@ fn days360_eu(start: chrono::NaiveDate, end: chrono::NaiveDate) -> i32 {
         - y1 * DAYS_IN_YEAR_360
 }
 
-fn days_between(start: i64, end: i64, basis: i32) -> Result<i32, String> {
-    let start_date = from_excel_date(start)?;
-    let end_date = from_excel_date(end)?;
-    Ok(match basis {
-        0 => days360_us(start_date, end_date),
-        1..=3 => (end - start) as i32,
-        4 => days360_eu(start_date, end_date),
-        _ => return Err("invalid basis".to_string()),
-    })
-}
-
 fn days_in_year(date: chrono::NaiveDate, basis: i32) -> Result<i32, String> {
     Ok(match basis {
         0 | 2 | 4 => DAYS_IN_YEAR_360,
@@ -138,18 +127,6 @@ fn days_in_year_simple(basis: i32) -> f64 {
         1 | 3 => DAYS_ACTUAL as f64,
         _ => DAYS_IN_YEAR_360 as f64,
     }
-}
-
-/// Validates frequency parameter for bond functions (must be 1, 2, or 4)
-fn validate_frequency(frequency: i32, cell: CellReferenceIndex) -> Result<(), CalcResult> {
-    if frequency != 1 && frequency != 2 && frequency != 4 {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "frequency should be 1, 2 or 4".to_string(),
-        ));
-    }
-    Ok(())
 }
 
 /// Macro to reduce duplication in financial functions that follow the pattern:
@@ -207,34 +184,6 @@ macro_rules! financial_function_with_year_frac {
     }};
 }
 
-/// Validates that settlement < maturity for financial functions
-fn validate_settlement_maturity(
-    settlement: f64,
-    maturity: f64,
-    cell: CellReferenceIndex,
-) -> Result<(), CalcResult> {
-    if settlement >= maturity {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "settlement should be < maturity".to_string(),
-        ));
-    }
-    Ok(())
-}
-
-/// Validates date range for financial calculations
-fn validate_date_range(date: f64, cell: CellReferenceIndex) -> Result<(), CalcResult> {
-    if date < MINIMUM_DATE_SERIAL_NUMBER as f64 || date > MAXIMUM_DATE_SERIAL_NUMBER as f64 {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "Invalid number for date".to_string(),
-        ));
-    }
-    Ok(())
-}
-
 /// Helper function to convert date serial number to chrono date with error handling
 fn convert_date_serial(
     date_serial: f64,
@@ -268,50 +217,6 @@ fn parse_optional_basis(
     }
 }
 
-/// Validates basis parameter (must be 0-4)
-fn validate_basis(basis: i32, cell: CellReferenceIndex) -> Result<(), CalcResult> {
-    if !(0..=4).contains(&basis) {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "invalid basis".to_string(),
-        ));
-    }
-    Ok(())
-}
-
-/// Validates both frequency and basis for coupon functions
-fn validate_frequency_and_basis(
-    frequency: i32,
-    basis: i32,
-    cell: CellReferenceIndex,
-) -> Result<(), CalcResult> {
-    if ![1, 2, 4].contains(&frequency) || !(0..=4).contains(&basis) {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "invalid arguments".to_string(),
-        ));
-    }
-    Ok(())
-}
-
-/// Helper function for common negative value validation
-fn validate_non_negative(
-    value: f64,
-    parameter_name: &str,
-    cell: CellReferenceIndex,
-) -> Result<(), CalcResult> {
-    if value < 0.0 {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            format!("{} cannot be negative", parameter_name),
-        ));
-    }
-    Ok(())
-}
-
 /// Enhanced helper function to parse, validate settlement/maturity with optional date range validation
 fn parse_and_validate_settlement_maturity(
     args: &[Node],
@@ -324,12 +229,34 @@ fn parse_and_validate_settlement_maturity(
     let maturity = model.get_number_no_bools(&args[1], cell)?;
 
     // Validate settlement < maturity
-    validate_settlement_maturity(settlement, maturity, cell)?;
+    if settlement >= maturity {
+        return Err(CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "settlement should be < maturity".to_string(),
+        ));
+    }
 
     // Optionally validate date ranges
     if check_date_range {
-        validate_date_range(settlement, cell)?;
-        validate_date_range(maturity, cell)?;
+        if settlement < MINIMUM_DATE_SERIAL_NUMBER as f64
+            || settlement > MAXIMUM_DATE_SERIAL_NUMBER as f64
+        {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Invalid number for date".to_string(),
+            ));
+        }
+        if maturity < MINIMUM_DATE_SERIAL_NUMBER as f64
+            || maturity > MAXIMUM_DATE_SERIAL_NUMBER as f64
+        {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Invalid number for date".to_string(),
+            ));
+        }
     }
 
     Ok((settlement, maturity))
@@ -415,36 +342,6 @@ fn parse_financial_optional_params(
         optional_value,
         period_start,
     })
-}
-
-/// Helper function to parse coupon function parameters with truncation (for date serial numbers)
-fn parse_coupon_params_truncated(
-    args: &[Node],
-    arg_count: usize,
-    model: &mut Model,
-    cell: CellReferenceIndex,
-) -> Result<(i64, i64, i32, i32), CalcResult> {
-    let settlement = match model.get_number_no_bools(&args[0], cell) {
-        Ok(f) => f.trunc() as i64,
-        Err(s) => return Err(s),
-    };
-    let maturity = match model.get_number_no_bools(&args[1], cell) {
-        Ok(f) => f.trunc() as i64,
-        Err(s) => return Err(s),
-    };
-    let frequency = match model.get_number_no_bools(&args[2], cell) {
-        Ok(f) => f.trunc() as i32,
-        Err(s) => return Err(s),
-    };
-    let basis = if arg_count > 3 {
-        match model.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return Err(s),
-        }
-    } else {
-        0
-    };
-    Ok((settlement, maturity, frequency, basis))
 }
 
 /// Helper struct for validated coupon function parameters
@@ -647,8 +544,20 @@ fn parse_and_validate_bond_pricing_params(
         Err(s) => return Err(s),
     };
 
-    validate_frequency(frequency, cell)?;
-    validate_settlement_maturity(settlement, maturity, cell)?;
+    if frequency != 1 && frequency != 2 && frequency != 4 {
+        return Err(CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "frequency should be 1, 2 or 4".to_string(),
+        ));
+    }
+    if settlement >= maturity {
+        return Err(CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "settlement should be < maturity".to_string(),
+        ));
+    }
 
     let basis = if args.len() == 7 {
         match model.get_number_no_bools(&args[6], cell) {
@@ -764,14 +673,44 @@ fn parse_and_validate_coupon_params(
     }
 
     // Parse parameters
-    let (settlement, maturity, frequency, basis) =
-        parse_coupon_params_truncated(args, arg_count, model, cell)?;
+    let settlement = match model.get_number_no_bools(&args[0], cell) {
+        Ok(f) => f.trunc() as i64,
+        Err(s) => return Err(s),
+    };
+    let maturity = match model.get_number_no_bools(&args[1], cell) {
+        Ok(f) => f.trunc() as i64,
+        Err(s) => return Err(s),
+    };
+    let frequency = match model.get_number_no_bools(&args[2], cell) {
+        Ok(f) => f.trunc() as i32,
+        Err(s) => return Err(s),
+    };
+    let basis = if arg_count > 3 {
+        match model.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return Err(s),
+        }
+    } else {
+        0
+    };
 
     // Validate frequency and basis
-    validate_frequency_and_basis(frequency, basis, cell)?;
+    if ![1, 2, 4].contains(&frequency) || !(0..=4).contains(&basis) {
+        return Err(CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "invalid arguments".to_string(),
+        ));
+    }
 
     // Validate settlement < maturity
-    validate_settlement_maturity(settlement as f64, maturity as f64, cell)?;
+    if settlement as f64 >= maturity as f64 {
+        return Err(CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "settlement should be < maturity".to_string(),
+        ));
+    }
 
     // Convert to dates
     let settlement_date = convert_date_serial(settlement as f64, cell)?;
@@ -787,7 +726,13 @@ fn parse_and_validate_coupon_params(
 
 fn year_frac(start: i64, end: i64, basis: i32) -> Result<f64, String> {
     let start_date = from_excel_date(start)?;
-    let days = days_between(start, end, basis)? as f64;
+    let end_date = from_excel_date(end)?;
+    let days = match basis {
+        0 => days360_us(start_date, end_date),
+        1..=3 => (end - start) as i32,
+        4 => days360_eu(start_date, end_date),
+        _ => return Err("invalid basis".to_string()),
+    } as f64;
     let year_days = days_in_year(start_date, basis)? as f64;
     Ok(days / year_days)
 }
@@ -1278,14 +1223,14 @@ impl Model {
         if !(freq == 1 || freq == 2 || freq == 4) {
             return CalcResult::new_error(Error::NUM, cell, "invalid frequency".to_string());
         }
-        if let Err(err) = validate_basis(basis, cell) {
-            return err;
+        if !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid basis".to_string());
         }
-        if let Err(err) = validate_non_negative(par, "par", cell) {
-            return err;
+        if par < 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "par cannot be negative".to_string());
         }
-        if let Err(err) = validate_non_negative(rate, "rate", cell) {
-            return err;
+        if rate < 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "rate cannot be negative".to_string());
         }
 
         let issue_d = match convert_date_serial(issue, cell) {
@@ -1374,14 +1319,14 @@ impl Model {
             Err(err) => return err,
         };
 
-        if let Err(err) = validate_basis(basis, cell) {
-            return err;
+        if !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid basis".to_string());
         }
-        if let Err(err) = validate_non_negative(par, "par", cell) {
-            return err;
+        if par < 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "par cannot be negative".to_string());
         }
-        if let Err(err) = validate_non_negative(rate, "rate", cell) {
-            return err;
+        if rate < 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "rate cannot be negative".to_string());
         }
 
         let issue_d = match convert_date_serial(issue, cell) {
