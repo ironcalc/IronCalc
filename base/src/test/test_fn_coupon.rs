@@ -216,11 +216,10 @@ fn test_us_nasd_both_february_rule() {
 
     // All should succeed without errors
     for row in ["B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4"] {
-        assert_ne!(model._get_text(row), *"#NUM!", "Failed for {}", row);
+        assert_ne!(model._get_text(row), *"#NUM!", "Failed for {row}");
         assert!(
             model._get_text(row).parse::<f64>().is_ok(),
-            "Non-numeric result for {}",
-            row
+            "Non-numeric result for {row}"
         );
     }
 }
