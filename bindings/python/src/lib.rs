@@ -1,7 +1,7 @@
 use pyo3::exceptions::PyException;
 use pyo3::{create_exception, prelude::*, wrap_pyfunction};
 
-use types::{PySheetProperty, PyStyle};
+use types::{PyCellType, PySheetProperty, PyStyle};
 use xlsx::base::types::{Style, Workbook};
 use xlsx::base::{Model, UserModel};
 
@@ -9,8 +9,6 @@ use xlsx::export::{save_to_icalc, save_to_xlsx};
 use xlsx::import;
 
 mod types;
-
-use crate::types::PyCellType;
 
 create_exception!(_ironcalc, WorkbookError, PyException);
 
@@ -309,7 +307,7 @@ pub fn load_from_icalc(file_name: &str) -> PyResult<PyModel> {
     Ok(PyModel { model })
 }
 
-/// Loads a function from bytes
+/// Loads a model from bytes
 /// This function expects the bytes to be in the internal binary ic format
 /// which is the same format used by the `save_to_icalc` function.
 #[pyfunction]
