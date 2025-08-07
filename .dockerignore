@@ -1,0 +1,7 @@
+*
+
+!webapp/**
+!bindings/nodejs/**
+!bindings/wasm/**
+!xlsx/**
+!base/**
