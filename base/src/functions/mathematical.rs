@@ -2,6 +2,7 @@ use crate::cast::NumberOrArray;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::number_format::to_precision;
 use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -311,7 +312,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
+            Ok(f) => to_precision(f, 15),
             Err(s) => return s,
         };
         let number_of_digits = match self.get_number(&args[1], cell) {
@@ -327,12 +328,13 @@ impl Model {
         let scale = 10.0_f64.powf(number_of_digits);
         CalcResult::Number((value * scale).round() / scale)
     }
+
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
+            Ok(f) => to_precision(f, 15),
             Err(s) => return s,
         };
         let number_of_digits = match self.get_number(&args[1], cell) {
@@ -352,12 +354,13 @@ impl Model {
             CalcResult::Number((value * scale).floor() / scale)
         }
     }
+
     pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
+            Ok(f) => to_precision(f, 15),
             Err(s) => return s,
         };
         let number_of_digits = match self.get_number(&args[1], cell) {
