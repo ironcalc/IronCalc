@@ -2,7 +2,7 @@ use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
 use crate::expressions::parser::static_analysis::add_implicit_intersection;
-use crate::expressions::token::OpUnary;
+use crate::expressions::token::{OpSum, OpUnary};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 
 pub enum DisplaceData {
@@ -483,34 +483,32 @@ fn stringify(
             kind,
             stringify(right, context, displace_data, export_to_excel)
         ),
-        OpSumKind { kind, left, right } => format!(
-            "{}{}{}",
-            stringify(left, context, displace_data, export_to_excel),
-            kind,
-            stringify(right, context, displace_data, export_to_excel)
-        ),
+        OpSumKind { kind, left, right } => {
+            let left_str = stringify(left, context, displace_data, export_to_excel);
+            // if kind is minus then we need parentheses in the right side if they are OpSumKind or CompareKind
+            let right_str = if (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }))
+                | matches!(**right, CompareKind { .. })
+            {
+                format!(
+                    "({})",
+                    stringify(right, context, displace_data, export_to_excel)
+                )
+            } else {
+                stringify(right, context, displace_data, export_to_excel)
+            };
+
+            format!("{left_str}{kind}{right_str}")
+        }
         OpProductKind { kind, left, right } => {
             let x = match **left {
-                OpSumKind { .. } => format!(
-                    "({})",
-                    stringify(left, context, displace_data, export_to_excel)
-                ),
-                CompareKind { .. } => format!(
+                OpSumKind { .. } | CompareKind { .. } => format!(
                     "({})",
                     stringify(left, context, displace_data, export_to_excel)
                 ),
                 _ => stringify(left, context, displace_data, export_to_excel),
             };
             let y = match **right {
-                OpSumKind { .. } => format!(
-                    "({})",
-                    stringify(right, context, displace_data, export_to_excel)
-                ),
-                CompareKind { .. } => format!(
-                    "({})",
-                    stringify(right, context, displace_data, export_to_excel)
-                ),
-                OpProductKind { .. } => format!(
+                OpSumKind { .. } | CompareKind { .. } | OpProductKind { .. } => format!(
                     "({})",
                     stringify(right, context, displace_data, export_to_excel)
                 ),
@@ -621,10 +619,43 @@ fn stringify(
         WrongVariableKind(name) => name.to_string(),
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
-                format!(
-                    "-{}",
-                    stringify(right, context, displace_data, export_to_excel)
-                )
+                let needs_parentheses = match **right {
+                    BooleanKind(_)
+                    | NumberKind(_)
+                    | StringKind(_)
+                    | ReferenceKind { .. }
+                    | RangeKind { .. }
+                    | WrongReferenceKind { .. }
+                    | WrongRangeKind { .. }
+                    | OpRangeKind { .. }
+                    | OpConcatenateKind { .. }
+                    | OpProductKind { .. }
+                    | OpPowerKind { .. }
+                    | FunctionKind { .. }
+                    | InvalidFunctionKind { .. }
+                    | ArrayKind(_)
+                    | DefinedNameKind(_)
+                    | TableNameKind(_)
+                    | WrongVariableKind(_)
+                    | ImplicitIntersection { .. }
+                    | CompareKind { .. }
+                    | ErrorKind(_)
+                    | ParseErrorKind { .. }
+                    | EmptyArgKind => false,
+
+                    OpSumKind { .. } | UnaryKind { .. } => true,
+                };
+                if needs_parentheses {
+                    format!(
+                        "-({})",
+                        stringify(right, context, displace_data, export_to_excel)
+                    )
+                } else {
+                    format!(
+                        "-{}",
+                        stringify(right, context, displace_data, export_to_excel)
+                    )
+                }
             }
             OpUnary::Percentage => {
                 format!(

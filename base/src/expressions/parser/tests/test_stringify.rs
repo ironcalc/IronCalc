@@ -32,3 +32,36 @@ fn exp_order() {
     let t = parser.parse("(5)^(4)", &cell_reference);
     assert_eq!(to_string(&t, &cell_reference), "5^4");
 }
+
+#[test]
+fn correct_parenthesis() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
+
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+
+    let t = parser.parse("-(1 + 1)", &cell_reference);
+    assert_eq!(to_string(&t, &cell_reference), "-(1+1)");
+
+    let t = parser.parse("1 - (3 + 4)", &cell_reference);
+    assert_eq!(to_string(&t, &cell_reference), "1-(3+4)");
+
+    let t = parser.parse("-(1.05*(0.0284 + 0.0046) - 0.0284)", &cell_reference);
+    assert_eq!(to_string(&t, &cell_reference), "-(1.05*(0.0284+0.0046)-0.0284)");
+
+    let t = parser.parse("1 + (3+5)", &cell_reference);
+    assert_eq!(to_string(&t, &cell_reference), "1+3+5");
+
+    let t = parser.parse("1 - (3+5)", &cell_reference);
+    assert_eq!(to_string(&t, &cell_reference), "1-(3+5)");
+
+    let t = parser.parse("(1 - 3) - (3+5)", &cell_reference);
+    assert_eq!(to_string(&t, &cell_reference), "1-3-(3+5)");
+
+    let t = parser.parse("1 + (3<5)", &cell_reference);
+    assert_eq!(to_string(&t, &cell_reference), "1+(3<5)");
+}
