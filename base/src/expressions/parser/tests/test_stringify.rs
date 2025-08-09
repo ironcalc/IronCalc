@@ -51,7 +51,10 @@ fn correct_parenthesis() {
     assert_eq!(to_string(&t, &cell_reference), "1-(3+4)");
 
     let t = parser.parse("-(1.05*(0.0284 + 0.0046) - 0.0284)", &cell_reference);
-    assert_eq!(to_string(&t, &cell_reference), "-(1.05*(0.0284+0.0046)-0.0284)");
+    assert_eq!(
+        to_string(&t, &cell_reference),
+        "-(1.05*(0.0284+0.0046)-0.0284)"
+    );
 
     let t = parser.parse("1 + (3+5)", &cell_reference);
     assert_eq!(to_string(&t, &cell_reference), "1+3+5");
