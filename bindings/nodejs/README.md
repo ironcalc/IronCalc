@@ -4,7 +4,7 @@
 Example usage:
 
 ```javascript
-import { Model } from '@ironcalc/wasm';
+import { Model } from '@ironcalc/nodejs';
  
 const model = new Model("Workbook1", "en", "UTC");
 
