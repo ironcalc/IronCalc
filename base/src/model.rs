@@ -84,6 +84,24 @@ pub(crate) enum ParsedDefinedName {
     InvalidDefinedNameFormula,
 }
 
+/// A support node is either a cell or a range of cells
+pub(crate) enum SupportNode {
+    /// (sheet, row, column)
+    Cell((u32, i32, i32)),
+    /// (sheet, row, column, height, width)
+    Range((u32, i32, i32, u32, u32))
+}
+
+/// The state of the computation
+pub(crate) enum EvaluationState {
+    /// the model is ready for a new evaluation
+    Ready,
+    /// the model is evaluating cells that might spill
+    EvaluatingSpills,
+    /// the model is evaluating cells normally
+    Evaluating
+}
+
 /// A dynamical IronCalc model.
 ///
 /// Its is composed of a `Workbook`. Everything else are dynamical quantities:
@@ -118,12 +136,13 @@ pub struct Model {
     /// ** Runtime ***
     /// The list of cells with formulas that are evaluated or being evaluated
     pub(crate) cells: HashMap<(u32, i32, i32), CellState>,
-    /// The support graph
-    pub(crate) support_graph: HashMap<(u32, i32, i32), Vec<(u32, i32, i32)>>,
+    /// The support graph. For a given cell (sheet, row, column) the list of cells and ranges that were requested
+    pub(crate) support_graph: HashMap<(u32, i32, i32), Vec<SupportNode>>,
     /// If the model is in a switch state then spill cells in the indices should be switched and recalculation redone
     pub(crate) switch_cells: Option<(i32, i32)>,
     /// Stack of cells being evaluated
     pub(crate) stack: Vec<(u32, i32, i32)>,
+    pub(crate) state: EvaluationState,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -1250,6 +1269,7 @@ impl Model {
             support_graph: HashMap::new(),
             switch_cells: None,
             stack: Vec::new(),
+            state: EvaluationState::Ready,
         };
 
         model.parse_formulas();
@@ -2142,9 +2162,11 @@ impl Model {
 
     /// Evaluates the model with a top-down recursive algorithm
     pub fn evaluate(&mut self) {
-        let mut computed = false;
-        while !computed {
-            computed = true;
+        // We first evaluate all the cells that might spill to other cells
+        let mut spills_computed = false;
+        self.state = EvaluationState::EvaluatingSpills;
+        while !spills_computed {
+            spills_computed = true;
             // clear all computation artifacts
             self.cells.clear();
             // Evaluate all the cells that might spill
@@ -2152,12 +2174,12 @@ impl Model {
             for (sheet, row, column) in spill_cells {
                 self.evaluate_cell(CellReferenceIndex { sheet, row, column });
                 if self.switch_cells.is_some() {
-                    computed = false;
+                    spills_computed = false;
                     break;
                 }
             }
             if let Some((index1, index2)) = self.switch_cells {
-                computed = false;
+                spills_computed = false;
                 // switch the cells indices in the spill_cells
                 let cell1 = self.workbook.spill_cells[index1 as usize];
                 let cell2 = self.workbook.spill_cells[index2 as usize];
@@ -2165,7 +2187,9 @@ impl Model {
                 self.workbook.spill_cells[index2 as usize] = cell1;
             }
         }
+        self.state = EvaluationState::Evaluating;
 
+        // Now we compute all the rest
         let cells = self.get_all_cells();
 
         for cell in cells {
@@ -2175,6 +2199,7 @@ impl Model {
                 column: cell.column,
             });
         }
+        self.state = EvaluationState::Ready;
     }
 
     /// Removes the content of the cell but leaves the style.
