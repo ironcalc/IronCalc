@@ -16,7 +16,7 @@ use crate::{
     },
     language::get_language,
     locale::get_locale,
-    model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
+    model::{get_milliseconds_since_epoch, EvaluationState, Model, ParsedDefinedName},
     types::{
         DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
         WorksheetView,
@@ -433,6 +433,7 @@ impl Model {
             support_graph: HashMap::new(),
             switch_cells: None,
             stack: Vec::new(),
+            state: EvaluationState::Ready,
         };
         model.parse_formulas();
         Ok(model)
