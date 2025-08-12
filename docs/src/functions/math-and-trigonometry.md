@@ -18,7 +18,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ACOTH           | <Badge type="info" text="Not implemented yet" /> | –             |
 | AGGREGATE       | <Badge type="info" text="Not implemented yet" /> | –             |
 | ARABIC          | <Badge type="info" text="Not implemented yet" /> | –             |
-| ASIN            | <Badge type="tip" text="Available" />          | –             |
+| ASIN            | <Badge type="tip" text="Available" />          | [ASIN](math_and_trigonometry/asin) |
 | ASINH           | <Badge type="tip" text="Available" />          | –             |
 | ATAN            | <Badge type="tip" text="Available" />          | –             |
 | ATAN2           | <Badge type="tip" text="Available" />          | –             |
