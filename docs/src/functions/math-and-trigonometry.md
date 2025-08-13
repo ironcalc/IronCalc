@@ -12,7 +12,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | Function        | Status                                         | Documentation |
 | --------------- | ---------------------------------------------- | ------------- |
 | ABS             | <Badge type="tip" text="Available" />          | –             |
-| ACOS            | <Badge type="tip" text="Available" />          | –             |
+| ACOS            | <Badge type="tip" text="Available" />          | [ACOS](math_and_trigonometry/acos) |
 | ACOSH           | <Badge type="tip" text="Available" />          | –             |
 | ACOT            | <Badge type="info" text="Not implemented yet" /> | –             |
 | ACOTH           | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -20,7 +20,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ARABIC          | <Badge type="info" text="Not implemented yet" /> | –             |
 | ASIN            | <Badge type="tip" text="Available" />          | [ASIN](math_and_trigonometry/asin) |
 | ASINH           | <Badge type="tip" text="Available" />          | –             |
-| ATAN            | <Badge type="tip" text="Available" />          | –             |
+| ATAN            | <Badge type="tip" text="Available" />          | [ATAN](math_and_trigonometry/atan) |
 | ATAN2           | <Badge type="tip" text="Available" />          | –             |
 | ATANH           | <Badge type="tip" text="Available" />          | –             |
 | BASE            | <Badge type="info" text="Not implemented yet" /> | –             |
