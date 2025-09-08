@@ -28,6 +28,7 @@ SINH returns a real [number](/features/value-types#numbers) that is the hyperbol
 * The SINH function utilizes the *sinh()* method provided by the [Rust Standard Library](https://doc.rust-lang.org/std/).
 * The figure below illustrates the SINH function.
 <center><img src="/functions/images/hyperbolicsine-curve.png" width="350" alt="Graph showing sinh(x)."></center>
+
 ## Examples
 [See some examples in IronCalc](https://app.ironcalc.com/?example=sinh).
 
