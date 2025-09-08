@@ -30,7 +30,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | COMBIN          | <Badge type="info" text="Not implemented yet" /> | –             |
 | COMBINA         | <Badge type="info" text="Not implemented yet" /> | –             |
 | COS             | <Badge type="tip" text="Available" />          | [COS](math_and_trigonometry/cos) |
-| COSH            | <Badge type="tip" text="Available" />          | –             |
+| COSH            | <Badge type="tip" text="Available" />          | [COSH](math_and_trigonometry/cosh) |
 | COT             | <Badge type="info" text="Not implemented yet" /> | –             |
 | COTH            | <Badge type="info" text="Not implemented yet" /> | –             |
 | CSC             | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -78,7 +78,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SEQUENCE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SIGN            | <Badge type="info" text="Not implemented yet" /> | –             |
 | SIN             | <Badge type="tip" text="Available" />          | [SIN](math_and_trigonometry/sin) |
-| SINH            | <Badge type="tip" text="Available" />          | –             |
+| SINH            | <Badge type="tip" text="Available" />          | [SINH](math_and_trigonometry/sinh) |
 | SQRT            | <Badge type="tip" text="Available" />          | –             |
 | SQRTPI          | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUBTOTAL        | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -91,5 +91,5 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SUMX2PY2        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMXMY2         | <Badge type="info" text="Not implemented yet" /> | –             |
 | TAN             | <Badge type="tip" text="Available" />          | [TAN](math_and_trigonometry/tan) |
-| TANH            | <Badge type="tip" text="Available" />          | –             |
+| TANH            | <Badge type="tip" text="Available" />          | [TANH](math_and_trigonometry/tanh) |
 | TRUNC           | <Badge type="info" text="Not implemented yet" /> | –             |
