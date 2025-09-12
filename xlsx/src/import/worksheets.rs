@@ -95,9 +95,7 @@ fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
         }
     } else if parts.len() == 2 {
         match (parse_reference_a1(parts[0]), parse_reference_a1(parts[1])) {
-            (Some(left), Some(right)) => {
-                Ok((left.row, left.column, right.row, right.column))
-            }
+            (Some(left), Some(right)) => Ok((left.row, left.column, right.row, right.column)),
             _ => Err(format!("Invalid range: '{range}'")),
         }
     } else {
