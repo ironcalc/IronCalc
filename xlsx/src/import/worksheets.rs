@@ -96,12 +96,12 @@ fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
     } else if parts.len() == 2 {
         match (parse_reference_a1(parts[0]), parse_reference_a1(parts[1])) {
             (Some(left), Some(right)) => {
-                return Ok((left.row, left.column, right.row, right.column));
+                Ok((left.row, left.column, right.row, right.column))
             }
-            _ => return Err(format!("Invalid range: '{range}'")),
+            _ => Err(format!("Invalid range: '{range}'")),
         }
     } else {
-        return Err(format!("Invalid range: '{range}'"));
+        Err(format!("Invalid range: '{range}'"))
     }
 }
 
