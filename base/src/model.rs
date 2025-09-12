@@ -709,9 +709,17 @@ impl Model {
         Ok(())
     }
 
+    /// Returns `None` if no cell has called this cell, otherwise returns the dependent cell
+    fn get_support_cell(&self, sheet: u32, row: i32, column: i32) -> Result<Option<&Cell>, String> {
+        self.workbook.supporting_cells.get(&(sheet, row, column)).map(|c| Some(c)).ok_or_else(|| "Cell not found".into())
+    }
+
     /// Sets `result` in the cell given by `sheet` sheet index, row and column
     /// Note that will panic if the cell does not exist
     /// It will do nothing if the cell does not have a formula
+    /// If the cell is an array or a range it will check if it is possible to spill to other cells
+    /// if it is not it will return an error.
+    /// Then it will check if any of the cells has been requested before.
     #[allow(clippy::expect_used)]
     fn set_cell_value(
         &mut self,
@@ -829,12 +837,19 @@ impl Model {
                         for r in row..=row + right.row - left.row {
                             for c in column..=column + right.column - left.column {
                                 if r == row && c == column {
+                                    // skip the "mother" cell
                                     continue;
                                 }
                                 if !self.is_empty_cell(sheet, r, c).unwrap_or(false) {
                                     all_empty = false;
                                     break;
                                 }
+                                if let Some(support) = self.get_support_cell(sheet, r, c) {
+                                    all_empty = false;
+                                }
+                            }
+                            if !all_empty {
+                                break;
                             }
                         }
                         if !all_empty {
@@ -1115,6 +1130,8 @@ impl Model {
         self.workbook.worksheet(sheet)?.is_empty_cell(row, column)
     }
 
+    /// Evaluates the cell. After the evaluation is done puts the value in the cell and other cells if it spills.
+    /// If when writing a spill cell encounter a cell whose value has been requested marks the model as "dirty"
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
         let row_data = match self.workbook.worksheets[cell_reference.sheet as usize]
             .sheet_data
