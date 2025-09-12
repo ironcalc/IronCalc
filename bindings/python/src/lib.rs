@@ -65,10 +65,17 @@ impl PyUserModel {
     /// For an empty sheet, returns (1, 1, 1, 1).
     pub fn get_sheet_dimensions(&self, sheet: u32) -> PyResult<(i32, i32, i32, i32)> {
         let model = self.model.get_model();
-        let worksheet = model.workbook.worksheet(sheet)
+        let worksheet = model
+            .workbook
+            .worksheet(sheet)
             .map_err(|e| WorkbookError::new_err(e.to_string()))?;
         let dimension = worksheet.dimension();
-        Ok((dimension.min_row, dimension.max_row, dimension.min_column, dimension.max_column))
+        Ok((
+            dimension.min_row,
+            dimension.max_row,
+            dimension.min_column,
+            dimension.max_column,
+        ))
     }
 
     pub fn to_bytes(&self) -> PyResult<Vec<u8>> {
@@ -298,10 +305,18 @@ impl PyModel {
     /// Returns a tuple of (min_row, max_row, min_column, max_column).
     /// For an empty sheet, returns (1, 1, 1, 1).
     pub fn get_sheet_dimensions(&self, sheet: u32) -> PyResult<(i32, i32, i32, i32)> {
-        let worksheet = self.model.workbook.worksheet(sheet)
+        let worksheet = self
+            .model
+            .workbook
+            .worksheet(sheet)
             .map_err(|e| WorkbookError::new_err(e.to_string()))?;
         let dimension = worksheet.dimension();
-        Ok((dimension.min_row, dimension.max_row, dimension.min_column, dimension.max_column))
+        Ok((
+            dimension.min_row,
+            dimension.max_row,
+            dimension.min_column,
+            dimension.max_column,
+        ))
     }
 
     #[allow(clippy::panic)]
