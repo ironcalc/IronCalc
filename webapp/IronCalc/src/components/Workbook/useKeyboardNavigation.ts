@@ -178,7 +178,6 @@ const useKeyboardNavigation = (
             break;
           }
         }
-        return;
       }
       if (isAlt && !isCtrl && !isShift) {
         // Alt+...
@@ -200,20 +199,24 @@ const useKeyboardNavigation = (
         }
         return;
       }
-      // At this point we know that no modifier keys are pressed
-      if (isCtrl || isShift || isAlt) {
-        // If any modifier key is pressed, we do not handle the key
+      if (isCtrl || isAlt) {
+        // Other combinations with Ctrl or Alt are not handled
         return;
       }
-      if (key === "F2") {
-        options.onCellEditStart();
+
+      if (isEditingKey(key) || key === "Backspace") {
+        const initText = key === "Backspace" ? "" : key;
+        options.onEditKeyPressStart(initText);
         event.stopPropagation();
         event.preventDefault();
         return;
       }
-      if (isEditingKey(key) || key === "Backspace") {
-        const initText = key === "Backspace" ? "" : key;
-        options.onEditKeyPressStart(initText);
+      if (isShift) {
+        // Other combinations with Shift are not handled
+        return;
+      }
+      if (key === "F2") {
+        options.onCellEditStart();
         event.stopPropagation();
         event.preventDefault();
         return;
