@@ -39,7 +39,7 @@ const ListItemWrapper = styled("div")<{ active?: boolean; iconColor?: string }>`
   gap: 8px;
   font-size: 12px;
   color: #424242;
-  border: 1px solid ${(props) => (props.active ? (props.iconColor || "#424242") : "rgba(224, 224, 224, 0.60)")};
+  border: 1px solid ${(props) => (props.active ? props.iconColor || "#424242" : "rgba(224, 224, 224, 0.60)")};
   background-color: #FFFFFF;
   padding: 16px;
   border-radius: 8px;
