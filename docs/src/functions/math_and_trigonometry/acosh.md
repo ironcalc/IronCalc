@@ -16,11 +16,11 @@ ACOSH is a function of the Math and Trigonometry category that calculates the in
 The hyperbolic arccosine function is defined as:
 
 $$
-\text{acosh(x)} = \ln(x + \sqrt{x^2 - 1})
+\operatorname{acosh}(x) = \ln(x + \sqrt{x^2 - 1})
 $$
 
 ### Returned value
-ACOSH returns a [number](/features/value-types#numbers) that is the hyperbolic arccosine of the specified value, expressed in radians.
+ACOSH returns a [number](/features/value-types#numbers) in the range [0, +∞) that is the hyperbolic arccosine of the specified value, expressed in radians.
 ### Error conditions
 * In common with many other IronCalc functions, ACOSH propagates errors that are found in its argument.
 * If no argument, or more than one argument, is supplied, then ACOSH returns the [`#ERROR!`](/features/error-types.md#error) error.
@@ -30,7 +30,7 @@ ACOSH returns a [number](/features/value-types#numbers) that is the hyperbolic a
 ## Details
 * The ACOSH function utilizes the *acosh()* method provided by the [Rust Standard Library](https://doc.rust-lang.org/std/).
 * The figure below illustrates the output of the ACOSH function for values $x \geq 1$ in the range [0, +∞).
-<center><img src="/functions/images/hyperbolicarccosine-curve.png" width="350" alt="Graph showing acosh(x) for x ≥ 0."></center>
+<center><img src="/functions/images/hyperbolicarccosine-curve.png" width="350" alt="Graph showing acosh(x) for x ≥ 1."></center>
 
 ## Examples
 [See some examples in IronCalc](https://app.ironcalc.com/?example=acosh).

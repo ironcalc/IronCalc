@@ -6,7 +6,7 @@ lang: en-US
 
 # ATANH function
 ## Overview
-ATANH is a function of the Math and Trigonometry category that calculates the inverse hyperbolic tangent (hyperbolic arctangent) of a number, returning the hyperbolic angle expressed in radians.
+ATANH is a function of the Math and Trigonometry category that calculates the inverse hyperbolic tangent (hyperbolic arctangent) of a number in the range (-1, +1), returning the hyperbolic angle expressed in radians.
 ## Usage
 ### Syntax
 **ATANH(<span title="Number" style="color:#1E88E5">number</span>) => <span title="Number" style="color:#1E88E5">atanh</span>**
@@ -18,13 +18,12 @@ $$
 \operatorname{atanh}(x) = \tfrac{1}{2}\,\ln\!\left(\dfrac{1+x}{1-x}\right),\quad |x| < 1
 $$
 ### Returned value
-ATANH returns a real [number](/features/value-types#numbers) that is the hyperbolic arctangent of the specified value, expressed in radians.
+ATANH returns a real [number](/features/value-types#numbers) in the range (-∞, +∞) that is the hyperbolic arctangent of the specified value, expressed in radians.
 ### Error conditions
 * In common with many other IronCalc functions, ATANH propagates errors that are found in its argument.
 * If no argument, or more than one argument, is supplied, then ATANH returns the [`#ERROR!`](/features/error-types.md#error) error.
 * If the value of the *number* argument is not (or cannot be converted to) a [number](/features/value-types#numbers), then ATANH returns the [`#VALUE!`](/features/error-types.md#value) error.
 * If the value of the *number* argument lies outside the domain (-1, +1), then ATANH returns the [`#NUM!`](/features/error-types.md#num) error.
-* For some argument values, ATANH may return a [`#DIV/0!`](/features/error-types.md#div-0) error.
 <!--@include: ../markdown-snippets/error-type-details.txt-->
 ## Details
 * The ATANH function utilizes the *atanh()* method provided by the [Rust Standard Library](https://doc.rust-lang.org/std/).
