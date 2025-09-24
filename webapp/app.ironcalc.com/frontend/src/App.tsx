@@ -2,6 +2,7 @@ import "./App.css";
 import styled from "@emotion/styled";
 import { useEffect, useState } from "react";
 import { FileBar } from "./components/FileBar";
+import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
 import {
   get_documentation_model,
   get_model,
@@ -21,6 +22,7 @@ import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/workbook";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(true);
 
   useEffect(() => {
     async function start() {
@@ -109,6 +111,9 @@ function App() {
         }}
       />
       <IronCalc model={model} />
+      {showWelcomeDialog && (
+        <WelcomeDialog onClose={() => setShowWelcomeDialog(false)} />
+      )}
     </Wrapper>
   );
 }
