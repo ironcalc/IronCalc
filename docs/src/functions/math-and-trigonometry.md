@@ -13,16 +13,16 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | --------------- | ---------------------------------------------- | ------------- |
 | ABS             | <Badge type="tip" text="Available" />          | –             |
 | ACOS            | <Badge type="tip" text="Available" />          | [ACOS](math_and_trigonometry/acos) |
-| ACOSH           | <Badge type="tip" text="Available" />          | –             |
+| ACOSH           | <Badge type="tip" text="Available" />          | [ACOSH](math_and_trigonometry/acosh) |
 | ACOT            | <Badge type="info" text="Not implemented yet" /> | –             |
 | ACOTH           | <Badge type="info" text="Not implemented yet" /> | –             |
 | AGGREGATE       | <Badge type="info" text="Not implemented yet" /> | –             |
 | ARABIC          | <Badge type="info" text="Not implemented yet" /> | –             |
 | ASIN            | <Badge type="tip" text="Available" />          | [ASIN](math_and_trigonometry/asin) |
-| ASINH           | <Badge type="tip" text="Available" />          | –             |
+| ASINH           | <Badge type="tip" text="Available" />          | [ASINH](math_and_trigonometry/asinh) |
 | ATAN            | <Badge type="tip" text="Available" />          | [ATAN](math_and_trigonometry/atan) |
-| ATAN2           | <Badge type="tip" text="Available" />          | –             |
-| ATANH           | <Badge type="tip" text="Available" />          | –             |
+| ATAN2           | <Badge type="tip" text="Available" />          | [ATAN2](math_and_trigonometry/atan2) |
+| ATANH           | <Badge type="tip" text="Available" />          | [ATANH](math_and_trigonometry/atanh) |
 | BASE            | <Badge type="info" text="Not implemented yet" /> | –             |
 | CEILING         | <Badge type="info" text="Not implemented yet" /> | –             |
 | CEILING.MATH    | <Badge type="info" text="Not implemented yet" /> | –             |
