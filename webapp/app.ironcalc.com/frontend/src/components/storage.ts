@@ -60,7 +60,7 @@ export function createNewModel(): Model {
   return model;
 }
 
-export function loadModelFromStorageOrCreate(): Model {
+export function loadModelFromStorageOrCreate(): Model | null {
   const uuid = localStorage.getItem("selected");
   if (uuid) {
     // We try to load the selected model
@@ -68,14 +68,22 @@ export function loadModelFromStorageOrCreate(): Model {
     if (modelBytesString) {
       return Model.from_bytes(base64ToBytes(modelBytesString));
     }
-    // If it doesn't exist we create one at that uuid
-    const newModel = new Model("Workbook1", "en", "UTC");
-    localStorage.setItem("selected", uuid);
-    localStorage.setItem(uuid, bytesToBase64(newModel.toBytes()));
-    return newModel;
   }
-  // If there was no selected model we create a new one
-  return createNewModel();
+  return null;
+}
+
+// check if storage is empty
+export function isStorageEmpty(): boolean {
+  const modelsJson = localStorage.getItem("models");
+  if (!modelsJson) {
+    return true;
+  }
+  try {
+    const models = JSON.parse(modelsJson);
+    return Object.keys(models).length === 0;
+  } catch (e) {
+    return true;
+  }
 }
 
 export function saveSelectedModelInStorage(model: Model) {

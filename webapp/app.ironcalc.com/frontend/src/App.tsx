@@ -11,6 +11,7 @@ import {
 import {
   createNewModel,
   deleteSelectedModel,
+  isStorageEmpty,
   loadModelFromStorageOrCreate,
   saveModelToStorage,
   saveSelectedModelInStorage,
@@ -22,7 +23,7 @@ import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/workbook";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
-  const [showWelcomeDialog, setShowWelcomeDialog] = useState(true);
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
 
   useEffect(() => {
     async function start() {
@@ -55,7 +56,13 @@ function App() {
       } else {
         // try to load from local storage
         const newModel = loadModelFromStorageOrCreate();
-        setModel(newModel);
+        if (!newModel) {
+          setShowWelcomeDialog(true);
+          const createdModel = new Model("template", "en", "UTC");
+          setModel(createdModel);
+        } else {
+          setModel(newModel);
+        }
       }
     }
     start();
@@ -95,7 +102,7 @@ function App() {
           setModel(newModel);
         }}
         newModel={() => {
-          setModel(createNewModel());
+          setShowWelcomeDialog(true);
         }}
         setModel={(uuid: string) => {
           const newModel = selectModelFromStorage(uuid);
@@ -112,7 +119,32 @@ function App() {
       />
       <IronCalc model={model} />
       {showWelcomeDialog && (
-        <WelcomeDialog onClose={() => setShowWelcomeDialog(false)} />
+        <WelcomeDialog
+          onClose={() => {
+            if (isStorageEmpty()) {
+              const createdModel = createNewModel();
+              setModel(createdModel);
+            }
+            setShowWelcomeDialog(false);
+          }}
+          onSelectTemplate={async (templateId) => {
+            switch (templateId) {
+              case "blank": {
+                const createdModel = createNewModel();
+                setModel(createdModel);
+                break;
+              }
+              default: {
+                const model_bytes = await get_documentation_model(templateId);
+                const importedModel = Model.from_bytes(model_bytes);
+                saveModelToStorage(importedModel);
+                setModel(importedModel);
+                break;
+              }
+            }
+            setShowWelcomeDialog(false);
+          }}
+        />
       )}
     </Wrapper>
   );
