@@ -7,6 +7,6 @@ lang: en-US
 # TIME
 
 ::: warning
-🚧 This function is not yet available in IronCalc.
-[Follow development here](https://github.com/ironcalc/IronCalc/labels/Functions)
+**Note:** This draft page is under construction 🚧
+The TIME function is implemented and available in IronCalc.
 :::
