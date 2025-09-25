@@ -6,8 +6,9 @@ import IronCalcIcon from "./ironcalc_icon_white.svg";
 
 function WelcomeDialog(properties: {
   onClose: () => void;
+  onSelectTemplate: (templateId: string) => void;
 }) {
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(
     "blank",
   );
 
@@ -59,21 +60,23 @@ function WelcomeDialog(properties: {
             description="Estimate payments, interest, and overall cost."
             icon={<House />}
             iconColor="#2F80ED"
-            active={selectedTemplate === "mortgage"}
-            onClick={() => handleTemplateSelect("mortgage")}
+            active={selectedTemplate === "mortgage_calculator"}
+            onClick={() => handleTemplateSelect("mortgage_calculator")}
           />
           <TemplatesListItem
             title="Travel expenses tracker"
             description="Track trip costs and stay on budget."
             icon={<TicketsPlane />}
             iconColor="#EB5757"
-            active={selectedTemplate === "travel"}
-            onClick={() => handleTemplateSelect("travel")}
+            active={selectedTemplate === "travel_expenses_tracker"}
+            onClick={() => handleTemplateSelect("travel_expenses_tracker")}
           />
         </TemplatesListWrapper>
       </DialogContent>
       <DialogFooter>
-        <DialogFooterButton>Create workbook</DialogFooterButton>
+        <DialogFooterButton onClick={() => properties.onSelectTemplate(selectedTemplate)}>
+          Create workbook
+        </DialogFooterButton>
       </DialogFooter>
     </DialogWrapper>
   );
