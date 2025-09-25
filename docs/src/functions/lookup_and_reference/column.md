@@ -9,10 +9,9 @@ lang: en-US
 The COLUMN Function in IronCalc is a lookup & reference formula that is used to query and return the column number of a referenced Column or Cell.
 ## Usage
 ### Syntax
-**COLUMN() => <span title="Number" style="color:#1E88E5">column</span>**<br>
 **COLUMN(<span title="Reference" style="color:#1E88E5">reference</span>) => <span title="Number" style="color:#1E88E5">column</span>**
 ### Argument descriptions
-* *reference* ([cell](/features/value-types), [optional](/features/optional-arguments.md)). The number of the cell you wish to reference the column number of.
+* *reference* ([cell](/features/value-types#references), [optional](/features/optional-arguments.md)). The number of the cell you wish to reference the column number of.
 ### Additional guidance
 * When referencing a range of cells, only the column number of the left most cell will be returned.
 * You are also able to reference complete columns instead of individual cells.
