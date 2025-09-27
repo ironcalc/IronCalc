@@ -66,6 +66,7 @@ use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
 use crate::model::get_milliseconds_since_epoch;
+use crate::number_format::to_precision;
 use crate::{
     calc_result::CalcResult,
     constants::EXCEL_DATE_BASE,
@@ -1001,17 +1002,16 @@ impl Model {
             Ok(f) => f,
             Err(e) => return e,
         };
-        if hour < 0.0 || minute < 0.0 || second < 0.0 {
+        let total_seconds = hour.floor() * 3600.0 + minute.floor() * 60.0 + second.floor();
+        if total_seconds < 0.0 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
                 message: "Invalid time".to_string(),
             };
         }
-        let total_seconds = hour.floor() * 3600.0 + minute.floor() * 60.0 + second.floor();
-        let day_seconds = 24.0 * 3600.0;
-        let secs = total_seconds.rem_euclid(day_seconds);
-        CalcResult::Number(secs / day_seconds)
+        let secs = total_seconds.rem_euclid(SECONDS_PER_DAY_F64);
+        CalcResult::Number(secs / SECONDS_PER_DAY_F64)
     }
 
     // -----------------------------------------------------------------------
@@ -1024,7 +1024,7 @@ impl Model {
         ((total_seconds / 60.0) as i64 % 60) as f64
     });
     time_part_fn!(fn_second, |v: f64| {
-        let total_seconds = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64).floor();
+        let total_seconds = to_precision(v.rem_euclid(1.0) * SECONDS_PER_DAY_F64, 15).floor();
         (total_seconds as i64 % 60) as f64
     });
 
