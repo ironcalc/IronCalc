@@ -528,6 +528,7 @@ impl Function {
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
+            Function::Isoweeknum => "_xlfn.ISOWEEKNUM".to_string(),
             _ => self.to_string(),
         }
     }
@@ -677,14 +678,14 @@ impl Function {
             "SECOND" => Some(Function::Second),
             "TODAY" => Some(Function::Today),
             "NOW" => Some(Function::Now),
-            "DAYS" => Some(Function::Days),
+            "DAYS" | "_XLFN.DAYS" => Some(Function::Days),
             "DAYS360" => Some(Function::Days360),
             "WEEKDAY" => Some(Function::Weekday),
             "WEEKNUM" => Some(Function::Weeknum),
             "WORKDAY" => Some(Function::Workday),
             "WORKDAY.INTL" => Some(Function::WorkdayIntl),
             "YEARFRAC" => Some(Function::Yearfrac),
-            "ISOWEEKNUM" => Some(Function::Isoweeknum),
+            "ISOWEEKNUM" | "_XLFN.ISOWEEKNUM" => Some(Function::Isoweeknum),
             // Financial
             "PMT" => Some(Function::Pmt),
             "PV" => Some(Function::Pv),
