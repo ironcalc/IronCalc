@@ -246,7 +246,7 @@ impl Model {
         }
         // None of the cases matched so we return the default
         // If there is an even number of args is the last one otherwise is #N/A
-        if args_count % 2 == 0 {
+        if args_count.is_multiple_of(2) {
             return self.evaluate_node_in_context(&args[args_count - 1], cell);
         }
         CalcResult::Error {
@@ -262,7 +262,7 @@ impl Model {
         if args_count < 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        if args_count % 2 != 0 {
+        if !args_count.is_multiple_of(2) {
             // Missing value for last condition
             return CalcResult::new_args_number_error(cell);
         }
