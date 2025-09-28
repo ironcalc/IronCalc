@@ -25,7 +25,7 @@ fn main() {
         &args[2]
     } else {
         let file_path = path::Path::new(file_name);
-    let base_name = file_path.file_stem().unwrap().to_str().unwrap();
+        let base_name = file_path.file_stem().unwrap().to_str().unwrap();
         &format!("{base_name}.ic")
     };
 
