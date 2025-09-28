@@ -473,6 +473,45 @@ fn test_exporting_merged_cells() {
 }
 
 #[test]
+fn test_templates_xlsx() {
+    let mut entries = fs::read_dir("tests/templates/")
+        .unwrap()
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, io::Error>>()
+        .unwrap();
+    entries.sort();
+    let temp_folder = env::temp_dir();
+    let path = format!("{}", Uuid::new_v4());
+    let dir = temp_folder.join(path);
+    fs::create_dir(&dir).unwrap();
+    let mut is_error = false;
+    for file_path in entries {
+        let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
+        let file_path_str = file_path.to_str().unwrap();
+        println!("Testing file: {file_path_str}");
+        if file_name_str.ends_with(".xlsx") && !file_name_str.starts_with('~') {
+            if let Err(message) = test_file(file_path_str) {
+                println!("Error with file: '{file_path_str}'");
+                println!("{message}");
+                is_error = true;
+            }
+            let t = test_load_and_saving(file_path_str, &dir);
+            if t.is_err() {
+                println!("Error while load and saving file: {file_path_str}");
+                is_error = true;
+            }
+        } else {
+            println!("skipping");
+        }
+    }
+    fs::remove_dir_all(&dir).unwrap();
+    assert!(
+        !is_error,
+        "Models were evaluated inconsistently with XLSX data."
+    );
+}
+
+#[test]
 fn test_documentation_xlsx() {
     let mut entries = fs::read_dir("tests/docs/")
         .unwrap()
