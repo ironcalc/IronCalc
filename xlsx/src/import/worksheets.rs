@@ -264,30 +264,29 @@ enum ParseReferenceError {
 // There is a similar named function in ironcalc_base. We probably should fix both at the same time.
 // NB: Maybe use regexes for this?
 fn parse_reference(s: &str) -> Result<CellReferenceRC, ParseReferenceError> {
-    let bytes = s.as_bytes();
     let mut sheet_name = "".to_string();
     let mut column = "".to_string();
     let mut row = "".to_string();
     let mut state = "sheet"; // "sheet", "col", "row"
-    for &byte in bytes {
+    for ch in s.chars() {
         match state {
             "sheet" => {
-                if byte == b'!' {
+                if ch == '!' {
                     state = "col"
                 } else {
-                    sheet_name.push(byte as char);
+                    sheet_name.push(ch);
                 }
             }
             "col" => {
-                if byte.is_ascii_alphabetic() {
-                    column.push(byte as char);
+                if ch.is_ascii_alphabetic() {
+                    column.push(ch);
                 } else {
                     state = "row";
-                    row.push(byte as char);
+                    row.push(ch);
                 }
             }
             _ => {
-                row.push(byte as char);
+                row.push(ch);
             }
         }
     }
@@ -1121,4 +1120,17 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
         }
     }
     Ok((sheets, selected_sheet))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::import::worksheets::parse_reference;
+
+    #[test]
+    fn parse_reference_works() {
+        let cell_reference = parse_reference("📈 Overview!B2");
+        assert!(cell_reference.is_ok());
+        let cell_reference = cell_reference.unwrap();
+        assert_eq!(cell_reference.sheet, "📈 Overview");
+    }
 }
