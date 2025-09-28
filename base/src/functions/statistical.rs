@@ -350,7 +350,7 @@ impl Model {
     // FIXME: This function shares a lot of code with apply_ifs. Can we merge them?
     pub(crate) fn fn_countifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
-        if args_count < 2 || args_count % 2 == 1 {
+        if args_count < 2 || !args_count.is_multiple_of(2) {
             return CalcResult::new_args_number_error(cell);
         }
 
@@ -476,7 +476,7 @@ impl Model {
         F: FnMut(f64),
     {
         let args_count = args.len();
-        if args_count < 3 || args_count % 2 == 0 {
+        if args_count < 3 || args_count.is_multiple_of(2) {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let arg_0 = self.evaluate_node_in_context(&args[0], cell);
