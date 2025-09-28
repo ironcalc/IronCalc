@@ -717,7 +717,7 @@ impl Parser {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
                             position: 0,
-                            message: "sheet not found".to_string(),
+                            message: format!("sheet not found: {}", context.sheet),
                         };
                     }
                 };
@@ -850,7 +850,7 @@ impl Parser {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
                             position: 0,
-                            message: "sheet not found".to_string(),
+                            message: format!("sheet not found: {}", context.sheet),
                         };
                     }
                 };
@@ -878,7 +878,7 @@ impl Parser {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
                             position: 0,
-                            message: "sheet not found".to_string(),
+                            message: format!("table sheet not found: {}", table.sheet_name),
                         };
                     }
                 };
