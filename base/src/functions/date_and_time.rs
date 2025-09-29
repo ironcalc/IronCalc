@@ -5,6 +5,9 @@ use chrono::NaiveDateTime;
 use chrono::NaiveTime;
 use chrono::Timelike;
 
+const SECONDS_PER_DAY: i32 = 86_400;
+const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
+
 // ---------------------------------------------------------------------------
 // Helper macros to eliminate boilerplate in date/time component extraction
 // functions (DAY, MONTH, YEAR, HOUR, MINUTE, SECOND).
@@ -61,6 +64,7 @@ use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
+use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
 use crate::model::get_milliseconds_since_epoch;
 use crate::{
     calc_result::CalcResult,
@@ -158,7 +162,7 @@ fn parse_time_string(text: &str) -> Option<f64> {
                     hour
                 };
                 let time = NaiveTime::from_hms_opt(hour_24, 0, 0)?;
-                return Some(time.num_seconds_from_midnight() as f64 / 86_400.0);
+                return Some(time.num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
             }
         }
     }
@@ -167,7 +171,7 @@ fn parse_time_string(text: &str) -> Option<f64> {
     let patterns_time = ["%H:%M:%S", "%H:%M", "%I:%M %p", "%I %p", "%I:%M:%S %p"];
     for p in patterns_time {
         if let Ok(t) = NaiveTime::parse_from_str(text, p) {
-            return Some(t.num_seconds_from_midnight() as f64 / 86_400.0);
+            return Some(t.num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
         }
     }
 
@@ -195,11 +199,11 @@ fn parse_time_string(text: &str) -> Option<f64> {
     ];
     for p in patterns_dt {
         if let Ok(dt) = NaiveDateTime::parse_from_str(text, p) {
-            return Some(dt.time().num_seconds_from_midnight() as f64 / 86_400.0);
+            return Some(dt.time().num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
         }
     }
     if let Ok(dt) = DateTime::parse_from_rfc3339(text) {
-        return Some(dt.time().num_seconds_from_midnight() as f64 / 86_400.0);
+        return Some(dt.time().num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
     }
     None
 }
@@ -242,14 +246,14 @@ fn normalize_time_components(hour: i32, minute: i32, second: i32) -> f64 {
 
     // Handle negative values by wrapping around
     if total_seconds < 0 {
-        total_seconds = total_seconds.rem_euclid(86400);
+        total_seconds = total_seconds.rem_euclid(SECONDS_PER_DAY);
     }
 
     // Normalize to within a day (0-86399 seconds)
-    total_seconds %= 86400;
+    total_seconds %= SECONDS_PER_DAY;
 
     // Convert to fraction of a day
-    total_seconds as f64 / 86400.0
+    total_seconds as f64 / SECONDS_PER_DAY_F64
 }
 
 // Check if time components should be normalized (only specific Excel edge cases)
@@ -270,7 +274,7 @@ fn should_normalize_time_components(hour: i32, minute: i32, second: i32) -> bool
     if (0..=23).contains(&hour) && (0..=59).contains(&minute) && second == 60 {
         // Check if this normalizes to exactly 24:00:00
         let total_seconds = hour * 3600 + minute * 60 + second;
-        return total_seconds == 86400; // Exactly 24:00:00
+        return total_seconds == SECONDS_PER_DAY; // Exactly 24:00:00
     }
 
     false
@@ -371,15 +375,24 @@ fn parse_year_simple(year_str: &str) -> Result<i32, String> {
 }
 
 fn parse_datevalue_text(value: &str) -> Result<i32, String> {
-    let separator = if value.contains('/') {
+    // Trim whitespace and discard any time component (e.g., "2024-02-29 06:00" -> "2024-02-29")
+    let mut date_str = value.trim();
+    if let Some(idx) = date_str.find('T') {
+        date_str = &date_str[..idx];
+    }
+    if let Some(idx) = date_str.find(' ') {
+        date_str = &date_str[..idx];
+    }
+
+    let separator = if date_str.contains('/') {
         '/'
-    } else if value.contains('-') {
+    } else if date_str.contains('-') {
         '-'
     } else {
         return Err("Not a valid date".to_string());
     };
 
-    let mut parts: Vec<&str> = value.split(separator).map(|s| s.trim()).collect();
+    let mut parts: Vec<&str> = date_str.split(separator).map(|s| s.trim()).collect();
     if parts.len() != 3 {
         return Err("Not a valid date".to_string());
     }
@@ -423,6 +436,11 @@ fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     let day = parse_day_simple(day_str)?;
     let month = parse_month_simple(month_str)?;
     let year = parse_year_simple(year_str)?;
+
+    // Excel 1900 leap-year bug: 29-Feb-1900 is treated as serial 60
+    if year == 1900 && month == 2 && day == 29 {
+        return Ok(60);
+    }
 
     match date_to_serial_number(day, month, year) {
         Ok(n) => Ok(n),
@@ -554,7 +572,7 @@ impl Model {
                     return CalcResult::Error {
                         error: Error::NUM,
                         origin: cell,
-                        message: "Out of range parameters for date".to_string(),
+                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
                     };
                 }
                 t
@@ -1002,11 +1020,11 @@ impl Model {
 
     time_part_fn!(fn_hour, |v: f64| (v.rem_euclid(1.0) * 24.0).floor());
     time_part_fn!(fn_minute, |v: f64| {
-        let total_seconds = (v.rem_euclid(1.0) * 86400.0).floor();
+        let total_seconds = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64).floor();
         ((total_seconds / 60.0) as i64 % 60) as f64
     });
     time_part_fn!(fn_second, |v: f64| {
-        let total_seconds = (v.rem_euclid(1.0) * 86400.0).floor();
+        let total_seconds = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64).floor();
         (total_seconds as i64 % 60) as f64
     });
 
@@ -1363,7 +1381,7 @@ impl Model {
                 return CalcResult::new_error(
                     Error::NUM,
                     cell,
-                    "Out of range parameters for date".to_string(),
+                    DATE_OUT_OF_RANGE_MESSAGE.to_string(),
                 );
             }
         };

@@ -8,6 +8,8 @@ use crate::constants::EXCEL_DATE_BASE;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 
+pub const DATE_OUT_OF_RANGE_MESSAGE: &str = "Out of range parameters for date";
+
 #[inline]
 fn convert_to_serial_number(date: NaiveDate) -> i32 {
     date.num_days_from_ce() - EXCEL_DATE_BASE
@@ -37,7 +39,7 @@ pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
 pub fn date_to_serial_number(day: u32, month: u32, year: i32) -> Result<i32, String> {
     match NaiveDate::from_ymd_opt(year, month, day) {
         Some(native_date) => Ok(convert_to_serial_number(native_date)),
-        None => Err("Out of range parameters for date".to_string()),
+        None => Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
     }
 }
 
@@ -55,7 +57,7 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
         return Ok(MINIMUM_DATE_SERIAL_NUMBER);
     }
     let Some(mut date) = NaiveDate::from_ymd_opt(year, 1, 1) else {
-        return Err("Out of range parameters for date".to_string());
+        return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
     };
 
     // One thing to note for example is that even if you started with a year out of range
@@ -68,7 +70,7 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     // As a result, we have to run range checks as we parse the date from the biggest unit to the
     // smallest unit.
     if !is_date_within_range(date) {
-        return Err("Out of range parameters for date".to_string());
+        return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
     }
 
     date = {
@@ -80,7 +82,7 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
             date = date + Months::new(abs_month);
         }
         if !is_date_within_range(date) {
-            return Err("Out of range parameters for date".to_string());
+            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
         }
         date
     };
@@ -94,7 +96,7 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
             date = date + Days::new(abs_day);
         }
         if !is_date_within_range(date) {
-            return Err("Out of range parameters for date".to_string());
+            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
         }
         date
     };
