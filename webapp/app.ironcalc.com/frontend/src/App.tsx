@@ -24,6 +24,7 @@ import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/workbook";
 function App() {
   const [model, setModel] = useState<Model | null>(null);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+  const [isTemplateOnlyDialog, setIsTemplateOnlyDialog] = useState(false);
 
   useEffect(() => {
     async function start() {
@@ -58,6 +59,7 @@ function App() {
         const newModel = loadModelFromStorageOrCreate();
         if (!newModel) {
           setShowWelcomeDialog(true);
+          setIsTemplateOnlyDialog(false); // Full dialog for first-time usage
           const createdModel = new Model("template", "en", "UTC");
           setModel(createdModel);
         } else {
@@ -107,6 +109,7 @@ function App() {
         }}
         newModelFromTemplate={() => {
           setShowWelcomeDialog(true);
+          setIsTemplateOnlyDialog(true); // Template-only dialog for "New from template"
         }}
         setModel={(uuid: string) => {
           const newModel = selectModelFromStorage(uuid);
@@ -130,6 +133,7 @@ function App() {
               setModel(createdModel);
             }
             setShowWelcomeDialog(false);
+            setIsTemplateOnlyDialog(false);
           }}
           onSelectTemplate={async (templateId) => {
             switch (templateId) {
@@ -147,7 +151,10 @@ function App() {
               }
             }
             setShowWelcomeDialog(false);
+            setIsTemplateOnlyDialog(false);
           }}
+          showHeader={!isTemplateOnlyDialog}
+          showNewSection={!isTemplateOnlyDialog}
         />
       )}
     </Wrapper>
