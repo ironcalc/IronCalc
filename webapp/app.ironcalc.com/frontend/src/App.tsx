@@ -12,7 +12,7 @@ import {
   createNewModel,
   deleteSelectedModel,
   isStorageEmpty,
-  loadModelFromStorageOrCreate,
+  loadSelectedModelFromStorage,
   saveModelToStorage,
   saveSelectedModelInStorage,
   selectModelFromStorage,
@@ -56,7 +56,7 @@ function App() {
         }
       } else {
         // try to load from local storage
-        const newModel = loadModelFromStorageOrCreate();
+        const newModel = loadSelectedModelFromStorage();
         if (!newModel) {
           setShowWelcomeDialog(true);
           setIsTemplateOnlyDialog(false); // Full dialog for first-time usage
