@@ -105,328 +105,362 @@ function Toolbar(properties: ToolbarProperties) {
 
   return (
     <ToolbarContainer>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={properties.onUndo}
-        disabled={!properties.canUndo}
-        title={t("toolbar.undo")}
-      >
-        <Undo2 />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={properties.onRedo}
-        disabled={!properties.canRedo}
-        title={t("toolbar.redo")}
-      >
-        <Redo2 />
-      </StyledButton>
+      {/* History/Edit Group */}
+      <ButtonGroup>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={properties.onUndo}
+          disabled={!properties.canUndo}
+          title={t("toolbar.undo")}
+        >
+          <Undo2 />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={properties.onRedo}
+          disabled={!properties.canRedo}
+          title={t("toolbar.redo")}
+        >
+          <Redo2 />
+        </StyledButton>
+      </ButtonGroup>
+
       <Divider />
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={properties.onCopyStyles}
-        title={t("toolbar.copy_styles")}
-      >
-        <PaintRoller />
-      </StyledButton>
+
+      {/* Format Tools Group */}
+      <ButtonGroup>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={properties.onCopyStyles}
+          title={t("toolbar.copy_styles")}
+        >
+          <PaintRoller />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={() => {
+            properties.onClearFormatting();
+          }}
+          disabled={!canEdit}
+          title={t("toolbar.clear_formatting")}
+        >
+          <RemoveFormatting />
+        </StyledButton>
+      </ButtonGroup>
+
       <Divider />
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={(): void => {
-          properties.onNumberFormatPicked(NumberFormats.CURRENCY_EUR);
-        }}
-        disabled={!canEdit}
-        title={t("toolbar.euro")}
-      >
-        <Euro />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={(): void => {
-          properties.onNumberFormatPicked(NumberFormats.PERCENTAGE);
-        }}
-        disabled={!canEdit}
-        title={t("toolbar.percentage")}
-      >
-        <Percent />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={(): void => {
-          properties.onNumberFormatPicked(
-            decreaseDecimalPlaces(properties.numFmt),
-          );
-        }}
-        disabled={!canEdit}
-        title={t("toolbar.decimal_places_decrease")}
-      >
-        <DecimalsArrowLeft />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={(): void => {
-          properties.onNumberFormatPicked(
-            increaseDecimalPlaces(properties.numFmt),
-          );
-        }}
-        disabled={!canEdit}
-        title={t("toolbar.decimal_places_increase")}
-      >
-        <DecimalsArrowRight />
-      </StyledButton>
-      <FormatMenu
-        numFmt={properties.numFmt}
-        onChange={(numberFmt): void => {
-          properties.onNumberFormatPicked(numberFmt);
-        }}
-        onExited={(): void => {}}
-        anchorOrigin={{
-          horizontal: 20, // Aligning the menu to the middle of FormatButton
-          vertical: "bottom",
-        }}
-      >
+
+      {/* Number Format Group */}
+      <ButtonGroup>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={(): void => {
+            properties.onNumberFormatPicked(NumberFormats.CURRENCY_EUR);
+          }}
+          disabled={!canEdit}
+          title={t("toolbar.euro")}
+        >
+          <Euro />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={(): void => {
+            properties.onNumberFormatPicked(NumberFormats.PERCENTAGE);
+          }}
+          disabled={!canEdit}
+          title={t("toolbar.percentage")}
+        >
+          <Percent />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={(): void => {
+            properties.onNumberFormatPicked(
+              decreaseDecimalPlaces(properties.numFmt),
+            );
+          }}
+          disabled={!canEdit}
+          title={t("toolbar.decimal_places_decrease")}
+        >
+          <DecimalsArrowLeft />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={(): void => {
+            properties.onNumberFormatPicked(
+              increaseDecimalPlaces(properties.numFmt),
+            );
+          }}
+          disabled={!canEdit}
+          title={t("toolbar.decimal_places_increase")}
+        >
+          <DecimalsArrowRight />
+        </StyledButton>
+        <FormatMenu
+          numFmt={properties.numFmt}
+          onChange={(numberFmt): void => {
+            properties.onNumberFormatPicked(numberFmt);
+          }}
+          onExited={(): void => {}}
+          anchorOrigin={{
+            horizontal: 20, // Aligning the menu to the middle of FormatButton
+            vertical: "bottom",
+          }}
+        >
+          <StyledButton
+            type="button"
+            $pressed={false}
+            disabled={!canEdit}
+            title={t("toolbar.format_number")}
+            sx={{
+              width: "40px", // Keep in sync with anchorOrigin in FormatMenu above
+              padding: "0px 4px",
+            }}
+          >
+            {"123"}
+            <ChevronDown />
+          </StyledButton>
+        </FormatMenu>
+      </ButtonGroup>
+
+      <Divider />
+
+      {/* Font Size Group */}
+      <ButtonGroup>
         <StyledButton
           type="button"
           $pressed={false}
           disabled={!canEdit}
-          title={t("toolbar.format_number")}
-          sx={{
-            width: "40px", // Keep in sync with anchorOrigin in FormatMenu above
-            padding: "0px 4px",
+          onClick={() => {
+            properties.onIncreaseFontSize(-1);
           }}
+          title={t("toolbar.decrease_font_size")}
         >
-          {"123"}
-          <ChevronDown />
+          <Minus />
         </StyledButton>
-      </FormatMenu>
-      <Divider />
-      <StyledButton
-        type="button"
-        $pressed={false}
-        disabled={!canEdit}
-        onClick={() => {
-          properties.onIncreaseFontSize(-1);
-        }}
-        title={t("toolbar.decrease_font_size")}
-      >
-        <Minus />
-      </StyledButton>
-      <FontSizeBox>{properties.fontSize}</FontSizeBox>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        disabled={!canEdit}
-        onClick={() => {
-          properties.onIncreaseFontSize(1);
-        }}
-        title={t("toolbar.increase_font_size")}
-      >
-        <Plus />
-      </StyledButton>
-      <Divider />
-      <StyledButton
-        type="button"
-        $pressed={properties.bold}
-        onClick={() => properties.onToggleBold(!properties.bold)}
-        disabled={!canEdit}
-        title={t("toolbar.bold")}
-      >
-        <Bold />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={properties.italic}
-        onClick={() => properties.onToggleItalic(!properties.italic)}
-        disabled={!canEdit}
-        title={t("toolbar.italic")}
-      >
-        <Italic />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={properties.underline}
-        onClick={() => properties.onToggleUnderline(!properties.underline)}
-        disabled={!canEdit}
-        title={t("toolbar.underline")}
-      >
-        <Underline />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={properties.strike}
-        onClick={() => properties.onToggleStrike(!properties.strike)}
-        disabled={!canEdit}
-        title={t("toolbar.strike_through")}
-      >
-        <Strikethrough />
-      </StyledButton>
-      <Divider />
-      <StyledButton
-        type="button"
-        $pressed={false}
-        disabled={!canEdit}
-        title={t("toolbar.font_color")}
-        ref={fontColorButton}
-        onClick={() => setFontColorPickerOpen(true)}
-      >
-        <Type />
-        <ColorLine color={properties.fontColor} />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        disabled={!canEdit}
-        title={t("toolbar.fill_color")}
-        ref={fillColorButton}
-        onClick={() => setFillColorPickerOpen(true)}
-      >
-        <PaintBucket />
-        <ColorLine color={properties.fillColor} />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={() => setBorderPickerOpen(true)}
-        ref={borderButton}
-        disabled={!canEdit}
-        title={t("toolbar.borders.title")}
-      >
-        <Grid2X2 />
-      </StyledButton>
-      <Divider />
-      <StyledButton
-        type="button"
-        $pressed={properties.horizontalAlign === "left"}
-        onClick={() =>
-          properties.onToggleHorizontalAlign(
-            properties.horizontalAlign === "left" ? "general" : "left",
-          )
-        }
-        disabled={!canEdit}
-        title={t("toolbar.align_left")}
-      >
-        <AlignLeft />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={properties.horizontalAlign === "center"}
-        onClick={() =>
-          properties.onToggleHorizontalAlign(
-            properties.horizontalAlign === "center" ? "general" : "center",
-          )
-        }
-        disabled={!canEdit}
-        title={t("toolbar.align_center")}
-      >
-        <AlignCenter />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={properties.horizontalAlign === "right"}
-        onClick={() =>
-          properties.onToggleHorizontalAlign(
-            properties.horizontalAlign === "right" ? "general" : "right",
-          )
-        }
-        disabled={!canEdit}
-        title={t("toolbar.align_right")}
-      >
-        <AlignRight />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={properties.verticalAlign === "top"}
-        onClick={() => properties.onToggleVerticalAlign("top")}
-        disabled={!canEdit}
-        title={t("toolbar.vertical_align_top")}
-      >
-        <ArrowUpToLine />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={properties.verticalAlign === "center"}
-        onClick={() => properties.onToggleVerticalAlign("center")}
-        disabled={!canEdit}
-        title={t("toolbar.vertical_align_middle")}
-      >
-        <ArrowMiddleFromLine />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={properties.verticalAlign === "bottom"}
-        onClick={() => properties.onToggleVerticalAlign("bottom")}
-        disabled={!canEdit}
-        title={t("toolbar.vertical_align_bottom")}
-      >
-        <ArrowDownToLine />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={properties.wrapText === true}
-        onClick={() => {
-          properties.onToggleWrapText(!properties.wrapText);
-        }}
-        disabled={!canEdit}
-        title={t("toolbar.wrap_text")}
-      >
-        <WrapText />
-      </StyledButton>
+        <FontSizeBox>{properties.fontSize}</FontSizeBox>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          disabled={!canEdit}
+          onClick={() => {
+            properties.onIncreaseFontSize(1);
+          }}
+          title={t("toolbar.increase_font_size")}
+        >
+          <Plus />
+        </StyledButton>
+      </ButtonGroup>
 
       <Divider />
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={() =>
-          properties.onToggleShowGridLines(!properties.showGridLines)
-        }
-        disabled={!canEdit}
-        title={t("toolbar.show_hide_grid_lines")}
-      >
-        {properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
-      </StyledButton>
-      <Divider />
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={() => {
-          setNameManagerDialogOpen(true);
-        }}
-        disabled={!canEdit}
-        title={t("toolbar.name_manager")}
-      >
-        <Tags />
-      </StyledButton>
+
+      {/* Text Style Group */}
+      <ButtonGroup>
+        <StyledButton
+          type="button"
+          $pressed={properties.bold}
+          onClick={() => properties.onToggleBold(!properties.bold)}
+          disabled={!canEdit}
+          title={t("toolbar.bold")}
+        >
+          <Bold />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={properties.italic}
+          onClick={() => properties.onToggleItalic(!properties.italic)}
+          disabled={!canEdit}
+          title={t("toolbar.italic")}
+        >
+          <Italic />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={properties.underline}
+          onClick={() => properties.onToggleUnderline(!properties.underline)}
+          disabled={!canEdit}
+          title={t("toolbar.underline")}
+        >
+          <Underline />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={properties.strike}
+          onClick={() => properties.onToggleStrike(!properties.strike)}
+          disabled={!canEdit}
+          title={t("toolbar.strike_through")}
+        >
+          <Strikethrough />
+        </StyledButton>
+      </ButtonGroup>
 
       <Divider />
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={() => {
-          properties.onClearFormatting();
-        }}
-        disabled={!canEdit}
-        title={t("toolbar.clear_formatting")}
-      >
-        <RemoveFormatting />
-      </StyledButton>
-      <StyledButton
-        type="button"
-        $pressed={false}
-        onClick={() => {
-          properties.onDownloadPNG();
-        }}
-        disabled={!canEdit}
-        title={t("toolbar.selected_png")}
-      >
-        <ImageDown />
-      </StyledButton>
+
+      {/* Color & Border Group */}
+      <ButtonGroup>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          disabled={!canEdit}
+          title={t("toolbar.font_color")}
+          ref={fontColorButton}
+          onClick={() => setFontColorPickerOpen(true)}
+        >
+          <Type />
+          <ColorLine color={properties.fontColor} />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          disabled={!canEdit}
+          title={t("toolbar.fill_color")}
+          ref={fillColorButton}
+          onClick={() => setFillColorPickerOpen(true)}
+        >
+          <PaintBucket />
+          <ColorLine color={properties.fillColor} />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={() => setBorderPickerOpen(true)}
+          ref={borderButton}
+          disabled={!canEdit}
+          title={t("toolbar.borders.title")}
+        >
+          <Grid2X2 />
+        </StyledButton>
+      </ButtonGroup>
+
+      <Divider />
+
+      {/* Alignment Group */}
+      <ButtonGroup>
+        <StyledButton
+          type="button"
+          $pressed={properties.horizontalAlign === "left"}
+          onClick={() =>
+            properties.onToggleHorizontalAlign(
+              properties.horizontalAlign === "left" ? "general" : "left",
+            )
+          }
+          disabled={!canEdit}
+          title={t("toolbar.align_left")}
+        >
+          <AlignLeft />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={properties.horizontalAlign === "center"}
+          onClick={() =>
+            properties.onToggleHorizontalAlign(
+              properties.horizontalAlign === "center" ? "general" : "center",
+            )
+          }
+          disabled={!canEdit}
+          title={t("toolbar.align_center")}
+        >
+          <AlignCenter />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={properties.horizontalAlign === "right"}
+          onClick={() =>
+            properties.onToggleHorizontalAlign(
+              properties.horizontalAlign === "right" ? "general" : "right",
+            )
+          }
+          disabled={!canEdit}
+          title={t("toolbar.align_right")}
+        >
+          <AlignRight />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={properties.verticalAlign === "top"}
+          onClick={() => properties.onToggleVerticalAlign("top")}
+          disabled={!canEdit}
+          title={t("toolbar.vertical_align_top")}
+        >
+          <ArrowUpToLine />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={properties.verticalAlign === "center"}
+          onClick={() => properties.onToggleVerticalAlign("center")}
+          disabled={!canEdit}
+          title={t("toolbar.vertical_align_middle")}
+        >
+          <ArrowMiddleFromLine />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={properties.verticalAlign === "bottom"}
+          onClick={() => properties.onToggleVerticalAlign("bottom")}
+          disabled={!canEdit}
+          title={t("toolbar.vertical_align_bottom")}
+        >
+          <ArrowDownToLine />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={properties.wrapText === true}
+          onClick={() => {
+            properties.onToggleWrapText(!properties.wrapText);
+          }}
+          disabled={!canEdit}
+          title={t("toolbar.wrap_text")}
+        >
+          <WrapText />
+        </StyledButton>
+      </ButtonGroup>
+
+      <Divider />
+
+      {/* View & Tools Group */}
+      <ButtonGroup>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={() =>
+            properties.onToggleShowGridLines(!properties.showGridLines)
+          }
+          disabled={!canEdit}
+          title={t("toolbar.show_hide_grid_lines")}
+        >
+          {properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={() => {
+            setNameManagerDialogOpen(true);
+          }}
+          disabled={!canEdit}
+          title={t("toolbar.name_manager")}
+        >
+          <Tags />
+        </StyledButton>
+        <StyledButton
+          type="button"
+          $pressed={false}
+          onClick={() => {
+            properties.onDownloadPNG();
+          }}
+          disabled={!canEdit}
+          title={t("toolbar.selected_png")}
+        >
+          <ImageDown />
+        </StyledButton>
+      </ButtonGroup>
 
       <ColorPicker
         color={properties.fontColor}
@@ -562,7 +596,7 @@ const Divider = styled("div")({
   width: "0px",
   height: "12px",
   borderLeft: `1px solid ${theme.palette.grey["300"]}`,
-  margin: "0px 12px",
+  margin: "0px 8px",
 });
 
 const FontSizeBox = styled("div")({
@@ -575,6 +609,12 @@ const FontSizeBox = styled("div")({
   border: `1px solid ${theme.palette.grey["300"]}`,
   borderRadius: "4px",
   minWidth: "24px",
+});
+
+const ButtonGroup = styled("div")({
+  display: "flex",
+  alignItems: "center",
+  gap: "4px",
 });
 
 export default Toolbar;
