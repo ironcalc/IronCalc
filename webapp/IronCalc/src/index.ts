@@ -1,5 +1,5 @@
 import init, { Model } from "@ironcalc/wasm";
 import IronCalc from "./IronCalc";
-import { IronCalcIcon, IronCalcLogo } from "./icons";
+import { IronCalcIcon, IronCalcIconWhite, IronCalcLogo } from "./icons";
 
-export { init, Model, IronCalc, IronCalcIcon, IronCalcLogo };
+export { init, Model, IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo };
