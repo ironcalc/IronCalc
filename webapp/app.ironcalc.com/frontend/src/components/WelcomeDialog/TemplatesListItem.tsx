@@ -48,9 +48,6 @@ const ListItemWrapper = styled("div")<{ active?: boolean; iconColor?: string }>`
   outline: ${(props) => (props.active ? `4px solid ${props.iconColor || "#424242"}24` : "none")};
   transition: border 0.1s ease-in-out;
   user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
   &:hover {
     border: 1px solid ${(props) => props.iconColor};
     transition: border 0.1s ease-in-out;
