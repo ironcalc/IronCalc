@@ -7,8 +7,12 @@ import IronCalcIcon from "./ironcalc_icon_white.svg";
 function WelcomeDialog(properties: {
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
+  showHeader?: boolean;
+  showNewSection?: boolean;
 }) {
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("blank");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(
+    properties.showNewSection ? "blank" : "mortgage_calculator",
+  );
 
   const handleClose = () => {
     properties.onClose();
@@ -20,37 +24,56 @@ function WelcomeDialog(properties: {
 
   return (
     <DialogWrapper open={true} onClose={() => {}}>
-      <DialogHeader>
-        <DialogHeaderTitleWrapper>
-          <DialogHeaderLogoWrapper>
-            <DialogHeaderLogo src={IronCalcIcon} />
-          </DialogHeaderLogoWrapper>
-          <DialogHeaderTitle>Welcome to IronCalc</DialogHeaderTitle>
-          <DialogHeaderTitleSubtitle>
-            Start with a blank workbook or a ready-made template.
-          </DialogHeaderTitleSubtitle>
-        </DialogHeaderTitleWrapper>
-        <Cross
-          onClick={handleClose}
-          title="Close Dialog"
-          tabIndex={0}
-          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
-        >
-          <X />
-        </Cross>
-      </DialogHeader>
+      {properties.showHeader !== false ? (
+        <DialogHeader>
+          <DialogHeaderTitleWrapper>
+            <DialogHeaderLogoWrapper>
+              <DialogHeaderLogo src={IronCalcIcon} />
+            </DialogHeaderLogoWrapper>
+            <DialogHeaderTitle>Welcome to IronCalc</DialogHeaderTitle>
+            <DialogHeaderTitleSubtitle>
+              Start with a blank workbook or a ready-made template.
+            </DialogHeaderTitleSubtitle>
+          </DialogHeaderTitleWrapper>
+          <Cross
+            onClick={handleClose}
+            title="Close Dialog"
+            tabIndex={0}
+            onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
+          >
+            <X />
+          </Cross>
+        </DialogHeader>
+      ) : (
+        <AlternativeHeader>
+          <span style={{ flexGrow: 2, marginLeft: 12 }}>Choose a template</span>
+          <Cross
+            style={{ marginRight: 12 }}
+            onClick={handleClose}
+            title="Close Dialog"
+            tabIndex={0}
+            onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
+          >
+            <X />
+          </Cross>
+        </AlternativeHeader>
+      )}
       <DialogContent>
-        <ListTitle>New</ListTitle>
-        <TemplatesListWrapper>
-          <TemplatesListItem
-            title="Blank workbook"
-            description="Create from scratch or upload your own file."
-            icon={<Table />}
-            iconColor="#F2994A"
-            active={selectedTemplate === "blank"}
-            onClick={() => handleTemplateSelect("blank")}
-          />
-        </TemplatesListWrapper>
+        {properties.showNewSection !== false && (
+          <>
+            <ListTitle>New</ListTitle>
+            <TemplatesListWrapper>
+              <TemplatesListItem
+                title="Blank workbook"
+                description="Create from scratch or upload your own file."
+                icon={<Table />}
+                iconColor="#F2994A"
+                active={selectedTemplate === "blank"}
+                onClick={() => handleTemplateSelect("blank")}
+              />
+            </TemplatesListWrapper>
+          </>
+        )}
         <ListTitle>Templates</ListTitle>
         <TemplatesListWrapper>
           <TemplatesListItem
@@ -209,6 +232,16 @@ const DialogFooterButton = styled("button")`
   &:active {
     background-color: #D68742;
   }
+`;
+
+const AlternativeHeader = styled("div")`
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e0e0e0;
+  height: 44px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: Inter;
 `;
 
 export default WelcomeDialog;
