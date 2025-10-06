@@ -99,10 +99,9 @@ const FormulaSymbolButton = styled(StyledButton)`
 
 const Divider = styled("div")`
   background-color: ${theme.palette.grey["300"]};
-  width: 1px;
-  height: 20px;
-  margin-left: 16px;
-  margin-right: 16px;
+  min-width: 1px;
+  height: 16px;
+  margin: 0px 16px;
 `;
 
 const FormulaContainer = styled("div")`

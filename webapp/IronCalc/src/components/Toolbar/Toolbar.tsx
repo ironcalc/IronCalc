@@ -593,9 +593,9 @@ const ColorLine = styled("div")<{ color: string }>(({ color }) => ({
 }));
 
 const Divider = styled("div")({
-  width: "0px",
-  height: "12px",
-  borderLeft: `1px solid ${theme.palette.grey["300"]}`,
+  minWidth: "1px",
+  height: "16px",
+  backgroundColor: theme.palette.grey["300"],
   margin: "0px 8px",
 });
 
