@@ -60,7 +60,7 @@ export function createNewModel(): Model {
   return model;
 }
 
-export function loadModelFromStorageOrCreate(): Model | null {
+export function loadSelectedModelFromStorage(): Model | null {
   const uuid = localStorage.getItem("selected");
   if (uuid) {
     // We try to load the selected model
