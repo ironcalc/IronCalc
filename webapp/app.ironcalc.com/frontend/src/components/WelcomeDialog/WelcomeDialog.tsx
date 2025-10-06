@@ -8,9 +8,7 @@ function WelcomeDialog(properties: {
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
 }) {
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(
-    "blank",
-  );
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("blank");
 
   const handleClose = () => {
     properties.onClose();
@@ -74,7 +72,9 @@ function WelcomeDialog(properties: {
         </TemplatesListWrapper>
       </DialogContent>
       <DialogFooter>
-        <DialogFooterButton onClick={() => properties.onSelectTemplate(selectedTemplate)}>
+        <DialogFooterButton
+          onClick={() => properties.onSelectTemplate(selectedTemplate)}
+        >
           Create workbook
         </DialogFooterButton>
       </DialogFooter>

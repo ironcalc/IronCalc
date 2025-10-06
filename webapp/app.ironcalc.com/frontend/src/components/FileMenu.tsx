@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
-import { Check, FileDown, FileUp, Plus, Trash2 } from "lucide-react";
+import { Check, FileDown, FileUp, Plus, Table2, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
 import UploadFileDialog from "./UploadFileDialog";
@@ -8,6 +8,7 @@ import { getModelsMetadata, getSelectedUuid } from "./storage";
 
 export function FileMenu(props: {
   newModel: () => void;
+  newModelFromTemplate: () => void;
   setModel: (key: string) => void;
   onDownload: () => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
@@ -92,7 +93,18 @@ export function FileMenu(props: {
           <StyledIcon>
             <Plus />
           </StyledIcon>
-          <MenuItemText>New</MenuItemText>
+          <MenuItemText>New blank workbook</MenuItemText>
+        </MenuItemWrapper>
+        <MenuItemWrapper
+          onClick={() => {
+            props.newModelFromTemplate();
+            setMenuOpen(false);
+          }}
+        >
+          <StyledIcon>
+            <Table2 />
+          </StyledIcon>
+          <MenuItemText>New from template</MenuItemText>
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
@@ -105,6 +117,7 @@ export function FileMenu(props: {
           </StyledIcon>
           <MenuItemText>Import</MenuItemText>
         </MenuItemWrapper>
+        <MenuDivider />
         <MenuItemWrapper onClick={props.onDownload}>
           <StyledIcon>
             <FileDown />

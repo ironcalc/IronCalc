@@ -27,6 +27,7 @@ function useWindowWidth() {
 export function FileBar(properties: {
   model: Model;
   newModel: () => void;
+  newModelFromTemplate: () => void;
   setModel: (key: string) => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
@@ -52,6 +53,7 @@ export function FileBar(properties: {
       <Divider />
       <FileMenu
         newModel={properties.newModel}
+        newModelFromTemplate={properties.newModelFromTemplate}
         setModel={properties.setModel}
         onModelUpload={properties.onModelUpload}
         onDownload={async () => {

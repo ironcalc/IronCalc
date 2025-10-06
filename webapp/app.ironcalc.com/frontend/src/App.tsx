@@ -102,6 +102,10 @@ function App() {
           setModel(newModel);
         }}
         newModel={() => {
+          const createdModel = createNewModel();
+          setModel(createdModel);
+        }}
+        newModelFromTemplate={() => {
           setShowWelcomeDialog(true);
         }}
         setModel={(uuid: string) => {
