@@ -1,8 +1,8 @@
+import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
 import { Dialog, styled } from "@mui/material";
 import { House, Table, TicketsPlane, X } from "lucide-react";
 import { useState } from "react";
 import TemplatesListItem from "./TemplatesListItem";
-import IronCalcIcon from "./ironcalc_icon_white.svg";
 
 function WelcomeDialog(properties: {
   onClose: () => void;
@@ -28,7 +28,7 @@ function WelcomeDialog(properties: {
         <DialogHeader>
           <DialogHeaderTitleWrapper>
             <DialogHeaderLogoWrapper>
-              <DialogHeaderLogo src={IronCalcIcon} />
+              <IronCalcIcon />
             </DialogHeaderLogoWrapper>
             <DialogHeaderTitle>Welcome to IronCalc</DialogHeaderTitle>
             <DialogHeaderTitleSubtitle>
@@ -161,14 +161,11 @@ const DialogHeaderLogoWrapper = styled("div")`
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transform: rotate(-8deg);
   user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-`;
-
-const DialogHeaderLogo = styled("img")`
-  width: 18px;
-  height: auto;
+  
+  svg {
+    width: 18px;
+    height: 18px;
+  }
 `;
 
 const Cross = styled("div")`
