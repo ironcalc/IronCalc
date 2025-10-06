@@ -133,7 +133,21 @@ function Toolbar(properties: ToolbarProperties) {
   return (
     <ToolbarWrapper>
       {showLeftArrow && (
-        <Tooltip title={t("toolbar.scroll_left")}>
+        <Tooltip
+          title={t("toolbar.scroll_left")}
+          slotProps={{
+            popper: {
+              modifiers: [
+                {
+                  name: "offset",
+                  options: {
+                    offset: [0, -8],
+                  },
+                },
+              ],
+            },
+          }}
+        >
           <ScrollArrow $direction="left" onClick={scrollLeft}>
             <ChevronLeft />
           </ScrollArrow>
@@ -582,7 +596,21 @@ function Toolbar(properties: ToolbarProperties) {
         />
       </ToolbarContainer>
       {showRightArrow && (
-        <Tooltip title={t("toolbar.scroll_right")}>
+        <Tooltip
+          title={t("toolbar.scroll_right")}
+          slotProps={{
+            popper: {
+              modifiers: [
+                {
+                  name: "offset",
+                  options: {
+                    offset: [0, -8],
+                  },
+                },
+              ],
+            },
+          }}
+        >
           <ScrollArrow $direction="right" onClick={scrollRight}>
             <ChevronRight />
           </ScrollArrow>
