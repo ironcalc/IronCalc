@@ -84,7 +84,7 @@ And then use this code in `main.rs`:
 
 ```rust
 use ironcalc::{
-    base::{expressions::utils::number_to_column, model::Model},
+    base::{expressions::utils::number_to_column, Model},
     export::save_to_xlsx,
 };
 
