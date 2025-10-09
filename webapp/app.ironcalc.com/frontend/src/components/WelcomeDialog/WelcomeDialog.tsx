@@ -7,8 +7,8 @@ import TemplatesListItem from "./TemplatesListItem";
 function WelcomeDialog(properties: {
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
-  showHeader?: boolean;
-  showNewSection?: boolean;
+  showHeader: boolean;
+  showNewSection: boolean;
 }) {
   const [selectedTemplate, setSelectedTemplate] = useState<string>(
     properties.showNewSection ? "blank" : "mortgage_calculator",
