@@ -4,10 +4,10 @@ import type { ReactNode } from "react";
 interface TemplatesListItemProps {
   title: string;
   description: string;
-  icon?: ReactNode;
-  iconColor?: string;
-  active?: boolean;
-  onClick?: () => void;
+  icon: ReactNode;
+  iconColor: string;
+  active: boolean;
+  onClick: () => void;
 }
 
 function TemplatesListItem({
