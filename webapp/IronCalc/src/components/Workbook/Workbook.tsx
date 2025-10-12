@@ -22,6 +22,7 @@ import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
 } from "../clipboard";
+import { TOOLBAR_HEIGHT } from "../constants";
 import {
   type NavigationKey,
   getCellAddress,
@@ -40,6 +41,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
+
+  const [isDrawerOpen, setDrawerOpen] = useState(false);
 
   const worksheets = model.getWorksheetsProperties();
   const info = worksheets.map(
@@ -692,76 +695,118 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           worksheets,
           definedNameList: model.getDefinedNameList(),
         }}
-      />
-      <FormulaBar
-        cellAddress={cellAddress()}
-        formulaValue={formulaValue()}
-        onChange={() => {
-          setRedrawId((id) => id + 1);
-          focusWorkbook();
+        openDrawer={() => {
+          setDrawerOpen(true);
         }}
-        onTextUpdated={() => {
-          setRedrawId((id) => id + 1);
-        }}
-        model={model}
-        workbookState={workbookState}
       />
-      <Worksheet
-        model={model}
-        workbookState={workbookState}
-        refresh={(): void => {
-          setRedrawId((id) => id + 1);
-        }}
-        ref={worksheetRef}
-      />
+      <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? DRAWER_WIDTH : 0}>
+        <FormulaBar
+          cellAddress={cellAddress()}
+          formulaValue={formulaValue()}
+          onChange={() => {
+            setRedrawId((id) => id + 1);
+            focusWorkbook();
+          }}
+          onTextUpdated={() => {
+            setRedrawId((id) => id + 1);
+          }}
+          model={model}
+          workbookState={workbookState}
+        />
+        <Worksheet
+          model={model}
+          workbookState={workbookState}
+          refresh={(): void => {
+            setRedrawId((id) => id + 1);
+          }}
+          ref={worksheetRef}
+        />
 
-      <SheetTabBar
-        sheets={info}
-        selectedIndex={model.getSelectedSheet()}
-        workbookState={workbookState}
-        onSheetSelected={(sheet: number): void => {
-          if (info[sheet].state !== "visible") {
-            model.unhideSheet(sheet);
-          }
-          model.setSelectedSheet(sheet);
-          setRedrawId((value) => value + 1);
-        }}
-        onAddBlankSheet={(): void => {
-          model.newSheet();
-          setRedrawId((value) => value + 1);
-        }}
-        onSheetColorChanged={(hex: string): void => {
-          try {
-            model.setSheetColor(model.getSelectedSheet(), hex);
+        <SheetTabBar
+          sheets={info}
+          selectedIndex={model.getSelectedSheet()}
+          workbookState={workbookState}
+          onSheetSelected={(sheet: number): void => {
+            if (info[sheet].state !== "visible") {
+              model.unhideSheet(sheet);
+            }
+            model.setSelectedSheet(sheet);
             setRedrawId((value) => value + 1);
-          } catch (e) {
-            // TODO: Show a proper modal dialog
-            alert(`${e}`);
-          }
-        }}
-        onSheetRenamed={(name: string): void => {
-          try {
-            model.renameSheet(model.getSelectedSheet(), name);
+          }}
+          onAddBlankSheet={(): void => {
+            model.newSheet();
             setRedrawId((value) => value + 1);
-          } catch (e) {
-            // TODO: Show a proper modal dialog
-            alert(`${e}`);
-          }
-        }}
-        onSheetDeleted={(): void => {
-          const selectedSheet = model.getSelectedSheet();
-          model.deleteSheet(selectedSheet);
-          setRedrawId((value) => value + 1);
-        }}
-        onHideSheet={(): void => {
-          const selectedSheet = model.getSelectedSheet();
-          model.hideSheet(selectedSheet);
-          setRedrawId((value) => value + 1);
-        }}
-      />
+          }}
+          onSheetColorChanged={(hex: string): void => {
+            try {
+              model.setSheetColor(model.getSelectedSheet(), hex);
+              setRedrawId((value) => value + 1);
+            } catch (e) {
+              // TODO: Show a proper modal dialog
+              alert(`${e}`);
+            }
+          }}
+          onSheetRenamed={(name: string): void => {
+            try {
+              model.renameSheet(model.getSelectedSheet(), name);
+              setRedrawId((value) => value + 1);
+            } catch (e) {
+              // TODO: Show a proper modal dialog
+              alert(`${e}`);
+            }
+          }}
+          onSheetDeleted={(): void => {
+            const selectedSheet = model.getSelectedSheet();
+            model.deleteSheet(selectedSheet);
+            setRedrawId((value) => value + 1);
+          }}
+          onHideSheet={(): void => {
+            const selectedSheet = model.getSelectedSheet();
+            model.hideSheet(selectedSheet);
+            setRedrawId((value) => value + 1);
+          }}
+        />
+      </WorksheetAreaLeft>
+      <WorksheetAreaRight $drawerWidth={isDrawerOpen ? DRAWER_WIDTH : 0}>
+        <span
+          onClick={() => setDrawerOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              setDrawerOpen(false);
+            }
+          }}
+          aria-label="Close drawer"
+        >
+          x
+        </span>
+      </WorksheetAreaRight>
     </Container>
   );
 };
+
+const DRAWER_WIDTH = 300;
+
+type WorksheetAreaLeftProps = { $drawerWidth: number };
+const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
+  ({ $drawerWidth }) => ({
+    position: "absolute",
+    top: `${TOOLBAR_HEIGHT + 1}px`,
+    width: `calc(100% - ${$drawerWidth}px)`,
+    height: `calc(100% - ${TOOLBAR_HEIGHT + 1}px)`,
+  }),
+);
+
+const WorksheetAreaRight = styled("div")<WorksheetAreaLeftProps>(
+  ({ $drawerWidth }) => ({
+    position: "absolute",
+    overflow: "hidden",
+    backgroundColor: "red",
+    right: 0,
+    top: `${TOOLBAR_HEIGHT + 1}px`,
+    bottom: 0,
+    width: `${$drawerWidth}px`,
+  }),
+);
 
 const Container = styled("div")`
   display: flex;
