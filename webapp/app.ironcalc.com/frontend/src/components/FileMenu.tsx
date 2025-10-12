@@ -4,7 +4,7 @@ import { Check, FileDown, FileUp, Plus, Table2, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
 import UploadFileDialog from "./UploadFileDialog";
-import TemplatesDialog from "./WelcomeDialog/TemplatesDialog";
+// import TemplatesDialog from "./WelcomeDialog/TemplatesDialog";
 import { getModelsMetadata, getSelectedUuid } from "./storage";
 
 export function FileMenu(props: {
@@ -22,7 +22,6 @@ export function FileMenu(props: {
   const uuids = Object.keys(models);
   const selectedUuid = getSelectedUuid();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const elements = [];
   for (const uuid of uuids) {
     elements.push(
@@ -98,7 +97,7 @@ export function FileMenu(props: {
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
-            setTemplatesDialogOpen(true);
+            props.newModelFromTemplate();
             setMenuOpen(false);
           }}
         >
@@ -164,17 +163,6 @@ export function FileMenu(props: {
           onClose={() => setDeleteDialogOpen(false)}
           onConfirm={props.onDelete}
           workbookName={selectedUuid ? models[selectedUuid] : ""}
-        />
-      </Modal>
-      <Modal
-        open={isTemplatesDialogOpen}
-        onClose={() => setTemplatesDialogOpen(false)}
-        aria-labelledby="templates-dialog-title"
-        aria-describedby="templates-dialog-description"
-      >
-        <TemplatesDialog
-          onClose={() => setTemplatesDialogOpen(false)}
-          onSelectTemplate={props.newModelFromTemplate}
         />
       </Modal>
     </>
