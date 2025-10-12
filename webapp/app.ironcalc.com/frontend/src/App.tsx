@@ -161,15 +161,13 @@ function App() {
       >
         <TemplatesDialog
           onClose={() => setTemplatesDialogOpen(false)}
-          onSelectTemplate={
-            async (fileName) => {
-              const model_bytes = await get_documentation_model(fileName);
-              const importedModel = Model.from_bytes(model_bytes);
-              saveModelToStorage(importedModel);
-              setModel(importedModel);
-              setTemplatesDialogOpen(false);
-            }
-          }
+          onSelectTemplate={async (fileName) => {
+            const model_bytes = await get_documentation_model(fileName);
+            const importedModel = Model.from_bytes(model_bytes);
+            saveModelToStorage(importedModel);
+            setModel(importedModel);
+            setTemplatesDialogOpen(false);
+          }}
         />
       </Modal>
     </Wrapper>
