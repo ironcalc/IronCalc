@@ -24,6 +24,7 @@ import {
   Grid2x2Check,
   Grid2x2X,
   ImageDown,
+  Inbox,
   Italic,
   Minus,
   PaintBucket,
@@ -90,6 +91,7 @@ type ToolbarProperties = {
   showGridLines: boolean;
   onToggleShowGridLines: (show: boolean) => void;
   nameManagerProperties: NameManagerProperties;
+  openDrawer: () => void;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -539,6 +541,19 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             >
               <ImageDown />
+            </StyledButton>
+          </Tooltip>
+
+          <Tooltip title={t("toolbar.open_drawer")}>
+            <StyledButton
+              type="button"
+              $pressed={false}
+              onClick={() => {
+                properties.openDrawer();
+              }}
+              disabled={!canEdit}
+            >
+              <Inbox />
             </StyledButton>
           </Tooltip>
         </ButtonGroup>

@@ -18,11 +18,7 @@ import {
   outlineColor,
 } from "../WorksheetCanvas/constants";
 import WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
-import {
-  FORMULA_BAR_HEIGHT,
-  NAVIGATION_HEIGHT,
-  TOOLBAR_HEIGHT,
-} from "../constants";
+import { FORMULA_BAR_HEIGHT, NAVIGATION_HEIGHT } from "../constants";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
 import CellContextMenu from "./CellContextMenu";
@@ -459,7 +455,7 @@ const SheetContainer = styled("div")`
 const Wrapper = styled("div")({
   position: "absolute",
   overflow: "scroll",
-  top: TOOLBAR_HEIGHT + FORMULA_BAR_HEIGHT + 1,
+  top: FORMULA_BAR_HEIGHT + 1,
   left: 0,
   right: 0,
   bottom: NAVIGATION_HEIGHT + 1,
