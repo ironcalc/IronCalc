@@ -20,10 +20,13 @@ import {
 
 // From IronCalc
 import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/workbook";
+import { Modal } from "@mui/material";
+import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+  const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
 
   useEffect(() => {
     async function start() {
@@ -106,7 +109,7 @@ function App() {
           setModel(createdModel);
         }}
         newModelFromTemplate={() => {
-          setShowWelcomeDialog(true);
+          setTemplatesDialogOpen(true);
         }}
         setModel={(uuid: string) => {
           const newModel = selectModelFromStorage(uuid);
@@ -150,6 +153,25 @@ function App() {
           }}
         />
       )}
+      <Modal
+        open={isTemplatesDialogOpen}
+        onClose={() => setTemplatesDialogOpen(false)}
+        aria-labelledby="templates-dialog-title"
+        aria-describedby="templates-dialog-description"
+      >
+        <TemplatesDialog
+          onClose={() => setTemplatesDialogOpen(false)}
+          onSelectTemplate={
+            async (fileName) => {
+              const model_bytes = await get_documentation_model(fileName);
+              const importedModel = Model.from_bytes(model_bytes);
+              saveModelToStorage(importedModel);
+              setModel(importedModel);
+              setTemplatesDialogOpen(false);
+            }
+          }
+        />
+      </Modal>
     </Wrapper>
   );
 }
