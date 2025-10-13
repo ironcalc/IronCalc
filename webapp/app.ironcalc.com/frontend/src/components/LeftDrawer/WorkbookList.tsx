@@ -319,13 +319,12 @@ const EllipsisButton = styled("button")<{ isOpen: boolean }>`
   justify-content: center;
   padding: 4px;
   height: 24px;
-  width: 24px;
+  width: ${({ isOpen }) => (isOpen ? "24px" : "0px")};
   border-radius: 4px;
   color: #333333;
   stroke-width: 2px;
   background-color: ${({ isOpen }) => (isOpen ? "#E0E0E0" : "none")};
-  opacity: ${({ isOpen }) => (isOpen ? "1" : "0.5")};
-  transition: opacity 0.3s, background-color 0.3s;
+  opacity: ${({ isOpen }) => (isOpen ? "1" : "0")};
   &:hover {
     background: #BDBDBD;
     opacity: 1;
@@ -351,9 +350,12 @@ const WorkbookListItem = styled(MenuItem)<{ selected: boolean }>`
   background-color: ${({ selected }) =>
     selected ? "#e0e0e0 !important" : "transparent"};
 
-  /* Prevent hover effects when menu is open */
   &:hover {
     background-color: #e0e0e0;
+    button {
+      opacity: 1;
+      min-width: 24px;
+    }
   }
 `;
 
