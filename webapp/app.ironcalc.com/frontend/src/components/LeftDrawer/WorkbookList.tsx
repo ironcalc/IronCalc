@@ -1,6 +1,13 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
-import { EllipsisVertical, FileDown, Table2, Trash2 } from "lucide-react";
+import {
+  EllipsisVertical,
+  FileDown,
+  Pin,
+  PinOff,
+  Table2,
+  Trash2,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
@@ -8,7 +15,9 @@ import { downloadModel } from "../rpc";
 import {
   getModelsMetadata,
   getSelectedUuid,
+  isWorkbookPinned,
   selectModelFromStorage,
+  togglePinWorkbook,
 } from "../storage";
 
 interface WorkbookListProps {
@@ -99,12 +108,19 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
     }
   };
 
-  // Group workbooks by creation date
+  const handlePinToggle = (uuid: string) => {
+    togglePinWorkbook(uuid);
+    setIntendedSelection(null);
+    handleMenuClose();
+  };
+
+  // Group workbooks by pinned status and creation date
   const groupWorkbooks = () => {
     const now = Date.now();
     const millisecondsInDay = 24 * 60 * 60 * 1000;
     const millisecondsIn30Days = 30 * millisecondsInDay;
 
+    const pinnedModels = [];
     const modelsCreatedToday = [];
     const modelsCreatedThisMonth = [];
     const olderModels = [];
@@ -114,7 +130,9 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
       const createdAt = modelsMetadata[uuid].createdAt;
       const age = now - createdAt;
 
-      if (age < millisecondsInDay) {
+      if (modelsMetadata[uuid].pinned) {
+        pinnedModels.push(uuid);
+      } else if (age < millisecondsInDay) {
         modelsCreatedToday.push(uuid);
       } else if (age < millisecondsIn30Days) {
         modelsCreatedThisMonth.push(uuid);
@@ -130,19 +148,25 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
       );
 
     return {
+      pinnedModels: sortByNewest(pinnedModels),
       modelsCreatedToday: sortByNewest(modelsCreatedToday),
       modelsCreatedThisMonth: sortByNewest(modelsCreatedThisMonth),
       olderModels: sortByNewest(olderModels),
     };
   };
 
-  const { modelsCreatedToday, modelsCreatedThisMonth, olderModels } =
-    groupWorkbooks();
+  const {
+    pinnedModels,
+    modelsCreatedToday,
+    modelsCreatedThisMonth,
+    olderModels,
+  } = groupWorkbooks();
 
   const renderWorkbookItem = (uuid: string) => {
     const isMenuOpen = menuAnchorEl !== null && selectedWorkbookUuid === uuid;
     const isAnyMenuOpen = menuAnchorEl !== null;
     const models = getModelsMetadata();
+    const isPinned = isWorkbookPinned(uuid);
     return (
       <WorkbookListItem
         key={uuid}
@@ -178,7 +202,10 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
 
     return (
       <SectionContainer key={title}>
-        <SectionTitle>{title}</SectionTitle>
+        <SectionTitle>
+          {title === "Pinned" && <Pin />}
+          {title}
+        </SectionTitle>
         {uuids.map(renderWorkbookItem)}
       </SectionContainer>
     );
@@ -188,6 +215,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
 
   return (
     <>
+      {renderSection("Pinned", pinnedModels)}
       {renderSection("Today", modelsCreatedToday)}
       {renderSection("Last 30 Days", modelsCreatedThisMonth)}
       {renderSection("Older", olderModels)}
@@ -224,6 +252,23 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
         >
           <FileDown />
           Download (.xlsx)
+        </MenuItemWrapper>
+        <MenuItemWrapper
+          onClick={() => {
+            if (selectedWorkbookUuid) {
+              handlePinToggle(selectedWorkbookUuid);
+            }
+          }}
+          disableRipple
+        >
+          {selectedWorkbookUuid && isWorkbookPinned(selectedWorkbookUuid) ? (
+            <PinOff />
+          ) : (
+            <Pin />
+          )}
+          {selectedWorkbookUuid && isWorkbookPinned(selectedWorkbookUuid)
+            ? "Unpin"
+            : "Pin"}
         </MenuItemWrapper>
         <MenuItemWrapper
           selected={false}
@@ -358,11 +403,18 @@ const SectionContainer = styled("div")`
 `;
 
 const SectionTitle = styled("div")`
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 400;
   color: #9e9e9e;
   margin-bottom: 8px;
   padding: 0px 8px;
   font-size: 12px;
+  svg {
+    width: 12px;
+    height: 12px;
+  }
 `;
 
 export default WorkbookList;

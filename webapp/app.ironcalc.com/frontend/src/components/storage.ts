@@ -3,7 +3,10 @@ import { base64ToBytes, bytesToBase64 } from "./util";
 
 const MAX_WORKBOOKS = 50;
 
-type ModelsMetadata = Record<string, { name: string; createdAt: number }>;
+type ModelsMetadata = Record<
+  string,
+  { name: string; createdAt: number; pinned?: boolean }
+>;
 
 export function updateNameSelectedWorkbook(model: Model, newName: string) {
   const uuid = localStorage.getItem("selected");
@@ -191,4 +194,17 @@ export function deleteModelByUuid(uuid: string): Model | null {
 
   // Fallback to creating a new model if no valid selected model
   return createNewModel();
+}
+
+export function togglePinWorkbook(uuid: string): void {
+  const metadata = getModelsMetadata();
+  if (metadata[uuid]) {
+    metadata[uuid].pinned = !metadata[uuid].pinned;
+    localStorage.setItem("models", JSON.stringify(metadata));
+  }
+}
+
+export function isWorkbookPinned(uuid: string): boolean {
+  const metadata = getModelsMetadata();
+  return metadata[uuid]?.pinned || false;
 }
