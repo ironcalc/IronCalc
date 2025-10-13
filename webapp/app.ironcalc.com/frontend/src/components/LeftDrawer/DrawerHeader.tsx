@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { IronCalcLogo } from "@ironcalc/workbook";
-import { IconButton } from "@mui/material";
+import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
+import { IconButton, Tooltip } from "@mui/material";
 import { Plus } from "lucide-react";
+import { DialogHeaderLogoWrapper } from "../WelcomeDialog/WelcomeDialog";
 
 interface DrawerHeaderProps {
   onNewModel: () => void;
@@ -10,10 +11,31 @@ interface DrawerHeaderProps {
 function DrawerHeader({ onNewModel }: DrawerHeaderProps) {
   return (
     <HeaderContainer>
-      <StyledDesktopLogo />
-      <AddButton onClick={onNewModel} title="New workbook">
-        <PlusIcon />
-      </AddButton>
+      <LogoWrapper>
+        <Logo>
+          <IronCalcIcon />
+        </Logo>
+        <Title>IronCalc</Title>
+      </LogoWrapper>
+      <Tooltip
+        title="New workbook"
+        slotProps={{
+          popper: {
+            modifiers: [
+              {
+                name: "offset",
+                options: {
+                  offset: [0, -8],
+                },
+              },
+            ],
+          },
+        }}
+      >
+        <AddButton onClick={onNewModel}>
+          <PlusIcon />
+        </AddButton>
+      </Tooltip>
     </HeaderContainer>
   );
 }
@@ -25,31 +47,46 @@ const HeaderContainer = styled("div")`
   justify-content: space-between;
   max-height: 60px;
   min-height: 60px;
-  border-bottom: 1px solid #e0e0e0;
   box-sizing: border-box;
+  box-shadow: 0 1px 0 0 #e0e0e0;
 `;
 
-const StyledDesktopLogo = styled(IronCalcLogo)`
-  width: 120px;
-  height: 28px;
+const LogoWrapper = styled("div")`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+`;
+
+const Title = styled("h1")`
+  font-size: 14px;
+  font-weight: 600;
+`;
+
+const Logo = styled(DialogHeaderLogoWrapper)`
+  transform: none;
+  margin-bottom: 0px;
+  padding: 6px;
 `;
 
 const AddButton = styled(IconButton)`
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
+  margin-left: 8px;
   height: 32px;
   width: 32px;
+  padding: 8px;
   border-radius: 4px;
-  margin-left: 10px;
-  color: #333333;
-  stroke-width: 2px;
+
+  svg {
+    stroke-width: 2px;
+    stroke: #757575;
+    width: 16px;
+    height: 16px;
+  }
   &:hover {
-    background-color: #e0e0e0;
+    background-color: #E0E0E0;
+  }
+  &:active {
+    background-color: #BDBDBD;
   }
 `;
 

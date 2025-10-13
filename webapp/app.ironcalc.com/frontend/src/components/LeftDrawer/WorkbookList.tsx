@@ -1,11 +1,6 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
-import {
-  EllipsisVertical,
-  FileDown,
-  FileSpreadsheet,
-  Trash2,
-} from "lucide-react";
+import { EllipsisVertical, FileDown, Table2, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
@@ -163,7 +158,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
         style={{ pointerEvents: isAnyMenuOpen ? "none" : "auto" }}
       >
         <StorageIndicator>
-          <FileSpreadsheet />
+          <Table2 />
         </StorageIndicator>
         <WorkbookListText>{models[uuid].name}</WorkbookListText>
         <EllipsisButton
@@ -230,7 +225,6 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
           <FileDown />
           Download (.xlsx)
         </MenuItemWrapper>
-        <MenuDivider />
         <MenuItemWrapper
           selected={false}
           onClick={() => {
@@ -288,7 +282,7 @@ const EllipsisButton = styled("button")<{ isOpen: boolean }>`
   opacity: ${({ isOpen }) => (isOpen ? "1" : "0.5")};
   transition: opacity 0.3s, background-color 0.3s;
   &:hover {
-    background: none;
+    background: #BDBDBD;
     opacity: 1;
   }
   &:active {
@@ -314,8 +308,7 @@ const WorkbookListItem = styled(MenuItem)<{ selected: boolean }>`
 
   /* Prevent hover effects when menu is open */
   &:hover {
-    background-color: ${({ selected }) =>
-      selected ? "#e0e0e0 !important" : "transparent"};
+    background-color: #e0e0e0;
   }
 `;
 
@@ -339,14 +332,6 @@ const StyledMenu = styled(Menu)`
   },
 `;
 
-const MenuDivider = styled("div")`
-  width: 100%;
-  margin: auto;
-  margin-top: 4px;
-  margin-bottom: 4px;
-  border-top: 1px solid #eeeeee;
-`;
-
 const MenuItemWrapper = styled(MenuItem)`
   display: flex;
   justify-content: flex-start;
@@ -361,15 +346,19 @@ const MenuItemWrapper = styled(MenuItem)`
   svg {
     width: 16px;
     height: 16px;
+    color: #757575;
   }
 `;
 
 const SectionContainer = styled("div")`
   margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 `;
 
 const SectionTitle = styled("div")`
-  font-weight: 600;
+  font-weight: 400;
   color: #9e9e9e;
   margin-bottom: 8px;
   padding: 0px 8px;

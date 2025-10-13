@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
-import { IconButton } from "@mui/material";
+import { IconButton, Tooltip } from "@mui/material";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { FileMenu } from "./FileMenu";
@@ -51,15 +51,29 @@ export function FileBar(properties: {
 
   return (
     <FileBarWrapper>
-      <DrawerButton
-        // $isDrawerOpen={properties.isDrawerOpen}
-        onClick={() => properties.setIsDrawerOpen(!properties.isDrawerOpen)}
-        disableRipple
+      <Tooltip
         title="Toggle sidebar"
+        slotProps={{
+          popper: {
+            modifiers: [
+              {
+                name: "offset",
+                options: {
+                  offset: [0, -8],
+                },
+              },
+            ],
+          },
+        }}
       >
-        {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
-      </DrawerButton>
-      <Divider />
+        <DrawerButton
+          // $isDrawerOpen={properties.isDrawerOpen}
+          onClick={() => properties.setIsDrawerOpen(!properties.isDrawerOpen)}
+          disableRipple
+        >
+          {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+        </DrawerButton>
+      </Tooltip>
       <FileMenu
         newModel={properties.newModel}
         newModelFromTemplate={properties.newModelFromTemplate}
@@ -135,19 +149,15 @@ const DrawerButton = styled(IconButton)`
   }
 `;
 
-const Divider = styled("div")`
-  margin: 0px 8px 0px 16px;
-  height: 12px;
-  border-left: 1px solid #e0e0e0;
-`;
-
 // The container must be relative positioned so we can position the title absolutely
 const FileBarWrapper = styled("div")`
   position: relative;
   height: 60px;
+  min-height: 60px;
   width: 100%;
   background: #fff;
   display: flex;
+  gap: 2px;
   align-items: center;
   border-bottom: 1px solid #e0e0e0;
   justify-content: space-between;

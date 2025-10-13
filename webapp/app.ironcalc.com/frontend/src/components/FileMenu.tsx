@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
-import { Check, FileDown, FileUp, Plus, Table2, Trash2 } from "lucide-react";
+import { FileDown, FileUp, Plus, Table2, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
 import UploadFileDialog from "./UploadFileDialog";
