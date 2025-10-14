@@ -131,6 +131,9 @@ function App() {
         onDelete={handleDeleteModelByUuid}
       />
       <MainContent isDrawerOpen={isDrawerOpen}>
+        {isDrawerOpen && (
+          <MobileOverlay onClick={() => setIsDrawerOpen(false)} />
+        )}
         <FileBar
           model={model}
           onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
@@ -217,6 +220,30 @@ const MainContent = styled("div")<{ isDrawerOpen: boolean }>`
     isDrawerOpen ? "calc(100% - 264px)" : "100%"};
   display: flex;
   flex-direction: column;
+  position: relative;
+  
+    @media (max-width: 440px) {
+    ${({ isDrawerOpen }) =>
+      isDrawerOpen &&
+      `
+      min-width: 440px;
+    `}
+  
+`;
+
+const MobileOverlay = styled("div")`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  z-index: 1;
+  cursor: pointer;
+  
+  @media (min-width: 441px) {
+    display: none;
+  }
 `;
 
 const Loading = styled("div")`

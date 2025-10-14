@@ -74,20 +74,22 @@ export function FileBar(properties: {
           {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
         </DrawerButton>
       </Tooltip>
-      <FileMenu
-        newModel={properties.newModel}
-        newModelFromTemplate={properties.newModelFromTemplate}
-        setModel={properties.setModel}
-        onModelUpload={properties.onModelUpload}
-        onDownload={async () => {
-          const model = properties.model;
-          const bytes = model.toBytes();
-          const fileName = model.getName();
-          await downloadModel(bytes, fileName);
-        }}
-        onDelete={properties.onDelete}
-      />
-      <HelpMenu />
+      {width > 440 && (
+        <FileMenu
+          newModel={properties.newModel}
+          newModelFromTemplate={properties.newModelFromTemplate}
+          setModel={properties.setModel}
+          onModelUpload={properties.onModelUpload}
+          onDownload={async () => {
+            const model = properties.model;
+            const bytes = model.toBytes();
+            const fileName = model.getName();
+            await downloadModel(bytes, fileName);
+          }}
+          onDelete={properties.onDelete}
+        />
+      )}
+      {width > 440 && <HelpMenu />}
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}
