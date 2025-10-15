@@ -1,0 +1,12 @@
+services:
+  server:
+    build:
+      context: .
+      target: server-runtime
+
+  caddy:
+    build:
+      context: .
+      target: caddy-runtime
+    ports:
+      - "2080:2080"
