@@ -96,7 +96,6 @@ const HelpButton = styled.button<{ $isActive?: boolean }>`
   cursor: pointer;
   background-color: ${(props) => (props.$isActive ? "#e6e6e6" : "transparent")};
   border: none;
-  background: none;
   &:hover {
     background-color: #f2f2f2;
   }
