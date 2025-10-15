@@ -215,7 +215,7 @@ const Wrapper = styled("div")`
 
 const MainContent = styled("div")<{ isDrawerOpen: boolean }>`
   margin-left: ${({ isDrawerOpen }) => (isDrawerOpen ? "0px" : "-264px")};
-  transition: margin-left 0.3s ease;
+  transition: margin-left 0.2s;
   width: ${({ isDrawerOpen }) =>
     isDrawerOpen ? "calc(100% - 264px)" : "100%"};
   display: flex;
