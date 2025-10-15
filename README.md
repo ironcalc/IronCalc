@@ -31,7 +31,7 @@ This repository contains the main engine and the xlsx reader and writer.
 
 Programmed in Rust, you will be able to use it from a variety of programming languages like Python, JavaScript (wasm), nodejs and possibly R, Julia or Go.
 
-We will build different _skins_: in the terminal, as a desktop application or use it in you own web application.
+We will build different _skins_: in the terminal, as a desktop application or use it in your own web application.
 
 # Docker
 
