@@ -1,8 +1,9 @@
 import { Menu, MenuItem, styled } from "@mui/material";
+import { Check } from "lucide-react";
 import { type ComponentProps, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import FormatPicker from "./FormatPicker";
-import { NumberFormats } from "./formatUtil";
+import { KNOWN_FORMATS, NumberFormats } from "./formatUtil";
 
 type FormatMenuProps = {
   children: React.ReactNode;
@@ -26,6 +27,8 @@ const FormatMenu = (properties: FormatMenuProps) => {
     [properties.onChange],
   );
 
+  const isCustomFormat = !KNOWN_FORMATS.has(properties.numFmt);
+
   return (
     <>
       <ChildrenWrapper
@@ -48,11 +51,17 @@ const FormatMenu = (properties: FormatMenuProps) => {
         }}
       >
         <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.AUTO)}>
-          <MenuItemText>{t("toolbar.format_menu.auto")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon $active={properties.numFmt === NumberFormats.AUTO} />
+            {t("toolbar.format_menu.auto")}
+          </MenuItemText>
         </MenuItemWrapper>
         <MenuDivider />
         <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.NUMBER)}>
-          <MenuItemText>{t("toolbar.format_menu.number")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon $active={properties.numFmt === NumberFormats.NUMBER} />
+            {t("toolbar.format_menu.number")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.number_example")}
           </MenuItemExample>
@@ -60,7 +69,12 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.PERCENTAGE)}
         >
-          <MenuItemText>{t("toolbar.format_menu.percentage")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon
+              $active={properties.numFmt === NumberFormats.PERCENTAGE}
+            />
+            {t("toolbar.format_menu.percentage")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.percentage_example")}
           </MenuItemExample>
@@ -70,7 +84,12 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.CURRENCY_EUR)}
         >
-          <MenuItemText>{t("toolbar.format_menu.currency_eur")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon
+              $active={properties.numFmt === NumberFormats.CURRENCY_EUR}
+            />
+            {t("toolbar.format_menu.currency_eur")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.currency_eur_example")}
           </MenuItemExample>
@@ -78,7 +97,12 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.CURRENCY_USD)}
         >
-          <MenuItemText>{t("toolbar.format_menu.currency_usd")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon
+              $active={properties.numFmt === NumberFormats.CURRENCY_USD}
+            />
+            {t("toolbar.format_menu.currency_usd")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.currency_usd_example")}
           </MenuItemExample>
@@ -86,7 +110,12 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.CURRENCY_GBP)}
         >
-          <MenuItemText>{t("toolbar.format_menu.currency_gbp")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon
+              $active={properties.numFmt === NumberFormats.CURRENCY_GBP}
+            />
+            {t("toolbar.format_menu.currency_gbp")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.currency_gbp_example")}
           </MenuItemExample>
@@ -96,7 +125,12 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.DATE_SHORT)}
         >
-          <MenuItemText>{t("toolbar.format_menu.date_short")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon
+              $active={properties.numFmt === NumberFormats.DATE_SHORT}
+            />
+            {t("toolbar.format_menu.date_short")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.date_short_example")}
           </MenuItemExample>
@@ -104,7 +138,12 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.DATE_LONG)}
         >
-          <MenuItemText>{t("toolbar.format_menu.date_long")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon
+              $active={properties.numFmt === NumberFormats.DATE_LONG}
+            />
+            {t("toolbar.format_menu.date_long")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.date_long_example")}
           </MenuItemExample>
@@ -112,7 +151,10 @@ const FormatMenu = (properties: FormatMenuProps) => {
 
         <MenuDivider />
         <MenuItemWrapper onClick={(): void => setPickerOpen(true)}>
-          <MenuItemText>{t("toolbar.format_menu.custom")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon $active={isCustomFormat} />
+            {t("toolbar.format_menu.custom")}
+          </MenuItemText>
         </MenuItemWrapper>
       </StyledMenu>
       <FormatPicker
@@ -139,6 +181,7 @@ const StyledMenu = styled(Menu)`
 
 const MenuItemWrapper = styled(MenuItem)`
   display: flex;
+  align-items: center;
   justify-content: space-between;
   font-size: 12px;
   width: calc(100% - 8px);
@@ -161,8 +204,18 @@ const MenuDivider = styled("div")`
   border-top: 1px solid #eeeeee;
 `;
 
+const CheckIcon = styled(Check)<{ $active: boolean }>`
+  width: 16px;
+  height: 16px;
+  color: ${(props) => (props.$active ? "currentColor" : "transparent")};
+  margin-right: 8px;
+  flex-shrink: 0;
+`;
+
 const MenuItemText = styled("div")`
   color: #000;
+  display: flex;
+  align-items: center;
 `;
 
 const MenuItemExample = styled("div")`
