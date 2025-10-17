@@ -1,15 +1,9 @@
 import { Menu, MenuItem, styled } from "@mui/material";
 import { Check } from "lucide-react";
-import {
-  type ComponentProps,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type ComponentProps, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import FormatPicker from "./FormatPicker";
-import { NumberFormats } from "./formatUtil";
+import { KNOWN_FORMATS, NumberFormats } from "./formatUtil";
 
 type FormatMenuProps = {
   children: React.ReactNode;
@@ -33,11 +27,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
     [properties.onChange],
   );
 
-  const isCustomFormat = useMemo(() => {
-    return !Object.values(NumberFormats).includes(
-      properties.numFmt as NumberFormats,
-    );
-  }, [properties.numFmt]);
+  const isCustomFormat = !KNOWN_FORMATS.has(properties.numFmt);
 
   return (
     <>
@@ -217,7 +207,7 @@ const MenuDivider = styled("div")`
 const CheckIcon = styled(Check)<{ $active: boolean }>`
   width: 16px;
   height: 16px;
-  color: ${(props) => (props.$active ? "" : "transparent")};
+  color: ${(props) => (props.$active ? "currentColor" : "transparent")};
   margin-right: 8px;
   flex-shrink: 0;
 `;
