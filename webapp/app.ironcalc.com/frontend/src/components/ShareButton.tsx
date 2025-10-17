@@ -5,8 +5,8 @@ export function ShareButton(properties: { onClick: () => void }) {
   const { onClick } = properties;
   return (
     <Wrapper onClick={onClick} onKeyDown={() => {}}>
-      <Share2 style={{ width: "16px", height: "16px", marginRight: "10px" }} />
-      <span>Share</span>
+      <ShareIcon />
+      <ShareText>Share</ShareText>
     </Wrapper>
   );
 }
@@ -23,8 +23,24 @@ const Wrapper = styled("div")`
   display: flex;
   align-items: center;
   font-family: "Inter";
-  font-size: 14px;
+  font-size: 12px;
   &:hover {
     background: #d68742;
+  }
+`;
+
+const ShareIcon = styled(Share2)`
+  width: 16px;
+  height: 16px;
+  margin-right: 10px;
+  
+  @media (max-width: 440px) {
+    margin-right: 0px;
+  }
+`;
+
+const ShareText = styled.span`
+  @media (max-width: 440px) {
+    display: none;
   }
 `;

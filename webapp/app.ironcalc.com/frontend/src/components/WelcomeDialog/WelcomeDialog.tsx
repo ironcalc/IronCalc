@@ -106,7 +106,7 @@ const DialogHeaderTitleSubtitle = styled("span")`
   color: #757575;
 `;
 
-const DialogHeaderLogoWrapper = styled("div")`
+export const DialogHeaderLogoWrapper = styled("div")`
   display: flex;
   flex-direction: row;
   align-items: center;
