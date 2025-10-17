@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
 import {
+  Copy,
   EllipsisVertical,
   FileDown,
   Pin,
@@ -13,6 +14,7 @@ import { useEffect, useState } from "react";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
 import { downloadModel } from "../rpc";
 import {
+  duplicateModel,
   getModelsMetadata,
   getSelectedUuid,
   isWorkbookPinned,
@@ -114,6 +116,14 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
     handleMenuClose();
   };
 
+  const handleDuplicate = (uuid: string) => {
+    const duplicatedModel = duplicateModel(uuid);
+    if (duplicatedModel) {
+      setIntendedSelection(null);
+      handleMenuClose();
+    }
+  };
+
   // Group workbooks by pinned status and creation date
   const groupWorkbooks = () => {
     const now = Date.now();
@@ -166,7 +176,6 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
     const isMenuOpen = menuAnchorEl !== null && selectedWorkbookUuid === uuid;
     const isAnyMenuOpen = menuAnchorEl !== null;
     const models = getModelsMetadata();
-    const isPinned = isWorkbookPinned(uuid);
     return (
       <WorkbookListItem
         key={uuid}
@@ -269,6 +278,17 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
           {selectedWorkbookUuid && isWorkbookPinned(selectedWorkbookUuid)
             ? "Unpin"
             : "Pin"}
+        </MenuItemWrapper>
+        <MenuItemWrapper
+          onClick={() => {
+            if (selectedWorkbookUuid) {
+              handleDuplicate(selectedWorkbookUuid);
+            }
+          }}
+          disableRipple
+        >
+          <Copy />
+          Duplicate
         </MenuItemWrapper>
         <MenuItemWrapper
           selected={false}

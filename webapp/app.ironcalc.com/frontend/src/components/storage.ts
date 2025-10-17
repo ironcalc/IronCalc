@@ -208,3 +208,32 @@ export function isWorkbookPinned(uuid: string): boolean {
   const metadata = getModelsMetadata();
   return metadata[uuid]?.pinned || false;
 }
+
+export function duplicateModel(uuid: string): Model | null {
+  const originalModel = selectModelFromStorage(uuid);
+  if (!originalModel) return null;
+
+  const duplicatedModel = Model.from_bytes(originalModel.toBytes());
+  const models = getModelsMetadata();
+  const originalName = models[uuid]?.name || "Workbook";
+  const existingNames = Object.values(models).map((m) => m.name);
+
+  // Find next available number
+  let counter = 1;
+  let newName = `${originalName} (${counter})`;
+  while (existingNames.includes(newName)) {
+    counter++;
+    newName = `${originalName} (${counter})`;
+  }
+
+  duplicatedModel.setName(newName);
+
+  const newUuid = crypto.randomUUID();
+  localStorage.setItem("selected", newUuid);
+  localStorage.setItem(newUuid, bytesToBase64(duplicatedModel.toBytes()));
+
+  models[newUuid] = { name: newName, createdAt: Date.now() };
+  localStorage.setItem("models", JSON.stringify(models));
+
+  return duplicatedModel;
+}
