@@ -12,6 +12,7 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
+import { DeleteButton, MenuDivider, MenuItemWrapper } from "../FileMenu";
 import { downloadModel } from "../rpc";
 import {
   duplicateModel,
@@ -290,7 +291,8 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
           <Copy />
           Duplicate
         </MenuItemWrapper>
-        <MenuItemWrapper
+        <MenuDivider />
+        <DeleteButton
           selected={false}
           onClick={() => {
             if (selectedWorkbookUuid) {
@@ -301,7 +303,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
         >
           <Trash2 size={16} />
           Delete workbook
-        </MenuItemWrapper>
+        </DeleteButton>
       </StyledMenu>
 
       <Modal
@@ -397,24 +399,6 @@ const StyledMenu = styled(Menu)`
   .MuiList-root {
     padding: 0;
   },
-`;
-
-const MenuItemWrapper = styled(MenuItem)`
-  display: flex;
-  justify-content: flex-start;
-  font-size: 12px;
-  width: calc(100% - 8px);
-  min-width: 140px;
-  margin: 0px 4px;
-  border-radius: 4px;
-  padding: 8px;
-  height: 32px;
-  gap: 8px;
-  svg {
-    width: 16px;
-    height: 16px;
-    color: #757575;
-  }
 `;
 
 const SectionContainer = styled("div")`

@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { Menu, MenuItem } from "@mui/material";
+import { Menu } from "@mui/material";
 import { BookOpen, Keyboard } from "lucide-react";
 import { useRef, useState } from "react";
+import { MenuItemWrapper } from "./FileMenu";
 
 export function HelpMenu() {
   const [isMenuOpen, setMenuOpen] = useState(false);
@@ -61,10 +62,8 @@ export function HelpMenu() {
             );
           }}
         >
-          <StyledIcon>
-            <BookOpen />
-          </StyledIcon>
-          <MenuItemText>Documentation</MenuItemText>
+          <BookOpen />
+          Documentation
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
@@ -76,10 +75,8 @@ export function HelpMenu() {
             );
           }}
         >
-          <StyledIcon>
-            <Keyboard />
-          </StyledIcon>
-          <MenuItemText>Keyboard Shortcuts</MenuItemText>
+          <Keyboard />
+          Keyboard Shortcuts
         </MenuItemWrapper>
       </Menu>
     </div>
@@ -99,33 +96,4 @@ const HelpButton = styled.button<{ $isActive?: boolean }>`
   &:hover {
     background-color: #f2f2f2;
   }
-`;
-
-const MenuItemWrapper = styled(MenuItem)`
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  font-size: 14px;
-  width: calc(100% - 8px);
-  min-width: 172px;
-  margin: 0px 4px;
-  border-radius: 4px;
-  padding: 8px;
-  height: 32px;
-`;
-
-const StyledIcon = styled.div`
-  display: flex;
-  align-items: center;
-  svg {
-    width: 16px;
-    height: 100%;
-    color: #757575;
-    padding-right: 10px;
-  }
-`;
-
-const MenuItemText = styled.div`
-  color: #000;
-  font-size: 12px;
 `;
