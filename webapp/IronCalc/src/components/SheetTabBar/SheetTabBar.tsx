@@ -1,7 +1,9 @@
 import { styled } from "@mui/material";
+import { Tooltip } from "@mui/material";
 import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { IronCalcLogo } from "../../icons";
 import { theme } from "../../theme";
 import { StyledButton } from "../Toolbar/Toolbar";
 import { NAVIGATION_HEIGHT } from "../constants";
@@ -49,20 +51,16 @@ function SheetTabBar(props: SheetTabBarProps) {
   return (
     <Container>
       <LeftButtonsContainer>
-        <StyledButton
-          title={t("navigation.add_sheet")}
-          $pressed={false}
-          onClick={props.onAddBlankSheet}
-        >
-          <Plus />
-        </StyledButton>
-        <StyledButton
-          onClick={handleClick}
-          title={t("navigation.sheet_list")}
-          $pressed={false}
-        >
-          <Menu />
-        </StyledButton>
+        <Tooltip title={t("navigation.add_sheet")}>
+          <StyledButton $pressed={false} onClick={props.onAddBlankSheet}>
+            <Plus />
+          </StyledButton>
+        </Tooltip>
+        <Tooltip title={t("navigation.sheet_list")}>
+          <StyledButton onClick={handleClick} $pressed={false}>
+            <Menu />
+          </StyledButton>
+        </Tooltip>
       </LeftButtonsContainer>
       <VerticalDivider />
       <Sheets>
@@ -91,7 +89,7 @@ function SheetTabBar(props: SheetTabBarProps) {
         </SheetInner>
       </Sheets>
       <Advert href="https://www.ironcalc.com" target="_blank">
-        ironcalc.com
+        <IronCalcLogo />
       </Advert>
       <SheetListMenu
         anchorEl={anchorEl}
@@ -119,14 +117,11 @@ const Container = styled("div")`
   display: flex;
   height: ${NAVIGATION_HEIGHT}px;
   align-items: center;
-  padding: 0px 12px;
+  padding: 0px;
   font-family: Inter;
+  overflow: hidden;
   background-color: ${theme.palette.common.white};
   border-top: 1px solid ${theme.palette.grey["300"]};
-  @media (max-width: 769px) {
-    padding-right: 0px;
-    padding-left: 8px;
-  }
 `;
 
 const Sheets = styled("div")`
@@ -147,11 +142,15 @@ const Advert = styled("a")`
   display: flex;
   align-items: center;
   color: ${theme.palette.primary.main};
-  padding: 0px 0px 0px 12px;
+  height: 100%;
+  padding: 0px 12px;
   font-size: 12px;
   text-decoration: none;
-  border-left: 1px solid ${theme.palette.grey["300"]};
   transition: color 0.2s ease-in-out;
+  svg {
+    height: 14px;
+    width: auto;
+  }
   &:hover {
     text-decoration: underline;
   }
@@ -163,10 +162,12 @@ const Advert = styled("a")`
 const LeftButtonsContainer = styled("div")`
   display: flex;
   flex-direction: row;
+  align-items: center;
+  height: 100%;
   gap: 4px;
-  padding-right: 12px;
+  padding: 0px 12px;
   @media (max-width: 769px) {
-    padding-right: 8px;
+    padding: 0px 8px;
   }
 `;
 
