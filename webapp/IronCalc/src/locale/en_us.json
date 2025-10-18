@@ -81,6 +81,12 @@
     "confirm": "Yes, delete sheet",
     "cancel": "Cancel"
   },
+  "sheet_tab": {
+    "rename": "Rename",
+    "change_color": "Change Color",
+    "delete": "Delete",
+    "hide_sheet": "Hide sheet"
+  },
   "formula_input": {
     "update": "Update",
     "label": "Formula",

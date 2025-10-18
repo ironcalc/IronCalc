@@ -98,7 +98,7 @@ function SheetTab(props: SheetTabProps) {
             handleClose();
           }}
         >
-          Rename
+          {t("sheet_tab.rename")}
         </StyledMenuItem>
         <StyledMenuItem
           onClick={() => {
@@ -106,7 +106,7 @@ function SheetTab(props: SheetTabProps) {
             handleClose();
           }}
         >
-          Change Color
+          {t("sheet_tab.change_color")}
         </StyledMenuItem>
         <StyledMenuItem
           disabled={!props.canDelete}
@@ -115,7 +115,7 @@ function SheetTab(props: SheetTabProps) {
             handleClose();
           }}
         >
-          Delete
+          {t("sheet_tab.delete")}
         </StyledMenuItem>
         <StyledMenuItem
           disabled={!props.canDelete}
@@ -124,7 +124,7 @@ function SheetTab(props: SheetTabProps) {
             handleClose();
           }}
         >
-          Hide sheet
+          {t("sheet_tab.hide_sheet")}
         </StyledMenuItem>
       </StyledMenu>
       <SheetRenameDialog
