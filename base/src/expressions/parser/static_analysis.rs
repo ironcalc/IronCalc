@@ -341,7 +341,8 @@ fn static_analysis_offset(args: &[Node]) -> StaticResult {
         }
         _ => return StaticResult::Unknown,
     };
-    StaticResult::Unknown
+    // Both height and width are explicitly 1, so OFFSET will return a single cell
+    StaticResult::Scalar
 }
 
 // fn static_analysis_choose(_args: &[Node]) -> StaticResult {
@@ -575,6 +576,37 @@ fn args_signature_xnpv(arg_count: usize) -> Vec<Signature> {
     }
 }
 
+// NETWORKDAYS(start_date, end_date, [holidays])
+// Parameters: start_date (scalar), end_date (scalar), holidays (optional vector)
+fn args_signature_networkdays(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Scalar, Signature::Scalar]
+    } else if arg_count == 3 {
+        vec![Signature::Scalar, Signature::Scalar, Signature::Vector]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
+// NETWORKDAYS.INTL(start_date, end_date, [weekend], [holidays])
+// Parameters: start_date (scalar), end_date (scalar), weekend (optional scalar), holidays (optional vector)
+fn args_signature_networkdays_intl(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Scalar, Signature::Scalar]
+    } else if arg_count == 3 {
+        vec![Signature::Scalar, Signature::Scalar, Signature::Scalar]
+    } else if arg_count == 4 {
+        vec![
+            Signature::Scalar,
+            Signature::Scalar,
+            Signature::Scalar,
+            Signature::Vector,
+        ]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
 // FIXME: This is terrible duplications of efforts. We use the signature in at least three different places:
 // 1. When computing the function
 // 2. Checking the arguments to see if we need to insert the implicit intersection operator
@@ -690,13 +722,28 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Maxifs => vec![Signature::Vector; arg_count],
         Function::Minifs => vec![Signature::Vector; arg_count],
         Function::Date => args_signature_scalars(arg_count, 3, 0),
+        Function::Datedif => args_signature_scalars(arg_count, 3, 0),
+        Function::Datevalue => args_signature_scalars(arg_count, 1, 0),
         Function::Day => args_signature_scalars(arg_count, 1, 0),
         Function::Edate => args_signature_scalars(arg_count, 2, 0),
         Function::Eomonth => args_signature_scalars(arg_count, 2, 0),
         Function::Month => args_signature_scalars(arg_count, 1, 0),
+        Function::Time => args_signature_scalars(arg_count, 3, 0),
+        Function::Timevalue => args_signature_scalars(arg_count, 1, 0),
+        Function::Hour => args_signature_scalars(arg_count, 1, 0),
+        Function::Minute => args_signature_scalars(arg_count, 1, 0),
+        Function::Second => args_signature_scalars(arg_count, 1, 0),
         Function::Now => args_signature_no_args(arg_count),
         Function::Today => args_signature_no_args(arg_count),
         Function::Year => args_signature_scalars(arg_count, 1, 0),
+        Function::Days => args_signature_scalars(arg_count, 2, 0),
+        Function::Days360 => args_signature_scalars(arg_count, 2, 1),
+        Function::Weekday => args_signature_scalars(arg_count, 1, 1),
+        Function::Weeknum => args_signature_scalars(arg_count, 1, 1),
+        Function::Workday => args_signature_scalars(arg_count, 2, 1),
+        Function::WorkdayIntl => args_signature_scalars(arg_count, 2, 2),
+        Function::Yearfrac => args_signature_scalars(arg_count, 2, 1),
+        Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
         Function::Cumipmt => args_signature_scalars(arg_count, 6, 0),
         Function::Cumprinc => args_signature_scalars(arg_count, 6, 0),
         Function::Db => args_signature_scalars(arg_count, 4, 1),
@@ -785,6 +832,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
         Function::Unicode => args_signature_scalars(arg_count, 1, 0),
         Function::Geomean => vec![Signature::Vector; arg_count],
+        Function::Networkdays => args_signature_networkdays(arg_count),
+        Function::NetworkdaysIntl => args_signature_networkdays_intl(arg_count),
     }
 }
 
@@ -896,12 +945,27 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Maxifs => not_implemented(args),
         Function::Minifs => not_implemented(args),
         Function::Date => not_implemented(args),
+        Function::Datedif => not_implemented(args),
+        Function::Datevalue => not_implemented(args),
         Function::Day => not_implemented(args),
         Function::Edate => not_implemented(args),
         Function::Month => not_implemented(args),
+        Function::Time => not_implemented(args),
+        Function::Timevalue => not_implemented(args),
+        Function::Hour => not_implemented(args),
+        Function::Minute => not_implemented(args),
+        Function::Second => not_implemented(args),
         Function::Now => not_implemented(args),
         Function::Today => not_implemented(args),
         Function::Year => not_implemented(args),
+        Function::Days => not_implemented(args),
+        Function::Days360 => not_implemented(args),
+        Function::Weekday => not_implemented(args),
+        Function::Weeknum => not_implemented(args),
+        Function::Workday => not_implemented(args),
+        Function::WorkdayIntl => not_implemented(args),
+        Function::Yearfrac => not_implemented(args),
+        Function::Isoweeknum => not_implemented(args),
         Function::Cumipmt => not_implemented(args),
         Function::Cumprinc => not_implemented(args),
         Function::Db => not_implemented(args),
@@ -990,5 +1054,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Eomonth => scalar_arguments(args),
         Function::Formulatext => not_implemented(args),
         Function::Geomean => not_implemented(args),
+        Function::Networkdays => not_implemented(args),
+        Function::NetworkdaysIntl => not_implemented(args),
     }
 }
