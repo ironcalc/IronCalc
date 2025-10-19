@@ -26,12 +26,3 @@ IronCalc makes it easy to share your files with others. Follow these steps to sh
 
 - **Changes in the Shared Version**:  
   Any modifications made in the shared sheet (even if it’s an existing sheet) will **not** overwrite or affect the original sheet.
-
-## Managing Sheets
-
-All your created sheets can be accessed from the **"File"** section in the top-left corner of the window. From here, you can:
-
-- View all existing sheets.
-- Delete sheets as needed.
-
-This helps you keep your files organized and makes sharing simple and straightforward.
