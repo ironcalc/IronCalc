@@ -26,7 +26,7 @@ function LeftDrawer({
       anchor="left"
       open={open}
       onClose={onClose}
-      transitionDuration={200}
+      transitionDuration={0}
     >
       <DrawerHeader onNewModel={newModel} />
       <DrawerContent setModel={setModel} onDelete={onDelete} />
