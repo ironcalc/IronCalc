@@ -30,6 +30,7 @@ function App() {
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [localStorageId, setLocalStorageId] = useState<number>(1);
 
   useEffect(() => {
     async function start() {
@@ -129,6 +130,7 @@ function App() {
         newModel={handleNewModel}
         setModel={handleSetModel}
         onDelete={handleDeleteModelByUuid}
+        localStorageId={localStorageId}
       />
       <MainContent isDrawerOpen={isDrawerOpen}>
         {isDrawerOpen && (
@@ -153,6 +155,7 @@ function App() {
           onDelete={handleDeleteModel}
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
+          setLocalStorageId={setLocalStorageId}
         />
         <IronCalc model={model} />
       </MainContent>
@@ -240,7 +243,7 @@ const MobileOverlay = styled("div")`
   background-color: rgba(255, 255, 255, 0.8);
   z-index: 1;
   cursor: pointer;
-  
+
   @media (min-width: 441px) {
     display: none;
   }
