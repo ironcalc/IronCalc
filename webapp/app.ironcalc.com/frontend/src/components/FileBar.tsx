@@ -34,6 +34,7 @@ export function FileBar(properties: {
   onDelete: () => void;
   isDrawerOpen: boolean;
   setIsDrawerOpen: (open: boolean) => void;
+  setLocalStorageId: (updater: (id: number) => number) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +68,6 @@ export function FileBar(properties: {
         }}
       >
         <DrawerButton
-          // $isDrawerOpen={properties.isDrawerOpen}
           onClick={() => properties.setIsDrawerOpen(!properties.isDrawerOpen)}
           disableRipple
         >
@@ -96,6 +96,7 @@ export function FileBar(properties: {
           onNameChange={(name) => {
             properties.model.setName(name);
             updateNameSelectedWorkbook(properties.model, name);
+            properties.setLocalStorageId((id) => id + 1);
           }}
           maxWidth={maxTitleWidth}
         />
