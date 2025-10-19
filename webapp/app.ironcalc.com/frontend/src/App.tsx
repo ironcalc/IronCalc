@@ -216,21 +216,18 @@ const Wrapper = styled("div")`
   overflow: hidden;
 `;
 
+const DRAWER_WIDTH = 264;
+const MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE = 440;
+
 const MainContent = styled("div")<{ isDrawerOpen: boolean }>`
-  margin-left: ${({ isDrawerOpen }) => (isDrawerOpen ? "0px" : "-264px")};
-  width: ${({ isDrawerOpen }) =>
-    isDrawerOpen ? "calc(100% - 264px)" : "100%"};
+  margin-left: ${({ isDrawerOpen }) => (isDrawerOpen ? "0px" : `-${DRAWER_WIDTH}px`)};
+  width: ${({ isDrawerOpen }) => (isDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%")};
   display: flex;
   flex-direction: column;
   position: relative;
-  
-    @media (max-width: 440px) {
-    ${({ isDrawerOpen }) =>
-      isDrawerOpen &&
-      `
-      min-width: 440px;
-    `}
-  
+  @media (max-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE}px) {
+    ${({ isDrawerOpen }) => isDrawerOpen && `min-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE}px;`}
+  }
 `;
 
 const MobileOverlay = styled("div")`
@@ -243,7 +240,7 @@ const MobileOverlay = styled("div")`
   z-index: 1;
   cursor: pointer;
 
-  @media (min-width: 441px) {
+  @media (min-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE + 1}px) {
     display: none;
   }
 `;
