@@ -42,3 +42,5 @@ export enum NumberFormats {
   PERCENTAGE = "0.00%",
   NUMBER = "#,##0.00",
 }
+
+export const KNOWN_FORMATS = new Set<string>(Object.values(NumberFormats));
