@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
-import { IronCalcIcon, IronCalcLogo } from "@ironcalc/workbook";
+import { IconButton, Tooltip } from "@mui/material";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
@@ -31,6 +32,8 @@ export function FileBar(properties: {
   setModel: (key: string) => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
+  isDrawerOpen: boolean;
+  setIsDrawerOpen: (open: boolean) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -48,23 +51,45 @@ export function FileBar(properties: {
 
   return (
     <FileBarWrapper>
-      <StyledDesktopLogo />
-      <StyledIronCalcIcon />
-      <Divider />
-      <FileMenu
-        newModel={properties.newModel}
-        newModelFromTemplate={properties.newModelFromTemplate}
-        setModel={properties.setModel}
-        onModelUpload={properties.onModelUpload}
-        onDownload={async () => {
-          const model = properties.model;
-          const bytes = model.toBytes();
-          const fileName = model.getName();
-          await downloadModel(bytes, fileName);
+      <Tooltip
+        title="Toggle sidebar"
+        slotProps={{
+          popper: {
+            modifiers: [
+              {
+                name: "offset",
+                options: {
+                  offset: [0, -8],
+                },
+              },
+            ],
+          },
         }}
-        onDelete={properties.onDelete}
-      />
-      <HelpMenu />
+      >
+        <DrawerButton
+          // $isDrawerOpen={properties.isDrawerOpen}
+          onClick={() => properties.setIsDrawerOpen(!properties.isDrawerOpen)}
+          disableRipple
+        >
+          {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+        </DrawerButton>
+      </Tooltip>
+      {width > 440 && (
+        <FileMenu
+          newModel={properties.newModel}
+          newModelFromTemplate={properties.newModelFromTemplate}
+          setModel={properties.setModel}
+          onModelUpload={properties.onModelUpload}
+          onDownload={async () => {
+            const model = properties.model;
+            const bytes = model.toBytes();
+            const fileName = model.getName();
+            await downloadModel(bytes, fileName);
+          }}
+          onDelete={properties.onDelete}
+        />
+      )}
+      {width > 440 && <HelpMenu />}
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}
@@ -103,35 +128,38 @@ const Spacer = styled("div")`
   flex-grow: 1;
 `;
 
-const StyledDesktopLogo = styled(IronCalcLogo)`
-  width: 120px;
-  margin-left: 12px;
-  @media (max-width: 769px) {
-    display: none;
-  }
-`;
+// const DrawerButton = styled(IconButton)<{ $isDrawerOpen: boolean }>`
+// cursor: ${(props) => (props.$isDrawerOpen ? "w-resize" : "e-resize")};
+const DrawerButton = styled(IconButton)`
+  margin-left: 8px;
+  height: 32px;
+  width: 32px;
+  padding: 8px;
+  border-radius: 4px;
 
-const StyledIronCalcIcon = styled(IronCalcIcon)`
-  width: 36px;
-  margin-left: 10px;
-  @media (min-width: 769px) {
-    display: none;
+  svg {
+    stroke-width: 2px;
+    stroke: #757575;
+    width: 16px;
+    height: 16px;
   }
-`;
-
-const Divider = styled("div")`
-  margin: 0px 8px 0px 16px;
-  height: 12px;
-  border-left: 1px solid #e0e0e0;
+  &:hover {
+    background-color: #f2f2f2;
+  }
+  &:active {
+    background-color: #e0e0e0;
+  }
 `;
 
 // The container must be relative positioned so we can position the title absolutely
 const FileBarWrapper = styled("div")`
   position: relative;
   height: 60px;
+  min-height: 60px;
   width: 100%;
   background: #fff;
   display: flex;
+  gap: 2px;
   align-items: center;
   border-bottom: 1px solid #e0e0e0;
   justify-content: space-between;
