@@ -627,6 +627,7 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
@@ -656,6 +657,7 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 

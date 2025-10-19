@@ -89,3 +89,67 @@ fn clear_all_empty_cell() {
     model.undo().unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("".to_string()));
 }
+
+#[test]
+fn issue_454() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model
+        .set_user_input(
+            0,
+            1,
+            1,
+            "Le presbytère n'a rien perdu de son charme, ni le jardin de son éclat.",
+        )
+        .unwrap();
+    model.set_user_input(0, 1, 2, "=ISTEXT(A1)").unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 2),
+        Ok("TRUE".to_string())
+    );
+    model
+        .range_clear_contents(&Area {
+            sheet: 0,
+            row: 1,
+            column: 1,
+            width: 1,
+            height: 1,
+        })
+        .unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 2),
+        Ok("FALSE".to_string())
+    );
+    model.undo().unwrap();
+}
+
+#[test]
+fn issue_454b() {
+    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    model
+        .set_user_input(
+            0,
+            1,
+            1,
+            "Le presbytère n'a rien perdu de son charme, ni le jardin de son éclat.",
+        )
+        .unwrap();
+    model.set_user_input(0, 1, 2, "=ISTEXT(A1)").unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 2),
+        Ok("TRUE".to_string())
+    );
+    model
+        .range_clear_all(&Area {
+            sheet: 0,
+            row: 1,
+            column: 1,
+            width: 1,
+            height: 1,
+        })
+        .unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 2),
+        Ok("FALSE".to_string())
+    );
+    model.undo().unwrap();
+}
