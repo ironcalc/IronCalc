@@ -142,5 +142,8 @@
     "default": "Default color",
     "no_fill": "No fill",
     "custom": "Custom"
+  },
+  "right_drawer": {
+    "close": "Close"
   }
 }

@@ -7,6 +7,7 @@ import type {
 import { styled } from "@mui/material/styles";
 import { useCallback, useEffect, useRef, useState } from "react";
 import FormulaBar from "../FormulaBar/FormulaBar";
+import RightDrawer, { DEFAULT_DRAWER_WIDTH } from "../RightDrawer/RightDrawer";
 import SheetTabBar from "../SheetTabBar";
 import Toolbar from "../Toolbar/Toolbar";
 import Worksheet from "../Worksheet/Worksheet";
@@ -699,7 +700,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setDrawerOpen(true);
         }}
       />
-      <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? DRAWER_WIDTH : 0}>
+      <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? DEFAULT_DRAWER_WIDTH : 0}>
         <FormulaBar
           cellAddress={cellAddress()}
           formulaValue={formulaValue()}
@@ -767,24 +768,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           }}
         />
       </WorksheetAreaLeft>
-      <WorksheetAreaRight $drawerWidth={isDrawerOpen ? DRAWER_WIDTH : 0}>
-        <span
-          onClick={() => setDrawerOpen(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              setDrawerOpen(false);
-            }
-          }}
-          aria-label="Close drawer"
-        >
-          x
-        </span>
-      </WorksheetAreaRight>
+      <RightDrawer isOpen={isDrawerOpen} onClose={() => setDrawerOpen(false)} />
     </Container>
   );
 };
-
-const DRAWER_WIDTH = 300;
 
 type WorksheetAreaLeftProps = { $drawerWidth: number };
 const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
@@ -793,18 +780,6 @@ const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
     top: `${TOOLBAR_HEIGHT + 1}px`,
     width: `calc(100% - ${$drawerWidth}px)`,
     height: `calc(100% - ${TOOLBAR_HEIGHT + 1}px)`,
-  }),
-);
-
-const WorksheetAreaRight = styled("div")<WorksheetAreaLeftProps>(
-  ({ $drawerWidth }) => ({
-    position: "absolute",
-    overflow: "hidden",
-    backgroundColor: "red",
-    right: 0,
-    top: `${TOOLBAR_HEIGHT + 1}px`,
-    bottom: 0,
-    width: `${$drawerWidth}px`,
   }),
 );
 
