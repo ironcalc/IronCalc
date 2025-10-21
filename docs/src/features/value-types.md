@@ -68,6 +68,8 @@ Using IronCalc, a complex number is a string of the form "1+j3".
 
 ## Arrays
 
+## Ranges
+
 ## References
 
 A reference is a pointer to a single cell or a range of cells. The reference can either be entered manually, for example "A4", or as the result of a calculation, such as the OFFSET Function or the INDIRECT Function. A reference can also be built, for example with the Colon (\:) Operator. 

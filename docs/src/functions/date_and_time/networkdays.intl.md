@@ -22,7 +22,7 @@ NETWORKDAYS.INTL is a function of the Date and Time category that calculates the
 * *start_date* ([number](/features/value-types#numbers), required). The start date expressed as a [serial number](/features/serial-numbers.md).
 * *end_date* ([number](/features/value-types#numbers), required). The end date expressed as a [serial number](/features/serial-numbers.md).
 * *weekend* ([number](/features/value-types#numbers) or [string](/features/value-types#strings), optional). Defines which days are considered weekends. Default is 1 (Saturday-Sunday).
-* *holidays* ([array](/features/value-types#arrays) or [range](/features/ranges), optional). A list of dates to exclude from the calculation, expressed as serial numbers.
+* *holidays* ([array](/features/value-types#arrays) or [range](/features/value-types#ranges), optional). A list of dates to exclude from the calculation, expressed as serial numbers.
 
 ### Weekend parameter options
 The _weekend_ parameter can be specified in two ways:
