@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use napi::{self, bindgen_prelude::*, JsUnknown, Result};
+use napi::{self, bindgen_prelude::*, Result, Unknown};
 
 use ironcalc::base::{
   expressions::types::Area,
@@ -314,7 +314,7 @@ impl UserModel {
   pub fn update_range_style(
     &mut self,
     env: Env,
-    range: JsUnknown,
+    range: Unknown,
     style_path: String,
     value: String,
   ) -> Result<()> {
@@ -329,12 +329,12 @@ impl UserModel {
 
   #[napi(js_name = "getCellStyle")]
   pub fn get_cell_style(
-    &mut self,
+    &'_ mut self,
     env: Env,
     sheet: u32,
     row: i32,
     column: i32,
-  ) -> Result<JsUnknown> {
+  ) -> Result<Unknown<'_>> {
     let style = self
       .model
       .get_cell_style(sheet, row, column)
@@ -346,7 +346,7 @@ impl UserModel {
   }
 
   #[napi(js_name = "onPasteStyles")]
-  pub fn on_paste_styles(&mut self, env: Env, styles: JsUnknown) -> Result<()> {
+  pub fn on_paste_styles(&mut self, env: Env, styles: Unknown) -> Result<()> {
     let styles: &Vec<Vec<Style>> = &env
       .from_js_value(styles)
       .map_err(|e| to_js_error(e.to_string()))?;
@@ -371,11 +371,11 @@ impl UserModel {
     )
   }
 
-  // I don't _think_ serializing to JsUnknown can't fail
+  // I don't _think_ serializing to Unknown can't fail
   // FIXME: Remove this clippy directive
   #[napi(js_name = "getWorksheetsProperties")]
   #[allow(clippy::unwrap_used)]
-  pub fn get_worksheets_properties(&self, env: Env) -> JsUnknown {
+  pub fn get_worksheets_properties(&'_ self, env: Env) -> Unknown<'_> {
     env
       .to_js_value(&self.model.get_worksheets_properties())
       .unwrap()
@@ -392,11 +392,11 @@ impl UserModel {
     vec![sheet as i32, row, column]
   }
 
-  // I don't _think_ serializing to JsUnknown can't fail
+  // I don't _think_ serializing to Unknown can't fail
   // FIXME: Remove this clippy directive
   #[napi(js_name = "getSelectedView")]
   #[allow(clippy::unwrap_used)]
-  pub fn get_selected_view(&self, env: Env) -> JsUnknown {
+  pub fn get_selected_view(&'_ self, env: Env) -> Unknown<'_> {
     env.to_js_value(&self.model.get_selected_view()).unwrap()
   }
 
@@ -449,7 +449,7 @@ impl UserModel {
   }
 
   #[napi(js_name = "autoFillRows")]
-  pub fn auto_fill_rows(&mut self, env: Env, source_area: JsUnknown, to_row: i32) -> Result<()> {
+  pub fn auto_fill_rows(&mut self, env: Env, source_area: Unknown, to_row: i32) -> Result<()> {
     let area: Area = env
       .from_js_value(source_area)
       .map_err(|e| to_js_error(e.to_string()))?;
@@ -463,7 +463,7 @@ impl UserModel {
   pub fn auto_fill_columns(
     &mut self,
     env: Env,
-    source_area: JsUnknown,
+    source_area: Unknown,
     to_column: i32,
   ) -> Result<()> {
     let area: Area = env
@@ -545,8 +545,8 @@ impl UserModel {
   pub fn set_area_with_border(
     &mut self,
     env: Env,
-    area: JsUnknown,
-    border_area: JsUnknown,
+    area: Unknown,
+    border_area: Unknown,
   ) -> Result<()> {
     let range: Area = env
       .from_js_value(area)
@@ -577,7 +577,7 @@ impl UserModel {
   }
 
   #[napi(js_name = "copyToClipboard")]
-  pub fn copy_to_clipboard(&self, env: Env) -> Result<JsUnknown> {
+  pub fn copy_to_clipboard(&'_ self, env: Env) -> Result<Unknown<'_>> {
     let data = self
       .model
       .copy_to_clipboard()
@@ -593,8 +593,8 @@ impl UserModel {
     &mut self,
     env: Env,
     source_sheet: u32,
-    source_range: JsUnknown,
-    clipboard: JsUnknown,
+    source_range: Unknown,
+    clipboard: Unknown,
     is_cut: bool,
   ) -> Result<()> {
     let source_range: (i32, i32, i32, i32) = env
@@ -610,7 +610,7 @@ impl UserModel {
   }
 
   #[napi(js_name = "pasteCsvText")]
-  pub fn paste_csv_string(&mut self, env: Env, area: JsUnknown, csv: String) -> Result<()> {
+  pub fn paste_csv_string(&mut self, env: Env, area: Unknown, csv: String) -> Result<()> {
     let range: Area = env
       .from_js_value(area)
       .map_err(|e| to_js_error(e.to_string()))?;
@@ -621,7 +621,7 @@ impl UserModel {
   }
 
   #[napi(js_name = "getDefinedNameList")]
-  pub fn get_defined_name_list(&self, env: Env) -> Result<JsUnknown> {
+  pub fn get_defined_name_list(&'_ self, env: Env) -> Result<Unknown<'_>> {
     let data: Vec<DefinedName> = self
       .model
       .get_defined_name_list()

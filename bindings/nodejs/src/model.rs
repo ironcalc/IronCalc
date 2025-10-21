@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use napi::{self, bindgen_prelude::*, JsUnknown, Result};
+use napi::{self, bindgen_prelude::*, Result, Unknown};
 use serde::Serialize;
 
 use ironcalc::{
@@ -142,7 +142,7 @@ impl Model {
     sheet: u32,
     row: i32,
     column: i32,
-    style: JsUnknown,
+    style: Unknown,
   ) -> Result<()> {
     let style: Style = env
       .from_js_value(style)
@@ -155,12 +155,12 @@ impl Model {
 
   #[napi(js_name = "getCellStyle")]
   pub fn get_cell_style(
-    &mut self,
+    &'_ self,
     env: Env,
     sheet: u32,
     row: i32,
     column: i32,
-  ) -> Result<JsUnknown> {
+  ) -> Result<Unknown<'_>> {
     let style = self
       .model
       .get_style_for_cell(sheet, row, column)
@@ -261,11 +261,11 @@ impl Model {
       .map_err(to_js_error)
   }
 
-  // I don't _think_ serializing to JsUnknown can't fail
+  // I don't _think_ serializing to Unknown can't fail
   // FIXME: Remove this clippy directive
   #[napi(js_name = "getWorksheetsProperties")]
   #[allow(clippy::unwrap_used)]
-  pub fn get_worksheets_properties(&self, env: Env) -> JsUnknown {
+  pub fn get_worksheets_properties(&'_ self, env: Env) -> Unknown<'_> {
     env
       .to_js_value(&self.model.get_worksheets_properties())
       .unwrap()
@@ -303,7 +303,7 @@ impl Model {
   }
 
   #[napi(js_name = "getDefinedNameList")]
-  pub fn get_defined_name_list(&self, env: Env) -> Result<JsUnknown> {
+  pub fn get_defined_name_list(&'_ self, env: Env) -> Result<Unknown<'_>> {
     let data: Vec<DefinedName> = self
       .model
       .workbook
