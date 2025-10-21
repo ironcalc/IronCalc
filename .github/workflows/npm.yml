@@ -31,38 +31,82 @@ jobs:
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: yarn build --target x86_64-unknown-linux-gnu
+            build: |
+              set -e &&
+              rustup toolchain install 1.90.0 &&
+              rustup default 1.90.0 &&
+              yarn build --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
-            build: yarn build --target x86_64-unknown-linux-musl
+            build: |
+              set -e &&
+              rustup toolchain install 1.90.0 &&
+              rustup default 1.90.0 &&
+              yarn build --target x86_64-unknown-linux-musl
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: yarn build --target aarch64-apple-darwin
+            build: |
+              set -e &&
+              rustup toolchain install 1.90.0 &&
+              rustup default 1.90.0 &&
+              yarn build --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
-            build: yarn build --target aarch64-unknown-linux-gnu
+            build: |
+              set -e &&
+              rustup toolchain install 1.90.0 &&
+              rustup default 1.90.0 &&
+              rustup target add aarch64-unknown-linux-gnu &&
+              yarn build --target aarch64-unknown-linux-gnu
           - host: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
             setup: |
               sudo apt-get update
-              sudo apt-get install gcc-arm-linux-gnueabihf -y
-            build: yarn build --target armv7-unknown-linux-gnueabihf
+              sudo apt-get install -y gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
+            build: |
+              set -e
+              rustup toolchain install 1.90.0
+              rustup default 1.90.0
+              export CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
+              export AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar
+              export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
+              export PKG_CONFIG_ALLOW_CROSS=1
+              yarn build --target armv7-unknown-linux-gnueabihf
           - host: ubuntu-latest
             target: armv7-unknown-linux-musleabihf
-            build: yarn build --target armv7-unknown-linux-musleabihf
+            build: |
+              set -e
+              rustup toolchain install 1.90.0
+              rustup default 1.90.0
+              # Use Zig as the MUSL cross C toolchain
+              export CC_armv7_unknown_linux_musleabihf="zig cc -target armv7-linux-musleabihf -mfpu=vfpv3-d16 -mfloat-abi=hard"
+              export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER="zig cc -target armv7-linux-musleabihf -mfpu=vfpv3-d16 -mfloat-abi=hard"
+              export AR_armv7_unknown_linux_musleabihf="zig ar"
+              export PKG_CONFIG_ALLOW_CROSS=1
+              yarn build --target armv7-unknown-linux-musleabihf
           - host: ubuntu-latest
             target: aarch64-linux-android
-            build: yarn build --target aarch64-linux-android
+            build: |
+              set -e &&
+              rustup toolchain install 1.90.0 &&
+              rustup default 1.90.0 &&
+              yarn build --target aarch64-linux-android
           - host: ubuntu-latest
             target: armv7-linux-androideabi
-            build: yarn build --target armv7-linux-androideabi
+            build: |
+              set -e &&
+              rustup toolchain install 1.90.0 &&
+              rustup default 1.90.0 &&
+              yarn build --target armv7-linux-androideabi
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
             build: |-
               set -e &&
+              rustup toolchain install 1.90.0 &&
+              rustup default 1.90.0 &&
               rustup target add aarch64-unknown-linux-musl &&
               yarn build --target aarch64-unknown-linux-musl
           - host: windows-latest
@@ -92,7 +136,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         if: ${{ !matrix.settings.docker }}
         with:
-          toolchain: stable
+          toolchain: 1.90.0
           targets: ${{ matrix.settings.target }}
       - name: Cache cargo
         uses: actions/cache@v4
