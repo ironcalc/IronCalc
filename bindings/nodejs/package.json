@@ -1,29 +1,27 @@
 {
   "name": "@ironcalc/nodejs",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
-    "name": "nodejs",
-    "triples": {
-      "additional": [
-        "aarch64-apple-darwin",
-        "aarch64-linux-android",
-        "aarch64-unknown-linux-gnu",
-        "aarch64-unknown-linux-musl",
-        "aarch64-pc-windows-msvc",
-        "armv7-unknown-linux-gnueabihf",
-        "armv7-unknown-linux-musleabihf",
-        "x86_64-unknown-linux-musl",
-        "armv7-linux-androideabi",
-        "universal-apple-darwin",
-        "riscv64gc-unknown-linux-gnu"
-      ]
-    }
+    "binaryName": "nodejs",
+    "targets": [
+      "aarch64-apple-darwin",
+      "aarch64-linux-android",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "aarch64-pc-windows-msvc",
+      "armv7-unknown-linux-gnueabihf",
+      "armv7-unknown-linux-musleabihf",
+      "x86_64-unknown-linux-musl",
+      "armv7-linux-androideabi",
+      "universal-apple-darwin",
+      "riscv64gc-unknown-linux-gnu"
+    ]
   },
   "license": "MIT",
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.4",
+    "@napi-rs/cli": "^3.3",
     "ava": "^6.0.1"
   },
   "ava": {
