@@ -21,7 +21,7 @@ NETWORKDAYS is a function of the Date and Time category that calculates the numb
 ### Argument descriptions
 * *start_date* ([number](/features/value-types#numbers), required). The start date expressed as a [serial number](/features/serial-numbers.md).
 * *end_date* ([number](/features/value-types#numbers), required). The end date expressed as a [serial number](/features/serial-numbers.md).
-* *holidays* ([array](/features/value-types#arrays) or [range](/features/ranges), optional). A list of dates to exclude from the calculation, expressed as serial numbers.
+* *holidays* ([array](/features/value-types#arrays) or [range](/features/value-types#ranges), optional). A list of dates to exclude from the calculation, expressed as serial numbers.
 
 ### Additional guidance
 - If the supplied _start_date_ and _end_date_ arguments have fractional parts, NETWORKDAYS uses their [floor values](https://en.wikipedia.org/wiki/Floor_and_ceiling_functions).
