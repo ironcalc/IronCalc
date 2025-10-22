@@ -74,18 +74,18 @@ jobs:
               export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
               export PKG_CONFIG_ALLOW_CROSS=1
               yarn build --target armv7-unknown-linux-gnueabihf
-          - host: ubuntu-latest
-            target: armv7-unknown-linux-musleabihf
-            build: |
-              set -e
-              rustup toolchain install 1.90.0
-              rustup default 1.90.0
-              # Use Zig as the MUSL cross C toolchain
-              export CC_armv7_unknown_linux_musleabihf="zig cc -target armv7-linux-musleabihf -mfpu=vfpv3-d16 -mfloat-abi=hard"
-              export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER="zig cc -target armv7-linux-musleabihf -mfpu=vfpv3-d16 -mfloat-abi=hard"
-              export AR_armv7_unknown_linux_musleabihf="zig ar"
-              export PKG_CONFIG_ALLOW_CROSS=1
-              yarn build --target armv7-unknown-linux-musleabihf
+          # - host: ubuntu-latest
+          #   target: armv7-unknown-linux-musleabihf
+          #   build: |
+          #     set -e
+          #     rustup toolchain install 1.90.0
+          #     rustup default 1.90.0
+          #     # Use Zig as the MUSL cross C toolchain
+          #     export CC_armv7_unknown_linux_musleabihf="zig cc -target armv7-linux-musleabihf -mfpu=vfpv3-d16 -mfloat-abi=hard"
+          #     export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER="zig cc -target armv7-linux-musleabihf -mfpu=vfpv3-d16 -mfloat-abi=hard"
+          #     export AR_armv7_unknown_linux_musleabihf="zig ar"
+          #     export PKG_CONFIG_ALLOW_CROSS=1
+          #     yarn build --target armv7-unknown-linux-musleabihf
           - host: ubuntu-latest
             target: aarch64-linux-android
             build: |
