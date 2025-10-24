@@ -8,8 +8,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
-napi = { version = "2.12.2", default-features = false, features = ["napi4", "serde-json"] }
-napi-derive = "2.12.2"
+napi = { version = "3.3", default-features = false, features = ["napi4", "serde-json"] }
+napi-derive = "3.2"
 ironcalc = { path = "../../xlsx", version = "0.6.0" }
 serde = { version = "1.0", features = ["derive"] }
 
