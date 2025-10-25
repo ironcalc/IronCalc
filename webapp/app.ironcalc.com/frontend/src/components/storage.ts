@@ -8,6 +8,19 @@ type ModelsMetadata = Record<
   { name: string; createdAt: number; pinned?: boolean }
 >;
 
+function randomUUID(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    // Fallback for environments without crypto.randomUUID()
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+}
+
 export function updateNameSelectedWorkbook(model: Model, newName: string) {
   const uuid = localStorage.getItem("selected");
   if (uuid) {
@@ -77,7 +90,7 @@ export function createNewModel(): Model {
   const name = getNewName(Object.values(models).map((m) => m.name));
 
   const model = new Model(name, "en", "UTC");
-  const uuid = crypto.randomUUID();
+  const uuid = randomUUID();
   localStorage.setItem("selected", uuid);
   localStorage.setItem(uuid, bytesToBase64(model.toBytes()));
 
@@ -121,7 +134,7 @@ export function saveSelectedModelInStorage(model: Model) {
 }
 
 export function saveModelToStorage(model: Model) {
-  const uuid = crypto.randomUUID();
+  const uuid = randomUUID();
   localStorage.setItem("selected", uuid);
   localStorage.setItem(uuid, bytesToBase64(model.toBytes()));
   let modelsJson = localStorage.getItem("models");
@@ -228,7 +241,7 @@ export function duplicateModel(uuid: string): Model | null {
 
   duplicatedModel.setName(newName);
 
-  const newUuid = crypto.randomUUID();
+  const newUuid = randomUUID();
   localStorage.setItem("selected", newUuid);
   localStorage.setItem(newUuid, bytesToBase64(duplicatedModel.toBytes()));
 
