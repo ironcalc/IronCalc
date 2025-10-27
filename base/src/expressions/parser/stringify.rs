@@ -520,6 +520,7 @@ fn stringify(
             let x = match **left {
                 BooleanKind(_)
                 | NumberKind(_)
+                | UnaryKind { .. }
                 | StringKind(_)
                 | ReferenceKind { .. }
                 | RangeKind { .. }
@@ -535,7 +536,6 @@ fn stringify(
                 | FunctionKind { .. }
                 | InvalidFunctionKind { .. }
                 | ArrayKind(_)
-                | UnaryKind { .. }
                 | ErrorKind(_)
                 | ParseErrorKind { .. }
                 | OpSumKind { .. }
@@ -630,7 +630,6 @@ fn stringify(
                     | OpRangeKind { .. }
                     | OpConcatenateKind { .. }
                     | OpProductKind { .. }
-                    | OpPowerKind { .. }
                     | FunctionKind { .. }
                     | InvalidFunctionKind { .. }
                     | ArrayKind(_)
@@ -643,7 +642,7 @@ fn stringify(
                     | ParseErrorKind { .. }
                     | EmptyArgKind => false,
 
-                    OpSumKind { .. } | UnaryKind { .. } => true,
+                    OpPowerKind { .. } | OpSumKind { .. } | UnaryKind { .. } => true,
                 };
                 if needs_parentheses {
                     format!(
