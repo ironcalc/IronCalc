@@ -259,15 +259,23 @@ pub fn is_valid_identifier(name: &str) -> bool {
 fn name_needs_quoting(name: &str) -> bool {
     let chars = name.chars();
     // it contains any of these characters: ()'$,;-+{} or space
-    for char in chars {
+    for (i, char) in chars.enumerate() {
         if [' ', '(', ')', '\'', '$', ',', ';', '-', '+', '{', '}'].contains(&char) {
             return true;
         }
+        // if it starts with a number
+        if i == 0 && char.is_ascii_digit() {
+            return true;
+        }
     }
-    // TODO:
-    // cell reference in A1 notation, e.g. B1048576 is quoted, B1048577 is not
-    // cell reference in R1C1 notation, e.g. RC, RC2, R5C, R-4C, RC-8, R, C
-    // integers
+    if parse_reference_a1(name).is_some() {
+        // cell reference in A1 notation, e.g. B1048576 is quoted, B1048577 is not
+        return true;
+    }
+    if parse_reference_r1c1(name).is_some() {
+        // cell reference in R1C1 notation, e.g. RC, RC2, R5C, R-4C, RC-8, R, C
+        return true;
+    }
     false
 }
 
@@ -278,4 +286,33 @@ pub fn quote_name(name: &str) -> String {
         return format!("'{}'", name.replace('\'', "''"));
     };
     name.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_quote_name() {
+        assert_eq!(quote_name("Sheet1"), "Sheet1");
+        assert_eq!(quote_name("Sheet 1"), "'Sheet 1'");
+        // escape and quote
+        assert_eq!(quote_name("Sheet1'"), "'Sheet1'''");
+        assert_eq!(quote_name("Data(2024)"), "'Data(2024)'");
+        assert_eq!(quote_name("Data$2024"), "'Data$2024'");
+        assert_eq!(quote_name("Data-2024"), "'Data-2024'");
+        assert_eq!(quote_name("Data+2024"), "'Data+2024'");
+        assert_eq!(quote_name("Data,2024"), "'Data,2024'");
+        assert_eq!(quote_name("Data;2024"), "'Data;2024'");
+        assert_eq!(quote_name("Data{2024}"), "'Data{2024}'");
+
+        assert_eq!(quote_name("2024"), "'2024'");
+        assert_eq!(quote_name("1Data"), "'1Data'");
+        assert_eq!(quote_name("A1"), "'A1'");
+        assert_eq!(quote_name("R1C1"), "'R1C1'");
+        assert_eq!(quote_name("MySheet"), "MySheet");
+
+        assert_eq!(quote_name("B1048576"), "'B1048576'");
+        assert_eq!(quote_name("B1048577"), "B1048577");
+    }
 }

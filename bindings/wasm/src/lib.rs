@@ -5,7 +5,11 @@ use wasm_bindgen::{
 };
 
 use ironcalc_base::{
-    expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
+    expressions::{
+        lexer::util::get_tokens as tokenizer,
+        types::Area,
+        utils::{number_to_column, quote_name as quote_name_ic},
+    },
     types::{CellType, Style},
     worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
@@ -29,6 +33,11 @@ pub fn column_name_from_number(column: i32) -> Result<String, JsError> {
         Some(c) => Ok(c),
         None => Err(JsError::new("Invalid column number")),
     }
+}
+
+#[wasm_bindgen(js_name = "quoteName")]
+pub fn quote_name(name: &str) -> String {
+    quote_name_ic(name)
 }
 
 #[derive(Serialize)]

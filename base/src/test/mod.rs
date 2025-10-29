@@ -75,6 +75,7 @@ mod test_log10;
 mod test_networkdays;
 mod test_percentage;
 mod test_set_functions_error_handling;
+mod test_sheet_names;
 mod test_today;
 mod test_types;
 mod user_model;
