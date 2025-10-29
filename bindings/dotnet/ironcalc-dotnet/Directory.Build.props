@@ -1,0 +1,15 @@
+<Project DefaultTargets="Build">
+ <PropertyGroup>
+   <TargetFramework>net9.0</TargetFramework>
+   <LangVersion>12</LangVersion>
+   <Nullable>enable</Nullable>
+   <!--
+   <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+   <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+   <EnableNETAnalyzers>true</EnableNETAnalyzers>
+   <AnalysisModeStyle>Recommended</AnalysisModeStyle>
+   <GenerateDocumentationFile>true</GenerateDocumentationFile>
+   <NuGetAuditMode>direct</NuGetAuditMode>
+   -->
+ </PropertyGroup>
+</Project>
