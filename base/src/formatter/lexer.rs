@@ -26,19 +26,23 @@ pub enum Token {
     Scientific,    // E+
     ScientificMinus, // E-
     General,       // General
-    // Dates
+    // Dates and time
     Day,            // d
     DayPadded,      // dd
     DayNameShort,   // ddd
     DayName,        // dddd+
-    Month,          // m
-    MonthPadded,    // mm
+    Month,          // m (or minute)
+    MonthPadded,    // mm (or minute padded)
     MonthNameShort, // mmm
     MonthName,      // mmmm or mmmmmm+
     MonthLetter,    // mmmmm
     YearShort,      // y or yy
     Year,           // yyy+
-    // TODO: Hours Minutes and Seconds
+    Hour,           // h
+    HourPadded,     // hh
+    Second,         // s
+    SecondPadded,   // ss
+    AMPM,           // AM/PM (or A/P)
     ILLEGAL,
     EOF,
 }
@@ -361,8 +365,8 @@ impl Lexer {
                         self.read_next_char();
                     }
                     match m {
-                        1 => Token::Month,
-                        2 => Token::MonthPadded,
+                        1 => Token::Month,       // (or minute)
+                        2 => Token::MonthPadded, // (or minute padded)
                         3 => Token::MonthNameShort,
                         4 => Token::MonthName,
                         5 => Token::MonthLetter,
@@ -380,6 +384,61 @@ impl Lexer {
                     } else {
                         Token::Year
                     }
+                }
+                'h' => {
+                    let mut h = 1;
+                    while let Some('h') = self.peek_char() {
+                        h += 1;
+                        self.read_next_char();
+                    }
+                    if h == 1 {
+                        Token::Hour
+                    } else if h == 2 {
+                        Token::HourPadded
+                    } else {
+                        self.set_error("Unexpected character after 'h'");
+                        Token::ILLEGAL
+                    }
+                }
+                's' => {
+                    let mut s = 1;
+                    while let Some('s') = self.peek_char() {
+                        s += 1;
+                        self.read_next_char();
+                    }
+                    if s == 1 || s == 2 {
+                        Token::Second
+                    } else {
+                        self.set_error("Unexpected character after 's'");
+                        Token::ILLEGAL
+                    }
+                }
+                'A' | 'a' => {
+                    if let Some('M') | Some('m') = self.peek_char() {
+                        self.read_next_char();
+                    } else {
+                        self.set_error("Unexpected character after 'A'");
+                        return Token::ILLEGAL;
+                    }
+                    if let Some('/') = self.peek_char() {
+                        self.read_next_char();
+                    } else {
+                        self.set_error("Unexpected character after 'AM'");
+                        return Token::ILLEGAL;
+                    }
+                    if let Some('P') | Some('p') = self.peek_char() {
+                        self.read_next_char();
+                    } else {
+                        self.set_error("Unexpected character after 'AM'");
+                        return Token::ILLEGAL;
+                    }
+                    if let Some('M') | Some('m') = self.peek_char() {
+                        self.read_next_char();
+                    } else {
+                        self.set_error("Unexpected character after 'AMP'");
+                        return Token::ILLEGAL;
+                    }
+                    Token::AMPM
                 }
                 'g' | 'G' => {
                     for c in "eneral".chars() {

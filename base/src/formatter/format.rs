@@ -154,6 +154,10 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Date(p) => {
             let tokens = &p.tokens;
             let mut text = "".to_string();
+            let time_fract = value.fract();
+            let hours = (time_fract * 24.0).floor();
+            let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
+            let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
             let date = match from_excel_date(value as i64) {
                 Ok(d) => d,
                 Err(e) => {
@@ -235,6 +239,48 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     }
                     TextToken::Year => {
                         text = format!("{}{}", text, date.year());
+                    }
+                    TextToken::Hour => {
+                        let mut hour = hours as i32;
+                        if p.use_ampm {
+                            if hour == 0 {
+                                hour = 12;
+                            } else if hour > 12 {
+                                hour -= 12;
+                            }
+                        }
+                        text = format!("{text}{hour}");
+                    }
+                    TextToken::HourPadded => {
+                        let mut hour = hours as i32;
+                        if p.use_ampm {
+                            if hour == 0 {
+                                hour = 12;
+                            } else if hour > 12 {
+                                hour -= 12;
+                            }
+                        }
+                        text = format!("{text}{hour:02}");
+                    }
+                    TextToken::Second => {
+                        let second = seconds as i32;
+                        text = format!("{text}{second}");
+                    }
+                    TextToken::SecondPadded => {
+                        let second = seconds as i32;
+                        text = format!("{text}{second:02}");
+                    }
+                    TextToken::AMPM => {
+                        let ampm = if hours < 12.0 { "AM" } else { "PM" };
+                        text = format!("{text}{ampm}");
+                    }
+                    TextToken::Minute => {
+                        let minute = minutes as i32;
+                        text = format!("{text}{minute}");
+                    }
+                    TextToken::MinutePadded => {
+                        let minute = minutes as i32;
+                        text = format!("{text}{minute:02}");
                     }
                 }
             }
@@ -422,6 +468,13 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::MonthLetter => {}
                     TextToken::YearShort => {}
                     TextToken::Year => {}
+                    TextToken::Hour => {}
+                    TextToken::HourPadded => {}
+                    TextToken::Minute => {}
+                    TextToken::MinutePadded => {}
+                    TextToken::Second => {}
+                    TextToken::SecondPadded => {}
+                    TextToken::AMPM => {}
                 }
             }
             Formatted {
