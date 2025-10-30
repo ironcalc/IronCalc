@@ -53,7 +53,10 @@ pub fn fact(x: f64) -> f64 {
     if x < 0.0 {
         return f64::NAN;
     }
-    gamma(x + 1.0)
+    if x == 0.0 {
+        return 1.0;
+    }
+    gamma(x)
 }
 
 /// Double factorial for real x.
@@ -102,5 +105,48 @@ pub fn fact_double(x: f64) -> f64 {
         // A safe thing to do is to treat it as even-ish:
         let t = x / 2.0;
         2f64.powf(t) * gamma(t + 1.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fact_double() {
+        let test_cases = [(5.0, 15.0), (6.0, 48.0), (0.0, 1.0), (1.0, 1.0), (2.0, 2.0)];
+        for (input, expected) in test_cases {
+            let result = fact_double(input);
+            assert!(
+                (result - expected).abs() < 1e-9,
+                "fact_double({}) = {}, expected {}",
+                input,
+                result,
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn test_fact() {
+        let test_cases = [
+            (0.0, 1.0),
+            (1.0, 1.0),
+            (2.0, 2.0),
+            (3.0, 6.0),
+            (4.0, 24.0),
+            (5.0, 120.0),
+            (6.0, 720.0),
+        ];
+        for (input, expected) in test_cases {
+            let result = fact(input);
+            assert!(
+                (result - expected).abs() < 1e-9,
+                "fact({}) = {}, expected {}",
+                input,
+                result,
+                expected
+            );
+        }
     }
 }
