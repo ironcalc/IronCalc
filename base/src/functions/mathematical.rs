@@ -414,6 +414,46 @@ impl Model {
     } else {
         Ok((f * PI).sqrt())
     });
+    single_number_fn!(fn_acot, |f| if f == 0.0 {
+        Err(Error::DIV)
+    } else {
+        Ok(f64::atan(1.0 / f))
+    });
+    single_number_fn!(fn_acoth, |f: f64| if f.abs() == 1.0 {
+        Err(Error::DIV)
+    } else {
+        Ok(0.5 * (f64::ln((f + 1.0) / (f - 1.0))))
+    });
+    single_number_fn!(fn_cot, |f| if f == 0.0 {
+        Err(Error::DIV)
+    } else {
+        Ok(f64::cos(f) / f64::sin(f))
+    });
+    single_number_fn!(fn_coth, |f| if f == 0.0 {
+        Err(Error::DIV)
+    } else {
+        Ok(f64::cosh(f) / f64::sinh(f))
+    });
+    single_number_fn!(fn_csc, |f| if f == 0.0 {
+        Err(Error::DIV)
+    } else {
+        Ok(1.0 / f64::sin(f))
+    });
+    single_number_fn!(fn_csch, |f| if f == 0.0 {
+        Err(Error::DIV)
+    } else {
+        Ok(1.0 / f64::sinh(f))
+    });
+    single_number_fn!(fn_sec, |f| if f == 0.0 {
+        Err(Error::DIV)
+    } else {
+        Ok(1.0 / f64::cos(f))
+    });
+    single_number_fn!(fn_sech, |f| if f == 0.0 {
+        Err(Error::DIV)
+    } else {
+        Ok(1.0 / f64::cosh(f))
+    });
 
     pub(crate) fn fn_pi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !args.is_empty() {

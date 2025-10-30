@@ -834,6 +834,14 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Geomean => vec![Signature::Vector; arg_count],
         Function::Networkdays => args_signature_networkdays(arg_count),
         Function::NetworkdaysIntl => args_signature_networkdays_intl(arg_count),
+        Function::Acot => args_signature_scalars(arg_count, 1, 0),
+        Function::Acoth => args_signature_scalars(arg_count, 1, 0),
+        Function::Cot => args_signature_scalars(arg_count, 1, 0),
+        Function::Coth => args_signature_scalars(arg_count, 1, 0),
+        Function::Csc => args_signature_scalars(arg_count, 1, 0),
+        Function::Csch => args_signature_scalars(arg_count, 1, 0),
+        Function::Sec => args_signature_scalars(arg_count, 1, 0),
+        Function::Sech => args_signature_scalars(arg_count, 1, 0),
     }
 }
 
@@ -1056,5 +1064,13 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Geomean => not_implemented(args),
         Function::Networkdays => not_implemented(args),
         Function::NetworkdaysIntl => not_implemented(args),
+        Function::Acot => scalar_arguments(args),
+        Function::Acoth => scalar_arguments(args),
+        Function::Cot => scalar_arguments(args),
+        Function::Coth => scalar_arguments(args),
+        Function::Csc => scalar_arguments(args),
+        Function::Csch => scalar_arguments(args),
+        Function::Sec => scalar_arguments(args),
+        Function::Sech => scalar_arguments(args),
     }
 }

@@ -76,6 +76,14 @@ pub enum Function {
     Sumifs,
     Tan,
     Tanh,
+    Acot,
+    Acoth,
+    Cot,
+    Coth,
+    Csc,
+    Csch,
+    Sec,
+    Sech,
 
     // Information
     ErrorType,
@@ -270,7 +278,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 215> {
+    pub fn into_iter() -> IntoIter<Function, 223> {
         [
             Function::And,
             Function::False,
@@ -303,6 +311,14 @@ impl Function {
             Function::Sqrt,
             Function::Sqrtpi,
             Function::Atan2,
+            Function::Acot,
+            Function::Acoth,
+            Function::Cot,
+            Function::Coth,
+            Function::Csc,
+            Function::Csch,
+            Function::Sec,
+            Function::Sech,
             Function::Power,
             Function::Max,
             Function::Min,
@@ -568,6 +584,15 @@ impl Function {
             "ACOSH" => Some(Function::Acosh),
             "ATANH" => Some(Function::Atanh),
 
+            "ACOT" => Some(Function::Acot),
+            "COTH" => Some(Function::Coth),
+            "COT" => Some(Function::Cot),
+            "CSC" => Some(Function::Csc),
+            "CSCH" => Some(Function::Csch),
+            "SEC" => Some(Function::Sec),
+            "SECH" => Some(Function::Sech),
+            "ACOTH" => Some(Function::Acoth),
+
             "PI" => Some(Function::Pi),
             "ABS" => Some(Function::Abs),
             "SQRT" => Some(Function::Sqrt),
@@ -811,6 +836,16 @@ impl fmt::Display for Function {
             Function::Asinh => write!(f, "ASINH"),
             Function::Acosh => write!(f, "ACOSH"),
             Function::Atanh => write!(f, "ATANH"),
+
+            Function::Acot => write!(f, "ACOT"),
+            Function::Acoth => write!(f, "ACOTH"),
+            Function::Cot => write!(f, "COT"),
+            Function::Coth => write!(f, "COTH"),
+            Function::Csc => write!(f, "CSC"),
+            Function::Csch => write!(f, "CSCH"),
+            Function::Sec => write!(f, "SEC"),
+            Function::Sech => write!(f, "SECH"),
+
             Function::Abs => write!(f, "ABS"),
             Function::Pi => write!(f, "PI"),
             Function::Sqrt => write!(f, "SQRT"),
@@ -1260,8 +1295,15 @@ impl Model {
             Function::Convert => self.fn_convert(args, cell),
             Function::Delta => self.fn_delta(args, cell),
             Function::Gestep => self.fn_gestep(args, cell),
-
             Function::Subtotal => self.fn_subtotal(args, cell),
+            Function::Acot => self.fn_acot(args, cell),
+            Function::Acoth => self.fn_acoth(args, cell),
+            Function::Cot => self.fn_cot(args, cell),
+            Function::Coth => self.fn_coth(args, cell),
+            Function::Csc => self.fn_csc(args, cell),
+            Function::Csch => self.fn_csch(args, cell),
+            Function::Sec => self.fn_sec(args, cell),
+            Function::Sech => self.fn_sech(args, cell),
         }
     }
 }
