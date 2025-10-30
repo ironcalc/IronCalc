@@ -2,7 +2,6 @@ use crate::cast::NumberOrArray;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::engineering::{fact, fact_double};
 use crate::number_format::to_precision;
 use crate::single_number_fn;
 use crate::{
@@ -456,8 +455,35 @@ impl Model {
         Ok(1.0 / f64::cosh(f))
     });
     single_number_fn!(fn_exp, |f: f64| Ok(f64::exp(f)));
-    single_number_fn!(fn_fact, |f| Ok(fact(f)));
-    single_number_fn!(fn_factdouble, |f| Ok(fact_double(f)));
+    single_number_fn!(fn_fact, |x: f64| {
+        let x = x.floor();
+        if x < 0.0 {
+            return Err(Error::NUM);
+        }
+        let mut acc = 1.0;
+        let mut k = 2.0;
+        while k <= x {
+            acc *= k;
+            k += 1.0;
+        }
+        Ok(acc)
+    });
+    single_number_fn!(fn_factdouble, |x: f64| {
+        let x = x.floor();
+        if x < -1.0 {
+            return Err(Error::NUM);
+        }
+        if x < 0.0 {
+            return Ok(1.0);
+        }
+        let mut acc = 1.0;
+        let mut k = if x % 2.0 == 0.0 { 2.0 } else { 1.0 };
+        while k <= x {
+            acc *= k;
+            k += 2.0;
+        }
+        Ok(acc)
+    });
     single_number_fn!(fn_sign, |f| Ok(f64::signum(f)));
 
     pub(crate) fn fn_pi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

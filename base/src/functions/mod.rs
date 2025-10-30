@@ -602,6 +602,11 @@ impl Function {
             "SECH" => Some(Function::Sech),
             "ACOTH" => Some(Function::Acoth),
 
+            "FACT" => Some(Function::Fact),
+            "FACTDOUBLE" => Some(Function::Factdouble),
+            "EXP" => Some(Function::Exp),
+            "SIGN" => Some(Function::Sign),
+
             "PI" => Some(Function::Pi),
             "ABS" => Some(Function::Abs),
             "SQRT" => Some(Function::Sqrt),

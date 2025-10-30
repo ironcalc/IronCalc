@@ -5,5 +5,3 @@ mod convert;
 mod misc;
 mod number_basis;
 mod transcendental;
-
-pub use transcendental::{fact, fact_double};
