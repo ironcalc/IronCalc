@@ -846,6 +846,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Fact => args_signature_scalars(arg_count, 1, 0),
         Function::Factdouble => args_signature_scalars(arg_count, 1, 0),
         Function::Sign => args_signature_scalars(arg_count, 1, 0),
+        Function::Radians => args_signature_scalars(arg_count, 1, 0),
+        Function::Degrees => args_signature_scalars(arg_count, 1, 0),
     }
 }
 
@@ -1080,5 +1082,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Fact => scalar_arguments(args),
         Function::Factdouble => scalar_arguments(args),
         Function::Sign => scalar_arguments(args),
+        Function::Radians => scalar_arguments(args),
+        Function::Degrees => scalar_arguments(args),
     }
 }

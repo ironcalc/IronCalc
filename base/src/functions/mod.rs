@@ -90,6 +90,9 @@ pub enum Function {
     Factdouble,
     Sign,
 
+    Radians,
+    Degrees,
+
     // Information
     ErrorType,
     Formulatext,
@@ -283,7 +286,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 227> {
+    pub fn into_iter() -> IntoIter<Function, 229> {
         [
             Function::And,
             Function::False,
@@ -334,6 +337,8 @@ impl Function {
             Function::Product,
             Function::Rand,
             Function::Randbetween,
+            Function::Radians,
+            Function::Degrees,
             Function::Round,
             Function::Rounddown,
             Function::Roundup,
@@ -606,6 +611,9 @@ impl Function {
             "FACTDOUBLE" => Some(Function::Factdouble),
             "EXP" => Some(Function::Exp),
             "SIGN" => Some(Function::Sign),
+
+            "RADIANS" => Some(Function::Radians),
+            "DEGREES" => Some(Function::Degrees),
 
             "PI" => Some(Function::Pi),
             "ABS" => Some(Function::Abs),
@@ -1051,6 +1059,8 @@ impl fmt::Display for Function {
             Function::Fact => write!(f, "FACT"),
             Function::Factdouble => write!(f, "FACTDOUBLE"),
             Function::Sign => write!(f, "SIGN"),
+            Function::Radians => write!(f, "RADIANS"),
+            Function::Degrees => write!(f, "DEGREES"),
         }
     }
 }
@@ -1306,6 +1316,8 @@ impl Model {
             Function::Fact => self.fn_fact(args, cell),
             Function::Factdouble => self.fn_factdouble(args, cell),
             Function::Sign => self.fn_sign(args, cell),
+            Function::Radians => self.fn_radians(args, cell),
+            Function::Degrees => self.fn_degrees(args, cell),
         }
     }
 }
