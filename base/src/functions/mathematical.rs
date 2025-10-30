@@ -485,6 +485,8 @@ impl Model {
         Ok(acc)
     });
     single_number_fn!(fn_sign, |f| Ok(f64::signum(f)));
+    single_number_fn!(fn_degrees, |f| Ok(f * (180.0 / PI)));
+    single_number_fn!(fn_radians, |f| Ok(f * (PI / 180.0)));
 
     pub(crate) fn fn_pi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !args.is_empty() {
