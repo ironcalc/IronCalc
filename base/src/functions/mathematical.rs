@@ -463,7 +463,7 @@ impl Model {
         let mut acc = 1.0;
         let mut k = 2.0;
         while k <= x {
-            acc = acc * k;
+            acc *= k;
             k += 1.0;
         }
         Ok(acc)
@@ -479,7 +479,7 @@ impl Model {
         let mut acc = 1.0;
         let mut k = if x % 2.0 == 0.0 { 2.0 } else { 1.0 };
         while k <= x {
-            acc = acc * k;
+            acc *= k;
             k += 2.0;
         }
         Ok(acc)
