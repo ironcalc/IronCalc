@@ -5,7 +5,6 @@ mod bessel_jn_yn;
 mod bessel_k;
 mod bessel_util;
 mod erf;
-mod gamma;
 
 #[cfg(test)]
 mod test_bessel;
@@ -15,4 +14,3 @@ pub(crate) use bessel_jn_yn::jn as bessel_j;
 pub(crate) use bessel_jn_yn::yn as bessel_y;
 pub(crate) use bessel_k::bessel_k;
 pub(crate) use erf::erf;
-pub use gamma::{fact, fact_double};
