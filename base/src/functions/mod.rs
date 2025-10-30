@@ -85,6 +85,11 @@ pub enum Function {
     Sec,
     Sech,
 
+    Exp,
+    Fact,
+    Factdouble,
+    Sign,
+
     // Information
     ErrorType,
     Formulatext,
@@ -278,7 +283,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 223> {
+    pub fn into_iter() -> IntoIter<Function, 227> {
         [
             Function::And,
             Function::False,
@@ -320,6 +325,10 @@ impl Function {
             Function::Sec,
             Function::Sech,
             Function::Power,
+            Function::Exp,
+            Function::Fact,
+            Function::Factdouble,
+            Function::Sign,
             Function::Max,
             Function::Min,
             Function::Product,
@@ -836,7 +845,6 @@ impl fmt::Display for Function {
             Function::Asinh => write!(f, "ASINH"),
             Function::Acosh => write!(f, "ACOSH"),
             Function::Atanh => write!(f, "ATANH"),
-
             Function::Acot => write!(f, "ACOT"),
             Function::Acoth => write!(f, "ACOTH"),
             Function::Cot => write!(f, "COT"),
@@ -845,7 +853,6 @@ impl fmt::Display for Function {
             Function::Csch => write!(f, "CSCH"),
             Function::Sec => write!(f, "SEC"),
             Function::Sech => write!(f, "SECH"),
-
             Function::Abs => write!(f, "ABS"),
             Function::Pi => write!(f, "PI"),
             Function::Sqrt => write!(f, "SQRT"),
@@ -910,7 +917,6 @@ impl fmt::Display for Function {
             Function::Isformula => write!(f, "ISFORMULA"),
             Function::Type => write!(f, "TYPE"),
             Function::Sheet => write!(f, "SHEET"),
-
             Function::Average => write!(f, "AVERAGE"),
             Function::Averagea => write!(f, "AVERAGEA"),
             Function::Averageif => write!(f, "AVERAGEIF"),
@@ -1035,8 +1041,11 @@ impl fmt::Display for Function {
             Function::Convert => write!(f, "CONVERT"),
             Function::Delta => write!(f, "DELTA"),
             Function::Gestep => write!(f, "GESTEP"),
-
             Function::Subtotal => write!(f, "SUBTOTAL"),
+            Function::Exp => write!(f, "EXP"),
+            Function::Fact => write!(f, "FACT"),
+            Function::Factdouble => write!(f, "FACTDOUBLE"),
+            Function::Sign => write!(f, "SIGN"),
         }
     }
 }
@@ -1065,7 +1074,6 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match kind {
-            // Logical
             Function::And => self.fn_and(args, cell),
             Function::False => self.fn_false(args, cell),
             Function::If => self.fn_if(args, cell),
@@ -1077,34 +1085,27 @@ impl Model {
             Function::Switch => self.fn_switch(args, cell),
             Function::True => self.fn_true(args, cell),
             Function::Xor => self.fn_xor(args, cell),
-            // Math and trigonometry
             Function::Log => self.fn_log(args, cell),
             Function::Log10 => self.fn_log10(args, cell),
             Function::Ln => self.fn_ln(args, cell),
             Function::Sin => self.fn_sin(args, cell),
             Function::Cos => self.fn_cos(args, cell),
             Function::Tan => self.fn_tan(args, cell),
-
             Function::Asin => self.fn_asin(args, cell),
             Function::Acos => self.fn_acos(args, cell),
             Function::Atan => self.fn_atan(args, cell),
-
             Function::Sinh => self.fn_sinh(args, cell),
             Function::Cosh => self.fn_cosh(args, cell),
             Function::Tanh => self.fn_tanh(args, cell),
-
             Function::Asinh => self.fn_asinh(args, cell),
             Function::Acosh => self.fn_acosh(args, cell),
             Function::Atanh => self.fn_atanh(args, cell),
-
             Function::Pi => self.fn_pi(args, cell),
             Function::Abs => self.fn_abs(args, cell),
-
             Function::Sqrt => self.fn_sqrt(args, cell),
             Function::Sqrtpi => self.fn_sqrtpi(args, cell),
             Function::Atan2 => self.fn_atan2(args, cell),
             Function::Power => self.fn_power(args, cell),
-
             Function::Max => self.fn_max(args, cell),
             Function::Min => self.fn_min(args, cell),
             Function::Product => self.fn_product(args, cell),
@@ -1116,8 +1117,6 @@ impl Model {
             Function::Sum => self.fn_sum(args, cell),
             Function::Sumif => self.fn_sumif(args, cell),
             Function::Sumifs => self.fn_sumifs(args, cell),
-
-            // Lookup and Reference
             Function::Choose => self.fn_choose(args, cell),
             Function::Column => self.fn_column(args, cell),
             Function::Columns => self.fn_columns(args, cell),
@@ -1131,7 +1130,6 @@ impl Model {
             Function::Rows => self.fn_rows(args, cell),
             Function::Vlookup => self.fn_vlookup(args, cell),
             Function::Xlookup => self.fn_xlookup(args, cell),
-            // Text
             Function::Concatenate => self.fn_concatenate(args, cell),
             Function::Exact => self.fn_exact(args, cell),
             Function::Value => self.fn_value(args, cell),
@@ -1149,7 +1147,6 @@ impl Model {
             Function::Trim => self.fn_trim(args, cell),
             Function::Unicode => self.fn_unicode(args, cell),
             Function::Upper => self.fn_upper(args, cell),
-            // Information
             Function::Isnumber => self.fn_isnumber(args, cell),
             Function::Isnontext => self.fn_isnontext(args, cell),
             Function::Istext => self.fn_istext(args, cell),
@@ -1167,7 +1164,6 @@ impl Model {
             Function::Isformula => self.fn_isformula(args, cell),
             Function::Type => self.fn_type(args, cell),
             Function::Sheet => self.fn_sheet(args, cell),
-            // Statistical
             Function::Average => self.fn_average(args, cell),
             Function::Averagea => self.fn_averagea(args, cell),
             Function::Averageif => self.fn_averageif(args, cell),
@@ -1180,7 +1176,6 @@ impl Model {
             Function::Maxifs => self.fn_maxifs(args, cell),
             Function::Minifs => self.fn_minifs(args, cell),
             Function::Geomean => self.fn_geomean(args, cell),
-            // Date and Time
             Function::Year => self.fn_year(args, cell),
             Function::Day => self.fn_day(args, cell),
             Function::Eomonth => self.fn_eomonth(args, cell),
@@ -1206,7 +1201,6 @@ impl Model {
             Function::WorkdayIntl => self.fn_workday_intl(args, cell),
             Function::Yearfrac => self.fn_yearfrac(args, cell),
             Function::Isoweeknum => self.fn_isoweeknum(args, cell),
-            // Financial
             Function::Pmt => self.fn_pmt(args, cell),
             Function::Pv => self.fn_pv(args, cell),
             Function::Rate => self.fn_rate(args, cell),
@@ -1240,7 +1234,6 @@ impl Model {
             Function::Db => self.fn_db(args, cell),
             Function::Cumprinc => self.fn_cumprinc(args, cell),
             Function::Cumipmt => self.fn_cumipmt(args, cell),
-            // Engineering
             Function::Besseli => self.fn_besseli(args, cell),
             Function::Besselj => self.fn_besselj(args, cell),
             Function::Besselk => self.fn_besselk(args, cell),
@@ -1304,6 +1297,10 @@ impl Model {
             Function::Csch => self.fn_csch(args, cell),
             Function::Sec => self.fn_sec(args, cell),
             Function::Sech => self.fn_sech(args, cell),
+            Function::Exp => self.fn_exp(args, cell),
+            Function::Fact => self.fn_fact(args, cell),
+            Function::Factdouble => self.fn_factdouble(args, cell),
+            Function::Sign => self.fn_sign(args, cell),
         }
     }
 }
