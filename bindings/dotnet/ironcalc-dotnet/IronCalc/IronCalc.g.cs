@@ -19,10 +19,10 @@ namespace IronCalc
 
 
         [DllImport(__DllName, EntryPoint = "from_bytes", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ModelContext* from_bytes(byte* buffer, int length, byte* locale, byte* timezone, byte* name);
+        internal static extern CreateModelContextResult from_bytes(byte* buffer, int length, byte* locale, byte* timezone, byte* name);
 
         [DllImport(__DllName, EntryPoint = "new_empty", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ModelContext* new_empty(byte* locale, byte* timezone);
+        internal static extern CreateModelContextResult new_empty(byte* name, byte* locale, byte* timezone);
 
         [DllImport(__DllName, EntryPoint = "evaluate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void evaluate(ModelContext* context);
@@ -32,6 +32,9 @@ namespace IronCalc
 
         [DllImport(__DllName, EntryPoint = "set_value", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void set_value(ModelContext* context, int sheet, int row, int col, int value);
+
+        [DllImport(__DllName, EntryPoint = "dispose_error", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void dispose_error(ModelContextError* error);
 
         [DllImport(__DllName, EntryPoint = "dispose", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void dispose(ModelContext* context);
@@ -44,6 +47,28 @@ namespace IronCalc
     {
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct ModelContextError
+    {
+        public ModelContextErrorTag tag;
+        [MarshalAs(UnmanagedType.U1)] public bool has_message;
+        public byte* message;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct CreateModelContextResult
+    {
+        public ModelContext* model;
+        public ModelContextError* error;
+        [MarshalAs(UnmanagedType.U1)] public bool is_ok;
+    }
+
+
+    internal enum ModelContextErrorTag : uint
+    {
+        XlsxError = 1,
+        WorkbookError = 2,
+    }
 
 
 }

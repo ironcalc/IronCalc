@@ -3,6 +3,35 @@ using System.Text;
 
 namespace IronCalc;
 
+public class IronCalcException : Exception
+{
+    public readonly ErrorCode ErrorCode;
+
+    internal IronCalcException(string message, ErrorCode errorCode)
+        : base(message)
+    {
+        ErrorCode = errorCode;
+    }
+
+    internal IronCalcException(string message, ModelContextErrorTag? tag)
+        : base(message)
+    {
+        ErrorCode = tag switch {
+            null => ErrorCode.Unknown,
+            ModelContextErrorTag.XlsxError => ErrorCode.XslxError,
+            ModelContextErrorTag.WorkbookError => ErrorCode.WorkbookError,
+            _ => throw new ArgumentOutOfRangeException(nameof(tag), tag, null)
+        };
+    }
+}
+
+public enum ErrorCode
+{
+    Unknown = 1,
+    XslxError = 2,
+    WorkbookError = 3,
+}
+
 public class Model : IDisposable
 {
     private readonly unsafe ModelContext* ctx;
@@ -12,17 +41,37 @@ public class Model : IDisposable
         this.ctx = ctx;
     }
 
-    public static Model NewEmpty(string locale, string timezone)
+    public static Model NewEmpty(string name, string locale, string timezone)
     {
         unsafe
         {
+            var nameBytes = Encoding.UTF8.GetBytes(name);
             var localeBytes = Encoding.UTF8.GetBytes(locale);
             var timezoneBytes = Encoding.UTF8.GetBytes(timezone);
+            fixed (byte* nameP = nameBytes)
             fixed (byte* localeP = localeBytes)
             fixed (byte* timezoneP = timezoneBytes)
             {
-                var ctx = NativeMethods.new_empty(localeP, timezoneP);
-                return new Model(ctx);
+                var ctx = NativeMethods.new_empty(nameP, localeP, timezoneP);
+                if (ctx.is_ok)
+                {
+                    return new Model(ctx.model);
+                }
+
+                string message;
+                ModelContextErrorTag? errorTag = null;
+                if (ctx.error->has_message)
+                {
+                    message = new String((sbyte*)ctx.error->message);
+                    errorTag = ctx.error->tag;
+                    NativeMethods.dispose_error(ctx.error);
+                }
+                else
+                {
+                    message = "Unknown error while create IronCalc model.";
+                }
+
+                throw new IronCalcException(message, errorTag);
             }
         }
     }
@@ -40,7 +89,25 @@ public class Model : IDisposable
             fixed (byte* byteP = bytes)
             {
                 var ctx = NativeMethods.from_bytes(byteP, bytes.Length, localeP, timezoneP, nameP);
-                return new Model(ctx);
+                if (ctx.is_ok)
+                {
+                    return new Model(ctx.model);
+                }
+
+                string message;
+                ModelContextErrorTag? errorTag = null;
+                if (ctx.error->has_message)
+                {
+                    message = new String((sbyte*)ctx.error->message);
+                    errorTag = ctx.error->tag;
+                    NativeMethods.dispose_error(ctx.error);
+                }
+                else
+                {
+                    message = "Unknown error while create IronCalc model.";
+                }
+
+                throw new IronCalcException(message, errorTag);
             }
         }
     }
