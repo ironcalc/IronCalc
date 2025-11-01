@@ -5,13 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="csbindgen">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="runtimes/**/*.*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <Link>%(Filename)%(Extension)</Link>
