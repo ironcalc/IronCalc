@@ -9,6 +9,7 @@ pub struct ModelContext;
 pub enum ModelContextErrorTag {
     XlsxError = 1,
     WorkbookError = 2,
+    SetUserInputError = 3,
 }
 
 #[repr(C)]
@@ -164,20 +165,35 @@ pub unsafe extern "C" fn get_value(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn set_value(
+pub unsafe extern "C" fn set_user_input(
     context: *mut ModelContext,
-    sheet: i32,
+    sheet: u32,
     row: i32,
     col: i32,
-    value: i32,
-) {
+    value: *const c_char,
+) -> *mut ModelContextError {
     let mut ctx = Box::from_raw(context as *mut InternalModelContext);
+    let value = std::ffi::CStr::from_ptr(value).to_string_lossy().to_string();
 
-    ctx.model
-        .set_user_input(sheet as u32, row, col, format!("{value}"))
-        .expect("couldn't set user input");
+    if let Err(message) = ctx.model.set_user_input(sheet, row, col, value) {
+        let message_ptr = CString::new(message)
+            .expect("Couldn't create CString")
+            .into_raw();
+
+        let error = Box::into_raw(Box::new(ModelContextError {
+            tag: ModelContextErrorTag::SetUserInputError,
+            has_message: true,
+            message: message_ptr,
+        }));
+
+        Box::into_raw(ctx) as *mut ModelContext;
+
+        return error;
+    }
 
     Box::into_raw(ctx) as *mut ModelContext;
+
+    std::ptr::null_mut()
 }
 
 #[no_mangle]

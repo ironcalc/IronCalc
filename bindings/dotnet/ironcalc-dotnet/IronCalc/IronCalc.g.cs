@@ -30,8 +30,8 @@ namespace IronCalc
         [DllImport(__DllName, EntryPoint = "get_value", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern int get_value(ModelContext* context, int sheet, int row, int col);
 
-        [DllImport(__DllName, EntryPoint = "set_value", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void set_value(ModelContext* context, int sheet, int row, int col, int value);
+        [DllImport(__DllName, EntryPoint = "set_user_input", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern ModelContextError* set_user_input(ModelContext* context, uint sheet, int row, int col, byte* value);
 
         [DllImport(__DllName, EntryPoint = "dispose_error", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void dispose_error(ModelContextError* error);
@@ -68,6 +68,7 @@ namespace IronCalc
     {
         XlsxError = 1,
         WorkbookError = 2,
+        SetUserInputError = 3,
     }
 
 

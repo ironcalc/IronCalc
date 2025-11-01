@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace IronCalc;
@@ -20,6 +21,7 @@ public class IronCalcException : Exception
             null => ErrorCode.Unknown,
             ModelContextErrorTag.XlsxError => ErrorCode.XslxError,
             ModelContextErrorTag.WorkbookError => ErrorCode.WorkbookError,
+            ModelContextErrorTag.SetUserInputError => ErrorCode.SetUserInputError,
             _ => throw new ArgumentOutOfRangeException(nameof(tag), tag, null)
         };
     }
@@ -30,6 +32,7 @@ public enum ErrorCode
     Unknown = 1,
     XslxError = 2,
     WorkbookError = 3,
+    SetUserInputError = 4,
 }
 
 public class Model : IDisposable
@@ -58,20 +61,7 @@ public class Model : IDisposable
                     return new Model(ctx.model);
                 }
 
-                string message;
-                ModelContextErrorTag? errorTag = null;
-                if (ctx.error->has_message)
-                {
-                    message = new String((sbyte*)ctx.error->message);
-                    errorTag = ctx.error->tag;
-                    NativeMethods.dispose_error(ctx.error);
-                }
-                else
-                {
-                    message = "Unknown error while create IronCalc model.";
-                }
-
-                throw new IronCalcException(message, errorTag);
+                throw CreateExceptionFromError(ctx.error);
             }
         }
     }
@@ -94,20 +84,7 @@ public class Model : IDisposable
                     return new Model(ctx.model);
                 }
 
-                string message;
-                ModelContextErrorTag? errorTag = null;
-                if (ctx.error->has_message)
-                {
-                    message = new String((sbyte*)ctx.error->message);
-                    errorTag = ctx.error->tag;
-                    NativeMethods.dispose_error(ctx.error);
-                }
-                else
-                {
-                    message = "Unknown error while create IronCalc model.";
-                }
-
-                throw new IronCalcException(message, errorTag);
+                throw CreateExceptionFromError(ctx.error);
             }
         }
     }
@@ -128,12 +105,39 @@ public class Model : IDisposable
         }
     }
 
-    public void SetValue(int sheet, int row, int col, int value)
+    public void SetUserInput(uint sheet, int row, int col, string value)
     {
         unsafe
         {
-            NativeMethods.set_value(ctx, sheet, row, col, value);
+            var valueBytes = Encoding.UTF8.GetBytes(value);
+            fixed (byte* valueP = valueBytes)
+            {
+                var error = NativeMethods.set_user_input(ctx, sheet, row, col, valueP);
+                if (error != null)
+                {
+                    throw CreateExceptionFromError(error);
+                }
+            }
         }
+    }
+
+    private static unsafe IronCalcException CreateExceptionFromError(
+        ModelContextError* error,
+        [CallerMemberName] string? callerName = null)
+    {
+        string message;
+        var errorTag = error->tag;
+        if (error->has_message)
+        {
+            message = new String((sbyte*)error->message);
+            NativeMethods.dispose_error(error);
+        }
+        else
+        {
+            message = $"Unknown error while calling {callerName ?? "UNKNOWN"} on IronCalc model.";
+        }
+
+        return new IronCalcException(message, errorTag);
     }
 
     public void Dispose()
