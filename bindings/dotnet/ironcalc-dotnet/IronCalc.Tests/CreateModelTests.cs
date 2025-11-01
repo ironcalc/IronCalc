@@ -12,19 +12,19 @@ public class CreateModelTests
     }
 
     [Fact]
-    public void FromBytes()
+    public void LoadFromXlsxBytes()
     {
         var bytes = File.ReadAllBytes("SimpleSum.xlsx");
-        using var model = Model.FromBytes(bytes, "en",  "Europe/Oslo");
+        using var model = Model.LoadFromXlsxBytes(bytes, "en",  "Europe/Oslo");
     }
 
     [Fact]
-    public void FromBytesInvalidLocale()
+    public void LoadFromXlsxBytesInvalidLocale()
     {
         var bytes = File.ReadAllBytes("SimpleSum.xlsx");
         var exception = Assert.Throws<IronCalcException>(() =>
         {
-            using var model = Model.FromBytes(bytes, "foobar", "Europe/Oslo");
+            using var model = Model.LoadFromXlsxBytes(bytes, "foobar", "Europe/Oslo");
         });
 
         Assert.Equal(ErrorCode.WorkbookError, exception.ErrorCode);

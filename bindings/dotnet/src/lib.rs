@@ -51,7 +51,7 @@ struct InternalModelContext {
 }
 
 #[no_mangle]
-pub extern "C" fn from_bytes(
+pub extern "C" fn load_from_xlsx_bytes(
     buffer: *const u8,
     length: i32,
     locale: *const c_char,

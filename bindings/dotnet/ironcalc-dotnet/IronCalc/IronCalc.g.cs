@@ -18,8 +18,8 @@ namespace IronCalc
 
 
 
-        [DllImport(__DllName, EntryPoint = "from_bytes", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern CreateModelContextResult from_bytes(byte* buffer, int length, byte* locale, byte* timezone, byte* name);
+        [DllImport(__DllName, EntryPoint = "load_from_xlsx_bytes", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern CreateModelContextResult load_from_xlsx_bytes(byte* buffer, int length, byte* locale, byte* timezone, byte* name);
 
         [DllImport(__DllName, EntryPoint = "new_empty", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern CreateModelContextResult new_empty(byte* name, byte* locale, byte* timezone);

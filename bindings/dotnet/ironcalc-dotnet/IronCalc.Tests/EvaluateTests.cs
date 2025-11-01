@@ -18,7 +18,7 @@ public class EvaluateTests
     public void Sum()
     {
         var bytes = File.ReadAllBytes("SimpleSum.xlsx");
-        using var model = Model.FromBytes(bytes, "en",  "Europe/Oslo");
+        using var model = Model.LoadFromXlsxBytes(bytes, "en",  "Europe/Oslo");
 
         var value = model.GetValue(0, 3, 1);
         Assert.Equal(2, value);

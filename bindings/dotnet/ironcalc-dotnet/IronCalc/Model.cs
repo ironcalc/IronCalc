@@ -66,7 +66,7 @@ public class Model : IDisposable
         }
     }
 
-    public static Model FromBytes(byte[] bytes, string locale, string timezone, string? name = null)
+    public static Model LoadFromXlsxBytes(byte[] bytes, string locale, string timezone, string? name = null)
     {
         unsafe
         {
@@ -78,7 +78,7 @@ public class Model : IDisposable
             fixed (byte* nameP = nameBytes)
             fixed (byte* byteP = bytes)
             {
-                var ctx = NativeMethods.from_bytes(byteP, bytes.Length, localeP, timezoneP, nameP);
+                var ctx = NativeMethods.load_from_xlsx_bytes(byteP, bytes.Length, localeP, timezoneP, nameP);
                 if (ctx.is_ok)
                 {
                     return new Model(ctx.model);
