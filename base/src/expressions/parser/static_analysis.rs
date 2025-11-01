@@ -848,6 +848,20 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sign => args_signature_scalars(arg_count, 1, 0),
         Function::Radians => args_signature_scalars(arg_count, 1, 0),
         Function::Degrees => args_signature_scalars(arg_count, 1, 0),
+        Function::Int => args_signature_scalars(arg_count, 1, 0),
+        Function::Even => args_signature_scalars(arg_count, 1, 0),
+        Function::Odd => args_signature_scalars(arg_count, 1, 0),
+        Function::Ceiling => args_signature_scalars(arg_count, 2, 0), // (number, significance)
+        Function::CeilingMath => args_signature_scalars(arg_count, 1, 2), // (number, [significance], [mode])
+        Function::CeilingPrecise => args_signature_scalars(arg_count, 1, 1), // (number, [significance])
+        Function::Floor => args_signature_scalars(arg_count, 2, 0), // (number, significance)
+        Function::FloorMath => args_signature_scalars(arg_count, 1, 2), // (number, [significance], [mode])
+        Function::FloorPrecise => args_signature_scalars(arg_count, 1, 1), // (number, [significance])
+        Function::IsoCeiling => args_signature_scalars(arg_count, 1, 1), // (number, [significance])
+        Function::Mod => args_signature_scalars(arg_count, 2, 0),        // (number, divisor)
+        Function::Quotient => args_signature_scalars(arg_count, 2, 0),   // (number, denominator)
+        Function::Mround => args_signature_scalars(arg_count, 2, 0),     // (number, multiple)
+        Function::Trunc => args_signature_scalars(arg_count, 1, 1),      // (num, [num_digits])
     }
 }
 
@@ -1084,5 +1098,19 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sign => scalar_arguments(args),
         Function::Radians => scalar_arguments(args),
         Function::Degrees => scalar_arguments(args),
+        Function::Int => scalar_arguments(args),
+        Function::Even => scalar_arguments(args),
+        Function::Odd => scalar_arguments(args),
+        Function::Ceiling => scalar_arguments(args),
+        Function::CeilingMath => scalar_arguments(args),
+        Function::CeilingPrecise => scalar_arguments(args),
+        Function::Floor => scalar_arguments(args),
+        Function::FloorMath => scalar_arguments(args),
+        Function::FloorPrecise => scalar_arguments(args),
+        Function::IsoCeiling => scalar_arguments(args),
+        Function::Mod => scalar_arguments(args),
+        Function::Quotient => scalar_arguments(args),
+        Function::Mround => scalar_arguments(args),
+        Function::Trunc => scalar_arguments(args),
     }
 }

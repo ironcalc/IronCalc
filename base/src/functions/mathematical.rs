@@ -381,6 +381,317 @@ impl Model {
         }
     }
 
+    // (number, divisor)
+    pub(crate) fn fn_mod(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let divisor = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if divisor == 0.0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Divide by 0".to_string(),
+            };
+        }
+        let result = value - divisor * (value / divisor).floor();
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_quotient(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let divisor = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if divisor == 0.0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Divide by 0".to_string(),
+            };
+        }
+
+        let result = value / divisor;
+        CalcResult::Number(result.signum() * result.abs().floor())
+    }
+
+    pub(crate) fn fn_floor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let significance = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if significance == 0.0 {
+            if value == 0.0 {
+                return CalcResult::Number(0.0);
+            }
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Divide by 0".to_string(),
+            };
+        }
+        if significance < 0.0 && value > 0.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Significance must be positive when value is positive".to_string(),
+            };
+        }
+
+        let result = f64::floor(value / significance) * significance;
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_ceiling(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let significance = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if significance == 0.0 {
+            // This behaviour is different from FLOOR where division by zero returns an error
+            return CalcResult::Number(0.0);
+        }
+        if significance < 0.0 && value > 0.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Significance must be positive when value is positive".to_string(),
+            };
+        }
+
+        let result = f64::ceil(value / significance) * significance;
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_ceiling_math(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let arg_count = args.len();
+        if arg_count > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let significance = if arg_count > 1 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f.abs(),
+                Err(s) => return s,
+            }
+        } else {
+            1.0
+        };
+        let mode = if arg_count > 2 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if significance == 0.0 {
+            return CalcResult::Number(0.0);
+        }
+        if value < 0.0 && mode != 0.0 {
+            let result = f64::floor(value / significance) * significance;
+            CalcResult::Number(result)
+        } else {
+            let result = f64::ceil(value / significance) * significance;
+            CalcResult::Number(result)
+        }
+    }
+
+    pub(crate) fn fn_ceiling_precise(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let arg_count = args.len();
+        if arg_count > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let significance = if arg_count > 1 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f.abs(),
+                Err(s) => return s,
+            }
+        } else {
+            1.0
+        };
+        if significance == 0.0 {
+            return CalcResult::Number(0.0);
+        }
+
+        let result = f64::ceil(value / significance) * significance;
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_iso_ceiling(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // ISO.CEILING is equivalent to CEILING.PRECISE
+        self.fn_ceiling_precise(args, cell)
+    }
+
+    pub(crate) fn fn_floor_math(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if arg_count > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let significance = if arg_count > 1 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            1.0
+        };
+        let mode = if arg_count > 2 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if significance == 0.0 {
+            return CalcResult::Number(0.0);
+        }
+        let significance = significance.abs();
+        if value < 0.0 && mode != 0.0 {
+            let result = f64::ceil(value / significance) * significance;
+            CalcResult::Number(result)
+        } else {
+            let result = f64::floor(value / significance) * significance;
+            CalcResult::Number(result)
+        }
+    }
+
+    pub(crate) fn fn_floor_precise(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let arg_count = args.len();
+        if arg_count > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let significance = if arg_count > 1 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f.abs(),
+                Err(s) => return s,
+            }
+        } else {
+            1.0
+        };
+        if significance == 0.0 {
+            return CalcResult::Number(0.0);
+        }
+
+        let result = f64::floor(value / significance) * significance;
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_mround(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // MROUND(number, multiple)
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let multiple = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if multiple == 0.0 {
+            return CalcResult::Number(0.0);
+        }
+        if (value > 0.0 && multiple < 0.0) || (value < 0.0 && multiple > 0.0) {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "number and multiple must have the same sign".to_string(),
+            };
+        }
+        let result = (value / multiple).round() * multiple;
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let num_digits = if args.len() == 2 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => {
+                    if f > 0.0 {
+                        f.floor()
+                    } else {
+                        f.ceil()
+                    }
+                }
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if !(-15.0..=15.0).contains(&num_digits) {
+            return CalcResult::Number(value);
+        }
+        CalcResult::Number(if value >= 0.0 {
+            f64::floor(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
+        } else {
+            f64::ceil(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
+        })
+    }
+
     single_number_fn!(fn_log10, |f| if f <= 0.0 {
         Err(Error::NUM)
     } else {
@@ -487,6 +798,14 @@ impl Model {
     single_number_fn!(fn_sign, |f| Ok(f64::signum(f)));
     single_number_fn!(fn_degrees, |f| Ok(f * (180.0 / PI)));
     single_number_fn!(fn_radians, |f| Ok(f * (PI / 180.0)));
+    single_number_fn!(fn_odd, |f| {
+        let sign = f64::signum(f);
+        Ok(sign * (f64::ceil((f64::abs(f) - 1.0) / 2.0) * 2.0 + 1.0))
+    });
+    single_number_fn!(fn_even, |f| Ok(f64::signum(f)
+        * f64::ceil(f64::abs(f) / 2.0)
+        * 2.0));
+    single_number_fn!(fn_int, |f| Ok(f64::floor(f)));
 
     pub(crate) fn fn_pi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !args.is_empty() {

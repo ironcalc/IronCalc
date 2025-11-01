@@ -93,6 +93,21 @@ pub enum Function {
     Radians,
     Degrees,
 
+    Int,
+    Even,
+    Odd,
+    Ceiling,
+    CeilingMath,
+    CeilingPrecise,
+    Floor,
+    FloorMath,
+    FloorPrecise,
+    IsoCeiling,
+    Mod,
+    Quotient,
+    Mround,
+    Trunc,
+
     // Information
     ErrorType,
     Formulatext,
@@ -286,7 +301,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 229> {
+    pub fn into_iter() -> IntoIter<Function, 243> {
         [
             Function::And,
             Function::False,
@@ -332,6 +347,20 @@ impl Function {
             Function::Fact,
             Function::Factdouble,
             Function::Sign,
+            Function::Int,
+            Function::Even,
+            Function::Odd,
+            Function::Ceiling,
+            Function::CeilingMath,
+            Function::CeilingPrecise,
+            Function::Floor,
+            Function::FloorMath,
+            Function::FloorPrecise,
+            Function::IsoCeiling,
+            Function::Mod,
+            Function::Quotient,
+            Function::Mround,
+            Function::Trunc,
             Function::Max,
             Function::Min,
             Function::Product,
@@ -559,6 +588,14 @@ impl Function {
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
             Function::Isoweeknum => "_xlfn.ISOWEEKNUM".to_string(),
+
+            Function::Ceiling => "_xlfn.CEILING".to_string(),
+            Function::CeilingMath => "_xlfn.CEILING.MATH".to_string(),
+            Function::CeilingPrecise => "_xlfn.CEILING.PRECISE".to_string(),
+            Function::FloorMath => "_xlfn.FLOOR.MATH".to_string(),
+            Function::FloorPrecise => "_xlfn.FLOOR.PRECISE".to_string(),
+            Function::IsoCeiling => "_xlfn.ISO.CEILING".to_string(),
+
             _ => self.to_string(),
         }
     }
@@ -614,6 +651,21 @@ impl Function {
 
             "RADIANS" => Some(Function::Radians),
             "DEGREES" => Some(Function::Degrees),
+
+            "INT" => Some(Function::Int),
+            "EVEN" => Some(Function::Even),
+            "ODD" => Some(Function::Odd),
+            "CEILING" | "_XLFN.CEILING" => Some(Function::Ceiling),
+            "CEILING.MATH" | "_XLFN.CEILING.MATH" => Some(Function::CeilingMath),
+            "CEILING.PRECISE" | "_XLFN.CEILING.PRECISE" => Some(Function::CeilingPrecise),
+            "FLOOR" => Some(Function::Floor),
+            "FLOOR.MATH" | "_XLFN.FLOOR.MATH" => Some(Function::FloorMath),
+            "FLOOR.PRECISE" | "_XLFN.FLOOR.PRECISE" => Some(Function::FloorPrecise),
+            "ISO.CEILING" | "_XLFN.ISO.CEILING" => Some(Function::IsoCeiling),
+            "MOD" => Some(Function::Mod),
+            "QUOTIENT" => Some(Function::Quotient),
+            "MROUND" => Some(Function::Mround),
+            "TRUNC" => Some(Function::Trunc),
 
             "PI" => Some(Function::Pi),
             "ABS" => Some(Function::Abs),
@@ -824,6 +876,7 @@ impl Function {
             "GESTEP" => Some(Function::Gestep),
 
             "SUBTOTAL" => Some(Function::Subtotal),
+
             _ => None,
         }
     }
@@ -1061,6 +1114,20 @@ impl fmt::Display for Function {
             Function::Sign => write!(f, "SIGN"),
             Function::Radians => write!(f, "RADIANS"),
             Function::Degrees => write!(f, "DEGREES"),
+            Function::Int => write!(f, "INT"),
+            Function::Even => write!(f, "EVEN"),
+            Function::Odd => write!(f, "ODD"),
+            Function::Ceiling => write!(f, "CEILING"),
+            Function::CeilingMath => write!(f, "CEILING.MATH"),
+            Function::CeilingPrecise => write!(f, "CEILING.PRECISE"),
+            Function::Floor => write!(f, "FLOOR"),
+            Function::FloorMath => write!(f, "FLOOR.MATH"),
+            Function::FloorPrecise => write!(f, "FLOOR.PRECISE"),
+            Function::IsoCeiling => write!(f, "ISO.CEILING"),
+            Function::Mod => write!(f, "MOD"),
+            Function::Quotient => write!(f, "QUOTIENT"),
+            Function::Mround => write!(f, "MROUND"),
+            Function::Trunc => write!(f, "TRUNC"),
         }
     }
 }
@@ -1318,6 +1385,20 @@ impl Model {
             Function::Sign => self.fn_sign(args, cell),
             Function::Radians => self.fn_radians(args, cell),
             Function::Degrees => self.fn_degrees(args, cell),
+            Function::Int => self.fn_int(args, cell),
+            Function::Even => self.fn_even(args, cell),
+            Function::Odd => self.fn_odd(args, cell),
+            Function::Ceiling => self.fn_ceiling(args, cell),
+            Function::CeilingMath => self.fn_ceiling_math(args, cell),
+            Function::CeilingPrecise => self.fn_ceiling_precise(args, cell),
+            Function::Floor => self.fn_floor(args, cell),
+            Function::FloorMath => self.fn_floor_math(args, cell),
+            Function::FloorPrecise => self.fn_floor_precise(args, cell),
+            Function::IsoCeiling => self.fn_iso_ceiling(args, cell),
+            Function::Mod => self.fn_mod(args, cell),
+            Function::Quotient => self.fn_quotient(args, cell),
+            Function::Mround => self.fn_mround(args, cell),
+            Function::Trunc => self.fn_trunc(args, cell),
         }
     }
 }
