@@ -108,6 +108,9 @@ pub enum Function {
     Mround,
     Trunc,
 
+    Gcd,
+    Lcm,
+
     // Information
     ErrorType,
     Formulatext,
@@ -301,7 +304,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 243> {
+    pub fn into_iter() -> IntoIter<Function, 245> {
         [
             Function::And,
             Function::False,
@@ -361,6 +364,8 @@ impl Function {
             Function::Quotient,
             Function::Mround,
             Function::Trunc,
+            Function::Gcd,
+            Function::Lcm,
             Function::Max,
             Function::Min,
             Function::Product,
@@ -666,6 +671,9 @@ impl Function {
             "QUOTIENT" => Some(Function::Quotient),
             "MROUND" => Some(Function::Mround),
             "TRUNC" => Some(Function::Trunc),
+
+            "GCD" => Some(Function::Gcd),
+            "LCM" => Some(Function::Lcm),
 
             "PI" => Some(Function::Pi),
             "ABS" => Some(Function::Abs),
@@ -1128,6 +1136,8 @@ impl fmt::Display for Function {
             Function::Quotient => write!(f, "QUOTIENT"),
             Function::Mround => write!(f, "MROUND"),
             Function::Trunc => write!(f, "TRUNC"),
+            Function::Gcd => write!(f, "GCD"),
+            Function::Lcm => write!(f, "LCM"),
         }
     }
 }
@@ -1399,6 +1409,8 @@ impl Model {
             Function::Quotient => self.fn_quotient(args, cell),
             Function::Mround => self.fn_mround(args, cell),
             Function::Trunc => self.fn_trunc(args, cell),
+            Function::Gcd => self.fn_gcd(args, cell),
+            Function::Lcm => self.fn_lcm(args, cell),
         }
     }
 }

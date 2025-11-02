@@ -14,6 +14,32 @@ pub fn random() -> f64 {
     rand::random()
 }
 
+// Euclidean gcd for i64 (non-negative inputs expected)
+fn gcd_i64(mut a: i64, mut b: i64) -> i64 {
+    while b != 0 {
+        let r = a % b;
+        a = b;
+        b = r;
+    }
+    a
+}
+
+// lcm(a, b) = a / gcd(a, b) * b
+// we do it in i128 to reduce overflow risk, then back to i64/f64
+fn lcm_i64(a: i64, b: i64) -> Option<i64> {
+    if a == 0 || b == 0 {
+        return Some(0);
+    }
+    let g = gcd_i64(a, b);
+    let a_div_g = (a / g) as i128;
+    let prod = a_div_g * (b as i128);
+    if prod > i64::MAX as i128 {
+        None
+    } else {
+        Some(prod as i64)
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 pub fn random() -> f64 {
     use js_sys::Math;
@@ -105,6 +131,297 @@ impl Model {
             return CalcResult::Number(0.0);
         }
         CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_gcd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let mut acc: Option<i64> = None;
+        let mut saw_number = false;
+        let mut has_range = false;
+
+        // Returns Some(CalcResult) if an error occurred
+        let mut handle_number = |value: f64| -> Option<CalcResult> {
+            if !value.is_finite() {
+                return Some(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Non-finite number in GCD".to_string(),
+                ));
+            }
+            let n = value.trunc() as i64;
+            if n < 0 {
+                return Some(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "GCD only accepts non-negative integers".to_string(),
+                ));
+            }
+            saw_number = true;
+            acc = Some(match acc {
+                Some(cur) => gcd_i64(cur, n),
+                None => n,
+            });
+            None
+        };
+
+        for arg in args {
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Number(value) => {
+                    if let Some(res) = handle_number(value) {
+                        return res;
+                    }
+                }
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    has_range = true;
+                    let row1 = left.row;
+                    let mut row2 = right.row;
+                    let column1 = left.column;
+                    let mut column2 = right.column;
+
+                    if row1 == 1 && row2 == LAST_ROW {
+                        row2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_row,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
+                    }
+                    if column1 == 1 && column2 == LAST_COLUMN {
+                        column2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_column,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
+                    }
+
+                    for row in row1..=row2 {
+                        for column in column1..=column2 {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(value) => {
+                                    if let Some(res) = handle_number(value) {
+                                        return res;
+                                    }
+                                }
+                                error @ CalcResult::Error { .. } => return error,
+                                _ => {
+                                    // ignore strings / booleans
+                                }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for value in row {
+                            match value {
+                                ArrayNode::Number(value) => {
+                                    if let Some(res) = handle_number(value) {
+                                        return res;
+                                    }
+                                }
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::Error {
+                                        error,
+                                        origin: cell,
+                                        message: "Error in array".to_string(),
+                                    }
+                                }
+                                _ => {
+                                    // ignore strings / booleans
+                                }
+                            }
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                _ => {
+                    // ignore strings / booleans
+                }
+            }
+        }
+
+        if !saw_number && !has_range {
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "No valid numbers found".to_string(),
+            };
+        }
+
+        CalcResult::Number(acc.unwrap_or(0) as f64)
+    }
+
+    pub(crate) fn fn_lcm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let mut acc: Option<i64> = None;
+        let mut saw_number = false;
+        let mut has_range = false;
+
+        // Returns Some(CalcResult) if an error occurred
+        let mut handle_number = |value: f64| -> Option<CalcResult> {
+            if !value.is_finite() {
+                return Some(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Non-finite number in LCM".to_string(),
+                ));
+            }
+            let n = value.trunc() as i64;
+            if n < 0 {
+                return Some(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "LCM only accepts non-negative integers".to_string(),
+                ));
+            }
+            saw_number = true;
+            acc = Some(match acc {
+                Some(cur) => match lcm_i64(cur, n) {
+                    Some(v) => v,
+                    None => {
+                        return Some(CalcResult::new_error(
+                            Error::NUM,
+                            cell,
+                            "LCM result too large".to_string(),
+                        ));
+                    }
+                },
+                None => n,
+            });
+            None
+        };
+
+        for arg in args {
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Number(value) => {
+                    if let Some(res) = handle_number(value) {
+                        return res;
+                    }
+                }
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    has_range = true;
+                    let row1 = left.row;
+                    let mut row2 = right.row;
+                    let column1 = left.column;
+                    let mut column2 = right.column;
+
+                    if row1 == 1 && row2 == LAST_ROW {
+                        row2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_row,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
+                    }
+                    if column1 == 1 && column2 == LAST_COLUMN {
+                        column2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_column,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
+                    }
+
+                    for row in row1..=row2 {
+                        for column in column1..=column2 {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(value) => {
+                                    if let Some(res) = handle_number(value) {
+                                        return res;
+                                    }
+                                }
+                                error @ CalcResult::Error { .. } => return error,
+                                _ => {
+                                    // ignore strings / booleans
+                                }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for value in row {
+                            match value {
+                                ArrayNode::Number(value) => {
+                                    if let Some(res) = handle_number(value) {
+                                        return res;
+                                    }
+                                }
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::Error {
+                                        error,
+                                        origin: cell,
+                                        message: "Error in array".to_string(),
+                                    }
+                                }
+                                _ => {
+                                    // ignore strings / booleans
+                                }
+                            }
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                _ => {
+                    // ignore strings / booleans
+                }
+            }
+        }
+
+        if !saw_number && !has_range {
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "No valid numbers found".to_string(),
+            };
+        }
+
+        CalcResult::Number(acc.unwrap_or(0) as f64)
     }
 
     pub(crate) fn fn_sum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

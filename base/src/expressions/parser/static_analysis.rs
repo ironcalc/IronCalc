@@ -851,17 +851,19 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Int => args_signature_scalars(arg_count, 1, 0),
         Function::Even => args_signature_scalars(arg_count, 1, 0),
         Function::Odd => args_signature_scalars(arg_count, 1, 0),
-        Function::Ceiling => args_signature_scalars(arg_count, 2, 0), // (number, significance)
-        Function::CeilingMath => args_signature_scalars(arg_count, 1, 2), // (number, [significance], [mode])
-        Function::CeilingPrecise => args_signature_scalars(arg_count, 1, 1), // (number, [significance])
-        Function::Floor => args_signature_scalars(arg_count, 2, 0), // (number, significance)
-        Function::FloorMath => args_signature_scalars(arg_count, 1, 2), // (number, [significance], [mode])
-        Function::FloorPrecise => args_signature_scalars(arg_count, 1, 1), // (number, [significance])
-        Function::IsoCeiling => args_signature_scalars(arg_count, 1, 1), // (number, [significance])
-        Function::Mod => args_signature_scalars(arg_count, 2, 0),        // (number, divisor)
-        Function::Quotient => args_signature_scalars(arg_count, 2, 0),   // (number, denominator)
-        Function::Mround => args_signature_scalars(arg_count, 2, 0),     // (number, multiple)
-        Function::Trunc => args_signature_scalars(arg_count, 1, 1),      // (num, [num_digits])
+        Function::Ceiling => args_signature_scalars(arg_count, 2, 0),
+        Function::CeilingMath => args_signature_scalars(arg_count, 1, 2),
+        Function::CeilingPrecise => args_signature_scalars(arg_count, 1, 1),
+        Function::Floor => args_signature_scalars(arg_count, 2, 0),
+        Function::FloorMath => args_signature_scalars(arg_count, 1, 2),
+        Function::FloorPrecise => args_signature_scalars(arg_count, 1, 1),
+        Function::IsoCeiling => args_signature_scalars(arg_count, 1, 1),
+        Function::Mod => args_signature_scalars(arg_count, 2, 0),
+        Function::Quotient => args_signature_scalars(arg_count, 2, 0),
+        Function::Mround => args_signature_scalars(arg_count, 2, 0),
+        Function::Trunc => args_signature_scalars(arg_count, 1, 1),
+        Function::Gcd => vec![Signature::Vector; arg_count],
+        Function::Lcm => vec![Signature::Vector; arg_count],
     }
 }
 
@@ -1112,5 +1114,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Quotient => scalar_arguments(args),
         Function::Mround => scalar_arguments(args),
         Function::Trunc => scalar_arguments(args),
+        Function::Gcd => not_implemented(args),
+        Function::Lcm => not_implemented(args),
     }
 }
