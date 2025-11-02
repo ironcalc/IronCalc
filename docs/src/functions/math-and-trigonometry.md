@@ -36,7 +36,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | CSC             | <Badge type="info" text="Not implemented yet" /> | –             |
 | CSCH            | <Badge type="info" text="Not implemented yet" /> | –             |
 | DECIMAL         | <Badge type="info" text="Not implemented yet" /> | –             |
-| DEGREES         | <Badge type="info" text="Not implemented yet" /> | –             |
+| DEGREES         | <Badge type="info" text="Not implemented yet" /> | [DEGREES](math_and_trigonometry/degrees) |
 | EVEN            | <Badge type="info" text="Not implemented yet" /> | –             |
 | EXP             | <Badge type="info" text="Not implemented yet" /> | –             |
 | FACT            | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -64,7 +64,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | POWER           | <Badge type="tip" text="Available" />          | –             |
 | PRODUCT         | <Badge type="tip" text="Available" />          | –             |
 | QUOTIENT        | <Badge type="info" text="Not implemented yet" /> | –             |
-| RADIANS         | <Badge type="info" text="Not implemented yet" /> | –             |
+| RADIANS         | <Badge type="info" text="Not implemented yet" /> | [RADIANS](math_and_trigonometry/radians) |
 | RAND            | <Badge type="tip" text="Available" />          | –             |
 | RANDARRAY       | <Badge type="info" text="Not implemented yet" /> | –             |
 | RANDBETWEEN     | <Badge type="tip" text="Available" />          | –             |
