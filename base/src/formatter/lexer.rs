@@ -406,8 +406,10 @@ impl Lexer {
                         s += 1;
                         self.read_next_char();
                     }
-                    if s == 1 || s == 2 {
+                    if s == 1 {
                         Token::Second
+                    } else if s == 2 {
+                        Token::SecondPadded
                     } else {
                         self.set_error("Unexpected character after 's'");
                         Token::ILLEGAL
