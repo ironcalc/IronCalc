@@ -94,7 +94,8 @@
   },
   "navigation": {
     "add_sheet": "Add sheet",
-    "sheet_list": "Sheet list"
+    "sheet_list": "Sheet list",
+    "link": "Open ironcalc.com"
   },
   "name_manager_dialog": {
     "title": "Named Ranges",

@@ -88,9 +88,15 @@ function SheetTabBar(props: SheetTabBarProps) {
           ))}
         </SheetInner>
       </Sheets>
-      <Advert href="https://www.ironcalc.com" target="_blank">
-        <IronCalcLogo />
-      </Advert>
+      <RightContainer>
+        <Tooltip title={t("navigation.link")}>
+          <LogoLink
+            onClick={() => window.open("https://www.ironcalc.com", "_blank")}
+          >
+            <IronCalcLogo />
+          </LogoLink>
+        </Tooltip>
+      </RightContainer>
       <SheetListMenu
         anchorEl={anchorEl}
         open={open}
@@ -138,27 +144,6 @@ const SheetInner = styled("div")`
   display: flex;
 `;
 
-const Advert = styled("a")`
-  display: flex;
-  align-items: center;
-  color: ${theme.palette.primary.main};
-  height: 100%;
-  padding: 0px 12px;
-  font-size: 12px;
-  text-decoration: none;
-  transition: color 0.2s ease-in-out;
-  svg {
-    height: 14px;
-    width: auto;
-  }
-  &:hover {
-    text-decoration: underline;
-  }
-  @media (max-width: 769px) {
-    display: none;
-  }
-`;
-
 const LeftButtonsContainer = styled("div")`
   display: flex;
   flex-direction: row;
@@ -176,6 +161,31 @@ const VerticalDivider = styled("div")`
   width: 0px;
   @media (max-width: 769px) {
     border-right: 1px solid ${theme.palette.grey["200"]};
+  }
+`;
+
+const RightContainer = styled("a")`
+  display: flex;
+  align-items: center;
+  color: ${theme.palette.primary.main};
+  height: 100%;
+  padding: 0px 8px;
+  @media (max-width: 769px) {
+    display: none;
+  }
+`;
+
+const LogoLink = styled("div")`
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 4px;
+  svg {
+    height: 14px;
+    width: auto;
+  }
+  &:hover {
+    background-color: ${theme.palette.grey["100"]};
   }
 `;
 
