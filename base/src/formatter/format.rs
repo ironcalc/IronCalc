@@ -154,16 +154,11 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Date(p) => {
             let tokens = &p.tokens;
             let mut text = "".to_string();
-            let date = match from_excel_date(value as i64) {
-                Ok(d) => d,
-                Err(e) => {
-                    return Formatted {
-                        text: "#VALUE!".to_owned(),
-                        color: None,
-                        error: Some(e),
-                    }
-                }
-            };
+            let time_fract = value.fract();
+            let hours = (time_fract * 24.0).floor();
+            let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
+            let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
+            let date = from_excel_date(value as i64).ok();
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -187,15 +182,44 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     }
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
-                    TextToken::Day => {
-                        let day = date.day() as usize;
-                        text = format!("{text}{day}");
-                    }
+                    TextToken::Day => match date {
+                        Some(date) => {
+                            let day = date.day() as usize;
+                            text = format!("{text}{day}");
+                        }
+                        None => {
+                            return Formatted {
+                                text: "#VALUE!".to_owned(),
+                                color: None,
+                                error: Some(format!("Invalid date value: '{value}'")),
+                            }
+                        }
+                    },
                     TextToken::DayPadded => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let day = date.day() as usize;
                         text = format!("{text}{day:02}");
                     }
                     TextToken::DayNameShort => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let mut day = date.weekday().number_from_monday() as usize;
                         if day == 7 {
                             day = 0;
@@ -203,6 +227,16 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{}{}", text, &locale.dates.day_names_short[day]);
                     }
                     TextToken::DayName => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let mut day = date.weekday().number_from_monday() as usize;
                         if day == 7 {
                             day = 0;
@@ -210,31 +244,143 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{}{}", text, &locale.dates.day_names[day]);
                     }
                     TextToken::Month => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
                         text = format!("{text}{month}");
                     }
                     TextToken::MonthPadded => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
                         text = format!("{text}{month:02}");
                     }
                     TextToken::MonthNameShort => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
                         text = format!("{}{}", text, &locale.dates.months_short[month - 1]);
                     }
                     TextToken::MonthName => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
                         text = format!("{}{}", text, &locale.dates.months[month - 1]);
                     }
                     TextToken::MonthLetter => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
                         let months_letter = &locale.dates.months_letter[month - 1];
                         text = format!("{text}{months_letter}");
                     }
                     TextToken::YearShort => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         text = format!("{}{}", text, date.format("%y"));
                     }
                     TextToken::Year => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         text = format!("{}{}", text, date.year());
+                    }
+                    TextToken::Hour => {
+                        let mut hour = hours as i32;
+                        if p.use_ampm {
+                            if hour == 0 {
+                                hour = 12;
+                            } else if hour > 12 {
+                                hour -= 12;
+                            }
+                        }
+                        text = format!("{text}{hour}");
+                    }
+                    TextToken::HourPadded => {
+                        let mut hour = hours as i32;
+                        if p.use_ampm {
+                            if hour == 0 {
+                                hour = 12;
+                            } else if hour > 12 {
+                                hour -= 12;
+                            }
+                        }
+                        text = format!("{text}{hour:02}");
+                    }
+                    TextToken::Second => {
+                        let second = seconds as i32;
+                        text = format!("{text}{second}");
+                    }
+                    TextToken::SecondPadded => {
+                        let second = seconds as i32;
+                        text = format!("{text}{second:02}");
+                    }
+                    TextToken::AMPM => {
+                        let ampm = if hours < 12.0 { "AM" } else { "PM" };
+                        text = format!("{text}{ampm}");
+                    }
+                    TextToken::Minute => {
+                        let minute = minutes as i32;
+                        text = format!("{text}{minute}");
+                    }
+                    TextToken::MinutePadded => {
+                        let minute = minutes as i32;
+                        text = format!("{text}{minute:02}");
                     }
                 }
             }
@@ -422,6 +568,13 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::MonthLetter => {}
                     TextToken::YearShort => {}
                     TextToken::Year => {}
+                    TextToken::Hour => {}
+                    TextToken::HourPadded => {}
+                    TextToken::Minute => {}
+                    TextToken::MinutePadded => {}
+                    TextToken::Second => {}
+                    TextToken::SecondPadded => {}
+                    TextToken::AMPM => {}
                 }
             }
             Formatted {

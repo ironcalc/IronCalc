@@ -27,6 +27,13 @@ pub enum TextToken {
     MonthLetter,
     YearShort,
     Year,
+    Hour,
+    HourPadded,
+    Minute,
+    MinutePadded,
+    Second,
+    SecondPadded,
+    AMPM,
 }
 pub struct NumberPart {
     pub color: Option<i32>,
@@ -45,6 +52,7 @@ pub struct NumberPart {
 
 pub struct DatePart {
     pub color: Option<i32>,
+    pub use_ampm: bool,
     pub tokens: Vec<TextToken>,
 }
 
@@ -101,6 +109,7 @@ impl Parser {
         let mut digit_count = 0;
         let mut precision = 0;
         let mut is_date = false;
+        let mut use_ampm = false;
         let mut is_number = false;
         let mut found_decimal_dot = false;
         let mut use_thousands = false;
@@ -116,6 +125,7 @@ impl Parser {
         let mut number = 'i';
         let mut index = 0;
         let mut currency = None;
+        let mut is_time = false;
 
         while token != Token::EOF && token != Token::Separator {
             let next_token = self.lexer.next_token();
@@ -200,6 +210,9 @@ impl Parser {
                     index += 1;
                 }
                 Token::Literal(value) => {
+                    if value == ':' {
+                        is_time = true;
+                    }
                     tokens.push(TextToken::Literal(value));
                 }
                 Token::Text(value) => {
@@ -236,12 +249,22 @@ impl Parser {
                     tokens.push(TextToken::MonthName);
                 }
                 Token::Month => {
-                    is_date = true;
-                    tokens.push(TextToken::Month);
+                    if is_time {
+                        // minute
+                        tokens.push(TextToken::Minute);
+                    } else {
+                        is_date = true;
+                        tokens.push(TextToken::Month);
+                    }
                 }
                 Token::MonthPadded => {
-                    is_date = true;
-                    tokens.push(TextToken::MonthPadded);
+                    if is_time {
+                        // minute padded
+                        tokens.push(TextToken::MinutePadded);
+                    } else {
+                        is_date = true;
+                        tokens.push(TextToken::MonthPadded);
+                    }
                 }
                 Token::MonthLetter => {
                     is_date = true;
@@ -254,6 +277,32 @@ impl Parser {
                 Token::Year => {
                     is_date = true;
                     tokens.push(TextToken::Year);
+                }
+                Token::Hour => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::Hour);
+                }
+                Token::HourPadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::HourPadded);
+                }
+                Token::Second => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::Second);
+                }
+                Token::SecondPadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::SecondPadded);
+                }
+
+                Token::AMPM => {
+                    is_date = true;
+                    use_ampm = true;
+                    tokens.push(TextToken::AMPM);
                 }
                 Token::Scientific => {
                     if !is_scientific {
@@ -282,7 +331,11 @@ impl Parser {
             if is_number {
                 return ParsePart::Error(ErrorPart {});
             }
-            ParsePart::Date(DatePart { color, tokens })
+            ParsePart::Date(DatePart {
+                color,
+                use_ampm,
+                tokens,
+            })
         } else {
             ParsePart::Number(NumberPart {
                 color,
