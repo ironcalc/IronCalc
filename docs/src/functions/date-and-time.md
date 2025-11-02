@@ -12,7 +12,7 @@ All Date and Time functions are already supported in IronCalc.
 | ---------------- | ---------------------------------------------- | ------------- |
 | DATE             | <Badge type="tip" text="Available" />          | –             |
 | DATEDIF          | <Badge type="tip" text="Available" />          | –             |
-| DATEVALUE        | <Badge type="tip" text="Available" />          | –             |
+| DATEVALUE        | <Badge type="tip" text="Available" />          | [DATEVALUE](date_and_time/datevalue) |
 | DAY              | <Badge type="tip" text="Available" />          | [DAY](date_and_time/day) |
 | DAYS             | <Badge type="tip" text="Available" />          | –             |
 | DAYS360          | <Badge type="tip" text="Available" />          | –             |
@@ -27,7 +27,7 @@ All Date and Time functions are already supported in IronCalc.
 | NOW              | <Badge type="tip" text="Available" />          | –             |
 | SECOND           | <Badge type="tip" text="Available" />          | –             |
 | TIME             | <Badge type="tip" text="Available" />          | –             |
-| TIMEVALUE        | <Badge type="tip" text="Available" />          | –             |
+| TIMEVALUE        | <Badge type="tip" text="Available" />          | [TIMEVALUE](date_and_time/timevalue) |
 | TODAY            | <Badge type="tip" text="Available" />          | –             |
 | WEEKDAY          | <Badge type="tip" text="Available" />          | –             |
 | WEEKNUM          | <Badge type="tip" text="Available" />          | –             |
