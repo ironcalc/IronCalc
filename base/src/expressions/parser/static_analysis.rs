@@ -864,6 +864,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Trunc => args_signature_scalars(arg_count, 1, 1),
         Function::Gcd => vec![Signature::Vector; arg_count],
         Function::Lcm => vec![Signature::Vector; arg_count],
+        Function::Base => args_signature_scalars(arg_count, 2, 1),
+        Function::Decimal => args_signature_scalars(arg_count, 2, 0),
     }
 }
 
@@ -1116,5 +1118,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Trunc => scalar_arguments(args),
         Function::Gcd => not_implemented(args),
         Function::Lcm => not_implemented(args),
+        Function::Base => scalar_arguments(args),
+        Function::Decimal => scalar_arguments(args),
     }
 }

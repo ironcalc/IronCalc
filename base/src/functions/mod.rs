@@ -84,15 +84,12 @@ pub enum Function {
     Csch,
     Sec,
     Sech,
-
     Exp,
     Fact,
     Factdouble,
     Sign,
-
     Radians,
     Degrees,
-
     Int,
     Even,
     Odd,
@@ -107,9 +104,10 @@ pub enum Function {
     Quotient,
     Mround,
     Trunc,
-
     Gcd,
     Lcm,
+    Base,
+    Decimal,
 
     // Information
     ErrorType,
@@ -304,7 +302,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 245> {
+    pub fn into_iter() -> IntoIter<Function, 247> {
         [
             Function::And,
             Function::False,
@@ -366,6 +364,8 @@ impl Function {
             Function::Trunc,
             Function::Gcd,
             Function::Lcm,
+            Function::Base,
+            Function::Decimal,
             Function::Max,
             Function::Min,
             Function::Product,
@@ -593,13 +593,14 @@ impl Function {
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
             Function::Isoweeknum => "_xlfn.ISOWEEKNUM".to_string(),
-
             Function::Ceiling => "_xlfn.CEILING".to_string(),
             Function::CeilingMath => "_xlfn.CEILING.MATH".to_string(),
             Function::CeilingPrecise => "_xlfn.CEILING.PRECISE".to_string(),
             Function::FloorMath => "_xlfn.FLOOR.MATH".to_string(),
             Function::FloorPrecise => "_xlfn.FLOOR.PRECISE".to_string(),
             Function::IsoCeiling => "_xlfn.ISO.CEILING".to_string(),
+            Function::Base => "_xlfn.BASE".to_string(),
+            Function::Decimal => "_xlfn.DECIMAL".to_string(),
 
             _ => self.to_string(),
         }
@@ -623,23 +624,18 @@ impl Function {
             "SWITCH" | "_XLFN.SWITCH" => Some(Function::Switch),
             "TRUE" => Some(Function::True),
             "XOR" | "_XLFN.XOR" => Some(Function::Xor),
-
             "SIN" => Some(Function::Sin),
             "COS" => Some(Function::Cos),
             "TAN" => Some(Function::Tan),
-
             "ASIN" => Some(Function::Asin),
             "ACOS" => Some(Function::Acos),
             "ATAN" => Some(Function::Atan),
-
             "SINH" => Some(Function::Sinh),
             "COSH" => Some(Function::Cosh),
             "TANH" => Some(Function::Tanh),
-
             "ASINH" => Some(Function::Asinh),
             "ACOSH" => Some(Function::Acosh),
             "ATANH" => Some(Function::Atanh),
-
             "ACOT" => Some(Function::Acot),
             "COTH" => Some(Function::Coth),
             "COT" => Some(Function::Cot),
@@ -648,15 +644,12 @@ impl Function {
             "SEC" => Some(Function::Sec),
             "SECH" => Some(Function::Sech),
             "ACOTH" => Some(Function::Acoth),
-
             "FACT" => Some(Function::Fact),
             "FACTDOUBLE" => Some(Function::Factdouble),
             "EXP" => Some(Function::Exp),
             "SIGN" => Some(Function::Sign),
-
             "RADIANS" => Some(Function::Radians),
             "DEGREES" => Some(Function::Degrees),
-
             "INT" => Some(Function::Int),
             "EVEN" => Some(Function::Even),
             "ODD" => Some(Function::Odd),
@@ -671,21 +664,19 @@ impl Function {
             "QUOTIENT" => Some(Function::Quotient),
             "MROUND" => Some(Function::Mround),
             "TRUNC" => Some(Function::Trunc),
-
             "GCD" => Some(Function::Gcd),
             "LCM" => Some(Function::Lcm),
-
+            "BASE" | "_XLFN.BASE" => Some(Function::Base),
+            "DECIMAL" | "_XLFN.DECIMAL" => Some(Function::Decimal),
             "PI" => Some(Function::Pi),
             "ABS" => Some(Function::Abs),
             "SQRT" => Some(Function::Sqrt),
             "SQRTPI" => Some(Function::Sqrtpi),
             "POWER" => Some(Function::Power),
             "ATAN2" => Some(Function::Atan2),
-
             "LN" => Some(Function::Ln),
             "LOG" => Some(Function::Log),
             "LOG10" => Some(Function::Log10),
-
             "MAX" => Some(Function::Max),
             "MIN" => Some(Function::Min),
             "PRODUCT" => Some(Function::Product),
@@ -1138,6 +1129,8 @@ impl fmt::Display for Function {
             Function::Trunc => write!(f, "TRUNC"),
             Function::Gcd => write!(f, "GCD"),
             Function::Lcm => write!(f, "LCM"),
+            Function::Base => write!(f, "BASE"),
+            Function::Decimal => write!(f, "DECIMAL"),
         }
     }
 }
@@ -1411,6 +1404,8 @@ impl Model {
             Function::Trunc => self.fn_trunc(args, cell),
             Function::Gcd => self.fn_gcd(args, cell),
             Function::Lcm => self.fn_lcm(args, cell),
+            Function::Base => self.fn_base(args, cell),
+            Function::Decimal => self.fn_decimal(args, cell),
         }
     }
 }

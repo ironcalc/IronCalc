@@ -133,6 +133,118 @@ impl Model {
         CalcResult::Number(result)
     }
 
+    pub(crate) fn fn_base(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(2..=3).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        // number to convert
+        let mut value = match self.get_number(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        // radix
+        let radix = match self.get_number(&args[1], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        // optional min_length
+        let min_length = if arg_count == 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => {
+                    if f < 0.0 {
+                        return CalcResult::Error {
+                            error: Error::NUM,
+                            origin: cell,
+                            message: "Minimum length must be non-negative".to_string(),
+                        };
+                    }
+                    f.trunc() as usize
+                }
+                Err(s) => return s,
+            }
+        } else {
+            0
+        };
+
+        if !(2..=36).contains(&radix) {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Radix must be between 2 and 36".to_string(),
+            };
+        }
+
+        // number must be >= 0
+        if value < 0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Number must be non-negative".to_string(),
+            };
+        }
+
+        let mut buf = String::new();
+        if value == 0 {
+            buf.push('0');
+        } else {
+            while value > 0 {
+                let digit = (value % radix) as u8;
+                let ch = match digit {
+                    0..=9 => (b'0' + digit) as char,
+                    10..=35 => (b'A' + (digit - 10)) as char,
+                    _ => unreachable!(),
+                };
+                buf.push(ch);
+                value /= radix;
+            }
+            // we built it in reverse
+            buf = buf.chars().rev().collect();
+        }
+
+        // pad with leading zeros if needed
+        if buf.len() < min_length {
+            let mut padded = String::with_capacity(min_length);
+            for _ in 0..(min_length - buf.len()) {
+                padded.push('0');
+            }
+            padded.push_str(&buf);
+            buf = padded;
+        }
+
+        CalcResult::String(buf)
+    }
+
+    pub(crate) fn fn_decimal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(s) => return s,
+        };
+        let radix = match self.get_number(&args[1], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        if !(2..=36).contains(&radix) {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Radix must be between 2 and 36".to_string(),
+            };
+        }
+        match i64::from_str_radix(&text, radix as u32) {
+            Ok(n) => CalcResult::Number(n as f64),
+            Err(_) => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: format!("'{}' is not a valid number in base {}", text, radix),
+            },
+        }
+    }
+
     pub(crate) fn fn_gcd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
