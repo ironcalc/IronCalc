@@ -81,6 +81,12 @@
     "confirm": "Yes, delete sheet",
     "cancel": "Cancel"
   },
+  "sheet_tab": {
+    "rename": "Rename",
+    "change_color": "Change Color",
+    "delete": "Delete",
+    "hide_sheet": "Hide sheet"
+  },
   "formula_input": {
     "update": "Update",
     "label": "Formula",
@@ -88,7 +94,8 @@
   },
   "navigation": {
     "add_sheet": "Add sheet",
-    "sheet_list": "Sheet list"
+    "sheet_list": "Sheet list",
+    "link": "Open ironcalc.com"
   },
   "name_manager_dialog": {
     "title": "Named Ranges",

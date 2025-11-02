@@ -1,6 +1,12 @@
 import { Button, Menu, MenuItem, styled } from "@mui/material";
 import type { MenuItemProps } from "@mui/material";
-import { ChevronDown } from "lucide-react";
+import {
+  ChevronDown,
+  EyeOff,
+  PaintBucket,
+  TextCursorInput,
+  Trash2,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
@@ -98,7 +104,8 @@ function SheetTab(props: SheetTabProps) {
             handleClose();
           }}
         >
-          Rename
+          <TextCursorInput />
+          {t("sheet_tab.rename")}
         </StyledMenuItem>
         <StyledMenuItem
           onClick={() => {
@@ -106,16 +113,8 @@ function SheetTab(props: SheetTabProps) {
             handleClose();
           }}
         >
-          Change Color
-        </StyledMenuItem>
-        <StyledMenuItem
-          disabled={!props.canDelete}
-          onClick={() => {
-            handleOpenDeleteDialog();
-            handleClose();
-          }}
-        >
-          Delete
+          <PaintBucket />
+          {t("sheet_tab.change_color")}
         </StyledMenuItem>
         <StyledMenuItem
           disabled={!props.canDelete}
@@ -124,8 +123,20 @@ function SheetTab(props: SheetTabProps) {
             handleClose();
           }}
         >
-          Hide sheet
+          <EyeOff />
+          {t("sheet_tab.hide_sheet")}
         </StyledMenuItem>
+        <MenuDivider />
+        <DeleteButton
+          disabled={!props.canDelete}
+          onClick={() => {
+            handleOpenDeleteDialog();
+            handleClose();
+          }}
+        >
+          <Trash2 />
+          {t("sheet_tab.delete")}
+        </DeleteButton>
       </StyledMenu>
       <SheetRenameDialog
         open={renameDialogOpen}
@@ -178,7 +189,9 @@ const StyledMenu = styled(Menu)`
 
 const StyledMenuItem = styled(MenuItem)<MenuItemProps>(() => ({
   display: "flex",
-  justifyContent: "space-between",
+  justifyContent: "flex-start",
+  alignItems: "center",
+  gap: "8px",
   fontSize: "12px",
   width: "calc(100% - 8px)",
   margin: "0px 4px",
@@ -187,6 +200,11 @@ const StyledMenuItem = styled(MenuItem)<MenuItemProps>(() => ({
   height: "32px",
   "&:disabled": {
     color: "#BDBDBD",
+  },
+  "& svg": {
+    width: "16px",
+    height: "16px",
+    color: `${theme.palette.grey[600]}`,
   },
 }));
 
@@ -231,6 +249,27 @@ const Name = styled("div")`
   margin-right: 5px;
   text-wrap: nowrap;
   user-select: none;
+`;
+
+const MenuDivider = styled("div")`
+  width: 100%;
+  margin: auto;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-top: 1px solid ${theme.palette.grey[200]};
+`;
+
+const DeleteButton = styled(StyledMenuItem)`
+  color: ${theme.palette.error.main};
+  svg {
+    color: ${theme.palette.error.main};
+  }
+  &:hover {
+    background-color: ${theme.palette.error.main}1A;
+  }
+  &:active {
+    background-color: ${theme.palette.error.main}1A;
+  }
 `;
 
 export default SheetTab;

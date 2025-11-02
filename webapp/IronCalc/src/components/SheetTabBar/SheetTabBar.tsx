@@ -1,7 +1,9 @@
 import { styled } from "@mui/material";
+import { Tooltip } from "@mui/material";
 import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { IronCalcLogo } from "../../icons";
 import { theme } from "../../theme";
 import { StyledButton } from "../Toolbar/Toolbar";
 import { NAVIGATION_HEIGHT } from "../constants";
@@ -49,20 +51,16 @@ function SheetTabBar(props: SheetTabBarProps) {
   return (
     <Container>
       <LeftButtonsContainer>
-        <StyledButton
-          title={t("navigation.add_sheet")}
-          $pressed={false}
-          onClick={props.onAddBlankSheet}
-        >
-          <Plus />
-        </StyledButton>
-        <StyledButton
-          onClick={handleClick}
-          title={t("navigation.sheet_list")}
-          $pressed={false}
-        >
-          <Menu />
-        </StyledButton>
+        <Tooltip title={t("navigation.add_sheet")}>
+          <StyledButton $pressed={false} onClick={props.onAddBlankSheet}>
+            <Plus />
+          </StyledButton>
+        </Tooltip>
+        <Tooltip title={t("navigation.sheet_list")}>
+          <StyledButton onClick={handleClick} $pressed={false}>
+            <Menu />
+          </StyledButton>
+        </Tooltip>
       </LeftButtonsContainer>
       <VerticalDivider />
       <Sheets>
@@ -90,9 +88,15 @@ function SheetTabBar(props: SheetTabBarProps) {
           ))}
         </SheetInner>
       </Sheets>
-      <Advert href="https://www.ironcalc.com" target="_blank">
-        ironcalc.com
-      </Advert>
+      <RightContainer>
+        <Tooltip title={t("navigation.link")}>
+          <LogoLink
+            onClick={() => window.open("https://www.ironcalc.com", "_blank")}
+          >
+            <IronCalcLogo />
+          </LogoLink>
+        </Tooltip>
+      </RightContainer>
       <SheetListMenu
         anchorEl={anchorEl}
         open={open}
@@ -119,14 +123,11 @@ const Container = styled("div")`
   display: flex;
   height: ${NAVIGATION_HEIGHT}px;
   align-items: center;
-  padding: 0px 12px;
+  padding: 0px;
   font-family: Inter;
+  overflow: hidden;
   background-color: ${theme.palette.common.white};
   border-top: 1px solid ${theme.palette.grey["300"]};
-  @media (max-width: 769px) {
-    padding-right: 0px;
-    padding-left: 8px;
-  }
 `;
 
 const Sheets = styled("div")`
@@ -143,30 +144,15 @@ const SheetInner = styled("div")`
   display: flex;
 `;
 
-const Advert = styled("a")`
-  display: flex;
-  align-items: center;
-  color: ${theme.palette.primary.main};
-  padding: 0px 0px 0px 12px;
-  font-size: 12px;
-  text-decoration: none;
-  border-left: 1px solid ${theme.palette.grey["300"]};
-  transition: color 0.2s ease-in-out;
-  &:hover {
-    text-decoration: underline;
-  }
-  @media (max-width: 769px) {
-    display: none;
-  }
-`;
-
 const LeftButtonsContainer = styled("div")`
   display: flex;
   flex-direction: row;
+  align-items: center;
+  height: 100%;
   gap: 4px;
-  padding-right: 12px;
+  padding: 0px 12px;
   @media (max-width: 769px) {
-    padding-right: 8px;
+    padding: 0px 8px;
   }
 `;
 
@@ -175,6 +161,31 @@ const VerticalDivider = styled("div")`
   width: 0px;
   @media (max-width: 769px) {
     border-right: 1px solid ${theme.palette.grey["200"]};
+  }
+`;
+
+const RightContainer = styled("a")`
+  display: flex;
+  align-items: center;
+  color: ${theme.palette.primary.main};
+  height: 100%;
+  padding: 0px 8px;
+  @media (max-width: 769px) {
+    display: none;
+  }
+`;
+
+const LogoLink = styled("div")`
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 4px;
+  svg {
+    height: 14px;
+    width: auto;
+  }
+  &:hover {
+    background-color: ${theme.palette.grey["100"]};
   }
 `;
 
