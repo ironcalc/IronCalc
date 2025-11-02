@@ -8,7 +8,7 @@ using System;
 using System.Runtime.InteropServices;
 
 
-namespace IronCalc
+namespace IronCalc.Native
 {
     internal static unsafe partial class NativeMethods
     {
@@ -27,11 +27,14 @@ namespace IronCalc
         [DllImport(__DllName, EntryPoint = "evaluate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void evaluate(ModelContext* context);
 
-        [DllImport(__DllName, EntryPoint = "get_value", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int get_value(ModelContext* context, int sheet, int row, int col);
+        [DllImport(__DllName, EntryPoint = "get_cell_value_by_index", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern GetValueResult get_cell_value_by_index(ModelContext* context, uint sheet, int row, int col);
 
         [DllImport(__DllName, EntryPoint = "set_user_input", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern ModelContextError* set_user_input(ModelContext* context, uint sheet, int row, int col, byte* value);
+
+        [DllImport(__DllName, EntryPoint = "dispose_cell_value", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        internal static extern void dispose_cell_value(CellValue* value);
 
         [DllImport(__DllName, EntryPoint = "dispose_error", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void dispose_error(ModelContextError* error);
@@ -63,12 +66,38 @@ namespace IronCalc
         [MarshalAs(UnmanagedType.U1)] public bool is_ok;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct CellValue
+    {
+        public CellValueTag tag;
+        public byte* string_value;
+        public double number_value;
+        [MarshalAs(UnmanagedType.U1)] public bool boolean_value;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe partial struct GetValueResult
+    {
+        public CellValue* value;
+        public ModelContextError* error;
+        [MarshalAs(UnmanagedType.U1)] public bool is_ok;
+    }
+
 
     internal enum ModelContextErrorTag : uint
     {
         XlsxError = 1,
         WorkbookError = 2,
         SetUserInputError = 3,
+        GetUserInputError = 4,
+    }
+
+    internal enum CellValueTag : uint
+    {
+        None = 0,
+        String = 1,
+        Number = 2,
+        Boolean = 3,
     }
 
 

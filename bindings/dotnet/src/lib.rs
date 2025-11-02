@@ -1,4 +1,4 @@
-use ironcalc::base::cell::CellValue;
+use ironcalc::base::cell;
 use ironcalc::base::Model;
 use std::ffi::{c_char, CString};
 
@@ -10,6 +10,7 @@ pub enum ModelContextErrorTag {
     XlsxError = 1,
     WorkbookError = 2,
     SetUserInputError = 3,
+    GetUserInputError = 4,
 }
 
 #[repr(C)]
@@ -26,21 +27,23 @@ pub struct CreateModelContextResult {
     is_ok: bool,
 }
 
+fn create_error(message: String, tag: ModelContextErrorTag) -> *mut ModelContextError {
+    let message_ptr = CString::new(message)
+        .expect("Couldn't create CString")
+        .into_raw();
+
+    Box::into_raw(Box::new(ModelContextError {
+        tag,
+        has_message: true,
+        message: message_ptr,
+    }))
+}
+
 impl CreateModelContextResult {
     fn create_error(message: String, tag: ModelContextErrorTag) -> CreateModelContextResult {
-        let message_ptr = CString::new(message)
-            .expect("Couldn't create CString")
-            .into_raw();
-
-        let error = Box::into_raw(Box::new(ModelContextError {
-            tag,
-            has_message: true,
-            message: message_ptr,
-        }));
-
         CreateModelContextResult {
             model: std::ptr::null_mut(),
-            error,
+            error: create_error(message, tag),
             is_ok: false,
         }
     }
@@ -141,27 +144,93 @@ pub unsafe extern "C" fn evaluate(context: *mut ModelContext) {
     Box::into_raw(ctx) as *mut ModelContext;
 }
 
+#[repr(C)]
+#[derive(PartialEq)]
+pub enum CellValueTag {
+    None = 0,
+    String = 1,
+    Number = 2,
+    Boolean = 3,
+}
+
+#[repr(C)]
+pub struct CellValue {
+    tag: CellValueTag,
+    string_value: *const c_char,
+    number_value: f64,
+    boolean_value: bool,
+}
+
+#[repr(C)]
+pub struct GetValueResult {
+    value: *mut CellValue,
+    error: *mut ModelContextError,
+    is_ok: bool,
+}
+
 #[no_mangle]
-pub unsafe extern "C" fn get_value(
+pub unsafe extern "C" fn get_cell_value_by_index(
     context: *mut ModelContext,
-    sheet: i32,
+    sheet: u32,
     row: i32,
     col: i32,
-) -> i32 {
+) -> GetValueResult {
     let ctx = Box::from_raw(context as *mut InternalModelContext);
 
-    let value = ctx
-        .model
-        .get_cell_value_by_index(sheet as u32, row, col)
-        .expect("couldn't get sheet");
-    let return_value = match value {
-        CellValue::Number(x) => x as i32,
-        _ => 0,
+    let value = match ctx.model.get_cell_value_by_index(sheet, row, col) {
+        Ok(value) => value,
+        Err(message) => {
+            let error = create_error(message, ModelContextErrorTag::GetUserInputError);
+            Box::into_raw(ctx) as *mut ModelContext;
+            return GetValueResult {
+                value: std::ptr::null_mut(),
+                error,
+                is_ok: false,
+            };
+        }
     };
+
+    let cell_value = match value {
+        cell::CellValue::Number(value) => CellValue {
+            tag: CellValueTag::Number,
+            string_value: Default::default(),
+            number_value: value,
+            boolean_value: Default::default(),
+        },
+        cell::CellValue::None => CellValue {
+            tag: CellValueTag::None,
+            string_value: Default::default(),
+            number_value: Default::default(),
+            boolean_value: Default::default(),
+        },
+        cell::CellValue::Boolean(value) => CellValue {
+            tag: CellValueTag::Boolean,
+            string_value: Default::default(),
+            number_value: Default::default(),
+            boolean_value: value,
+        },
+        cell::CellValue::String(value) => {
+            let value_ptr = CString::new(value)
+                .expect("Couldn't create CString")
+                .into_raw();
+            CellValue {
+                tag: CellValueTag::String,
+                string_value: value_ptr,
+                number_value: Default::default(),
+                boolean_value: Default::default(),
+            }
+        }
+    };
+
+    let cell_value = Box::into_raw(Box::new(cell_value));
 
     Box::into_raw(ctx) as *mut ModelContext;
 
-    return_value
+    GetValueResult {
+        value: cell_value,
+        error: std::ptr::null_mut(),
+        is_ok: true,
+    }
 }
 
 #[no_mangle]
@@ -173,27 +242,28 @@ pub unsafe extern "C" fn set_user_input(
     value: *const c_char,
 ) -> *mut ModelContextError {
     let mut ctx = Box::from_raw(context as *mut InternalModelContext);
-    let value = std::ffi::CStr::from_ptr(value).to_string_lossy().to_string();
+    let value = std::ffi::CStr::from_ptr(value)
+        .to_string_lossy()
+        .to_string();
 
     if let Err(message) = ctx.model.set_user_input(sheet, row, col, value) {
-        let message_ptr = CString::new(message)
-            .expect("Couldn't create CString")
-            .into_raw();
-
-        let error = Box::into_raw(Box::new(ModelContextError {
-            tag: ModelContextErrorTag::SetUserInputError,
-            has_message: true,
-            message: message_ptr,
-        }));
-
+        let error = create_error(message, ModelContextErrorTag::SetUserInputError);
         Box::into_raw(ctx) as *mut ModelContext;
-
         return error;
     }
 
     Box::into_raw(ctx) as *mut ModelContext;
 
     std::ptr::null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dispose_cell_value(value: *mut CellValue) {
+    let value = Box::from_raw(value);
+    if value.tag == CellValueTag::String {
+        let str = value.string_value as *mut c_char;
+        _ = CString::from_raw(str)
+    }
 }
 
 #[no_mangle]

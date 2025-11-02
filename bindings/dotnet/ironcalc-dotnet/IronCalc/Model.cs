@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using System.Text;
+using IronCalc.Native;
 
 namespace IronCalc;
 
@@ -22,6 +23,7 @@ public class IronCalcException : Exception
             ModelContextErrorTag.XlsxError => ErrorCode.XslxError,
             ModelContextErrorTag.WorkbookError => ErrorCode.WorkbookError,
             ModelContextErrorTag.SetUserInputError => ErrorCode.SetUserInputError,
+            ModelContextErrorTag.GetUserInputError => ErrorCode.GetUserInputError,
             _ => throw new ArgumentOutOfRangeException(nameof(tag), tag, null)
         };
     }
@@ -33,6 +35,7 @@ public enum ErrorCode
     XslxError = 2,
     WorkbookError = 3,
     SetUserInputError = 4,
+    GetUserInputError = 5,
 }
 
 public class Model : IDisposable
@@ -97,11 +100,46 @@ public class Model : IDisposable
         }
     }
 
-    public int GetValue(int sheet, int row, int column)
+    public CellValue GetValue(uint sheet, int row, int column)
     {
         unsafe
         {
-            return NativeMethods.get_value(ctx, sheet, row, column);
+            var result = NativeMethods.get_cell_value_by_index(ctx, sheet, row, column);
+            if (!result.is_ok)
+            {
+                throw CreateExceptionFromError(result.error);
+            }
+
+            try
+            {
+                switch (result.value->tag)
+                {
+                    case CellValueTag.None:
+                        return new CellValue.None();
+                    case CellValueTag.String:
+                        var value = new String((sbyte*)result.value->string_value);
+                        return new CellValue.String()
+                        {
+                            Value = value,
+                        };
+                    case CellValueTag.Number:
+                        return new CellValue.Number()
+                        {
+                            Value = result.value->number_value,
+                        };
+                    case CellValueTag.Boolean:
+                        return new CellValue.Bool()
+                        {
+                            Value = result.value->boolean_value,
+                        };
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            finally
+            {
+                NativeMethods.dispose_cell_value(result.value);
+            }
         }
     }
 

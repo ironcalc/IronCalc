@@ -21,13 +21,15 @@ public class EvaluateTests
         using var model = Model.LoadFromXlsxBytes(bytes, "en",  "Europe/Oslo");
 
         var value = model.GetValue(0, 3, 1);
-        Assert.Equal(2, value);
+        var number = Assert.IsType<CellValue.Number>(value);
+        Assert.Equal(2, number.Value);
 
         model.SetUserInput(0, 1, 1, "4");
         model.SetUserInput(0, 2, 1, "6");
         model.Evaluate();
 
         var updated= model.GetValue(0, 3, 1);
-        Assert.Equal(10, updated);
+        var updatedNumber = Assert.IsType<CellValue.Number>(updated);
+        Assert.Equal(10, updatedNumber.Value);
     }
 }

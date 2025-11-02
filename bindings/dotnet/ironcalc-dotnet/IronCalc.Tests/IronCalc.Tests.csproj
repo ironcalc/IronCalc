@@ -1,26 +1,62 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.runner.visualstudio">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.runner.visualstudio">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\IronCalc\IronCalc.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\IronCalc\IronCalc.csproj"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="*.xlsx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
+    <PropertyGroup>
+        <IsLinuxX64 Condition="$([MSBuild]::IsOsPlatform('Linux')) And $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == X64">true</IsLinuxX64>
+        <IsLinuxArm64 Condition="$([MSBuild]::IsOsPlatform('Linux')) And $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == Arm64">true</IsLinuxArm64>
+        <IsOsxX64 Condition="$([MSBuild]::IsOsPlatform('OSX')) And $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == X64">true</IsOsxX64>
+        <IsOsxArm64 Condition="$([MSBuild]::IsOsPlatform('OSX')) And $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == Arm64">true</IsOsxArm64>
+        <IsWindowsX64 Condition="$([MSBuild]::IsOsPlatform('Windows')) And $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == X64">true</IsWindowsX64>
+        <IsWindowsArm64 Condition="$([MSBuild]::IsOsPlatform('Windows')) And $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) == Arm64">true</IsWindowsArm64>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Condition="$(IsLinuxX64) == true" Include="../IronCalc/runtimes/linux-x64/native/libironcalc_dotnet.so">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>libironcalc_dotnet.so</Link>
+        </None>
+        <None Condition="$(IsLinuxArm64) == true" Include="../IronCalc/runtimes/linux-arm64/native/libironcalc_dotnet.so">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>libironcalc_dotnet.so</Link>
+        </None>
+        <None Condition="$(IsOsxX64) == true" Include="../IronCalc/runtimes/osx-x64/native/libironcalc_dotnet.dylib">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>libironcalc_dotnet.dylib</Link>
+        </None>
+        <None Condition="$(IsOsxArm64) == true" Include="../IronCalc/runtimes/osx-arm64/native/libironcalc_dotnet.dylib">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>libironcalc_dotnet.dylib</Link>
+        </None>
+        <None Condition="$(IsWindowsX64) == true" Include="../IronCalc/runtimes/win-x64/native/libironcalc_dotnet.dll">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>libironcalc_dotnet.dll</Link>
+        </None>
+        <None Condition="$(IsWindowsArm64) == true" Include="../IronCalc/runtimes/win-arm64/native/libironcalc_dotnet.dll">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>libironcalc_dotnet.dll</Link>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="*.xlsx">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
 
 </Project>

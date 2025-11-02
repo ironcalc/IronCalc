@@ -1,0 +1,112 @@
+name: nuget
+
+on:
+  push:
+    branches:
+      - feature/dotnet-bindings
+  workflow_dispatch:
+    inputs:
+      release:
+        type: boolean
+        default: false
+        required: false
+        description: "Release? If true, publish to nuget.org"
+
+jobs:
+  native:
+    strategy:
+      matrix:
+        target:
+          - { os: ubuntu-latest, rust_target: x86_64-unknown-linux-gnu, rid: linux-x64, file_extension: '.so', file_prefix: 'lib' }
+          - { os: ubuntu-24.04-arm, rust_target: aarch64-unknown-linux-gnu, rid: linux-arm64, file_extension: '.so', file_prefix: 'lib' }
+          - { os: macos-latest, rust_target: x86_64-apple-darwin, rid: osx-x64, file_extension: '.dylib', file_prefix: 'lib' }
+          - { os: macos-latest, rust_target: aarch64-apple-darwin, rid: osx-arm64, file_extension: '.dylib', file_prefix: 'lib' }
+          - { os: windows-latest, rust_target: x86_64-pc-windows-msvc, rid: win-x64, file_extension: '.dll', file_prefix: '' }
+          - { os: windows-latest, rust_target: aarch64-pc-windows-msvc, rid: win-arm64, file_extension: '.dll', file_prefix: '' }
+    runs-on: ${{ matrix.target.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target.rust_target }}
+          override: true
+
+      - name: make native (${{ matrix.target.rust_target }})
+        working-directory: ./bindings/dotnet
+        run: cargo build --release --target ${{ matrix.target.rust_target }}
+
+      - name: copy files
+        run: |
+          mkdir -p output/runtimes/${{ matrix.target.rid }}/native
+          cp target/${{ matrix.target.rust_target }}/release/${{ matrix.target.file_prefix }}ironcalc_dotnet${{ matrix.target.file_extension }} output/runtimes/${{ matrix.target.rid }}/native/libironcalc_dotnet${{ matrix.target.file_extension }}
+
+      - name: upload native (${{ matrix.target.rid }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: libironcalc_dotnet-${{ matrix.target.rid }}
+          path: output/runtimes
+
+  test:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-latest
+          - macos-15-intel
+          - windows-latest
+          - windows-11-arm
+    runs-on: ${{ matrix.os }}
+    needs: [native]
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./bindings/dotnet
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: bindings/dotnet/ironcalc-dotnet/IronCalc/runtimes/
+          merge-multiple: true
+
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: dotnet test
+        run: dotnet test ironcalc-dotnet
+
+  pack:
+    runs-on: ubuntu-latest
+    needs: [test]
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./bindings/dotnet
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: bindings/dotnet/ironcalc-dotnet/IronCalc/runtimes/
+          merge-multiple: true
+
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: dotnet pack
+        run: dotnet pack ironcalc-dotnet/IronCalc
+
+      - name: upload nupkg
+        uses: actions/upload-artifact@v4
+        with:
+          name: ironcalc-nuget
+          path: bindings/dotnet/ironcalc-dotnet/IronCalc/bin/Release/IronCalc*.nupkg
+
+      - name: nuget push
+        if: ${{ github.event.inputs.release == 'true' }}
+        run: nuget push bindings/dotnet/ironcalc-dotnet/IronCalc/bin/Release/IronCalc*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{secrets.NUGET_API_KEY}}

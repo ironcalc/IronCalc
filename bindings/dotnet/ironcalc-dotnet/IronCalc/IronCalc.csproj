@@ -1,16 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
+    <PropertyGroup>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <None Include="runtimes/**/*.*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>%(Filename)%(Extension)</Link>
-      <Pack>true</Pack>
-      <PackagePath>runtimes/%(RecursiveDir)%(Filename)%(Extension)</PackagePath>
-    </None>
-  </ItemGroup>
+    <ItemGroup>
+        <None Include="runtimes/**/*.*">
+            <Pack>true</Pack>
+            <PackagePath>runtimes/%(RecursiveDir)%(Filename)%(Extension)</PackagePath>
+        </None>
+    </ItemGroup>
 
 </Project>
