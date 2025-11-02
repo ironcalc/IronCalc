@@ -33,7 +33,7 @@ fn lcm_i64(a: i64, b: i64) -> Option<i64> {
     let g = gcd_i64(a, b);
     let a_div_g = (a / g) as i128;
     let prod = a_div_g * (b as i128);
-    if prod > i64::MAX as i128 || prod < i64::MIN as i128 {
+    if prod > i64::MAX as i128 {
         None
     } else {
         Some(prod as i64)
@@ -142,29 +142,37 @@ impl Model {
         let mut saw_number = false;
         let mut has_range = false;
 
+        // Returns Some(CalcResult) if an error occurred
+        let mut handle_number = |value: f64| -> Option<CalcResult> {
+            if !value.is_finite() {
+                return Some(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Non-finite number in GCD".to_string(),
+                ));
+            }
+            let n = value.trunc() as i64;
+            if n < 0 {
+                return Some(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "GCD only accepts non-negative integers".to_string(),
+                ));
+            }
+            saw_number = true;
+            acc = Some(match acc {
+                Some(cur) => gcd_i64(cur, n),
+                None => n,
+            });
+            None
+        };
+
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(value) => {
-                    if !value.is_finite() {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Non-finite number in GCD".to_string(),
-                        );
+                    if let Some(res) = handle_number(value) {
+                        return res;
                     }
-                    let n = value.trunc() as i64;
-                    if n < 0 {
-                        return CalcResult::new_error(
-                            Error::NUM,
-                            cell,
-                            "GCD only accepts non-negative integers".to_string(),
-                        );
-                    }
-                    saw_number = true;
-                    acc = Some(match acc {
-                        Some(cur) => gcd_i64(cur, n),
-                        None => n,
-                    });
                 }
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
@@ -213,26 +221,9 @@ impl Model {
                                 column,
                             }) {
                                 CalcResult::Number(value) => {
-                                    if !value.is_finite() {
-                                        return CalcResult::new_error(
-                                            Error::VALUE,
-                                            cell,
-                                            "Non-finite number in GCD".to_string(),
-                                        );
+                                    if let Some(res) = handle_number(value) {
+                                        return res;
                                     }
-                                    let n = value.trunc() as i64;
-                                    if n < 0 {
-                                        return CalcResult::new_error(
-                                            Error::NUM,
-                                            cell,
-                                            "GCD only accepts non-negative integers".to_string(),
-                                        );
-                                    }
-                                    saw_number = true;
-                                    acc = Some(match acc {
-                                        Some(cur) => gcd_i64(cur, n),
-                                        None => n,
-                                    });
                                 }
                                 error @ CalcResult::Error { .. } => return error,
                                 _ => {
@@ -247,26 +238,9 @@ impl Model {
                         for value in row {
                             match value {
                                 ArrayNode::Number(value) => {
-                                    if !value.is_finite() {
-                                        return CalcResult::new_error(
-                                            Error::VALUE,
-                                            cell,
-                                            "Non-finite number in GCD".to_string(),
-                                        );
+                                    if let Some(res) = handle_number(value) {
+                                        return res;
                                     }
-                                    let n = value.trunc() as i64;
-                                    if n < 0 {
-                                        return CalcResult::new_error(
-                                            Error::NUM,
-                                            cell,
-                                            "GCD only accepts non-negative integers".to_string(),
-                                        );
-                                    }
-                                    saw_number = true;
-                                    acc = Some(match acc {
-                                        Some(cur) => gcd_i64(cur, n),
-                                        None => n,
-                                    });
                                 }
                                 ArrayNode::Error(error) => {
                                     return CalcResult::Error {
@@ -309,6 +283,7 @@ impl Model {
         let mut saw_number = false;
         let mut has_range = false;
 
+        // Returns Some(CalcResult) if an error occurred
         let mut handle_number = |value: f64| -> Option<CalcResult> {
             if !value.is_finite() {
                 return Some(CalcResult::new_error(
