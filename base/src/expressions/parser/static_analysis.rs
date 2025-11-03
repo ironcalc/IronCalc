@@ -866,6 +866,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Lcm => vec![Signature::Vector; arg_count],
         Function::Base => args_signature_scalars(arg_count, 2, 1),
         Function::Decimal => args_signature_scalars(arg_count, 2, 0),
+        Function::Roman => args_signature_scalars(arg_count, 1, 1),
+        Function::Arabic => args_signature_scalars(arg_count, 1, 0),
     }
 }
 
@@ -1120,5 +1122,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Lcm => not_implemented(args),
         Function::Base => scalar_arguments(args),
         Function::Decimal => scalar_arguments(args),
+        Function::Roman => scalar_arguments(args),
+        Function::Arabic => scalar_arguments(args),
     }
 }

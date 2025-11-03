@@ -16,6 +16,7 @@ mod information;
 mod logical;
 mod lookup_and_reference;
 mod macros;
+mod math_util;
 mod mathematical;
 mod statistical;
 mod subtotal;
@@ -108,6 +109,8 @@ pub enum Function {
     Lcm,
     Base,
     Decimal,
+    Roman,
+    Arabic,
 
     // Information
     ErrorType,
@@ -302,7 +305,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 247> {
+    pub fn into_iter() -> IntoIter<Function, 249> {
         [
             Function::And,
             Function::False,
@@ -551,6 +554,8 @@ impl Function {
             Function::Delta,
             Function::Gestep,
             Function::Subtotal,
+            Function::Roman,
+            Function::Arabic,
         ]
         .into_iter()
     }
@@ -601,6 +606,7 @@ impl Function {
             Function::IsoCeiling => "_xlfn.ISO.CEILING".to_string(),
             Function::Base => "_xlfn.BASE".to_string(),
             Function::Decimal => "_xlfn.DECIMAL".to_string(),
+            Function::Arabic => "_xlfn.ARABIC".to_string(),
 
             _ => self.to_string(),
         }
@@ -668,6 +674,8 @@ impl Function {
             "LCM" => Some(Function::Lcm),
             "BASE" | "_XLFN.BASE" => Some(Function::Base),
             "DECIMAL" | "_XLFN.DECIMAL" => Some(Function::Decimal),
+            "ROMAN" => Some(Function::Roman),
+            "ARABIC" | "_XLFN.ARABIC" => Some(Function::Arabic),
             "PI" => Some(Function::Pi),
             "ABS" => Some(Function::Abs),
             "SQRT" => Some(Function::Sqrt),
@@ -1131,6 +1139,8 @@ impl fmt::Display for Function {
             Function::Lcm => write!(f, "LCM"),
             Function::Base => write!(f, "BASE"),
             Function::Decimal => write!(f, "DECIMAL"),
+            Function::Roman => write!(f, "ROMAN"),
+            Function::Arabic => write!(f, "ARABIC"),
         }
     }
 }
@@ -1406,6 +1416,8 @@ impl Model {
             Function::Lcm => self.fn_lcm(args, cell),
             Function::Base => self.fn_base(args, cell),
             Function::Decimal => self.fn_decimal(args, cell),
+            Function::Roman => self.fn_roman(args, cell),
+            Function::Arabic => self.fn_arabic(args, cell),
         }
     }
 }
