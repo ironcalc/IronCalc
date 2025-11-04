@@ -633,6 +633,101 @@ impl Model {
         CalcResult::Number(result)
     }
 
+    pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let mut result = 0.0;
+        for arg in args {
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Number(value) => result += value * value,
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    // TODO: We should do this for all functions that run through ranges
+                    // Running cargo test for the ironcalc takes around .8 seconds with this speedup
+                    // and ~ 3.5 seconds without it. Note that once properly in place sheet.dimension should be almost a noop
+                    let row1 = left.row;
+                    let mut row2 = right.row;
+                    let column1 = left.column;
+                    let mut column2 = right.column;
+                    if row1 == 1 && row2 == LAST_ROW {
+                        row2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_row,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
+                    }
+                    if column1 == 1 && column2 == LAST_COLUMN {
+                        column2 = match self.workbook.worksheet(left.sheet) {
+                            Ok(s) => s.dimension().max_column,
+                            Err(_) => {
+                                return CalcResult::new_error(
+                                    Error::ERROR,
+                                    cell,
+                                    format!("Invalid worksheet index: '{}'", left.sheet),
+                                );
+                            }
+                        };
+                    }
+                    for row in row1..row2 + 1 {
+                        for column in column1..(column2 + 1) {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(value) => {
+                                    result += value * value;
+                                }
+                                error @ CalcResult::Error { .. } => return error,
+                                _ => {
+                                    // We ignore booleans and strings
+                                }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for value in row {
+                            match value {
+                                ArrayNode::Number(value) => {
+                                    result += value * value;
+                                }
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::Error {
+                                        error,
+                                        origin: cell,
+                                        message: "Error in array".to_string(),
+                                    }
+                                }
+                                _ => {
+                                    // We ignore booleans and strings
+                                }
+                            }
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                _ => {
+                    // We ignore booleans and strings
+                }
+            };
+        }
+        CalcResult::Number(result)
+    }
     pub(crate) fn fn_product(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -1464,5 +1559,68 @@ impl Model {
                 message: format!("Invalid Roman numeral: {e}"),
             },
         }
+    }
+
+    pub(crate) fn fn_combin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let n = match self.get_number(&args[0], cell) {
+            Ok(f) => f.floor(),
+            Err(s) => return s,
+        };
+        let k = match self.get_number(&args[1], cell) {
+            Ok(f) => f.floor(),
+            Err(s) => return s,
+        };
+        if n < 0.0 || k < 0.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Arguments must be non-negative integers".to_string(),
+            };
+        }
+        if k > n {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "k cannot be greater than n".to_string(),
+            };
+        }
+        let k = k as usize;
+        let mut result = 1.0;
+        for i in 0..k {
+            let t = i as f64;
+            result *= (n - t) / (t + 1.0);
+        }
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let n = match self.get_number(&args[0], cell) {
+            Ok(f) => f.floor(),
+            Err(s) => return s,
+        };
+        let k = match self.get_number(&args[1], cell) {
+            Ok(f) => f.floor(),
+            Err(s) => return s,
+        };
+        if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Arguments must be non-negative integers".to_string(),
+            };
+        }
+        let k = k as usize;
+        let mut result = 1.0;
+        for i in 0..k {
+            let t = i as f64;
+            result *= (n + t) / (t + 1.0);
+        }
+        CalcResult::Number(result)
     }
 }

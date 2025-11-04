@@ -111,6 +111,9 @@ pub enum Function {
     Decimal,
     Roman,
     Arabic,
+    Combin,
+    Combina,
+    Sumsq,
 
     // Information
     ErrorType,
@@ -305,7 +308,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 249> {
+    pub fn into_iter() -> IntoIter<Function, 252> {
         [
             Function::And,
             Function::False,
@@ -556,6 +559,9 @@ impl Function {
             Function::Subtotal,
             Function::Roman,
             Function::Arabic,
+            Function::Combin,
+            Function::Combina,
+            Function::Sumsq,
         ]
         .into_iter()
     }
@@ -607,6 +613,7 @@ impl Function {
             Function::Base => "_xlfn.BASE".to_string(),
             Function::Decimal => "_xlfn.DECIMAL".to_string(),
             Function::Arabic => "_xlfn.ARABIC".to_string(),
+            Function::Combina => "_xlfn.COMBINA".to_string(),
 
             _ => self.to_string(),
         }
@@ -696,6 +703,9 @@ impl Function {
             "SUM" => Some(Function::Sum),
             "SUMIF" => Some(Function::Sumif),
             "SUMIFS" => Some(Function::Sumifs),
+            "COMBIN" => Some(Function::Combin),
+            "COMBINA" | "_XLFN.COMBINA" => Some(Function::Combina),
+            "SUMSQ" => Some(Function::Sumsq),
 
             // Lookup and Reference
             "CHOOSE" => Some(Function::Choose),
@@ -1141,6 +1151,9 @@ impl fmt::Display for Function {
             Function::Decimal => write!(f, "DECIMAL"),
             Function::Roman => write!(f, "ROMAN"),
             Function::Arabic => write!(f, "ARABIC"),
+            Function::Combin => write!(f, "COMBIN"),
+            Function::Combina => write!(f, "COMBINA"),
+            Function::Sumsq => write!(f, "SUMSQ"),
         }
     }
 }
@@ -1418,6 +1431,9 @@ impl Model {
             Function::Decimal => self.fn_decimal(args, cell),
             Function::Roman => self.fn_roman(args, cell),
             Function::Arabic => self.fn_arabic(args, cell),
+            Function::Combin => self.fn_combin(args, cell),
+            Function::Combina => self.fn_combina(args, cell),
+            Function::Sumsq => self.fn_sumsq(args, cell),
         }
     }
 }
