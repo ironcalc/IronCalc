@@ -34,8 +34,10 @@ TIMEVALUE returns a [number](/features/value-types#numbers) that represents the 
 * If the *time_text* argument cannot be recognized as a valid time format, then TIMEVALUE returns the [`#VALUE!`](/features/error-types.md#value) error.
 <!--@include: ../markdown-snippets/error-type-details.txt-->
 
+<!--
 ## Examples
 [See some examples in IronCalc](https://app.ironcalc.com/?example=timevalue).
+-->
 
 ## Links
 * See also IronCalc's [DATEVALUE](/functions/date_and_time/datevalue.md) function for converting date text to serial numbers.
