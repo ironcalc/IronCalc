@@ -75,6 +75,16 @@ function App() {
     start();
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: localStorageId needed to detect name changes (model mutates internally)
+  useEffect(() => {
+    if (model) {
+      const workbookName = model.getName();
+      document.title = workbookName ? `${workbookName} - IronCalc` : "IronCalc";
+    } else {
+      document.title = "IronCalc";
+    }
+  }, [model, localStorageId]);
+
   if (!model) {
     return (
       <Loading>
