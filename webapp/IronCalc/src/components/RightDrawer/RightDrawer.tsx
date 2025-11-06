@@ -1,5 +1,4 @@
 import Breadcrumbs from "@mui/material/Breadcrumbs";
-import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
 import Tooltip from "@mui/material/Tooltip";
 import { styled } from "@mui/material/styles";
@@ -28,7 +27,7 @@ const RightDrawer = ({
   width = DEFAULT_DRAWER_WIDTH,
   children,
   showCloseButton = true,
-  title = "Right Drawer",
+  title = "Named Ranges",
 }: RightDrawerProps) => {
   if (!isOpen) return null;
 
@@ -39,7 +38,6 @@ const RightDrawer = ({
           <HeaderTitle>
             <HeaderBreadcrumbs separator="›">
               <HeaderBreadcrumbLink href="/">{title}</HeaderBreadcrumbLink>
-              <HeaderBreadcrumbLink href="/">Catalog</HeaderBreadcrumbLink>
             </HeaderBreadcrumbs>
           </HeaderTitle>
           <Tooltip
@@ -149,9 +147,8 @@ const Divider = styled("div")({
 
 const DrawerContent = styled("div")({
   flex: 1,
-  overflow: "auto",
+  height: "100%",
 });
-
 
 export default RightDrawer;
 export { DEFAULT_DRAWER_WIDTH };

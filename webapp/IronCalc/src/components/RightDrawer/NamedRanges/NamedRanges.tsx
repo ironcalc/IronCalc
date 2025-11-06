@@ -1,33 +1,51 @@
-import React from 'react';
-import Button from "@mui/material/Button";
-import { styled } from "@mui/material/styles";
+import { Button, Tooltip, styled } from "@mui/material";
+import { t } from "i18next";
+import { BookOpen, Plus } from "lucide-react";
+import type React from "react";
 import { theme } from "../../../theme";
 
 interface NamedRangesProps {
   title?: string;
-  // Add props as needed for your use case
 }
 
-const NamedRanges: React.FC<NamedRangesProps> = ({ title = "Named Ranges" }) => {
+const NamedRanges: React.FC<NamedRangesProps> = ({
+  title = "Named Ranges",
+}) => {
   return (
     <Container>
       <Content>
         <h3>{title}</h3>
-        <p>This is the Named Ranges component.</p>
-        <p>You can customize this content based on your specific needs.</p>
       </Content>
-      <Divider />
       <Footer>
-        <FooterButton variant="contained" color="primary">
-          Save changes
-        </FooterButton>
+        <Tooltip
+          title={t("name_manager_dialog.help")}
+          slotProps={{
+            popper: {
+              modifiers: [{ name: "offset", options: { offset: [0, -8] } }],
+            },
+          }}
+        >
+          <HelpLink
+            href="https://docs.ironcalc.com/web-application/name-manager.html"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <BookOpen />
+          </HelpLink>
+        </Tooltip>
+        <NewButton
+          variant="contained"
+          disableElevation
+          startIcon={<Plus size={16} />}
+        >
+          {t("name_manager_dialog.new")}
+        </NewButton>
       </Footer>
     </Container>
   );
 };
 
 const Container = styled("div")({
-  padding: "16px",
   height: "100%",
   display: "flex",
   flexDirection: "column",
@@ -37,30 +55,44 @@ const Content = styled("div")({
   flex: 1,
   color: theme.palette.grey[700],
   lineHeight: "1.5",
-  
+
   "& p": {
     margin: "0 0 12px 0",
   },
 });
 
-const Divider = styled("div")({
-  height: "1px",
-  width: "100%",
-  backgroundColor: theme.palette.grey[300],
-  margin: "0",
-});
+const Footer = styled("div")`
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: ${theme.palette.grey["600"]};
+  border-top: 1px solid ${theme.palette.grey["300"]};
+`;
 
-const Footer = styled("div")({
-  height: "40px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  padding: "0 8px",
-  flexShrink: 0,
-});
+const HelpLink = styled("a")`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  font-family: "Inter";
+  color: ${theme.palette.grey["600"]};
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
+  svg {
+    width: 16px;
+    height: 16px;
+    color: ${theme.palette.grey["600"]};
+  }
+`;
 
-const FooterButton = styled(Button)({
-  width: "100%",
-});
+const NewButton = styled(Button)`
+  text-transform: none;
+  min-width: fit-content;
+`;
 
 export default NamedRanges;
