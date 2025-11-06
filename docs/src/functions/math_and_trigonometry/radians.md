@@ -30,10 +30,10 @@ RADIANS returns a [number](/features/value-types#numbers) that represents the va
 * If no argument, or more than one argument, is supplied, then RADIANS returns the [`#ERROR!`](/features/error-types.md#error) error.
 * If the value of the *angle* argument is not (or cannot be converted to) a [number](/features/value-types#numbers), then RADIANS returns the [`#VALUE!`](/features/error-types.md#value) error.
 <!--@include: ../markdown-snippets/error-type-details.txt-->
-
+<!--
 ## Examples
 [See some examples in IronCalc](https://app.ironcalc.com/?example=radians).
-
+-->
 ## Links
 * For more information about angle conversions, visit Wikipedia's [Radian](https://en.wikipedia.org/wiki/Radian) page.
 * See also IronCalc's [DEGREES](/functions/math_and_trigonometry/degrees) function for converting radians to degrees.
