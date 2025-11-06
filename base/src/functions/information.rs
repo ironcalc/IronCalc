@@ -1,6 +1,6 @@
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::number_to_column},
     model::{Model, ParsedDefinedName},
 };
 
@@ -318,6 +318,152 @@ impl Model {
             error: Error::NA,
             origin: cell,
             message: "Invalid name".to_string(),
+        }
+    }
+
+    pub(crate) fn fn_n(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if arg_count != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Number(n) => n,
+            CalcResult::String(_) => 0.0,
+            CalcResult::Boolean(f) => {
+                if f {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
+            error @ CalcResult::Error { .. } => return error,
+            CalcResult::Range { .. } => {
+                return CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                }
+            }
+            CalcResult::Array(_) => {
+                return CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                }
+            }
+        };
+
+        CalcResult::Number(value)
+    }
+
+    pub(crate) fn fn_sheets(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if arg_count > 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        if arg_count == 1 {
+            return CalcResult::Error {
+                error: Error::NIMPL,
+                origin: cell,
+                message: "Sheets function with an argument is not implemented".to_string(),
+            };
+        }
+        let sheet_count = self.workbook.worksheets.len() as f64;
+        CalcResult::Number(sheet_count)
+    }
+
+    pub(crate) fn fn_cell(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if arg_count == 0 || arg_count > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let reference = if arg_count == 2 {
+            match self.evaluate_node_with_reference(&args[1], cell) {
+                CalcResult::Range { left, right: _ } => {
+                    // we just take the left cell of the range
+                    left
+                }
+                _ => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Argument must be a reference".to_string(),
+                    }
+                }
+            }
+        } else {
+            CellReferenceIndex {
+                sheet: cell.sheet,
+                row: cell.row,
+                column: cell.column,
+            }
+        };
+        let info_type = match self.get_string(&args[0], cell) {
+            Ok(s) => s.to_uppercase(),
+            Err(e) => return e,
+        };
+        match info_type.as_str() {
+            "ADDRESS" => {
+                if reference.sheet != cell.sheet {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "References to other sheets not implemented".to_string(),
+                    };
+                }
+                let column = match number_to_column(reference.column) {
+                    Some(c) => c,
+                    None => {
+                        return CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: "Invalid column".to_string(),
+                        }
+                    }
+                };
+                let address = format!("${}${}", column, reference.row);
+                CalcResult::String(address)
+            }
+            "COL" => CalcResult::Number(reference.column as f64),
+            "COLOR" | "FILENAME" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {
+                CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "info_type not implemented".to_string(),
+                }
+            }
+            "CONTENTS" => self.evaluate_cell(reference),
+            "ROW" => CalcResult::Number(reference.row as f64),
+            "TYPE" => {
+                let cell_type = match self.evaluate_cell(reference) {
+                    CalcResult::EmptyCell => "b",
+                    CalcResult::String(_) => "l",
+                    CalcResult::Number(_) => "v",
+                    CalcResult::Boolean(_) => "v",
+                    CalcResult::Error { .. } => "v",
+                    CalcResult::Range { .. } => "v",
+                    CalcResult::EmptyArg => "v",
+                    CalcResult::Array(_) => "v",
+                };
+                CalcResult::String(cell_type.to_string())
+            }
+            _ => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Invalid info_type".to_string(),
+            },
+        }
+    }
+
+    pub(crate) fn fn_info(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        CalcResult::Error {
+            error: Error::NIMPL,
+            origin: cell,
+            message: "Info function not implemented".to_string(),
         }
     }
 }

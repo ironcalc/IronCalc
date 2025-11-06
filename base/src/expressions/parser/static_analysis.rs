@@ -871,6 +871,11 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Combin => args_signature_scalars(arg_count, 2, 0),
         Function::Combina => args_signature_scalars(arg_count, 2, 0),
         Function::Sumsq => vec![Signature::Vector; arg_count],
+
+        Function::N => args_signature_scalars(arg_count, 1, 0),
+        Function::Sheets => args_signature_scalars(arg_count, 0, 1),
+        Function::Cell => args_signature_scalars(arg_count, 1, 1),
+        Function::Info => args_signature_scalars(arg_count, 1, 1),
     }
 }
 
@@ -1130,5 +1135,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Combin => scalar_arguments(args),
         Function::Combina => scalar_arguments(args),
         Function::Sumsq => StaticResult::Scalar,
+        Function::N => scalar_arguments(args),
+        Function::Sheets => scalar_arguments(args),
+        Function::Cell => scalar_arguments(args),
+        Function::Info => scalar_arguments(args),
     }
 }
