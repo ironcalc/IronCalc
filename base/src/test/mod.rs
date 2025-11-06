@@ -20,6 +20,7 @@ mod test_fn_day;
 mod test_fn_duration;
 mod test_fn_exact;
 mod test_fn_financial;
+mod test_fn_financial_bonds;
 mod test_fn_formulatext;
 mod test_fn_if;
 mod test_fn_maxifs;

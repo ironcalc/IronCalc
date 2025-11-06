@@ -48,7 +48,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | PDURATION  | <Badge type="tip" text="Available" />          | –                  |
 | PMT        | <Badge type="tip" text="Available" />          | –                  |
 | PPMT       | <Badge type="tip" text="Available" />          | –                  |
-| PRICE      | <Badge type="info" text="Not implemented yet" /> | –                  |
+| PRICE      | <Badge type="tip" text="Available" />          | –                  |
 | PRICEDISC  | <Badge type="info" text="Not implemented yet" /> | –                  |
 | PRICEMAT   | <Badge type="info" text="Not implemented yet" /> | –                  |
 | PV         | <Badge type="tip" text="Available" />          | [PV](financial/pv) |
@@ -63,6 +63,6 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | VDB        | <Badge type="info" text="Not implemented yet" /> | –                  |
 | XIRR       | <Badge type="tip" text="Available" />          | –                  |
 | XNPV       | <Badge type="tip" text="Available" />          | –                  |
-| YIELD      | <Badge type="info" text="Not implemented yet" /> | –                  |
+| YIELD      | <Badge type="tip" text="Available" />          | –                  |
 | YIELDDISC  | <Badge type="info" text="Not implemented yet" /> | –                  |
 | YIELDMAT   | <Badge type="info" text="Not implemented yet" /> | –                  |
