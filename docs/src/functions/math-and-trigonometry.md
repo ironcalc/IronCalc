@@ -49,9 +49,9 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ISO.CEILING     | <Badge type="info" text="Not implemented yet" /> | –             |
 | LCM             | <Badge type="info" text="Not implemented yet" /> | –             |
 | LET             | <Badge type="info" text="Not implemented yet" /> | –             |
-| LN              | <Badge type="info" text="Available" />           | –             |
-| LOG             | <Badge type="info" text="Available" />           | –             |
-| LOG10           | <Badge type="info" text="Available" />           | –             |
+| LN              | <Badge type="tip" text="Available" />           | –             |
+| LOG             | <Badge type="tip" text="Available" />           | –             |
+| LOG10           | <Badge type="tip" text="Available" />           | –             |
 | MDETERM         | <Badge type="info" text="Not implemented yet" /> | –             |
 | MINVERSE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | MMULT           | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -80,7 +80,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SIN             | <Badge type="tip" text="Available" />          | [SIN](math_and_trigonometry/sin) |
 | SINH            | <Badge type="tip" text="Available" />          | [SINH](math_and_trigonometry/sinh) |
 | SQRT            | <Badge type="tip" text="Available" />          | –             |
-| SQRTPI          | <Badge type="info" text="Available" />         | –             |
+| SQRTPI          | <Badge type="tip" text="Available" />         | –             |
 | SUBTOTAL        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUM             | <Badge type="tip" text="Available" />          | –             |
 | SUMIF           | <Badge type="tip" text="Available" />          | –             |
