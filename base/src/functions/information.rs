@@ -457,7 +457,7 @@ impl Model {
     }
 
     pub(crate) fn fn_info(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 0 || args.len() > 2 {
+        if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
         CalcResult::Error {
