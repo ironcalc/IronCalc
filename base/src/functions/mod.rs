@@ -134,6 +134,11 @@ pub enum Function {
     Sheet,
     Type,
 
+    Sheets,
+    N,
+    Cell,
+    Info,
+
     // Lookup and reference
     Hlookup,
     Index,
@@ -308,7 +313,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 252> {
+    pub fn into_iter() -> IntoIter<Function, 256> {
         [
             Function::And,
             Function::False,
@@ -562,6 +567,10 @@ impl Function {
             Function::Combin,
             Function::Combina,
             Function::Sumsq,
+            Function::N,
+            Function::Cell,
+            Function::Info,
+            Function::Sheets,
         ]
         .into_iter()
     }
@@ -614,6 +623,7 @@ impl Function {
             Function::Decimal => "_xlfn.DECIMAL".to_string(),
             Function::Arabic => "_xlfn.ARABIC".to_string(),
             Function::Combina => "_xlfn.COMBINA".to_string(),
+            Function::Sheets => "_xlfn.SHEETS".to_string(),
 
             _ => self.to_string(),
         }
@@ -894,6 +904,11 @@ impl Function {
 
             "SUBTOTAL" => Some(Function::Subtotal),
 
+            "N" => Some(Function::N),
+            "CELL" => Some(Function::Cell),
+            "INFO" => Some(Function::Info),
+            "SHEETS" | "_XLFN.SHEETS" => Some(Function::Sheets),
+
             _ => None,
         }
     }
@@ -1154,6 +1169,11 @@ impl fmt::Display for Function {
             Function::Combin => write!(f, "COMBIN"),
             Function::Combina => write!(f, "COMBINA"),
             Function::Sumsq => write!(f, "SUMSQ"),
+
+            Function::N => write!(f, "N"),
+            Function::Cell => write!(f, "CELL"),
+            Function::Info => write!(f, "INFO"),
+            Function::Sheets => write!(f, "SHEETS"),
         }
     }
 }
@@ -1434,6 +1454,10 @@ impl Model {
             Function::Combin => self.fn_combin(args, cell),
             Function::Combina => self.fn_combina(args, cell),
             Function::Sumsq => self.fn_sumsq(args, cell),
+            Function::N => self.fn_n(args, cell),
+            Function::Cell => self.fn_cell(args, cell),
+            Function::Info => self.fn_info(args, cell),
+            Function::Sheets => self.fn_sheets(args, cell),
         }
     }
 }
