@@ -323,7 +323,7 @@ impl Model {
 
     pub(crate) fn fn_n(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if arg_count > 1 {
+        if arg_count != 1 {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.evaluate_node_in_context(&args[0], cell) {
@@ -375,7 +375,7 @@ impl Model {
 
     pub(crate) fn fn_cell(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if arg_count > 2 {
+        if arg_count == 0 || arg_count > 2 {
             return CalcResult::new_args_number_error(cell);
         }
         let reference = if arg_count == 2 {
@@ -457,7 +457,7 @@ impl Model {
     }
 
     pub(crate) fn fn_info(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() > 1 {
+        if args.len() == 0 || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
         CalcResult::Error {
