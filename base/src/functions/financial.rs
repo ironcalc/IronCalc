@@ -641,6 +641,35 @@ impl Model {
         }
     }
 
+    // FVSCHEDULE(principal, schedule)
+    pub(crate) fn fn_fvschedule(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let principal = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let schedule = match self.get_array_of_numbers(&args[1], &cell) {
+            Ok(s) => s,
+            Err(err) => return err,
+        };
+        let mut result = principal;
+        for rate in schedule {
+            if rate <= -1.0 {
+                return CalcResult::new_error(Error::NUM, cell, "Rate must be > -1".to_string());
+            }
+            result *= 1.0 + rate;
+        }
+        if result.is_infinite() {
+            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+        }
+        if result.is_nan() {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid result".to_string());
+        }
+        CalcResult::Number(result)
+    }
+
     // IPMT(rate, per, nper, pv, [fv], [type])
     pub(crate) fn fn_ipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
