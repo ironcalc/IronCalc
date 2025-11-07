@@ -1,3 +1,4 @@
+import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import Link from "@mui/material/Link";
 import Tooltip from "@mui/material/Tooltip";
@@ -19,6 +20,21 @@ interface RightDrawerProps {
   showCloseButton?: boolean;
   backgroundColor?: string;
   title?: string;
+  definedNameList?: DefinedName[];
+  worksheets?: WorksheetProperties[];
+  updateDefinedName?: (
+    name: string,
+    scope: number | undefined,
+    newName: string,
+    newScope: number | undefined,
+    newFormula: string,
+  ) => void;
+  newDefinedName?: (
+    name: string,
+    scope: number | undefined,
+    formula: string,
+  ) => void;
+  selectedArea?: () => string;
 }
 
 const RightDrawer = ({
@@ -28,6 +44,11 @@ const RightDrawer = ({
   children,
   showCloseButton = true,
   title = "Named Ranges",
+  definedNameList,
+  worksheets,
+  updateDefinedName,
+  newDefinedName,
+  selectedArea,
 }: RightDrawerProps) => {
   if (!isOpen) return null;
 
@@ -73,7 +94,14 @@ const RightDrawer = ({
       {children}
       <Divider />
       <DrawerContent>
-        <NamedRanges title={title} />
+        <NamedRanges
+          title={title}
+          definedNameList={definedNameList}
+          worksheets={worksheets}
+          updateDefinedName={updateDefinedName}
+          newDefinedName={newDefinedName}
+          selectedArea={selectedArea}
+        />
       </DrawerContent>
     </DrawerContainer>
   );
