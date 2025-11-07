@@ -768,7 +768,35 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           }}
         />
       </WorksheetAreaLeft>
-      <RightDrawer isOpen={isDrawerOpen} onClose={() => setDrawerOpen(false)} />
+      <RightDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        definedNameList={model.getDefinedNameList()}
+        worksheets={worksheets}
+        updateDefinedName={(
+          name: string,
+          scope: number | undefined,
+          newName: string,
+          newScope: number | undefined,
+          newFormula: string,
+        ) => {
+          model.updateDefinedName(name, scope, newName, newScope, newFormula);
+          setRedrawId((id) => id + 1);
+        }}
+        newDefinedName={(
+          name: string,
+          scope: number | undefined,
+          formula: string,
+        ) => {
+          model.newDefinedName(name, scope, formula);
+          setRedrawId((id) => id + 1);
+        }}
+        selectedArea={() => {
+          const worksheetNames = worksheets.map((s) => s.name);
+          const selectedView = model.getSelectedView();
+          return getFullRangeToString(selectedView, worksheetNames);
+        }}
+      />
     </Container>
   );
 };
