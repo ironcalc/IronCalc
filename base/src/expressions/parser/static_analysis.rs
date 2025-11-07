@@ -876,6 +876,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_scalars(arg_count, 1, 1),
         Function::Info => args_signature_scalars(arg_count, 1, 1),
+        Function::Accrint => args_signature_scalars(arg_count, 6, 2),
+        Function::Accrintm => args_signature_scalars(arg_count, 4, 1),
     }
 }
 
@@ -1139,5 +1141,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sheets => scalar_arguments(args),
         Function::Cell => scalar_arguments(args),
         Function::Info => scalar_arguments(args),
+        Function::Accrint => scalar_arguments(args),
+        Function::Accrintm => scalar_arguments(args),
     }
 }

@@ -217,6 +217,8 @@ pub enum Function {
     Isoweeknum,
 
     // Financial
+    Accrint,
+    Accrintm,
     Cumipmt,
     Cumprinc,
     Db,
@@ -313,7 +315,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 256> {
+    pub fn into_iter() -> IntoIter<Function, 258> {
         [
             Function::And,
             Function::False,
@@ -571,6 +573,8 @@ impl Function {
             Function::Cell,
             Function::Info,
             Function::Sheets,
+            Function::Accrint,
+            Function::Accrintm,
         ]
         .into_iter()
     }
@@ -908,6 +912,8 @@ impl Function {
             "CELL" => Some(Function::Cell),
             "INFO" => Some(Function::Info),
             "SHEETS" | "_XLFN.SHEETS" => Some(Function::Sheets),
+            "ACCRINT" => Some(Function::Accrint),
+            "ACCRINTM" => Some(Function::Accrintm),
 
             _ => None,
         }
@@ -1174,6 +1180,9 @@ impl fmt::Display for Function {
             Function::Cell => write!(f, "CELL"),
             Function::Info => write!(f, "INFO"),
             Function::Sheets => write!(f, "SHEETS"),
+
+            Function::Accrint => write!(f, "ACCRINT"),
+            Function::Accrintm => write!(f, "ACCRINTM"),
         }
     }
 }
@@ -1458,6 +1467,8 @@ impl Model {
             Function::Cell => self.fn_cell(args, cell),
             Function::Info => self.fn_info(args, cell),
             Function::Sheets => self.fn_sheets(args, cell),
+            Function::Accrint => self.fn_accrint(args, cell),
+            Function::Accrintm => self.fn_accrintm(args, cell),
         }
     }
 }

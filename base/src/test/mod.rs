@@ -61,6 +61,7 @@ mod test_number_format;
 mod test_arrays;
 mod test_escape_quotes;
 mod test_extend;
+mod test_fn_accrint;
 mod test_fn_fv;
 mod test_fn_round;
 mod test_fn_type;
