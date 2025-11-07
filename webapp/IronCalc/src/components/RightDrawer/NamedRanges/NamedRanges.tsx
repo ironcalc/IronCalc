@@ -1,7 +1,7 @@
 import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
 import { Button, Tooltip, styled } from "@mui/material";
 import { t } from "i18next";
-import { BookOpen, ChevronRight, Plus } from "lucide-react";
+import { BookOpen, Plus } from "lucide-react";
 import { useState } from "react";
 import { theme } from "../../../theme";
 import EditNamedRange from "./EditNamedRange";
@@ -140,9 +140,9 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                   tabIndex={0}
                 >
                   <ListItemText>
-                    <ScopeText>{scopeName}</ScopeText>
-                    <ChevronRightStyled />
                     <NameText>{definedName.name}</NameText>
+                    <ScopeText>{scopeName}</ScopeText>
+                    <FormulaText>{definedName.formula}</FormulaText>
                   </ListItemText>
                 </ListItem>
               );
@@ -218,8 +218,9 @@ const ListItemText = styled("div")({
   fontFamily: theme.typography.fontFamily,
   flex: 1,
   display: "flex",
-  alignItems: "center",
-  gap: "4px",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: "2px",
 });
 
 const ScopeText = styled("span")({
@@ -227,18 +228,18 @@ const ScopeText = styled("span")({
   color: theme.palette.common.black,
 });
 
-const ChevronRightStyled = styled(ChevronRight)({
-  width: "12px",
-  height: "12px",
-  color: theme.palette.grey[500],
+const FormulaText = styled("span")({
+  fontSize: "12px",
+  color: theme.palette.grey[600],
 });
 
 const NameText = styled("span")({
   fontSize: "12px",
   color: theme.palette.common.black,
+  fontWeight: 600,
 });
 
-const Footer = styled("div")`
+export const Footer = styled("div")`
   padding: 8px;
   display: flex;
   align-items: center;
@@ -246,6 +247,7 @@ const Footer = styled("div")`
   font-size: 12px;
   color: ${theme.palette.grey["600"]};
   border-top: 1px solid ${theme.palette.grey["300"]};
+  gap: 8px;
 `;
 
 const HelpLink = styled("a")`
@@ -267,10 +269,17 @@ const HelpLink = styled("a")`
   }
 `;
 
-const NewButton = styled(Button)`
+export const NewButton = styled(Button)`
   text-transform: none;
   min-width: fit-content;
   font-size: 12px;
+  &.MuiButton-colorSecondary {
+    background-color: ${theme.palette.grey[200]};
+    color: ${theme.palette.grey[700]};
+    &:hover {
+      background-color: ${theme.palette.grey[300]};
+    }
+  }
 `;
 
 export default NamedRanges;
