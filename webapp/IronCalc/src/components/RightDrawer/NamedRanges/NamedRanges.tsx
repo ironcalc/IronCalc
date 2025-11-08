@@ -1,7 +1,7 @@
 import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
 import { Button, Tooltip, styled } from "@mui/material";
 import { t } from "i18next";
-import { BookOpen, PencilLine, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, PencilLine, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { theme } from "../../../theme";
 import EditNamedRange from "./EditNamedRange";
@@ -13,6 +13,7 @@ const normalizeRangeString = (range: string): string => {
 
 interface NamedRangesProps {
   title?: string;
+  onClose?: () => void;
   definedNameList?: DefinedName[];
   worksheets?: WorksheetProperties[];
   updateDefinedName?: (
@@ -32,6 +33,8 @@ interface NamedRangesProps {
 }
 
 const NamedRanges: React.FC<NamedRangesProps> = ({
+  title,
+  onClose,
   definedNameList = [],
   worksheets = [],
   updateDefinedName,
@@ -99,7 +102,7 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
   // Show edit view if a named range is being edited or created
   if (editingDefinedName || isCreatingNew) {
     let name = "";
-    let scopeName = "[global]";
+    let scopeName = "[Global]";
     let formula = "";
 
     if (editingDefinedName) {
@@ -107,14 +110,65 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
       scopeName =
         editingDefinedName.scope !== undefined
           ? worksheets[editingDefinedName.scope]?.name || "[unknown]"
-          : "[global]";
+          : "[Global]";
       formula = editingDefinedName.formula;
     } else if (isCreatingNew && selectedArea) {
       formula = selectedArea();
     }
 
+    const headerTitle = isCreatingNew
+      ? t("name_manager_dialog.add_new_range")
+      : t("name_manager_dialog.edit_range");
+
     return (
       <Container>
+        <EditHeader>
+          <Tooltip title={t("name_manager_dialog.back")}>
+            <IconButtonWrapper
+              onClick={handleCancel}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  handleCancel();
+                }
+              }}
+              aria-label="Back to list"
+              tabIndex={0}
+            >
+              <ArrowLeft />
+            </IconButtonWrapper>
+          </Tooltip>
+          <EditHeaderTitle>{headerTitle}</EditHeaderTitle>
+          {onClose && (
+            <Tooltip
+              title={t("right_drawer.close")}
+              slotProps={{
+                popper: {
+                  modifiers: [
+                    {
+                      name: "offset",
+                      options: {
+                        offset: [0, -8],
+                      },
+                    },
+                  ],
+                },
+              }}
+            >
+              <IconButtonWrapper
+                onClick={onClose}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    onClose();
+                  }
+                }}
+                aria-label="Close drawer"
+                tabIndex={0}
+              >
+                <X />
+              </IconButtonWrapper>
+            </Tooltip>
+          )}
+        </EditHeader>
         <Content>
           <EditNamedRange
             worksheets={worksheets}
@@ -134,15 +188,47 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
 
   return (
     <Container>
+      {onClose && (
+        <Header>
+          <HeaderTitle>{title}</HeaderTitle>
+          <Tooltip
+            title={t("right_drawer.close")}
+            slotProps={{
+              popper: {
+                modifiers: [
+                  {
+                    name: "offset",
+                    options: {
+                      offset: [0, -8],
+                    },
+                  },
+                ],
+              },
+            }}
+          >
+            <IconButtonWrapper
+              onClick={onClose}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  onClose();
+                }
+              }}
+              aria-label="Close drawer"
+              tabIndex={0}
+            >
+              <X />
+            </IconButtonWrapper>
+          </Tooltip>
+        </Header>
+      )}
       <Content>
         {definedNameList.length > 0 && (
           <ListContainer>
             {definedNameList.map((definedName) => {
               const scopeName =
                 definedName.scope !== undefined
-                  ? worksheets[definedName.scope]?.name || "[unknown]"
-                  : "[global]";
-              // Check if this named range matches the currently selected area
+                  ? worksheets[definedName.scope]?.name || "[Unknown]"
+                  : "[Global]";
               const isSelected =
                 currentSelectedArea !== null &&
                 normalizeRangeString(definedName.formula) ===
@@ -193,22 +279,14 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
         )}
       </Content>
       <Footer>
-        <Tooltip
-          title={t("name_manager_dialog.help")}
-          slotProps={{
-            popper: {
-              modifiers: [{ name: "offset", options: { offset: [0, -8] } }],
-            },
-          }}
+        <HelpLink
+          href="https://docs.ironcalc.com/web-application/name-manager.html"
+          target="_blank"
+          rel="noopener noreferrer"
         >
-          <HelpLink
-            href="https://docs.ironcalc.com/web-application/name-manager.html"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <BookOpen />
-          </HelpLink>
-        </Tooltip>
+          <BookOpen />
+          {t("name_manager_dialog.help")}
+        </HelpLink>
         <NewButton
           variant="contained"
           disableElevation
@@ -322,7 +400,7 @@ export const Footer = styled("div")`
 const HelpLink = styled("a")`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 12px;
   font-weight: 400;
   font-family: "Inter";
@@ -334,7 +412,6 @@ const HelpLink = styled("a")`
   svg {
     width: 16px;
     height: 16px;
-    color: ${theme.palette.grey["600"]};
   }
 `;
 
@@ -350,5 +427,53 @@ export const NewButton = styled(Button)`
     }
   }
 `;
+
+const Header = styled("div")({
+  height: "40px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  padding: "0 8px",
+  borderBottom: `1px solid ${theme.palette.grey[300]}`,
+});
+
+const HeaderTitle = styled("div")({
+  width: "100%",
+  fontSize: "12px",
+});
+
+const EditHeader = styled("div")({
+  height: "40px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "0 8px",
+  gap: "8px",
+  borderBottom: `1px solid ${theme.palette.grey[300]}`,
+});
+
+const EditHeaderTitle = styled("div")({
+  flex: 1,
+  fontSize: "12px",
+  fontWeight: 500,
+});
+
+const IconButtonWrapper = styled("div")`
+    &:hover {
+      background-color: ${theme.palette.grey["50"]};
+    }
+    display: flex;
+    border-radius: 4px;
+    height: 24px;
+    width: 24px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 1.5;
+    }
+  `;
 
 export default NamedRanges;

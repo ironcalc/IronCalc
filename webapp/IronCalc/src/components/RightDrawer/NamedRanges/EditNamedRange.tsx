@@ -36,18 +36,22 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
           <HeaderIcon>
             <Tag />
           </HeaderIcon>
-          <HeaderBoxText>{name || "New Named Range"}</HeaderBoxText>
+          <HeaderBoxText>
+            {name || t("name_manager_dialog.new_named_range")}
+          </HeaderBoxText>
         </HeaderBox>
         <StyledBox>
           <FieldWrapper>
-            <StyledLabel htmlFor="name">Range name</StyledLabel>
+            <StyledLabel htmlFor="name">
+              {t("name_manager_dialog.range_name")}
+            </StyledLabel>
             <StyledTextField
               autoFocus={true}
               id="name"
               variant="outlined"
               size="small"
               margin="none"
-              placeholder="Enter range name"
+              placeholder={t("name_manager_dialog.enter_range_name")}
               fullWidth
               error={formulaError}
               value={name}
@@ -59,7 +63,9 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
             />
           </FieldWrapper>
           <FieldWrapper>
-            <StyledLabel htmlFor="scope">Scope</StyledLabel>
+            <StyledLabel htmlFor="scope">
+              {t("name_manager_dialog.scope_label")}
+            </StyledLabel>
             <StyledTextField
               id="scope"
               variant="outlined"
@@ -73,7 +79,7 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
                 setScope(event.target.value);
               }}
             >
-              <MenuItem value={"[global]"}>
+              <MenuItem value={"[Global]"}>
                 <MenuSpan>{t("name_manager_dialog.workbook")}</MenuSpan>
                 <MenuSpanGrey>{` ${t("name_manager_dialog.global")}`}</MenuSpanGrey>
               </MenuItem>
@@ -84,11 +90,13 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
               ))}
             </StyledTextField>
             <StyledHelperText>
-              The scope of the named range determines where it is available.
+              {t("name_manager_dialog.scope_helper")}
             </StyledHelperText>
           </FieldWrapper>
           <FieldWrapper>
-            <StyledLabel htmlFor="formula">Refers to</StyledLabel>
+            <StyledLabel htmlFor="formula">
+              {t("name_manager_dialog.refers_to")}
+            </StyledLabel>
             <StyledTextField
               id="formula"
               variant="outlined"
@@ -115,7 +123,7 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
           disableElevation
           onClick={onCancel}
         >
-          Cancel
+          {t("name_manager_dialog.cancel")}
         </NewButton>
         <NewButton
           variant="contained"

@@ -1,10 +1,5 @@
 import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
-import Link from "@mui/material/Link";
-import Tooltip from "@mui/material/Tooltip";
 import { styled } from "@mui/material/styles";
-import { t } from "i18next";
-import { X } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { theme } from "../../theme";
@@ -115,48 +110,12 @@ const RightDrawer = ({
         $isResizing={isResizing}
         aria-label="Resize drawer"
       />
-      {showCloseButton && (
-        <Header>
-          <HeaderTitle>
-            <HeaderBreadcrumbs separator="›">
-              <HeaderBreadcrumbLink href="/">{title}</HeaderBreadcrumbLink>
-            </HeaderBreadcrumbs>
-          </HeaderTitle>
-          <Tooltip
-            title={t("right_drawer.close")}
-            slotProps={{
-              popper: {
-                modifiers: [
-                  {
-                    name: "offset",
-                    options: {
-                      offset: [0, -8],
-                    },
-                  },
-                ],
-              },
-            }}
-          >
-            <CloseButton
-              onClick={onClose}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  onClose();
-                }
-              }}
-              aria-label="Close drawer"
-              tabIndex={0}
-            >
-              <X />
-            </CloseButton>
-          </Tooltip>
-        </Header>
-      )}
       {children}
       <Divider />
       <DrawerContent>
         <NamedRanges
           title={title}
+          onClose={showCloseButton ? onClose : undefined}
           definedNameList={definedNameList}
           worksheets={worksheets}
           updateDefinedName={updateDefinedName}
@@ -178,7 +137,7 @@ const DrawerContainer = styled("div")<DrawerContainerProps>(
     overflow: "hidden",
     backgroundColor: theme.palette.common.white,
     right: 0,
-    top: `${TOOLBAR_HEIGHT + 1}px`,
+    top: `${TOOLBAR_HEIGHT}px`,
     bottom: 0,
     borderLeft: `1px solid ${theme.palette.grey[300]}`,
     width: `${$drawerWidth}px`,
@@ -186,47 +145,6 @@ const DrawerContainer = styled("div")<DrawerContainerProps>(
     flexDirection: "column",
   }),
 );
-
-const Header = styled("div")({
-  height: "40px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  padding: "0 8px",
-});
-
-const HeaderTitle = styled("div")({
-  width: "100%",
-});
-
-const HeaderBreadcrumbs = styled(Breadcrumbs)({
-  fontSize: "12px",
-  marginRight: "8px",
-  width: "100%",
-});
-
-const HeaderBreadcrumbLink = styled(Link)({
-  color: theme.palette.grey[900],
-  textDecoration: "none",
-});
-
-const CloseButton = styled("div")`
-    &:hover {
-      background-color: ${theme.palette.grey["50"]};
-    }
-    display: flex;
-    border-radius: 4px;
-    height: 24px;
-    width: 24px;
-    cursor: pointer;
-    align-items: center;
-    justify-content: center;
-    svg {
-      width: 16px;
-      height: 16px;
-      stroke-width: 1.5;
-    }
-  `;
 
 const Divider = styled("div")({
   height: "1px",
