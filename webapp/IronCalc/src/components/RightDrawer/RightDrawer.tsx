@@ -5,17 +5,21 @@ import Tooltip from "@mui/material/Tooltip";
 import { styled } from "@mui/material/styles";
 import { t } from "i18next";
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { theme } from "../../theme";
 import { TOOLBAR_HEIGHT } from "../constants";
 import NamedRanges from "./NamedRanges/NamedRanges";
 
-const DEFAULT_DRAWER_WIDTH = 300;
+const DEFAULT_DRAWER_WIDTH = 360;
+const MIN_DRAWER_WIDTH = 300;
+const MAX_DRAWER_WIDTH = 500;
 
 interface RightDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   width?: number;
+  onWidthChange?: (width: number) => void;
   children?: ReactNode;
   showCloseButton?: boolean;
   backgroundColor?: string;
@@ -34,6 +38,7 @@ interface RightDrawerProps {
     scope: number | undefined,
     formula: string,
   ) => void;
+  deleteDefinedName?: (name: string, scope: number | undefined) => void;
   selectedArea?: () => string;
 }
 
@@ -41,6 +46,7 @@ const RightDrawer = ({
   isOpen,
   onClose,
   width = DEFAULT_DRAWER_WIDTH,
+  onWidthChange,
   children,
   showCloseButton = true,
   title = "Named Ranges",
@@ -48,12 +54,67 @@ const RightDrawer = ({
   worksheets,
   updateDefinedName,
   newDefinedName,
+  deleteDefinedName,
   selectedArea,
 }: RightDrawerProps) => {
+  const [drawerWidth, setDrawerWidth] = useState(width);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeHandleRef = useRef<HTMLDivElement>(null);
+
+  // Update local width when prop changes
+  useEffect(() => {
+    setDrawerWidth(width);
+  }, [width]);
+
+  const handleMouseDown = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    // Prevent text selection during resize
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX;
+      const clampedWidth = Math.max(
+        MIN_DRAWER_WIDTH,
+        Math.min(MAX_DRAWER_WIDTH, newWidth),
+      );
+      setDrawerWidth(clampedWidth);
+      onWidthChange?.(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+  }, [isResizing, onWidthChange]);
+
   if (!isOpen) return null;
 
   return (
-    <DrawerContainer $drawerWidth={width}>
+    <DrawerContainer $drawerWidth={drawerWidth}>
+      <ResizeHandle
+        ref={resizeHandleRef}
+        onMouseDown={handleMouseDown}
+        $isResizing={isResizing}
+        aria-label="Resize drawer"
+      />
       {showCloseButton && (
         <Header>
           <HeaderTitle>
@@ -100,6 +161,7 @@ const RightDrawer = ({
           worksheets={worksheets}
           updateDefinedName={updateDefinedName}
           newDefinedName={newDefinedName}
+          deleteDefinedName={deleteDefinedName}
           selectedArea={selectedArea}
         />
       </DrawerContent>
@@ -178,5 +240,23 @@ const DrawerContent = styled("div")({
   height: "100%",
 });
 
+const ResizeHandle = styled("div")<{ $isResizing: boolean }>(
+  ({ $isResizing }) => ({
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: "4px",
+    cursor: "col-resize",
+    backgroundColor: $isResizing ? theme.palette.primary.main : "transparent",
+    zIndex: 10,
+    "&:hover": {
+      backgroundColor: theme.palette.primary.main,
+      opacity: 0.5,
+    },
+    transition: $isResizing ? "none" : "background-color 0.2s ease",
+  }),
+);
+
 export default RightDrawer;
-export { DEFAULT_DRAWER_WIDTH };
+export { DEFAULT_DRAWER_WIDTH, MIN_DRAWER_WIDTH, MAX_DRAWER_WIDTH };

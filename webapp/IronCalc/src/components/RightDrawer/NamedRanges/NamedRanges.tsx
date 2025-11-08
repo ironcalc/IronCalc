@@ -1,10 +1,15 @@
 import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
 import { Button, Tooltip, styled } from "@mui/material";
 import { t } from "i18next";
-import { BookOpen, Plus } from "lucide-react";
+import { BookOpen, PencilLine, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { theme } from "../../../theme";
 import EditNamedRange from "./EditNamedRange";
+
+// Normalize range strings for comparison (remove quotes, handle case, etc.)
+const normalizeRangeString = (range: string): string => {
+  return range.trim().replace(/['"]/g, "");
+};
 
 interface NamedRangesProps {
   title?: string;
@@ -22,6 +27,7 @@ interface NamedRangesProps {
     scope: number | undefined,
     formula: string,
   ) => void;
+  deleteDefinedName?: (name: string, scope: number | undefined) => void;
   selectedArea?: () => string;
 }
 
@@ -30,6 +36,7 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
   worksheets = [],
   updateDefinedName,
   newDefinedName,
+  deleteDefinedName,
   selectedArea,
 }) => {
   const [editingDefinedName, setEditingDefinedName] =
@@ -123,6 +130,8 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
   }
 
   // Show list view
+  const currentSelectedArea = selectedArea ? selectedArea() : null;
+
   return (
     <Container>
       <Content>
@@ -133,17 +142,50 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                 definedName.scope !== undefined
                   ? worksheets[definedName.scope]?.name || "[unknown]"
                   : "[global]";
+              // Check if this named range matches the currently selected area
+              const isSelected =
+                currentSelectedArea !== null &&
+                normalizeRangeString(definedName.formula) ===
+                  normalizeRangeString(currentSelectedArea);
               return (
                 <ListItem
                   key={`${definedName.name}-${definedName.scope}`}
-                  onClick={() => handleListItemClick(definedName)}
                   tabIndex={0}
+                  $isSelected={isSelected}
                 >
                   <ListItemText>
                     <NameText>{definedName.name}</NameText>
                     <ScopeText>{scopeName}</ScopeText>
                     <FormulaText>{definedName.formula}</FormulaText>
                   </ListItemText>
+
+                  <IconsWrapper>
+                    <Tooltip title={t("name_manager_dialog.edit")}>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleListItemClick(definedName);
+                        }}
+                      >
+                        <PencilLine size={16} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={t("name_manager_dialog.delete")}>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (deleteDefinedName) {
+                            deleteDefinedName(
+                              definedName.name,
+                              definedName.scope,
+                            );
+                          }
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </IconButton>
+                    </Tooltip>
+                  </IconsWrapper>
                 </ListItem>
               );
             })}
@@ -198,19 +240,26 @@ const ListContainer = styled("div")({
   flexDirection: "column",
 });
 
-const ListItem = styled("div")({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "8px 12px",
-  minHeight: "40px",
-  cursor: "pointer",
-  boxSizing: "border-box",
-  borderBottom: `1px solid ${theme.palette.grey[200]}`,
-  "&:hover": {
-    backgroundColor: theme.palette.grey[50],
-  },
-});
+const ListItem = styled("div")<{ $isSelected?: boolean }>(
+  ({ $isSelected }) => ({
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    padding: "8px 12px",
+    minHeight: "40px",
+    boxSizing: "border-box",
+    borderBottom: `1px solid ${theme.palette.grey[200]}`,
+    paddingLeft: $isSelected ? "20px" : "12px",
+    transition: "all 0.2s ease-in-out",
+    borderLeft: $isSelected
+      ? `3px solid ${theme.palette.primary.main}`
+      : "3px solid transparent",
+    "&:hover": {
+      backgroundColor: theme.palette.grey[50],
+      paddingLeft: "20px",
+    },
+  }),
+);
 
 const ListItemText = styled("div")({
   fontSize: "12px",
@@ -237,6 +286,26 @@ const NameText = styled("span")({
   fontSize: "12px",
   color: theme.palette.common.black,
   fontWeight: 600,
+});
+
+const IconsWrapper = styled("div")({
+  display: "flex",
+  alignItems: "center",
+  gap: "2px",
+});
+
+const IconButton = styled("div")({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "24px",
+  height: "24px",
+  borderRadius: "4px",
+  backgroundColor: "transparent",
+  cursor: "pointer",
+  "&:hover": {
+    backgroundColor: theme.palette.grey[200],
+  },
 });
 
 export const Footer = styled("div")`
