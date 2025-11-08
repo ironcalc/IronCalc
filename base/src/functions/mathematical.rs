@@ -934,11 +934,11 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
+        let value = match self.get_number_no_bools(&args[0], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let divisor = match self.get_number(&args[1], cell) {
+        let divisor = match self.get_number_no_bools(&args[1], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
