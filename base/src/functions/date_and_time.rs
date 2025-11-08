@@ -8,6 +8,26 @@ use chrono::Timelike;
 const SECONDS_PER_DAY: i32 = 86_400;
 const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
 
+fn is_leap_year(year: i32) -> bool {
+    (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
+}
+
+fn is_feb_29_between_dates(start: chrono::NaiveDate, end: chrono::NaiveDate) -> bool {
+    let start_year = start.year();
+    let end_year = end.year();
+
+    for year in start_year..=end_year {
+        if is_leap_year(year)
+            && (year < end_year
+                || (year == end_year && end.month() > 2)
+                    && (year > start_year || (year == start_year && start.month() <= 2)))
+        {
+            return true;
+        }
+    }
+    false
+}
+
 // ---------------------------------------------------------------------------
 // Helper macros to eliminate boilerplate in date/time component extraction
 // functions (DAY, MONTH, YEAR, HOUR, MINUTE, SECOND).
@@ -1567,18 +1587,44 @@ impl Model {
                 }
             }
             1 => {
-                let year_days = if start_date.year() == end_date.year() {
-                    if (start_date.year() % 4 == 0 && start_date.year() % 100 != 0)
-                        || start_date.year() % 400 == 0
-                    {
-                        366.0
-                    } else {
-                        365.0
+                // Procedure E
+
+                let start_year = start_date.year();
+                let end_year = end_date.year();
+
+                let step_a = start_year != end_year;
+                let step_b = start_year + 1 != end_year;
+                let step_c = start_date.month() < end_date.month();
+                let step_d = start_date.month() == end_date.month();
+                let step_e = start_date.day() <= end_date.day();
+                let step_f = step_a && (step_b || step_c || (step_d && step_e));
+                if step_f {
+                    // 7.
+                    // return average of days in year between start_year and end_year, inclusive
+                    let mut total_days = 0;
+                    for year in start_year..=end_year {
+                        if is_leap_year(year) {
+                            total_days += 366;
+                        } else {
+                            total_days += 365;
+                        }
                     }
+                    days / (total_days as f64 / (end_year - start_year + 1) as f64)
+                } else if step_a && is_leap_year(start_year) {
+                    // 8.
+                    days / 366.0
+                } else if is_feb_29_between_dates(start_date, end_date) {
+                    // 9. If a February 29 occurs between date1 and date2 then return 366
+                    days / 366.0
+                } else if end_date.month() == 2 && end_date.day() == 29 {
+                    // 10. If date2 is February 29 then return 366
+                    days / 366.0
+                } else if !step_a && is_leap_year(start_year) {
+                    days / 366.0
                 } else {
-                    365.0
-                };
-                days / year_days
+                    // 11.
+                    days / 365.0
+                }
             }
             2 => days / 360.0,
             3 => days / 365.0,
@@ -1595,6 +1641,34 @@ impl Model {
             }
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid basis".to_string()),
         };
-        CalcResult::Number(result)
+        CalcResult::Number(result.abs())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn test_is_leap_year() {
+        assert!(is_leap_year(2000));
+        assert!(!is_leap_year(1900));
+        assert!(is_leap_year(2004));
+        assert!(!is_leap_year(2001));
+    }
+
+    #[test]
+    fn test_is_feb_29_between_dates() {
+        let d1 = chrono::NaiveDate::from_ymd_opt(2020, 2, 28).unwrap();
+        let d2 = chrono::NaiveDate::from_ymd_opt(2020, 3, 1).unwrap();
+        assert!(is_feb_29_between_dates(d1, d2));
+    }
+
+    #[test]
+    fn test_is_feb_29_between_dates_false() {
+        let d1 = chrono::NaiveDate::from_ymd_opt(2021, 2, 28).unwrap();
+        let d2 = chrono::NaiveDate::from_ymd_opt(2021, 3, 1).unwrap();
+        assert!(!is_feb_29_between_dates(d1, d2));
     }
 }

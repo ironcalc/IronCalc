@@ -26,8 +26,8 @@ fn test_yearfrac_basis_2_actual_360() {
         panic!("Expected numeric value in A2");
     }
 
-    // Negative symmetric of A1
-    assert_eq!(model._get_text("A3"), *"-1");
+    // always positive A1
+    assert_eq!(model._get_text("A3"), *"1");
 }
 
 #[test]
