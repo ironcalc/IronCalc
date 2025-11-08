@@ -55,7 +55,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MDETERM         | <Badge type="info" text="Not implemented yet" /> | –             |
 | MINVERSE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | MMULT           | <Badge type="info" text="Not implemented yet" /> | –             |
-| MOD             | <Badge type="info" text="Not implemented yet" /> | [MOD](math_and_trigonometry/mod) |
+| MOD             | <Badge type="tip" text="Available" />          | [MOD](math_and_trigonometry/mod) |
 | MROUND          | <Badge type="info" text="Not implemented yet" /> | –             |
 | MULTINOMIAL     | <Badge type="info" text="Not implemented yet" /> | –             |
 | MUNIT           | <Badge type="info" text="Not implemented yet" /> | –             |
