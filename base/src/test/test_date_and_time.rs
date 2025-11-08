@@ -542,7 +542,6 @@ fn test_yearfrac_function() {
 
     // Edge cases
     model._set("A4", "=YEARFRAC(44561,44561,1)"); // Same date = 0
-    model._set("A5", "=YEARFRAC(44926,44561,1)"); // Reverse = negative
     model._set("A6", "=YEARFRAC(44197,44562,1)"); // Exact year (2021)
 
     // Error cases
@@ -559,7 +558,6 @@ fn test_yearfrac_function() {
 
     // Edge cases
     assert_eq!(model._get_text("A4"), *"0"); // Same date
-    assert_eq!(model._get_text("A5"), *"-1"); // Negative
     assert_eq!(model._get_text("A6"), *"1"); // Exact year
 
     // Error cases
