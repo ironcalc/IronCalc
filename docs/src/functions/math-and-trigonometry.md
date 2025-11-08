@@ -36,8 +36,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | CSC             | <Badge type="info" text="Not implemented yet" /> | –             |
 | CSCH            | <Badge type="info" text="Not implemented yet" /> | –             |
 | DECIMAL         | <Badge type="info" text="Not implemented yet" /> | –             |
-| DEGREES         | <Badge type="info" text="Not implemented yet" /> | [DEGREES](math_and_trigonometry/degrees) |
-| EVEN            | <Badge type="info" text="Not implemented yet" /> | [EVEN](math_and_trigonometry/even) |
+| DEGREES         | <Badge type="tip" text="Available" /> | [DEGREES](math_and_trigonometry/degrees) |
+| EVEN            | <Badge type="tip" text="Available" /> | [EVEN](math_and_trigonometry/even) |
 | EXP             | <Badge type="info" text="Not implemented yet" /> | –             |
 | FACT            | <Badge type="info" text="Not implemented yet" /> | –             |
 | FACTDOUBLE      | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -59,12 +59,12 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MROUND          | <Badge type="info" text="Not implemented yet" /> | –             |
 | MULTINOMIAL     | <Badge type="info" text="Not implemented yet" /> | –             |
 | MUNIT           | <Badge type="info" text="Not implemented yet" /> | –             |
-| ODD             | <Badge type="info" text="Not implemented yet" /> | [ODD](math_and_trigonometry/odd) |
+| ODD             | <Badge type="tip" text="Available" /> | [ODD](math_and_trigonometry/odd) |
 | PI              | <Badge type="info" text="Not implemented yet" /> | –             |
 | POWER           | <Badge type="tip" text="Available" />          | –             |
 | PRODUCT         | <Badge type="tip" text="Available" />          | –             |
 | QUOTIENT        | <Badge type="info" text="Not implemented yet" /> | –             |
-| RADIANS         | <Badge type="info" text="Not implemented yet" /> | [RADIANS](math_and_trigonometry/radians) |
+| RADIANS         | <Badge type="tip" text="Available" /> | [RADIANS](math_and_trigonometry/radians) |
 | RAND            | <Badge type="tip" text="Available" />          | –             |
 | RANDARRAY       | <Badge type="info" text="Not implemented yet" /> | –             |
 | RANDBETWEEN     | <Badge type="tip" text="Available" />          | –             |
@@ -84,7 +84,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SUBTOTAL        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUM             | <Badge type="tip" text="Available" />          | –             |
 | SUMIF           | <Badge type="tip" text="Available" />          | –             |
-| SUMIFS          | <Badge type="info" text="Available" />         | –             |
+| SUMIFS          | <Badge type="tip" text="Available" />         | –             |
 | SUMPRODUCT      | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMSQ           | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMX2MY2        | <Badge type="info" text="Not implemented yet" /> | –             |
