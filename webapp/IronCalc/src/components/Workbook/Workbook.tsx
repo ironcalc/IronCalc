@@ -44,6 +44,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const setRedrawId = useState(0)[1];
 
   const [isDrawerOpen, setDrawerOpen] = useState(false);
+  const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
 
   const worksheets = model.getWorksheetsProperties();
   const info = worksheets.map(
@@ -700,7 +701,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setDrawerOpen(true);
         }}
       />
-      <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? DEFAULT_DRAWER_WIDTH : 0}>
+      <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? drawerWidth : 0}>
         <FormulaBar
           cellAddress={cellAddress()}
           formulaValue={formulaValue()}
@@ -771,6 +772,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       <RightDrawer
         isOpen={isDrawerOpen}
         onClose={() => setDrawerOpen(false)}
+        width={drawerWidth}
+        onWidthChange={setDrawerWidth}
         definedNameList={model.getDefinedNameList()}
         worksheets={worksheets}
         updateDefinedName={(
@@ -789,6 +792,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           formula: string,
         ) => {
           model.newDefinedName(name, scope, formula);
+          setRedrawId((id) => id + 1);
+        }}
+        deleteDefinedName={(name: string, scope: number | undefined) => {
+          model.deleteDefinedName(name, scope);
           setRedrawId((id) => id + 1);
         }}
         selectedArea={() => {

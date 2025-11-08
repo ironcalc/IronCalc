@@ -106,7 +106,6 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
               onClick={(event) => event.stopPropagation()}
             />
           </FieldWrapper>
-          <FieldWrapper></FieldWrapper>
         </StyledBox>
       </ContentArea>
       <Footer>
@@ -200,9 +199,9 @@ const StyledBox = styled(Box)`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   width: auto;
-  padding: 12px;
+  padding: 16px 12px;
 
   @media (max-width: 600px) {
     padding: 12px;
@@ -228,7 +227,7 @@ const FieldWrapper = styled(Box)`
   display: flex;
   flex-direction: column;
   width: 100%;
-  gap: 4px;
+  gap: 6px;
 `;
 
 const StyledLabel = styled("label")`
@@ -240,9 +239,9 @@ const StyledLabel = styled("label")`
 `;
 
 const StyledHelperText = styled("p")`
-  font-size: 10px;
+  font-size: 12px;
   font-family: "Inter";
-  color: ${theme.palette.grey[400]};
+  color: ${theme.palette.grey[500]};
   margin: 0;
   line-height: 1.25;
 `;
