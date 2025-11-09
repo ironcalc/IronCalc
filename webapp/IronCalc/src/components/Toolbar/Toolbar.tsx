@@ -24,7 +24,6 @@ import {
   Grid2x2Check,
   Grid2x2X,
   ImageDown,
-  Inbox,
   Italic,
   Minus,
   PaintBucket,
@@ -519,12 +518,12 @@ function Toolbar(properties: ToolbarProperties) {
               {properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
             </StyledButton>
           </Tooltip>
-          <Tooltip title={t("toolbar.name_manager")}>
+          <Tooltip title={t("toolbar.named_ranges")}>
             <StyledButton
               type="button"
               $pressed={false}
               onClick={() => {
-                setNameManagerDialogOpen(true);
+                properties.openDrawer();
               }}
               disabled={!canEdit}
             >
@@ -541,19 +540,6 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             >
               <ImageDown />
-            </StyledButton>
-          </Tooltip>
-
-          <Tooltip title={t("toolbar.open_drawer")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
-              onClick={() => {
-                properties.openDrawer();
-              }}
-              disabled={!canEdit}
-            >
-              <Inbox />
             </StyledButton>
           </Tooltip>
         </ButtonGroup>
