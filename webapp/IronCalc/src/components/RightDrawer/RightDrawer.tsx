@@ -143,6 +143,12 @@ const DrawerContainer = styled("div")<DrawerContainerProps>(
     width: `${$drawerWidth}px`,
     display: "flex",
     flexDirection: "column",
+    "@media (max-width: 600px)": {
+      width: "100%",
+      borderLeft: "none",
+      top: "0px",
+      zIndex: 1000,
+    },
   }),
 );
 
