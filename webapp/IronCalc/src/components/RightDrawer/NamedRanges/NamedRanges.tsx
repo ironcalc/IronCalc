@@ -6,7 +6,6 @@ import { useState } from "react";
 import { theme } from "../../../theme";
 import EditNamedRange from "./EditNamedRange";
 
-// Normalize range strings for comparison (remove quotes, handle case, etc.)
 const normalizeRangeString = (range: string): string => {
   return range.trim().replace(/['"]/g, "");
 };
@@ -177,13 +176,14 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
             formula={formula}
             onSave={handleSave}
             onCancel={handleCancel}
+            definedNameList={definedNameList}
+            editingDefinedName={editingDefinedName}
           />
         </Content>
       </Container>
     );
   }
 
-  // Show list view
   const currentSelectedArea = selectedArea ? selectedArea() : null;
 
   return (

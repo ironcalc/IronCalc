@@ -120,9 +120,17 @@
     "scope_label": "Scope",
     "scope_helper": "The scope of the named range determines where it is available.",
     "refers_to": "Refers to",
+    "enter_formula": "Enter formula",
     "cancel": "Cancel",
     "apply": "Apply changes",
-    "discard": "Discard changes"
+    "discard": "Discard changes",
+    "errors": {
+      "range_name_required": "Range name is required",
+      "name_cannot_contain_spaces": "Name cannot contain spaces",
+      "name_cannot_start_with_number": "Name cannot start with a number",
+      "name_invalid_characters": "Name contains invalid characters. Use only letters, numbers, underscores, and periods. Must start with a letter or underscore.",
+      "name_already_exists": "This name already exists in the selected scope"
+    }
   },
   "cell_context": {
     "insert_row_above": "Insert 1 row above",

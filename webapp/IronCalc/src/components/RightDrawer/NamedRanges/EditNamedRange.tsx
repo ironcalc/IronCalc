@@ -1,4 +1,4 @@
-import type { WorksheetProperties } from "@ironcalc/wasm";
+import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
 import {
   Box,
   FormControl,
@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import { t } from "i18next";
 import { Check, Tag } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type React from "react";
 import { theme } from "../../../theme";
 import { Footer, NewButton } from "./NamedRanges";
@@ -23,6 +23,8 @@ interface EditNamedRangeProps {
   formula: string;
   onSave: (name: string, scope: string, formula: string) => string | undefined;
   onCancel: () => void;
+  definedNameList?: DefinedName[];
+  editingDefinedName?: DefinedName | null;
 }
 
 const EditNamedRange: React.FC<EditNamedRangeProps> = ({
@@ -32,13 +34,73 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
   formula: initialFormula,
   onSave,
   onCancel,
+  definedNameList = [],
+  editingDefinedName = null,
 }) => {
-  const [name, setName] = useState(initialName);
+  // Generate default name if empty
+  const getDefaultName = () => {
+    if (initialName) return initialName;
+    let counter = 1;
+    let defaultName = `Range${counter}`;
+    const scopeIndex = worksheets.findIndex((s) => s.name === initialScope);
+    const newScope = scopeIndex >= 0 ? scopeIndex : undefined;
+
+    while (
+      definedNameList.some(
+        (dn) => dn.name === defaultName && dn.scope === newScope,
+      )
+    ) {
+      counter++;
+      defaultName = `Range${counter}`;
+    }
+    return defaultName;
+  };
+
+  const [name, setName] = useState(getDefaultName());
   const [scope, setScope] = useState(initialScope);
   const [formula, setFormula] = useState(initialFormula);
-  const [formulaError, setFormulaError] = useState(false);
+  const [nameError, setNameError] = useState<string | undefined>(undefined);
+  const [formulaError, setFormulaError] = useState<string | undefined>(
+    undefined,
+  );
 
   const isSelected = (value: string) => scope === value;
+
+  // Validate name (format and duplicates)
+  useEffect(() => {
+    const trimmed = name.trim();
+    let error: string | undefined;
+
+    if (!trimmed) {
+      error = t("name_manager_dialog.errors.range_name_required");
+    } else if (trimmed.includes(" ")) {
+      error = t("name_manager_dialog.errors.name_cannot_contain_spaces");
+    } else if (/^\d/.test(trimmed)) {
+      error = t("name_manager_dialog.errors.name_cannot_start_with_number");
+    } else if (!/^[a-zA-Z_][a-zA-Z0-9_.]*$/.test(trimmed)) {
+      error = t("name_manager_dialog.errors.name_invalid_characters");
+    } else {
+      // Check for duplicates only if format is valid
+      const scopeIndex = worksheets.findIndex((s) => s.name === scope);
+      const newScope = scopeIndex >= 0 ? scopeIndex : undefined;
+      const existing = definedNameList.find(
+        (dn) =>
+          dn.name === trimmed &&
+          dn.scope === newScope &&
+          !(
+            editingDefinedName?.name === dn.name &&
+            editingDefinedName?.scope === dn.scope
+          ),
+      );
+      if (existing) {
+        error = t("name_manager_dialog.errors.name_already_exists");
+      }
+    }
+
+    setNameError(error);
+  }, [name, scope, definedNameList, editingDefinedName, worksheets]);
+
+  const hasAnyError = nameError !== undefined || formulaError !== undefined;
 
   return (
     <Container>
@@ -56,28 +118,29 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
             <StyledLabel htmlFor="name">
               {t("name_manager_dialog.range_name")}
             </StyledLabel>
-            <StyledTextField
-              autoFocus={true}
-              id="name"
-              variant="outlined"
-              size="small"
-              margin="none"
-              placeholder={t("name_manager_dialog.enter_range_name")}
-              fullWidth
-              error={formulaError}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              onKeyDown={(event) => {
-                event.stopPropagation();
-              }}
-              onClick={(event) => event.stopPropagation()}
-            />
+            <FormControl fullWidth size="small" error={!!nameError}>
+              <StyledTextField
+                autoFocus={true}
+                id="name"
+                variant="outlined"
+                size="small"
+                margin="none"
+                placeholder={t("name_manager_dialog.enter_range_name")}
+                fullWidth
+                error={!!nameError}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              />
+              {nameError && <StyledErrorText>{nameError}</StyledErrorText>}
+            </FormControl>
           </FieldWrapper>
           <FieldWrapper>
             <StyledLabel htmlFor="scope">
               {t("name_manager_dialog.scope_label")}
             </StyledLabel>
-            <FormControl fullWidth size="small" error={formulaError}>
+            <FormControl fullWidth size="small">
               <StyledSelect
                 id="scope"
                 value={scope}
@@ -139,22 +202,29 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
             <StyledLabel htmlFor="formula">
               {t("name_manager_dialog.refers_to")}
             </StyledLabel>
-            <StyledTextField
-              id="formula"
-              variant="outlined"
-              size="small"
-              margin="none"
-              fullWidth
-              multiline
-              rows={3}
-              error={formulaError}
-              value={formula}
-              onChange={(event) => setFormula(event.target.value)}
-              onKeyDown={(event) => {
-                event.stopPropagation();
-              }}
-              onClick={(event) => event.stopPropagation()}
-            />
+            <FormControl fullWidth size="small" error={!!formulaError}>
+              <StyledTextField
+                id="formula"
+                variant="outlined"
+                size="small"
+                margin="none"
+                placeholder={t("name_manager_dialog.enter_formula")}
+                fullWidth
+                multiline
+                rows={3}
+                error={!!formulaError}
+                value={formula}
+                onChange={(e) => {
+                  setFormula(e.target.value);
+                  setFormulaError(undefined);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              />
+              {formulaError && (
+                <StyledErrorText>{formulaError}</StyledErrorText>
+              )}
+            </FormControl>
           </FieldWrapper>
         </StyledBox>
       </ContentArea>
@@ -170,11 +240,17 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
         <NewButton
           variant="contained"
           disableElevation
+          disabled={hasAnyError}
           startIcon={<Check size={16} />}
           onClick={() => {
-            const error = onSave(name, scope, formula);
+            const error = onSave(name.trim(), scope, formula);
             if (error) {
-              setFormulaError(true);
+              const isFormulaError = /formula|reference|cell/i.test(error);
+              if (isFormulaError) {
+                setFormulaError(error);
+              } else {
+                setNameError(error);
+              }
             }
           }}
         >
@@ -343,15 +419,13 @@ const StyledHelperText = styled(FormHelperText)(() => ({
   fontFamily: "Inter",
   color: theme.palette.grey[500],
   margin: 0,
-  marginLeft: 0,
-  marginRight: 0,
+  marginTop: "6px",
   padding: 0,
   lineHeight: 1.4,
-  "&.MuiFormHelperText-root": {
-    marginTop: "6px",
-    marginLeft: 0,
-    marginRight: 0,
-  },
+}));
+
+const StyledErrorText = styled(StyledHelperText)(() => ({
+  color: theme.palette.error.main,
 }));
 
 export default EditNamedRange;
