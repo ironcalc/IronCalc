@@ -1,7 +1,15 @@
 import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
 import { Button, Tooltip, styled } from "@mui/material";
 import { t } from "i18next";
-import { ArrowLeft, BookOpen, PencilLine, Plus, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  PackageOpen,
+  PencilLine,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { theme } from "../../../theme";
 import EditNamedRange from "./EditNamedRange";
@@ -222,7 +230,16 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
         </Header>
       )}
       <Content>
-        {definedNameList.length > 0 && (
+        {definedNameList.length === 0 ? (
+          <EmptyStateMessage>
+            <IconWrapper>
+              <PackageOpen />
+            </IconWrapper>
+            {t("name_manager_dialog.empty_message1")}
+            <br />
+            {t("name_manager_dialog.empty_message2")}
+          </EmptyStateMessage>
+        ) : (
           <ListContainer>
             {definedNameList.map((definedName) => {
               const scopeName =
@@ -475,5 +492,38 @@ const IconButtonWrapper = styled("div")`
       stroke-width: 1.5;
     }
   `;
+
+const EmptyStateMessage = styled("div")`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  font-size: 12px;
+  color: ${theme.palette.grey["600"]};
+  font-family: "Inter";
+  z-index: 0;
+  margin: auto 0px;
+  position: relative;
+`;
+
+const IconWrapper = styled("div")`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  background-color: ${theme.palette.grey["100"]};
+  color: ${theme.palette.grey["600"]};
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+  }
+`;
 
 export default NamedRanges;
