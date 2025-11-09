@@ -1,5 +1,14 @@
 import type { WorksheetProperties } from "@ironcalc/wasm";
-import { Box, MenuItem, TextField, styled } from "@mui/material";
+import {
+  Box,
+  FormControl,
+  FormHelperText,
+  MenuItem,
+  Paper,
+  Select,
+  TextField,
+  styled,
+} from "@mui/material";
 import { t } from "i18next";
 import { Check, Tag } from "lucide-react";
 import { useState } from "react";
@@ -28,6 +37,8 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
   const [scope, setScope] = useState(initialScope);
   const [formula, setFormula] = useState(initialFormula);
   const [formulaError, setFormulaError] = useState(false);
+
+  const isSelected = (value: string) => scope === value;
 
   return (
     <Container>
@@ -66,32 +77,63 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
             <StyledLabel htmlFor="scope">
               {t("name_manager_dialog.scope_label")}
             </StyledLabel>
-            <StyledTextField
-              id="scope"
-              variant="outlined"
-              select
-              size="small"
-              margin="none"
-              fullWidth
-              error={formulaError}
-              value={scope}
-              onChange={(event) => {
-                setScope(event.target.value);
-              }}
-            >
-              <MenuItem value={"[Global]"}>
-                <MenuSpan>{t("name_manager_dialog.workbook")}</MenuSpan>
-                <MenuSpanGrey>{` ${t("name_manager_dialog.global")}`}</MenuSpanGrey>
-              </MenuItem>
-              {worksheets.map((option) => (
-                <MenuItem key={option.name} value={option.name}>
-                  <MenuSpan>{option.name}</MenuSpan>
-                </MenuItem>
-              ))}
-            </StyledTextField>
-            <StyledHelperText>
-              {t("name_manager_dialog.scope_helper")}
-            </StyledHelperText>
+            <FormControl fullWidth size="small" error={formulaError}>
+              <StyledSelect
+                id="scope"
+                value={scope}
+                onChange={(event) => {
+                  setScope(event.target.value as string);
+                }}
+                renderValue={(value: unknown) => {
+                  const stringValue = value as string;
+                  return stringValue === "[Global]" ? (
+                    <>
+                      <MenuSpan>{t("name_manager_dialog.workbook")}</MenuSpan>
+                      <MenuSpanGrey>{` ${t("name_manager_dialog.global")}`}</MenuSpanGrey>
+                    </>
+                  ) : (
+                    stringValue
+                  );
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    component: StyledMenuPaper,
+                  },
+                  anchorOrigin: {
+                    vertical: "bottom",
+                    horizontal: "center",
+                  },
+                  transformOrigin: {
+                    vertical: "top",
+                    horizontal: "center",
+                  },
+                  marginThreshold: 0,
+                }}
+              >
+                <StyledMenuItem value={"[Global]"}>
+                  {isSelected("[Global]") ? <CheckIcon /> : <IconPlaceholder />}
+                  <MenuSpan $selected={isSelected("[Global]")}>
+                    {t("name_manager_dialog.workbook")}
+                  </MenuSpan>
+                  <MenuSpanGrey>{` ${t("name_manager_dialog.global")}`}</MenuSpanGrey>
+                </StyledMenuItem>
+                {worksheets.map((option) => (
+                  <StyledMenuItem key={option.name} value={option.name}>
+                    {isSelected(option.name) ? (
+                      <CheckIcon />
+                    ) : (
+                      <IconPlaceholder />
+                    )}
+                    <MenuSpan $selected={isSelected(option.name)}>
+                      {option.name}
+                    </MenuSpan>
+                  </StyledMenuItem>
+                ))}
+              </StyledSelect>
+              <StyledHelperText>
+                {t("name_manager_dialog.scope_helper")}
+              </StyledHelperText>
+            </FormControl>
           </FieldWrapper>
           <FieldWrapper>
             <StyledLabel htmlFor="formula">
@@ -154,9 +196,10 @@ const ContentArea = styled("div")({
   overflow: "auto",
 });
 
-const MenuSpan = styled("span")`
+const MenuSpan = styled("span")<{ $selected?: boolean }>`
   font-size: 12px;
   font-family: "Inter";
+  font-weight: ${(props) => (props.$selected ? "bold" : "normal")};
 `;
 
 const MenuSpanGrey = styled("span")`
@@ -164,6 +207,16 @@ const MenuSpanGrey = styled("span")`
   font-size: 12px;
   font-family: "Inter";
   color: ${theme.palette.grey[400]};
+`;
+
+const CheckIcon = () => (
+  <Check style={{ width: "16px", height: "16px", marginRight: "8px" }} />
+);
+
+const IconPlaceholder = styled("div")`
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
 `;
 
 const HeaderBox = styled(Box)`
@@ -222,12 +275,51 @@ const StyledTextField = styled(TextField)(() => ({
     margin: 0,
     fontFamily: "Inter",
     fontSize: "12px",
+    padding: "8px",
   },
   "& .MuiInputBase-input": {
-    padding: "8px",
+    padding: "0px",
   },
   "& .MuiInputBase-inputMultiline": {
     padding: "0px",
+  },
+}));
+
+const StyledSelect = styled(Select)(() => ({
+  fontFamily: "Inter",
+  fontSize: "12px",
+  "& .MuiSelect-select": {
+    padding: "8px",
+  },
+}));
+
+const StyledMenuPaper = styled(Paper)(() => ({
+  padding: 4,
+  marginTop: "4px",
+  "&.MuiPaper-root": {
+    borderRadius: "8px",
+  },
+  "& .MuiList-padding": {
+    padding: 0,
+  },
+  "& .MuiList-root": {
+    padding: 0,
+  },
+}));
+
+const StyledMenuItem = styled(MenuItem)(() => ({
+  padding: 8,
+  borderRadius: 4,
+  display: "flex",
+  alignItems: "center",
+  "&.Mui-selected": {
+    backgroundColor: "transparent",
+    "&:hover": {
+      backgroundColor: theme.palette.grey[50],
+    },
+  },
+  "&:hover": {
+    backgroundColor: theme.palette.grey[50],
   },
 }));
 
@@ -246,12 +338,20 @@ const StyledLabel = styled("label")`
   display: block;
 `;
 
-const StyledHelperText = styled("p")`
-  font-size: 12px;
-  font-family: "Inter";
-  color: ${theme.palette.grey[500]};
-  margin: 0;
-  line-height: 1.25;
-`;
+const StyledHelperText = styled(FormHelperText)(() => ({
+  fontSize: "12px",
+  fontFamily: "Inter",
+  color: theme.palette.grey[500],
+  margin: 0,
+  marginLeft: 0,
+  marginRight: 0,
+  padding: 0,
+  lineHeight: 1.4,
+  "&.MuiFormHelperText-root": {
+    marginTop: "6px",
+    marginLeft: 0,
+    marginRight: 0,
+  },
+}));
 
 export default EditNamedRange;
