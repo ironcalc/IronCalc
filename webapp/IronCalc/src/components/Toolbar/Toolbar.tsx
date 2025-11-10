@@ -51,8 +51,6 @@ import {
   decreaseDecimalPlaces,
   increaseDecimalPlaces,
 } from "../FormatMenu/formatUtil";
-import NameManagerDialog from "../NameManagerDialog";
-import type { NameManagerProperties } from "../NameManagerDialog/NameManagerDialog";
 import { TOOLBAR_HEIGHT } from "../constants";
 
 type ToolbarProperties = {
@@ -89,7 +87,6 @@ type ToolbarProperties = {
   numFmt: string;
   showGridLines: boolean;
   onToggleShowGridLines: (show: boolean) => void;
-  nameManagerProperties: NameManagerProperties;
   openDrawer: () => void;
 };
 
@@ -97,7 +94,6 @@ function Toolbar(properties: ToolbarProperties) {
   const [fontColorPickerOpen, setFontColorPickerOpen] = useState(false);
   const [fillColorPickerOpen, setFillColorPickerOpen] = useState(false);
   const [borderPickerOpen, setBorderPickerOpen] = useState(false);
-  const [nameManagerDialogOpen, setNameManagerDialogOpen] = useState(false);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
 
@@ -587,13 +583,6 @@ function Toolbar(properties: ToolbarProperties) {
           }}
           anchorEl={borderButton}
           open={borderPickerOpen}
-        />
-        <NameManagerDialog
-          open={nameManagerDialogOpen}
-          onClose={() => {
-            setNameManagerDialogOpen(false);
-          }}
-          model={properties.nameManagerProperties}
         />
       </ToolbarContainer>
       {showRightArrow && (
