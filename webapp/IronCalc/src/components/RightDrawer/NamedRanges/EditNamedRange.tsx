@@ -16,12 +16,21 @@ import type React from "react";
 import { theme } from "../../../theme";
 import { Footer, NewButton } from "./NamedRanges";
 
+export interface SaveError {
+  nameError?: string;
+  formulaError?: string;
+}
+
 interface EditNamedRangeProps {
   worksheets: WorksheetProperties[];
   name: string;
   scope: string;
   formula: string;
-  onSave: (name: string, scope: string, formula: string) => string | undefined;
+  onSave: (
+    name: string,
+    scope: string,
+    formula: string,
+  ) => SaveError | undefined;
   onCancel: () => void;
   definedNameList?: DefinedName[];
   editingDefinedName?: DefinedName | null;
@@ -245,11 +254,11 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
           onClick={() => {
             const error = onSave(name.trim(), scope, formula);
             if (error) {
-              const isFormulaError = /formula|reference|cell/i.test(error);
-              if (isFormulaError) {
-                setFormulaError(error);
-              } else {
-                setNameError(error);
+              if (error.nameError) {
+                setNameError(error.nameError);
+              }
+              if (error.formulaError) {
+                setFormulaError(error.formulaError);
               }
             }
           }}
