@@ -665,38 +665,6 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setShowGridLines(sheet, show);
           setRedrawId((id) => id + 1);
         }}
-        nameManagerProperties={{
-          newDefinedName: (
-            name: string,
-            scope: number | undefined,
-            formula: string,
-          ) => {
-            model.newDefinedName(name, scope, formula);
-            setRedrawId((id) => id + 1);
-          },
-          updateDefinedName: (
-            name: string,
-            scope: number | undefined,
-            newName: string,
-            newScope: number | undefined,
-            newFormula: string,
-          ) => {
-            model.updateDefinedName(name, scope, newName, newScope, newFormula);
-            setRedrawId((id) => id + 1);
-          },
-          deleteDefinedName: (name: string, scope: number | undefined) => {
-            model.deleteDefinedName(name, scope);
-            setRedrawId((id) => id + 1);
-          },
-          selectedArea: () => {
-            const worksheetNames = worksheets.map((s) => s.name);
-            const selectedView = model.getSelectedView();
-
-            return getFullRangeToString(selectedView, worksheetNames);
-          },
-          worksheets,
-          definedNameList: model.getDefinedNameList(),
-        }}
         openDrawer={() => {
           setDrawerOpen(true);
         }}
