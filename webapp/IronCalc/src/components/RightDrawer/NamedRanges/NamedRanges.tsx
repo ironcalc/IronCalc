@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { theme } from "../../../theme";
-import EditNamedRange from "./EditNamedRange";
+import EditNamedRange, { type SaveError } from "./EditNamedRange";
 
 const normalizeRangeString = (range: string): string => {
   return range.trim().replace(/['"]/g, "");
@@ -72,7 +72,7 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
     name: string,
     scope: string,
     formula: string,
-  ): string | undefined => {
+  ): SaveError | undefined => {
     if (isCreatingNew) {
       if (!newDefinedName) return undefined;
 
@@ -83,7 +83,8 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
         setIsCreatingNew(false);
         return undefined;
       } catch (e) {
-        return `${e}`;
+        // Since name validation is done client-side, errors from model are formula errors
+        return { formulaError: `${e}` };
       }
     } else {
       if (!editingDefinedName || !updateDefinedName) return undefined;
@@ -101,7 +102,8 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
         setEditingDefinedName(null);
         return undefined;
       } catch (e) {
-        return `${e}`;
+        // Since name validation is done client-side, errors from model are formula errors
+        return { formulaError: `${e}` };
       }
     }
   };
@@ -269,6 +271,15 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                           e.stopPropagation();
                           handleListItemClick(definedName);
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleListItemClick(definedName);
+                          }
+                        }}
+                        aria-label={t("name_manager_dialog.edit")}
+                        tabIndex={0}
                       >
                         <PencilLine size={16} />
                       </IconButton>
@@ -284,6 +295,20 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                             );
                           }
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (deleteDefinedName) {
+                              deleteDefinedName(
+                                definedName.name,
+                                definedName.scope,
+                              );
+                            }
+                          }
+                        }}
+                        aria-label={t("name_manager_dialog.delete")}
+                        tabIndex={0}
                       >
                         <Trash2 size={16} />
                       </IconButton>
