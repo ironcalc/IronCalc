@@ -66,7 +66,7 @@ function App() {
         const newModel = loadSelectedModelFromStorage();
         if (!newModel) {
           setShowWelcomeDialog(true);
-          const createdModel = createModelWithSafeTimezone();
+          const createdModel = createModelWithSafeTimezone("template");
           setModel(createdModel);
         } else {
           setModel(newModel);
