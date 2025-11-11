@@ -1250,11 +1250,8 @@ impl Model {
     } else {
         Ok((f * PI).sqrt())
     });
-    single_number_fn!(fn_acot, |f| if f == 0.0 {
-        Err(Error::DIV)
-    } else {
-        Ok(f64::atan(1.0 / f))
-    });
+
+    single_number_fn!(fn_acot, |f| Ok(f64::atan(1.0 / f)));
     single_number_fn!(fn_acoth, |f: f64| if f.abs() == 1.0 {
         Err(Error::DIV)
     } else {
@@ -1280,16 +1277,8 @@ impl Model {
     } else {
         Ok(1.0 / f64::sinh(f))
     });
-    single_number_fn!(fn_sec, |f| if f == 0.0 {
-        Err(Error::DIV)
-    } else {
-        Ok(1.0 / f64::cos(f))
-    });
-    single_number_fn!(fn_sech, |f| if f == 0.0 {
-        Err(Error::DIV)
-    } else {
-        Ok(1.0 / f64::cosh(f))
-    });
+    single_number_fn!(fn_sec, |f| Ok(1.0 / f64::cos(f)));
+    single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));
     single_number_fn!(fn_exp, |f: f64| Ok(f64::exp(f)));
     single_number_fn!(fn_fact, |x: f64| {
         let x = x.floor();
