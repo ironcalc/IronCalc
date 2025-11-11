@@ -85,13 +85,13 @@ function getNewName(existingNames: string[]): string {
   return "Workbook-Infinity";
 }
 
-export function createModelWithSafeTimezone(): Model {
+export function createModelWithSafeTimezone(name: string): Model {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return new Model("template", "en", tz);
+    return new Model(name, "en", tz);
   } catch {
     console.warn("Failed to get timezone, defaulting to UTC");
-    return new Model("template", "en", "UTC");
+    return new Model(name, "en", "UTC");
   }
 }
 
@@ -99,7 +99,7 @@ export function createNewModel(): Model {
   const models = getModelsMetadata();
   const name = getNewName(Object.values(models).map((m) => m.name));
 
-  const model = createModelWithSafeTimezone();
+  const model = createModelWithSafeTimezone(name);
   const uuid = randomUUID();
   localStorage.setItem("selected", uuid);
   localStorage.setItem(uuid, bytesToBase64(model.toBytes()));
