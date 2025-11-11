@@ -162,6 +162,7 @@
     "custom": "Custom"
   },
   "right_drawer": {
-    "close": "Close"
+    "close": "Close",
+    "resize_drawer": "Resize drawer"
   }
 }

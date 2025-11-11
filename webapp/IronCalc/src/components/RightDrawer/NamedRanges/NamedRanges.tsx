@@ -25,21 +25,21 @@ interface NamedRangesProps {
   worksheets?: WorksheetProperties[];
   updateDefinedName?: (
     name: string,
-    scope: number | undefined,
+    scope: number | null,
     newName: string,
-    newScope: number | undefined,
+    newScope: number | null,
     newFormula: string,
   ) => void;
   newDefinedName?: (
     name: string,
-    scope: number | undefined,
+    scope: number | null,
     formula: string,
   ) => void;
-  deleteDefinedName?: (name: string, scope: number | undefined) => void;
+  deleteDefinedName?: (name: string, scope: number | null) => void;
   selectedArea?: () => string;
 }
 
-const NamedRanges: React.FC<NamedRangesProps> = ({
+function NamedRanges({
   title,
   onClose,
   definedNameList = [],
@@ -48,7 +48,7 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
   newDefinedName,
   deleteDefinedName,
   selectedArea,
-}) => {
+}: NamedRangesProps) {
   const [editingDefinedName, setEditingDefinedName] =
     useState<DefinedName | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -72,35 +72,37 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
     name: string,
     scope: string,
     formula: string,
-  ): SaveError | undefined => {
+  ): SaveError => {
     if (isCreatingNew) {
-      if (!newDefinedName) return undefined;
+      if (!newDefinedName) return {};
 
       const scope_index = worksheets.findIndex((s) => s.name === scope);
-      const newScope = scope_index >= 0 ? scope_index : undefined;
+      const newScope = scope_index >= 0 ? scope_index : null;
       try {
         newDefinedName(name, newScope, formula);
         setIsCreatingNew(false);
-        return undefined;
+        return {};
       } catch (e) {
         // Since name validation is done client-side, errors from model are formula errors
         return { formulaError: `${e}` };
       }
     } else {
-      if (!editingDefinedName || !updateDefinedName) return undefined;
+      if (!editingDefinedName || !updateDefinedName) return {};
 
       const scope_index = worksheets.findIndex((s) => s.name === scope);
-      const newScope = scope_index >= 0 ? scope_index : undefined;
+      const newScope = scope_index >= 0 ? scope_index : null;
       try {
         updateDefinedName(
           editingDefinedName.name,
-          editingDefinedName.scope,
+          editingDefinedName.scope !== undefined
+            ? editingDefinedName.scope
+            : null,
           name,
           newScope,
           formula,
         );
         setEditingDefinedName(null);
-        return undefined;
+        return {};
       } catch (e) {
         // Since name validation is done client-side, errors from model are formula errors
         return { formulaError: `${e}` };
@@ -140,7 +142,7 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                   handleCancel();
                 }
               }}
-              aria-label="Back to list"
+              aria-label={t("name_manager_dialog.back")}
               tabIndex={0}
             >
               <ArrowLeft />
@@ -170,7 +172,7 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                     onClose();
                   }
                 }}
-                aria-label="Close drawer"
+                aria-label={t("right_drawer.close")}
                 tabIndex={0}
               >
                 <X />
@@ -223,7 +225,7 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                   onClose();
                 }
               }}
-              aria-label="Close drawer"
+              aria-label={t("right_drawer.close")}
               tabIndex={0}
             >
               <X />
@@ -257,6 +259,13 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                   key={`${definedName.name}-${definedName.scope}`}
                   tabIndex={0}
                   $isSelected={isSelected}
+                  onClick={() => handleListItemClick(definedName)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleListItemClick(definedName);
+                    }
+                  }}
                 >
                   <ListItemText>
                     <NameText>{definedName.name}</NameText>
@@ -291,7 +300,9 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                           if (deleteDefinedName) {
                             deleteDefinedName(
                               definedName.name,
-                              definedName.scope,
+                              definedName.scope !== undefined
+                                ? definedName.scope
+                                : null,
                             );
                           }
                         }}
@@ -302,7 +313,9 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
                             if (deleteDefinedName) {
                               deleteDefinedName(
                                 definedName.name,
-                                definedName.scope,
+                                definedName.scope !== undefined
+                                  ? definedName.scope
+                                  : null,
                               );
                             }
                           }
@@ -340,7 +353,7 @@ const NamedRanges: React.FC<NamedRangesProps> = ({
       </Footer>
     </Container>
   );
-};
+}
 
 const Container = styled("div")({
   height: "100%",

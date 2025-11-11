@@ -12,7 +12,6 @@ import {
 import { t } from "i18next";
 import { Check, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
-import type React from "react";
 import { theme } from "../../../theme";
 import { Footer, NewButton } from "./NamedRanges";
 
@@ -26,27 +25,22 @@ interface EditNamedRangeProps {
   name: string;
   scope: string;
   formula: string;
-  onSave: (
-    name: string,
-    scope: string,
-    formula: string,
-  ) => SaveError | undefined;
+  onSave: (name: string, scope: string, formula: string) => SaveError;
   onCancel: () => void;
-  definedNameList?: DefinedName[];
-  editingDefinedName?: DefinedName | null;
+  definedNameList: DefinedName[];
+  editingDefinedName: DefinedName | null;
 }
 
-const EditNamedRange: React.FC<EditNamedRangeProps> = ({
+function EditNamedRange({
   worksheets,
   name: initialName,
   scope: initialScope,
   formula: initialFormula,
   onSave,
   onCancel,
-  definedNameList = [],
-  editingDefinedName = null,
-}) => {
-  // Generate default name if empty
+  definedNameList,
+  editingDefinedName,
+}: EditNamedRangeProps) {
   const getDefaultName = () => {
     if (initialName) return initialName;
     let counter = 1;
@@ -253,13 +247,11 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
           startIcon={<Check size={16} />}
           onClick={() => {
             const error = onSave(name.trim(), scope, formula);
-            if (error) {
-              if (error.nameError) {
-                setNameError(error.nameError);
-              }
-              if (error.formulaError) {
-                setFormulaError(error.formulaError);
-              }
+            if (error.nameError) {
+              setNameError(error.nameError);
+            }
+            if (error.formulaError) {
+              setFormulaError(error.formulaError);
             }
           }}
         >
@@ -268,7 +260,7 @@ const EditNamedRange: React.FC<EditNamedRangeProps> = ({
       </Footer>
     </Container>
   );
-};
+}
 
 const Container = styled("div")({
   height: "100%",

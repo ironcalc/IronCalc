@@ -5,6 +5,7 @@ import type {
   WorksheetProperties,
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
+import { t } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import FormulaBar from "../FormulaBar/FormulaBar";
 import RightDrawer, { DEFAULT_DRAWER_WIDTH } from "../RightDrawer/RightDrawer";
@@ -742,28 +743,35 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onClose={() => setDrawerOpen(false)}
         width={drawerWidth}
         onWidthChange={setDrawerWidth}
+        title={t("name_manager_dialog.title")}
         definedNameList={model.getDefinedNameList()}
         worksheets={worksheets}
         updateDefinedName={(
           name: string,
-          scope: number | undefined,
+          scope: number | null,
           newName: string,
-          newScope: number | undefined,
+          newScope: number | null,
           newFormula: string,
         ) => {
-          model.updateDefinedName(name, scope, newName, newScope, newFormula);
+          model.updateDefinedName(
+            name,
+            scope ?? undefined,
+            newName,
+            newScope ?? undefined,
+            newFormula,
+          );
           setRedrawId((id) => id + 1);
         }}
         newDefinedName={(
           name: string,
-          scope: number | undefined,
+          scope: number | null,
           formula: string,
         ) => {
-          model.newDefinedName(name, scope, formula);
+          model.newDefinedName(name, scope ?? undefined, formula);
           setRedrawId((id) => id + 1);
         }}
-        deleteDefinedName={(name: string, scope: number | undefined) => {
-          model.deleteDefinedName(name, scope);
+        deleteDefinedName={(name: string, scope: number | null) => {
+          model.deleteDefinedName(name, scope ?? undefined);
           setRedrawId((id) => id + 1);
         }}
         selectedArea={() => {

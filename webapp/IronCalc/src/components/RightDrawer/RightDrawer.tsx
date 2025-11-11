@@ -1,7 +1,8 @@
 import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
-import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import { TOOLBAR_HEIGHT } from "../constants";
 import NamedRanges from "./NamedRanges/NamedRanges";
@@ -13,38 +14,29 @@ const MAX_DRAWER_WIDTH = 500;
 interface RightDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  width?: number;
-  onWidthChange?: (width: number) => void;
-  children?: ReactNode;
-  showCloseButton?: boolean;
-  backgroundColor?: string;
-  title?: string;
-  definedNameList?: DefinedName[];
-  worksheets?: WorksheetProperties[];
-  updateDefinedName?: (
+  width: number;
+  onWidthChange: (width: number) => void;
+  title: string;
+  definedNameList: DefinedName[];
+  worksheets: WorksheetProperties[];
+  updateDefinedName: (
     name: string,
-    scope: number | undefined,
+    scope: number | null,
     newName: string,
-    newScope: number | undefined,
+    newScope: number | null,
     newFormula: string,
   ) => void;
-  newDefinedName?: (
-    name: string,
-    scope: number | undefined,
-    formula: string,
-  ) => void;
-  deleteDefinedName?: (name: string, scope: number | undefined) => void;
-  selectedArea?: () => string;
+  newDefinedName: (name: string, scope: number | null, formula: string) => void;
+  deleteDefinedName: (name: string, scope: number | null) => void;
+  selectedArea: () => string;
 }
 
 const RightDrawer = ({
   isOpen,
   onClose,
-  width = DEFAULT_DRAWER_WIDTH,
+  width,
   onWidthChange,
-  children,
-  showCloseButton = true,
-  title = "Named Ranges",
+  title,
   definedNameList,
   worksheets,
   updateDefinedName,
@@ -52,6 +44,7 @@ const RightDrawer = ({
   deleteDefinedName,
   selectedArea,
 }: RightDrawerProps) => {
+  const { t } = useTranslation();
   const [drawerWidth, setDrawerWidth] = useState(width);
   const [isResizing, setIsResizing] = useState(false);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
@@ -80,7 +73,7 @@ const RightDrawer = ({
         Math.min(MAX_DRAWER_WIDTH, newWidth),
       );
       setDrawerWidth(clampedWidth);
-      onWidthChange?.(clampedWidth);
+      onWidthChange(clampedWidth);
     };
 
     const handleMouseUp = () => {
@@ -108,14 +101,13 @@ const RightDrawer = ({
         ref={resizeHandleRef}
         onMouseDown={handleMouseDown}
         $isResizing={isResizing}
-        aria-label="Resize drawer"
+        aria-label={t("right_drawer.resize_drawer")}
       />
-      {children}
       <Divider />
       <DrawerContent>
         <NamedRanges
           title={title}
-          onClose={showCloseButton ? onClose : undefined}
+          onClose={onClose}
           definedNameList={definedNameList}
           worksheets={worksheets}
           updateDefinedName={updateDefinedName}
