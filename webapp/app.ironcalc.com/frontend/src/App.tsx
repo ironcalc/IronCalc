@@ -10,6 +10,7 @@ import {
   uploadFile,
 } from "./components/rpc";
 import {
+  createModelWithSafeTimezone,
   createNewModel,
   deleteModelByUuid,
   deleteSelectedModel,
@@ -65,7 +66,7 @@ function App() {
         const newModel = loadSelectedModelFromStorage();
         if (!newModel) {
           setShowWelcomeDialog(true);
-          const createdModel = new Model("template", "en", "UTC");
+          const createdModel = createModelWithSafeTimezone();
           setModel(createdModel);
         } else {
           setModel(newModel);
