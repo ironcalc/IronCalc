@@ -52,7 +52,6 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
     event: React.MouseEvent<HTMLButtonElement>,
     uuid: string,
   ) => {
-    console.log("Menu open", uuid);
     event.stopPropagation();
     setSelectedWorkbookUuid(uuid);
     setMenuAnchorEl(event.currentTarget);
@@ -61,16 +60,9 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
   };
 
   const handleMenuClose = () => {
-    console.log(
-      "Menu closing, selectedWorkbookUuid:",
-      selectedWorkbookUuid,
-      "intendedSelection:",
-      intendedSelection,
-    );
     setMenuAnchorEl(null);
     // If we have an intended selection, make sure it's still selected
     if (intendedSelection && intendedSelection !== selectedUuid) {
-      console.log("Re-selecting intended workbook:", intendedSelection);
       setModel(intendedSelection);
     }
     // Don't reset selectedWorkbookUuid here - we want to keep track of which workbook was selected
@@ -78,7 +70,6 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
   };
 
   const handleDeleteClick = (uuid: string) => {
-    console.log("Delete workbook:", uuid);
     setWorkbookToDelete(uuid);
     setIsDeleteDialogOpen(true);
     setIntendedSelection(null);
