@@ -73,6 +73,7 @@ mod test_issue_483;
 mod test_ln;
 mod test_log;
 mod test_log10;
+mod test_mod_quotient;
 mod test_networkdays;
 mod test_percentage;
 mod test_set_functions_error_handling;
