@@ -33,7 +33,8 @@ fn now_basic_utc() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"20/03/2023");
-    assert_eq!(model._get_text("A2"), *"45005.572511574");
+    // 45005.572511574
+    assert_eq!(model._get_text("A2"), *"20/03/2023 13:44:25");
 }
 
 #[test]
@@ -46,5 +47,5 @@ fn now_basic_europe_berlin() {
 
     assert_eq!(model._get_text("A1"), *"20/03/2023");
     // This is UTC + 1 hour: 45005.572511574 + 1/24
-    assert_eq!(model._get_text("A2"), *"45005.614178241");
+    assert_eq!(model._get_text("A2"), *"20/03/2023 14:44:25");
 }

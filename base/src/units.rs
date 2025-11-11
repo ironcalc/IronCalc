@@ -329,6 +329,7 @@ impl Model {
             Function::Tbillyield => self.units_fn_percentage_2(args, cell),
             Function::Date => self.units_fn_dates(args, cell),
             Function::Today => self.units_fn_dates(args, cell),
+            Function::Now => self.units_fn_date_times(args, cell),
             _ => None,
         }
     }
@@ -374,5 +375,9 @@ impl Model {
     fn units_fn_dates(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
         // TODO: update locale and use it here
         Some(Units::Date("dd/mm/yyyy".to_string()))
+    }
+
+    fn units_fn_date_times(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
+        Some(Units::Date("dd/mm/yyyy hh:mm:ss".to_string()))
     }
 }
