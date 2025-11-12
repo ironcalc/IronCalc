@@ -111,7 +111,7 @@
     "close": "Close dialog",
     "delete": "Delete Range",
     "edit": "Edit Range",
-    "back": "Back to list",
+    "back_to_list": "Back to list",
     "add_new_range": "Add a new range",
     "edit_range": "Edit range",
     "new_named_range": "New Named Range",

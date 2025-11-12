@@ -49,11 +49,6 @@ const RightDrawer = ({
   const [isResizing, setIsResizing] = useState(false);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
 
-  // Update local width when prop changes
-  useEffect(() => {
-    setDrawerWidth(width);
-  }, [width]);
-
   const handleMouseDown = useCallback((e: ReactMouseEvent) => {
     e.preventDefault();
     setIsResizing(true);

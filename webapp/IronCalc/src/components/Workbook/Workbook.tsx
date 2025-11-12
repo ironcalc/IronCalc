@@ -753,13 +753,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           newScope: number | null,
           newFormula: string,
         ) => {
-          model.updateDefinedName(
-            name,
-            scope ?? undefined,
-            newName,
-            newScope ?? undefined,
-            newFormula,
-          );
+          model.updateDefinedName(name, scope, newName, newScope, newFormula);
           setRedrawId((id) => id + 1);
         }}
         newDefinedName={(
@@ -767,11 +761,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           scope: number | null,
           formula: string,
         ) => {
-          model.newDefinedName(name, scope ?? undefined, formula);
+          model.newDefinedName(name, scope, formula);
           setRedrawId((id) => id + 1);
         }}
         deleteDefinedName={(name: string, scope: number | null) => {
-          model.deleteDefinedName(name, scope ?? undefined);
+          model.deleteDefinedName(name, scope);
           setRedrawId((id) => id + 1);
         }}
         selectedArea={() => {
