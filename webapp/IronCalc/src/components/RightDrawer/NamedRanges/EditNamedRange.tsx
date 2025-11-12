@@ -46,7 +46,7 @@ function EditNamedRange({
     let counter = 1;
     let defaultName = `Range${counter}`;
     const scopeIndex = worksheets.findIndex((s) => s.name === initialScope);
-    const newScope = scopeIndex >= 0 ? scopeIndex : undefined;
+    const newScope = scopeIndex >= 0 ? scopeIndex : null;
 
     while (
       definedNameList.some(
@@ -62,17 +62,15 @@ function EditNamedRange({
   const [name, setName] = useState(getDefaultName());
   const [scope, setScope] = useState(initialScope);
   const [formula, setFormula] = useState(initialFormula);
-  const [nameError, setNameError] = useState<string | undefined>(undefined);
-  const [formulaError, setFormulaError] = useState<string | undefined>(
-    undefined,
-  );
+  const [nameError, setNameError] = useState<string>("");
+  const [formulaError, setFormulaError] = useState<string>("");
 
   const isSelected = (value: string) => scope === value;
 
   // Validate name (format and duplicates)
   useEffect(() => {
     const trimmed = name.trim();
-    let error: string | undefined;
+    let error = "";
 
     if (!trimmed) {
       error = t("name_manager_dialog.errors.range_name_required");
@@ -85,7 +83,7 @@ function EditNamedRange({
     } else {
       // Check for duplicates only if format is valid
       const scopeIndex = worksheets.findIndex((s) => s.name === scope);
-      const newScope = scopeIndex >= 0 ? scopeIndex : undefined;
+      const newScope = scopeIndex >= 0 ? scopeIndex : null;
       const existing = definedNameList.find(
         (dn) =>
           dn.name === trimmed &&
@@ -103,7 +101,7 @@ function EditNamedRange({
     setNameError(error);
   }, [name, scope, definedNameList, editingDefinedName, worksheets]);
 
-  const hasAnyError = nameError !== undefined || formulaError !== undefined;
+  const hasAnyError = nameError !== "" || formulaError !== "";
 
   return (
     <Container>
@@ -219,7 +217,7 @@ function EditNamedRange({
                 value={formula}
                 onChange={(e) => {
                   setFormula(e.target.value);
-                  setFormulaError(undefined);
+                  setFormulaError("");
                 }}
                 onKeyDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}

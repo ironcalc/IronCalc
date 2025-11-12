@@ -94,9 +94,7 @@ function NamedRanges({
       try {
         updateDefinedName(
           editingDefinedName.name,
-          editingDefinedName.scope !== undefined
-            ? editingDefinedName.scope
-            : null,
+          editingDefinedName.scope ?? null,
           name,
           newScope,
           formula,
@@ -119,7 +117,7 @@ function NamedRanges({
     if (editingDefinedName) {
       name = editingDefinedName.name;
       scopeName =
-        editingDefinedName.scope !== undefined
+        editingDefinedName.scope != null
           ? worksheets[editingDefinedName.scope]?.name || "[unknown]"
           : "[Global]";
       formula = editingDefinedName.formula;
@@ -134,7 +132,7 @@ function NamedRanges({
     return (
       <Container>
         <EditHeader>
-          <Tooltip title={t("name_manager_dialog.back")}>
+          <Tooltip title={t("name_manager_dialog.back_to_list")}>
             <IconButtonWrapper
               onClick={handleCancel}
               onKeyDown={(e) => {
@@ -142,7 +140,7 @@ function NamedRanges({
                   handleCancel();
                 }
               }}
-              aria-label={t("name_manager_dialog.back")}
+              aria-label={t("name_manager_dialog.back_to_list")}
               tabIndex={0}
             >
               <ArrowLeft />
@@ -247,7 +245,7 @@ function NamedRanges({
           <ListContainer>
             {definedNameList.map((definedName) => {
               const scopeName =
-                definedName.scope !== undefined
+                definedName.scope != null
                   ? worksheets[definedName.scope]?.name || "[Unknown]"
                   : "[Global]";
               const isSelected =
@@ -300,9 +298,7 @@ function NamedRanges({
                           if (deleteDefinedName) {
                             deleteDefinedName(
                               definedName.name,
-                              definedName.scope !== undefined
-                                ? definedName.scope
-                                : null,
+                              definedName.scope ?? null,
                             );
                           }
                         }}
@@ -313,9 +309,7 @@ function NamedRanges({
                             if (deleteDefinedName) {
                               deleteDefinedName(
                                 definedName.name,
-                                definedName.scope !== undefined
-                                  ? definedName.scope
-                                  : null,
+                                definedName.scope ?? null,
                               );
                             }
                           }
