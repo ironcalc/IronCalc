@@ -8,6 +8,7 @@ use crate::{
 };
 
 pub(crate) mod binary_search;
+mod database;
 mod date_and_time;
 mod engineering;
 mod financial;
@@ -310,10 +311,18 @@ pub enum Function {
     Delta,
     Gestep,
     Subtotal,
+
+    // Database
+    Daverage,
+    Dcount,
+    Dget,
+    Dmax,
+    Dmin,
+    Dsum,
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 256> {
+    pub fn into_iter() -> IntoIter<Function, 262> {
         [
             Function::And,
             Function::False,
@@ -571,6 +580,12 @@ impl Function {
             Function::Cell,
             Function::Info,
             Function::Sheets,
+            Function::Daverage,
+            Function::Dcount,
+            Function::Dget,
+            Function::Dmax,
+            Function::Dmin,
+            Function::Dsum,
         ]
         .into_iter()
     }
@@ -917,6 +932,13 @@ impl Function {
             "INFO" => Some(Function::Info),
             "SHEETS" | "_XLFN.SHEETS" => Some(Function::Sheets),
 
+            "DAVERAGE" => Some(Function::Daverage),
+            "DCOUNT" => Some(Function::Dcount),
+            "DGET" => Some(Function::Dget),
+            "DMAX" => Some(Function::Dmax),
+            "DMIN" => Some(Function::Dmin),
+            "DSUM" => Some(Function::Dsum),
+
             _ => None,
         }
     }
@@ -1182,6 +1204,12 @@ impl fmt::Display for Function {
             Function::Cell => write!(f, "CELL"),
             Function::Info => write!(f, "INFO"),
             Function::Sheets => write!(f, "SHEETS"),
+            Function::Daverage => write!(f, "DAVERAGE"),
+            Function::Dcount => write!(f, "DCOUNT"),
+            Function::Dget => write!(f, "DGET"),
+            Function::Dmax => write!(f, "DMAX"),
+            Function::Dmin => write!(f, "DMIN"),
+            Function::Dsum => write!(f, "DSUM"),
         }
     }
 }
@@ -1466,6 +1494,12 @@ impl Model {
             Function::Cell => self.fn_cell(args, cell),
             Function::Info => self.fn_info(args, cell),
             Function::Sheets => self.fn_sheets(args, cell),
+            Function::Daverage => self.fn_daverage(args, cell),
+            Function::Dcount => self.fn_dcount(args, cell),
+            Function::Dget => self.fn_dget(args, cell),
+            Function::Dmax => self.fn_dmax(args, cell),
+            Function::Dmin => self.fn_dmin(args, cell),
+            Function::Dsum => self.fn_dsum(args, cell),
         }
     }
 }
