@@ -876,6 +876,13 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_scalars(arg_count, 1, 1),
         Function::Info => args_signature_scalars(arg_count, 1, 1),
+
+        Function::Daverage => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dcount => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dget => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dmax => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dmin => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dsum => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
     }
 }
 
@@ -1139,5 +1146,12 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sheets => scalar_arguments(args),
         Function::Cell => scalar_arguments(args),
         Function::Info => scalar_arguments(args),
+
+        Function::Dget => not_implemented(args),
+        Function::Dmax => not_implemented(args),
+        Function::Dmin => not_implemented(args),
+        Function::Dcount => not_implemented(args),
+        Function::Daverage => not_implemented(args),
+        Function::Dsum => not_implemented(args),
     }
 }
