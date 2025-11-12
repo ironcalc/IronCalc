@@ -27,8 +27,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | CEILING         | <Badge type="info" text="Not implemented yet" /> | –             |
 | CEILING.MATH    | <Badge type="info" text="Not implemented yet" /> | –             |
 | CEILING.PRECISE | <Badge type="info" text="Not implemented yet" /> | –             |
-| COMBIN          | <Badge type="info" text="Not implemented yet" /> | –             |
-| COMBINA         | <Badge type="info" text="Not implemented yet" /> | –             |
+| COMBIN          | <Badge type="tip" text="Available" />          | –             |
+| COMBINA         | <Badge type="tip" text="Available" />          | –             |
 | COS             | <Badge type="tip" text="Available" />          | [COS](math_and_trigonometry/cos) |
 | COSH            | <Badge type="tip" text="Available" />          | [COSH](math_and_trigonometry/cosh) |
 | COT             | <Badge type="info" text="Not implemented yet" /> | –             |
