@@ -107,6 +107,63 @@ jobs:
           name: ironcalc-nuget
           path: bindings/dotnet/ironcalc-dotnet/IronCalc/bin/Release/IronCalc*.nupkg
 
-      - name: nuget push
-        if: ${{ github.event.inputs.release == 'true' }}
-        run: nuget push bindings/dotnet/ironcalc-dotnet/IronCalc/bin/Release/IronCalc*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{secrets.NUGET_API_KEY}}
+  test-nuget:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-latest
+          - macos-15-intel
+          - windows-latest
+          - windows-11-arm
+    runs-on: ${{ matrix.os }}
+    needs: [pack]
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./bindings/dotnet
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ironcalc-nuget
+          path: bindings/dotnet/nuget_source
+
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: test nuget package
+        run: |
+          dotnet new console -n temp-console-app
+          cd temp-console-app
+          dotnet add package IronCalc --source ../nuget_source
+          cp ../ironcalc-dotnet/IronCalc.Playground/Program.cs ./
+          dotnet run
+
+  push-nuget:
+    if: ${{ github.event.inputs.release == 'true' }}
+    runs-on: ubuntu-latest
+    needs: [test-nuget]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: nuget
+          merge-multiple: true
+
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: upload nupkg
+        uses: actions/upload-artifact@v4
+        with:
+          name: ironcalc-nuget
+          path: nuget/IronCalc*.nupkg
