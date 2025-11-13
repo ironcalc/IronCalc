@@ -173,18 +173,16 @@ const ColorPicker = ({
       <RecentLabel>{t("color_picker.custom")}</RecentLabel>
       <RecentColorsList>
         {recentColors.current.length > 0 ? (
-          <>
-            {recentColors.current.map((recentColor) => (
-              <ColorSwatch
-                key={recentColor}
-                $color={recentColor}
-                onClick={(): void => {
-                  setSelectedColor(recentColor);
-                  handleColorSelect(recentColor);
-                }}
-              />
-            ))}
-          </>
+          recentColors.current.map((recentColor) => (
+            <ColorSwatch
+              key={recentColor}
+              $color={recentColor}
+              onClick={(): void => {
+                setSelectedColor(recentColor);
+                handleColorSelect(recentColor);
+              }}
+            />
+          ))
         ) : (
           <EmptyContainer />
         )}
