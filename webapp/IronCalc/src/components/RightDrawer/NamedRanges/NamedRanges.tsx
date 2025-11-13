@@ -30,24 +30,22 @@ interface NamedRangesProps {
     newScope: number | null,
     newFormula: string,
   ) => void;
-  newDefinedName: (
-    name: string,
-    scope: number | null,
-    formula: string,
-  ) => void;
+  newDefinedName: (name: string, scope: number | null, formula: string) => void;
   deleteDefinedName: (name: string, scope: number | null) => void;
-  selectedArea: () => string;
+  getSelectedArea: () => string;
+  onNameSelected: (name: string) => void;
 }
 
 function NamedRanges({
   title,
   onClose,
-  definedNameList = [],
-  worksheets = [],
+  definedNameList,
+  worksheets,
   updateDefinedName,
   newDefinedName,
   deleteDefinedName,
-  selectedArea,
+  getSelectedArea,
+  onNameSelected,
 }: NamedRangesProps) {
   const [editingDefinedName, setEditingDefinedName] =
     useState<DefinedName | null>(null);
@@ -87,7 +85,7 @@ function NamedRanges({
         return { formulaError: `${e}` };
       }
     } else {
-      if (!editingDefinedName || !updateDefinedName) return {};
+      if (!editingDefinedName) return {};
 
       const scope_index = worksheets.findIndex((s) => s.name === scope);
       const newScope = scope_index >= 0 ? scope_index : null;
@@ -121,8 +119,8 @@ function NamedRanges({
           ? worksheets[editingDefinedName.scope]?.name || "[unknown]"
           : "[Global]";
       formula = editingDefinedName.formula;
-    } else if (isCreatingNew && selectedArea) {
-      formula = selectedArea();
+    } else if (isCreatingNew && getSelectedArea) {
+      formula = getSelectedArea();
     }
 
     const headerTitle = isCreatingNew
@@ -147,60 +145,7 @@ function NamedRanges({
             </IconButtonWrapper>
           </Tooltip>
           <EditHeaderTitle>{headerTitle}</EditHeaderTitle>
-          {onClose && (
-            <Tooltip
-              title={t("right_drawer.close")}
-              slotProps={{
-                popper: {
-                  modifiers: [
-                    {
-                      name: "offset",
-                      options: {
-                        offset: [0, -8],
-                      },
-                    },
-                  ],
-                },
-              }}
-            >
-              <IconButtonWrapper
-                onClick={onClose}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    onClose();
-                  }
-                }}
-                aria-label={t("right_drawer.close")}
-                tabIndex={0}
-              >
-                <X />
-              </IconButtonWrapper>
-            </Tooltip>
-          )}
-        </EditHeader>
-        <Content>
-          <EditNamedRange
-            worksheets={worksheets}
-            name={name}
-            scope={scopeName}
-            formula={formula}
-            onSave={handleSave}
-            onCancel={handleCancel}
-            definedNameList={definedNameList}
-            editingDefinedName={editingDefinedName}
-          />
-        </Content>
-      </Container>
-    );
-  }
 
-  const currentSelectedArea = selectedArea ? selectedArea() : null;
-
-  return (
-    <Container>
-      {onClose && (
-        <Header>
-          <HeaderTitle>{title}</HeaderTitle>
           <Tooltip
             title={t("right_drawer.close")}
             slotProps={{
@@ -229,8 +174,58 @@ function NamedRanges({
               <X />
             </IconButtonWrapper>
           </Tooltip>
-        </Header>
-      )}
+        </EditHeader>
+        <Content>
+          <EditNamedRange
+            worksheets={worksheets}
+            name={name}
+            scope={scopeName}
+            formula={formula}
+            onSave={handleSave}
+            onCancel={handleCancel}
+            definedNameList={definedNameList}
+            editingDefinedName={editingDefinedName}
+          />
+        </Content>
+      </Container>
+    );
+  }
+
+  const currentSelectedArea = getSelectedArea();
+
+  return (
+    <Container>
+      <Header>
+        <HeaderTitle>{title}</HeaderTitle>
+        <Tooltip
+          title={t("right_drawer.close")}
+          slotProps={{
+            popper: {
+              modifiers: [
+                {
+                  name: "offset",
+                  options: {
+                    offset: [0, -8],
+                  },
+                },
+              ],
+            },
+          }}
+        >
+          <IconButtonWrapper
+            onClick={onClose}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                onClose();
+              }
+            }}
+            aria-label={t("right_drawer.close")}
+            tabIndex={0}
+          >
+            <X />
+          </IconButtonWrapper>
+        </Tooltip>
+      </Header>
       <Content>
         {definedNameList.length === 0 ? (
           <EmptyStateMessage>
@@ -257,11 +252,11 @@ function NamedRanges({
                   key={`${definedName.name}-${definedName.scope}`}
                   tabIndex={0}
                   $isSelected={isSelected}
-                  onClick={() => handleListItemClick(definedName)}
+                  onClick={() => onNameSelected(definedName.formula)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      handleListItemClick(definedName);
+                      onNameSelected(definedName.formula);
                     }
                   }}
                 >
@@ -508,22 +503,22 @@ const EditHeaderTitle = styled("div")({
 });
 
 const IconButtonWrapper = styled("div")`
-    &:hover {
-      background-color: ${theme.palette.grey["50"]};
-    }
-    display: flex;
-    border-radius: 4px;
-    height: 24px;
-    width: 24px;
-    cursor: pointer;
-    align-items: center;
-    justify-content: center;
-    svg {
-      width: 16px;
-      height: 16px;
-      stroke-width: 1.5;
-    }
-  `;
+  &:hover {
+    background-color: ${theme.palette.grey["50"]};
+  }
+  display: flex;
+  border-radius: 4px;
+  height: 24px;
+  width: 24px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.5;
+  }
+`;
 
 const EmptyStateMessage = styled("div")`
   display: flex;

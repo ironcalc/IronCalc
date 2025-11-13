@@ -28,7 +28,8 @@ interface RightDrawerProps {
   ) => void;
   newDefinedName: (name: string, scope: number | null, formula: string) => void;
   deleteDefinedName: (name: string, scope: number | null) => void;
-  selectedArea: () => string;
+  getSelectedArea: () => string;
+  onNameSelected: (name: string) => void;
 }
 
 const RightDrawer = ({
@@ -42,7 +43,8 @@ const RightDrawer = ({
   updateDefinedName,
   newDefinedName,
   deleteDefinedName,
-  selectedArea,
+  getSelectedArea,
+  onNameSelected,
 }: RightDrawerProps) => {
   const { t } = useTranslation();
   const [drawerWidth, setDrawerWidth] = useState(width);
@@ -108,7 +110,8 @@ const RightDrawer = ({
           updateDefinedName={updateDefinedName}
           newDefinedName={newDefinedName}
           deleteDefinedName={deleteDefinedName}
-          selectedArea={selectedArea}
+          getSelectedArea={getSelectedArea}
+          onNameSelected={onNameSelected}
         />
       </DrawerContent>
     </DrawerContainer>
