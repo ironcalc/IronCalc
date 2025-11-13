@@ -1,8 +1,9 @@
-import type {
-  BorderOptions,
-  ClipboardCell,
-  Model,
-  WorksheetProperties,
+import {
+  type BorderOptions,
+  type ClipboardCell,
+  getTokens,
+  type Model,
+  type WorksheetProperties,
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { t } from "i18next";
@@ -12,6 +13,7 @@ import {
   getNewClipboardId,
 } from "../clipboard";
 import { TOOLBAR_HEIGHT } from "../constants";
+import { tokenIsRangeType } from "../Editor/util";
 import FormulaBar from "../FormulaBar/FormulaBar";
 import RightDrawer, { DEFAULT_DRAWER_WIDTH } from "../RightDrawer/RightDrawer";
 import SheetTabBar from "../SheetTabBar";
@@ -768,10 +770,27 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.deleteDefinedName(name, scope);
           setRedrawId((id) => id + 1);
         }}
-        selectedArea={() => {
+        getSelectedArea={() => {
           const worksheetNames = worksheets.map((s) => s.name);
           const selectedView = model.getSelectedView();
           return getFullRangeToString(selectedView, worksheetNames);
+        }}
+        onNameSelected={(formula) => {
+          const tokens = getTokens(formula);
+          const { token } = tokens[0];
+          if (tokenIsRangeType(token)) {
+            const sheetName = worksheets[model.getSelectedSheet()].name;
+            const {
+              sheet: refSheet,
+              left: { row: rowStart, column: columnStart },
+              right: { row: rowEnd, column: columnEnd },
+            } = token.Range;
+            if (refSheet !== null && refSheet === sheetName) {
+              model.setSelectedCell(rowStart, columnStart);
+              model.setSelectedRange(rowStart, columnStart, rowEnd, columnEnd);
+            }
+          }
+          setRedrawId((id) => id + 1);
         }}
       />
     </Container>
