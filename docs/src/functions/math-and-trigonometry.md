@@ -17,7 +17,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ACOT            | <Badge type="info" text="Not implemented yet" /> | –             |
 | ACOTH           | <Badge type="info" text="Not implemented yet" /> | –             |
 | AGGREGATE       | <Badge type="info" text="Not implemented yet" /> | –             |
-| ARABIC          | <Badge type="info" text="Not implemented yet" /> | –             |
+| ARABIC          | <Badge type="tip" text="Available" />          | –             |
 | ASIN            | <Badge type="tip" text="Available" />          | [ASIN](math_and_trigonometry/asin) |
 | ASINH           | <Badge type="tip" text="Available" />          | [ASINH](math_and_trigonometry/asinh) |
 | ATAN            | <Badge type="tip" text="Available" />          | [ATAN](math_and_trigonometry/atan) |
@@ -68,7 +68,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | RAND            | <Badge type="tip" text="Available" />          | –             |
 | RANDARRAY       | <Badge type="info" text="Not implemented yet" /> | –             |
 | RANDBETWEEN     | <Badge type="tip" text="Available" />          | –             |
-| ROMAN           | <Badge type="info" text="Not implemented yet" /> | –             |
+| ROMAN           | <Badge type="tip" text="Available" />          | –             |
 | ROUND           | <Badge type="tip" text="Available" />          | –             |
 | ROUNDDOWN       | <Badge type="tip" text="Available" />          | –             |
 | ROUNDUP         | <Badge type="tip" text="Available" />          | –             |
