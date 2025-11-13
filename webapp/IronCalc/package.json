@@ -1,6 +1,6 @@
 {
   "name": "@ironcalc/workbook",
-  "version": "0.3.2",
+  "version": "0.6.0",
   "type": "module",
   "main": "./dist/ironcalc.js",
   "module": "./dist/ironcalc.js",
@@ -26,7 +26,7 @@
     "react-i18next": "^15.5.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
+    "@biomejs/biome": "2.3.5",
     "@storybook/react": "^9.0.5",
     "@storybook/react-vite": "^9.0.5",
     "@vitejs/plugin-react": "^4.2.1",

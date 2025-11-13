@@ -1,9 +1,9 @@
 import {
+  getTokens,
   type Model,
   type Range,
   type Reference,
   type TokenType,
-  getTokens,
 } from "@ironcalc/wasm";
 import type { JSX } from "react";
 import type { ActiveRange } from "../workbookState";

@@ -4,8 +4,8 @@ import type {
   HorizontalAlignment,
   VerticalAlignment,
 } from "@ironcalc/wasm";
-import Tooltip from "@mui/material/Tooltip";
 import { styled } from "@mui/material/styles";
+import Tooltip from "@mui/material/Tooltip";
 import type {} from "@mui/system";
 import {
   AlignCenter,
@@ -45,13 +45,13 @@ import { ArrowMiddleFromLine } from "../../icons";
 import { theme } from "../../theme";
 import BorderPicker from "../BorderPicker/BorderPicker";
 import ColorPicker from "../ColorPicker/ColorPicker";
+import { TOOLBAR_HEIGHT } from "../constants";
 import FormatMenu from "../FormatMenu/FormatMenu";
 import {
-  NumberFormats,
   decreaseDecimalPlaces,
   increaseDecimalPlaces,
+  NumberFormats,
 } from "../FormatMenu/formatUtil";
-import { TOOLBAR_HEIGHT } from "../constants";
 
 type ToolbarProperties = {
   canUndo: boolean;

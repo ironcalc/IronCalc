@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { IronCalc, Model, init } from "../index";
+import { IronCalc, init, Model } from "../index";
 
 // export interface IronCalcProps {}
 

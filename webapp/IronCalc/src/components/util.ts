@@ -1,10 +1,9 @@
-import type { Area, Cell } from "./types";
-
 import {
-  type SelectedView,
   columnNameFromNumber,
   quoteName,
+  type SelectedView,
 } from "@ironcalc/wasm";
+import type { Area, Cell } from "./types";
 import { LAST_COLUMN, LAST_ROW } from "./WorksheetCanvas/constants";
 
 /**

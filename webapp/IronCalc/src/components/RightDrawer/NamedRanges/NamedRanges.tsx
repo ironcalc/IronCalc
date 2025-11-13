@@ -1,5 +1,5 @@
 import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
-import { Button, Tooltip, styled } from "@mui/material";
+import { Button, styled, Tooltip } from "@mui/material";
 import { t } from "i18next";
 import {
   ArrowLeft,

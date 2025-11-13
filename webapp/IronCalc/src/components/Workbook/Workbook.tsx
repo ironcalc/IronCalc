@@ -7,10 +7,20 @@ import type {
 import { styled } from "@mui/material/styles";
 import { t } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  CLIPBOARD_ID_SESSION_STORAGE_KEY,
+  getNewClipboardId,
+} from "../clipboard";
+import { TOOLBAR_HEIGHT } from "../constants";
 import FormulaBar from "../FormulaBar/FormulaBar";
 import RightDrawer, { DEFAULT_DRAWER_WIDTH } from "../RightDrawer/RightDrawer";
 import SheetTabBar from "../SheetTabBar";
 import Toolbar from "../Toolbar/Toolbar";
+import {
+  getCellAddress,
+  getFullRangeToString,
+  type NavigationKey,
+} from "../util";
 import Worksheet from "../Worksheet/Worksheet";
 import {
   COLUMN_WIDTH_SCALE,
@@ -20,16 +30,6 @@ import {
 } from "../WorksheetCanvas/constants";
 import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
-import {
-  CLIPBOARD_ID_SESSION_STORAGE_KEY,
-  getNewClipboardId,
-} from "../clipboard";
-import { TOOLBAR_HEIGHT } from "../constants";
-import {
-  type NavigationKey,
-  getCellAddress,
-  getFullRangeToString,
-} from "../util";
 import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 
