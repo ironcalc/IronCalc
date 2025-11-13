@@ -2,8 +2,6 @@ import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
 import { styled } from "@mui/material";
 import { Table, X } from "lucide-react";
 import { useState } from "react";
-import TemplatesListItem from "./TemplatesListItem";
-
 import TemplatesList, {
   Cross,
   DialogContent,
@@ -12,6 +10,7 @@ import TemplatesList, {
   DialogWrapper,
   TemplatesListWrapper,
 } from "./TemplatesList";
+import TemplatesListItem from "./TemplatesListItem";
 
 function WelcomeDialog(properties: {
   onClose: () => void;

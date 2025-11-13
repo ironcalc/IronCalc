@@ -5,11 +5,11 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
+import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
-import { WorkbookTitle } from "./WorkbookTitle";
-import { downloadModel } from "./rpc";
 import { updateNameSelectedWorkbook } from "./storage";
+import { WorkbookTitle } from "./WorkbookTitle";
 
 // This hook is used to get the width of the window
 function useWindowWidth() {
