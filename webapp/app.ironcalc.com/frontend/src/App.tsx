@@ -48,7 +48,7 @@ function App() {
           const importedModel = Model.from_bytes(model_bytes);
           localStorage.removeItem("selected");
           setModel(importedModel);
-        } catch (e) {
+        } catch (_e) {
           alert("Model not found, or failed to load");
         }
       } else if (exampleFilename) {
@@ -57,7 +57,7 @@ function App() {
           const importedModel = Model.from_bytes(model_bytes);
           localStorage.removeItem("selected");
           setModel(importedModel);
-        } catch (e) {
+        } catch (_e) {
           alert("Example file not found, or failed to load");
         }
       } else {

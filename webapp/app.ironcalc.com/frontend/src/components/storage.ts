@@ -34,7 +34,7 @@ export function updateNameSelectedWorkbook(model: Model, newName: string) {
           models[uuid] = { name: newName, createdAt: Date.now() };
         }
         localStorage.setItem("models", JSON.stringify(models));
-      } catch (e) {
+      } catch (_e) {
         console.warn("Failed saving new name");
       }
     }
@@ -130,7 +130,7 @@ export function isStorageEmpty(): boolean {
   try {
     const models = JSON.parse(modelsJson);
     return Object.keys(models).length === 0;
-  } catch (e) {
+  } catch (_e) {
     return true;
   }
 }

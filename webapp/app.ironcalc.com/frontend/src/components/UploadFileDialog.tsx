@@ -189,11 +189,9 @@ function UploadFileDialog(properties: {
         </DropZone>
       ) : (
         <DropZone>
-          <>
-            <div style={{ flexGrow: 2 }} />
-            <div>{message}</div>
-            <div style={{ flexGrow: 2 }} />
-          </>
+          <div style={{ flexGrow: 2 }} />
+          <div>{message}</div>
+          <div style={{ flexGrow: 2 }} />
         </DropZone>
       )}
 
