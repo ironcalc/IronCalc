@@ -1,9 +1,11 @@
 import "./App.css";
 import styled from "@emotion/styled";
+// From IronCalc
+import { IronCalc, IronCalcIcon, init, Model } from "@ironcalc/workbook";
+import { Modal } from "@mui/material";
 import { useEffect, useState } from "react";
 import { FileBar } from "./components/FileBar";
 import LeftDrawer from "./components/LeftDrawer/LeftDrawer";
-import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
 import {
   get_documentation_model,
   get_model,
@@ -20,11 +22,8 @@ import {
   saveSelectedModelInStorage,
   selectModelFromStorage,
 } from "./components/storage";
-
-// From IronCalc
-import { IronCalc, IronCalcIcon, Model, init } from "@ironcalc/workbook";
-import { Modal } from "@mui/material";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
+import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);

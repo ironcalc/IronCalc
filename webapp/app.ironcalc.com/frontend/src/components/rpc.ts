@@ -23,7 +23,7 @@ function sanitizeFileName(name: string): string {
 
 export async function uploadFile(
   arrayBuffer: ArrayBuffer,
-  fileName: string
+  fileName: string,
 ): Promise<Blob> {
   // Fetch request to upload the file
   const response = await fetch(`/api/upload/${fileName}`, {
@@ -40,15 +40,15 @@ export async function uploadFile(
 
 export async function get_model(modelHash: string): Promise<Uint8Array> {
   return new Uint8Array(
-    await (await fetch(`/api/model/${modelHash}`)).arrayBuffer()
+    await (await fetch(`/api/model/${modelHash}`)).arrayBuffer(),
   );
 }
 
 export async function get_documentation_model(
-  filename: string
+  filename: string,
 ): Promise<Uint8Array> {
   return new Uint8Array(
-    await (await fetch(`/models/${filename}.ic`)).arrayBuffer()
+    await (await fetch(`/models/${filename}.ic`)).arrayBuffer(),
   );
 }
 

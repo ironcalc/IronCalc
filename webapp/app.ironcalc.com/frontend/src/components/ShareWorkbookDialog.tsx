@@ -1,5 +1,5 @@
 import type { Model } from "@ironcalc/workbook";
-import { Button, Dialog, TextField, styled } from "@mui/material";
+import { Button, Dialog, styled, TextField } from "@mui/material";
 import { Check, Copy, GlobeLock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
