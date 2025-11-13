@@ -19,24 +19,24 @@ const normalizeRangeString = (range: string): string => {
 };
 
 interface NamedRangesProps {
-  title?: string;
-  onClose?: () => void;
-  definedNameList?: DefinedName[];
-  worksheets?: WorksheetProperties[];
-  updateDefinedName?: (
+  title: string;
+  onClose: () => void;
+  definedNameList: DefinedName[];
+  worksheets: WorksheetProperties[];
+  updateDefinedName: (
     name: string,
     scope: number | null,
     newName: string,
     newScope: number | null,
     newFormula: string,
   ) => void;
-  newDefinedName?: (
+  newDefinedName: (
     name: string,
     scope: number | null,
     formula: string,
   ) => void;
-  deleteDefinedName?: (name: string, scope: number | null) => void;
-  selectedArea?: () => string;
+  deleteDefinedName: (name: string, scope: number | null) => void;
+  selectedArea: () => string;
 }
 
 function NamedRanges({
