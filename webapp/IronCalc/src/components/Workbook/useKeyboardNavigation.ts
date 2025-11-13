@@ -1,5 +1,5 @@
 import { type KeyboardEvent, type RefObject, useCallback } from "react";
-import { type NavigationKey, isEditingKey, isNavigationKey } from "../util";
+import { isEditingKey, isNavigationKey, type NavigationKey } from "../util";
 
 export enum Border {
   Top = "top",

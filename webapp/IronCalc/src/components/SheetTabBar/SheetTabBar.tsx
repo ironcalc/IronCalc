@@ -1,12 +1,11 @@
-import { styled } from "@mui/material";
-import { Tooltip } from "@mui/material";
+import { styled, Tooltip } from "@mui/material";
 import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IronCalcLogo } from "../../icons";
 import { theme } from "../../theme";
-import { StyledButton } from "../Toolbar/Toolbar";
 import { NAVIGATION_HEIGHT } from "../constants";
+import { StyledButton } from "../Toolbar/Toolbar";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
 import SheetTab from "./SheetTab";

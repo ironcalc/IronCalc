@@ -5,9 +5,6 @@ import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
 import {
   COLUMN_WIDTH_SCALE,
-  LAST_COLUMN,
-  LAST_ROW,
-  ROW_HEIGH_SCALE,
   cellPadding,
   defaultTextColor,
   gridColor,
@@ -17,7 +14,10 @@ import {
   headerSelectedBackground,
   headerSelectedColor,
   headerTextColor,
+  LAST_COLUMN,
+  LAST_ROW,
   outlineColor,
+  ROW_HEIGH_SCALE,
 } from "./constants";
 import { attachOutlineHandle } from "./outlineHandle";
 import { computeWrappedLines, hexToRGBA10Percent } from "./util";

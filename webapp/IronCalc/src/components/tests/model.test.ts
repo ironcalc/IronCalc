@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { Model, initSync } from "@ironcalc/wasm";
+import { initSync, Model } from "@ironcalc/wasm";
 import { expect, test } from "vitest";
 
 // This is a simple test that showcases how to load the wasm module in the tests
