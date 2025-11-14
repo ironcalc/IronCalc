@@ -1,9 +1,10 @@
 name: nuget
 
 on:
-  push:
-    branches:
-      - feature/dotnet-bindings
+  pull_request:
+    paths:
+      - 'binding/dotnet/**'
+      - '.github/workflows/nuget.yml'
   workflow_dispatch:
     inputs:
       release:
@@ -72,9 +73,12 @@ jobs:
           path: bindings/dotnet/ironcalc-dotnet/IronCalc/runtimes/
           merge-multiple: true
 
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
 
       - name: dotnet test
         run: dotnet test ironcalc-dotnet
@@ -94,9 +98,12 @@ jobs:
           path: bindings/dotnet/ironcalc-dotnet/IronCalc/runtimes/
           merge-multiple: true
 
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
 
       - name: dotnet pack
         run: dotnet pack ironcalc-dotnet/IronCalc
@@ -131,9 +138,12 @@ jobs:
           name: ironcalc-nuget
           path: bindings/dotnet/nuget_source
 
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
 
       - name: test nuget package
         run: |
@@ -141,7 +151,9 @@ jobs:
           cd temp-console-app
           dotnet add package IronCalc --source ../nuget_source
           cp ../ironcalc-dotnet/IronCalc.Playground/Program.cs ./
-          dotnet run
+          dotnet run --framework net8.0
+          dotnet run --framework net9.0
+          dotnet run --framework net10.0
 
   push-nuget:
     if: ${{ github.event.inputs.release == 'true' }}
@@ -158,9 +170,12 @@ jobs:
           path: nuget
           merge-multiple: true
 
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
 
       - name: upload nupkg
         uses: actions/upload-artifact@v4

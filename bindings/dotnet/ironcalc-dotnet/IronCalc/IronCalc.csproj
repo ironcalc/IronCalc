@@ -2,6 +2,17 @@
 
     <PropertyGroup>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <PackageVersion>0.0.1-beta1</PackageVersion>
+        <PackageId>IronCalc</PackageId>
+        <Authors>IronCalc developers</Authors>
+        <Description>
+          .NET bindings for IronCalc is a new, modern, work-in-progress spreadsheet engine and set of tools to work with spreadsheets in diverse settings.
+        </Description>
+        <RepositoryUrl>https://github.com/ironcalc/IronCalc</RepositoryUrl>
+        <PackageLicenseExpression>MIT or Apache-2.0;</PackageLicenseExpression>
+        <PackageProjectUrl>https://ironcalc.com</PackageProjectUrl>
+        <PackageTags>spreadsheet;xlsx;</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

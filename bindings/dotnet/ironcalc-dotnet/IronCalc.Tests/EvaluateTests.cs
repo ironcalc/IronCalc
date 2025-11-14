@@ -18,7 +18,7 @@ public class EvaluateTests
     public void Sum()
     {
         var bytes = File.ReadAllBytes("SimpleSum.xlsx");
-        using var model = Model.LoadFromXlsxBytes(bytes, "en",  "Europe/Oslo");
+        using var model = Model.LoadFromXlsxBytes(bytes, "en", "Europe/Oslo");
 
         var value = model.GetValue(0, 3, 1);
         var number = Assert.IsType<CellValue.Number>(value);
@@ -28,7 +28,7 @@ public class EvaluateTests
         model.SetUserInput(0, 2, 1, "6");
         model.Evaluate();
 
-        var updated= model.GetValue(0, 3, 1);
+        var updated = model.GetValue(0, 3, 1);
         var updatedNumber = Assert.IsType<CellValue.Number>(updated);
         Assert.Equal(10, updatedNumber.Value);
     }

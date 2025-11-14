@@ -1,6 +1,6 @@
 [package]
 name = "ironcalc-dotnet"
-version = "0.1.0"
+version = "0.0.1-beta1"
 edition = "2021"
 
 [lib]

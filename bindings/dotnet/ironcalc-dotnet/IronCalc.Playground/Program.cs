@@ -1,4 +1,11 @@
-﻿using System;
+﻿/*
+ * NOTE: this file is used to test the generated nuget package during CI.
+ * That means that this Program.cs file is copied as-is into a new console application
+ * and executing against the newly created nuget package. I.e. this file must not depend
+ * on other files or special properties set in the csproj file, including other nuget dependencies.
+ */
+
+using System;
 using System.Diagnostics;
 using IronCalc;
 

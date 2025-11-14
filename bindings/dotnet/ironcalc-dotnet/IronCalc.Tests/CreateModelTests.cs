@@ -15,7 +15,7 @@ public class CreateModelTests
     public void LoadFromXlsxBytes()
     {
         var bytes = File.ReadAllBytes("SimpleSum.xlsx");
-        using var model = Model.LoadFromXlsxBytes(bytes, "en",  "Europe/Oslo");
+        using var model = Model.LoadFromXlsxBytes(bytes, "en", "Europe/Oslo");
     }
 
     [Fact]
