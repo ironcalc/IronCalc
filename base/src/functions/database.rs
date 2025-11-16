@@ -274,7 +274,7 @@ impl Model {
             }
             CalcResult::Boolean(b) => {
                 return if b {
-                    Ok(1)
+                    Ok(db_left.column)
                 } else {
                     // Index 0 is out of range
                     Err(CalcResult::Error {
