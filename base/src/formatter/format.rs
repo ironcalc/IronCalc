@@ -744,10 +744,10 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
 /// "30.34%" => (0.3034, "0.00%")
 /// 100€ => (100, "100€")
 pub(crate) fn parse_formatted_number(
-    value: &str,
+    original: &str,
     currencies: &[&str],
 ) -> Result<(f64, Option<String>), String> {
-    let value = value.trim();
+    let value = original.trim();
     let scientific_format = "0.00E+00";
 
     // Check if it is a percentage
@@ -799,7 +799,8 @@ pub(crate) fn parse_formatted_number(
         }
     }
 
-    if let Ok((serial_number, format)) = parse_date(value) {
+    // check if it is a date. NOTE: we don't trim the original here
+    if let Ok((serial_number, format)) = parse_date(original) {
         return Ok((serial_number as f64, Some(format)));
     }
 

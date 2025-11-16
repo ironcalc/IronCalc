@@ -1163,11 +1163,34 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
+
+        let value = self.evaluate_node_in_context(&args[0], cell);
+
+        let multiple = self.evaluate_node_in_context(&args[1], cell);
+
+        // if both are empty => #N/A
+        if matches!(value, CalcResult::EmptyArg) || matches!(multiple, CalcResult::EmptyArg) {
+            return CalcResult::Error {
+                error: Error::NA,
+                origin: cell,
+                message: "Bad argument for MROUND".to_string(),
+            };
+        }
+
+        // Booleans are not cast
+        if matches!(value, CalcResult::Boolean(_)) {
+            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+        }
+
+        if matches!(multiple, CalcResult::Boolean(_)) {
+            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+        }
+
+        let value = match self.cast_to_number(value, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let multiple = match self.get_number(&args[1], cell) {
+        let multiple = match self.cast_to_number(multiple, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
