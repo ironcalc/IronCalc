@@ -1233,11 +1233,15 @@ impl Model {
         if !(-15.0..=15.0).contains(&num_digits) {
             return CalcResult::Number(value);
         }
-        CalcResult::Number(if value >= 0.0 {
+        let v = if value >= 0.0 {
             f64::floor(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
         } else {
             f64::ceil(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
-        })
+        };
+        if value.is_finite() && v.is_infinite() {
+            return CalcResult::Number(value);
+        }
+        CalcResult::Number(v)
     }
 
     single_number_fn!(fn_log10, |f| if f <= 0.0 {
