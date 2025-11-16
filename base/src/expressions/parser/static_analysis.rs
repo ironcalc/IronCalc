@@ -883,6 +883,12 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Dmax => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dmin => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dsum => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dcounta => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dproduct => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dstdev => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dvar => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dvarp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        Function::Dstdevp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
     }
 }
 
@@ -1153,5 +1159,11 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Dcount => not_implemented(args),
         Function::Daverage => not_implemented(args),
         Function::Dsum => not_implemented(args),
+        Function::Dcounta => not_implemented(args),
+        Function::Dproduct => not_implemented(args),
+        Function::Dstdev => not_implemented(args),
+        Function::Dvar => not_implemented(args),
+        Function::Dvarp => not_implemented(args),
+        Function::Dstdevp => not_implemented(args),
     }
 }
