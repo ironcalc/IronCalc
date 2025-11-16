@@ -249,6 +249,264 @@ impl Model {
         CalcResult::Number(sum)
     }
 
+    // =DCOUNTA(database, field, criteria)
+    // Counts non-empty entries (any type) in the field for rows that match criteria
+    pub(crate) fn fn_dcounta(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
+            Ok(r) => (r.left, r.right),
+            Err(e) => return e,
+        };
+
+        let field_col = match self.resolve_db_field_column(db_left, db_right, &args[1], cell) {
+            Ok(c) => c,
+            Err(e) => return e,
+        };
+
+        let criteria = match self.get_reference(&args[2], cell) {
+            Ok(r) => (r.left, r.right),
+            Err(e) => return e,
+        };
+
+        if db_right.row <= db_left.row {
+            // no data rows
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "No data rows in database".to_string(),
+            };
+        }
+
+        let mut count = 0;
+        for row in (db_left.row + 1)..=db_right.row {
+            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
+                let v = self.evaluate_cell(CellReferenceIndex {
+                    sheet: db_left.sheet,
+                    row,
+                    column: field_col,
+                });
+                if !matches!(v, CalcResult::EmptyCell | CalcResult::EmptyArg) {
+                    count += 1;
+                }
+            }
+        }
+
+        CalcResult::Number(count as f64)
+    }
+
+    // =DPRODUCT(database, field, criteria)
+    pub(crate) fn fn_dproduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
+            Ok(r) => (r.left, r.right),
+            Err(e) => return e,
+        };
+
+        let field_col = match self.resolve_db_field_column(db_left, db_right, &args[1], cell) {
+            Ok(c) => c,
+            Err(e) => return e,
+        };
+
+        let criteria = match self.get_reference(&args[2], cell) {
+            Ok(r) => (r.left, r.right),
+            Err(e) => return e,
+        };
+
+        if db_right.row <= db_left.row {
+            // no data rows
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "No data rows in database".to_string(),
+            };
+        }
+
+        let mut product = 1.0f64;
+        let mut has_numeric = false;
+
+        let mut row = db_left.row + 1; // skip header
+        while row <= db_right.row {
+            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
+                let v = self.evaluate_cell(CellReferenceIndex {
+                    sheet: db_left.sheet,
+                    row,
+                    column: field_col,
+                });
+                if let CalcResult::Number(n) = v {
+                    if n.is_finite() {
+                        product *= n;
+                        has_numeric = true;
+                    }
+                }
+            }
+            row += 1;
+        }
+
+        // Excel returns 0 when no rows / no numeric values match for DPRODUCT
+        if has_numeric {
+            CalcResult::Number(product)
+        } else {
+            CalcResult::Number(0.0)
+        }
+    }
+
+    // Small internal helper for DSTDEV / DVAR
+    // Collects sum, sum of squares, and count of numeric values in the field
+    // for rows that match the criteria.
+    fn db_numeric_stats(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64, usize), CalcResult> {
+        if args.len() != 3 {
+            return Err(CalcResult::new_args_number_error(cell));
+        }
+
+        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
+            Ok(r) => (r.left, r.right),
+            Err(e) => return Err(e),
+        };
+
+        let field_col = self.resolve_db_field_column(db_left, db_right, &args[1], cell)?;
+
+        let criteria = match self.get_reference(&args[2], cell) {
+            Ok(r) => (r.left, r.right),
+            Err(e) => return Err(e),
+        };
+
+        if db_right.row <= db_left.row {
+            // no data rows
+            return Err(CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "No data rows in database".to_string(),
+            });
+        }
+
+        let mut sum = 0.0f64;
+        let mut sumsq = 0.0f64;
+        let mut count = 0usize;
+
+        let mut row = db_left.row + 1; // skip header
+        while row <= db_right.row {
+            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
+                let v = self.evaluate_cell(CellReferenceIndex {
+                    sheet: db_left.sheet,
+                    row,
+                    column: field_col,
+                });
+                if let CalcResult::Number(n) = v {
+                    if n.is_finite() {
+                        sum += n;
+                        sumsq += n * n;
+                        count += 1;
+                    }
+                }
+            }
+            row += 1;
+        }
+
+        Ok((sum, sumsq, count))
+    }
+
+    // =DSTDEV(database, field, criteria)
+    // Sample standard deviation of matching numeric values
+    pub(crate) fn fn_dstdev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
+            Ok(stats) => stats,
+            Err(e) => return e,
+        };
+
+        // Excel behaviour: #DIV/0! if 0 or 1 numeric values match
+        if count < 2 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Not enough numeric values matched criteria".to_string(),
+            };
+        }
+
+        let n = count as f64;
+        let var = (sumsq - (sum * sum) / n) / (n - 1.0);
+        let var = if var < 0.0 { 0.0 } else { var };
+        CalcResult::Number(var.sqrt())
+    }
+
+    // =DVAR(database, field, criteria)
+    // Sample variance of matching numeric values
+    pub(crate) fn fn_dvar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
+            Ok(stats) => stats,
+            Err(e) => return e,
+        };
+
+        // Excel behaviour: #DIV/0! if 0 or 1 numeric values match
+        if count < 2 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "Not enough numeric values matched criteria".to_string(),
+            };
+        }
+
+        let n = count as f64;
+        let var = (sumsq - (sum * sum) / n) / (n - 1.0);
+        let var = if var < 0.0 { 0.0 } else { var };
+        CalcResult::Number(var)
+    }
+
+    // =DSTDEVP(database, field, criteria)
+    // Population standard deviation of matching numeric values
+    pub(crate) fn fn_dstdevp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
+            Ok(stats) => stats,
+            Err(e) => return e,
+        };
+
+        // Excel behaviour: #DIV/0! if no numeric values match
+        if count == 0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "No numeric values matched criteria".to_string(),
+            };
+        }
+
+        let n = count as f64;
+        let var = (sumsq - (sum * sum) / n) / n;
+        let var = if var < 0.0 { 0.0 } else { var };
+        CalcResult::Number(var.sqrt())
+    }
+
+    // =DVARP(database, field, criteria)
+    // Population variance of matching numeric values
+    pub(crate) fn fn_dvarp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
+            Ok(stats) => stats,
+            Err(e) => return e,
+        };
+
+        // Excel behaviour: #DIV/0! if no numeric values match
+        if count == 0 {
+            return CalcResult::Error {
+                error: Error::DIV,
+                origin: cell,
+                message: "No numeric values matched criteria".to_string(),
+            };
+        }
+
+        let n = count as f64;
+        let var = (sumsq - (sum * sum) / n) / n;
+        let var = if var < 0.0 { 0.0 } else { var };
+        CalcResult::Number(var)
+    }
+
     /// Resolve the "field" (2nd arg) to an absolute column index (i32) within the sheet.
     /// Field can be a number (1-based index) or a header name (case-insensitive).
     /// Returns the absolute column index, not a 1-based offset within the database range.
@@ -544,15 +802,7 @@ impl Model {
                             _ => false,
                         }
                     } else {
-                        let rhs = CalcResult::Number(t);
-                        let c = compare_values(db_val, &rhs);
-                        match op {
-                            ">" => c > 0,
-                            ">=" => c >= 0,
-                            "<" => c < 0,
-                            "<=" => c <= 0,
-                            _ => false,
-                        }
+                        false
                     }
                 } else {
                     // string comparison (case-insensitive) using compare_values semantics
