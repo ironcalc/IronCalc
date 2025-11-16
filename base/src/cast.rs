@@ -5,6 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    formatter::format::parse_formatted_number,
     model::Model,
 };
 
@@ -89,20 +90,31 @@ impl Model {
         self.cast_to_number(result, cell)
     }
 
-    fn cast_to_number(
+    pub(crate) fn cast_to_number(
         &mut self,
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         match result {
             CalcResult::Number(f) => Ok(f),
-            CalcResult::String(s) => match s.parse::<f64>() {
+            CalcResult::String(s) => match s.trim().parse::<f64>() {
                 Ok(f) => Ok(f),
-                _ => Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Expecting number".to_string(),
-                )),
+                _ => {
+                    let mut currencies = vec!["$", "€"];
+                    let currency = &self.locale.currency.symbol;
+                    if !currencies.iter().any(|e| e == currency) {
+                        currencies.push(currency);
+                    }
+                    //  We try to parse as number
+                    if let Ok((v, _number_format)) = parse_formatted_number(&s, &currencies) {
+                        return Ok(v);
+                    }
+                    Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Expecting number".to_string(),
+                    ))
+                }
             },
             CalcResult::Boolean(f) => {
                 if f {
