@@ -1168,7 +1168,7 @@ impl Model {
 
         let multiple = self.evaluate_node_in_context(&args[1], cell);
 
-        // if both are empty => #N/A
+        // if either is empty => #N/A
         if matches!(value, CalcResult::EmptyArg) || matches!(multiple, CalcResult::EmptyArg) {
             return CalcResult::Error {
                 error: Error::NA,

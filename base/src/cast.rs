@@ -105,7 +105,7 @@ impl Model {
                     if !currencies.iter().any(|e| e == currency) {
                         currencies.push(currency);
                     }
-                    //  We try to parse as number
+                    // Try to parse as a formatted number (e.g., dates, currencies, percentages)
                     if let Ok((v, _number_format)) = parse_formatted_number(&s, &currencies) {
                         return Ok(v);
                     }
