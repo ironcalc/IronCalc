@@ -45,7 +45,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | FLOOR.MATH      | <Badge type="info" text="Not implemented yet" /> | –             |
 | FLOOR.PRECISE   | <Badge type="info" text="Not implemented yet" /> | –             |
 | GCD             | <Badge type="info" text="Not implemented yet" /> | –             |
-| INT             | <Badge type="info" text="Not implemented yet" /> | –             |
+| INT             | <Badge type="tip" text="Available" />          | –             |
 | ISO.CEILING     | <Badge type="info" text="Not implemented yet" /> | –             |
 | LCM             | <Badge type="info" text="Not implemented yet" /> | –             |
 | LET             | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -56,7 +56,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MINVERSE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | MMULT           | <Badge type="info" text="Not implemented yet" /> | –             |
 | MOD             | <Badge type="tip" text="Available" />          | [MOD](math_and_trigonometry/mod) |
-| MROUND          | <Badge type="info" text="Not implemented yet" /> | –             |
+| MROUND          | <Badge type="tip" text="Available" />          | –             |
 | MULTINOMIAL     | <Badge type="info" text="Not implemented yet" /> | –             |
 | MUNIT           | <Badge type="info" text="Not implemented yet" /> | –             |
 | ODD             | <Badge type="tip" text="Available" /> | [ODD](math_and_trigonometry/odd) |
@@ -92,4 +92,4 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SUMXMY2         | <Badge type="info" text="Not implemented yet" /> | –             |
 | TAN             | <Badge type="tip" text="Available" />          | [TAN](math_and_trigonometry/tan) |
 | TANH            | <Badge type="tip" text="Available" />          | [TANH](math_and_trigonometry/tanh) |
-| TRUNC           | <Badge type="info" text="Not implemented yet" /> | –             |
+| TRUNC           | <Badge type="tip" text="Available" />          | –             |
