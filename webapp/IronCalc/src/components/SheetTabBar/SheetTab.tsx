@@ -31,16 +31,22 @@ interface SheetTabProps {
 
 function SheetTab(props: SheetTabProps) {
   const { name, color, selected, workbookState, onSelected } = props;
-  const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const colorButton = useRef<HTMLDivElement>(null);
   const open = Boolean(anchorEl);
   const { t } = useTranslation();
-  const handleOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
   const handleClose = () => {
     setAnchorEl(null);
+  };
+  const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onSelected();
+    setAnchorEl(event.currentTarget);
   };
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const handleCloseRenameDialog = () => {
@@ -70,6 +76,7 @@ function SheetTab(props: SheetTabProps) {
           event.stopPropagation();
           event.preventDefault();
         }}
+        onContextMenu={handleContextMenu}
         onPointerDown={(event: React.PointerEvent) => {
           // If it is in browse mode stop he event
           const cell = workbookState.getEditingCell();
@@ -81,7 +88,7 @@ function SheetTab(props: SheetTabProps) {
         ref={colorButton}
       >
         <Name onDoubleClick={handleOpenRenameDialog}>{name}</Name>
-        <StyledButton onClick={handleOpen}>
+        <StyledButton onClick={handleOpen} disableRipple={true} $active={open}>
           <ChevronDown />
         </StyledButton>
       </TabWrapper>
@@ -221,26 +228,25 @@ const TabWrapper = styled("div")<{ $color: string; $selected: boolean }>`
     props.$selected ? `${theme.palette.grey[50]}80` : "transparent"};
 `;
 
-const StyledButton = styled(Button)`
-  width: 15px;
-  height: 24px;
+const StyledButton = styled(Button)<{ $active?: boolean }>`
+  width: 16px;
+  height: 16px;
   min-width: 0px;
   padding: 0px;
   color: inherit;
   font-weight: inherit;
+  border-radius: 4px;
+  background-color: ${(props) =>
+    props.$active ? `${theme.palette.grey[300]}` : "transparent"};
   &:hover {
-    background-color: transparent;
+    background-color: ${theme.palette.grey[200]};
   }
   &:active {
-    background-color: transparent;
+    background-color: ${theme.palette.grey[300]};
   }
   svg {
-    width: 15px;
-    height: 15px;
-    transition: transform 0.2s;
-  }
-  &:hover svg {
-    transform: translateY(2px);
+    width: 14px;
+    height: 14px;
   }
 `;
 
