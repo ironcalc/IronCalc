@@ -254,19 +254,19 @@ fn invalid_names() {
     // spaces
     assert_eq!(
         model.new_defined_name("A real", None, "Sheet1!$A$1"),
-        Err("Invalid defined name".to_string())
+        Err("Name: Invalid defined name".to_string())
     );
 
     // Starts with number
     assert_eq!(
         model.new_defined_name("2real", None, "Sheet1!$A$1"),
-        Err("Invalid defined name".to_string())
+        Err("Name: Invalid defined name".to_string())
     );
 
     // Updating also fails
     assert_eq!(
         model.update_defined_name("MyName", None, "My Name", None, "Sheet1!$A$1"),
-        Err("Invalid defined name".to_string())
+        Err("Name: Invalid defined name".to_string())
     );
 }
 
@@ -284,13 +284,13 @@ fn already_existing() {
     // Can't create a new name with the same name
     assert_eq!(
         model.new_defined_name("MyName", None, "Sheet1!$A$2"),
-        Err("Defined name already exists".to_string())
+        Err("Name: Defined name already exists".to_string())
     );
 
     // Can't update one into an existing
     assert_eq!(
         model.update_defined_name("Another", None, "MyName", None, "Sheet1!$A$1"),
-        Err("Defined name already exists".to_string())
+        Err("Name: Defined name already exists".to_string())
     );
 }
 
@@ -304,17 +304,17 @@ fn invalid_sheet() {
 
     assert_eq!(
         model.new_defined_name("Mything", Some(2), "Sheet1!$A$1"),
-        Err("Invalid sheet index".to_string())
+        Err("Scope: Invalid sheet index".to_string())
     );
 
     assert_eq!(
         model.update_defined_name("MyName", None, "MyName", Some(2), "Sheet1!$A$1"),
-        Err("Invalid sheet index".to_string())
+        Err("Scope: Invalid sheet index".to_string())
     );
 
     assert_eq!(
         model.update_defined_name("MyName", Some(9), "YourName", None, "Sheet1!$A$1"),
-        Err("Invalid sheet index".to_string())
+        Err("General: Failed to get old name".to_string())
     );
 }
 
@@ -322,7 +322,7 @@ fn invalid_sheet() {
 fn invalid_formula() {
     let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
-    model.new_defined_name("MyName", None, "A1").unwrap();
+    assert!(model.new_defined_name("MyName", None, "A1").is_err());
 
     model.set_user_input(0, 1, 2, "=MyName").unwrap();
 

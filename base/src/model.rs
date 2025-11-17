@@ -2068,21 +2068,7 @@ impl Model {
         scope: Option<u32>,
         formula: &str,
     ) -> Result<(), String> {
-        if !is_valid_identifier(name) {
-            return Err("Invalid defined name".to_string());
-        };
-        let name_upper = name.to_uppercase();
-        let defined_names = &self.workbook.defined_names;
-        let sheet_id = match scope {
-            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
-            None => None,
-        };
-        // if the defined name already exist return error
-        for df in defined_names {
-            if df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id {
-                return Err("Defined name already exists".to_string());
-            }
-        }
+        let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
         self.workbook.defined_names.push(DefinedName {
             name: name.to_string(),
             formula: formula.to_string(),
@@ -2091,6 +2077,48 @@ impl Model {
         self.reset_parsed_structures();
 
         Ok(())
+    }
+
+    /// Validates if a defined name can be created
+    pub fn is_valid_defined_name(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<Option<u32>, String> {
+        if !is_valid_identifier(name) {
+            return Err("Name: Invalid defined name".to_string());
+        }
+        let name_upper = name.to_uppercase();
+        let defined_names = &self.workbook.defined_names;
+        let sheet_id = match scope {
+            Some(index) => match self.workbook.worksheet(index) {
+                Ok(ws) => Some(ws.sheet_id),
+                Err(_) => return Err("Scope: Invalid sheet index".to_string()),
+            },
+            None => None,
+        };
+        // if the defined name already exist return error
+        for df in defined_names {
+            if df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id {
+                return Err("Name: Defined name already exists".to_string());
+            }
+        }
+
+        // Make sure the formula is valid
+        match common::ParsedReference::parse_reference_formula(
+            None,
+            formula,
+            &self.locale,
+            |name| self.get_sheet_index_by_name(name),
+        ) {
+            Ok(_) => {}
+            Err(_) => {
+                return Err("Formula: Invalid defined name formula".to_string());
+            }
+        };
+
+        Ok(sheet_id)
     }
 
     /// Delete defined name of name and scope
@@ -2126,7 +2154,7 @@ impl Model {
         new_formula: &str,
     ) -> Result<(), String> {
         if !is_valid_identifier(new_name) {
-            return Err("Invalid defined name".to_string());
+            return Err("Name: Invalid defined name".to_string());
         };
         let name_upper = name.to_uppercase();
         let new_name_upper = new_name.to_uppercase();
@@ -2134,18 +2162,28 @@ impl Model {
         if name_upper != new_name_upper || scope != new_scope {
             for key in self.parsed_defined_names.keys() {
                 if key.1.to_uppercase() == new_name_upper && key.0 == new_scope {
-                    return Err("Defined name already exists".to_string());
+                    return Err("Name: Defined name already exists".to_string());
                 }
             }
         }
         let defined_names = &self.workbook.defined_names;
         let sheet_id = match scope {
-            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
+            Some(index) => Some(
+                self.workbook
+                    .worksheet(index)
+                    .map_err(|_| "Scope: Invalid sheet index")?
+                    .sheet_id,
+            ),
             None => None,
         };
 
         let new_sheet_id = match new_scope {
-            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
+            Some(index) => Some(
+                self.workbook
+                    .worksheet(index)
+                    .map_err(|_| "Scope: Invalid sheet index")?
+                    .sheet_id,
+            ),
             None => None,
         };
 
