@@ -1,4 +1,4 @@
-import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
+import type { DefinedName, Model } from "@ironcalc/wasm";
 import { Button, styled, Tooltip } from "@mui/material";
 import { t } from "i18next";
 import {
@@ -12,41 +12,29 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { theme } from "../../../theme";
-import EditNamedRange, { type SaveError } from "./EditNamedRange";
+import { parseRangeInSheet } from "../../Editor/util";
+import EditNamedRange, {
+  formatOnSaveError,
+  type SaveError,
+} from "./EditNamedRange";
 
 const normalizeRangeString = (range: string): string => {
   return range.trim().replace(/['"]/g, "");
 };
 
 interface NamedRangesProps {
-  title: string;
   onClose: () => void;
-  definedNameList: DefinedName[];
-  worksheets: WorksheetProperties[];
-  updateDefinedName: (
-    name: string,
-    scope: number | null,
-    newName: string,
-    newScope: number | null,
-    newFormula: string,
-  ) => void;
-  newDefinedName: (name: string, scope: number | null, formula: string) => void;
-  deleteDefinedName: (name: string, scope: number | null) => void;
+  model: Model;
   getSelectedArea: () => string;
-  onNameSelected: (name: string) => void;
+  onUpdate: () => void;
 }
 
-function NamedRanges({
-  title,
+const NamedRanges = ({
   onClose,
-  definedNameList,
-  worksheets,
-  updateDefinedName,
-  newDefinedName,
-  deleteDefinedName,
   getSelectedArea,
-  onNameSelected,
-}: NamedRangesProps) {
+  model,
+  onUpdate,
+}: NamedRangesProps) => {
   const [editingDefinedName, setEditingDefinedName] =
     useState<DefinedName | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -71,26 +59,35 @@ function NamedRanges({
     scope: string,
     formula: string,
   ): SaveError => {
+    const worksheets = model.getWorksheetsProperties();
     if (isCreatingNew) {
-      if (!newDefinedName) return {};
-
       const scope_index = worksheets.findIndex((s) => s.name === scope);
       const newScope = scope_index >= 0 ? scope_index : null;
       try {
-        newDefinedName(name, newScope, formula);
+        model.newDefinedName(name, newScope, formula);
         setIsCreatingNew(false);
-        return {};
+        onUpdate();
+        return {
+          formulaError: "",
+          nameError: "",
+        };
       } catch (e) {
-        // Since name validation is done client-side, errors from model are formula errors
-        return { formulaError: `${e}` };
+        if (e instanceof Error) {
+          return formatOnSaveError(e.message);
+        }
+        return { formulaError: "", nameError: `${e}` };
       }
     } else {
-      if (!editingDefinedName) return {};
+      if (!editingDefinedName)
+        return {
+          formulaError: "",
+          nameError: "",
+        };
 
       const scope_index = worksheets.findIndex((s) => s.name === scope);
       const newScope = scope_index >= 0 ? scope_index : null;
       try {
-        updateDefinedName(
+        model.updateDefinedName(
           editingDefinedName.name,
           editingDefinedName.scope ?? null,
           name,
@@ -98,10 +95,13 @@ function NamedRanges({
           formula,
         );
         setEditingDefinedName(null);
-        return {};
+        onUpdate();
+        return { formulaError: "", nameError: "" };
       } catch (e) {
-        // Since name validation is done client-side, errors from model are formula errors
-        return { formulaError: `${e}` };
+        if (e instanceof Error) {
+          return formatOnSaveError(e.message);
+        }
+        return { formulaError: "", nameError: `${e}` };
       }
     }
   };
@@ -114,12 +114,13 @@ function NamedRanges({
 
     if (editingDefinedName) {
       name = editingDefinedName.name;
+      const worksheets = model.getWorksheetsProperties();
       scopeName =
         editingDefinedName.scope != null
           ? worksheets[editingDefinedName.scope]?.name || "[unknown]"
           : "[Global]";
       formula = editingDefinedName.formula;
-    } else if (isCreatingNew && getSelectedArea) {
+    } else if (isCreatingNew) {
       formula = getSelectedArea();
     }
 
@@ -177,14 +178,13 @@ function NamedRanges({
         </EditHeader>
         <Content>
           <EditNamedRange
-            worksheets={worksheets}
             name={name}
             scope={scopeName}
             formula={formula}
             onSave={handleSave}
             onCancel={handleCancel}
-            definedNameList={definedNameList}
             editingDefinedName={editingDefinedName}
+            model={model}
           />
         </Content>
       </Container>
@@ -192,11 +192,22 @@ function NamedRanges({
   }
 
   const currentSelectedArea = getSelectedArea();
+  const definedNameList = model.getDefinedNameList();
+  const onNameSelected = (formula: string) => {
+    const range = parseRangeInSheet(model, formula);
+    if (range) {
+      const [sheetIndex, rowStart, columnStart, rowEnd, columnEnd] = range;
+      model.setSelectedSheet(sheetIndex);
+      model.setSelectedCell(rowStart, columnStart);
+      model.setSelectedRange(rowStart, columnStart, rowEnd, columnEnd);
+    }
+    onUpdate();
+  };
 
   return (
     <Container>
       <Header>
-        <HeaderTitle>{title}</HeaderTitle>
+        <HeaderTitle>{t("name_manager_dialog.title")}</HeaderTitle>
         <Tooltip
           title={t("right_drawer.close")}
           slotProps={{
@@ -239,6 +250,7 @@ function NamedRanges({
         ) : (
           <ListContainer>
             {definedNameList.map((definedName) => {
+              const worksheets = model.getWorksheetsProperties();
               const scopeName =
                 definedName.scope != null
                   ? worksheets[definedName.scope]?.name || "[Unknown]"
@@ -252,7 +264,29 @@ function NamedRanges({
                   key={`${definedName.name}-${definedName.scope}`}
                   tabIndex={0}
                   $isSelected={isSelected}
-                  onClick={() => onNameSelected(definedName.formula)}
+                  onClick={() => {
+                    // select the area corresponding to the defined name
+                    const formula = definedName.formula;
+                    const range = parseRangeInSheet(model, formula);
+                    if (range) {
+                      const [
+                        sheetIndex,
+                        rowStart,
+                        columnStart,
+                        rowEnd,
+                        columnEnd,
+                      ] = range;
+                      model.setSelectedSheet(sheetIndex);
+                      model.setSelectedCell(rowStart, columnStart);
+                      model.setSelectedRange(
+                        rowStart,
+                        columnStart,
+                        rowEnd,
+                        columnEnd,
+                      );
+                    }
+                    onUpdate();
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
@@ -290,23 +324,21 @@ function NamedRanges({
                       <IconButton
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (deleteDefinedName) {
-                            deleteDefinedName(
-                              definedName.name,
-                              definedName.scope ?? null,
-                            );
-                          }
+                          model.deleteDefinedName(
+                            definedName.name,
+                            definedName.scope ?? null,
+                          );
+                          onUpdate();
                         }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (deleteDefinedName) {
-                              deleteDefinedName(
-                                definedName.name,
-                                definedName.scope ?? null,
-                              );
-                            }
+                            model.deleteDefinedName(
+                              definedName.name,
+                              definedName.scope ?? null,
+                            );
+                            onUpdate();
                           }
                         }}
                         aria-label={t("name_manager_dialog.delete")}
@@ -342,7 +374,7 @@ function NamedRanges({
       </Footer>
     </Container>
   );
-}
+};
 
 const Container = styled("div")({
   height: "100%",
@@ -362,26 +394,24 @@ const ListContainer = styled("div")({
   flexDirection: "column",
 });
 
-const ListItem = styled("div")<{ $isSelected?: boolean }>(
-  ({ $isSelected }) => ({
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    padding: "8px 12px",
-    minHeight: "40px",
-    boxSizing: "border-box",
-    borderBottom: `1px solid ${theme.palette.grey[200]}`,
-    paddingLeft: $isSelected ? "20px" : "12px",
-    transition: "all 0.2s ease-in-out",
-    borderLeft: $isSelected
-      ? `3px solid ${theme.palette.primary.main}`
-      : "3px solid transparent",
-    "&:hover": {
-      backgroundColor: theme.palette.grey[50],
-      paddingLeft: "20px",
-    },
-  }),
-);
+const ListItem = styled("div")<{ $isSelected: boolean }>(({ $isSelected }) => ({
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  padding: "8px 12px",
+  minHeight: "40px",
+  boxSizing: "border-box",
+  borderBottom: `1px solid ${theme.palette.grey[200]}`,
+  paddingLeft: $isSelected ? "20px" : "12px",
+  transition: "all 0.2s ease-in-out",
+  borderLeft: $isSelected
+    ? `3px solid ${theme.palette.primary.main}`
+    : "3px solid transparent",
+  "&:hover": {
+    backgroundColor: theme.palette.grey[50],
+    paddingLeft: "20px",
+  },
+}));
 
 const ListItemText = styled("div")({
   fontSize: "12px",

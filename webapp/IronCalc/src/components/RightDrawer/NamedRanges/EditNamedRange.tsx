@@ -1,4 +1,4 @@
-import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
+import type { DefinedName, Model } from "@ironcalc/wasm";
 import {
   Box,
   FormControl,
@@ -10,43 +10,60 @@ import {
   TextField,
 } from "@mui/material";
 import { t } from "i18next";
-import { Check, Tag } from "lucide-react";
+import { Check, MousePointerClick, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { theme } from "../../../theme";
+import { getFullRangeToString } from "../../util";
 import { Footer, NewButton } from "./NamedRanges";
 
 export interface SaveError {
-  nameError?: string;
-  formulaError?: string;
+  nameError: string;
+  formulaError: string;
 }
 
 interface EditNamedRangeProps {
-  worksheets: WorksheetProperties[];
   name: string;
   scope: string;
   formula: string;
+  model: Model;
   onSave: (name: string, scope: string, formula: string) => SaveError;
   onCancel: () => void;
-  definedNameList: DefinedName[];
   editingDefinedName: DefinedName | null;
 }
 
-function EditNamedRange({
-  worksheets,
+// HACK: We are using the text structure of the server error
+// to add an error here. This is wrong for several reasons:
+// 1. There is no i18n
+// 2. Server error messages could change with no warning
+export function formatOnSaveError(error: string): SaveError {
+  if (error.startsWith("Name: ")) {
+    return { formulaError: "", nameError: error.slice(6) };
+  } else if (error.startsWith("Formula: ")) {
+    return { formulaError: error.slice(9), nameError: "" };
+  } else if (error.startsWith("Scope: ")) {
+    return { formulaError: "", nameError: error.slice(7) };
+  }
+  // Fallback for other errors
+  return { formulaError: error, nameError: "" };
+}
+
+const EditNamedRange = ({
   name: initialName,
   scope: initialScope,
   formula: initialFormula,
   onSave,
   onCancel,
-  definedNameList,
   editingDefinedName,
-}: EditNamedRangeProps) {
+  model,
+}: EditNamedRangeProps) => {
   const getDefaultName = () => {
     if (initialName) return initialName;
     let counter = 1;
     let defaultName = `Range${counter}`;
+    const worksheets = model.getWorksheetsProperties();
     const scopeIndex = worksheets.findIndex((s) => s.name === initialScope);
-    const newScope = scopeIndex >= 0 ? scopeIndex : null;
+    const newScope = scopeIndex >= 0 ? scopeIndex : undefined;
+    const definedNameList = model.getDefinedNameList();
 
     while (
       definedNameList.some(
@@ -69,38 +86,27 @@ function EditNamedRange({
 
   // Validate name (format and duplicates)
   useEffect(() => {
-    const trimmed = name.trim();
-    let error = "";
-
-    if (!trimmed) {
-      error = t("name_manager_dialog.errors.range_name_required");
-    } else if (trimmed.includes(" ")) {
-      error = t("name_manager_dialog.errors.name_cannot_contain_spaces");
-    } else if (/^\d/.test(trimmed)) {
-      error = t("name_manager_dialog.errors.name_cannot_start_with_number");
-    } else if (!/^[a-zA-Z_][a-zA-Z0-9_.]*$/.test(trimmed)) {
-      error = t("name_manager_dialog.errors.name_invalid_characters");
-    } else {
-      // Check for duplicates only if format is valid
-      const scopeIndex = worksheets.findIndex((s) => s.name === scope);
-      const newScope = scopeIndex >= 0 ? scopeIndex : undefined;
-      const existing = definedNameList.find(
-        (dn) =>
-          dn.name === trimmed &&
-          dn.scope === newScope &&
-          !(
-            editingDefinedName?.name === dn.name &&
-            editingDefinedName?.scope === dn.scope
-          ),
-      );
-      if (existing) {
-        error = t("name_manager_dialog.errors.name_already_exists");
+    const worksheets = model.getWorksheetsProperties();
+    const scopeIndex = worksheets.findIndex((s) => s.name === scope);
+    const newScope = scopeIndex >= 0 ? scopeIndex : null;
+    try {
+      model.isValidDefinedName(name, newScope, formula);
+    } catch (e) {
+      const message = (e as Error).message;
+      if (editingDefinedName && message.includes("already exists")) {
+        // Allow the same name if it's the one being edited
+        setNameError("");
+        setFormulaError("");
+        return;
       }
+      const { nameError, formulaError } = formatOnSaveError(message);
+      setNameError(nameError);
+      setFormulaError(formulaError);
+      return;
     }
-
-    setNameError(error);
+    setNameError("");
     setFormulaError("");
-  }, [name, scope, definedNameList, editingDefinedName, worksheets]);
+  }, [name, scope, formula, model, editingDefinedName]);
 
   const hasAnyError = nameError !== "" || formulaError !== "";
 
@@ -154,7 +160,9 @@ function EditNamedRange({
                   return stringValue === "[Global]" ? (
                     <>
                       <MenuSpan>{t("name_manager_dialog.workbook")}</MenuSpan>
-                      <MenuSpanGrey>{` ${t("name_manager_dialog.global")}`}</MenuSpanGrey>
+                      <MenuSpanGrey>{` ${t(
+                        "name_manager_dialog.global",
+                      )}`}</MenuSpanGrey>
                     </>
                   ) : (
                     stringValue
@@ -180,9 +188,11 @@ function EditNamedRange({
                   <MenuSpan $selected={isSelected("[Global]")}>
                     {t("name_manager_dialog.workbook")}
                   </MenuSpan>
-                  <MenuSpanGrey>{` ${t("name_manager_dialog.global")}`}</MenuSpanGrey>
+                  <MenuSpanGrey>{` ${t(
+                    "name_manager_dialog.global",
+                  )}`}</MenuSpanGrey>
                 </StyledMenuItem>
-                {worksheets.map((option) => (
+                {model.getWorksheetsProperties().map((option) => (
                   <StyledMenuItem key={option.name} value={option.name}>
                     {isSelected(option.name) ? (
                       <CheckIcon />
@@ -201,9 +211,25 @@ function EditNamedRange({
             </FormControl>
           </FieldWrapper>
           <FieldWrapper>
-            <StyledLabel htmlFor="formula">
-              {t("name_manager_dialog.refers_to")}
-            </StyledLabel>
+            <LineWrapper>
+              <StyledLabel htmlFor="formula">
+                {t("name_manager_dialog.refers_to")}
+              </StyledLabel>
+              <MousePointerClick
+                size={16}
+                onClick={() => {
+                  const worksheetNames = model
+                    .getWorksheetsProperties()
+                    .map((s) => s.name);
+                  const selectedView = model.getSelectedView();
+                  const formula = getFullRangeToString(
+                    selectedView,
+                    worksheetNames,
+                  );
+                  setFormula(formula);
+                }}
+              />
+            </LineWrapper>
             <FormControl fullWidth size="small" error={!!formulaError}>
               <StyledTextField
                 id="formula"
@@ -259,7 +285,13 @@ function EditNamedRange({
       </Footer>
     </Container>
   );
-}
+};
+
+const LineWrapper = styled("div")({
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+});
 
 const Container = styled("div")({
   height: "100%",
@@ -308,14 +340,14 @@ const HeaderBox = styled(Box)`
   align-items: center;
   text-align: center;
   border-bottom: 1px solid ${theme.palette.grey["200"]};
-  `;
+`;
 
 const HeaderBoxText = styled("span")`
   max-width: 100%;
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
-  `;
+`;
 
 const HeaderIcon = styled(Box)`
   width: 28px;
