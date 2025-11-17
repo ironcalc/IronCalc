@@ -197,4 +197,40 @@ function getFormulaHTML(
   return { html, activeRanges };
 }
 
+// Given a formula (without the equals sign) returns (sheetIndex, rowStart, columnStart, rowEnd, columnEnd)
+// if it represent a reference or range like `Sheet1!A1` or `Sheet3!D3:D10` in an existing sheet
+// If it is not a reference or range it returns null
+export function parseRangeInSheet(
+  model: Model,
+  formula: string,
+): [number, number, number, number, number] | null {
+  // HACK: We are checking here the series of tokens in the range formula.
+  // This is enough for our purposes but probably a more specific ranges in formula method  would be better.
+  const worksheets = model.getWorksheetsProperties();
+  const tokens = getTokens(formula);
+  const { token } = tokens[0];
+  if (tokenIsRangeType(token)) {
+    const {
+      sheet: refSheet,
+      left: { row: rowStart, column: columnStart },
+      right: { row: rowEnd, column: columnEnd },
+    } = token.Range;
+    if (refSheet !== null) {
+      const sheetIndex = worksheets.findIndex((s) => s.name === refSheet);
+      if (sheetIndex >= 0) {
+        return [sheetIndex, rowStart, columnStart, rowEnd, columnEnd];
+      }
+    }
+  } else if (tokenIsReferenceType(token)) {
+    const { sheet: refSheet, row, column } = token.Reference;
+    if (refSheet !== null) {
+      const sheetIndex = worksheets.findIndex((s) => s.name === refSheet);
+      if (sheetIndex >= 0) {
+        return [sheetIndex, row, column, row, column];
+      }
+    }
+  }
+  return null;
+}
+
 export default getFormulaHTML;

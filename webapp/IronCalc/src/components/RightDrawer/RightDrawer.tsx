@@ -1,4 +1,4 @@
-import type { DefinedName, WorksheetProperties } from "@ironcalc/wasm";
+import type { Model } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,20 +16,9 @@ interface RightDrawerProps {
   onClose: () => void;
   width: number;
   onWidthChange: (width: number) => void;
-  title: string;
-  definedNameList: DefinedName[];
-  worksheets: WorksheetProperties[];
-  updateDefinedName: (
-    name: string,
-    scope: number | null,
-    newName: string,
-    newScope: number | null,
-    newFormula: string,
-  ) => void;
-  newDefinedName: (name: string, scope: number | null, formula: string) => void;
-  deleteDefinedName: (name: string, scope: number | null) => void;
+  model: Model;
+  onUpdate: () => void;
   getSelectedArea: () => string;
-  onNameSelected: (name: string) => void;
 }
 
 const RightDrawer = ({
@@ -37,14 +26,9 @@ const RightDrawer = ({
   onClose,
   width,
   onWidthChange,
-  title,
-  definedNameList,
-  worksheets,
-  updateDefinedName,
-  newDefinedName,
-  deleteDefinedName,
   getSelectedArea,
-  onNameSelected,
+  model,
+  onUpdate,
 }: RightDrawerProps) => {
   const { t } = useTranslation();
   const [drawerWidth, setDrawerWidth] = useState(width);
@@ -57,7 +41,9 @@ const RightDrawer = ({
   }, []);
 
   useEffect(() => {
-    if (!isResizing) return;
+    if (!isResizing) {
+      return;
+    }
 
     // Prevent text selection during resize
     document.body.style.userSelect = "none";
@@ -90,7 +76,9 @@ const RightDrawer = ({
     };
   }, [isResizing, onWidthChange]);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <DrawerContainer $drawerWidth={drawerWidth}>
@@ -103,15 +91,10 @@ const RightDrawer = ({
       <Divider />
       <DrawerContent>
         <NamedRanges
-          title={title}
           onClose={onClose}
-          definedNameList={definedNameList}
-          worksheets={worksheets}
-          updateDefinedName={updateDefinedName}
-          newDefinedName={newDefinedName}
-          deleteDefinedName={deleteDefinedName}
+          model={model}
+          onUpdate={onUpdate}
           getSelectedArea={getSelectedArea}
-          onNameSelected={onNameSelected}
         />
       </DrawerContent>
     </DrawerContainer>

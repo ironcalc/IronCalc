@@ -1,19 +1,16 @@
-import {
-  type BorderOptions,
-  type ClipboardCell,
-  getTokens,
-  type Model,
-  type WorksheetProperties,
+import type {
+  BorderOptions,
+  ClipboardCell,
+  Model,
+  WorksheetProperties,
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
-import { t } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
 } from "../clipboard";
 import { TOOLBAR_HEIGHT } from "../constants";
-import { tokenIsRangeType } from "../Editor/util";
 import FormulaBar from "../FormulaBar/FormulaBar";
 import RightDrawer, { DEFAULT_DRAWER_WIDTH } from "../RightDrawer/RightDrawer";
 import SheetTabBar from "../SheetTabBar";
@@ -745,52 +742,16 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onClose={() => setDrawerOpen(false)}
         width={drawerWidth}
         onWidthChange={setDrawerWidth}
-        title={t("name_manager_dialog.title")}
-        definedNameList={model.getDefinedNameList()}
-        worksheets={worksheets}
-        updateDefinedName={(
-          name: string,
-          scope: number | null,
-          newName: string,
-          newScope: number | null,
-          newFormula: string,
-        ) => {
-          model.updateDefinedName(name, scope, newName, newScope, newFormula);
-          setRedrawId((id) => id + 1);
-        }}
-        newDefinedName={(
-          name: string,
-          scope: number | null,
-          formula: string,
-        ) => {
-          model.newDefinedName(name, scope, formula);
-          setRedrawId((id) => id + 1);
-        }}
-        deleteDefinedName={(name: string, scope: number | null) => {
-          model.deleteDefinedName(name, scope);
+        model={model}
+        onUpdate={() => {
           setRedrawId((id) => id + 1);
         }}
         getSelectedArea={() => {
-          const worksheetNames = worksheets.map((s) => s.name);
+          const worksheetNames = model
+            .getWorksheetsProperties()
+            .map((s) => s.name);
           const selectedView = model.getSelectedView();
           return getFullRangeToString(selectedView, worksheetNames);
-        }}
-        onNameSelected={(formula) => {
-          const tokens = getTokens(formula);
-          const { token } = tokens[0];
-          if (tokenIsRangeType(token)) {
-            const sheetName = worksheets[model.getSelectedSheet()].name;
-            const {
-              sheet: refSheet,
-              left: { row: rowStart, column: columnStart },
-              right: { row: rowEnd, column: columnEnd },
-            } = token.Range;
-            if (refSheet !== null && refSheet === sheetName) {
-              model.setSelectedCell(rowStart, columnStart);
-              model.setSelectedRange(rowStart, columnStart, rowEnd, columnEnd);
-            }
-          }
-          setRedrawId((id) => id + 1);
         }}
       />
     </Container>
