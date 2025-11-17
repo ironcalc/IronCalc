@@ -775,4 +775,17 @@ impl Model {
             .get_first_non_empty_in_row_after_column(sheet, row, column)
             .map_err(to_js_error)
     }
+
+    #[wasm_bindgen(js_name = "isValidDefinedName")]
+    pub fn is_valid_defined_name(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<(), JsError> {
+        match self.model.is_valid_defined_name(name, scope, formula) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(to_js_error(e.to_string())),
+        }
+    }
 }

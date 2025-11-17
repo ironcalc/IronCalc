@@ -2001,7 +2001,10 @@ impl UserModel {
         new_scope: Option<u32>,
         new_formula: &str,
     ) -> Result<(), String> {
-        let old_formula = self.model.get_defined_name_formula(name, scope)?;
+        let old_formula = self
+            .model
+            .get_defined_name_formula(name, scope)
+            .map_err(|_| "General: Failed to get old name")?;
         let diff_list = vec![Diff::UpdateDefinedName {
             name: name.to_string(),
             scope,
@@ -2015,6 +2018,16 @@ impl UserModel {
             .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
         self.evaluate_if_not_paused();
         Ok(())
+    }
+
+    /// validates a new defined name
+    pub fn is_valid_defined_name(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<Option<u32>, String> {
+        self.model.is_valid_defined_name(name, scope, formula)
     }
 
     // **** Private methods ****** //

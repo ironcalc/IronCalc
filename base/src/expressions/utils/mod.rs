@@ -211,15 +211,19 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
 pub fn is_valid_identifier(name: &str) -> bool {
     // https://support.microsoft.com/en-us/office/names-in-formulas-fc2935f9-115d-4bef-a370-3aa8bb4c91f1
     // https://github.com/MartinTrummer/excel-names/
-    // NOTE: We are being much more restrictive than Excel.
-    // In particular we do not support non ascii characters.
     let upper = name.to_ascii_uppercase();
-    let bytes = upper.as_bytes();
-    let len = bytes.len();
+    // length of chars
+    let len = upper.chars().count();
+
+    let mut chars = upper.chars();
+
     if len > 255 || len == 0 {
         return false;
     }
-    let first = bytes[0] as char;
+    let first = match chars.next() {
+        Some(ch) => ch,
+        None => return false,
+    };
     // The first character of a name must be a letter, an underscore character (_), or a backslash (\).
     if !(first.is_ascii_alphabetic() || first == '_' || first == '\\') {
         return false;
@@ -237,20 +241,10 @@ pub fn is_valid_identifier(name: &str) -> bool {
     if parse_reference_r1c1(name).is_some() {
         return false;
     }
-    let mut i = 1;
-    while i < len {
-        let ch = bytes[i] as char;
-        match ch {
-            'a'..='z' => {}
-            'A'..='Z' => {}
-            '0'..='9' => {}
-            '_' => {}
-            '.' => {}
-            _ => {
-                return false;
-            }
+    for ch in chars {
+        if !(ch.is_alphanumeric() || ch == '_' || ch == '.') {
+            return false;
         }
-        i += 1;
     }
 
     true

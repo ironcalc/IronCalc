@@ -83,7 +83,7 @@ function EditNamedRange({
     } else {
       // Check for duplicates only if format is valid
       const scopeIndex = worksheets.findIndex((s) => s.name === scope);
-      const newScope = scopeIndex >= 0 ? scopeIndex : null;
+      const newScope = scopeIndex >= 0 ? scopeIndex : undefined;
       const existing = definedNameList.find(
         (dn) =>
           dn.name === trimmed &&
@@ -99,6 +99,7 @@ function EditNamedRange({
     }
 
     setNameError(error);
+    setFormulaError("");
   }, [name, scope, definedNameList, editingDefinedName, worksheets]);
 
   const hasAnyError = nameError !== "" || formulaError !== "";
