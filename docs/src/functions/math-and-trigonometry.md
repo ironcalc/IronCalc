@@ -14,8 +14,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ABS             | <Badge type="tip" text="Available" />          | –             |
 | ACOS            | <Badge type="tip" text="Available" />          | [ACOS](math_and_trigonometry/acos) |
 | ACOSH           | <Badge type="tip" text="Available" />          | [ACOSH](math_and_trigonometry/acosh) |
-| ACOT            | <Badge type="info" text="Not implemented yet" /> | –             |
-| ACOTH           | <Badge type="info" text="Not implemented yet" /> | –             |
+| ACOT            | <Badge type="tip" text="Available" />          | –             |
+| ACOTH           | <Badge type="tip" text="Available" />          | –             |
 | AGGREGATE       | <Badge type="info" text="Not implemented yet" /> | –             |
 | ARABIC          | <Badge type="tip" text="Available" />          | –             |
 | ASIN            | <Badge type="tip" text="Available" />          | [ASIN](math_and_trigonometry/asin) |
@@ -31,10 +31,10 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | COMBINA         | <Badge type="tip" text="Available" />          | –             |
 | COS             | <Badge type="tip" text="Available" />          | [COS](math_and_trigonometry/cos) |
 | COSH            | <Badge type="tip" text="Available" />          | [COSH](math_and_trigonometry/cosh) |
-| COT             | <Badge type="info" text="Not implemented yet" /> | –             |
-| COTH            | <Badge type="info" text="Not implemented yet" /> | –             |
-| CSC             | <Badge type="info" text="Not implemented yet" /> | –             |
-| CSCH            | <Badge type="info" text="Not implemented yet" /> | –             |
+| COT             | <Badge type="tip" text="Available" />          | –             |
+| COTH            | <Badge type="tip" text="Available" />          | –             |
+| CSC             | <Badge type="tip" text="Available" />          | –             |
+| CSCH            | <Badge type="tip" text="Available" />          | –             |
 | DECIMAL         | <Badge type="info" text="Not implemented yet" /> | –             |
 | DEGREES         | <Badge type="tip" text="Available" /> | [DEGREES](math_and_trigonometry/degrees) |
 | EVEN            | <Badge type="tip" text="Available" /> | [EVEN](math_and_trigonometry/even) |
@@ -72,8 +72,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ROUND           | <Badge type="tip" text="Available" />          | –             |
 | ROUNDDOWN       | <Badge type="tip" text="Available" />          | –             |
 | ROUNDUP         | <Badge type="tip" text="Available" />          | –             |
-| SEC             | <Badge type="info" text="Not implemented yet" /> | –             |
-| SECH            | <Badge type="info" text="Not implemented yet" /> | –             |
+| SEC             | <Badge type="tip" text="Available" />          | –             |
+| SECH            | <Badge type="tip" text="Available" />          | –             |
 | SERIESSUM       | <Badge type="info" text="Not implemented yet" /> | –             |
 | SEQUENCE        | <Badge type="info" text="Not implemented yet" /> | –             |
 | SIGN            | <Badge type="info" text="Not implemented yet" /> | –             |
