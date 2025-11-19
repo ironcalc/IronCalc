@@ -1336,7 +1336,13 @@ impl Model {
         }
         Ok(acc)
     });
-    single_number_fn!(fn_sign, |f| Ok(f64::signum(f)));
+    single_number_fn!(fn_sign, |f| {
+        if f == 0.0 {
+            Ok(0.0)
+        } else {
+            Ok(f64::signum(f))
+        }
+    });
     single_number_fn!(fn_degrees, |f| Ok(f * (180.0 / PI)));
     single_number_fn!(fn_radians, |f| Ok(f * (PI / 180.0)));
     single_number_fn!(fn_odd, |f| {

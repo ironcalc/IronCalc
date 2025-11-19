@@ -15,6 +15,23 @@ pub(crate) enum NumberOrArray {
 }
 
 impl Model {
+    pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
+        match s.trim().parse::<f64>() {
+            Ok(f) => Some(f),
+            _ => {
+                let currency = &self.locale.currency.symbol;
+                let mut currencies = vec!["$", "€"];
+                if !currencies.iter().any(|e| *e == currency) {
+                    currencies.push(currency);
+                }
+                // Try to parse as a formatted number (e.g., dates, currencies, percentages)
+                if let Ok((v, _number_format)) = parse_formatted_number(s, &currencies) {
+                    return Some(v);
+                }
+                None
+            }
+        }
+    }
     pub(crate) fn get_number_or_array(
         &mut self,
         node: &Node,
@@ -22,24 +39,13 @@ impl Model {
     ) -> Result<NumberOrArray, CalcResult> {
         match self.evaluate_node_in_context(node, cell) {
             CalcResult::Number(f) => Ok(NumberOrArray::Number(f)),
-            CalcResult::String(s) => match s.parse::<f64>() {
-                Ok(f) => Ok(NumberOrArray::Number(f)),
-                _ => {
-                    let mut currencies = vec!["$", "€"];
-                    let currency = &self.locale.currency.symbol;
-                    if !currencies.iter().any(|e| e == currency) {
-                        currencies.push(currency);
-                    }
-                    // Try to parse as a formatted number (e.g., dates, currencies, percentages)
-                    if let Ok((v, _number_format)) = parse_formatted_number(&s, &currencies) {
-                        return Ok(NumberOrArray::Number(v));
-                    }
-                    Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Expecting number".to_string(),
-                    ))
-                }
+            CalcResult::String(s) => match self.cast_number(&s) {
+                Some(f) => Ok(NumberOrArray::Number(f)),
+                None => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Expecting number".to_string(),
+                )),
             },
             CalcResult::Boolean(f) => {
                 if f {
@@ -108,24 +114,13 @@ impl Model {
     ) -> Result<f64, CalcResult> {
         match result {
             CalcResult::Number(f) => Ok(f),
-            CalcResult::String(s) => match s.trim().parse::<f64>() {
-                Ok(f) => Ok(f),
-                _ => {
-                    let mut currencies = vec!["$", "€"];
-                    let currency = &self.locale.currency.symbol;
-                    if !currencies.iter().any(|e| e == currency) {
-                        currencies.push(currency);
-                    }
-                    // Try to parse as a formatted number (e.g., dates, currencies, percentages)
-                    if let Ok((v, _number_format)) = parse_formatted_number(&s, &currencies) {
-                        return Ok(v);
-                    }
-                    Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Expecting number".to_string(),
-                    ))
-                }
+            CalcResult::String(s) => match self.cast_number(&s) {
+                Some(f) => Ok(f),
+                None => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Expecting number".to_string(),
+                )),
             },
             CalcResult::Boolean(f) => {
                 if f {
