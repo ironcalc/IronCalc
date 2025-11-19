@@ -40,7 +40,7 @@ The title should be the function name followed by the word "function":
 # FV function
 ```
 
-Use the exact function name as it appears in IronCalc (case-sensitive).
+Use the exact function name as it appears in IronCalc (typically in uppercase).
 
 ### 2. Draft Warning (Optional)
 
@@ -54,9 +54,11 @@ If the function hasn't been implemented, include this warning box:
 
 If the function has been implemented but not documented, include this warning box:
 
+```markdown
 ::: warning
 🚧 This function is implemented but currently lacks detailed documentation. For guidance, you may refer to the equivalent functionality in [Microsoft Excel documentation](https://support.microsoft.com/en-us/office/excel-functions-by-category-5f91f4e9-7b42-46d2-9bd1-63f26a86c0eb).
 :::
+```
 
 ### 3. Overview
 
@@ -97,6 +99,8 @@ Format the function syntax with color-coded argument types. Use the following co
 
 **Example:**
 
+**FV(<span title="Number" style="color:#2F80ED">rate</span>, <span title="Number" style="color:#2F80ED">nper</span>, <span title="Number" style="color:#2F80ED">pmt</span>, [<span title="Number" style="color:#2F80ED">pv</span>], [<span title="Boolean" style="color:#27AE60">type</span>]  => <span title="Number" style="color:#2F80ED">fv</span>**
+
 ```markdown
 ### Syntax
 
@@ -107,7 +111,7 @@ Format the function syntax with color-coded argument types. Use the following co
 
 - Use `title` attribute to specify the data type
 - Use `style="color:#HEXCODE"` for syntax highlighting
-- Include default values for optional arguments using `=default`
+- Use square brackets for optional arguments
 - Show the return type after `=>`
 - Make the entire syntax **bold**
 
@@ -149,7 +153,7 @@ List each argument with:
 
 #### 4.3 Additional Guidance
 
-Provide tips, best practices, and important notes about using the function:
+Provide tips, best practices and important notes about using the function:
 
 ```markdown
 ### Additional guidance
@@ -192,9 +196,9 @@ List all error scenarios the function may encounter:
 **Guidelines:**
 
 - Use bullet points
-- Link error types using backticks and the error types page: `` [`#ERROR!`](/features/error-types.md#error) ``
+- Format error types using backticks and link to the error types page: `` [`#ERROR!`](/features/error-types.md#error) ``
 - Reference argument names in italics when discussing specific arguments
-- Include the include directive at the end if using the error details snippet:
+- Add the include directive at the end if using the error details snippet:
 
 ```markdown
 <!--@include: ../markdown-snippets/error-type-details.txt-->
@@ -202,7 +206,7 @@ List all error scenarios the function may encounter:
 
 ### 5. Details (Optional but Recommended)
 
-For functions with mathematical formulas or complex behavior, include a Details section:
+For functions with mathematical formulas or complex behavior, include a Details section. This section can also include plots, graphs or charts to help clarify the function's behavior. 
 
 ```markdown
 ## Details
@@ -247,7 +251,7 @@ Provide external references and related functions:
 
 **Guidelines:**
 
-- Include Wikipedia links for concepts when available
+- Include Wikipedia links for concepts when available 
 - Link to related IronCalc functions in the same category
 - Include links to equivalent functions in Excel, Google Sheets, and LibreOffice Calc
 - Use bullet points
@@ -287,6 +291,7 @@ Provide external references and related functions:
 
 ### Section Headers
 
+- Use `#` for the page title with the function name (e.g., FV Function)
 - Use `##` for main sections (Overview, Usage, Details, Examples, Links)
 - Use `###` for subsections (Syntax, Argument descriptions, etc.)
 
@@ -338,7 +343,7 @@ FUNCTION_NAME (<u>A</u>cronym <u>E</u>xplanation) is a function of the [Category
 
 ### Syntax
 
-**FUNCTION_NAME(<span title="Type" style="color:#2F80ED">arg1</span>, <span title="Type" style="color:#2F80ED">arg2</span>=default, <span title="Boolean" style="color:#27AE60">arg3</span>=FALSE) => <span title="Type" style="color:#2F80ED">return_value</span>**
+**FUNCTION_NAME(<span title="Type" style="color:#2F80ED">arg1</span>, [<span title="Type" style="color:#2F80ED">arg2</span>], [<span title="Boolean" style="color:#27AE60">arg3</span>]) => <span title="Type" style="color:#2F80ED">return_value</span>**
 
 ### Argument descriptions
 
