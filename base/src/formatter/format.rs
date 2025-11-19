@@ -15,7 +15,7 @@ pub struct Formatted {
 
 /// Returns the vector of chars of the fractional part of a *positive* number:
 /// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
-fn get_fract_part(value: f64, precision: i32) -> Vec<char> {
+fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
     let b = format!("{:.1$}", value.fract(), precision as usize)
         .chars()
         .collect::<Vec<char>>();
@@ -30,6 +30,12 @@ fn get_fract_part(value: f64, precision: i32) -> Vec<char> {
     if last_non_zero < 2 {
         return vec![];
     }
+    let max_len = if int_len > 15 {
+        2_usize
+    } else {
+        15_usize - int_len + 1
+    };
+    let last_non_zero = usize::min(last_non_zero, max_len + 1);
     b[2..last_non_zero].to_vec()
 }
 
@@ -423,7 +429,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             if value_abs as i64 == 0 {
                 int_part = vec![];
             }
-            let fract_part = get_fract_part(value_abs, p.precision);
+            let fract_part = get_fract_part(value_abs, p.precision, int_part.len());
             // ln is the number of digits of the integer part of the value
             let ln = int_part.len() as i32;
             // digit count is the number of digit tokens ('0', '?' and '#') to the left of the decimal point
