@@ -38,7 +38,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | DECIMAL         | <Badge type="info" text="Not implemented yet" /> | –             |
 | DEGREES         | <Badge type="tip" text="Available" /> | [DEGREES](math_and_trigonometry/degrees) |
 | EVEN            | <Badge type="tip" text="Available" /> | [EVEN](math_and_trigonometry/even) |
-| EXP             | <Badge type="info" text="Not implemented yet" /> | –             |
+| EXP             | <Badge type="tip" text="Available" /> | –             |
 | FACT            | <Badge type="info" text="Not implemented yet" /> | –             |
 | FACTDOUBLE      | <Badge type="info" text="Not implemented yet" /> | –             |
 | FLOOR           | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -76,7 +76,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SECH            | <Badge type="info" text="Not implemented yet" /> | –             |
 | SERIESSUM       | <Badge type="info" text="Not implemented yet" /> | –             |
 | SEQUENCE        | <Badge type="info" text="Not implemented yet" /> | –             |
-| SIGN            | <Badge type="info" text="Not implemented yet" /> | –             |
+| SIGN            | <Badge type="tip" text="Available" /> | –             |
 | SIN             | <Badge type="tip" text="Available" />          | [SIN](math_and_trigonometry/sin) |
 | SINH            | <Badge type="tip" text="Available" />          | [SINH](math_and_trigonometry/sinh) |
 | SQRT            | <Badge type="tip" text="Available" />          | –             |
