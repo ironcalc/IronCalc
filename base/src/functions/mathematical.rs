@@ -1278,9 +1278,18 @@ impl Model {
         Ok((f * PI).sqrt())
     });
 
-    single_number_fn!(fn_acot, |f| Ok(f64::atan(1.0 / f)));
+    single_number_fn!(fn_acot, |f| {
+        let v = f64::atan(1.0 / f);
+        if f >= 0.0 {
+            Ok(v)
+        } else {
+            // To be compatible with Excel we need a different branch
+            // when f < 0
+            Ok(v + PI)
+        }
+    });
     single_number_fn!(fn_acoth, |f: f64| if f.abs() == 1.0 {
-        Err(Error::DIV)
+        Err(Error::NUM)
     } else {
         Ok(0.5 * (f64::ln((f + 1.0) / (f - 1.0))))
     });
@@ -1289,8 +1298,11 @@ impl Model {
     } else {
         Ok(f64::cos(f) / f64::sin(f))
     });
-    single_number_fn!(fn_coth, |f| if f == 0.0 {
+    single_number_fn!(fn_coth, |f: f64| if f == 0.0 {
         Err(Error::DIV)
+    } else if f.abs() > 20.0 {
+        // for values > 20.0 this is exact in f64
+        Ok(f.signum())
     } else {
         Ok(f64::cosh(f) / f64::sinh(f))
     });
