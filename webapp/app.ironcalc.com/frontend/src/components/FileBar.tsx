@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
 import { IconButton, Tooltip } from "@mui/material";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { CloudOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
@@ -40,6 +40,9 @@ export function FileBar(properties: {
   const spacerRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
+
+  const cloudWarningText1 = `This workbook is stored only in your browser.`;
+  const cloudWarningText2 = `To keep your work safe, download it as .xlsx.`;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -100,6 +103,49 @@ export function FileBar(properties: {
           }}
           maxWidth={maxTitleWidth}
         />
+        <Tooltip
+          title={
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+            >
+              <div>{cloudWarningText1}</div>
+              <div style={{ fontWeight: "bold" }}>{cloudWarningText2}</div>
+            </div>
+          }
+          placement="bottom-start"
+          enterDelay={500}
+          slotProps={{
+            popper: {
+              modifiers: [
+                {
+                  name: "offset",
+                  options: {
+                    offset: [0, -10],
+                  },
+                },
+              ],
+            },
+            tooltip: {
+              sx: {
+                maxWidth: "140px",
+                fontSize: "11px",
+                padding: "8px",
+                backgroundColor: "#fff",
+                color: "#333333",
+                borderRadius: "8px",
+                border: "1px solid #e0e0e0",
+                boxShadow: "0px 1px 3px 0px #0000001A",
+                fontFamily: "Inter",
+                fontWeight: "400",
+                lineHeight: "16px",
+              },
+            },
+          }}
+        >
+          <CloudButton>
+            <CloudOff />
+          </CloudButton>
+        </Tooltip>
       </WorkbookTitleWrapper>
       <Spacer ref={spacerRef} />
       <DialogContainer>
@@ -120,8 +166,33 @@ export function FileBar(properties: {
 // so we need an absolute position
 const WorkbookTitleWrapper = styled("div")`
   position: absolute;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   left: 50%;
   transform: translateX(-50%);
+`;
+
+const CloudButton = styled("div")`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  background-color: transparent;
+  border-radius: 4px;
+  padding: 8px;
+  &:hover {
+    background-color: #f2f2f2;
+  }
+  &:active {
+    background-color: #e0e0e0;
+  }
+  svg {
+    width: 16px;
+    height: 16px;
+    color: #bdbdbd;
+  }
 `;
 
 // The "Spacer" component occupies as much space as possible between the menu and the share button
