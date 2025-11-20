@@ -1,10 +1,12 @@
+use statrs::function::erf::erf;
+
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
-use super::transcendental::{bessel_i, bessel_j, bessel_k, bessel_y, erf};
+use super::transcendental::{bessel_i, bessel_j, bessel_k, bessel_y};
 // https://root.cern/doc/v610/TMath_8cxx_source.html
 
 // Notice that the parameters for Bessel functions in Excel and here have inverted order
