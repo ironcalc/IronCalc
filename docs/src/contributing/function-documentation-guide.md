@@ -40,7 +40,7 @@ The title should be the function name followed by the word "function":
 # FV function
 ```
 
-Use the exact function name as it appears in IronCalc (typically in uppercase).
+The function name should be written in uppercase when mentioned in the documentation.
 
 ### 2. Draft Warning (Optional)
 
@@ -251,7 +251,7 @@ Provide external references and related functions:
 
 **Guidelines:**
 
-- Include Wikipedia links for concepts when available 
+- Include Wikipedia links for concepts when available
 - Link to related IronCalc functions in the same category
 - Include links to equivalent functions in Excel, Google Sheets, and LibreOffice Calc
 - Use bullet points
