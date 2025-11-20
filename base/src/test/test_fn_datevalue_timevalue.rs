@@ -7,8 +7,8 @@ fn datevalue_timevalue_arguments() {
     let mut model = new_empty_model();
     model._set("A1", "=DATEVALUE()");
     model._set("A2", "=TIMEVALUE()");
-    model._set("A3", "=DATEVALUE("2000-01-01")")
-    model._set("A4", "=TIMEVALUE("12:00:00")")
+    model._set("A3", "=DATEVALUE(\"2000-01-01\")");
+    model._set("A4", "=TIMEVALUE(\"12:00:00\")");
     model._set("A5", "=DATEVALUE(1,2)");
     model._set("A6", "=TIMEVALUE(1,2)");
     model.evaluate();
@@ -20,5 +20,3 @@ fn datevalue_timevalue_arguments() {
     assert_eq!(model._get_text("A5"), *"#ERROR!");
     assert_eq!(model._get_text("A6"), *"#ERROR!");
 }
-
-

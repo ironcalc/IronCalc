@@ -55,12 +55,17 @@ mod test_yearfrac_basis;
 pub(crate) mod util;
 
 mod engineering;
+mod statistical;
 mod test_fn_offset;
 mod test_number_format;
 
 mod test_arrays;
+mod test_combin_combina;
 mod test_escape_quotes;
+mod test_even_odd;
+mod test_exp_sign;
 mod test_extend;
+mod test_fn_datevalue_timevalue;
 mod test_fn_fv;
 mod test_fn_round;
 mod test_fn_type;
@@ -80,5 +85,6 @@ mod test_percentage;
 mod test_set_functions_error_handling;
 mod test_sheet_names;
 mod test_today;
+mod test_trigonometric_reciprocals;
 mod test_types;
 mod user_model;

@@ -1,0 +1,140 @@
+#![allow(clippy::unwrap_used)]
+
+use crate::test::util::new_empty_model;
+
+#[test]
+fn test_fn_chisq_dist_smoke() {
+    let mut model = new_empty_model();
+
+    // Valid: CDF
+    model._set("A1", "=CHISQ.DIST(0.5, 4, TRUE)");
+
+    // Valid: PDF
+    model._set("A2", "=CHISQ.DIST(0.5, 4, FALSE)");
+
+    // Valid: CDF with numeric cumulative (1 -> TRUE)
+    model._set("A3", "=CHISQ.DIST(0.5, 4, 1)");
+
+    // Wrong number of args -> #ERROR!
+    model._set("A4", "=CHISQ.DIST(0.5, 4)");
+    model._set("A5", "=CHISQ.DIST(0.5, 4, TRUE, FALSE)");
+
+    // Domain errors
+    // x < 0 -> #NUM!
+    model._set("A6", "=CHISQ.DIST(-1, 4, TRUE)");
+    // deg_freedom < 1 -> #NUM!
+    model._set("A7", "=CHISQ.DIST(0.5, 0, TRUE)");
+
+    model.evaluate();
+
+    // Values for df = 4
+    // CDF(0.5) ≈ 0.026499021, PDF(0.5) ≈ 0.097350098
+    assert_eq!(model._get_text("A1"), *"0.026499021");
+    assert_eq!(model._get_text("A2"), *"0.097350098");
+    assert_eq!(model._get_text("A3"), *"0.026499021");
+
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+    assert_eq!(model._get_text("A5"), *"#ERROR!");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_eq!(model._get_text("A7"), *"#NUM!");
+}
+
+#[test]
+fn test_fn_chisq_dist_rt_smoke() {
+    let mut model = new_empty_model();
+
+    // Valid calls
+    model._set("A1", "=CHISQ.DIST.RT(0.5, 4)");
+    model._set("A2", "=CHISQ.DIST.RT(5, 4)");
+
+    // Too few / too many args -> #ERROR!
+    model._set("A3", "=CHISQ.DIST.RT(0.5)");
+    model._set("A4", "=CHISQ.DIST.RT(0.5, 4, 1)");
+
+    // Domain errors
+    // x < 0 -> #NUM!
+    model._set("A5", "=CHISQ.DIST.RT(-1, 4)");
+    // deg_freedom < 1 -> #NUM!
+    model._set("A6", "=CHISQ.DIST.RT(0.5, 0)");
+
+    model.evaluate();
+
+    // For df = 4:
+    // right tail at 0.5 ≈ 0.973500979
+    // right tail at 5.0 ≈ 0.287297495
+    assert_eq!(model._get_text("A1"), *"0.973500979");
+    assert_eq!(model._get_text("A2"), *"0.287297495");
+
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+}
+
+#[test]
+fn test_fn_chisq_inv_smoke() {
+    let mut model = new_empty_model();
+
+    // Valid calls
+    model._set("A1", "=CHISQ.INV(0.95, 4)");
+    model._set("A2", "=CHISQ.INV(0.1, 10)");
+
+    // Wrong number of args -> #ERROR!
+    model._set("A3", "=CHISQ.INV(0.95)");
+    model._set("A4", "=CHISQ.INV(0.95, 4, 1)");
+
+    // Domain errors
+    // probability < 0 or > 1 -> #NUM!
+    model._set("A5", "=CHISQ.INV(-0.1, 4)");
+    model._set("A6", "=CHISQ.INV(1.1, 4)");
+    // deg_freedom < 1 -> #NUM!
+    model._set("A7", "=CHISQ.INV(0.5, 0)");
+
+    model.evaluate();
+
+    // Standard critical values:
+    // CHISQ.INV(0.95, 4) ≈ 9.487729037
+    // CHISQ.INV(0.1, 10) ≈ 4.865182052
+    assert_eq!(model._get_text("A1"), *"9.487729037");
+    assert_eq!(model._get_text("A2"), *"4.865182052");
+
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_eq!(model._get_text("A7"), *"#NUM!");
+}
+
+#[test]
+fn test_fn_chisq_inv_rt_smoke() {
+    let mut model = new_empty_model();
+
+    // Valid calls
+    model._set("A1", "=CHISQ.INV.RT(0.05, 4)");
+    model._set("A2", "=CHISQ.INV.RT(0.9, 10)");
+
+    // Wrong number of args -> #ERROR!
+    model._set("A3", "=CHISQ.INV.RT(0.05)");
+    model._set("A4", "=CHISQ.INV.RT(0.05, 4, 1)");
+
+    // Domain errors
+    // probability < 0 or > 1 -> #NUM!
+    model._set("A5", "=CHISQ.INV.RT(-0.1, 4)");
+    model._set("A6", "=CHISQ.INV.RT(1.1, 4)");
+    // deg_freedom < 1 -> #NUM!
+    model._set("A7", "=CHISQ.INV.RT(0.5, 0)");
+
+    model.evaluate();
+
+    // For chi-square:
+    // CHISQ.INV.RT(0.05, 4) = CHISQ.INV(0.95, 4) ≈ 9.487729037
+    // CHISQ.INV.RT(0.9, 10)  = CHISQ.INV(0.1, 10) ≈ 4.865182052
+    assert_eq!(model._get_text("A1"), *"9.487729037");
+    assert_eq!(model._get_text("A2"), *"4.865182052");
+
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_eq!(model._get_text("A7"), *"#NUM!");
+}
