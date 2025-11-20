@@ -1,4 +1,4 @@
-use statrs::function::erf::erf;
+use statrs::function::erf::{erf, erfc};
 
 use crate::{
     calc_result::CalcResult,
@@ -162,7 +162,7 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        CalcResult::Number(1.0 - erf(x))
+        CalcResult::Number(erfc(x))
     }
 
     pub(crate) fn fn_erfcprecise(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -173,6 +173,6 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        CalcResult::Number(1.0 - erf(x))
+        CalcResult::Number(erfc(x))
     }
 }
