@@ -2036,6 +2036,10 @@ export default defineConfig({
             text: "How to contribute",
             link: "/contributing/how-to-contribute",
           },
+          {
+            text: "Function documentation guide",
+            link: "/contributing/function-documentation-guide",
+          },
         ],
       },
     ],
