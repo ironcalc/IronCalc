@@ -11,8 +11,8 @@ fn arguments() {
     model._set("A4", "=COMBINA()");
     model._set("A5", "=COMBIN(2)");
     model._set("A6", "=COMBINA(2)");
-    model._set("A5", "=COMBIN(1, 2, 3)");
-    model._set("A6", "=COMBINA(1, 2, 3)");
+    model._set("A7", "=COMBIN(1, 2, 3)");
+    model._set("A8", "=COMBINA(1, 2, 3)");
 
     model.evaluate();
 

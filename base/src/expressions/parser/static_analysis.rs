@@ -711,6 +711,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Value => args_signature_scalars(arg_count, 1, 0),
         Function::Valuetotext => args_signature_scalars(arg_count, 1, 1),
         Function::Average => vec![Signature::Vector; arg_count],
+        Function::Avedev => vec![Signature::Vector; arg_count],
         Function::Averagea => vec![Signature::Vector; arg_count],
         Function::Averageif => args_signature_sumif(arg_count),
         Function::Averageifs => vec![Signature::Vector; arg_count],
@@ -889,6 +890,105 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Dvar => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dvarp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dstdevp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+
+        Function::BetaDist => args_signature_scalars(arg_count, 4, 2),
+        Function::BetaInv => args_signature_scalars(arg_count, 3, 2),
+        Function::BinomDist => args_signature_scalars(arg_count, 4, 0),
+        Function::BinomDistRange => args_signature_scalars(arg_count, 3, 1),
+        Function::BinomInv => args_signature_scalars(arg_count, 3, 0),
+        Function::ChisqDist => args_signature_scalars(arg_count, 4, 0),
+        Function::ChisqDistRT => args_signature_scalars(arg_count, 3, 0),
+        Function::ChisqInv => args_signature_scalars(arg_count, 3, 0),
+        Function::ChisqInvRT => args_signature_scalars(arg_count, 2, 0),
+        Function::ChisqTest => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::ConfidenceNorm => args_signature_scalars(arg_count, 3, 0),
+        Function::ConfidenceT => args_signature_scalars(arg_count, 3, 0),
+        Function::CovarianceP => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::CovarianceS => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::Devsq => vec![Signature::Vector; arg_count],
+        Function::ExponDist => args_signature_scalars(arg_count, 3, 0),
+        Function::FDist => args_signature_scalars(arg_count, 4, 0),
+        Function::FDistRT => args_signature_scalars(arg_count, 3, 0),
+        Function::FInv => args_signature_scalars(arg_count, 3, 0),
+        Function::FInvRT => args_signature_scalars(arg_count, 3, 0),
+        Function::Fisher => args_signature_scalars(arg_count, 1, 0),
+        Function::FisherInv => args_signature_scalars(arg_count, 1, 0),
+        Function::Gamma => args_signature_scalars(arg_count, 1, 0),
+        Function::GammaDist => args_signature_scalars(arg_count, 4, 0),
+        Function::GammaInv => args_signature_scalars(arg_count, 3, 0),
+        Function::GammaLn => args_signature_scalars(arg_count, 1, 0),
+        Function::GammaLnPrecise => args_signature_scalars(arg_count, 1, 0),
+        Function::HypGeomDist => args_signature_scalars(arg_count, 5, 0),
+        Function::LogNormDist => args_signature_scalars(arg_count, 4, 0),
+        Function::LogNormInv => args_signature_scalars(arg_count, 3, 0),
+        Function::NegbinomDist => args_signature_scalars(arg_count, 4, 0),
+        Function::NormDist => args_signature_scalars(arg_count, 4, 0),
+        Function::NormInv => args_signature_scalars(arg_count, 3, 0),
+        Function::NormSdist => args_signature_scalars(arg_count, 2, 0),
+        Function::NormSInv => args_signature_scalars(arg_count, 1, 0),
+        Function::Pearson => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::Phi => args_signature_scalars(arg_count, 1, 0),
+        Function::PoissonDist => args_signature_scalars(arg_count, 3, 0),
+        Function::Standardize => args_signature_scalars(arg_count, 3, 0),
+        Function::StDevP => vec![Signature::Vector; arg_count],
+        Function::StDevS => vec![Signature::Vector; arg_count],
+        Function::Stdeva => vec![Signature::Vector; arg_count],
+        Function::Stdevpa => vec![Signature::Vector; arg_count],
+        Function::TDist => args_signature_scalars(arg_count, 3, 0),
+        Function::TDist2T => args_signature_scalars(arg_count, 2, 0),
+        Function::TDistRT => args_signature_scalars(arg_count, 2, 0),
+        Function::TInv => args_signature_scalars(arg_count, 2, 0),
+        Function::TInv2T => args_signature_scalars(arg_count, 2, 0),
+        Function::TTest => {
+            if arg_count == 4 {
+                vec![
+                    Signature::Vector,
+                    Signature::Vector,
+                    Signature::Scalar,
+                    Signature::Scalar,
+                ]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::VarP => vec![Signature::Vector; arg_count],
+        Function::VarS => vec![Signature::Vector; arg_count],
+        Function::VarpA => vec![Signature::Vector; arg_count],
+        Function::VarA => vec![Signature::Vector; arg_count],
+        Function::WeibullDist => args_signature_scalars(arg_count, 4, 0),
+        Function::ZTest => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
     }
 }
 
@@ -990,6 +1090,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Valuetotext => not_implemented(args),
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
+        Function::Avedev => not_implemented(args),
         Function::Averageif => not_implemented(args),
         Function::Averageifs => not_implemented(args),
         Function::Count => not_implemented(args),
@@ -1165,5 +1266,61 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Dvar => not_implemented(args),
         Function::Dvarp => not_implemented(args),
         Function::Dstdevp => not_implemented(args),
+
+        Function::BetaDist => StaticResult::Scalar,
+        Function::BetaInv => StaticResult::Scalar,
+        Function::BinomDist => StaticResult::Scalar,
+        Function::BinomDistRange => StaticResult::Scalar,
+        Function::BinomInv => StaticResult::Scalar,
+        Function::ChisqDist => StaticResult::Scalar,
+        Function::ChisqDistRT => StaticResult::Scalar,
+        Function::ChisqInv => StaticResult::Scalar,
+        Function::ChisqInvRT => StaticResult::Scalar,
+        Function::ChisqTest => StaticResult::Scalar,
+        Function::ConfidenceNorm => StaticResult::Scalar,
+        Function::ConfidenceT => StaticResult::Scalar,
+        Function::CovarianceP => StaticResult::Scalar,
+        Function::CovarianceS => StaticResult::Scalar,
+        Function::Devsq => StaticResult::Scalar,
+        Function::ExponDist => StaticResult::Scalar,
+        Function::FDist => StaticResult::Scalar,
+        Function::FDistRT => StaticResult::Scalar,
+        Function::FInv => StaticResult::Scalar,
+        Function::FInvRT => StaticResult::Scalar,
+        Function::Fisher => StaticResult::Scalar,
+        Function::FisherInv => StaticResult::Scalar,
+        Function::Gamma => StaticResult::Scalar,
+        Function::GammaDist => StaticResult::Scalar,
+        Function::GammaInv => StaticResult::Scalar,
+        Function::GammaLn => StaticResult::Scalar,
+        Function::GammaLnPrecise => StaticResult::Scalar,
+        Function::HypGeomDist => StaticResult::Scalar,
+        Function::LogNormDist => StaticResult::Scalar,
+        Function::LogNormInv => StaticResult::Scalar,
+        Function::NegbinomDist => StaticResult::Scalar,
+        Function::NormDist => StaticResult::Scalar,
+        Function::NormInv => StaticResult::Scalar,
+        Function::NormSdist => StaticResult::Scalar,
+        Function::NormSInv => StaticResult::Scalar,
+        Function::Pearson => StaticResult::Scalar,
+        Function::Phi => StaticResult::Scalar,
+        Function::PoissonDist => StaticResult::Scalar,
+        Function::Standardize => StaticResult::Scalar,
+        Function::StDevP => StaticResult::Scalar,
+        Function::StDevS => StaticResult::Scalar,
+        Function::Stdeva => StaticResult::Scalar,
+        Function::Stdevpa => StaticResult::Scalar,
+        Function::TDist => StaticResult::Scalar,
+        Function::TDist2T => StaticResult::Scalar,
+        Function::TDistRT => StaticResult::Scalar,
+        Function::TInv => StaticResult::Scalar,
+        Function::TInv2T => StaticResult::Scalar,
+        Function::TTest => StaticResult::Scalar,
+        Function::VarP => StaticResult::Scalar,
+        Function::VarS => StaticResult::Scalar,
+        Function::VarpA => StaticResult::Scalar,
+        Function::VarA => StaticResult::Scalar,
+        Function::WeibullDist => StaticResult::Scalar,
+        Function::ZTest => StaticResult::Scalar,
     }
 }
