@@ -319,10 +319,16 @@ pub enum Function {
     Dmax,
     Dmin,
     Dsum,
+    Dcounta,
+    Dproduct,
+    Dstdev,
+    Dvar,
+    Dvarp,
+    Dstdevp,
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 262> {
+    pub fn into_iter() -> IntoIter<Function, 268> {
         [
             Function::And,
             Function::False,
@@ -586,6 +592,12 @@ impl Function {
             Function::Dmax,
             Function::Dmin,
             Function::Dsum,
+            Function::Dcounta,
+            Function::Dproduct,
+            Function::Dstdev,
+            Function::Dvar,
+            Function::Dvarp,
+            Function::Dstdevp,
         ]
         .into_iter()
     }
@@ -938,6 +950,12 @@ impl Function {
             "DMAX" => Some(Function::Dmax),
             "DMIN" => Some(Function::Dmin),
             "DSUM" => Some(Function::Dsum),
+            "DCOUNTA" => Some(Function::Dcounta),
+            "DPRODUCT" => Some(Function::Dproduct),
+            "DSTDEV" => Some(Function::Dstdev),
+            "DVAR" => Some(Function::Dvar),
+            "DVARP" => Some(Function::Dvarp),
+            "DSTDEVP" => Some(Function::Dstdevp),
 
             _ => None,
         }
@@ -1210,6 +1228,12 @@ impl fmt::Display for Function {
             Function::Dmax => write!(f, "DMAX"),
             Function::Dmin => write!(f, "DMIN"),
             Function::Dsum => write!(f, "DSUM"),
+            Function::Dcounta => write!(f, "DCOUNTA"),
+            Function::Dproduct => write!(f, "DPRODUCT"),
+            Function::Dstdev => write!(f, "DSTDEV"),
+            Function::Dvar => write!(f, "DVAR"),
+            Function::Dvarp => write!(f, "DVARP"),
+            Function::Dstdevp => write!(f, "DSTDEVP"),
         }
     }
 }
@@ -1500,6 +1524,12 @@ impl Model {
             Function::Dmax => self.fn_dmax(args, cell),
             Function::Dmin => self.fn_dmin(args, cell),
             Function::Dsum => self.fn_dsum(args, cell),
+            Function::Dcounta => self.fn_dcounta(args, cell),
+            Function::Dproduct => self.fn_dproduct(args, cell),
+            Function::Dstdev => self.fn_dstdev(args, cell),
+            Function::Dvar => self.fn_dvar(args, cell),
+            Function::Dvarp => self.fn_dvarp(args, cell),
+            Function::Dstdevp => self.fn_dstdevp(args, cell),
         }
     }
 }
