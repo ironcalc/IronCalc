@@ -94,8 +94,11 @@ function SheetTab(props: SheetTabProps) {
   const handleSave = () => {
     if (editingName.trim() !== "") {
       props.onRenamed(editingName.trim());
+      setIsEditing(false);
+    } else {
+      setEditingName(name);
+      setIsEditing(false);
     }
-    setIsEditing(false);
   };
 
   const handleCancel = () => {
@@ -153,18 +156,14 @@ function SheetTab(props: SheetTabProps) {
               onClick={(e) => e.stopPropagation()}
               spellCheck={false}
             />
-            <StyledButton disableRipple={true} disabled={true} $active={false}>
+            <StyledButton disableRipple disabled $active={false}>
               <ChevronDown />
             </StyledButton>
           </>
         ) : (
           <>
             <Name>{name}</Name>
-            <StyledButton
-              onClick={handleOpen}
-              disableRipple={true}
-              $active={open}
-            >
+            <StyledButton onClick={handleOpen} disableRipple $active={open}>
               <ChevronDown />
             </StyledButton>
           </>
@@ -361,6 +360,7 @@ const StyledInput = styled(Input)`
   flex-grow: 1;
   & .MuiInputBase-input {
     font-family: Inter;
+    background-color: ${theme.palette.common.white};
     font-weight: inherit;
     padding: 6px 0px;
     outline: 1px solid ${theme.palette.primary.main};
