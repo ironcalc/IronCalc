@@ -137,6 +137,7 @@ const Sheets = styled("div")`
   padding-left: 12px;
   display: flex;
   flex-direction: row;
+  height: 100%;
 `;
 
 const SheetInner = styled("div")`
