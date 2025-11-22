@@ -1,3 +1,4 @@
+import type { Model } from "@ironcalc/wasm";
 import { Menu, MenuItem, styled } from "@mui/material";
 import { Tag } from "lucide-react";
 import { type ComponentProps, useCallback, useRef, useState } from "react";
@@ -13,6 +14,7 @@ type FormulaBarMenuProps = {
   anchorOrigin?: ComponentProps<typeof Menu>["anchorOrigin"];
   openDrawer: () => void;
   canEdit: boolean;
+  model: Model;
 };
 
 const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
@@ -29,6 +31,8 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
     setMenuOpen(false);
     properties.onMenuOpenChange?.(false);
   }, [properties.onMenuOpenChange]);
+
+  const definedNameList = properties.model.getDefinedNameList();
 
   return (
     <>
@@ -49,12 +53,32 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
           horizontal: "left",
         }}
       >
-        <MenuItemWrapper disableRipple>
-          <Tag />
-          <MenuItemText>Range1</MenuItemText>
-          <MenuItemExample>$Sheet1!$A$1:$B$2</MenuItemExample>
-        </MenuItemWrapper>
-        <MenuDivider />
+        {definedNameList.length > 0 ? (
+          <>
+            {definedNameList.map((definedName) => {
+              const worksheets = properties.model.getWorksheetsProperties();
+              const scopeName =
+                definedName.scope != null
+                  ? worksheets[definedName.scope]?.name || "[Unknown]"
+                  : "[Global]";
+              return (
+                <MenuItemWrapper
+                  key={`${definedName.name}-${definedName.scope}`}
+                  disableRipple
+                  onClick={() => {
+                    properties.onChange(definedName.name);
+                    handleMenuClose();
+                  }}
+                >
+                  <Tag />
+                  <MenuItemText>{definedName.name}</MenuItemText>
+                  <MenuItemExample>{definedName.formula}</MenuItemExample>
+                </MenuItemWrapper>
+              );
+            })}
+            <MenuDivider />
+          </>
+        ) : null}
         <MenuItemWrapper
           $pressed={false}
           onClick={() => {
@@ -101,6 +125,7 @@ const MenuItemWrapper = styled(MenuItem, {
   & svg {
     width: 12px;
     height: 12px;
+    flex-shrink: 0;
     color: ${theme.palette.grey[600]};
   }
 `;
@@ -118,9 +143,11 @@ const MenuDivider = styled("div")`
 `;
 
 const MenuItemText = styled("div")`
+  width: 100%;
   color: #000;
   display: flex;
   align-items: center;
+  text-overflow: ellipsis;
 `;
 
 const MenuItemExample = styled("div")`
