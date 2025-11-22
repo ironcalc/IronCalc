@@ -399,6 +399,7 @@ const ListItem = styled("div")<{ $isSelected: boolean }>(({ $isSelected }) => ({
   alignItems: "flex-start",
   justifyContent: "space-between",
   padding: "8px 12px",
+  cursor: "pointer",
   minHeight: "40px",
   boxSizing: "border-box",
   borderBottom: `1px solid ${theme.palette.grey[200]}`,
