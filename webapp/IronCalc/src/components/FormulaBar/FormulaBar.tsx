@@ -20,6 +20,8 @@ type FormulaBarProps = {
   workbookState: WorkbookState;
   onChange: () => void;
   onTextUpdated: () => void;
+  openDrawer: () => void;
+  canEdit: boolean;
 };
 
 function FormulaBar(properties: FormulaBarProps) {
@@ -51,6 +53,8 @@ function FormulaBar(properties: FormulaBarProps) {
           selectedOption={selectedMenuOption}
           onChange={handleMenuChange}
           onMenuOpenChange={handleMenuOpenChange}
+          openDrawer={properties.openDrawer}
+          canEdit={properties.canEdit}
         >
           <CellBarAddress $active={isMenuOpen}>{cellAddress}</CellBarAddress>
           <MenuButton $active={isMenuOpen}>
