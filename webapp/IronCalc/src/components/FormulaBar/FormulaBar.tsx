@@ -55,6 +55,7 @@ function FormulaBar(properties: FormulaBarProps) {
           onMenuOpenChange={handleMenuOpenChange}
           openDrawer={properties.openDrawer}
           canEdit={properties.canEdit}
+          model={model}
         >
           <CellBarAddress $active={isMenuOpen}>{cellAddress}</CellBarAddress>
           <MenuButton $active={isMenuOpen}>
