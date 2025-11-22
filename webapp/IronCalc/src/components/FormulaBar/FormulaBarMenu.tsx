@@ -11,6 +11,8 @@ type FormulaBarMenuProps = {
   onExited?: () => void;
   onMenuOpenChange?: (isOpen: boolean) => void;
   anchorOrigin?: ComponentProps<typeof Menu>["anchorOrigin"];
+  openDrawer: () => void;
+  canEdit: boolean;
 };
 
 const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
@@ -53,7 +55,15 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
           <MenuItemExample>$Sheet1!$A$1:$B$2</MenuItemExample>
         </MenuItemWrapper>
         <MenuDivider />
-        <MenuItemWrapper disableRipple>
+        <MenuItemWrapper
+          $pressed={false}
+          onClick={() => {
+            properties.openDrawer();
+            handleMenuClose();
+          }}
+          disabled={!properties.canEdit}
+          disableRipple
+        >
           <MenuItemText>{t("formula_bar.manage_named_ranges")}</MenuItemText>
         </MenuItemWrapper>
       </StyledMenu>
@@ -74,7 +84,9 @@ const StyledMenu = styled(Menu)`
   }
 `;
 
-const MenuItemWrapper = styled(MenuItem)`
+const MenuItemWrapper = styled(MenuItem, {
+  shouldForwardProp: (prop) => prop !== "$pressed",
+})<{ $pressed?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;

@@ -682,6 +682,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           }}
           model={model}
           workbookState={workbookState}
+          openDrawer={() => {
+            setDrawerOpen(true);
+          }}
+          canEdit={true}
         />
         <Worksheet
           model={model}
