@@ -1,4 +1,4 @@
-use statrs::distribution::{Beta, ChiSquared, Continuous, ContinuousCDF};
+use statrs::distribution::{ChiSquared, Continuous, ContinuousCDF};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::{

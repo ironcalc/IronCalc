@@ -1,6 +1,7 @@
 mod test_fn_binom;
 mod test_fn_chisq;
 mod test_fn_confidence;
+mod test_fn_devsq;
 mod test_fn_expon_dist;
 mod test_fn_f;
 mod test_fn_fisher;
@@ -9,6 +10,7 @@ mod test_fn_log_norm;
 mod test_fn_norm_dist;
 mod test_fn_phi;
 mod test_fn_poisson;
+mod test_fn_stdev;
 mod test_fn_t_dist;
 mod test_fn_weibull;
 mod test_fn_z_test;
