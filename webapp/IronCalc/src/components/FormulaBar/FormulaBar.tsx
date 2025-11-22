@@ -1,5 +1,7 @@
 import type { Model } from "@ironcalc/wasm";
 import { styled } from "@mui/material";
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 import { Fx } from "../../icons";
 import { theme } from "../../theme";
 import { FORMULA_BAR_HEIGHT } from "../constants";
@@ -9,6 +11,7 @@ import {
   ROW_HEIGH_SCALE,
 } from "../WorksheetCanvas/constants";
 import type { WorkbookState } from "../workbookState";
+import FormulaBarMenu from "./FormulaBarMenu";
 
 type FormulaBarProps = {
   cellAddress: string;
@@ -28,10 +31,32 @@ function FormulaBar(properties: FormulaBarProps) {
     onTextUpdated,
     workbookState,
   } = properties;
+  const [selectedMenuOption, setSelectedMenuOption] =
+    useState<string>("show_values");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleMenuChange = (option: string): void => {
+    setSelectedMenuOption(option);
+    // Handle menu option change here
+  };
+
+  const handleMenuOpenChange = (isOpen: boolean): void => {
+    setIsMenuOpen(isOpen);
+  };
+
   return (
     <Container>
       <AddressContainer>
-        <CellBarAddress>{cellAddress}</CellBarAddress>
+        <FormulaBarMenu
+          selectedOption={selectedMenuOption}
+          onChange={handleMenuChange}
+          onMenuOpenChange={handleMenuOpenChange}
+        >
+          <CellBarAddress $active={isMenuOpen}>{cellAddress}</CellBarAddress>
+          <MenuButton $active={isMenuOpen}>
+            <ChevronDown size={16} />
+          </MenuButton>
+        </FormulaBarMenu>
       </AddressContainer>
       <Divider />
       <FormulaContainer>
@@ -101,7 +126,7 @@ const Divider = styled("div")`
   background-color: ${theme.palette.grey["300"]};
   min-width: 1px;
   height: 16px;
-  margin: 0px 16px;
+  margin: 0px 16px 0px 8px;
 `;
 
 const FormulaContainer = styled("div")`
@@ -124,7 +149,6 @@ const Container = styled("div")`
 `;
 
 const AddressContainer = styled("div")`
-  padding-left: 16px;
   color: ${theme.palette.common.black};
   font-style: normal;
   font-weight: normal;
@@ -132,11 +156,45 @@ const AddressContainer = styled("div")`
   display: flex;
   font-weight: 600;
   flex-grow: row;
+  align-items: center;
+  gap: 2px;
+  border-radius: 4px;
+  margin-left: 8px;
+  &:hover {
+    background-color: ${theme.palette.grey["100"]};
+  }
 `;
 
-const CellBarAddress = styled("div")`
+const CellBarAddress = styled("div")<{ $active?: boolean }>`
   width: 100%;
+  box-sizing: border-box;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: "center";
+  padding: 4px 8px;
+  border-radius: 4px 0px 0px 4px;
+  background-color: ${(props) =>
+    props.$active ? theme.palette.action.selected : "transparent"};
+  &:hover {
+    background-color: ${theme.palette.grey["300"]};
+  }
+`;
+
+const MenuButton = styled("div")<{ $active?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 4px 2px;
+  border-radius: 0px 4px 4px 0px;
+  color: ${theme.palette.common.black};
+  background-color: ${(props) =>
+    props.$active ? theme.palette.action.selected : "transparent"};
+  &:hover {
+    background-color: ${theme.palette.grey["300"]};
+  }
 `;
 
 const EditorWrapper = styled("div")`
