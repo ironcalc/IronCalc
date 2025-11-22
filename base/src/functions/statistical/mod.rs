@@ -1,3 +1,16 @@
 mod beta;
+mod binom;
+mod chisq;
 mod common;
+mod exponential;
+mod fisher;
+mod gamma;
+mod hypegeom;
+mod log_normal;
+mod normal;
+mod phi;
+mod poisson;
+mod standardize;
+mod t_dist;
 mod weibull;
+mod z_test;

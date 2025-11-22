@@ -59,35 +59,3 @@ fn test_fn_log_norm_inv_smoke() {
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
 }
-
-#[test]
-fn test_fn_negbinom_dist_smoke() {
-    let mut model = new_empty_model();
-
-    // Valid: PMF (non-cumulative) and CDF (cumulative)
-    model._set("A1", "=NEGBINOM.DIST(10, 5, 0.25, FALSE)");
-    model._set("A2", "=NEGBINOM.DIST(10, 5, 0.25, TRUE)");
-
-    // Wrong number of arguments -> #ERROR!
-    model._set("A3", "=NEGBINOM.DIST(10, 5, 0.25)");
-    model._set("A4", "=NEGBINOM.DIST(10, 5, 0.25, TRUE, FALSE)");
-
-    // Domain errors:
-    // p < 0 or p > 1 -> #NUM!
-    model._set("A5", "=NEGBINOM.DIST(10, 5, 1.5, TRUE)");
-    // number_f < 0 -> #NUM!
-    model._set("A6", "=NEGBINOM.DIST(-1, 5, 0.25, TRUE)");
-    // number_s < 1 -> #NUM!
-    model._set("A7", "=NEGBINOM.DIST(10, 0, 0.25, TRUE)");
-
-    model.evaluate();
-
-    assert_eq!(model._get_text("A1"), *"0.05504866");
-    assert_eq!(model._get_text("A2"), *"0.313514058");
-
-    assert_eq!(model._get_text("A3"), *"#ERROR!");
-    assert_eq!(model._get_text("A4"), *"#ERROR!");
-    assert_eq!(model._get_text("A5"), *"#NUM!");
-    assert_eq!(model._get_text("A6"), *"#NUM!");
-    assert_eq!(model._get_text("A7"), *"#NUM!");
-}

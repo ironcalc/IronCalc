@@ -2,7 +2,6 @@
 
 use crate::test::util::new_empty_model;
 
-
 #[test]
 fn test_fn_expon_dist_smoke() {
     let mut model = new_empty_model();
@@ -18,7 +17,7 @@ fn test_fn_expon_dist_smoke() {
     model._set("A4", "=EXPON.DIST(0.5, 1, TRUE, FALSE)");
 
     // Domain errors
-    model._set("A5", "=EXPON.DIST(-1, 1, TRUE)");  // x < 0
+    model._set("A5", "=EXPON.DIST(-1, 1, TRUE)"); // x < 0
     model._set("A6", "=EXPON.DIST(0.5, 0, TRUE)"); // lambda <= 0
 
     model.evaluate();
