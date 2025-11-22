@@ -1,20 +1,19 @@
 import type { Model } from "@ironcalc/wasm";
 import { Menu, MenuItem, styled } from "@mui/material";
 import { Tag } from "lucide-react";
-import { type ComponentProps, useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
+import { parseRangeInSheet } from "../Editor/util";
 
 type FormulaBarMenuProps = {
   children: React.ReactNode;
-  selectedOption?: string;
   onChange: (option: string) => void;
-  onExited?: () => void;
-  onMenuOpenChange?: (isOpen: boolean) => void;
-  anchorOrigin?: ComponentProps<typeof Menu>["anchorOrigin"];
+  onMenuOpenChange: (isOpen: boolean) => void;
   openDrawer: () => void;
   canEdit: boolean;
   model: Model;
+  onUpdate: () => void;
 };
 
 const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
@@ -24,12 +23,12 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
 
   const handleMenuOpen = useCallback((): void => {
     setMenuOpen(true);
-    properties.onMenuOpenChange?.(true);
+    properties.onMenuOpenChange(true);
   }, [properties.onMenuOpenChange]);
 
   const handleMenuClose = useCallback((): void => {
     setMenuOpen(false);
-    properties.onMenuOpenChange?.(false);
+    properties.onMenuOpenChange(false);
   }, [properties.onMenuOpenChange]);
 
   const definedNameList = properties.model.getDefinedNameList();
@@ -56,16 +55,32 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
         {definedNameList.length > 0 ? (
           <>
             {definedNameList.map((definedName) => {
-              const worksheets = properties.model.getWorksheetsProperties();
-              const scopeName =
-                definedName.scope != null
-                  ? worksheets[definedName.scope]?.name || "[Unknown]"
-                  : "[Global]";
               return (
                 <MenuItemWrapper
                   key={`${definedName.name}-${definedName.scope}`}
                   disableRipple
                   onClick={() => {
+                    // select the area corresponding to the defined name
+                    const formula = definedName.formula;
+                    const range = parseRangeInSheet(properties.model, formula);
+                    if (range) {
+                      const [
+                        sheetIndex,
+                        rowStart,
+                        columnStart,
+                        rowEnd,
+                        columnEnd,
+                      ] = range;
+                      properties.model.setSelectedSheet(sheetIndex);
+                      properties.model.setSelectedCell(rowStart, columnStart);
+                      properties.model.setSelectedRange(
+                        rowStart,
+                        columnStart,
+                        rowEnd,
+                        columnEnd,
+                      );
+                    }
+                    properties.onUpdate();
                     properties.onChange(definedName.name);
                     handleMenuClose();
                   }}
@@ -80,7 +95,6 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
           </>
         ) : null}
         <MenuItemWrapper
-          $pressed={false}
           onClick={() => {
             properties.openDrawer();
             handleMenuClose();
@@ -108,9 +122,7 @@ const StyledMenu = styled(Menu)`
   }
 `;
 
-const MenuItemWrapper = styled(MenuItem, {
-  shouldForwardProp: (prop) => prop !== "$pressed",
-})<{ $pressed?: boolean }>`
+const MenuItemWrapper = styled(MenuItem)`
   display: flex;
   align-items: center;
   justify-content: space-between;

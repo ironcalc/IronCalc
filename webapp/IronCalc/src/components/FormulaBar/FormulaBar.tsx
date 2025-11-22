@@ -33,14 +33,9 @@ function FormulaBar(properties: FormulaBarProps) {
     onTextUpdated,
     workbookState,
   } = properties;
-  const [selectedMenuOption, setSelectedMenuOption] =
-    useState<string>("show_values");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleMenuChange = (option: string): void => {
-    setSelectedMenuOption(option);
-    // Handle menu option change here
-  };
+  const handleMenuChange = (_option: string): void => {};
 
   const handleMenuOpenChange = (isOpen: boolean): void => {
     setIsMenuOpen(isOpen);
@@ -50,12 +45,12 @@ function FormulaBar(properties: FormulaBarProps) {
     <Container>
       <AddressContainer>
         <FormulaBarMenu
-          selectedOption={selectedMenuOption}
           onChange={handleMenuChange}
           onMenuOpenChange={handleMenuOpenChange}
           openDrawer={properties.openDrawer}
           canEdit={properties.canEdit}
           model={model}
+          onUpdate={onChange}
         >
           <CellBarAddress $active={isMenuOpen}>{cellAddress}</CellBarAddress>
           <MenuButton $active={isMenuOpen}>
@@ -156,7 +151,6 @@ const Container = styled("div")`
 const AddressContainer = styled("div")`
   color: ${theme.palette.common.black};
   font-style: normal;
-  font-weight: normal;
   font-size: 12px;
   display: flex;
   font-weight: 600;
@@ -177,7 +171,7 @@ const CellBarAddress = styled("div")<{ $active?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: "center";
+  text-align: center;
   padding: 4px 8px;
   border-radius: 4px 0px 0px 4px;
   background-color: ${(props) =>
