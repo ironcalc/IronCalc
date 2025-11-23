@@ -4,6 +4,7 @@ use chrono::Months;
 use chrono::NaiveDateTime;
 use chrono::NaiveTime;
 use chrono::Timelike;
+use chrono_tz::Tz;
 
 const SECONDS_PER_DAY: i32 = 86_400;
 const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
@@ -770,12 +771,12 @@ impl Model {
         Ok(values)
     }
 
-    // Returns the current date/time as an Excel serial number in the model's configured timezone.
+    // Returns the current date/time as an Excel serial number in the given timezone.
     // Used by TODAY() and NOW().
-    fn current_excel_serial(&self) -> Option<f64> {
+    pub(crate) fn current_excel_serial_with_timezone(&self, tz: Tz) -> Option<f64> {
         let seconds = get_milliseconds_since_epoch() / 1000;
         DateTime::from_timestamp(seconds, 0).map(|dt| {
-            let local_time = dt.with_timezone(&self.tz);
+            let local_time = dt.with_timezone(&tz);
             let days_from_1900 = local_time.num_days_from_ce() - EXCEL_DATE_BASE;
             let fraction = (local_time.num_seconds_from_midnight() as f64) / (60.0 * 60.0 * 24.0);
             days_from_1900 as f64 + fraction
@@ -978,7 +979,7 @@ impl Model {
                 message: "Wrong number of arguments".to_string(),
             };
         }
-        match self.current_excel_serial() {
+        match self.current_excel_serial_with_timezone(self.tz) {
             Some(serial) => CalcResult::Number(serial.floor()),
             None => CalcResult::Error {
                 error: Error::ERROR,
@@ -989,14 +990,35 @@ impl Model {
     }
 
     pub(crate) fn fn_now(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !args.is_empty() {
+        if args.len() > 1 {
             return CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell,
                 message: "Wrong number of arguments".to_string(),
             };
         }
-        match self.current_excel_serial() {
+        let tz = match args.first() {
+            Some(arg0) => {
+                // Parse timezone argument
+                let tz_str = match self.get_string(arg0, cell) {
+                    Ok(s) => s,
+                    Err(e) => return e,
+                };
+                let tz: Tz = match &tz_str.parse() {
+                    Ok(tz) => *tz,
+                    Err(_) => {
+                        return CalcResult::Error {
+                            error: Error::ERROR,
+                            origin: cell,
+                            message: format!("Invalid timezone: {}", &tz_str),
+                        }
+                    }
+                };
+                tz
+            }
+            None => self.tz,
+        };
+        match self.current_excel_serial_with_timezone(tz) {
             Some(serial) => CalcResult::Number(serial),
             None => CalcResult::Error {
                 error: Error::ERROR,
