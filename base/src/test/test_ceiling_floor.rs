@@ -31,7 +31,7 @@ fn arguments() {
     model._set("B7", "=FLOOR.PRECISE(5.2, 2)");
     model._set("B8", "=FLOOR.PRECISE(5.2, 2, 3)");
 
-    model._set("B9", "=FLOOR.MATH()"); 
+    model._set("B9", "=FLOOR.MATH()");
     model._set("B10", "=FLOOR.MATH(5.2)");
     model._set("B11", "=FLOOR.MATH(5.2, 2)");
     model._set("B12", "=FLOOR.MATH(5.2, 2, 3)");
