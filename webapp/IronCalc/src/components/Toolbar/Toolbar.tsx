@@ -33,7 +33,6 @@ import {
   Redo2,
   RemoveFormatting,
   Strikethrough,
-  Tags,
   Type,
   Underline,
   Undo2,
@@ -87,7 +86,6 @@ type ToolbarProperties = {
   numFmt: string;
   showGridLines: boolean;
   onToggleShowGridLines: (show: boolean) => void;
-  openDrawer: () => void;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -512,18 +510,6 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             >
               {properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
-            </StyledButton>
-          </Tooltip>
-          <Tooltip title={t("toolbar.named_ranges")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
-              onClick={() => {
-                properties.openDrawer();
-              }}
-              disabled={!canEdit}
-            >
-              <Tags />
             </StyledButton>
           </Tooltip>
           <Tooltip title={t("toolbar.selected_png")}>
