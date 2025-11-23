@@ -8,6 +8,7 @@ mod test_criteria;
 mod test_currency;
 mod test_date_and_time;
 mod test_datedif_leap_month_end;
+mod test_ceiling_floor;
 mod test_days360_month_end;
 mod test_degrees_radians;
 mod test_error_propagation;
