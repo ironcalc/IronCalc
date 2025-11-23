@@ -1022,7 +1022,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let arg_count = args.len();
-        if arg_count > 3 {
+        if !(1..=3).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
@@ -1063,7 +1063,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let arg_count = args.len();
-        if arg_count > 2 {
+        if !(1..=2).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
@@ -1093,7 +1093,7 @@ impl Model {
 
     pub(crate) fn fn_floor_math(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if arg_count > 3 {
+        if !(1..=3).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
@@ -1135,7 +1135,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let arg_count = args.len();
-        if arg_count > 2 {
+        if !(1..=2).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
@@ -1209,7 +1209,7 @@ impl Model {
     }
 
     pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() > 2 {
+        if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
