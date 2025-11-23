@@ -44,8 +44,9 @@ function LocalStorageAlert() {
       <AlertBody>
         IronCalc stores your data only in your browser's local storage.
       </AlertBody>
-      <AlertBody style={{ fontWeight: "600", margin: "6px 0px 0px 0px" }}>
-        To keep your work safe, please download your XLSX file regularly.
+      <AlertBody style={{ marginTop: "6px" }}>
+        <strong>Download your XLSX often</strong> – future versions may not open
+        current workbooks, even if shared.
       </AlertBody>
     </AlertWrapper>
   );

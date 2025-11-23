@@ -41,8 +41,8 @@ export function FileBar(properties: {
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
 
-  const cloudWarningText1 = `This workbook is stored only in your browser.`;
-  const cloudWarningText2 = `To keep your work safe, download it as .xlsx.`;
+  const cloudWarningText1 = `This workbook is stored only in your browser. To keep it safe, download it as .xlsx.`;
+  const cloudWarningText2 = ` Future versions may be incompatible.`;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -127,7 +127,7 @@ export function FileBar(properties: {
             },
             tooltip: {
               sx: {
-                maxWidth: "140px",
+                maxWidth: "240px",
                 fontSize: "11px",
                 padding: "8px",
                 backgroundColor: "#fff",
