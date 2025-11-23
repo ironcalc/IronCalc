@@ -24,9 +24,9 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ATAN2           | <Badge type="tip" text="Available" />          | [ATAN2](math_and_trigonometry/atan2) |
 | ATANH           | <Badge type="tip" text="Available" />          | [ATANH](math_and_trigonometry/atanh) |
 | BASE            | <Badge type="info" text="Not implemented yet" /> | –             |
-| CEILING         | <Badge type="info" text="Not implemented yet" /> | –             |
-| CEILING.MATH    | <Badge type="info" text="Not implemented yet" /> | –             |
-| CEILING.PRECISE | <Badge type="info" text="Not implemented yet" /> | –             |
+| CEILING         | <Badge type="tip" text="Available" />          | –             |
+| CEILING.MATH    | <Badge type="tip" text="Available" />          | –             |
+| CEILING.PRECISE | <Badge type="tip" text="Available" />          | –             |
 | COMBIN          | <Badge type="tip" text="Available" />          | –             |
 | COMBINA         | <Badge type="tip" text="Available" />          | –             |
 | COS             | <Badge type="tip" text="Available" />          | [COS](math_and_trigonometry/cos) |
@@ -41,12 +41,12 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | EXP             | <Badge type="tip" text="Available" /> | –             |
 | FACT            | <Badge type="info" text="Not implemented yet" /> | –             |
 | FACTDOUBLE      | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR           | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR.MATH      | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR.PRECISE   | <Badge type="info" text="Not implemented yet" /> | –             |
+| FLOOR           | <Badge type="tip" text="Available" />          | –             |
+| FLOOR.MATH      | <Badge type="tip" text="Available" />          | –             |
+| FLOOR.PRECISE   | <Badge type="tip" text="Available" />          | –             |
 | GCD             | <Badge type="info" text="Not implemented yet" /> | –             |
 | INT             | <Badge type="tip" text="Available" />          | –             |
-| ISO.CEILING     | <Badge type="info" text="Not implemented yet" /> | –             |
+| ISO.CEILING     | <Badge type="tip" text="Available" />          | –             |
 | LCM             | <Badge type="info" text="Not implemented yet" /> | –             |
 | LET             | <Badge type="info" text="Not implemented yet" /> | –             |
 | LN              | <Badge type="tip" text="Available" />           | –             |
