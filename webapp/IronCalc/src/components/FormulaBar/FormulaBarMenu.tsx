@@ -155,11 +155,12 @@ const MenuDivider = styled("div")`
 `;
 
 const MenuItemText = styled("div")`
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   color: #000;
-  display: flex;
-  align-items: center;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const MenuItemExample = styled("div")`
