@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 
 type WorkbookSettingsDialogProps = {
-  className?: string;
   open: boolean;
   onClose: () => void;
   onExited: () => void;
@@ -19,13 +18,7 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
   };
 
   return (
-    <Dialog
-      open={properties.open}
-      onClose={properties.onClose}
-      PaperProps={{
-        style: { minWidth: "280px" },
-      }}
-    >
+    <StyledDialog open={properties.open} onClose={properties.onClose}>
       <StyledDialogTitle>
         {t("workbook_settings.title")}
         <Cross
@@ -41,13 +34,21 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
           <X />
         </Cross>
       </StyledDialogTitle>
-
       <StyledDialogContent>
         {/* Settings content will go here */}
       </StyledDialogContent>
-    </Dialog>
+    </StyledDialog>
   );
 };
+
+const StyledDialog = styled(Dialog)`
+  & .MuiPaper-root {
+    max-width: 400px;
+    min-width: 280px;
+    border-radius: 8px;
+    padding: 0px;
+  }
+`;
 
 const StyledDialogTitle = styled("div")`
   display: flex;
