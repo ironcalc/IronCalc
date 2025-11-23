@@ -765,7 +765,7 @@ const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
     position: "absolute",
     top: `${TOOLBAR_HEIGHT + 1}px`,
     width: `calc(100% - ${$drawerWidth}px)`,
-    height: `calc(100% - ${TOOLBAR_HEIGHT + 1}px)`,
+    height: `calc(100% - ${TOOLBAR_HEIGHT}px)`,
   }),
 );
 

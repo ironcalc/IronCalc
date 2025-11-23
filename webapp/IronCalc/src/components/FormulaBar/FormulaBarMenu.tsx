@@ -112,6 +112,7 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
 const StyledMenu = styled(Menu)`
   top: 4px;
   min-width: 260px;
+  max-width: 460px;
   & .MuiPaper-root {
     border-radius: 8px;
     padding: 4px 0px;
@@ -151,21 +152,21 @@ const MenuDivider = styled("div")`
   margin: auto;
   margin-top: 4px;
   margin-bottom: 4px;
-  border-top: 1px solid #eeeeee;
+  border-top: 1px solid ${theme.palette.grey[200]};
 `;
 
 const MenuItemText = styled("div")`
   flex: 1;
   min-width: 0;
-  color: #000;
+  color: ${theme.palette.common.black};
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
 const MenuItemExample = styled("div")`
-  color: #bdbdbd;
-  margin-left: 20px;
+  color: ${theme.palette.grey[400]};
+  margin-left: 12px;
 `;
 
 export default FormulaBarMenu;
