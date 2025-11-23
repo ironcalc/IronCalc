@@ -77,9 +77,10 @@ function SheetTab(props: SheetTabProps) {
     }
   }, [name, isEditing]);
 
+  // We want to change the layout only when editingName changes, but the layout is controlled by the hidden measure element (measureRef).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: false
   useLayoutEffect(() => {
     if (isEditing && measureRef.current) {
-      void editingName;
       const width = measureRef.current.offsetWidth;
       setInputWidth(Math.max(width + 8, 6));
     }
@@ -355,7 +356,6 @@ const StyledInput = styled(Input)`
   font-weight: inherit;
   min-width: 6px;
   margin-right: 2px;
-  outline-offset: 1px;
   min-height: 100%;
   flex-grow: 1;
   & .MuiInputBase-input {
@@ -363,8 +363,8 @@ const StyledInput = styled(Input)`
     background-color: ${theme.palette.common.white};
     font-weight: inherit;
     padding: 6px 0px;
-    outline: 1px solid ${theme.palette.primary.main};
-    border-radius: 2px;
+    border: 1px solid ${theme.palette.primary.main};
+    border-radius: 4px;
     color: ${theme.palette.common.black};
     text-align: center;
     will-change: width;
