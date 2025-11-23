@@ -167,5 +167,9 @@
   "right_drawer": {
     "close": "Close",
     "resize_drawer": "Resize drawer"
+  },
+  "workbook_settings": {
+    "title": "Workbook Settings",
+    "close": "Close dialog"
   }
 }
