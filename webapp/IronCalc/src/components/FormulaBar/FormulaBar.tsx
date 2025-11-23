@@ -43,7 +43,7 @@ function FormulaBar(properties: FormulaBarProps) {
 
   return (
     <Container>
-      <AddressContainer>
+      <AddressContainer $active={isMenuOpen}>
         <FormulaBarMenu
           onChange={handleMenuChange}
           onMenuOpenChange={handleMenuOpenChange}
@@ -52,10 +52,10 @@ function FormulaBar(properties: FormulaBarProps) {
           model={model}
           onUpdate={onChange}
         >
-          <CellBarAddress $active={isMenuOpen}>{cellAddress}</CellBarAddress>
-          <MenuButton $active={isMenuOpen}>
+          <CellBarAddress>{cellAddress}</CellBarAddress>
+          <StyledIcon>
             <ChevronDown size={16} />
-          </MenuButton>
+          </StyledIcon>
         </FormulaBarMenu>
       </AddressContainer>
       <Divider />
@@ -148,7 +148,7 @@ const Container = styled("div")`
   height: ${FORMULA_BAR_HEIGHT}px;
 `;
 
-const AddressContainer = styled("div")`
+const AddressContainer = styled("div")<{ $active?: boolean }>`
   color: ${theme.palette.common.black};
   font-style: normal;
   font-size: 12px;
@@ -159,12 +159,15 @@ const AddressContainer = styled("div")`
   gap: 2px;
   border-radius: 4px;
   margin-left: 8px;
+  cursor: pointer;
+  background-color: ${(props) =>
+    props.$active ? theme.palette.action.selected : "transparent"};
   &:hover {
     background-color: ${theme.palette.grey["100"]};
   }
 `;
 
-const CellBarAddress = styled("div")<{ $active?: boolean }>`
+const CellBarAddress = styled("div")`
   width: 100%;
   box-sizing: border-box;
   height: 24px;
@@ -172,28 +175,16 @@ const CellBarAddress = styled("div")<{ $active?: boolean }>`
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 4px 8px;
-  border-radius: 4px 0px 0px 4px;
-  background-color: ${(props) =>
-    props.$active ? theme.palette.action.selected : "transparent"};
-  &:hover {
-    background-color: ${theme.palette.grey["300"]};
-  }
+  padding-left: 8px;
+  background-color: "transparent";
 `;
 
-const MenuButton = styled("div")<{ $active?: boolean }>`
+const StyledIcon = styled("div")`
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   padding: 4px 2px;
-  border-radius: 0px 4px 4px 0px;
-  color: ${theme.palette.common.black};
-  background-color: ${(props) =>
-    props.$active ? theme.palette.action.selected : "transparent"};
-  &:hover {
-    background-color: ${theme.palette.grey["300"]};
-  }
+  background-color: "transparent";
 `;
 
 const EditorWrapper = styled("div")`
