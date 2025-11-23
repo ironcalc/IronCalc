@@ -665,9 +665,6 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setShowGridLines(sheet, show);
           setRedrawId((id) => id + 1);
         }}
-        openDrawer={() => {
-          setDrawerOpen(true);
-        }}
       />
       <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? drawerWidth : 0}>
         <FormulaBar
