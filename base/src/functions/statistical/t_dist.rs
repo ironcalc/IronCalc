@@ -391,9 +391,21 @@ impl Model {
             Err(e) => return e,
         };
 
-        // keep only numeric entries, ignore non-numeric (Option::None)
-        let values1: Vec<f64> = values1_opts.into_iter().flatten().collect();
-        let values2: Vec<f64> = values2_opts.into_iter().flatten().collect();
+        let (values1, values2): (Vec<f64>, Vec<f64>) = if matches!(test_type, TTestType::Paired) {
+            values1_opts
+                .into_iter()
+                .zip(values2_opts)
+                .filter_map(|(o1, o2)| match (o1, o2) {
+                    (Some(v1), Some(v2)) => Some((v1, v2)),
+                    _ => None, // skip if either is None
+                })
+                .unzip()
+        } else {
+            // keep only numeric entries, ignore non-numeric (Option::None)
+            let v1: Vec<f64> = values1_opts.into_iter().flatten().collect();
+            let v2: Vec<f64> = values2_opts.into_iter().flatten().collect();
+            (v1, v2)
+        };
 
         let n1 = values1.len();
         let n2 = values2.len();
