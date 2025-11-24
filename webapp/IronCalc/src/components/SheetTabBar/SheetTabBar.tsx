@@ -98,7 +98,7 @@ function SheetTabBar(props: SheetTabBarProps) {
             <IronCalcLogo />
           </LogoLink>
         </Tooltip>
-        <Tooltip title={t("navigation.settings")}>
+        <Tooltip title={t("workbook_settings.open_settings")}>
           <StyledButton
             $pressed={false}
             onClick={() => {
@@ -124,7 +124,6 @@ function SheetTabBar(props: SheetTabBarProps) {
       <WorkbookSettingsDialog
         open={workbookSettingsOpen}
         onClose={() => setWorkbookSettingsOpen(false)}
-        onExited={() => setWorkbookSettingsOpen(false)}
       />
     </Container>
   );
