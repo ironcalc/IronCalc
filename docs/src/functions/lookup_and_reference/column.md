@@ -30,7 +30,7 @@ When no cell reference is made, the formula uses **=COLUMN()**. This will output
 ### With Cell Reference
 When a cell reference is made, the formula uses **=COLUMN(<span title="Reference" style="color:#1E88E5">Referenced Cell</span>)**. This will then output the column number of the referenced cell, regardless of where the formula is placed in the sheet.<br><br>For example, if B1 is the referenced cell then "2" will be the output of the formula, regardless of where the formula is placed in the sheet.<br><br>**Note:** references do not have to be specific cells, you can also reference complete columns. For example, **=COLUMN(B:B)** would also result in an output of "2".
 ### Range References
-The COLUMN function can also be used to reference a range of Cells or Columns. In this case only the most left-hand column will be the resulting output.<br><br>For example, **=COLUMN(A1:J1)** will result in the ouput of "1".
+The COLUMN function can also be used to reference a range of Cells or Columns. In this case only the most left-hand column will be the resulting output.<br><br>For example, **=COLUMN(A1:J1)** will result in the output of "1".
 ## Links
 * Visit Microsoft Excel's [Column function](https://support.microsoft.com/en-us/office/column-function-44e8c754-711c-4df3-9da4-47a55042554b) page.
 * Both [Google Sheets](https://support.google.com/docs/answer/3093373) and [LibreOffice Calc](https://wiki.documentfoundation.org/Documentation/Calc_Functions/COLUMN) provide versions of the Column function.
