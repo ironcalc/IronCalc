@@ -169,7 +169,19 @@
     "resize_drawer": "Resize drawer"
   },
   "workbook_settings": {
+    "open_settings": "Open settings",
     "title": "Workbook Settings",
-    "close": "Close dialog"
+    "close": "Close dialog",
+    "locale_and_timezone": {
+      "title": "Locale & Timezone",
+      "locale_label": "Locale",
+      "locale_example1": "Number",
+      "locale_example2": "Date",
+      "locale_example3": "Date and Time",
+      "locale_example4": "First day of the week",
+      "timezone_label": "Timezone",
+      "timezone_example1": "TODAY()",
+      "timezone_example2": "NOW()"
+    }
   }
 }
