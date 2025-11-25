@@ -210,7 +210,8 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
 const StyledDialog = styled(Dialog)`
   & .MuiPaper-root {
     max-width: 320px;
-    min-width: 320px;
+    width: 320px;
+    min-width: 280px;
     border-radius: 8px;
     padding: 0px;
   }
