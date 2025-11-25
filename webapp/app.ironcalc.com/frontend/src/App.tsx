@@ -227,16 +227,19 @@ const Wrapper = styled("div")`
 `;
 
 const DRAWER_WIDTH = 264;
-const MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE = 440;
+const MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE = 768;
 
 const MainContent = styled("div")<{ isDrawerOpen: boolean }>`
-  margin-left: ${({ isDrawerOpen }) => (isDrawerOpen ? "0px" : `-${DRAWER_WIDTH}px`)};
-  width: ${({ isDrawerOpen }) => (isDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%")};
+  margin-left: ${({ isDrawerOpen }) =>
+    isDrawerOpen ? "0px" : `-${DRAWER_WIDTH}px`};
+  width: ${({ isDrawerOpen }) =>
+    isDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%"};
   display: flex;
   flex-direction: column;
   position: relative;
   @media (max-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE}px) {
-    ${({ isDrawerOpen }) => isDrawerOpen && `min-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE}px;`}
+    ${({ isDrawerOpen }) =>
+      isDrawerOpen && `min-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE}px;`}
   }
 `;
 
@@ -247,7 +250,7 @@ const MobileOverlay = styled("div")`
   right: 0;
   bottom: 0;
   background-color: rgba(255, 255, 255, 0.8);
-  z-index: 1;
+  z-index: 100;
   cursor: pointer;
 
   @media (min-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE + 1}px) {

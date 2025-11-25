@@ -77,7 +77,7 @@ export function FileBar(properties: {
           {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
         </DrawerButton>
       </Tooltip>
-      {width > 440 && (
+      {width > 768 && (
         <FileMenu
           newModel={properties.newModel}
           newModelFromTemplate={properties.newModelFromTemplate}
@@ -92,7 +92,7 @@ export function FileBar(properties: {
           onDelete={properties.onDelete}
         />
       )}
-      {width > 440 && <HelpMenu />}
+      {width > 768 && <HelpMenu />}
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}
@@ -112,7 +112,8 @@ export function FileBar(properties: {
               <div style={{ fontWeight: "bold" }}>{cloudWarningText2}</div>
             </div>
           }
-          placement="bottom-start"
+          placement="bottom"
+          enterTouchDelay={0}
           enterDelay={500}
           slotProps={{
             popper: {
