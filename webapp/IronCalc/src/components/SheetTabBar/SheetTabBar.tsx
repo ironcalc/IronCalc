@@ -23,6 +23,8 @@ export interface SheetTabBarProps {
   onSheetDeleted: () => void;
   onHideSheet: () => void;
   onOpenWorkbookSettings: () => void;
+  initialLocale: string;
+  initialTimezone: string;
 }
 
 function SheetTabBar(props: SheetTabBarProps) {
@@ -124,6 +126,8 @@ function SheetTabBar(props: SheetTabBarProps) {
       <WorkbookSettingsDialog
         open={workbookSettingsOpen}
         onClose={() => setWorkbookSettingsOpen(false)}
+        initialLocale={props.initialLocale}
+        initialTimezone={props.initialTimezone}
       />
     </Container>
   );
