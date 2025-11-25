@@ -193,9 +193,6 @@ const RightContainer = styled("a")`
   height: 100%;
   padding: 0px 8px;
   gap: 4px;
-  @media (max-width: 769px) {
-    display: none;
-  }
 `;
 
 const LogoLink = styled("div")`
@@ -214,6 +211,9 @@ const LogoLink = styled("div")`
     background-color: ${theme.palette.grey["100"]};
     transition: "all 0.2s";
     outline: 1px solid ${theme.palette.grey["200"]};
+  }
+  @media (max-width: 769px) {
+    display: none;
   }
 `;
 
