@@ -3,6 +3,7 @@ import type { Model } from "@ironcalc/workbook";
 import { IconButton, Tooltip } from "@mui/material";
 import { CloudOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
 import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
 import { downloadModel } from "./rpc";
@@ -77,7 +78,7 @@ export function FileBar(properties: {
           {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
         </DrawerButton>
       </Tooltip>
-      {width > 768 && (
+      {width > MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE && (
         <FileMenu
           newModel={properties.newModel}
           newModelFromTemplate={properties.newModelFromTemplate}
@@ -92,7 +93,7 @@ export function FileBar(properties: {
           onDelete={properties.onDelete}
         />
       )}
-      {width > 768 && <HelpMenu />}
+      {width > MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE && <HelpMenu />}
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}

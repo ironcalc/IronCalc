@@ -227,7 +227,7 @@ const Wrapper = styled("div")`
 `;
 
 const DRAWER_WIDTH = 264;
-const MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE = 768;
+export const MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE = 768;
 
 const MainContent = styled("div")<{ isDrawerOpen: boolean }>`
   margin-left: ${({ isDrawerOpen }) =>
