@@ -212,7 +212,7 @@ pub enum Function {
     FDistRT,
     FInv,
     FInvRT,
-    // FTest,
+    FTest,
     Fisher,
     FisherInv,
     // Forecast,
@@ -420,7 +420,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 324> {
+    pub fn into_iter() -> IntoIter<Function, 325> {
         [
             Function::And,
             Function::False,
@@ -711,6 +711,7 @@ impl Function {
             Function::FDistRT,
             Function::FInv,
             Function::FInvRT,
+            Function::FTest,
             Function::Fisher,
             Function::FisherInv,
             Function::Gamma,
@@ -837,6 +838,7 @@ impl Function {
             Function::FDistRT => "_xlfn.F.DIST.RT".to_string(),
             Function::FInv => "_xlfn.F.INV".to_string(),
             Function::FInvRT => "_xlfn.F.INV.RT".to_string(),
+            Function::FTest => "_xlfn.F.TEST".to_string(),
 
             Function::HypGeomDist => "_xlfn.HYPGEOM.DIST".to_string(),
 
@@ -1186,6 +1188,7 @@ impl Function {
             "F.DIST.RT" | "_XLFN.F.DIST.RT" => Some(Function::FDistRT),
             "F.INV" | "_XLFN.F.INV" => Some(Function::FInv),
             "F.INV.RT" | "_XLFN.F.INV.RT" => Some(Function::FInvRT),
+            "F.TEST" | "_XLFN.F.TEST" => Some(Function::FTest),
             "FISHER" => Some(Function::Fisher),
             "FISHERINV" => Some(Function::FisherInv),
             "GAMMA" | "_XLFN.GAMMA" => Some(Function::Gamma),
@@ -1523,6 +1526,7 @@ impl fmt::Display for Function {
             Function::FInvRT => write!(f, "F.INV.RT"),
             Function::Fisher => write!(f, "FISHER"),
             Function::FisherInv => write!(f, "FISHERINV"),
+            Function::FTest => write!(f, "F.TEST"),
             Function::Gamma => write!(f, "GAMMA"),
             Function::GammaDist => write!(f, "GAMMA.DIST"),
             Function::GammaInv => write!(f, "GAMMA.INV"),
@@ -1875,6 +1879,7 @@ impl Model {
             Function::FInvRT => self.fn_f_inv_rt(args, cell),
             Function::Fisher => self.fn_fisher(args, cell),
             Function::FisherInv => self.fn_fisher_inv(args, cell),
+            Function::FTest => self.fn_f_test(args, cell),
             Function::Gamma => self.fn_gamma(args, cell),
             Function::GammaDist => self.fn_gamma_dist(args, cell),
             Function::GammaInv => self.fn_gamma_inv(args, cell),

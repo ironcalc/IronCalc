@@ -17,7 +17,7 @@ fn mean(xs: &[f64]) -> f64 {
     s / (n as f64)
 }
 
-fn sample_var(xs: &[f64]) -> f64 {
+pub(crate) fn sample_var(xs: &[f64]) -> f64 {
     let n = xs.len();
     if n < 2 {
         return 0.0;
