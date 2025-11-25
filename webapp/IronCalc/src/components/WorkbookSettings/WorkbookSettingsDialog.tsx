@@ -16,18 +16,30 @@ import { theme } from "../../theme";
 type WorkbookSettingsDialogProps = {
   open: boolean;
   onClose: () => void;
-  initialLocale?: string;
-  initialTimezone?: string;
+  initialLocale: string;
+  initialTimezone: string;
   onSave?: (locale: string, timezone: string) => void;
 };
 
 const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
   const { t } = useTranslation();
+  const locales = ["en-US", "en-GB", "de-DE", "fr-FR", "es-ES"];
+  const timezones = [
+    "Berlin, Germany (GMT+1)",
+    "New York, USA (GMT-5)",
+    "Tokyo, Japan (GMT+9)",
+    "London, UK (GMT+0)",
+    "Sydney, Australia (GMT+10)",
+  ];
   const [selectedLocale, setSelectedLocale] = useState<string>(
-    properties.initialLocale || "",
+    properties.initialLocale && locales.includes(properties.initialLocale)
+      ? properties.initialLocale
+      : locales[0],
   );
   const [selectedTimezone, setSelectedTimezone] = useState<string>(
-    properties.initialTimezone || "",
+    properties.initialTimezone && timezones.includes(properties.initialTimezone)
+      ? properties.initialTimezone
+      : timezones[0],
   );
 
   const handleSave = () => {
@@ -37,15 +49,17 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
     properties.onClose();
   };
 
-  const timezones = [
-    "Berlin, Germany (GMT+1)",
-    "New York, USA (GMT-5)",
-    "Tokyo, Japan (GMT+9)",
-    "London, UK (GMT+0)",
-    "Sydney, Australia (GMT+10)",
-  ];
+  // Ensure selectedLocale is always a valid locale
+  const validSelectedLocale =
+    selectedLocale && locales.includes(selectedLocale)
+      ? selectedLocale
+      : locales[0];
 
-  const locales = ["en-US", "en-GB", "de-DE", "fr-FR", "es-ES"];
+  // Ensure selectedTimezone is always a valid timezone
+  const validSelectedTimezone =
+    selectedTimezone && timezones.includes(selectedTimezone)
+      ? selectedTimezone
+      : timezones[0];
 
   return (
     <StyledDialog
@@ -85,11 +99,10 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
           <FormControl fullWidth>
             <StyledSelect
               id="locale"
-              value={selectedLocale}
+              value={validSelectedLocale}
               onChange={(event) => {
                 setSelectedLocale(event.target.value as string);
               }}
-              displayEmpty
               MenuProps={{
                 PaperProps: {
                   sx: menuPaperStyles,
@@ -99,18 +112,15 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
                 },
               }}
             >
-              {locales.map((locale) => {
-                const isSelected = locale === selectedLocale;
-                return (
-                  <StyledMenuItem
-                    key={locale}
-                    value={locale}
-                    $isSelected={isSelected}
-                  >
-                    {locale}
-                  </StyledMenuItem>
-                );
-              })}
+              {locales.map((locale) => (
+                <StyledMenuItem
+                  key={locale}
+                  value={locale}
+                  $isSelected={locale === selectedLocale}
+                >
+                  {locale}
+                </StyledMenuItem>
+              ))}
             </StyledSelect>
             <HelperBox>
               <Row>
@@ -139,24 +149,21 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
           <FormControl fullWidth>
             <StyledAutocomplete
               id="timezone"
-              value={selectedTimezone}
+              value={validSelectedTimezone}
               onChange={(_event, newValue) => {
                 setSelectedTimezone((newValue as string) || "");
               }}
               options={timezones}
               renderInput={(params) => <TextField {...params} />}
-              renderOption={(props, option) => {
-                const isSelected = option === selectedTimezone;
-                return (
-                  <StyledMenuItem
-                    {...props}
-                    key={option as string}
-                    $isSelected={isSelected}
-                  >
-                    {option as string}
-                  </StyledMenuItem>
-                );
-              }}
+              renderOption={(props, option) => (
+                <StyledMenuItem
+                  {...props}
+                  key={option as string}
+                  $isSelected={option === validSelectedTimezone}
+                >
+                  {option as string}
+                </StyledMenuItem>
+              )}
               disableClearable
               slotProps={{
                 paper: {
