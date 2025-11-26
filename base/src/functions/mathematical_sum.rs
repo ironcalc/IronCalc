@@ -14,6 +14,7 @@ fn is_same_shape_or_1d(rows1: i32, cols1: i32, rows2: i32, cols2: i32) -> bool {
 }
 
 impl Model {
+    // SUMX2MY2(array_x, array_y) - Returns the sum of the difference of squares
     pub(crate) fn fn_sumx2my2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let result = match self.fn_get_two_matrices(args, cell) {
             Ok(s) => s,
@@ -32,6 +33,7 @@ impl Model {
         CalcResult::Number(sum)
     }
 
+    // SUMX2PY2(array_x, array_y) - Returns the sum of the sum of squares
     pub(crate) fn fn_sumx2py2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let result = match self.fn_get_two_matrices(args, cell) {
             Ok(s) => s,
@@ -50,6 +52,7 @@ impl Model {
         CalcResult::Number(sum)
     }
 
+    // SUMXMY2(array_x, array_y) - Returns the sum of squares of differences
     pub(crate) fn fn_sumxmy2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let result = match self.fn_get_two_matrices(args, cell) {
             Ok(s) => s,
@@ -69,6 +72,8 @@ impl Model {
         CalcResult::Number(sum)
     }
 
+    // Helper function to extract and validate two matrices (ranges or arrays) with compatible shapes.
+    // Returns (rows, cols, values_left, values_right) or an error.
     pub(crate) fn fn_get_two_matrices(
         &mut self,
         args: &[Node],
