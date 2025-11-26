@@ -63,4 +63,51 @@ impl Model {
 
         CalcResult::Number(num / denom)
     }
+
+    // RSQ(array1, array2) = CORREL(array1, array2)^2
+    pub(crate) fn fn_rsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (_rows, _cols, values1, values2) = match self.fn_get_two_matrices(args, cell) {
+            Ok(s) => s,
+            Err(e) => return e,
+        };
+
+        let mut n = 0.0_f64;
+        let mut sum_x = 0.0_f64;
+        let mut sum_y = 0.0_f64;
+        let mut sum_x2 = 0.0_f64;
+        let mut sum_y2 = 0.0_f64;
+        let mut sum_xy = 0.0_f64;
+
+        let len = values1.len().min(values2.len());
+        for i in 0..len {
+            if let (Some(x), Some(y)) = (values1[i], values2[i]) {
+                n += 1.0;
+                sum_x += x;
+                sum_y += y;
+                sum_x2 += x * x;
+                sum_y2 += y * y;
+                sum_xy += x * y;
+            }
+        }
+
+        if n < 2.0 {
+            return CalcResult::new_error(
+                Error::DIV,
+                cell,
+                "RSQ requires at least two numeric data points in each range".to_string(),
+            );
+        }
+
+        let num = n * sum_xy - sum_x * sum_y;
+        let denom_x = n * sum_x2 - sum_x * sum_x;
+        let denom_y = n * sum_y2 - sum_y * sum_y;
+        let denom = (denom_x * denom_y).sqrt();
+
+        if denom == 0.0 || !denom.is_finite() {
+            return CalcResult::new_error(Error::DIV, cell, "Division by zero in RSQ".to_string());
+        }
+
+        let r = num / denom;
+        CalcResult::Number(r * r)
+    }
 }
