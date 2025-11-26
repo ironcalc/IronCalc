@@ -1,9 +1,9 @@
 use crate::cast::NumberOrArray;
-use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::constants::{EXCEL_PRECISION, LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::math_util::{from_roman, to_roman_with_form};
-use crate::number_format::to_precision;
+use crate::number_format::{to_excel_precision, to_precision};
 use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -984,7 +984,9 @@ impl Model {
             };
         }
 
-        let result = f64::floor(value / significance) * significance;
+        // Apply Excel precision to the ratio to handle floating-point rounding errors
+        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+        let result = f64::floor(ratio) * significance;
         CalcResult::Number(result)
     }
 
@@ -1121,10 +1123,14 @@ impl Model {
         }
         let significance = significance.abs();
         if value < 0.0 && mode != 0.0 {
-            let result = f64::ceil(value / significance) * significance;
+            // Apply Excel precision to handle floating-point rounding errors
+            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+            let result = f64::ceil(ratio) * significance;
             CalcResult::Number(result)
         } else {
-            let result = f64::floor(value / significance) * significance;
+            // Apply Excel precision to handle floating-point rounding errors
+            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+            let result = f64::floor(ratio) * significance;
             CalcResult::Number(result)
         }
     }
@@ -1154,7 +1160,9 @@ impl Model {
             return CalcResult::Number(0.0);
         }
 
-        let result = f64::floor(value / significance) * significance;
+        // Apply Excel precision to handle floating-point rounding errors
+        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+        let result = f64::floor(ratio) * significance;
         CalcResult::Number(result)
     }
 

@@ -65,6 +65,7 @@ mod test_escape_quotes;
 mod test_even_odd;
 mod test_exp_sign;
 mod test_extend;
+mod test_floor;
 mod test_fn_datevalue_timevalue;
 mod test_fn_fv;
 mod test_fn_round;
