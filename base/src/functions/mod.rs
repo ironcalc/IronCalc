@@ -421,10 +421,16 @@ pub enum Function {
     Dvar,
     Dvarp,
     Dstdevp,
+
+    Correl,
+    Rsq,
+    Intercept,
+    Slope,
+    Steyx,
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 328> {
+    pub fn into_iter() -> IntoIter<Function, 333> {
         [
             Function::And,
             Function::False,
@@ -754,6 +760,11 @@ impl Function {
             Function::VarA,
             Function::WeibullDist,
             Function::ZTest,
+            Function::Correl,
+            Function::Rsq,
+            Function::Intercept,
+            Function::Slope,
+            Function::Steyx,
         ]
         .into_iter()
     }
@@ -1234,6 +1245,11 @@ impl Function {
             "SUMX2MY2" => Some(Function::Sumx2my2),
             "SUMX2PY2" => Some(Function::Sumx2py2),
             "SUMXMY2" => Some(Function::Sumxmy2),
+            "CORREL" => Some(Function::Correl),
+            "RSQ" => Some(Function::Rsq),
+            "INTERCEPT" => Some(Function::Intercept),
+            "SLOPE" => Some(Function::Slope),
+            "STEYX" => Some(Function::Steyx),
 
             _ => None,
         }
@@ -1573,6 +1589,11 @@ impl fmt::Display for Function {
             Function::Sumx2my2 => write!(f, "SUMX2MY2"),
             Function::Sumx2py2 => write!(f, "SUMX2PY2"),
             Function::Sumxmy2 => write!(f, "SUMXMY2"),
+            Function::Correl => write!(f, "CORREL"),
+            Function::Rsq => write!(f, "RSQ"),
+            Function::Intercept => write!(f, "INTERCEPT"),
+            Function::Slope => write!(f, "SLOPE"),
+            Function::Steyx => write!(f, "STEYX"),
         }
     }
 }
@@ -1929,6 +1950,11 @@ impl Model {
             Function::Sumx2my2 => self.fn_sumx2my2(args, cell),
             Function::Sumx2py2 => self.fn_sumx2py2(args, cell),
             Function::Sumxmy2 => self.fn_sumxmy2(args, cell),
+            Function::Correl => self.fn_correl(args, cell),
+            Function::Rsq => self.fn_rsq(args, cell),
+            Function::Intercept => self.fn_intercept(args, cell),
+            Function::Slope => self.fn_slope(args, cell),
+            Function::Steyx => self.fn_steyx(args, cell),
         }
     }
 }

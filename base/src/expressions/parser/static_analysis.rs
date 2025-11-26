@@ -990,6 +990,11 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sumx2my2 => vec![Signature::Vector; 2],
         Function::Sumx2py2 => vec![Signature::Vector; 2],
         Function::Sumxmy2 => vec![Signature::Vector; 2],
+        Function::Correl => vec![Signature::Vector; 2],
+        Function::Rsq => vec![Signature::Vector; 2],
+        Function::Intercept => vec![Signature::Vector; 2],
+        Function::Slope => vec![Signature::Vector; 2],
+        Function::Steyx => vec![Signature::Vector; 2],
     }
 }
 
@@ -1324,5 +1329,10 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sumx2my2 => StaticResult::Scalar,
         Function::Sumx2py2 => StaticResult::Scalar,
         Function::Sumxmy2 => StaticResult::Scalar,
+        Function::Correl => StaticResult::Scalar,
+        Function::Rsq => StaticResult::Scalar,
+        Function::Intercept => StaticResult::Scalar,
+        Function::Slope => StaticResult::Scalar,
+        Function::Steyx => StaticResult::Scalar,
     }
 }
