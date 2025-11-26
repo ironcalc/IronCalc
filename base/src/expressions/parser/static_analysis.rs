@@ -872,12 +872,10 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Combin => args_signature_scalars(arg_count, 2, 0),
         Function::Combina => args_signature_scalars(arg_count, 2, 0),
         Function::Sumsq => vec![Signature::Vector; arg_count],
-
         Function::N => args_signature_scalars(arg_count, 1, 0),
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_scalars(arg_count, 1, 1),
         Function::Info => args_signature_scalars(arg_count, 1, 1),
-
         Function::Daverage => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dcount => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dget => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
@@ -890,7 +888,6 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Dvar => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dvarp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dstdevp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-
         Function::BetaDist => args_signature_scalars(arg_count, 4, 2),
         Function::BetaInv => args_signature_scalars(arg_count, 3, 2),
         Function::BinomDist => args_signature_scalars(arg_count, 4, 0),
@@ -990,6 +987,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
                 vec![Signature::Error; arg_count]
             }
         }
+        Function::Sumx2my2 => vec![Signature::Vector; 2],
+        Function::Sumx2py2 => vec![Signature::Vector; 2],
+        Function::Sumxmy2 => vec![Signature::Vector; 2],
     }
 }
 
@@ -1015,7 +1015,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Atan => scalar_arguments(args),
         Function::Atan2 => scalar_arguments(args),
         Function::Atanh => scalar_arguments(args),
-        Function::Choose => scalar_arguments(args), // static_analysis_choose(args, cell),
+        Function::Choose => scalar_arguments(args),
         Function::Column => not_implemented(args),
         Function::Columns => not_implemented(args),
         Function::Cos => scalar_arguments(args),
@@ -1062,7 +1062,6 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Lookup => not_implemented(args),
         Function::Match => not_implemented(args),
         Function::Offset => static_analysis_offset(args),
-        // FIXME: Row could return an array
         Function::Row => StaticResult::Scalar,
         Function::Rows => not_implemented(args),
         Function::Vlookup => not_implemented(args),
@@ -1254,7 +1253,6 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sheets => scalar_arguments(args),
         Function::Cell => scalar_arguments(args),
         Function::Info => scalar_arguments(args),
-
         Function::Dget => not_implemented(args),
         Function::Dmax => not_implemented(args),
         Function::Dmin => not_implemented(args),
@@ -1267,7 +1265,6 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Dvar => not_implemented(args),
         Function::Dvarp => not_implemented(args),
         Function::Dstdevp => not_implemented(args),
-
         Function::BetaDist => StaticResult::Scalar,
         Function::BetaInv => StaticResult::Scalar,
         Function::BinomDist => StaticResult::Scalar,
@@ -1324,5 +1321,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::VarA => StaticResult::Scalar,
         Function::WeibullDist => StaticResult::Scalar,
         Function::ZTest => StaticResult::Scalar,
+        Function::Sumx2my2 => StaticResult::Scalar,
+        Function::Sumx2py2 => StaticResult::Scalar,
+        Function::Sumxmy2 => StaticResult::Scalar,
     }
 }

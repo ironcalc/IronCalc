@@ -19,6 +19,7 @@ mod lookup_and_reference;
 mod macros;
 mod math_util;
 mod mathematical;
+mod mathematical_sum;
 mod statistical;
 mod subtotal;
 mod text;
@@ -76,6 +77,9 @@ pub enum Function {
     Sum,
     Sumif,
     Sumifs,
+    Sumx2my2,
+    Sumx2py2,
+    Sumxmy2,
     Tan,
     Tanh,
     Acot,
@@ -420,7 +424,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 325> {
+    pub fn into_iter() -> IntoIter<Function, 328> {
         [
             Function::And,
             Function::False,
@@ -497,6 +501,9 @@ impl Function {
             Function::Sum,
             Function::Sumif,
             Function::Sumifs,
+            Function::Sumx2my2,
+            Function::Sumx2py2,
+            Function::Sumxmy2,
             Function::Choose,
             Function::Column,
             Function::Columns,
@@ -1224,6 +1231,9 @@ impl Function {
             "VARA" => Some(Function::VarA),
             "WEIBULL.DIST" | "_XLFN.WEIBULL.DIST" => Some(Function::WeibullDist),
             "Z.TEST" | "_XLFN.Z.TEST" => Some(Function::ZTest),
+            "SUMX2MY2" => Some(Function::Sumx2my2),
+            "SUMX2PY2" => Some(Function::Sumx2py2),
+            "SUMXMY2" => Some(Function::Sumxmy2),
 
             _ => None,
         }
@@ -1560,6 +1570,9 @@ impl fmt::Display for Function {
             Function::VarA => write!(f, "VARA"),
             Function::WeibullDist => write!(f, "WEIBULL.DIST"),
             Function::ZTest => write!(f, "Z.TEST"),
+            Function::Sumx2my2 => write!(f, "SUMX2MY2"),
+            Function::Sumx2py2 => write!(f, "SUMX2PY2"),
+            Function::Sumxmy2 => write!(f, "SUMXMY2"),
         }
     }
 }
@@ -1913,6 +1926,9 @@ impl Model {
             Function::VarA => self.fn_vara(args, cell),
             Function::WeibullDist => self.fn_weibull_dist(args, cell),
             Function::ZTest => self.fn_z_test(args, cell),
+            Function::Sumx2my2 => self.fn_sumx2my2(args, cell),
+            Function::Sumx2py2 => self.fn_sumx2py2(args, cell),
+            Function::Sumxmy2 => self.fn_sumxmy2(args, cell),
         }
     }
 }
