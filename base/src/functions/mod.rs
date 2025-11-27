@@ -207,7 +207,6 @@ pub enum Function {
     ChisqTest,
     ConfidenceNorm,
     ConfidenceT,
-    // Correl,
     CovarianceP,
     CovarianceS,
     Devsq,
@@ -225,20 +224,18 @@ pub enum Function {
     GammaInv,
     GammaLn,
     GammaLnPrecise,
-    // Gauss,
-    // Growth,
-    // Harmean,
+    Gauss,
+    Harmean,
     HypGeomDist,
-    // Intercept,
-    // Kurt,
-    // Large,
+    Kurt,
+    Large,
     // Linest,
     // Logest,
     LogNormDist,
     LogNormInv,
-    // MaxA,
-    // Median,
-    // MinA,
+    MaxA,
+    Median,
+    MinA,
     // ModeMult,
     // ModeSingl,
     NegbinomDist,
@@ -258,19 +255,16 @@ pub enum Function {
     // Prob,
     // QuartileExc,
     // QuartileInc,
-    // RankAvg,
-    // RankEq,
-    // Rsq
-    // Skew,
-    // SkewP,
-    // Slope,
-    // Small,
+    RankAvg,
+    RankEq,
+    Skew,
+    SkewP,
+    Small,
     Standardize,
     StDevP,
     StDevS,
     Stdeva,
     Stdevpa,
-    // Steyx,
     TDist,
     TDist2T,
     TDistRT,
@@ -430,7 +424,7 @@ pub enum Function {
 }
 
 impl Function {
-    pub fn into_iter() -> IntoIter<Function, 333> {
+    pub fn into_iter() -> IntoIter<Function, 345> {
         [
             Function::And,
             Function::False,
@@ -765,6 +759,18 @@ impl Function {
             Function::Intercept,
             Function::Slope,
             Function::Steyx,
+            Function::Large,
+            Function::Median,
+            Function::Small,
+            Function::RankAvg,
+            Function::RankEq,
+            Function::Skew,
+            Function::SkewP,
+            Function::Harmean,
+            Function::Gauss,
+            Function::Kurt,
+            Function::MaxA,
+            Function::MinA,
         ]
         .into_iter()
     }
@@ -887,6 +893,9 @@ impl Function {
 
             Function::WeibullDist => "_xlfn.WEIBULL.DIST".to_string(),
             Function::ZTest => "_xlfn.Z.TEST".to_string(),
+            Function::SkewP => "_xlfn.SKEW.P".to_string(),
+            Function::RankAvg => "_xlfn.RANK.AVG".to_string(),
+            Function::RankEq => "_xlfn.RANK.EQ".to_string(),
 
             _ => self.to_string(),
         }
@@ -1251,6 +1260,20 @@ impl Function {
             "SLOPE" => Some(Function::Slope),
             "STEYX" => Some(Function::Steyx),
 
+            "SKEW.P" | "_XLFN.SKEW.P" => Some(Function::SkewP),
+            "SKEW" => Some(Function::Skew),
+            "KURT" => Some(Function::Kurt),
+            "HARMEAN" => Some(Function::Harmean),
+            "MEDIAN" => Some(Function::Median),
+            "GAUSS" => Some(Function::Gauss),
+
+            "MINA" => Some(Function::MinA),
+            "MAXA" => Some(Function::MaxA),
+            "SMALL" => Some(Function::Small),
+            "LARGE" => Some(Function::Large),
+            "RANK.EQ" | "_XLFN.RANK.EQ" => Some(Function::RankEq),
+            "RANK.AVG" | "_XLFN.RANK.AVG" => Some(Function::RankAvg),
+
             _ => None,
         }
     }
@@ -1512,7 +1535,6 @@ impl fmt::Display for Function {
             Function::Combin => write!(f, "COMBIN"),
             Function::Combina => write!(f, "COMBINA"),
             Function::Sumsq => write!(f, "SUMSQ"),
-
             Function::N => write!(f, "N"),
             Function::Cell => write!(f, "CELL"),
             Function::Info => write!(f, "INFO"),
@@ -1529,7 +1551,6 @@ impl fmt::Display for Function {
             Function::Dvar => write!(f, "DVAR"),
             Function::Dvarp => write!(f, "DVARP"),
             Function::Dstdevp => write!(f, "DSTDEVP"),
-
             Function::BetaDist => write!(f, "BETA.DIST"),
             Function::BetaInv => write!(f, "BETA.INV"),
             Function::BinomDist => write!(f, "BINOM.DIST"),
@@ -1594,6 +1615,19 @@ impl fmt::Display for Function {
             Function::Intercept => write!(f, "INTERCEPT"),
             Function::Slope => write!(f, "SLOPE"),
             Function::Steyx => write!(f, "STEYX"),
+            // new ones
+            Function::Gauss => write!(f, "GAUSS"),
+            Function::Harmean => write!(f, "HARMEAN"),
+            Function::Kurt => write!(f, "KURT"),
+            Function::Large => write!(f, "LARGE"),
+            Function::MaxA => write!(f, "MAXA"),
+            Function::Median => write!(f, "MEDIAN"),
+            Function::MinA => write!(f, "MINA"),
+            Function::RankAvg => write!(f, "RANK.AVG"),
+            Function::RankEq => write!(f, "RANK.EQ"),
+            Function::Skew => write!(f, "SKEW"),
+            Function::SkewP => write!(f, "SKEW.P"),
+            Function::Small => write!(f, "SMALL"),
         }
     }
 }
@@ -1955,6 +1989,18 @@ impl Model {
             Function::Intercept => self.fn_intercept(args, cell),
             Function::Slope => self.fn_slope(args, cell),
             Function::Steyx => self.fn_steyx(args, cell),
+            Function::Gauss => self.fn_gauss(args, cell),
+            Function::Harmean => self.fn_harmean(args, cell),
+            Function::Kurt => self.fn_kurt(args, cell),
+            Function::Large => self.fn_large(args, cell),
+            Function::MaxA => self.fn_maxa(args, cell),
+            Function::Median => self.fn_median(args, cell),
+            Function::MinA => self.fn_mina(args, cell),
+            Function::RankAvg => self.fn_rank_avg(args, cell),
+            Function::RankEq => self.fn_rank_eq(args, cell),
+            Function::Skew => self.fn_skew(args, cell),
+            Function::SkewP => self.fn_skew_p(args, cell),
+            Function::Small => self.fn_small(args, cell),
         }
     }
 }

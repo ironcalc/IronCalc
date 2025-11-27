@@ -471,6 +471,20 @@ impl Parser {
             Node::NumberKind(s) => ArrayNode::Number(s),
             Node::StringKind(s) => ArrayNode::String(s),
             Node::ErrorKind(kind) => ArrayNode::Error(kind),
+            Node::UnaryKind {
+                kind: OpUnary::Minus,
+                right,
+            } => {
+                if let Node::NumberKind(n) = *right {
+                    ArrayNode::Number(-n)
+                } else {
+                    return Err(Node::ParseErrorKind {
+                        formula: self.lexer.get_formula(),
+                        message: "Invalid value in array".to_string(),
+                        position: self.lexer.get_position() as usize,
+                    });
+                }
+            }
             error @ Node::ParseErrorKind { .. } => return Err(error),
             _ => {
                 return Err(Node::ParseErrorKind {
@@ -490,6 +504,20 @@ impl Parser {
                 Node::NumberKind(s) => ArrayNode::Number(s),
                 Node::StringKind(s) => ArrayNode::String(s),
                 Node::ErrorKind(kind) => ArrayNode::Error(kind),
+                Node::UnaryKind {
+                    kind: OpUnary::Minus,
+                    right,
+                } => {
+                    if let Node::NumberKind(n) = *right {
+                        ArrayNode::Number(-n)
+                    } else {
+                        return Err(Node::ParseErrorKind {
+                            formula: self.lexer.get_formula(),
+                            message: "Invalid value in array".to_string(),
+                            position: self.lexer.get_position() as usize,
+                        });
+                    }
+                }
                 error @ Node::ParseErrorKind { .. } => return Err(error),
                 _ => {
                     return Err(Node::ParseErrorKind {
