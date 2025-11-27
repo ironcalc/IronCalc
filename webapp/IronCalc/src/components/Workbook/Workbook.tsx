@@ -135,7 +135,67 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   };
 
   const onIncreaseFontSize = (delta: number) => {
+    /** Automatically adjusts row heights when font size changes. */
+    const DEFAULT_ROW_HEIGHT = 28;
+
+    const {
+      sheet,
+      range: [rowStart, columnStart, rowEnd, columnEnd],
+    } = model.getSelectedView();
+
+    /** Normalize the range (selection can be from bottom-right to top-left) */
+    const actualRowStart = Math.min(rowStart, rowEnd);
+    const actualRowEnd = Math.max(rowStart, rowEnd);
+    const actualColumnStart = Math.min(columnStart, columnEnd);
+    const actualColumnEnd = Math.max(columnStart, columnEnd);
+
+    /** Capture current state BEFORE updating font size */
+    const rowData: Array<{
+      row: number;
+      oldFontSize: number;
+      oldRowHeight: number;
+    }> = [];
+
+    for (let row = actualRowStart; row <= actualRowEnd; row++) {
+      let maxFontSize = 0;
+      for (let col = actualColumnStart; col <= actualColumnEnd; col++) {
+        const style = model.getCellStyle(sheet, row, col);
+        maxFontSize = Math.max(maxFontSize, style.font.sz);
+      }
+      const oldRowHeight = model.getRowHeight(sheet, row);
+      rowData.push({
+        row,
+        oldFontSize: maxFontSize,
+        oldRowHeight,
+      });
+    }
+
+    /** Update the font size in the model */
     updateRangeStyle("font.size_delta", `${delta}`);
+
+    /** Adjust row heights based on the new font sizes */
+    for (const { row, oldFontSize, oldRowHeight } of rowData) {
+      const newFontSize = oldFontSize + delta;
+
+      if (oldRowHeight < DEFAULT_ROW_HEIGHT) {
+        continue;
+      }
+
+      const requiredHeight = 8 + newFontSize;
+
+      let newRowHeight: number;
+      if (requiredHeight > DEFAULT_ROW_HEIGHT) {
+        newRowHeight = requiredHeight;
+      } else {
+        newRowHeight = DEFAULT_ROW_HEIGHT;
+      }
+
+      if (Math.abs(newRowHeight - oldRowHeight) > 0.1) {
+        model.setRowsHeight(sheet, row, row, newRowHeight);
+      }
+    }
+
+    setRedrawId((id) => id + 1);
   };
 
   const onCopyStyles = () => {
