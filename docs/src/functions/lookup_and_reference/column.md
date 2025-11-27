@@ -21,7 +21,7 @@ The COLUMN Function in IronCalc is a lookup & reference formula that is used to 
 ### Returned value
 COLUMN returns the [number](/features/value-types#numbers) of the specific cell or column which is being referenced. If no reference is included, the column number of the cell where the formula is entered will be returned.
 ### Error conditions
-* A [#NAME?](/features/error-types.html#name) error is returned if a Naming Range being referenced is deleted.
+* A [#NAME?](/features/error-types.html#name) error is returned if a Named Range being referenced is deleted.
 * A [#REF!](/features/error-types.html#ref) error is returned if a cell being referenced is deleted.
 * A [#VALUE!](/features/error-types.html#value) error is returned if a column being referenced is deleted.
 ## Details
@@ -35,4 +35,4 @@ When a cell reference is made, the formula uses **=COLUMN(<span title="Reference
 The COLUMN function can also be used to reference a range of cells or columns. In this case only the leftmost column will be the resulting output.<br><br>For example, **=COLUMN(A1:J1)** will result in the output of "1".
 ## Links
 * Visit Microsoft Excel's [Column function](https://support.microsoft.com/en-us/office/column-function-44e8c754-711c-4df3-9da4-47a55042554b) page.
-* Both [Google Sheets](https://support.google.com/docs/answer/3093373) and [LibreOffice Calc](https://wiki.documentfoundation.org/Documentation/Calc_Functions/COLUMN) provide versions of the CCOLUMN function.
+* Both [Google Sheets](https://support.google.com/docs/answer/3093373) and [LibreOffice Calc](https://wiki.documentfoundation.org/Documentation/Calc_Functions/COLUMN) provide versions of the COLUMN function.
