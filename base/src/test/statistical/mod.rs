@@ -9,6 +9,7 @@ mod test_fn_expon_dist;
 mod test_fn_f;
 mod test_fn_f_test;
 mod test_fn_fisher;
+mod test_fn_gauss;
 mod test_fn_hyp_geom_dist;
 mod test_fn_log_norm;
 mod test_fn_norm_dist;

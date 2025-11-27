@@ -995,6 +995,18 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Intercept => vec![Signature::Vector; 2],
         Function::Slope => vec![Signature::Vector; 2],
         Function::Steyx => vec![Signature::Vector; 2],
+        Function::Gauss => args_signature_scalars(arg_count, 1, 0),
+        Function::Harmean => vec![Signature::Vector; arg_count],
+        Function::Kurt => vec![Signature::Vector; arg_count],
+        Function::Large => vec![Signature::Vector, Signature::Scalar],
+        Function::MaxA => vec![Signature::Vector; arg_count],
+        Function::Median => vec![Signature::Vector; arg_count],
+        Function::MinA => vec![Signature::Vector; arg_count],
+        Function::RankAvg => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
+        Function::RankEq => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
+        Function::Skew => vec![Signature::Vector; arg_count],
+        Function::SkewP => vec![Signature::Vector; arg_count],
+        Function::Small => vec![Signature::Vector, Signature::Scalar],
     }
 }
 
@@ -1334,5 +1346,17 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Intercept => StaticResult::Scalar,
         Function::Slope => StaticResult::Scalar,
         Function::Steyx => StaticResult::Scalar,
+        Function::Gauss => StaticResult::Scalar,
+        Function::Harmean => StaticResult::Scalar,
+        Function::Kurt => StaticResult::Scalar,
+        Function::Large => StaticResult::Scalar,
+        Function::MaxA => StaticResult::Scalar,
+        Function::Median => StaticResult::Scalar,
+        Function::MinA => StaticResult::Scalar,
+        Function::RankAvg => StaticResult::Scalar,
+        Function::RankEq => StaticResult::Scalar,
+        Function::Skew => StaticResult::Scalar,
+        Function::SkewP => StaticResult::Scalar,
+        Function::Small => StaticResult::Scalar,
     }
 }
