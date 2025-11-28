@@ -1,11 +1,12 @@
 import { styled, Tooltip } from "@mui/material";
-import { Menu, Plus } from "lucide-react";
+import { EllipsisVertical, Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IronCalcLogo } from "../../icons";
 import { theme } from "../../theme";
 import { NAVIGATION_HEIGHT } from "../constants";
 import { StyledButton } from "../Toolbar/Toolbar";
+import WorkbookSettingsDialog from "../WorkbookSettings/WorkbookSettingsDialog";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
 import SheetTab from "./SheetTab";
@@ -21,12 +22,16 @@ export interface SheetTabBarProps {
   onSheetRenamed: (name: string) => void;
   onSheetDeleted: () => void;
   onHideSheet: () => void;
+  onOpenWorkbookSettings: () => void;
+  initialLocale: string;
+  initialTimezone: string;
 }
 
 function SheetTabBar(props: SheetTabBarProps) {
   const { t } = useTranslation();
   const { workbookState, onSheetSelected, sheets, selectedIndex } = props;
   const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
+  const [workbookSettingsOpen, setWorkbookSettingsOpen] = useState(false);
   const open = Boolean(anchorEl);
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -95,6 +100,17 @@ function SheetTabBar(props: SheetTabBarProps) {
             <IronCalcLogo />
           </LogoLink>
         </Tooltip>
+        <Tooltip title={t("workbook_settings.open_settings")}>
+          <StyledButton
+            $pressed={false}
+            onClick={() => {
+              setWorkbookSettingsOpen(true);
+              props.onOpenWorkbookSettings();
+            }}
+          >
+            <EllipsisVertical />
+          </StyledButton>
+        </Tooltip>
       </RightContainer>
       <SheetListMenu
         anchorEl={anchorEl}
@@ -106,6 +122,12 @@ function SheetTabBar(props: SheetTabBarProps) {
           handleClose();
         }}
         selectedIndex={selectedIndex}
+      />
+      <WorkbookSettingsDialog
+        open={workbookSettingsOpen}
+        onClose={() => setWorkbookSettingsOpen(false)}
+        initialLocale={props.initialLocale}
+        initialTimezone={props.initialTimezone}
       />
     </Container>
   );
@@ -170,22 +192,28 @@ const RightContainer = styled("a")`
   color: ${theme.palette.primary.main};
   height: 100%;
   padding: 0px 8px;
-  @media (max-width: 769px) {
-    display: none;
-  }
+  gap: 4px;
 `;
 
 const LogoLink = styled("div")`
   display: flex;
   align-items: center;
-  padding: 8px;
+  padding: 0px 4px;
   border-radius: 4px;
+  max-height: 24px;
+  min-height: 24px;
+  cursor: pointer;
   svg {
     height: 14px;
     width: auto;
   }
   &:hover {
     background-color: ${theme.palette.grey["100"]};
+    transition: "all 0.2s";
+    outline: 1px solid ${theme.palette.grey["200"]};
+  }
+  @media (max-width: 769px) {
+    display: none;
   }
 `;
 
