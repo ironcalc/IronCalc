@@ -20,7 +20,6 @@ fn arguments() {
     model._set("A11", "=INT(10.22, 1)");
     model._set("A12", "=INT(10.22, 1, 2)");
 
-
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#ERROR!");
