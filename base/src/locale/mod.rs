@@ -29,6 +29,9 @@ pub struct Dates {
     pub months: Vec<String>,
     pub months_short: Vec<String>,
     pub months_letter: Vec<String>,
+    pub date_formats: DateFormats,
+    pub time_formats: DateFormats,
+    pub date_time_formats: DateFormats,
 }
 
 #[derive(Encode, Decode, Clone)]
@@ -64,6 +67,22 @@ pub struct DecimalFormats {
     pub standard: String,
 }
 
+#[derive(Encode, Decode, Clone)]
+pub struct DateFormats {
+    pub full: String,
+    pub long: String,
+    pub medium: String,
+    pub short: String,
+}
+
+#[derive(Encode, Decode, Clone)]
+pub struct TimeFormats {
+    pub full: String,
+    pub long: String,
+    pub medium: String,
+    pub short: String,
+}
+
 static LOCALES: OnceLock<HashMap<String, Locale>> = OnceLock::new();
 
 #[allow(clippy::expect_used)]
@@ -71,6 +90,11 @@ fn get_locales() -> &'static HashMap<String, Locale> {
     LOCALES.get_or_init(|| {
         bitcode::decode(include_bytes!("locales.bin")).expect("Failed parsing locale")
     })
+}
+
+/// Get all available locale IDs.
+pub fn get_supported_locales() -> Vec<String> {
+    get_locales().keys().cloned().collect()
 }
 
 pub fn get_locale(id: &str) -> Result<&Locale, String> {

@@ -2296,6 +2296,30 @@ impl Model {
     pub fn delete_row_style(&mut self, sheet: u32, row: i32) -> Result<(), String> {
         self.workbook.worksheet_mut(sheet)?.delete_row_style(row)
     }
+
+    /// Sets the locale of the model
+    pub fn set_locale(&mut self, locale_id: &str) -> Result<(), String> {
+        let locale = match get_locale(locale_id) {
+            Ok(l) => l.clone(),
+            Err(_) => return Err(format!("Invalid locale: {locale_id}")),
+        };
+        self.locale = locale;
+        self.workbook.settings.locale = locale_id.to_string();
+        self.evaluate();
+        Ok(())
+    }
+
+    /// Sets the timezone of the model
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
+        let tz: Tz = match &timezone.parse() {
+            Ok(tz) => *tz,
+            Err(_) => return Err(format!("Invalid timezone: {}", &timezone)),
+        };
+        self.tz = tz;
+        self.workbook.settings.tz = timezone.to_string();
+        self.evaluate();
+        Ok(())
+    }
 }
 
 #[cfg(test)]

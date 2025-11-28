@@ -788,4 +788,18 @@ impl Model {
             Err(e) => Err(to_js_error(e.to_string())),
         }
     }
+
+    #[wasm_bindgen(js_name = "setTimezone")]
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), JsError> {
+        self.model
+            .set_timezone(timezone)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "setLocale")]
+    pub fn set_locale(&mut self, locale: &str) -> Result<(), JsError> {
+        self.model
+            .set_locale(locale)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
 }

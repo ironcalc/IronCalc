@@ -2030,6 +2030,15 @@ impl UserModel {
         self.model.is_valid_defined_name(name, scope, formula)
     }
 
+    /// Sets the timezone for the model
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
+        self.model.set_timezone(timezone)
+    }
+    /// Sets the locale for the model
+    pub fn set_locale(&mut self, locale: &str) -> Result<(), String> {
+        self.model.set_locale(locale)
+    }
+
     // **** Private methods ****** //
 
     pub(crate) fn push_diff_list(&mut self, diff_list: DiffList) {
