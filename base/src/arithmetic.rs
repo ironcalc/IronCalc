@@ -22,7 +22,7 @@ fn to_f64(value: &ArrayNode) -> Result<f64, Error> {
     }
 }
 
-impl Model {
+impl<'a> Model<'a> {
     /// Applies `op` element‐wise for arrays/numbers.
     pub(crate) fn handle_arithmetic(
         &mut self,

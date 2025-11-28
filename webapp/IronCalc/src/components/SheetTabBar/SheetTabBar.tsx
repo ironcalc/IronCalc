@@ -1,3 +1,4 @@
+import type { Model } from "@ironcalc/wasm";
 import { styled, Tooltip } from "@mui/material";
 import { EllipsisVertical, Menu, Plus } from "lucide-react";
 import { useState } from "react";
@@ -22,9 +23,12 @@ export interface SheetTabBarProps {
   onSheetRenamed: (name: string) => void;
   onSheetDeleted: () => void;
   onHideSheet: () => void;
-  onOpenWorkbookSettings: () => void;
-  initialLocale: string;
-  initialTimezone: string;
+  model: Model;
+  onSettingsChange: (
+    locale: string,
+    timezone: string,
+    language: string,
+  ) => void;
 }
 
 function SheetTabBar(props: SheetTabBarProps) {
@@ -105,7 +109,7 @@ function SheetTabBar(props: SheetTabBarProps) {
             $pressed={false}
             onClick={() => {
               setWorkbookSettingsOpen(true);
-              props.onOpenWorkbookSettings();
+              // props.onOpenWorkbookSettings();
             }}
           >
             <EllipsisVertical />
@@ -126,8 +130,12 @@ function SheetTabBar(props: SheetTabBarProps) {
       <WorkbookSettingsDialog
         open={workbookSettingsOpen}
         onClose={() => setWorkbookSettingsOpen(false)}
-        initialLocale={props.initialLocale}
-        initialTimezone={props.initialTimezone}
+        initialLocale={props.model.getLocale()}
+        initialTimezone={props.model.getTimezone()}
+        initialLanguage={props.model.getLanguage()}
+        onSave={(locale: string, timezone: string, language: string) => {
+          props.onSettingsChange(locale, timezone, language);
+        }}
       />
     </Container>
   );

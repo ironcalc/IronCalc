@@ -1,3 +1,4 @@
+import type { FmtSettings } from "@ironcalc/wasm";
 import { Menu, MenuItem, styled } from "@mui/material";
 import { Check } from "lucide-react";
 import { type ComponentProps, useCallback, useRef, useState } from "react";
@@ -9,8 +10,9 @@ type FormatMenuProps = {
   children: React.ReactNode;
   numFmt: string;
   onChange: (numberFmt: string) => void;
-  onExited?: () => void;
-  anchorOrigin?: ComponentProps<typeof Menu>["anchorOrigin"];
+  onExited: () => void;
+  anchorOrigin: ComponentProps<typeof Menu>["anchorOrigin"];
+  formatOptions: FmtSettings;
 };
 
 const FormatMenu = (properties: FormatMenuProps) => {
@@ -18,6 +20,8 @@ const FormatMenu = (properties: FormatMenuProps) => {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isPickerOpen, setPickerOpen] = useState(false);
   const anchorElement = useRef<HTMLDivElement>(null);
+
+  const formatOptions = properties.formatOptions;
 
   const onSelect = useCallback(
     (s: string) => {
@@ -57,14 +61,16 @@ const FormatMenu = (properties: FormatMenuProps) => {
           </MenuItemText>
         </MenuItemWrapper>
         <MenuDivider />
-        <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.NUMBER)}>
+        <MenuItemWrapper
+          onClick={(): void => onSelect(formatOptions.number_fmt)}
+        >
           <MenuItemText>
-            <CheckIcon $active={properties.numFmt === NumberFormats.NUMBER} />
+            <CheckIcon
+              $active={properties.numFmt === formatOptions.number_fmt}
+            />
             {t("toolbar.format_menu.number")}
           </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.number_example")}
-          </MenuItemExample>
+          <MenuItemExample>{formatOptions.number_example}</MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.PERCENTAGE)}
@@ -123,30 +129,26 @@ const FormatMenu = (properties: FormatMenuProps) => {
 
         <MenuDivider />
         <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.DATE_SHORT)}
+          onClick={(): void => onSelect(formatOptions.short_date)}
         >
           <MenuItemText>
             <CheckIcon
-              $active={properties.numFmt === NumberFormats.DATE_SHORT}
+              $active={properties.numFmt === formatOptions.short_date}
             />
             {t("toolbar.format_menu.date_short")}
           </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.date_short_example")}
-          </MenuItemExample>
+          <MenuItemExample>{formatOptions.short_date_example}</MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.DATE_LONG)}
+          onClick={(): void => onSelect(formatOptions.long_date)}
         >
           <MenuItemText>
             <CheckIcon
-              $active={properties.numFmt === NumberFormats.DATE_LONG}
+              $active={properties.numFmt === formatOptions.long_date}
             />
             {t("toolbar.format_menu.date_long")}
           </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.date_long_example")}
-          </MenuItemExample>
+          <MenuItemExample>{formatOptions.long_date_example}</MenuItemExample>
         </MenuItemWrapper>
 
         <MenuDivider />
@@ -204,7 +206,9 @@ const MenuDivider = styled("div")`
   border-top: 1px solid #eeeeee;
 `;
 
-const CheckIcon = styled(Check)<{ $active: boolean }>`
+const CheckIcon = styled(Check, {
+  shouldForwardProp: (prop) => prop !== "$active",
+})<{ $active: boolean }>`
   width: 16px;
   height: 16px;
   color: ${(props) => (props.$active ? "currentColor" : "transparent")};

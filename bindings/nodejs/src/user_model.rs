@@ -21,22 +21,31 @@ fn to_js_error(error: String) -> Error {
   Error::new(Status::Unknown, error)
 }
 
+fn leak_str(s: &str) -> &'static str {
+  Box::leak(s.to_owned().into_boxed_str())
+}
+
 #[napi]
 pub struct UserModel {
-  model: BaseModel,
+  model: BaseModel<'static>,
 }
 
 #[napi]
 impl UserModel {
   #[napi(constructor)]
-  pub fn new(name: String, locale: String, timezone: String) -> Result<Self> {
-    let model = BaseModel::new_empty(&name, &locale, &timezone).map_err(to_js_error)?;
+  pub fn new(name: String, locale: String, timezone: String, language_id: String) -> Result<Self> {
+    let name = leak_str(&name);
+    let locale = leak_str(&locale);
+    let timezone = leak_str(&timezone);
+    let language_id = leak_str(&language_id);
+    let model = BaseModel::new_empty(name, locale, timezone, language_id).map_err(to_js_error)?;
     Ok(Self { model })
   }
 
   #[napi(factory)]
-  pub fn from_bytes(bytes: &[u8]) -> Result<UserModel> {
-    let model = BaseModel::from_bytes(bytes).map_err(to_js_error)?;
+  pub fn from_bytes(bytes: &[u8], language_id: String) -> Result<UserModel> {
+    let language_id = leak_str(&language_id);
+    let model = BaseModel::from_bytes(bytes, language_id).map_err(to_js_error)?;
     Ok(UserModel { model })
   }
 

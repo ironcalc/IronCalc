@@ -7,7 +7,7 @@ use crate::{
 
 use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex, values_are_equal};
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let row_num;
         let col_num;
@@ -698,7 +698,7 @@ impl Model {
                 let parsed_reference = ParsedReference::parse_reference_formula(
                     Some(cell.sheet),
                     &s,
-                    &self.locale,
+                    self.locale,
                     |name| self.get_sheet_index_by_name(name),
                 );
 
@@ -839,6 +839,10 @@ impl Model {
         CalcResult::Range { left, right }
     }
 
+    // FORMULATEXT(reference)
+    // Returns a formula as a string. Two differences with Excel:
+    // - It returns the formula in English
+    // - It formats the formula without spaces between elements
     pub(crate) fn fn_formulatext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -860,7 +864,7 @@ impl Model {
                     message: "argument must be a reference to a single cell".to_string(),
                 };
             }
-            if let Ok(Some(f)) = self.get_cell_formula(left.sheet, left.row, left.column) {
+            if let Ok(Some(f)) = self.get_english_cell_formula(left.sheet, left.row, left.column) {
                 CalcResult::String(f)
             } else {
                 CalcResult::Error {

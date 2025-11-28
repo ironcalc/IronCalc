@@ -181,7 +181,15 @@
       "locale_example4": "First day of the week",
       "timezone_label": "Timezone",
       "timezone_example1": "TODAY()",
-      "timezone_example2": "NOW()"
+      "timezone_example2": "NOW()",
+      "display_language_label": "Display language",
+      "display_language": {
+        "english": "English",
+        "spanish": "Spanish",
+        "french": "French",
+        "german": "German",
+        "italian": "Italian"
+      }
     }
   }
 }

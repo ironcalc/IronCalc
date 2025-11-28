@@ -1,6 +1,7 @@
 import type {} from "@emotion/styled";
 import type {
   BorderOptions,
+  FmtSettings,
   HorizontalAlignment,
   VerticalAlignment,
 } from "@ironcalc/wasm";
@@ -19,6 +20,7 @@ import {
   ChevronRight,
   DecimalsArrowLeft,
   DecimalsArrowRight,
+  DollarSign,
   Euro,
   Grid2X2,
   Grid2x2Check,
@@ -30,6 +32,7 @@ import {
   PaintRoller,
   Percent,
   Plus,
+  PoundSterling,
   Redo2,
   RemoveFormatting,
   Strikethrough,
@@ -51,6 +54,15 @@ import {
   increaseDecimalPlaces,
   NumberFormats,
 } from "../FormatMenu/formatUtil";
+
+type Currency = "USD" | "EUR" | "GBP";
+
+export interface FormatOptions {
+  numberFmt: string;
+  currency: Currency;
+  shortDate: boolean;
+  longDate: boolean;
+}
 
 type ToolbarProperties = {
   canUndo: boolean;
@@ -86,6 +98,7 @@ type ToolbarProperties = {
   numFmt: string;
   showGridLines: boolean;
   onToggleShowGridLines: (show: boolean) => void;
+  formatOptions: FmtSettings;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -124,6 +137,20 @@ function Toolbar(properties: ToolbarProperties) {
     toolbar.addEventListener("scroll", updateArrows);
     return () => toolbar.removeEventListener("scroll", updateArrows);
   }, [updateArrows]);
+
+  let currencyIcon: React.ReactNode;
+
+  switch (properties.formatOptions.currency) {
+    case "EUR":
+      currencyIcon = <Euro />;
+      break;
+    case "USD":
+      currencyIcon = <DollarSign />;
+      break;
+    case "GBP":
+      currencyIcon = <PoundSterling />;
+      break;
+  }
 
   return (
     <ToolbarWrapper>
@@ -213,7 +240,7 @@ function Toolbar(properties: ToolbarProperties) {
               }}
               disabled={!canEdit}
             >
-              <Euro />
+              {currencyIcon}
             </StyledButton>
           </Tooltip>
           <Tooltip title={t("toolbar.percentage")}>
@@ -266,6 +293,7 @@ function Toolbar(properties: ToolbarProperties) {
               horizontal: 20, // Aligning the menu to the middle of FormatButton
               vertical: "bottom",
             }}
+            formatOptions={properties.formatOptions}
           >
             <Tooltip title={t("toolbar.format_number")}>
               <StyledButton

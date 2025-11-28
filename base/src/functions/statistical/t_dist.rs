@@ -42,7 +42,7 @@ enum TTestTails {
     TwoTailed,
 }
 
-impl Model {
+impl<'a> Model<'a> {
     // T.DIST(x, deg_freedom, cumulative)
     pub(crate) fn fn_t_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {

@@ -8,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
             let arguments = vec![args[0].clone(), args[1].clone()];

@@ -150,7 +150,7 @@ fn fn_hex2dec() {
     model._set("A4", r#"=HEX2DEC("FE")"#);
 
     model._set("B1", "=HEX2DEC()");
-    model._set("B2", "=HHEX2DEC(1,2,3)");
+    model._set("B2", "=HEX2DEC(1,2,3)");
 
     model.evaluate();
 

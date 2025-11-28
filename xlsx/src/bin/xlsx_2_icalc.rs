@@ -29,6 +29,6 @@ fn main() {
         &format!("{base_name}.ic")
     };
 
-    let model = load_from_xlsx(file_name, "en", "UTC").unwrap();
+    let model = load_from_xlsx(file_name, "en", "UTC", "en").unwrap();
     save_to_icalc(&model, output_file_name).unwrap();
 }

@@ -5,7 +5,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn fn_log_norm_dist(
         &mut self,
         args: &[Node],

@@ -33,6 +33,12 @@ pub enum TextToken {
     MinutePadded,
     Second,
     SecondPadded,
+    ElapsedHour,
+    ElapsedHourPadded,
+    ElapsedMinute,
+    ElapsedMinutePadded,
+    ElapsedSecond,
+    ElapsedSecondPadded,
     AMPM,
 }
 pub struct NumberPart {
@@ -165,7 +171,7 @@ impl Parser {
                     percent += 1;
                 }
                 Token::Period => {
-                    if !found_decimal_dot {
+                    if is_number && !found_decimal_dot {
                         tokens.push(TextToken::Period);
                         found_decimal_dot = true;
                         if number == 'i' {
@@ -298,7 +304,6 @@ impl Parser {
                     is_time = true;
                     tokens.push(TextToken::SecondPadded);
                 }
-
                 Token::AMPM => {
                     is_date = true;
                     use_ampm = true;
@@ -323,6 +328,36 @@ impl Parser {
                     return ParsePart::Error(ErrorPart {});
                 }
                 Token::EOF => {}
+                Token::ElapsedHour => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedHour);
+                }
+                Token::ElapsedMinute => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedMinute);
+                }
+                Token::ElapsedSecond => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedSecond);
+                }
+                Token::ElapsedHourPadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedHourPadded);
+                }
+                Token::ElapsedMinutePadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedMinutePadded);
+                }
+                Token::ElapsedSecondPadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedSecondPadded);
+                }
             }
             last_token_is_digit = token_is_digit;
             token = next_token;

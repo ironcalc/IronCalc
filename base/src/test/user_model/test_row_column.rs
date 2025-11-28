@@ -2,7 +2,7 @@
 
 use crate::{
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN},
-    test::util::new_empty_model,
+    test::{user_model::util::new_empty_user_model, util::new_empty_model},
     UserModel,
 };
 
@@ -74,7 +74,7 @@ fn simple_delete_column() {
 
     let send_queue = model.flush_send_queue();
 
-    let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model2 = new_empty_user_model();
     model2.apply_external_diffs(&send_queue).unwrap();
 
     assert_eq!(
@@ -134,7 +134,7 @@ fn simple_delete_row() {
 
     let send_queue = model.flush_send_queue();
 
-    let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model2 = new_empty_user_model();
     model2.apply_external_diffs(&send_queue).unwrap();
 
     assert_eq!(
@@ -157,7 +157,7 @@ fn simple_delete_row_no_style() {
 
 #[test]
 fn row_heigh_increases_automatically() {
-    let mut model = UserModel::new_empty("Workbook1", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     assert_eq!(model.get_row_height(0, 1), Ok(DEFAULT_ROW_HEIGHT));
 
     // Entering a single line does not change the height

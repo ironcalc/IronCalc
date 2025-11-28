@@ -47,7 +47,7 @@ pub fn random() -> f64 {
     Math::random()
 }
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
