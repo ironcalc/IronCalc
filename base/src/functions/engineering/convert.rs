@@ -41,7 +41,7 @@ fn convert_temperature(
     }
 }
 
-impl Model {
+impl<'a> Model<'a> {
     // CONVERT(number, from_unit, to_unit)
     pub(crate) fn fn_convert(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {

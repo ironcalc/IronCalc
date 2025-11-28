@@ -478,7 +478,7 @@ fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     }
 }
 
-impl Model {
+impl<'a> Model<'a> {
     fn get_date_serial(
         &mut self,
         node: &Node,
@@ -1156,7 +1156,7 @@ impl Model {
             Err(e) => return e,
         };
         let unit = match self.get_string(&args[2], cell) {
-            Ok(s) => s.to_ascii_uppercase(),
+            Ok(s) => s.to_uppercase(),
             Err(e) => return e,
         };
 

@@ -13,7 +13,7 @@ fn is_same_shape_or_1d(rows1: i32, cols1: i32, rows2: i32, cols2: i32) -> bool {
         || (rows2 == 1 && cols1 == 1 && cols2 == rows1)
 }
 
-impl Model {
+impl<'a> Model<'a> {
     // SUMX2MY2(array_x, array_y) - Returns the sum of the difference of squares
     pub(crate) fn fn_sumx2my2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let result = match self.fn_get_two_matrices(args, cell) {

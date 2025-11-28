@@ -45,7 +45,7 @@ function App() {
         // Get a remote model
         try {
           const model_bytes = await get_model(modelHash);
-          const importedModel = Model.from_bytes(model_bytes);
+          const importedModel = Model.from_bytes(model_bytes, "en");
           localStorage.removeItem("selected");
           setModel(importedModel);
         } catch (_e) {
@@ -54,7 +54,7 @@ function App() {
       } else if (exampleFilename) {
         try {
           const model_bytes = await get_documentation_model(exampleFilename);
-          const importedModel = Model.from_bytes(model_bytes);
+          const importedModel = Model.from_bytes(model_bytes, "en");
           localStorage.removeItem("selected");
           setModel(importedModel);
         } catch (_e) {
@@ -152,7 +152,7 @@ function App() {
             const blob = await uploadFile(arrayBuffer, fileName);
 
             const bytes = new Uint8Array(await blob.arrayBuffer());
-            const newModel = Model.from_bytes(bytes);
+            const newModel = Model.from_bytes(bytes, "en");
             saveModelToStorage(newModel);
 
             setModel(newModel);
@@ -187,7 +187,7 @@ function App() {
               }
               default: {
                 const model_bytes = await get_documentation_model(templateId);
-                const importedModel = Model.from_bytes(model_bytes);
+                const importedModel = Model.from_bytes(model_bytes, "en");
                 saveModelToStorage(importedModel);
                 setModel(importedModel);
                 break;
@@ -207,7 +207,7 @@ function App() {
           onClose={() => setTemplatesDialogOpen(false)}
           onSelectTemplate={async (fileName) => {
             const model_bytes = await get_documentation_model(fileName);
-            const importedModel = Model.from_bytes(model_bytes);
+            const importedModel = Model.from_bytes(model_bytes, "en");
             saveModelToStorage(importedModel);
             setModel(importedModel);
             setTemplatesDialogOpen(false);

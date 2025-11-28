@@ -2,11 +2,11 @@
 
 use crate::constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
-use crate::UserModel;
+use crate::test::user_model::util::new_empty_user_model;
 
 #[test]
 fn column_width() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -47,7 +47,7 @@ fn column_width() {
 
 #[test]
 fn existing_style() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     let cell_g123 = Area {
         sheet: 0,
@@ -95,7 +95,7 @@ fn existing_style() {
 #[test]
 fn row_column() {
     // We set the row style, then a column style
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     let column_g_range = Area {
         sheet: 0,
@@ -138,7 +138,7 @@ fn row_column() {
 
 #[test]
 fn column_row() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     let default_style = model.get_cell_style(0, 3, 7).unwrap();
 
@@ -187,7 +187,7 @@ fn column_row() {
 
 #[test]
 fn row_column_column() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     let column_c_range = Area {
         sheet: 0,
@@ -238,7 +238,7 @@ fn row_column_column() {
 
 #[test]
 fn width_column_undo() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     model
         .set_columns_width(0, 7, 7, DEFAULT_COLUMN_WIDTH * 2.0)
@@ -265,7 +265,7 @@ fn width_column_undo() {
 
 #[test]
 fn height_row_undo() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model
         .set_rows_height(0, 10, 10, DEFAULT_ROW_HEIGHT * 2.0)
         .unwrap();
@@ -297,7 +297,7 @@ fn height_row_undo() {
 
 #[test]
 fn cell_row_undo() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let cell_g12 = Area {
         sheet: 0,
         row: 12,
@@ -335,7 +335,7 @@ fn cell_row_undo() {
 fn set_column_style_then_cell() {
     // We check that if we set a cell style in a column that already has a style
     // the styles compound
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let cell_g12 = Area {
         sheet: 0,
         row: 12,
@@ -374,7 +374,7 @@ fn set_column_style_then_cell() {
 fn set_row_style_then_cell() {
     // We check that if we set a cell style in a column that already has a style
     // the styles compound
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let cell_g12 = Area {
         sheet: 0,
         row: 12,
@@ -406,7 +406,7 @@ fn set_row_style_then_cell() {
 
 #[test]
 fn column_style_then_row_alignment() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let column_g_range = Area {
         sheet: 0,
         row: 1,
@@ -434,7 +434,7 @@ fn column_style_then_row_alignment() {
 
 #[test]
 fn column_style_then_width() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let column_g_range = Area {
         sheet: 0,
         row: 1,
@@ -458,7 +458,7 @@ fn column_style_then_width() {
 
 #[test]
 fn test_row_column_column() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     let column_c_range = Area {
         sheet: 0,

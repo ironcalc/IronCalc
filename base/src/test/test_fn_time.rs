@@ -23,7 +23,7 @@ const TIME_2_AM: &str = "0.083333333"; // 2:00 AM = 2/24 ≈ 0.083333333
 const TIME_00_00_01: &str = "0.000011574"; // 1 second = 1/86400 ≈ 0.000011574
 
 /// Helper function to set up and evaluate a model with time expressions
-fn test_time_expressions(expressions: &[(&str, &str)]) -> crate::model::Model {
+fn test_time_expressions<'a>(expressions: &[(&str, &str)]) -> crate::model::Model<'a> {
     let mut model = new_empty_model();
     for (cell, formula) in expressions {
         model._set(cell, formula);

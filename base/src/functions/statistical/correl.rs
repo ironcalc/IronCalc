@@ -3,7 +3,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl Model {
+impl<'a> Model<'a> {
     // CORREL(array1, array2) - Returns the correlation coefficient of two data sets
     pub(crate) fn fn_correl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let (_, _, values_left, values_right) = match self.fn_get_two_matrices(args, cell) {

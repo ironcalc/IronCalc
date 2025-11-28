@@ -88,7 +88,7 @@ fn get_units_from_format_string(num_fmt: &str) -> Option<Units> {
     }
 }
 
-impl Model {
+impl<'a> Model<'a> {
     fn compute_cell_units(&self, cell_reference: &CellReferenceIndex) -> Option<Units> {
         let cell_style_res = &self.get_style_for_cell(
             cell_reference.sheet,
@@ -373,11 +373,30 @@ impl Model {
     }
 
     fn units_fn_dates(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
-        // TODO: update locale and use it here
-        Some(Units::Date("dd/mm/yyyy".to_string()))
+        let mut date_short = self.locale.dates.date_formats.short.clone();
+        // FIXME: We want always 4 digit year. So if it is not already the case, we replace yy by yyyy
+        if !date_short.contains("yyyy") {
+            date_short = date_short.replace("yy", "yyyy");
+        }
+        Some(Units::Date(date_short.replace(' ', " ")))
     }
 
     fn units_fn_date_times(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
-        Some(Units::Date("dd/mm/yyyy hh:mm:ss".to_string()))
+        let mut date_short = self.locale.dates.date_formats.short.clone();
+        // We want always 4 digit year. So if it is not already the case, we replace yy by yyyy
+        if !date_short.contains("yyyy") {
+            date_short = date_short.replace("yy", "yyyy");
+        }
+        // NB: full and medium time formats might include timezone info (in the form of z or zzzz)
+        let time_short_template = &self.locale.dates.time_formats.short;
+        let time_short = time_short_template.replace('a', "AM/PM");
+        // This would be something like: "{1}, {0}"
+        let date_time_short_template = &self.locale.dates.date_time_formats.short;
+        let date_time_short = date_time_short_template
+            .replace("{0}", time_short.trim())
+            .replace("{1}", &date_short);
+
+        // FIXME: Remove weird spaces (we should do that in the locale loading phase)
+        Some(Units::Date(date_time_short.replace(' ', " ")))
     }
 }
