@@ -398,7 +398,9 @@ const ListItem = styled("div")<{ $isSelected: boolean }>(({ $isSelected }) => ({
   display: "flex",
   alignItems: "flex-start",
   justifyContent: "space-between",
+  gap: "8px",
   padding: "8px 12px",
+  cursor: "pointer",
   minHeight: "40px",
   boxSizing: "border-box",
   borderBottom: `1px solid ${theme.palette.grey[200]}`,
@@ -438,6 +440,8 @@ const NameText = styled("span")({
   fontSize: "12px",
   color: theme.palette.common.black,
   fontWeight: 600,
+  wordBreak: "break-all",
+  overflowWrap: "break-word",
 });
 
 const IconsWrapper = styled("div")({

@@ -665,9 +665,6 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setShowGridLines(sheet, show);
           setRedrawId((id) => id + 1);
         }}
-        openDrawer={() => {
-          setDrawerOpen(true);
-        }}
       />
       <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? drawerWidth : 0}>
         <FormulaBar
@@ -682,6 +679,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           }}
           model={model}
           workbookState={workbookState}
+          openDrawer={() => {
+            setDrawerOpen(true);
+          }}
+          canEdit={true}
         />
         <Worksheet
           model={model}
@@ -764,7 +765,7 @@ const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
     position: "absolute",
     top: `${TOOLBAR_HEIGHT + 1}px`,
     width: `calc(100% - ${$drawerWidth}px)`,
-    height: `calc(100% - ${TOOLBAR_HEIGHT + 1}px)`,
+    height: `calc(100% - ${TOOLBAR_HEIGHT}px)`,
   }),
 );
 

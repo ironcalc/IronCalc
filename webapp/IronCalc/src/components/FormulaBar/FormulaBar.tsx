@@ -1,5 +1,7 @@
 import type { Model } from "@ironcalc/wasm";
 import { styled } from "@mui/material";
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 import { Fx } from "../../icons";
 import { theme } from "../../theme";
 import { FORMULA_BAR_HEIGHT } from "../constants";
@@ -9,6 +11,7 @@ import {
   ROW_HEIGH_SCALE,
 } from "../WorksheetCanvas/constants";
 import type { WorkbookState } from "../workbookState";
+import FormulaBarMenu from "./FormulaBarMenu";
 
 type FormulaBarProps = {
   cellAddress: string;
@@ -17,6 +20,8 @@ type FormulaBarProps = {
   workbookState: WorkbookState;
   onChange: () => void;
   onTextUpdated: () => void;
+  openDrawer: () => void;
+  canEdit: boolean;
 };
 
 function FormulaBar(properties: FormulaBarProps) {
@@ -28,10 +33,30 @@ function FormulaBar(properties: FormulaBarProps) {
     onTextUpdated,
     workbookState,
   } = properties;
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleMenuChange = (_option: string): void => {};
+
+  const handleMenuOpenChange = (isOpen: boolean): void => {
+    setIsMenuOpen(isOpen);
+  };
+
   return (
     <Container>
-      <AddressContainer>
-        <CellBarAddress>{cellAddress}</CellBarAddress>
+      <AddressContainer $active={isMenuOpen}>
+        <FormulaBarMenu
+          onChange={handleMenuChange}
+          onMenuOpenChange={handleMenuOpenChange}
+          openDrawer={properties.openDrawer}
+          canEdit={properties.canEdit}
+          model={model}
+          onUpdate={onChange}
+        >
+          <CellBarAddress>{cellAddress}</CellBarAddress>
+          <StyledIcon>
+            <ChevronDown size={16} />
+          </StyledIcon>
+        </FormulaBarMenu>
       </AddressContainer>
       <Divider />
       <FormulaContainer>
@@ -101,7 +126,7 @@ const Divider = styled("div")`
   background-color: ${theme.palette.grey["300"]};
   min-width: 1px;
   height: 16px;
-  margin: 0px 16px;
+  margin: 0px 16px 0px 8px;
 `;
 
 const FormulaContainer = styled("div")`
@@ -123,20 +148,43 @@ const Container = styled("div")`
   height: ${FORMULA_BAR_HEIGHT}px;
 `;
 
-const AddressContainer = styled("div")`
-  padding-left: 16px;
+const AddressContainer = styled("div")<{ $active?: boolean }>`
   color: ${theme.palette.common.black};
   font-style: normal;
-  font-weight: normal;
   font-size: 12px;
   display: flex;
   font-weight: 600;
   flex-grow: row;
+  align-items: center;
+  gap: 2px;
+  border-radius: 4px;
+  margin-left: 8px;
+  cursor: pointer;
+  background-color: ${(props) =>
+    props.$active ? theme.palette.action.selected : "transparent"};
+  &:hover {
+    background-color: ${theme.palette.grey["100"]};
+  }
 `;
 
 const CellBarAddress = styled("div")`
   width: 100%;
-  text-align: "center";
+  box-sizing: border-box;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding-left: 8px;
+  background-color: "transparent";
+`;
+
+const StyledIcon = styled("div")`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  background-color: "transparent";
 `;
 
 const EditorWrapper = styled("div")`

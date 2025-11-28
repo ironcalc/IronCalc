@@ -92,6 +92,9 @@
     "label": "Formula",
     "title": "Update formula"
   },
+  "formula_bar": {
+    "manage_named_ranges": "Manage Named Ranges"
+  },
   "navigation": {
     "add_sheet": "Add sheet",
     "sheet_list": "Sheet list",
