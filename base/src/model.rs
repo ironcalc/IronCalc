@@ -314,34 +314,40 @@ impl Model {
                 absolute_row1,
                 absolute_column2,
                 sheet_name: _,
-            } => CalcResult::Range {
-                left: CellReferenceIndex {
-                    sheet: *sheet_index,
-                    row: if *absolute_row1 {
-                        *row1
-                    } else {
-                        *row1 + cell.row
+            } => {
+                let r1 = if *absolute_row1 {
+                    *row1
+                } else {
+                    *row1 + cell.row
+                };
+                let r2 = if *absolute_row2 {
+                    *row2
+                } else {
+                    *row2 + cell.row
+                };
+                let c1 = if *absolute_column1 {
+                    *column1
+                } else {
+                    *column1 + cell.column
+                };
+                let c2 = if *absolute_column2 {
+                    *column2
+                } else {
+                    *column2 + cell.column
+                };
+                CalcResult::Range {
+                    left: CellReferenceIndex {
+                        sheet: *sheet_index,
+                        row: r1.min(r2),
+                        column: c1.min(c2),
                     },
-                    column: if *absolute_column1 {
-                        *column1
-                    } else {
-                        *column1 + cell.column
+                    right: CellReferenceIndex {
+                        sheet: *sheet_index,
+                        row: r1.max(r2),
+                        column: c1.max(c2),
                     },
-                },
-                right: CellReferenceIndex {
-                    sheet: *sheet_index,
-                    row: if *absolute_row2 {
-                        *row2
-                    } else {
-                        *row2 + cell.row
-                    },
-                    column: if *absolute_column2 {
-                        *column2
-                    } else {
-                        *column2 + cell.column
-                    },
-                },
-            },
+                }
+            }
             OpConcatenateKind { left, right } => {
                 let l = match self.get_string(left, cell) {
                     Ok(f) => f,
