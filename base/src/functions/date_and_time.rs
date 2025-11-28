@@ -1004,11 +1004,11 @@ impl Model {
                     Ok(s) => s,
                     Err(e) => return e,
                 };
-                let tz: Tz = match &tz_str.parse() {
-                    Ok(tz) => *tz,
+                let tz: Tz = match tz_str.parse() {
+                    Ok(tz) => tz,
                     Err(_) => {
                         return CalcResult::Error {
-                            error: Error::ERROR,
+                            error: Error::VALUE,
                             origin: cell,
                             message: format!("Invalid timezone: {}", &tz_str),
                         }
