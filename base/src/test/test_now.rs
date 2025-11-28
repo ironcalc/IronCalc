@@ -7,15 +7,24 @@ const TIMESTAMP_2023: i64 = 1679319865208;
 
 #[test]
 fn arguments() {
+    mock_time::set_mock_time(TIMESTAMP_2023);
     let mut model = new_empty_model();
 
-    model._set("A1", "=NOW(1)");
+    model._set("A1", "=NOW(1, 1)");
+    model._set("A2", "=NOW(\"Europe/Berlin\")");
+    model._set("A3", "=NOW(\"faketimezone\")");
     model.evaluate();
 
     assert_eq!(
         model._get_text("A1"),
         "#ERROR!",
-        "NOW should not accept arguments"
+        "Wrong number of arguments"
+    );
+    assert_eq!(model._get_text("A2"), *"20/03/2023 14:44:25");
+    assert_eq!(
+        model._get_text("A3"),
+        "#VALUE!",
+        "Invalid timezone: faketimezone"
     );
 }
 
