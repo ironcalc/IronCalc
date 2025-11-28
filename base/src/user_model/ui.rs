@@ -21,7 +21,7 @@ pub struct SelectedView {
     pub left_column: i32,
 }
 
-impl UserModel {
+impl<'a> UserModel<'a> {
     /// Returns the selected sheet index
     pub fn get_selected_sheet(&self) -> u32 {
         if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {

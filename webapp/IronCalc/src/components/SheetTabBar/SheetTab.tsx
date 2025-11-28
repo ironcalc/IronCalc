@@ -301,7 +301,9 @@ const TabWrapper = styled("div")<{ $color: string; $selected: boolean }>`
   }
 `;
 
-const StyledButton = styled(Button)<{ $active: boolean }>`
+const StyledButton = styled(Button, {
+  shouldForwardProp: (prop) => prop !== "$active",
+})<{ $active: boolean }>`
   width: 16px;
   height: 16px;
   min-width: 0px;

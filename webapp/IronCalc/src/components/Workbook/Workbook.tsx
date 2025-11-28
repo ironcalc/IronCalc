@@ -167,6 +167,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     }
   };
 
+  const fmtSettings = model.getFmtSettings();
+
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
   // the Rust end
   const { onKeyDown } = useKeyboardNavigation({
@@ -670,6 +672,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setShowGridLines(sheet, show);
           setRedrawId((id) => id + 1);
         }}
+        formatOptions={fmtSettings}
       />
       <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? drawerWidth : 0}>
         <FormulaBar
@@ -741,6 +744,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             model.hideSheet(selectedSheet);
             setRedrawId((value) => value + 1);
           }}
+          onSettingsChange={(
+            locale: string,
+            timezone: string,
+            language: string,
+          ) => {
+            model.setLocale(locale);
+            model.setTimezone(timezone);
+            model.setLanguage(language);
+            setRedrawId((id) => id + 1);
+          }}
+          model={model}
         />
       </WorksheetAreaLeft>
       <RightDrawer

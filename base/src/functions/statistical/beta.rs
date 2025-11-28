@@ -5,7 +5,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl Model {
+impl<'a> Model<'a> {
     // BETA.DIST(x, alpha, beta, cumulative, [A], [B])
     pub(crate) fn fn_beta_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
@@ -32,7 +32,7 @@ impl Model {
             CalcResult::EmptyArg => false,
             CalcResult::EmptyCell => false,
             CalcResult::String(s) => {
-                let up = s.to_ascii_uppercase();
+                let up = s.to_uppercase();
                 if up == "TRUE" {
                     true
                 } else if up == "FALSE" {

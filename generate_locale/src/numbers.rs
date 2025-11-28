@@ -1,28 +1,18 @@
 use std::collections::HashMap;
 use std::fs;
 
+use bitcode::Encode;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::constants::{NumbersProperties, LOCAL_TYPE};
 
-#[derive(Serialize, Deserialize)]
-struct CaGCalendarsFormat {
-    format: HashMap<String, HashMap<String, String>>,
-}
-#[derive(Serialize, Deserialize)]
-struct CaGCalendarsII {
-    months: CaGCalendarsFormat,
-    days: CaGCalendarsFormat,
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 struct NumbersJSONId {
-    identity: Value,
+    // identity: Value,
     numbers: NumbersProperties,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 struct NumbersJSON {
     main: HashMap<String, NumbersJSONId>,
 }

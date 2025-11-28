@@ -5,7 +5,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl Model {
+impl<'a> Model<'a> {
     // WEIBULL.DIST(x, alpha, beta, cumulative)
     pub(crate) fn fn_weibull_dist(
         &mut self,

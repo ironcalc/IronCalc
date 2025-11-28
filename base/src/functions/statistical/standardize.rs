@@ -3,7 +3,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn fn_standardize(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // STANDARDIZE(x, mean, standard_dev)
         if args.len() != 3 {

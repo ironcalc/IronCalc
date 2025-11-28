@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{expressions::types::Area, UserModel};
+use crate::{expressions::types::Area, test::user_model::util::new_empty_user_model};
 
 #[test]
 fn basic() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "100$").unwrap();
     model
         .range_clear_contents(&Area {
@@ -58,7 +58,7 @@ fn basic() {
 
 #[test]
 fn clear_empty_cell() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model
         .range_clear_contents(&Area {
             sheet: 0,
@@ -75,7 +75,7 @@ fn clear_empty_cell() {
 
 #[test]
 fn clear_all_empty_cell() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model
         .range_clear_all(&Area {
             sheet: 0,
@@ -92,7 +92,7 @@ fn clear_all_empty_cell() {
 
 #[test]
 fn issue_454() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model
         .set_user_input(
             0,
@@ -124,7 +124,7 @@ fn issue_454() {
 
 #[test]
 fn issue_454b() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model
         .set_user_input(
             0,

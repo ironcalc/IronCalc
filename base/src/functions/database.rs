@@ -9,7 +9,7 @@ use crate::{
 
 use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex};
 
-impl Model {
+impl<'a> Model<'a> {
     // =DAVERAGE(database, field, criteria)
     pub(crate) fn fn_daverage(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {

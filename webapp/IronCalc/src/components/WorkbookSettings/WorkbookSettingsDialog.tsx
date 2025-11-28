@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
+import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
 import {
   Autocomplete,
+  type AutocompleteProps,
   Box,
   Dialog,
   FormControl,
@@ -9,7 +11,7 @@ import {
   TextField,
 } from "@mui/material";
 import { Check, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 
@@ -18,48 +20,43 @@ type WorkbookSettingsDialogProps = {
   onClose: () => void;
   initialLocale: string;
   initialTimezone: string;
-  onSave?: (locale: string, timezone: string) => void;
+  initialLanguage: string;
+  onSave: (locale: string, timezone: string, language: string) => void;
 };
 
 const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
   const { t } = useTranslation();
-  const locales = ["en-US", "en-GB", "de-DE", "fr-FR", "es-ES"];
-  const timezones = [
-    "Berlin, Germany (GMT+1)",
-    "New York, USA (GMT-5)",
-    "Tokyo, Japan (GMT+9)",
-    "London, UK (GMT+0)",
-    "Sydney, Australia (GMT+10)",
-  ];
-  const [selectedLocale, setSelectedLocale] = useState<string>(
-    properties.initialLocale && locales.includes(properties.initialLocale)
-      ? properties.initialLocale
-      : locales[0],
+  const locales = getSupportedLocales();
+
+  const timezones = getAllTimezones();
+
+  const [selectedLocale, setSelectedLocale] = useState(
+    properties.initialLocale,
   );
-  const [selectedTimezone, setSelectedTimezone] = useState<string>(
-    properties.initialTimezone && timezones.includes(properties.initialTimezone)
-      ? properties.initialTimezone
-      : timezones[0],
+  const [selectedTimezone, setSelectedTimezone] = useState(
+    properties.initialTimezone,
   );
+  const [selectedLanguage, setSelectedLanguage] = useState(
+    properties.initialLanguage,
+  );
+
+  useEffect(() => {
+    if (properties.open) {
+      setSelectedLocale(properties.initialLocale);
+      setSelectedTimezone(properties.initialTimezone);
+      setSelectedLanguage(properties.initialLanguage);
+    }
+  }, [
+    properties.open,
+    properties.initialLocale,
+    properties.initialTimezone,
+    properties.initialLanguage,
+  ]);
 
   const handleSave = () => {
-    if (properties.onSave && selectedLocale && selectedTimezone) {
-      properties.onSave(selectedLocale, selectedTimezone);
-    }
+    properties.onSave(selectedLocale, selectedTimezone, selectedLanguage);
     properties.onClose();
   };
-
-  // Ensure selectedLocale is always a valid locale
-  const validSelectedLocale =
-    selectedLocale && locales.includes(selectedLocale)
-      ? selectedLocale
-      : locales[0];
-
-  // Ensure selectedTimezone is always a valid timezone
-  const validSelectedTimezone =
-    selectedTimezone && timezones.includes(selectedTimezone)
-      ? selectedTimezone
-      : timezones[0];
 
   return (
     <StyledDialog
@@ -99,7 +96,7 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
           <FormControl fullWidth>
             <StyledSelect
               id="locale"
-              value={validSelectedLocale}
+              value={selectedLocale}
               onChange={(event) => {
                 setSelectedLocale(event.target.value as string);
               }}
@@ -113,11 +110,7 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
               }}
             >
               {locales.map((locale) => (
-                <StyledMenuItem
-                  key={locale}
-                  value={locale}
-                  $isSelected={locale === selectedLocale}
-                >
+                <StyledMenuItem key={locale} value={locale}>
                   {locale}
                 </StyledMenuItem>
               ))}
@@ -149,18 +142,14 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
           <FormControl fullWidth>
             <StyledAutocomplete
               id="timezone"
-              value={validSelectedTimezone}
+              value={selectedTimezone}
               onChange={(_event, newValue) => {
-                setSelectedTimezone((newValue as string) || "");
+                setSelectedTimezone(newValue);
               }}
               options={timezones}
               renderInput={(params) => <TextField {...params} />}
               renderOption={(props, option) => (
-                <StyledMenuItem
-                  {...props}
-                  key={option as string}
-                  $isSelected={option === validSelectedTimezone}
-                >
+                <StyledMenuItem {...props} key={option as string}>
                   {option as string}
                 </StyledMenuItem>
               )}
@@ -191,6 +180,54 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
                 <RowValue>11/23/2025 09:21:06 PM</RowValue>
               </Row>
             </HelperBox>
+          </FormControl>
+        </FieldWrapper>
+        <FieldWrapper>
+          <StyledLabel htmlFor="display_language">
+            {t("workbook_settings.locale_and_timezone.display_language_label")}
+          </StyledLabel>
+          <FormControl fullWidth>
+            <StyledSelect
+              id="display_language"
+              value={selectedLanguage}
+              onChange={(event) => {
+                setSelectedLanguage(event.target.value as string);
+              }}
+              MenuProps={{
+                PaperProps: {
+                  sx: menuPaperStyles,
+                },
+                TransitionProps: {
+                  timeout: 0,
+                },
+              }}
+            >
+              <StyledMenuItem key="en" value="en">
+                {t(
+                  "workbook_settings.locale_and_timezone.display_language.english",
+                )}
+              </StyledMenuItem>
+              <StyledMenuItem key="es" value="es">
+                {t(
+                  "workbook_settings.locale_and_timezone.display_language.spanish",
+                )}
+              </StyledMenuItem>
+              <StyledMenuItem key="fr" value="fr">
+                {t(
+                  "workbook_settings.locale_and_timezone.display_language.french",
+                )}
+              </StyledMenuItem>
+              <StyledMenuItem key="de" value="de">
+                {t(
+                  "workbook_settings.locale_and_timezone.display_language.german",
+                )}
+              </StyledMenuItem>
+              <StyledMenuItem key="it" value="it">
+                {t(
+                  "workbook_settings.locale_and_timezone.display_language.italian",
+                )}
+              </StyledMenuItem>
+            </StyledSelect>
           </FormControl>
         </FieldWrapper>
       </StyledDialogContent>
@@ -317,7 +354,15 @@ const RowValue = styled("span")`
   color: ${theme.palette.grey[500]};
 `;
 
-const StyledAutocomplete = styled(Autocomplete)`
+// Autocomplete with customized styles
+// Value => string,
+// multiple => false, (we cannot select multiple timezones)
+// disableClearable => true, (the timezone must always have a value)
+// freeSolo => false (the timezone must be from the list)
+type TimezoneAutocompleteProps = AutocompleteProps<string, false, true, false>;
+const StyledAutocomplete = styled((props: TimezoneAutocompleteProps) => (
+  <Autocomplete<string, false, true, false> {...props} />
+))`
   & .MuiInputBase-root {
     padding: 0px !important;
     height: 32px;
@@ -369,7 +414,7 @@ const menuPaperStyles = {
   },
 };
 
-const StyledMenuItem = styled(MenuItem)<{ $isSelected?: boolean }>`
+const StyledMenuItem = styled(MenuItem)`
   padding: 8px !important;
   height: 32px !important;
   min-height: 32px !important;
@@ -377,8 +422,15 @@ const StyledMenuItem = styled(MenuItem)<{ $isSelected?: boolean }>`
   display: flex;
   align-items: center;
   font-size: 12px;
-  background-color: ${({ $isSelected }) =>
-    $isSelected ? theme.palette.grey[50] : "transparent"} !important;
+
+  &.Mui-selected {
+    background-color: ${theme.palette.grey[50]} !important;
+  }
+
+  &.Mui-selected:hover {
+    background-color: ${theme.palette.grey[50]} !important;
+  }
+
   &:hover {
     background-color: ${theme.palette.grey[50]} !important;
   }

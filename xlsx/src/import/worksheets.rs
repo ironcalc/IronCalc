@@ -1,11 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
-use ironcalc_base::expressions::parser::static_analysis::add_implicit_intersection;
+use ironcalc_base::expressions::parser::{
+    new_parser_english, static_analysis::add_implicit_intersection,
+};
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use ironcalc_base::{
     expressions::{
-        parser::{stringify::to_rc_format, DefinedNameS, Parser},
+        parser::{stringify::to_rc_format, DefinedNameS},
         token::{get_error_by_english_name, Error},
         types::CellReferenceRC,
         utils::{column_to_number, parse_reference_a1},
@@ -304,7 +306,7 @@ fn from_a1_to_rc(
     tables: HashMap<String, Table>,
     defined_names: Vec<DefinedNameS>,
 ) -> Result<String, XlsxError> {
-    let mut parser = Parser::new(worksheets.to_owned(), defined_names, tables);
+    let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
     let mut t = parser.parse(&formula, &cell_reference);

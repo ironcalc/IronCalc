@@ -31,7 +31,7 @@ export function isInReferenceMode(text: string, cursor: number): boolean {
   // This is a gross oversimplification
   // Returns true if both are true:
   // 1. Cursor is at the end
-  // 2. Last char is one of [',', '(', '+', '*', '-', '/', '<', '>', '=', '&']
+  // 2. Last char is one of [',', '(', '+', '*', '-', '/', '<', '>', '=', '&', ';']
   // This has many false positives like '="1+' and also likely some false negatives
   // The right way of doing this is to have a partial parse of the formula tree
   // and check if the next token could be a reference
@@ -42,7 +42,7 @@ export function isInReferenceMode(text: string, cursor: number): boolean {
     return true;
   }
   const l = text.length;
-  const chars = [",", "(", "+", "*", "-", "/", "<", ">", "=", "&"];
+  const chars = [",", "(", "+", "*", "-", "/", "<", ">", "=", "&", ";"];
   if (cursor === l && chars.includes(text[l - 1])) {
     return true;
   }

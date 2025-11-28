@@ -30,3 +30,43 @@ fn padded_vs_unpadded() {
     let formatted = format_number(value, unpadded_format, locale);
     assert_eq!(formatted.text, "6:5:4 AM");
 }
+
+#[test]
+fn elapsed_hour() {
+    let locale = get_default_locale();
+    let format = "[hh]:mm:ss";
+    // 1.5 days = 36 hours
+    let value = 1.5;
+    let formatted = format_number(value, format, locale);
+    assert_eq!(formatted.text, "36:00:00");
+}
+
+#[test]
+fn elapsed_minute() {
+    let locale = get_default_locale();
+    let format = "[mm]:ss";
+    // 2 days = 2880 minutes
+    let value = 2.0;
+    let formatted = format_number(value, format, locale);
+    assert_eq!(formatted.text, "2880:00");
+}
+
+#[test]
+fn elapsed_second() {
+    let locale = get_default_locale();
+    let format = "[ss]";
+    // 0.5 days = 43200 seconds
+    let value = 0.5;
+    let formatted = format_number(value, format, locale);
+    assert_eq!(formatted.text, "43200");
+}
+
+#[test]
+fn elapsed_hour_padded() {
+    let locale = get_default_locale();
+    let format = "[hh]:mm:ss";
+    // 0.1 days = 2.4 hours
+    let value = 0.1;
+    let formatted = format_number(value, format, locale);
+    assert_eq!(formatted.text, "02:24:00");
+}

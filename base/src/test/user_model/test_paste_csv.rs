@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{expressions::types::Area, UserModel};
+use crate::expressions::types::Area;
+use crate::test::user_model::util::new_empty_user_model;
 
 #[test]
 fn csv_paste() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 7, 7, "=SUM(B4:D7)").unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 7, 7), Ok("0".to_string()));
 
@@ -29,7 +30,7 @@ fn csv_paste() {
 
 #[test]
 fn csv_paste_formula() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     let csv = "=YEAR(TODAY())";
     let area = Area {
@@ -51,7 +52,7 @@ fn csv_paste_formula() {
 
 #[test]
 fn tsv_crlf_paste() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 7, 7, "=SUM(B4:D7)").unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 7, 7), Ok("0".to_string()));
 
@@ -76,7 +77,7 @@ fn tsv_crlf_paste() {
 
 #[test]
 fn cut_paste() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
     model.set_user_input(0, 1, 2, "=A1*3+1").unwrap();
 
@@ -124,7 +125,7 @@ fn cut_paste() {
 
 #[test]
 fn cut_paste_different_sheet() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
 
     model.set_selected_range(1, 1, 1, 1).unwrap();
@@ -144,7 +145,7 @@ fn cut_paste_different_sheet() {
 
 #[test]
 fn copy_paste_internal() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
     model.set_user_input(0, 1, 2, "=A1*3+1").unwrap();
 
