@@ -5,8 +5,7 @@ use serde::Serialize;
 
 use ironcalc::{
   base::{
-    types::{CellType, Style},
-    Model as BaseModel,
+    Model as BaseModel, types::{CellType, Style}
   },
   error::XlsxError,
   export::{save_to_icalc, save_to_xlsx},
@@ -36,14 +35,14 @@ pub struct Model {
 #[napi]
 impl Model {
   #[napi(constructor)]
-  pub fn new(name: String, locale: String, timezone: String) -> Result<Self> {
-    let model = BaseModel::new_empty(&name, &locale, &timezone).map_err(to_js_error)?;
+  pub fn new(name: String, locale: String, timezone: String, language_id: String) -> Result<Self> {
+    let model = BaseModel::new_empty(&name, &locale, &timezone, &language_id).map_err(to_js_error)?;
     Ok(Self { model })
   }
 
   #[napi(factory)]
-  pub fn from_xlsx(file_path: String, locale: String, tz: String) -> Result<Model> {
-    let model = load_from_xlsx(&file_path, &locale, &tz)
+  pub fn from_xlsx(file_path: String, locale: String, tz: String, language_id: String) -> Result<Model> {
+    let model = load_from_xlsx(&file_path, &locale, &tz, &language_id)
       .map_err(|error| Error::new(Status::Unknown, error.to_string()))?;
     Ok(Self { model })
   }

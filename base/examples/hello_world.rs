@@ -1,7 +1,7 @@
 use ironcalc_base::{cell::CellValue, Model};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut model = Model::new_empty("hello-world", "en", "UTC")?;
+    let mut model = Model::new_empty("hello-world", "en", "UTC", "en")?;
     // A1
     model.set_user_input(0, 1, 1, "Hello".to_string())?;
     // B1

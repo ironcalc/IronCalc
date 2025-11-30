@@ -355,7 +355,12 @@ impl Model {
     }
 
     /// Creates a new workbook with one empty sheet
-    pub fn new_empty(name: &str, locale_id: &str, timezone: &str) -> Result<Model, String> {
+    pub fn new_empty(
+        name: &str,
+        locale_id: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<Model, String> {
         let tz: Tz = match &timezone.parse() {
             Ok(tz) => *tz,
             Err(_) => return Err(format!("Invalid timezone: {}", &timezone)),
@@ -363,6 +368,10 @@ impl Model {
         let locale = match get_locale(locale_id) {
             Ok(l) => l.clone(),
             Err(_) => return Err(format!("Invalid locale: {locale_id}")),
+        };
+        let language = match get_language(language_id) {
+            Ok(l) => l.clone(),
+            Err(_) => return Err(format!("Invalid language: {language_id}")),
         };
 
         let milliseconds = get_milliseconds_since_epoch();
@@ -411,10 +420,6 @@ impl Model {
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
         let parser = Parser::new(worksheet_names, vec![], HashMap::new());
         let cells = HashMap::new();
-
-        // FIXME: Add support for display languages
-        #[allow(clippy::expect_used)]
-        let language = get_language("en").expect("").clone();
 
         let mut model = Model {
             workbook,

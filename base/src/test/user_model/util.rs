@@ -2,6 +2,11 @@
 
 use crate::{expressions::types::Area, types::Border, BorderArea, UserModel};
 
+pub fn new_empty_user_model() -> UserModel {
+    let model = UserModel::new_empty("model", "en", "UTC", "en").unwrap();
+    model
+}
+
 impl UserModel {
     pub fn _set_cell_border(&mut self, cell: &str, color: &str) {
         let cell_reference = self.model._parse_reference(cell);

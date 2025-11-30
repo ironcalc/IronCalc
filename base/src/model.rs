@@ -680,7 +680,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// assert_eq!(model.workbook.worksheet(0)?.color, None);
     /// model.set_sheet_color(0, "#DBBE29")?;
     /// assert_eq!(model.workbook.worksheet(0)?.color, Some("#DBBE29".to_string()));
@@ -761,7 +761,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// assert_eq!(model.is_empty_cell(0, 1, 1)?, true);
     /// model.set_user_input(0, 1, 1, "Attention is all you need".to_string());
     /// assert_eq!(model.is_empty_cell(0, 1, 1)?, false);
@@ -839,9 +839,9 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::cell::CellValue;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// model.set_user_input(0, 1, 1, "Stella!".to_string());
-    /// let model2 = Model::from_bytes(&model.to_bytes())?;
+    /// let model2 = Model::from_bytes(&model.to_bytes(), "en")?;
     /// assert_eq!(
     ///     model2.get_cell_value_by_index(0, 1, 1),
     ///     Ok(CellValue::String("Stella!".to_string()))
@@ -852,10 +852,10 @@ impl Model {
     ///
     /// See also:
     /// * [Model::to_bytes]
-    pub fn from_bytes(s: &[u8]) -> Result<Model, String> {
+    pub fn from_bytes(s: &[u8], language_id: &str) -> Result<Model, String> {
         let workbook: Workbook =
             bitcode::decode(s).map_err(|e| format!("Error parsing workbook: {e}"))?;
-        Model::from_workbook(workbook)
+        Model::from_workbook(workbook, language_id)
     }
 
     /// Returns a model from a Workbook object
@@ -866,9 +866,9 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::cell::CellValue;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// model.set_user_input(0, 1, 1, "Stella!".to_string());
-    /// let model2 = Model::from_workbook(model.workbook)?;
+    /// let model2 = Model::from_workbook(model.workbook, "en")?;
     /// assert_eq!(
     ///     model2.get_cell_value_by_index(0, 1, 1),
     ///     Ok(CellValue::String("Stella!".to_string()))
@@ -876,7 +876,7 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_workbook(workbook: Workbook) -> Result<Model, String> {
+    pub fn from_workbook(workbook: Workbook, language_id: &str) -> Result<Model, String> {
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
 
@@ -903,9 +903,10 @@ impl Model {
             .parse()
             .map_err(|_| format!("Invalid timezone: {}", workbook.settings.tz))?;
 
-        // FIXME: Add support for display languages
-        #[allow(clippy::expect_used)]
-        let language = get_language("en").expect("").clone();
+        let language = match get_language(language_id) {
+            Ok(lang) => lang.clone(),
+            Err(_) => return Err("Invalid language".to_string()),
+        };
         let mut shared_strings = HashMap::new();
         for (index, s) in workbook.shared_strings.iter().enumerate() {
             shared_strings.insert(s.to_string(), index);
@@ -938,7 +939,7 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::expressions::types::CellReferenceIndex;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// model.set_user_input(0, 1, 1, "Stella!".to_string());
     /// let reference = model.parse_reference("Sheet1!D40");
     /// assert_eq!(reference, Some(CellReferenceIndex {sheet: 0, row: 40, column: 4}));
@@ -1004,7 +1005,7 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::expressions::types::{Area, CellReferenceIndex};
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let source = CellReferenceIndex { sheet: 0, row: 3, column: 1};
     /// let target = CellReferenceIndex { sheet: 0, row: 50, column: 1};
     /// let area = Area { sheet: 0, row: 1, column: 1, width: 5, height: 4};
@@ -1074,7 +1075,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "=B1*D4".to_string());
     /// let (target_row, target_column) = (30, 1);
@@ -1122,7 +1123,7 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::expressions::types::CellReferenceIndex;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let source = CellReferenceIndex {sheet: 0, row: 1, column: 1};
     /// let target = CellReferenceIndex {sheet: 0, row: 30, column: 1};
     /// let result = model.extend_copied_value("=B1*D4", &source, &target)?;
@@ -1176,7 +1177,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "=SIN(B1*C3)+1".to_string());
     /// model.evaluate();
@@ -1225,7 +1226,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "Hello!".to_string())?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "Hello!".to_string());
@@ -1275,7 +1276,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "TRUE".to_string())?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "TRUE".to_string());
@@ -1317,7 +1318,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "42".to_string())?;
     /// assert_eq!(model.get_cell_content(sheet, row, column)?, "42".to_string());
@@ -1360,7 +1361,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "=A2*2".to_string())?;
     /// model.evaluate();
@@ -1413,7 +1414,7 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::cell::CellValue;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// model.set_user_input(0, 1, 1, "100$".to_string());
     /// model.set_user_input(0, 2, 1, "125$".to_string());
     /// model.set_user_input(0, 3, 1, "-10$".to_string());
@@ -1700,7 +1701,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "=1/3".to_string());
     /// model.evaluate();
@@ -1807,7 +1808,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "100$".to_string());
     /// model.cell_clear_contents(sheet, row, column);
@@ -1834,7 +1835,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "100$".to_string());
     /// model.cell_clear_all(sheet, row, column);
@@ -2319,6 +2320,16 @@ impl Model {
         self.workbook.settings.tz = timezone.to_string();
         self.evaluate();
         Ok(())
+    }
+
+    /// Gets the timezone of the model
+    pub fn get_timezone(&self) -> String {
+        self.workbook.settings.tz.clone()
+    }
+
+    /// Gets the locale of the model
+    pub fn get_locale(&self) -> String {
+        self.workbook.settings.locale.clone()
     }
 }
 

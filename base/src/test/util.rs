@@ -5,7 +5,7 @@ use crate::model::Model;
 use crate::types::Cell;
 
 pub fn new_empty_model() -> Model {
-    Model::new_empty("model", "en", "UTC").unwrap()
+    Model::new_empty("model", "en", "UTC", "en").unwrap()
 }
 
 impl Model {
