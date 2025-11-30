@@ -9,7 +9,7 @@ Creating an Empty Model
 
    import ironcalc as ic
 
-   model = ic.create("My Workbook", "en", "UTC")
+   model = ic.create("My Workbook", "en", "UTC", "en")
 
 Loading from XLSX
 ^^^^^^^^^^^^^^^^^
@@ -18,14 +18,14 @@ Loading from XLSX
 
    import ironcalc as ic
 
-   model = ic.load_from_xlsx("example.xlsx", "en", "UTC")
+   model = ic.load_from_xlsx("example.xlsx", "en", "UTC", "en")
 
 Modifying and Saving
 ^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
-   model = ic.create("model", "en", "UTC")
+   model = ic.create("model", "en", "UTC", "en")
    model.set_user_input(0, 1, 1, "123")
    model.set_user_input(0, 1, 2, "=A1*2")
    model.evaluate()

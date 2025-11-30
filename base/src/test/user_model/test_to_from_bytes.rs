@@ -11,7 +11,7 @@ fn basic() {
 
     let model_bytes = model1.to_bytes();
 
-    let model2 = UserModel::from_bytes(&model_bytes).unwrap();
+    let model2 = UserModel::from_bytes(&model_bytes, "en").unwrap();
 
     assert_eq!(model2.get_column_width(0, 3), Ok(width));
     assert_eq!(
@@ -24,7 +24,7 @@ fn basic() {
 fn errors() {
     let model_bytes = "Early in the morning, late in the century, Cricklewood Broadway.".as_bytes();
     assert_eq!(
-        &UserModel::from_bytes(model_bytes).unwrap_err(),
+        &UserModel::from_bytes(model_bytes, "en").unwrap_err(),
         "Error parsing workbook: invalid packing"
     );
 }

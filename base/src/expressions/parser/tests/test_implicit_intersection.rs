@@ -1,13 +1,15 @@
 #![allow(clippy::panic)]
 
-use crate::expressions::parser::{Node, Parser};
+use crate::expressions::parser::Node;
 use crate::expressions::types::CellReferenceRC;
 use std::collections::HashMap;
+
+use crate::expressions::parser::tests::utils::new_parser;
 
 #[test]
 fn simple() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!B3
     let cell_reference = CellReferenceRC {
@@ -40,7 +42,7 @@ fn simple() {
 #[test]
 fn simple_add() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!B3
     let cell_reference = CellReferenceRC {

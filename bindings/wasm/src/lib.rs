@@ -40,6 +40,18 @@ pub fn quote_name(name: &str) -> String {
     quote_name_ic(name)
 }
 
+/// Gets all timezones
+#[wasm_bindgen(js_name = "getAllTimezones")]
+pub fn get_all_timezones() -> Vec<String> {
+    ironcalc_base::get_all_timezones()
+}
+
+/// Gets all supported locales
+#[wasm_bindgen(js_name = "getSupportedLocales")]
+pub fn get_supported_locales() -> Vec<String> {
+    ironcalc_base::get_supported_locales()
+}
+
 #[derive(Serialize)]
 struct DefinedName {
     name: String,
@@ -55,13 +67,19 @@ pub struct Model {
 #[wasm_bindgen]
 impl Model {
     #[wasm_bindgen(constructor)]
-    pub fn new(name: &str, locale: &str, timezone: &str) -> Result<Model, JsError> {
-        let model = BaseModel::new_empty(name, locale, timezone).map_err(to_js_error)?;
+    pub fn new(
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<Model, JsError> {
+        let model =
+            BaseModel::new_empty(name, locale, timezone, language_id).map_err(to_js_error)?;
         Ok(Model { model })
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Result<Model, JsError> {
-        let model = BaseModel::from_bytes(bytes).map_err(to_js_error)?;
+    pub fn from_bytes(bytes: &[u8], language_id: &str) -> Result<Model, JsError> {
+        let model = BaseModel::from_bytes(bytes, language_id).map_err(to_js_error)?;
         Ok(Model { model })
     }
 
@@ -800,6 +818,32 @@ impl Model {
     pub fn set_locale(&mut self, locale: &str) -> Result<(), JsError> {
         self.model
             .set_locale(locale)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Gets the timezone of the model
+    #[wasm_bindgen(js_name = "getTimezone")]
+    pub fn get_timezone(&self) -> String {
+        self.model.get_timezone()
+    }
+
+    /// Gets the locale of the model
+    #[wasm_bindgen(js_name = "getLocale")]
+    pub fn get_locale(&self) -> String {
+        self.model.get_locale()
+    }
+
+    /// Gets the language of the model
+    #[wasm_bindgen(js_name = "getLanguage")]
+    pub fn get_language(&self) -> String {
+        self.model.get_language()
+    }
+
+    /// Sets the language of the model
+    #[wasm_bindgen(js_name = "setLanguage")]
+    pub fn set_language(&mut self, language: &str) -> Result<(), JsError> {
+        self.model
+            .set_language(language)
             .map_err(|e| to_js_error(e.to_string()))
     }
 }

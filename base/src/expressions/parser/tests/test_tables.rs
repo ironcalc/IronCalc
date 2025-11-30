@@ -2,8 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::expressions::parser::stringify::to_string;
-use crate::expressions::parser::Parser;
+use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils::{number_to_column, parse_reference_a1};
 use crate::types::{Table, TableColumn, TableStyleInfo};
@@ -62,7 +61,7 @@ fn simple_table() {
     let row_count = 3;
     let tables = create_test_table("tblIncome", &column_names, "A1", row_count);
 
-    let mut parser = Parser::new(worksheets, vec![], tables);
+    let mut parser = new_parser(worksheets, vec![], tables);
     // Reference cell is 'Sheet One'!F2
     let cell_reference = CellReferenceRC {
         sheet: "Sheet One".to_string(),
@@ -72,7 +71,10 @@ fn simple_table() {
 
     let formula = "SUM(tblIncome[[#This Row],[Jan]:[Dec]])";
     let t = parser.parse(formula, &cell_reference);
-    assert_eq!(to_string(&t, &cell_reference), "SUM($A$2:$E$2)");
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "SUM($A$2:$E$2)"
+    );
 
     // Cell A3
     let cell_reference = CellReferenceRC {
@@ -82,7 +84,10 @@ fn simple_table() {
     };
     let formula = "SUBTOTAL(109, tblIncome[Jan])";
     let t = parser.parse(formula, &cell_reference);
-    assert_eq!(to_string(&t, &cell_reference), "SUBTOTAL(109,$A$2:$A$3)");
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "SUBTOTAL(109,$A$2:$A$3)"
+    );
 
     // Cell A3 in 'Second Sheet'
     let cell_reference = CellReferenceRC {
@@ -93,7 +98,7 @@ fn simple_table() {
     let formula = "SUBTOTAL(109, tblIncome[Jan])";
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
-        to_string(&t, &cell_reference),
+        to_english_localized_string(&t, &cell_reference),
         "SUBTOTAL(109,'Sheet One'!$A$2:$A$3)"
     );
 }

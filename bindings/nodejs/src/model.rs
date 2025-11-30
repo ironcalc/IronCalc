@@ -36,21 +36,27 @@ pub struct Model {
 #[napi]
 impl Model {
   #[napi(constructor)]
-  pub fn new(name: String, locale: String, timezone: String) -> Result<Self> {
-    let model = BaseModel::new_empty(&name, &locale, &timezone).map_err(to_js_error)?;
+  pub fn new(name: String, locale: String, timezone: String, language_id: String) -> Result<Self> {
+    let model =
+      BaseModel::new_empty(&name, &locale, &timezone, &language_id).map_err(to_js_error)?;
     Ok(Self { model })
   }
 
   #[napi(factory)]
-  pub fn from_xlsx(file_path: String, locale: String, tz: String) -> Result<Model> {
-    let model = load_from_xlsx(&file_path, &locale, &tz)
+  pub fn from_xlsx(
+    file_path: String,
+    locale: String,
+    tz: String,
+    language_id: String,
+  ) -> Result<Model> {
+    let model = load_from_xlsx(&file_path, &locale, &tz, &language_id)
       .map_err(|error| Error::new(Status::Unknown, error.to_string()))?;
     Ok(Self { model })
   }
 
   #[napi(factory)]
-  pub fn from_icalc(file_name: String) -> Result<Model> {
-    let model = load_from_icalc(&file_name)
+  pub fn from_icalc(file_name: String, language_id: String) -> Result<Model> {
+    let model = load_from_icalc(&file_name, &language_id)
       .map_err(|error| Error::new(Status::Unknown, error.to_string()))?;
     Ok(Self { model })
   }
@@ -90,7 +96,7 @@ impl Model {
   pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String> {
     self
       .model
-      .get_cell_content(sheet, row, column)
+      .get_localized_cell_content(sheet, row, column)
       .map_err(to_js_error)
   }
 

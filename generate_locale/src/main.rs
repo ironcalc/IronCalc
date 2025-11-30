@@ -1,7 +1,7 @@
 use std::fs;
 use std::{collections::HashMap, io::Write, path::PathBuf};
 
-use constants::{Locale, Currency};
+use constants::{Currency, Locale};
 
 use clap::Parser;
 use numbers::get_numbers_formatting;
@@ -34,8 +34,13 @@ fn main() -> Result<(), String> {
     let opt = Opt::from_args();
     let cldr_dir = opt.cldr_dir;
     let locales_list: Vec<String> = if let Some(locales_path) = opt.locales {
-        let contents = fs::read_to_string(locales_path).or(Err("Failed reading file"))?;
-        serde_json::from_str(&contents).or(Err("Failed parsing file"))?
+        let locales_path_str = locales_path.display().to_string();
+        let contents = fs::read_to_string(locales_path)
+            .or(Err(format!("Failed reading file: {}", locales_path_str)))?;
+        serde_json::from_str(&contents).or(Err(format!(
+            "Failed parsing locales file: {}",
+            locales_path_str
+        )))?
     } else {
         get_all_locales_id(&cldr_dir)
     };
@@ -49,13 +54,27 @@ fn main() -> Result<(), String> {
         // We just stick here one and make this adaptable in the calc module for now
         let currency = Currency {
             iso: "USD".to_string(),
-            symbol: "$".to_string()
+            symbol: "$".to_string(),
         };
-        locales.insert(locale_id, Locale { dates, numbers, currency });
+        locales.insert(
+            locale_id,
+            Locale {
+                dates,
+                numbers,
+                currency,
+            },
+        );
     }
 
     let s = serde_json::to_string(&locales).or(Err("Failed to stringify data"))?;
     let mut f = fs::File::create(opt.output).or(Err("Failed to create file"))?;
     f.write_all(s.as_bytes()).or(Err("Failed writing"))?;
+
+    // save to locales.bin using bitcode
+    let bytes = bitcode::encode(&locales);
+    let mut f_bin = fs::File::create("locales.bin").or(Err("Failed to create locales.bin"))?;
+    f_bin
+        .write_all(&bytes)
+        .or(Err("Failed writing locales.bin"))?;
     Ok(())
 }

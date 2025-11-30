@@ -83,6 +83,13 @@ pub struct TimeFormats {
     pub short: String,
 }
 
+impl Default for Locale {
+    fn default() -> Self {
+        #[allow(clippy::unwrap_used)]
+        get_locale("en").unwrap().clone()
+    }
+}
+
 static LOCALES: OnceLock<HashMap<String, Locale>> = OnceLock::new();
 
 #[allow(clippy::expect_used)]
