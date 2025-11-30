@@ -24,7 +24,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
       properties.onChange(s);
       setMenuOpen(false);
     },
-    [properties.onChange]
+    [properties.onChange],
   );
 
   const isCustomFormat = !KNOWN_FORMATS.has(properties.numFmt);

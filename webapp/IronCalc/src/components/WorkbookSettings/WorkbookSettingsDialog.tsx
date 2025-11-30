@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
 import {
   Autocomplete,
   Box,
@@ -12,7 +13,6 @@ import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
-import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
 
 type WorkbookSettingsDialogProps = {
   open: boolean;
@@ -32,18 +32,18 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
   const [selectedLocale, setSelectedLocale] = useState<string>(
     properties.initialLocale && locales.includes(properties.initialLocale)
       ? properties.initialLocale
-      : locales[0]
+      : locales[0],
   );
   console.log(
     "WorkbookSettingsDialog selectedLocale",
     properties.initialLocale,
     properties.initialTimezone,
-    selectedLocale
+    selectedLocale,
   );
   const [selectedTimezone, setSelectedTimezone] = useState<string>(
     properties.initialTimezone && timezones.includes(properties.initialTimezone)
       ? properties.initialTimezone
-      : timezones[0]
+      : timezones[0],
   );
 
   const handleSave = () => {

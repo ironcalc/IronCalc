@@ -3,8 +3,7 @@
 use crate::{expressions::types::Area, types::Border, BorderArea, UserModel};
 
 pub fn new_empty_user_model() -> UserModel {
-    let model = UserModel::new_empty("model", "en", "UTC", "en").unwrap();
-    model
+    UserModel::new_empty("model", "en", "UTC", "en").unwrap()
 }
 
 impl UserModel {

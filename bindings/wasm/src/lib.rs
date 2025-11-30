@@ -67,8 +67,14 @@ pub struct Model {
 #[wasm_bindgen]
 impl Model {
     #[wasm_bindgen(constructor)]
-    pub fn new(name: &str, locale: &str, timezone: &str, language_id: &str) -> Result<Model, JsError> {
-        let model = BaseModel::new_empty(name, locale, timezone, language_id).map_err(to_js_error)?;
+    pub fn new(
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<Model, JsError> {
+        let model =
+            BaseModel::new_empty(name, locale, timezone, language_id).map_err(to_js_error)?;
         Ok(Model { model })
     }
 
