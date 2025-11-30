@@ -1,21 +1,22 @@
+use bitcode::Encode;
 use serde::{Deserialize, Serialize};
 
-pub const LOCAL_TYPE: &str = "modern"; // or "full"
+pub const LOCAL_TYPE: &str = "full"; // or "modern"
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 pub struct Locale {
     pub dates: Dates,
     pub numbers: NumbersProperties,
-    pub currency: Currency
+    pub currency: Currency,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 pub struct Currency {
     pub iso: String,
     pub symbol: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Encode, Clone)]
 pub struct NumbersProperties {
     #[serde(rename = "symbols-numberSystem-latn")]
     pub symbols: NumbersSymbols,
@@ -25,16 +26,19 @@ pub struct NumbersProperties {
     pub currency_formats: CurrencyFormats,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 pub struct Dates {
     pub day_names: Vec<String>,
     pub day_names_short: Vec<String>,
     pub months: Vec<String>,
     pub months_short: Vec<String>,
     pub months_letter: Vec<String>,
+    pub date_formats: DateFormats,
+    pub time_formats: DateFormats,
+    pub date_time_formats: DateFormats,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Encode, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NumbersSymbols {
     pub decimal: String,
@@ -52,10 +56,8 @@ pub struct NumbersSymbols {
     pub time_separator: String,
 }
 
-
-
 // See: https://cldr.unicode.org/translation/number-currency-formats/number-and-currency-patterns
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Encode, Clone)]
 pub struct CurrencyFormats {
     pub standard: String,
     #[serde(rename = "standard-alphaNextToNumber")]
@@ -71,8 +73,16 @@ pub struct CurrencyFormats {
     pub accounting_no_currency: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Encode, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DecimalFormats {
     pub standard: String,
+}
+
+#[derive(Serialize, Deserialize, Encode, Clone)]
+pub struct DateFormats {
+    full: String,
+    long: String,
+    medium: String,
+    short: String,
 }
