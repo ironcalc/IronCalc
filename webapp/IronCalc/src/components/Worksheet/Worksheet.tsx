@@ -215,6 +215,7 @@ const Worksheet = forwardRef(
       onAllSheetSelected: () => {
         model.setSelectedCell(1, 1);
         model.setSelectedRange(1, 1, LAST_ROW, LAST_COLUMN);
+        refresh();
       },
       onCellSelected: (cell: Cell, event: React.MouseEvent) => {
         event.preventDefault();
