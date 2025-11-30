@@ -735,6 +735,14 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             model.hideSheet(selectedSheet);
             setRedrawId((value) => value + 1);
           }}
+          onSettingsChange={(locale: string, timezone: string) => {
+            console.log("Workbook onSettingsChange", locale, timezone);
+            model.setLocale(locale);
+            model.setTimezone(timezone);
+            setRedrawId((id) => id + 1);
+          }}
+          initialTimezone={model.get_timezone()}
+          initialLocale={model.get_locale()}
         />
       </WorksheetAreaLeft>
       <RightDrawer

@@ -24,7 +24,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
       properties.onChange(s);
       setMenuOpen(false);
     },
-    [properties.onChange],
+    [properties.onChange]
   );
 
   const isCustomFormat = !KNOWN_FORMATS.has(properties.numFmt);
@@ -204,7 +204,9 @@ const MenuDivider = styled("div")`
   border-top: 1px solid #eeeeee;
 `;
 
-const CheckIcon = styled(Check)<{ $active: boolean }>`
+const CheckIcon = styled(Check, {
+  shouldForwardProp: (prop) => prop !== "$active",
+})<{ $active: boolean }>`
   width: 16px;
   height: 16px;
   color: ${(props) => (props.$active ? "currentColor" : "transparent")};

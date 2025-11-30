@@ -22,9 +22,9 @@ export interface SheetTabBarProps {
   onSheetRenamed: (name: string) => void;
   onSheetDeleted: () => void;
   onHideSheet: () => void;
-  onOpenWorkbookSettings: () => void;
   initialLocale: string;
   initialTimezone: string;
+  onSettingsChange: (locale: string, timezone: string) => void;
 }
 
 function SheetTabBar(props: SheetTabBarProps) {
@@ -105,7 +105,7 @@ function SheetTabBar(props: SheetTabBarProps) {
             $pressed={false}
             onClick={() => {
               setWorkbookSettingsOpen(true);
-              props.onOpenWorkbookSettings();
+              // props.onOpenWorkbookSettings();
             }}
           >
             <EllipsisVertical />
@@ -128,6 +128,9 @@ function SheetTabBar(props: SheetTabBarProps) {
         onClose={() => setWorkbookSettingsOpen(false)}
         initialLocale={props.initialLocale}
         initialTimezone={props.initialTimezone}
+        onSave={(locale: string, timezone: string) => {
+          props.onSettingsChange(locale, timezone);
+        }}
       />
     </Container>
   );

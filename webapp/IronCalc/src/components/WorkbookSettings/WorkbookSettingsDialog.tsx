@@ -12,40 +12,42 @@ import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
+import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
 
 type WorkbookSettingsDialogProps = {
   open: boolean;
   onClose: () => void;
   initialLocale: string;
   initialTimezone: string;
-  onSave?: (locale: string, timezone: string) => void;
+  onSave: (locale: string, timezone: string) => void;
 };
 
 const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
   const { t } = useTranslation();
-  const locales = ["en-US", "en-GB", "de-DE", "fr-FR", "es-ES"];
-  const timezones = [
-    "Berlin, Germany (GMT+1)",
-    "New York, USA (GMT-5)",
-    "Tokyo, Japan (GMT+9)",
-    "London, UK (GMT+0)",
-    "Sydney, Australia (GMT+10)",
-  ];
+  const locales = getSupportedLocales();
+
+  // Use a runtime/type cast to call supportedValuesOf when available, and fall back to a safe timezone list.
+  const timezones = getAllTimezones();
+
   const [selectedLocale, setSelectedLocale] = useState<string>(
     properties.initialLocale && locales.includes(properties.initialLocale)
       ? properties.initialLocale
-      : locales[0],
+      : locales[0]
+  );
+  console.log(
+    "WorkbookSettingsDialog selectedLocale",
+    properties.initialLocale,
+    properties.initialTimezone,
+    selectedLocale
   );
   const [selectedTimezone, setSelectedTimezone] = useState<string>(
     properties.initialTimezone && timezones.includes(properties.initialTimezone)
       ? properties.initialTimezone
-      : timezones[0],
+      : timezones[0]
   );
 
   const handleSave = () => {
-    if (properties.onSave && selectedLocale && selectedTimezone) {
-      properties.onSave(selectedLocale, selectedTimezone);
-    }
+    properties.onSave(selectedLocale, selectedTimezone);
     properties.onClose();
   };
 
@@ -116,7 +118,7 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
                 <StyledMenuItem
                   key={locale}
                   value={locale}
-                  $isSelected={locale === selectedLocale}
+                  // $isSelected={locale === selectedLocale}
                 >
                   {locale}
                 </StyledMenuItem>
@@ -156,11 +158,7 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
               options={timezones}
               renderInput={(params) => <TextField {...params} />}
               renderOption={(props, option) => (
-                <StyledMenuItem
-                  {...props}
-                  key={option as string}
-                  $isSelected={option === validSelectedTimezone}
-                >
+                <StyledMenuItem {...props} key={option as string}>
                   {option as string}
                 </StyledMenuItem>
               )}
@@ -369,7 +367,12 @@ const menuPaperStyles = {
   },
 };
 
-const StyledMenuItem = styled(MenuItem)<{ $isSelected?: boolean }>`
+// background-color: ${({ $isSelected }) =>
+//     $isSelected ? theme.palette.grey[50] : "transparent"} !important;
+//   &:hover {
+//     background-color: ${theme.palette.grey[50]} !important;
+//   }
+const StyledMenuItem = styled(MenuItem)`
   padding: 8px !important;
   height: 32px !important;
   min-height: 32px !important;
@@ -377,8 +380,15 @@ const StyledMenuItem = styled(MenuItem)<{ $isSelected?: boolean }>`
   display: flex;
   align-items: center;
   font-size: 12px;
-  background-color: ${({ $isSelected }) =>
-    $isSelected ? theme.palette.grey[50] : "transparent"} !important;
+
+  &.Mui-selected {
+    background-color: ${theme.palette.grey[50]} !important;
+  }
+
+  &.Mui-selected:hover {
+    background-color: ${theme.palette.grey[50]} !important;
+  }
+
   &:hover {
     background-color: ${theme.palette.grey[50]} !important;
   }
