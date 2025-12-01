@@ -28,7 +28,7 @@ fn arguments() {
     assert_eq!(model._get_text("A4"), *"#ERROR!");
 
     assert_eq!(model._get_text("A5"), *"#ERROR!");
-    assert_eq!(model._get_text("A6"), *"#ERROR!");
+    assert_eq!(model._get_text("A6"), *"10");
     assert_eq!(model._get_text("A7"), *"10.2");
     assert_eq!(model._get_text("A8"), *"#ERROR!");
 
