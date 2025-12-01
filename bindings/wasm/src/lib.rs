@@ -830,4 +830,16 @@ impl Model {
     pub fn get_locale(&self) -> String {
         self.model.get_locale()
     }
+
+    /// Gets the language of the model
+    pub fn get_language(&self) -> String {
+        self.model.get_language()
+    }
+
+    /// Sets the language of the model
+    pub fn set_language(&mut self, language: &str) -> Result<(), JsError> {
+        self.model
+            .set_language(language)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
 }

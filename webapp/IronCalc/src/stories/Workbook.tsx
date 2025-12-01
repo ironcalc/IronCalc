@@ -11,7 +11,7 @@ export const Workbook = () => {
   useEffect(() => {
     async function start() {
       await init();
-      setModel(new Model("Workbook1", "en", "UTC"));
+      setModel(new Model("Workbook1", "en", "UTC", "en"));
     }
     start();
   }, []);

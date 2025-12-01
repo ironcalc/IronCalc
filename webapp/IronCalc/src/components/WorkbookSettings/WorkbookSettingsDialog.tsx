@@ -19,7 +19,8 @@ type WorkbookSettingsDialogProps = {
   onClose: () => void;
   initialLocale: string;
   initialTimezone: string;
-  onSave: (locale: string, timezone: string) => void;
+  initialLanguage: string;
+  onSave: (locale: string, timezone: string, language: string) => void;
 };
 
 const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
@@ -29,39 +30,14 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
   // Use a runtime/type cast to call supportedValuesOf when available, and fall back to a safe timezone list.
   const timezones = getAllTimezones();
 
-  const [selectedLocale, setSelectedLocale] = useState<string>(
-    properties.initialLocale && locales.includes(properties.initialLocale)
-      ? properties.initialLocale
-      : locales[0],
-  );
-  console.log(
-    "WorkbookSettingsDialog selectedLocale",
-    properties.initialLocale,
-    properties.initialTimezone,
-    selectedLocale,
-  );
-  const [selectedTimezone, setSelectedTimezone] = useState<string>(
-    properties.initialTimezone && timezones.includes(properties.initialTimezone)
-      ? properties.initialTimezone
-      : timezones[0],
-  );
+  const [selectedLocale, setSelectedLocale] = useState(properties.initialLocale);
+  const [selectedTimezone, setSelectedTimezone] = useState<string>(properties.initialTimezone);
+  const [selectedLanguage, setSelectedLanguage] = useState(properties.initialLanguage);
 
   const handleSave = () => {
-    properties.onSave(selectedLocale, selectedTimezone);
+    properties.onSave(selectedLocale, selectedTimezone, selectedLanguage);
     properties.onClose();
   };
-
-  // Ensure selectedLocale is always a valid locale
-  const validSelectedLocale =
-    selectedLocale && locales.includes(selectedLocale)
-      ? selectedLocale
-      : locales[0];
-
-  // Ensure selectedTimezone is always a valid timezone
-  const validSelectedTimezone =
-    selectedTimezone && timezones.includes(selectedTimezone)
-      ? selectedTimezone
-      : timezones[0];
 
   return (
     <StyledDialog
@@ -101,7 +77,7 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
           <FormControl fullWidth>
             <StyledSelect
               id="locale"
-              value={validSelectedLocale}
+              value={selectedLocale}
               onChange={(event) => {
                 setSelectedLocale(event.target.value as string);
               }}
@@ -115,11 +91,7 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
               }}
             >
               {locales.map((locale) => (
-                <StyledMenuItem
-                  key={locale}
-                  value={locale}
-                  // $isSelected={locale === selectedLocale}
-                >
+                <StyledMenuItem key={locale} value={locale}>
                   {locale}
                 </StyledMenuItem>
               ))}
@@ -151,7 +123,7 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
           <FormControl fullWidth>
             <StyledAutocomplete
               id="timezone"
-              value={validSelectedTimezone}
+              value={selectedTimezone}
               onChange={(_event, newValue) => {
                 setSelectedTimezone((newValue as string) || "");
               }}
@@ -189,6 +161,41 @@ const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
                 <RowValue>11/23/2025 09:21:06 PM</RowValue>
               </Row>
             </HelperBox>
+          </FormControl>
+        </FieldWrapper>
+        <FieldWrapper>
+          <StyledLabel htmlFor="display_language">
+            {t("workbook_settings.locale_and_timezone.display_language_label")}
+          </StyledLabel>
+          <FormControl fullWidth>
+            <StyledSelect
+              id="locale"
+              value={selectedLanguage}
+              onChange={(event) => {
+                setSelectedLanguage(event.target.value as string);
+              }}
+              MenuProps={{
+                PaperProps: {
+                  sx: menuPaperStyles,
+                },
+                TransitionProps: {
+                  timeout: 0,
+                },
+              }}
+            >
+              <StyledMenuItem key="en" value="en">
+                {t("workbook_settings.locale_and_timezone.display_language.english")}
+              </StyledMenuItem>
+              <StyledMenuItem key="es" value="es">
+                {t("workbook_settings.locale_and_timezone.display_language.spanish")}
+              </StyledMenuItem>
+              <StyledMenuItem key="fr" value="fr">
+                {t("workbook_settings.locale_and_timezone.display_language.french")}
+              </StyledMenuItem>
+              <StyledMenuItem key="de" value="de">
+                {t("workbook_settings.locale_and_timezone.display_language.german")}
+              </StyledMenuItem>
+            </StyledSelect>
           </FormControl>
         </FieldWrapper>
       </StyledDialogContent>

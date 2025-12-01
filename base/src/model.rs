@@ -2322,6 +2322,22 @@ impl Model {
         Ok(())
     }
 
+    /// Sets the language
+    pub fn set_language(&mut self, language_id: &str) -> Result<(), String> {
+        let language = match get_language(language_id) {
+            Ok(l) => l.clone(),
+            Err(_) => return Err(format!("Invalid language: {language_id}")),
+        };
+        self.language = language;
+        self.evaluate();
+        Ok(())
+    }
+
+    /// Gets the current language
+    pub fn get_language(&self) -> String {
+        self.language.name.clone()
+    }
+
     /// Gets the timezone of the model
     pub fn get_timezone(&self) -> String {
         self.workbook.settings.tz.clone()

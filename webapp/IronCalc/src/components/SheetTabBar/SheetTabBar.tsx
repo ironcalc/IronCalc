@@ -24,7 +24,8 @@ export interface SheetTabBarProps {
   onHideSheet: () => void;
   initialLocale: string;
   initialTimezone: string;
-  onSettingsChange: (locale: string, timezone: string) => void;
+  initialLanguage: string;
+  onSettingsChange: (locale: string, timezone: string, language: string) => void;
 }
 
 function SheetTabBar(props: SheetTabBarProps) {
@@ -128,8 +129,9 @@ function SheetTabBar(props: SheetTabBarProps) {
         onClose={() => setWorkbookSettingsOpen(false)}
         initialLocale={props.initialLocale}
         initialTimezone={props.initialTimezone}
-        onSave={(locale: string, timezone: string) => {
-          props.onSettingsChange(locale, timezone);
+        initialLanguage={props.initialLanguage}
+        onSave={(locale: string, timezone: string, language: string) => {
+          props.onSettingsChange(locale, timezone, language);
         }}
       />
     </Container>
