@@ -20,7 +20,6 @@ fn arguments() {
     model._set("A11", "=INT(10.22, 1)");
     model._set("A12", "=INT(10.22, 1, 2)");
 
-
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#ERROR!");
@@ -29,7 +28,7 @@ fn arguments() {
     assert_eq!(model._get_text("A4"), *"#ERROR!");
 
     assert_eq!(model._get_text("A5"), *"#ERROR!");
-    assert_eq!(model._get_text("A6"), *"#ERROR!");
+    assert_eq!(model._get_text("A6"), *"10");
     assert_eq!(model._get_text("A7"), *"10.2");
     assert_eq!(model._get_text("A8"), *"#ERROR!");
 

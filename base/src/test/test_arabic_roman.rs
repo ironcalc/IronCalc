@@ -6,8 +6,8 @@ use crate::test::util::new_empty_model;
 fn arguments() {
     let mut model = new_empty_model();
     model._set("A1", "=ARABIC()");
-    model._set("A2", "=ARABIC(V)");
-    model._set("A3", "=ARABIC(V, 2)");
+    model._set("A2", "=ARABIC(\"V\")");
+    model._set("A3", "=ARABIC(\"V\", 2)");
 
     model._set("A4", "=ROMAN()");
     model._set("A5", "=ROMAN(5)");
