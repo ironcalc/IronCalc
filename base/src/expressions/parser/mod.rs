@@ -32,7 +32,9 @@ use std::collections::HashMap;
 
 use crate::functions::Function;
 use crate::language::get_language;
+use crate::language::Language;
 use crate::locale::get_locale;
+use crate::locale::Locale;
 use crate::types::Table;
 
 use super::lexer;
@@ -210,20 +212,25 @@ pub struct Parser {
     tables: HashMap<String, Table>,
 }
 
+pub fn new_parser_english(
+    worksheets: Vec<String>,
+    defined_names: Vec<DefinedNameS>,
+    tables: HashMap<String, Table>,
+) -> Parser {
+    let locale = Locale::default();
+    let language = Language::default();
+    Parser::new(worksheets, defined_names, tables, &locale, &language)
+}
+
 impl Parser {
     pub fn new(
         worksheets: Vec<String>,
         defined_names: Vec<DefinedNameS>,
         tables: HashMap<String, Table>,
+        locale: &Locale,
+        language: &Language,
     ) -> Parser {
-        let lexer = lexer::Lexer::new(
-            "",
-            lexer::LexerMode::A1,
-            #[allow(clippy::expect_used)]
-            get_locale("en").expect(""),
-            #[allow(clippy::expect_used)]
-            get_language("en").expect(""),
-        );
+        let lexer = lexer::Lexer::new("", lexer::LexerMode::A1, locale, language);
         let context = CellReferenceRC {
             sheet: worksheets.first().map_or("", |v| v).to_string(),
             column: 1,
@@ -715,7 +722,7 @@ impl Parser {
                             message: err.message,
                         };
                     }
-                    if let Some(function_kind) = Function::get_function(&name) {
+                    if let Some(function_kind) = Function::get_function_from_english_name(&name) {
                         return Node::FunctionKind {
                             kind: function_kind,
                             args,

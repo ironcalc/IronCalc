@@ -8,7 +8,7 @@ use crate::{
     expressions::{
         lexer::LexerMode,
         parser::{
-            stringify::{rename_sheet_in_node, to_rc_format, to_string},
+            stringify::{rename_sheet_in_node, to_localized_string, to_rc_format},
             Parser,
         },
         types::CellReferenceRC,
@@ -290,7 +290,7 @@ impl Model {
         for defined_name in &mut self.workbook.defined_names {
             let mut t = self.parser.parse(&defined_name.formula, cell_reference);
             rename_sheet_in_node(&mut t, sheet_index, new_name);
-            let formula = to_string(&t, cell_reference);
+            let formula = to_localized_string(&t, cell_reference, &self.locale, &self.language);
             defined_names.push(DefinedName {
                 name: defined_name.name.clone(),
                 formula,
@@ -418,7 +418,7 @@ impl Model {
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
-        let parser = Parser::new(worksheet_names, vec![], HashMap::new());
+        let parser = Parser::new(worksheet_names, vec![], HashMap::new(), &locale, &language);
         let cells = HashMap::new();
 
         let mut model = Model {

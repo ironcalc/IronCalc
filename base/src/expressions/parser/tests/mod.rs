@@ -8,3 +8,4 @@ mod test_move_formula;
 mod test_ranges;
 mod test_stringify;
 mod test_tables;
+mod utils;

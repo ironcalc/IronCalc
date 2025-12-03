@@ -381,6 +381,12 @@ pub struct Language {
     pub functions: Functions,
 }
 
+impl Default for Language {
+    fn default() -> Self {
+        get_language("en").unwrap().clone()
+    }
+}
+
 static LANGUAGES: OnceLock<HashMap<String, Language>> = OnceLock::new();
 
 #[allow(clippy::expect_used)]

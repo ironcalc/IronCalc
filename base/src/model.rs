@@ -11,7 +11,7 @@ use crate::{
         lexer::LexerMode,
         parser::{
             move_formula::{move_formula, MoveContext},
-            stringify::{rename_defined_name_in_node, to_rc_format, to_string},
+            stringify::{rename_defined_name_in_node, to_localized_string, to_rc_format},
             Node, Parser,
         },
         token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
@@ -892,7 +892,7 @@ impl Model {
         //     }
         //     tables.push(tables_in_sheet);
         // }
-        let parser = Parser::new(worksheet_names, defined_names, workbook.tables.clone());
+
         let cells = HashMap::new();
         let locale = get_locale(&workbook.settings.locale)
             .map_err(|_| "Invalid locale".to_string())?
@@ -907,6 +907,13 @@ impl Model {
             Ok(lang) => lang.clone(),
             Err(_) => return Err("Invalid language".to_string()),
         };
+        let parser = Parser::new(
+            worksheet_names,
+            defined_names,
+            workbook.tables.clone(),
+            &locale,
+            &language,
+        );
         let mut shared_strings = HashMap::new();
         for (index, s) in workbook.shared_strings.iter().enumerate() {
             shared_strings.insert(s.to_string(), index);
@@ -1061,6 +1068,8 @@ impl Model {
                     row_delta: target.row - source.row,
                     column_delta: target.column - source.column,
                 },
+                &self.locale,
+                &self.language,
             );
             Ok(format!("={formula_str}"))
         } else {
@@ -1107,7 +1116,10 @@ impl Model {
                         row: target_row,
                         column: target_column,
                     };
-                    format!("={}", to_string(formula, &cell_ref))
+                    format!(
+                        "={}",
+                        to_localized_string(formula, &cell_ref, &self.locale, &self.language)
+                    )
                 }
             },
             None => "".to_string(),
@@ -1165,7 +1177,10 @@ impl Model {
                 row: target.row,
                 column: target.column,
             };
-            return Ok(format!("={}", to_string(formula, &cell_reference)));
+            return Ok(format!(
+                "={}",
+                to_localized_string(formula, &cell_reference, &self.locale, &self.language)
+            ));
         };
         Ok(value.to_string())
     }
@@ -1210,7 +1225,10 @@ impl Model {
                         row,
                         column,
                     };
-                    Ok(Some(format!("={}", to_string(formula, &cell_ref))))
+                    Ok(Some(format!(
+                        "={}",
+                        to_localized_string(formula, &cell_ref, &self.locale, &self.language)
+                    )))
                 }
                 None => Ok(None),
             },
@@ -1754,7 +1772,10 @@ impl Model {
                     row,
                     column,
                 };
-                Ok(format!("={}", to_string(formula, &cell_ref)))
+                Ok(format!(
+                    "={}",
+                    to_localized_string(formula, &cell_ref, &self.locale, &self.language)
+                ))
             }
             None => Ok(cell.get_text(&self.workbook.shared_strings, &self.language)),
         }

@@ -1,5 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::parser::stringify::{to_string, to_string_displaced, DisplaceData};
+use crate::expressions::parser::stringify::{
+    to_localized_string, to_string_displaced, DisplaceData,
+};
 use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
 
@@ -29,7 +31,7 @@ impl Model {
                 column,
             };
             // FIXME: This is not a very performant way if the formula has changed :S.
-            let formula = to_string(node, &cell_reference);
+            let formula = to_localized_string(node, &cell_reference, &self.locale, &self.language);
             let formula_displaced = to_string_displaced(node, &cell_reference, displace_data);
             if formula != formula_displaced {
                 self.update_cell_with_formula(sheet, row, column, format!("={formula_displaced}"))?;
