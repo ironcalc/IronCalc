@@ -196,11 +196,27 @@ fn test_timevalue_function_formats() {
         // Single hour with AM/PM (now supported!)
         ("B5", "=TIMEVALUE(\"2 PM\")"),
         ("B6", "=TIMEVALUE(\"2 AM\")"),
+        // Case-insensitive suffix
+        ("B7", "=TIMEVALUE(\"2 pm\")"),
+        ("B8", "=TIMEVALUE(\"2 pM\")"),
+        ("B9", "=TIMEVALUE(\"2 Am\")"),
+        ("B10", "=TIMEVALUE(\"2 am\")"),
         // Date-time formats (extract time only)
         ("C1", "=TIMEVALUE(\"2023-01-01 14:30:00\")"),
         ("C2", "=TIMEVALUE(\"2023-01-01T14:30:00\")"),
         // Whitespace handling
         ("D1", "=TIMEVALUE(\" 14:30 \")"),
+        ("D2", "=TIMEVALUE(\"14:30  \")"),
+        ("D3", "=TIMEVALUE(\" 14:30\")"),
+        // Whitespace handling for simple AM/PM
+        ("E1", "=TIMEVALUE(\"2 pm \")"),
+        ("E2", "=TIMEVALUE(\" 2 pm\")"),
+        ("E3", "=TIMEVALUE(\"2  am\")"),
+        ("E4", "=TIMEVALUE(\"  2  am  \")"),
+        // Dot handling for simple AM/PM
+        ("F1", "=TIMEVALUE(\"2 am\")"),
+        ("F2", "=TIMEVALUE(\"2 PM.\")"),
+        ("F3", "=TIMEVALUE(\"2 p.m.\")"),
     ]);
 
     // Basic formats
@@ -217,6 +233,10 @@ fn test_timevalue_function_formats() {
     // Single hour AM/PM formats (now supported!)
     assert_eq!(model._get_text("B5"), *TIME_2_PM); // 2 PM = 14:00
     assert_eq!(model._get_text("B6"), *TIME_2_AM); // 2 AM = 02:00
+    assert_eq!(model._get_text("B7"), *TIME_2_PM); // 2 AM = 02:00
+    assert_eq!(model._get_text("B8"), *TIME_2_PM); // 2 AM = 02:00
+    assert_eq!(model._get_text("B9"), *TIME_2_AM); // 2 AM = 02:00
+    assert_eq!(model._get_text("B10"), *TIME_2_AM); // 2 AM = 02:00
 
     // Date-time formats
     assert_eq!(model._get_text("C1"), *TIME_14_30);
@@ -224,6 +244,19 @@ fn test_timevalue_function_formats() {
 
     // Whitespace
     assert_eq!(model._get_text("D1"), *TIME_14_30);
+    assert_eq!(model._get_text("D2"), *TIME_14_30);
+    assert_eq!(model._get_text("D3"), *TIME_14_30);
+
+    // Whitespace handling for simple AM/PM
+    assert_eq!(model._get_text("E1"), *TIME_2_PM); // 2 AM = 02:00
+    assert_eq!(model._get_text("E2"), *TIME_2_PM); // 2 AM = 02:00
+    assert_eq!(model._get_text("E3"), *TIME_2_AM); // 2 AM = 02:00
+    assert_eq!(model._get_text("E4"), *TIME_2_AM); // 2 AM = 02:00
+
+    // Dot handling for simple AM/PM
+    assert_eq!(model._get_text("F1"), *TIME_2_AM); // 2 AM = 02:00
+    assert_eq!(model._get_text("F2"), *TIME_2_PM); // 2 PM = 14:00
+    assert_eq!(model._get_text("F3"), *"#VALUE!"); // 2 p.m. = #VALUE!
 }
 
 #[test]

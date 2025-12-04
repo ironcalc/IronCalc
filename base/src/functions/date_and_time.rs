@@ -168,7 +168,7 @@ fn parse_time_string(text: &str) -> Option<f64> {
         return Some(time_fraction);
     }
 
-    // First, try manual parsing for simple "N PM" / "N AM" format
+    // First, try manual parsing for simple "N PM" / "N AM" format (case-insensitive)
     if let Some((hour_str, is_pm)) = parse_simple_am_pm(text) {
         if let Ok(hour) = hour_str.parse::<u32>() {
             if (1..=12).contains(&hour) {
@@ -302,16 +302,24 @@ fn should_normalize_time_components(hour: i32, minute: i32, second: i32) -> bool
     false
 }
 
-// Helper function to parse simple "N PM" / "N AM" formats
+// Helper function to parse simple "N PM" / "N AM" formats (case-insensitive)
 fn parse_simple_am_pm(text: &str) -> Option<(&str, bool)> {
-    if let Some(hour_part) = text.strip_suffix(" PM") {
-        if hour_part.chars().all(|c| c.is_ascii_digit()) {
-            return Some((hour_part, true));
-        }
-    } else if let Some(hour_part) = text.strip_suffix(" AM") {
-        if hour_part.chars().all(|c| c.is_ascii_digit()) {
-            return Some((hour_part, false));
-        }
+    let (hour_part, suffix) = text.rsplit_once(char::is_whitespace)?;
+
+    let suffix = suffix.strip_suffix('.').unwrap_or(suffix);
+
+    let is_pm = if suffix.eq_ignore_ascii_case("pm") {
+        true
+    } else if suffix.eq_ignore_ascii_case("am") {
+        false
+    } else {
+        return None;
+    };
+
+    let hour_part = hour_part.trim();
+
+    if !hour_part.is_empty() && hour_part.chars().all(|c| c.is_ascii_digit()) {
+        return Some((hour_part, is_pm));
     }
     None
 }
