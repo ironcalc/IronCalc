@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, type PopoverOrigin } from "@mui/material";
-import { Plus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
@@ -142,28 +142,43 @@ const ColorPicker = ({
       <ColorsWrapper>
         <ColorList>
           {mainColors.map((presetColor) => (
-            <ColorSwatch
+            <SelectableColorSwatch
               key={presetColor}
               $color={presetColor}
+              $isSelected={
+                selectedColor.toUpperCase() === presetColor.toUpperCase()
+              }
               onClick={(): void => {
                 setSelectedColor(presetColor);
                 handleColorSelect(presetColor);
               }}
-            />
+            >
+              {selectedColor.toUpperCase() === presetColor.toUpperCase() && (
+                <CheckIcon $color={presetColor} />
+              )}
+            </SelectableColorSwatch>
           ))}
         </ColorList>
         <ColorGrid>
           {toneArrays.map((tones) => (
             <ColorGridCol key={tones.join("-")}>
               {tones.map((presetColor) => (
-                <ColorSwatch
+                <SelectableColorSwatch
                   key={presetColor}
                   $color={presetColor}
+                  $isSelected={
+                    selectedColor.toUpperCase() === presetColor.toUpperCase()
+                  }
                   onClick={(): void => {
                     setSelectedColor(presetColor);
                     handleColorSelect(presetColor);
                   }}
-                />
+                >
+                  {selectedColor.toUpperCase() ===
+                    presetColor.toUpperCase() && (
+                    <CheckIcon $color={presetColor} />
+                  )}
+                </SelectableColorSwatch>
               ))}
             </ColorGridCol>
           ))}
@@ -197,7 +212,6 @@ const ColorPicker = ({
   );
 };
 
-// Styled Components
 const StyledMenu = styled(Menu)`
   & .MuiPaper-root {
     border-radius: 8px;
@@ -288,6 +302,51 @@ const ColorSwatch = styled.button<{ $color: string }>`
     outline: 1px solid ${theme.palette.grey["300"]};
     outline-offset: 1px;
   }
+`;
+
+const SelectableColorSwatch = styled.button<{
+  $color: string;
+  $isSelected: boolean;
+}>`
+  width: 16px;
+  height: 16px;
+  padding: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  ${({ $color }): string => {
+    if ($color.toUpperCase() === "#FFFFFF") {
+      return `border: 1px solid ${theme.palette.grey["300"]};`;
+    }
+    return `border: 1px solid ${$color};`;
+  }}
+  background-color: ${({ $color }): string => {
+    return $color === "transparent" ? "none" : $color;
+  }};
+  box-sizing: border-box;
+  margin-top: 0px;
+  border-radius: 4px;
+  &:hover {
+    cursor: pointer;
+    outline: 1px solid ${theme.palette.grey["300"]};
+    outline-offset: 1px;
+  }
+`;
+
+// This function checks if a color is light or dark
+const isLightColor = (hex: string): boolean => {
+  const n = parseInt(hex.slice(1), 16);
+  return (((n >> 16) & 255) + ((n >> 8) & 255) + (n & 255)) / 3 > 160;
+};
+
+const CheckIcon = styled(Check)<{ $color: string }>`
+  width: 10px;
+  height: 10px;
+  stroke-width: 3px;
+  color: ${({ $color }) =>
+    isLightColor($color)
+      ? theme.palette.common.black
+      : theme.palette.common.white};
 `;
 
 const HorizontalDivider = styled.div`
