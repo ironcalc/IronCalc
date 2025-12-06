@@ -322,6 +322,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     },
     onEscape: (): void => {
       workbookState.clearCutRange();
+      workbookState.setCopyStyles(null);
+      const el = rootRef.current?.getElementsByClassName("sheet-container")[0];
+      if (el) {
+        (el as HTMLElement).style.cursor = "auto";
+      }
       setRedrawId((id) => id + 1);
     },
     onSelectColumn: (): void => {
