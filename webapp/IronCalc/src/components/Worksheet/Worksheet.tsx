@@ -226,12 +226,14 @@ const Worksheet = forwardRef(
         if (!canvas) {
           return;
         }
+        workbookState.setSelecting(true);
         const { row, column } = cell;
         model.onAreaSelecting(row, column);
         canvas.renderSheet();
         refresh();
       },
       onAreaSelected: () => {
+        workbookState.setSelecting(false);
         const styles = workbookState.getCopyStyles();
         if (styles?.length) {
           model.onPasteStyles(styles);
@@ -505,8 +507,8 @@ const RowResizeGuide = styled("div")`
 
 const AreaOutline = styled("div")`
   position: absolute;
-  border: 1px solid ${outlineColor};
-  border-radius: 3px;
+  border: 0px solid ${outlineColor};
+  border-radius: 1px;
   background-color: ${outlineBackgroundColor};
 `;
 
@@ -517,6 +519,7 @@ const CellOutline = styled("div")`
   word-break: break-word;
   font-size: 13px;
   display: flex;
+  box-shadow: inset 0 0 0 1px white;
 `;
 
 const ExtendToOutline = styled("div")`
@@ -536,6 +539,7 @@ const EditorWrapper = styled("div")`
   vertical-align: bottom;
   overflow: hidden;
   text-align: left;
+  outline: 3px solid ${outlineColor}40;
   span {
     min-width: 1px;
   }

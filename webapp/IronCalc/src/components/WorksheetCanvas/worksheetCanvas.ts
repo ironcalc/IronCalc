@@ -1560,7 +1560,9 @@ export default class WorksheetCanvas {
       return;
     }
     cellOutline.style.visibility = "visible";
-    cellOutlineHandle.style.visibility = "visible";
+    cellOutlineHandle.style.visibility = this.workbookState.isSelecting()
+      ? "hidden"
+      : "visible";
     areaOutline.style.visibility = "visible";
 
     const [selectedSheet, selectedRow, selectedColumn] =
@@ -1619,7 +1621,9 @@ export default class WorksheetCanvas {
       handleY += this.getRowHeight(selectedSheet, rowStart);
     } else {
       areaOutline.style.visibility = "visible";
-      cellOutlineHandle.style.visibility = "visible";
+      cellOutlineHandle.style.visibility = this.workbookState.isSelecting()
+        ? "hidden"
+        : "visible";
       const [areaX, areaY] = this.getCoordinatesByCell(rowStart, columnStart);
       const [areaWidth, areaHeight] = this.getAreaDimensions(
         rowStart,
@@ -1644,7 +1648,9 @@ export default class WorksheetCanvas {
         clipLeft,
         clipTop,
       );
-      areaOutline.style.border = `1px solid ${outlineColor}`;
+      areaOutline.style.border = this.workbookState.isSelecting()
+        ? "none"
+        : `1px solid ${outlineColor}`;
       // hide the handle if it is out of the visible area
       if (
         (rowEnd > frozenRows && rowEnd < topLeftCell.row - 1) ||
