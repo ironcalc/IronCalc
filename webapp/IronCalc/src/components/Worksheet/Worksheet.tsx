@@ -539,7 +539,8 @@ const EditorWrapper = styled("div")`
   vertical-align: bottom;
   overflow: hidden;
   text-align: left;
-  outline: 3px solid ${outlineColor}40;
+  outline: 3px solid #FBE0C9;
+  z-index: 1000;
   span {
     min-width: 1px;
   }
