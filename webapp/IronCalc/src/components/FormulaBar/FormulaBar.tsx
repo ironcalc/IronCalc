@@ -35,8 +35,6 @@ function FormulaBar(properties: FormulaBarProps) {
   } = properties;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleMenuChange = (_option: string): void => {};
-
   const handleMenuOpenChange = (isOpen: boolean): void => {
     setIsMenuOpen(isOpen);
   };
@@ -45,7 +43,6 @@ function FormulaBar(properties: FormulaBarProps) {
     <Container>
       <AddressContainer $active={isMenuOpen}>
         <FormulaBarMenu
-          onChange={handleMenuChange}
           onMenuOpenChange={handleMenuOpenChange}
           openDrawer={properties.openDrawer}
           canEdit={properties.canEdit}
@@ -154,7 +151,6 @@ const AddressContainer = styled("div")<{ $active?: boolean }>`
   font-size: 12px;
   display: flex;
   font-weight: 600;
-  flex-grow: row;
   align-items: center;
   gap: 2px;
   border-radius: 4px;
@@ -163,7 +159,8 @@ const AddressContainer = styled("div")<{ $active?: boolean }>`
   background-color: ${(props) =>
     props.$active ? theme.palette.action.selected : "transparent"};
   &:hover {
-    background-color: ${theme.palette.grey["100"]};
+   background-color: ${(props) =>
+     props.$active ? theme.palette.action.selected : theme.palette.grey["100"]};
   }
 `;
 
@@ -176,7 +173,7 @@ const CellBarAddress = styled("div")`
   justify-content: center;
   text-align: center;
   padding-left: 8px;
-  background-color: "transparent";
+  background-color: transparent;
 `;
 
 const StyledIcon = styled("div")`
@@ -184,7 +181,7 @@ const StyledIcon = styled("div")`
   align-items: center;
   justify-content: center;
   padding: 4px 2px;
-  background-color: "transparent";
+  background-color: transparent;
 `;
 
 const EditorWrapper = styled("div")`

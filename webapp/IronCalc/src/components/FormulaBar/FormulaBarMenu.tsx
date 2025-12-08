@@ -8,7 +8,6 @@ import { parseRangeInSheet } from "../Editor/util";
 
 type FormulaBarMenuProps = {
   children: React.ReactNode;
-  onChange: (option: string) => void;
   onMenuOpenChange: (isOpen: boolean) => void;
   openDrawer: () => void;
   canEdit: boolean;
@@ -81,7 +80,6 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
                       );
                     }
                     properties.onUpdate();
-                    properties.onChange(definedName.name);
                     handleMenuClose();
                   }}
                 >
