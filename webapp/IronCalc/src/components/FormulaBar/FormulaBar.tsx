@@ -143,6 +143,7 @@ const Container = styled("div")`
   background: ${(properties): string =>
     properties.theme.palette.background.default};
   height: ${FORMULA_BAR_HEIGHT}px;
+  border-top: 1px solid ${theme.palette.grey["300"]};
 `;
 
 const AddressContainer = styled("div")<{ $active?: boolean }>`
