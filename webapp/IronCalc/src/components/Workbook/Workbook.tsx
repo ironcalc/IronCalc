@@ -763,7 +763,7 @@ type WorksheetAreaLeftProps = { $drawerWidth: number };
 const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
   ({ $drawerWidth }) => ({
     position: "absolute",
-    top: `${TOOLBAR_HEIGHT + 1}px`,
+    top: `${TOOLBAR_HEIGHT}px`,
     width: `calc(100% - ${$drawerWidth}px)`,
     height: `calc(100% - ${TOOLBAR_HEIGHT}px)`,
   }),
