@@ -17,6 +17,7 @@ import {
   LAST_ROW,
   outlineBackgroundColor,
   outlineColor,
+  outlineEditingColor,
   ROW_HEIGH_SCALE,
 } from "../WorksheetCanvas/constants";
 import WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
@@ -539,7 +540,7 @@ const EditorWrapper = styled("div")`
   vertical-align: bottom;
   overflow: hidden;
   text-align: left;
-  outline: 3px solid #FBE0C9;
+  outline: 3px solid ${outlineEditingColor};
   z-index: 1000;
   span {
     min-width: 1px;
