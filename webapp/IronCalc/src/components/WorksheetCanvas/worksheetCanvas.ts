@@ -1560,7 +1560,9 @@ export default class WorksheetCanvas {
       return;
     }
     cellOutline.style.visibility = "visible";
-    cellOutlineHandle.style.visibility = "visible";
+    cellOutlineHandle.style.visibility = this.workbookState.isSelecting()
+      ? "hidden"
+      : "visible";
     areaOutline.style.visibility = "visible";
 
     const [selectedSheet, selectedRow, selectedColumn] =
@@ -1619,7 +1621,9 @@ export default class WorksheetCanvas {
       handleY += this.getRowHeight(selectedSheet, rowStart);
     } else {
       areaOutline.style.visibility = "visible";
-      cellOutlineHandle.style.visibility = "visible";
+      cellOutlineHandle.style.visibility = this.workbookState.isSelecting()
+        ? "hidden"
+        : "visible";
       const [areaX, areaY] = this.getCoordinatesByCell(rowStart, columnStart);
       const [areaWidth, areaHeight] = this.getAreaDimensions(
         rowStart,
@@ -1629,10 +1633,13 @@ export default class WorksheetCanvas {
       );
       handleX = areaX + areaWidth;
       handleY = areaY + areaHeight;
+      const isSelecting = this.workbookState.isSelecting();
+      // Add 1px when selecting to compensate for missing border
+      const borderCompensation = isSelecting ? 1 : 0;
       areaOutline.style.left = `${areaX - padding - 1}px`;
       areaOutline.style.top = `${areaY - padding - 1}px`;
-      areaOutline.style.width = `${areaWidth + 2 * padding + 1}px`;
-      areaOutline.style.height = `${areaHeight + 2 * padding + 1}px`;
+      areaOutline.style.width = `${areaWidth + 2 * padding + 1 + borderCompensation}px`;
+      areaOutline.style.height = `${areaHeight + 2 * padding + 1 + borderCompensation}px`;
       const clipLeft = rowStart < topLeftCell.row && rowStart > frozenRows;
       const clipTop =
         columnStart < topLeftCell.column && columnStart > frozenColumns;
@@ -1644,7 +1651,9 @@ export default class WorksheetCanvas {
         clipLeft,
         clipTop,
       );
-      areaOutline.style.border = `1px solid ${outlineColor}`;
+      areaOutline.style.border = isSelecting
+        ? "none"
+        : `1px solid ${outlineColor}`;
       // hide the handle if it is out of the visible area
       if (
         (rowEnd > frozenRows && rowEnd < topLeftCell.row - 1) ||

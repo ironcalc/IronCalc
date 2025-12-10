@@ -194,6 +194,10 @@ function getFormulaHTML(
   } else {
     html = [<span key="single">{text}</span>];
   }
+  // Add a trailing character if text ends with newline to ensure selector's height grows
+  if (text.endsWith("\n")) {
+    html.push(<span key="trailing-newline">{"\n"}</span>);
+  }
   return { html, activeRanges };
 }
 
