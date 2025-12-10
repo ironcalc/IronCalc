@@ -110,6 +110,16 @@ impl Lexer {
         self.mode = mode;
     }
 
+    /// Sets the locale
+    pub fn set_locale(&mut self, locale: &Locale) {
+        self.locale = locale.clone();
+    }
+
+    /// Sets the language
+    pub fn set_language(&mut self, language: &Language) {
+        self.language = language.clone();
+    }
+
     // FIXME: I don't think we should have `is_a1_mode` and   `get_formula`.
     // The caller already knows those two
 
@@ -188,6 +198,7 @@ impl Lexer {
                     ':' => TokenType::Colon,
                     ';' => TokenType::Semicolon,
                     '@' => TokenType::At,
+                    '\\' => TokenType::Backslash,
                     ',' => {
                         if self.locale.numbers.symbols.decimal == "," {
                             match self.consume_number(',') {

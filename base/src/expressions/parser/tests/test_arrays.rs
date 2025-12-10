@@ -2,14 +2,15 @@
 
 use std::collections::HashMap;
 
-use crate::expressions::parser::stringify::{to_rc_format, to_string};
-use crate::expressions::parser::{ArrayNode, Node, Parser};
+use crate::expressions::parser::stringify::to_rc_format;
+use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
+use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::types::CellReferenceRC;
 
 #[test]
 fn simple_horizontal() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -28,13 +29,16 @@ fn simple_horizontal() {
     );
 
     assert_eq!(to_rc_format(&horizontal), "{1,2,3}");
-    assert_eq!(to_string(&horizontal, &cell_reference), "{1,2,3}");
+    assert_eq!(
+        to_english_localized_string(&horizontal, &cell_reference),
+        "{1,2,3}"
+    );
 }
 
 #[test]
 fn simple_vertical() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -52,13 +56,16 @@ fn simple_vertical() {
         ])
     );
     assert_eq!(to_rc_format(&vertical), "{1;2;3}");
-    assert_eq!(to_string(&vertical, &cell_reference), "{1;2;3}");
+    assert_eq!(
+        to_english_localized_string(&vertical, &cell_reference),
+        "{1;2;3}"
+    );
 }
 
 #[test]
 fn simple_matrix() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -88,5 +95,8 @@ fn simple_matrix() {
         ])
     );
     assert_eq!(to_rc_format(&matrix), "{1,2,3;4,5,6;7,8,9}");
-    assert_eq!(to_string(&matrix, &cell_reference), "{1,2,3;4,5,6;7,8,9}");
+    assert_eq!(
+        to_english_localized_string(&matrix, &cell_reference),
+        "{1,2,3;4,5,6;7,8,9}"
+    );
 }

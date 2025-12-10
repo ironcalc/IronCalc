@@ -8,14 +8,13 @@ use crate::{
     expressions::{
         lexer::LexerMode,
         parser::{
-            stringify::{rename_sheet_in_node, to_rc_format, to_string},
-            Parser,
+            Parser, stringify::{rename_sheet_in_node, to_localized_string, to_rc_format}
         },
         types::CellReferenceRC,
     },
-    language::get_language,
-    locale::get_locale,
-    model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
+    language::{Language, get_language},
+    locale::{Locale, get_locale},
+    model::{Model, ParsedDefinedName, get_milliseconds_since_epoch},
     types::{
         DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
         WorksheetView,
@@ -82,6 +81,11 @@ impl Model {
     }
 
     pub(crate) fn parse_formulas(&mut self) {
+        let locale = self.locale.clone();
+        let language = self.language.clone();
+
+        self.parser.set_locale(&Locale::default());
+        self.parser.set_language(&Language::default());
         self.parser.set_lexer_mode(LexerMode::R1C1);
         let worksheets = &self.workbook.worksheets;
         for worksheet in worksheets {
@@ -99,6 +103,8 @@ impl Model {
             self.parsed_formulas.push(parse_formula);
         }
         self.parser.set_lexer_mode(LexerMode::A1);
+        self.parser.set_locale(&locale);
+        self.parser.set_language(&language);
     }
 
     pub(crate) fn parse_defined_names(&mut self) {
@@ -290,7 +296,7 @@ impl Model {
         for defined_name in &mut self.workbook.defined_names {
             let mut t = self.parser.parse(&defined_name.formula, cell_reference);
             rename_sheet_in_node(&mut t, sheet_index, new_name);
-            let formula = to_string(&t, cell_reference);
+            let formula = to_localized_string(&t, cell_reference, &self.locale, &self.language);
             defined_names.push(DefinedName {
                 name: defined_name.name.clone(),
                 formula,
@@ -355,7 +361,12 @@ impl Model {
     }
 
     /// Creates a new workbook with one empty sheet
-    pub fn new_empty(name: &str, locale_id: &str, timezone: &str) -> Result<Model, String> {
+    pub fn new_empty(
+        name: &str,
+        locale_id: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<Model, String> {
         let tz: Tz = match &timezone.parse() {
             Ok(tz) => *tz,
             Err(_) => return Err(format!("Invalid timezone: {}", &timezone)),
@@ -363,6 +374,10 @@ impl Model {
         let locale = match get_locale(locale_id) {
             Ok(l) => l.clone(),
             Err(_) => return Err(format!("Invalid locale: {locale_id}")),
+        };
+        let language = match get_language(language_id) {
+            Ok(l) => l.clone(),
+            Err(_) => return Err(format!("Invalid language: {language_id}")),
         };
 
         let milliseconds = get_milliseconds_since_epoch();
@@ -409,12 +424,8 @@ impl Model {
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
-        let parser = Parser::new(worksheet_names, vec![], HashMap::new());
+        let parser = Parser::new(worksheet_names, vec![], HashMap::new(), &locale, &language);
         let cells = HashMap::new();
-
-        // FIXME: Add support for display languages
-        #[allow(clippy::expect_used)]
-        let language = get_language("en").expect("").clone();
 
         let mut model = Model {
             workbook,

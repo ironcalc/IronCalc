@@ -20,14 +20,14 @@ fn today_basic() {
 
 #[test]
 fn today_with_wrong_tz() {
-    let model = Model::new_empty("model", "en", "Wrong Timezone");
+    let model = Model::new_empty("model", "en", "Wrong Timezone", "en");
     assert!(model.is_err());
 }
 
 #[test]
 fn now_basic_utc() {
     mock_time::set_mock_time(TIMESTAMP_2023);
-    let mut model = Model::new_empty("model", "en", "UTC").unwrap();
+    let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
     model._set("A1", "=TODAY()");
     model._set("A2", "=NOW()");
     model.evaluate();
@@ -40,7 +40,7 @@ fn now_basic_utc() {
 #[test]
 fn now_basic_europe_berlin() {
     mock_time::set_mock_time(TIMESTAMP_2023);
-    let mut model = Model::new_empty("model", "en", "Europe/Berlin").unwrap();
+    let mut model = Model::new_empty("model", "en", "Europe/Berlin", "en").unwrap();
     model._set("A1", "=TODAY()");
     model._set("A2", "=NOW()");
     model.evaluate();

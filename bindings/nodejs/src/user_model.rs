@@ -29,14 +29,15 @@ pub struct UserModel {
 #[napi]
 impl UserModel {
   #[napi(constructor)]
-  pub fn new(name: String, locale: String, timezone: String) -> Result<Self> {
-    let model = BaseModel::new_empty(&name, &locale, &timezone).map_err(to_js_error)?;
+  pub fn new(name: String, locale: String, timezone: String, language_id: String) -> Result<Self> {
+    let model =
+      BaseModel::new_empty(&name, &locale, &timezone, &language_id).map_err(to_js_error)?;
     Ok(Self { model })
   }
 
   #[napi(factory)]
-  pub fn from_bytes(bytes: &[u8]) -> Result<UserModel> {
-    let model = BaseModel::from_bytes(bytes).map_err(to_js_error)?;
+  pub fn from_bytes(bytes: &[u8], language_id: String) -> Result<UserModel> {
+    let model = BaseModel::from_bytes(bytes, &language_id).map_err(to_js_error)?;
     Ok(UserModel { model })
   }
 

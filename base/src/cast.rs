@@ -24,8 +24,16 @@ impl Model {
                 if !currencies.iter().any(|e| *e == currency) {
                     currencies.push(currency);
                 }
+                let (decimal_separator, group_separator) =
+                    if self.locale.numbers.symbols.decimal == "," {
+                        (b',', b'.')
+                    } else {
+                        (b'.', b',')
+                    };
                 // Try to parse as a formatted number (e.g., dates, currencies, percentages)
-                if let Ok((v, _number_format)) = parse_formatted_number(s, &currencies) {
+                if let Ok((v, _number_format)) =
+                    parse_formatted_number(s, &currencies, decimal_separator, group_separator)
+                {
                     return Some(v);
                 }
                 None

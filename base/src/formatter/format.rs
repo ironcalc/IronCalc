@@ -128,6 +128,9 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             if (1.0e-8..1.0e+11).contains(&value_abs) {
                 let mut text = format!("{value:.9}");
                 text = text.trim_end_matches('0').trim_end_matches('.').to_string();
+                if locale.numbers.symbols.decimal != "." {
+                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
+                }
                 Formatted {
                     text,
                     color: None,
@@ -145,13 +148,17 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                 value /= 10.0_f64.powf(exponent);
                 let sign = if exponent < 0.0 { '-' } else { '+' };
                 let s = format!("{value:.5}");
+                let mut text = format!(
+                    "{}E{}{:02}",
+                    s.trim_end_matches('0').trim_end_matches('.'),
+                    sign,
+                    exponent.abs()
+                );
+                if locale.numbers.symbols.decimal != "." {
+                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
+                }
                 Formatted {
-                    text: format!(
-                        "{}E{}{:02}",
-                        s.trim_end_matches('0').trim_end_matches('.'),
-                        sign,
-                        exponent.abs()
-                    ),
+                    text,
                     color: None,
                     error: None,
                 }
@@ -752,13 +759,15 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
 pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
+    decimal_separator: u8,
+    group_separator: u8,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
     let scientific_format = "0.00E+00";
 
     // Check if it is a percentage
     if let Some(p) = value.strip_suffix('%') {
-        let (f, options) = parse_number(p.trim())?;
+        let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
         if options.is_scientific {
             return Ok((f / 100.0, Some(scientific_format.to_string())));
         }
@@ -774,7 +783,7 @@ pub(crate) fn parse_formatted_number(
     // check if it is a currency in currencies
     for currency in currencies {
         if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
-            let (f, options) = parse_number(p.trim())?;
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));
             }
@@ -783,7 +792,7 @@ pub(crate) fn parse_formatted_number(
             }
             return Ok((-f, Some(format!("{currency}#,##0"))));
         } else if let Some(p) = value.strip_prefix(currency) {
-            let (f, options) = parse_number(p.trim())?;
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));
             }
@@ -792,7 +801,7 @@ pub(crate) fn parse_formatted_number(
             }
             return Ok((f, Some(format!("{currency}#,##0"))));
         } else if let Some(p) = value.strip_suffix(currency) {
-            let (f, options) = parse_number(p.trim())?;
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));
             }
@@ -811,7 +820,7 @@ pub(crate) fn parse_formatted_number(
     }
 
     // Lastly we check if it is a number
-    let (f, options) = parse_number(value)?;
+    let (f, options) = parse_number(value, decimal_separator, group_separator)?;
     if options.is_scientific {
         return Ok((f, Some(scientific_format.to_string())));
     }
@@ -834,7 +843,11 @@ struct NumberOptions {
 
 // tries to parse 'value' as a number.
 // If it is a number it either uses commas as thousands separator or it does not
-fn parse_number(value: &str) -> Result<(f64, NumberOptions), String> {
+fn parse_number(
+    value: &str,
+    decimal_separator: u8,
+    group_separator: u8,
+) -> Result<(f64, NumberOptions), String> {
     let mut position = 0;
     let bytes = value.as_bytes();
     let len = bytes.len();
@@ -842,8 +855,6 @@ fn parse_number(value: &str) -> Result<(f64, NumberOptions), String> {
         return Err("Cannot parse number".to_string());
     }
     let mut chars = String::from("");
-    let decimal_separator = b'.';
-    let group_separator = b',';
     let mut group_separator_index = Vec::new();
     // get the sign
     let sign = if bytes[0] == b'-' {

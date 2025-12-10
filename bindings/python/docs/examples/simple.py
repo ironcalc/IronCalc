@@ -1,6 +1,6 @@
 import ironcalc as ic
 
-model = ic.create("model", "en", "UTC")
+model = ic.create("model", "en", "UTC", "en")
 
 model.set_user_input(0, 1, 1, "=21*2")
 model.evaluate()

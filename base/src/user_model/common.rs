@@ -208,7 +208,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 /// ```rust
 /// # use ironcalc_base::UserModel;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut model = UserModel::new_empty("model", "en", "UTC")?;
+/// let mut model = UserModel::new_empty("model", "en", "UTC", "en")?;
 /// model.set_user_input(0, 1, 1, "=1+1")?;
 /// assert_eq!(model.get_formatted_cell_value(0, 1, 1)?, "2");
 /// model.undo()?;
@@ -246,8 +246,13 @@ impl UserModel {
     ///
     /// See also:
     /// * [Model::new_empty]
-    pub fn new_empty(name: &str, locale_id: &str, timezone: &str) -> Result<UserModel, String> {
-        let model = Model::new_empty(name, locale_id, timezone)?;
+    pub fn new_empty(
+        name: &str,
+        locale_id: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<UserModel, String> {
+        let model = Model::new_empty(name, locale_id, timezone, language_id)?;
         Ok(UserModel {
             model,
             history: History::default(),
@@ -260,8 +265,8 @@ impl UserModel {
     ///
     /// See also:
     /// * [Model::from_bytes]
-    pub fn from_bytes(s: &[u8]) -> Result<UserModel, String> {
-        let model = Model::from_bytes(s)?;
+    pub fn from_bytes(s: &[u8], language_id: &str) -> Result<UserModel, String> {
+        let model = Model::from_bytes(s, language_id)?;
         Ok(UserModel {
             model,
             history: History::default(),
@@ -458,7 +463,7 @@ impl UserModel {
     /// * [Model::get_cell_content]
     #[inline]
     pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
-        self.model.get_cell_content(sheet, row, column)
+        self.model.get_localized_cell_content(sheet, row, column)
     }
 
     /// Returns the formatted value of a cell
@@ -2028,6 +2033,35 @@ impl UserModel {
         formula: &str,
     ) -> Result<Option<u32>, String> {
         self.model.is_valid_defined_name(name, scope, formula)
+    }
+
+    /// Sets the timezone for the model
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
+        self.model.set_timezone(timezone)
+    }
+    /// Sets the locale for the model
+    pub fn set_locale(&mut self, locale: &str) -> Result<(), String> {
+        self.model.set_locale(locale)
+    }
+
+    /// Gets the timezone of the model
+    pub fn get_timezone(&self) -> String {
+        self.model.get_timezone()
+    }
+
+    /// Gets the locale of the model
+    pub fn get_locale(&self) -> String {
+        self.model.get_locale()
+    }
+
+    /// Get the language for the model
+    pub fn get_language(&self) -> String {
+        self.model.get_language()
+    }
+
+    /// Sets the language for the model
+    pub fn set_language(&mut self, language: &str) -> Result<(), String> {
+        self.model.set_language(language)
     }
 
     // **** Private methods ****** //
