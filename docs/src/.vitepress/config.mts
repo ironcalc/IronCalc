@@ -2050,10 +2050,10 @@ export default defineConfig({
     },
 
     lastUpdated: {
-      text: "Updated at",
+      text: "Updated on",
       formatOptions: {
-        dateStyle: "full",
-        timeStyle: "medium",
+        dateStyle: "medium",
+        timeStyle: "short",
       },
     },
 
