@@ -649,13 +649,15 @@ impl Parser {
                 let mut absolute_row1 = left.absolute_row;
                 let mut absolute_row2 = right.absolute_row;
 
-                if row1 > row2 {
-                    (row2, row1) = (row1, row2);
-                    (absolute_row2, absolute_row1) = (absolute_row1, absolute_row2);
-                }
-                if column1 > column2 {
-                    (column2, column1) = (column1, column2);
-                    (absolute_column2, absolute_column1) = (absolute_column1, absolute_column2);
+                if self.lexer.is_a1_mode() {
+                    if row1 > row2 {
+                        (row2, row1) = (row1, row2);
+                        (absolute_row2, absolute_row1) = (absolute_row1, absolute_row2);
+                    }
+                    if column1 > column2 {
+                        (column2, column1) = (column1, column2);
+                        (absolute_column2, absolute_column1) = (absolute_column1, absolute_column2);
+                    }
                 }
 
                 if self.lexer.is_a1_mode() {
