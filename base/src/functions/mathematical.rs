@@ -1013,8 +1013,9 @@ impl Model {
                 message: "Significance must be positive when value is positive".to_string(),
             };
         }
-
-        let result = f64::ceil(value / significance) * significance;
+        //Apply Excel precision fix
+        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+        let result = f64::ceil(ratio) * significance;
         CalcResult::Number(result)
     }
 
@@ -1051,10 +1052,14 @@ impl Model {
             return CalcResult::Number(0.0);
         }
         if value < 0.0 && mode != 0.0 {
-            let result = f64::floor(value / significance) * significance;
+            //Apply Excel precision fix
+            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+            let result = f64::floor(ratio) * significance;
             CalcResult::Number(result)
         } else {
-            let result = f64::ceil(value / significance) * significance;
+            //Apply Excel precision fix
+            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+            let result = f64::ceil(ratio) * significance;
             CalcResult::Number(result)
         }
     }
@@ -1083,8 +1088,9 @@ impl Model {
         if significance == 0.0 {
             return CalcResult::Number(0.0);
         }
-
-        let result = f64::ceil(value / significance) * significance;
+        //Apply Excel precision fix
+        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+        let result = f64::ceil(ratio) * significance;
         CalcResult::Number(result)
     }
 
