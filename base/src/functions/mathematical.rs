@@ -1013,7 +1013,7 @@ impl Model {
                 message: "Significance must be positive when value is positive".to_string(),
             };
         }
-        //Apply Excel precision fix
+        // Apply Excel precision fix
         let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
         let result = f64::ceil(ratio) * significance;
         CalcResult::Number(result)
@@ -1052,12 +1052,12 @@ impl Model {
             return CalcResult::Number(0.0);
         }
         if value < 0.0 && mode != 0.0 {
-            //Apply Excel precision fix
+            // Apply Excel precision fix
             let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
             let result = f64::floor(ratio) * significance;
             CalcResult::Number(result)
         } else {
-            //Apply Excel precision fix
+            // Apply Excel precision fix
             let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
             let result = f64::ceil(ratio) * significance;
             CalcResult::Number(result)
@@ -1088,7 +1088,7 @@ impl Model {
         if significance == 0.0 {
             return CalcResult::Number(0.0);
         }
-        //Apply Excel precision fix
+        // Apply Excel precision fix
         let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
         let result = f64::ceil(ratio) * significance;
         CalcResult::Number(result)
