@@ -3,6 +3,7 @@
 use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 use crate::types::{ArrayKind, Cell, CellType, FormulaValue};
+use crate::types::{Cell, CellType};
 
 #[test]
 fn test_cell_get_type() {
@@ -94,4 +95,14 @@ fn test_from_bool_for_cell_value() {
     let result: CellValue = boot.into();
     // Assert
     assert_eq!(result, CellValue::Boolean(true));
+}
+
+#[test]
+fn test_cell_has_formula() {
+    // Arrange
+    let cell = Cell::new_formula(1, 1);
+    // Act
+    let result = cell.has_formula();
+    // Assert
+    assert!(result);
 }
