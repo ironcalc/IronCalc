@@ -50,6 +50,19 @@ fn test_cell_get_text_on_boolean_cell() {
 }
 
 #[test]
+fn test_cell_value_on_empty_shared_string() {
+    let mut model = new_empty_model();
+
+    let _update_result = model
+        .workbook
+        .worksheet_mut(0)
+        .unwrap()
+        .set_cell_with_string(1, 1, 1, 1); // A1
+
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "");
+}
+
+#[test]
 fn test_from_f64_for_cell_value() {
     // Arrange
     let float = 42.42;
