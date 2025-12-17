@@ -38,3 +38,17 @@ fn numbers() {
 
     assert_eq!(model._get_text("B1"), *"7.25");
 }
+
+#[test]
+fn arguments() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=AVEDEV()");
+    model._set("A2", "=AVEDEV(1)");
+    model._set("A3", "=AVEDEV(1, 2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A3"), *"0.5");
+}
