@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 use crate::types::{ArrayKind, Cell, CellType, FormulaValue};
 
@@ -53,4 +54,44 @@ fn cell_is_always_dynamic() {
         b2_cell,
         Cell::ArrayFormula { kind: ArrayKind::Dynamic, v: FormulaValue::Number(v), .. } if v == 0.0
     ));
+}
+
+#[test]
+fn test_from_f64_for_cell_value() {
+    // Arrange
+    let float = 42.42;
+    // Act
+    let result: CellValue = float.into();
+    // Assert
+    assert_eq!(result, CellValue::Number(42.42));
+}
+
+#[test]
+fn test_from_string_for_cell_value() {
+    // Arrange
+    let string = "42".to_string();
+    // Act
+    let result: CellValue = string.into();
+    // Assert
+    assert_eq!(result, CellValue::String("42".to_string()));
+}
+
+#[test]
+fn test_from_str_for_cell_value() {
+    // Arrange
+    let str = "42";
+    // Act
+    let result: CellValue = str.into();
+    // Assert
+    assert_eq!(result, CellValue::String("42".to_string()));
+}
+
+#[test]
+fn test_from_bool_for_cell_value() {
+    // Arrange
+    let boot = true;
+    // Act
+    let result: CellValue = boot.into();
+    // Assert
+    assert_eq!(result, CellValue::Boolean(true));
 }
