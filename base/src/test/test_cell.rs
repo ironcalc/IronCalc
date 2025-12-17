@@ -40,6 +40,16 @@ fn test_cell_get_type() {
 }
 
 #[test]
+fn test_cell_get_text_on_boolean_cell() {
+    let mut model = new_empty_model();
+
+    model.set_user_input(0, 1, 1, "TRUE".to_string()).unwrap();
+    model.evaluate();
+
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "TRUE");
+}
+
+#[test]
 fn test_from_f64_for_cell_value() {
     // Arrange
     let float = 42.42;
