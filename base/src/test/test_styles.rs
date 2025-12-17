@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::test::util::new_empty_model;
-use crate::types::Style;
 
 #[test]
 fn test_model_set_cells_with_values_styles() {
@@ -82,6 +81,22 @@ fn test_set_style_on_boolean_cell() {
     let mut model = new_empty_model();
     // Inputs
     model.set_user_input(0, 1, 1, "TRUE".to_string()).unwrap();
+
+    let initial_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    let mut new_style = initial_style.clone();
+    new_style.font.b = true;
+    assert!(model.set_cell_style(0, 1, 1, &new_style).is_ok());
+
+    let final_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(final_style.font.b);
+}
+
+#[test]
+fn test_set_style_on_formula_boolean_cell() {
+    let mut model = new_empty_model();
+    // Inputs
+    model.set_user_input(0, 1, 1, "=TRUE".to_string()).unwrap();
+    model.evaluate();
 
     let initial_style = model.get_style_for_cell(0, 1, 1).unwrap();
     let mut new_style = initial_style.clone();
