@@ -21,6 +21,8 @@ fn test_cell_get_type() {
     model._set("A12", "=1>0");
     model.evaluate();
 
+    model._set("A13", "=42"); // a CellFormula
+
     assert_eq!(model._get_cell("A1").get_type(), CellType::Text);
     assert_eq!(model._get_cell("A2").get_type(), CellType::Number);
     assert_eq!(model._get_cell("A3").get_type(), CellType::Number);
@@ -33,6 +35,7 @@ fn test_cell_get_type() {
     assert_eq!(model._get_cell("A10").get_type(), CellType::Text);
     assert_eq!(model._get_cell("A11").get_type(), CellType::ErrorValue);
     assert_eq!(model._get_cell("A12").get_type(), CellType::LogicalValue);
+    assert_eq!(model._get_cell("A13").get_type(), CellType::Number);
 }
 
 #[test]
