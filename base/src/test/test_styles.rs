@@ -124,6 +124,23 @@ fn test_set_style_on_formula_number_cell() {
 }
 
 #[test]
+fn test_set_style_on_formula_string_cell() {
+    let mut model = new_empty_model();
+    // Inputs
+    model.set_user_input(0, 1, 1, "foo".to_string()).unwrap(); // A1
+    model.set_user_input(0, 2, 1, "=A1".to_string()).unwrap(); // A2
+    model.evaluate();
+
+    let initial_style = model.get_style_for_cell(0, 2, 1).unwrap();
+    let mut new_style = initial_style.clone();
+    new_style.font.b = true;
+    assert!(model.set_cell_style(0, 2, 1, &new_style).is_ok());
+
+    let final_style = model.get_style_for_cell(0, 2, 1).unwrap();
+    assert!(final_style.font.b);
+}
+
+#[test]
 fn test_set_style_on_formula_error_cell() {
     let mut model = new_empty_model();
     // Inputs
