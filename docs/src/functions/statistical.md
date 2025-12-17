@@ -11,7 +11,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 
 | Function                 | Status                                           | Documentation |
 | ------------------------ |--------------------------------------------------| ------------- |
-| AVEDEV                   | <Badge type="info" text="Not implemented yet" /> | –             |
+| AVEDEV                   | <Badge type="tip" text="Available" />            | –             |
 | AVERAGE                  | <Badge type="tip" text="Available" />            | –             |
 | AVERAGEA                 | <Badge type="tip" text="Available" />            | –             |
 | AVERAGEIF                | <Badge type="tip" text="Available" />            | –             |
