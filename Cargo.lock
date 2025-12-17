@@ -72,9 +72,9 @@ checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "bitcode"
-version = "0.6.3"
+version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee1bce7608560cd4bf0296a4262d0dbf13e6bcec5ff2105724c8ab88cc7fc784"
+checksum = "36b69c517b45d4f11bac0d5a5d814ad3873f108ad63817a86acc7e49cf881853"
 dependencies = [
  "arrayvec",
  "bitcode_derive",
@@ -85,9 +85,9 @@ dependencies = [
 
 [[package]]
 name = "bitcode_derive"
-version = "0.6.3"
+version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a539389a13af092cd345a2b47ae7dec12deb306d660b2223d25cd3419b253ebe"
+checksum = "44a8d36f7d59054c1a2d326c749ea8a27a576d4ad16ebe7ad33cae9489df8575"
 dependencies = [
  "proc-macro2",
  "quote",
