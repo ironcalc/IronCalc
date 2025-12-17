@@ -24,8 +24,8 @@ The COLUMNS function in IronCalc is a lookup & reference formula that is used to
 COLUMNS returns the [number](/features/value-types#numbers) of columns which are being referenced.
 ### Error conditions
 * [`#ERROR!`](/features/error-types.html#error) is returned if no reference is included.
-* [`#ERROR!`](/features/error-types.html#error) is returned if a cell being referenced is deleted.
 * [`#NAME?`](/features/error-types.html#name) is returned if a Named Range being referenced is deleted.
+* [`#REF!`](/features/error-types.html#ref) is returned if a cell being referenced is deleted.
 * [`#VALUE!`](/features/error-types.html#value) is returned if a column being referenced is deleted.
 * [`#VALUE!`](/features/error-types.html#value) is returned if a cell name is being referenced.
 * [`#VALUE!`](/features/error-types.html#value) is returned when referencing a Named Range in combination with an additional cell or column.
