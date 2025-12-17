@@ -60,6 +60,15 @@ fn cell_is_always_dynamic() {
         Cell::ArrayFormula { kind: ArrayKind::Dynamic, v: FormulaValue::Number(v), .. } if v == 0.0
     ));
 }
+#[test]
+fn test_cell_get_text_on_boolean_cell() {
+    let mut model = new_empty_model();
+
+    model.set_user_input(0, 1, 1, "TRUE".to_string()).unwrap();
+    model.evaluate();
+
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "TRUE");
+}
 
 #[test]
 fn test_from_f64_for_cell_value() {
