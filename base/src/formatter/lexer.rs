@@ -211,8 +211,13 @@ impl Lexer {
                 return None;
             }
         }
+
         if let Some(v) = self.consume_number() {
-            return Some((cmp, v));
+            if self.read_next_char() == Some(']') {
+                return Some((cmp, v));
+            }
+        } else if self.read_next_char() == Some(']') {
+            return Some((cmp, 0.0));
         }
         None
     }
