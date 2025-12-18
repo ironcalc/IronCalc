@@ -125,7 +125,6 @@ impl Lexer {
                 chars.push(x);
             } else if position < len && self.chars[position] == '"' {
                 chars.push(x);
-                chars.push(self.chars[position]);
                 position += 1;
             } else {
                 self.position = position;
