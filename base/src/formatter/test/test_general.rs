@@ -83,6 +83,15 @@ fn test_conditional() {
 }
 
 #[test]
+fn test_failed_to_parse_conditional() {
+    let locale = get_default_locale();
+    assert_eq!(
+        format_number(42.00, "[=0.00", locale).error,
+        Some("Problem parsing format string".to_string())
+    );
+}
+
+#[test]
 fn dollar_euro() {
     let locale = get_default_locale();
     let format = "[$€]#,##0.00";
