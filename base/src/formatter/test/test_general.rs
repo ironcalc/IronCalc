@@ -101,6 +101,15 @@ fn test_string_double_quota() {
 }
 
 #[test]
+fn test_failed_to_parse_string() {
+    let locale = get_default_locale();
+    assert_eq!(
+        format_number(42.00, "0 \"\"\"Millions\"\"", locale).error,
+        Some("Problem parsing format string".to_string())
+    );
+}
+
+#[test]
 fn dollar_euro() {
     let locale = get_default_locale();
     let format = "[$€]#,##0.00";
