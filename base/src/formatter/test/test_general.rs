@@ -100,6 +100,15 @@ fn dollar_euro() {
 }
 
 #[test]
+fn test_failed_to_parse_currency() {
+    let locale = get_default_locale();
+    let error = Some("Problem parsing format string".to_string());
+    assert_eq!(format_number(42.00, "[$", locale).error, error);
+    assert_eq!(format_number(42.00, "[$€", locale).error, error);
+    assert_eq!(format_number(42.00, "[$€0", locale).error, error);
+}
+
+#[test]
 fn test_parts() {
     let locale = get_default_locale();
     assert_eq!(format_number(3.1, "0.00;(0.00);(-)", locale).text, "3.10");
