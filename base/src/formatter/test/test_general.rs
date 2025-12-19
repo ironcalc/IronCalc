@@ -87,6 +87,7 @@ fn test_failed_to_parse_color() {
     assert_eq!(format_number(3.1, "[Color999]0.00", locale).error, error);
     assert_eq!(format_number(3.1, "[Color42.5]0.00", locale).error, error);
 }
+
 #[test]
 fn test_conditional() {
     let locale = get_default_locale();
@@ -155,6 +156,11 @@ fn test_failed_to_parse_currency() {
     assert_eq!(format_number(42.00, "[$", locale).error, error);
     assert_eq!(format_number(42.00, "[$€", locale).error, error);
     assert_eq!(format_number(42.00, "[$€0", locale).error, error);
+}
+fn test_failed_to_parse_bracket() {
+    let locale = get_default_locale();
+    let error = Some("Problem parsing format string".to_string());
+    assert_eq!(format_number(42.0, "[", locale).error, error);
 }
 
 #[test]
