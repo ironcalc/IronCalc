@@ -284,8 +284,9 @@ impl Lexer {
                             // currency
                             self.read_next_char();
                             if let Some(currency) = self.read_next_char() {
-                                self.read_next_char();
-                                return Token::Currency(currency);
+                                if self.read_next_char() == Some(']') {
+                                    return Token::Currency(currency);
+                                }
                             }
                             self.set_error("Failed to parse currency");
                             Token::ILLEGAL
