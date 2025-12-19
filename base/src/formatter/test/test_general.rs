@@ -82,20 +82,10 @@ fn test_color() {
 #[test]
 fn test_failed_to_parse_color() {
     let locale = get_default_locale();
-    assert_eq!(
-        format_number(3.1, "[foo]0.00", locale).error,
-        Some("Problem parsing format string".to_string())
-    );
-
-    assert_eq!(
-        format_number(3.1, "[Color999]0.00", locale).error,
-        Some("Problem parsing format string".to_string())
-    );
-
-    assert_eq!(
-        format_number(3.1, "[Color42.5]0.00", locale).error,
-        Some("Problem parsing format string".to_string())
-    );
+    let error = Some("Problem parsing format string".to_string());
+    assert_eq!(format_number(3.1, "[foo]0.00", locale).error, error);
+    assert_eq!(format_number(3.1, "[Color999]0.00", locale).error, error);
+    assert_eq!(format_number(3.1, "[Color42.5]0.00", locale).error, error);
 }
 #[test]
 fn test_conditional() {
@@ -110,14 +100,10 @@ fn test_conditional() {
 #[test]
 fn test_failed_to_parse_conditional() {
     let locale = get_default_locale();
-    assert_eq!(
-        format_number(42.00, "[=0.00", locale).error,
-        Some("Problem parsing format string".to_string())
-    );
-    assert_eq!(
-        format_number(42.00, "[=", locale).error,
-        Some("Problem parsing format string".to_string())
-    );
+    let error = Some("Problem parsing format string".to_string());
+
+    assert_eq!(format_number(42.00, "[=0.00", locale).error, error);
+    assert_eq!(format_number(42.00, "[=", locale).error, error);
 }
 
 #[test]
