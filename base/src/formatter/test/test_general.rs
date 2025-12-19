@@ -74,8 +74,29 @@ fn test_color() {
     let locale = get_default_locale();
     assert_eq!(format_number(3.1, "[blue]0.00", locale).text, "3.10");
     assert_eq!(format_number(3.1, "[blue]0.00", locale).color, Some(4));
+
+    assert_eq!(format_number(3.1, "[Color42]0.00", locale).text, "3.10");
+    assert_eq!(format_number(3.1, "[Color42]0.00", locale).color, Some(42));
 }
 
+#[test]
+fn test_failed_to_parse_color() {
+    let locale = get_default_locale();
+    assert_eq!(
+        format_number(3.1, "[foo]0.00", locale).error,
+        Some("Problem parsing format string".to_string())
+    );
+
+    assert_eq!(
+        format_number(3.1, "[Color999]0.00", locale).error,
+        Some("Problem parsing format string".to_string())
+    );
+
+    assert_eq!(
+        format_number(3.1, "[Color42.5]0.00", locale).error,
+        Some("Problem parsing format string".to_string())
+    );
+}
 #[test]
 fn test_conditional() {
     let locale = get_default_locale();
