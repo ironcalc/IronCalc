@@ -108,6 +108,13 @@ fn test_failed_to_parse_string() {
         Some("Problem parsing format string".to_string())
     );
 }
+fn test_exponential_conditional() {
+    let locale = get_default_locale();
+    assert_eq!(format_number(42.00, "[=0.0e0]0.00", locale).text, "42.00");
+    assert_eq!(format_number(42.00, "[=0.0e00]0.00", locale).text, "42.00");
+    assert_eq!(format_number(42.00, "[=0.0e+0]0.00", locale).text, "42.00");
+    assert_eq!(format_number(42.00, "[=0.0e-0]0.00", locale).text, "42.00");
+}
 
 #[test]
 fn dollar_euro() {
