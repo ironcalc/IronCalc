@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 xlsx = { package= "ironcalc", path = "../../xlsx", version = "0.6.0" }
-pyo3 = { version = "0.25", features = ["extension-module"] }
+pyo3 = { version = "0.27.2", features = ["extension-module"] }
 bitcode = "0.6.8"
 
 
