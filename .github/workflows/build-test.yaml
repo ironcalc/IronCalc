@@ -1,0 +1,65 @@
+name: Build and Test
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint-all:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "latest"
+          cache: "npm"
+          cache-dependency-path: |
+            **/package-lock.json
+      - name: Install node dependencies
+        run: npm install -g wasm-pack typescript
+      - name: Lint
+        run: make lint
+  test-rust:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Rust Tests
+        run: make test-rust
+  test-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "latest"
+          cache: "npm"
+          cache-dependency-path: |
+            **/package-lock.json
+      - name: Install node dependencies
+        run: npm install -g wasm-pack typescript
+      - name: JS Tests
+        run: make test-js
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Python Tests
+        run: make test-python
