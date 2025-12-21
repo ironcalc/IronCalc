@@ -1,9 +1,9 @@
 #!/bin/bash
-python -m venv venv
+set -euo pipefail
+
+python3 -m venv venv
 source venv/bin/activate
-# not sure why this is needed
-pip install patchelf
-pip install maturin
-pip install pytest
+# Not sure why patchelf is needed
+pip install patchelf maturin pytest
 maturin develop
 pytest tests/

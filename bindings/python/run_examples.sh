@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Define the directory containing the Python files
 EXAMPLES_DIR="docs/examples"
@@ -9,12 +10,9 @@ if [ ! -d "$EXAMPLES_DIR" ]; then
   exit 1
 fi
 
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate
-# not sure why this is needed
-pip install patchelf
-pip install maturin
-pip install pytest
+pip install patchelf maturin pytest
 maturin develop
 
 # Iterate over all Python files in the examples directory
@@ -22,13 +20,11 @@ for file in "$EXAMPLES_DIR"/*.py; do
   # Check if there are any Python files
   if [ -f "$file" ]; then
     echo "Running $file..."
-    python "$file"
-    
-    # Check if the script ran successfully
-    if [ $? -ne 0 ]; then
-      echo "Error running $file"
+    if python "$file"; then
+        echo "$file ran successfully"
     else
-      echo "$file ran successfully"
+        echo "Error running $file"
+        exit 1
     fi
   else
     echo "No Python files found in $EXAMPLES_DIR"
