@@ -10,7 +10,13 @@ if [ ! -d "$EXAMPLES_DIR" ]; then
   exit 1
 fi
 
-python3 -m venv venv
+if command -v python3 &> /dev/null; then
+    PYTHON=python3
+else
+    PYTHON=python
+fi
+
+$PYTHON -m venv venv
 source venv/bin/activate
 pip install patchelf maturin pytest
 maturin develop

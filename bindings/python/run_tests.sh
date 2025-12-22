@@ -1,7 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-python3 -m venv venv
+if command -v python3 &> /dev/null; then
+    PYTHON=python3
+else
+    PYTHON=python
+fi
+
+$PYTHON -m venv venv
 source venv/bin/activate
 # Not sure why patchelf is needed
 pip install patchelf maturin pytest
