@@ -14,15 +14,16 @@ fn test_cell_get_type() {
     model._set("A5", "1+2");
     model._set("A6", "TRUE");
     model._set("A7", "#VALUE!");
-    model._set("A8", "=42"); // an empty cell, considered to be a CellType::Number
+    model._set("A8", "=Z100"); // an empty cell, considered to be a CellType::Number
     model._set("A9", "=2*3*7");
     model._set("A10", "=\"foo\"");
     model._set("A11", "=1/0");
     model._set("A12", "=1>0");
+    model._set("A13", "=42"); // an Cell::EmptyCell, considered to be a CellType::Number
     model.evaluate();
 
-    model.cell_clear_contents(0, 8, 1).unwrap(); // A8
-    model._set("A13", "=42"); // a CellFormula
+    model.cell_clear_contents(0, 13, 1).unwrap(); // A13
+    model._set("A14", "=42"); // a CellFormula
 
     assert_eq!(model._get_cell("A1").get_type(), CellType::Text);
     assert_eq!(model._get_cell("A2").get_type(), CellType::Number);
@@ -37,6 +38,7 @@ fn test_cell_get_type() {
     assert_eq!(model._get_cell("A11").get_type(), CellType::ErrorValue);
     assert_eq!(model._get_cell("A12").get_type(), CellType::LogicalValue);
     assert_eq!(model._get_cell("A13").get_type(), CellType::Number);
+    assert_eq!(model._get_cell("A14").get_type(), CellType::Number);
 }
 
 #[test]
