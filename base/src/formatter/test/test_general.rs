@@ -124,6 +124,8 @@ fn test_failed_to_parse_string() {
         Some("Problem parsing format string".to_string())
     );
 }
+
+#[test]
 fn test_exponential_conditional() {
     let locale = get_default_locale();
     assert_eq!(format_number(42.00, "[=0.0e0]0.00", locale).text, "42.00");
@@ -157,6 +159,8 @@ fn test_failed_to_parse_currency() {
     assert_eq!(format_number(42.00, "[$€", locale).error, error);
     assert_eq!(format_number(42.00, "[$€0", locale).error, error);
 }
+
+#[test]
 fn test_failed_to_parse_bracket() {
     let locale = get_default_locale();
     let error = Some("Problem parsing format string".to_string());
