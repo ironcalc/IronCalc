@@ -120,7 +120,7 @@ fn dollar_euro() {
 #[test]
 fn test_currency_valid_formats() {
     let locale = get_default_locale();
-    assert_eq!(format_number(3.14, "[$€]#,##0.00", locale).text, "€3.14");
+    assert_eq!(format_number(2.34, "[$€]#,##0.00", locale).text, "€2.34");
     assert_eq!(format_number(3.0, "[$€]#,##0.00", locale).text, "€3.00");
     assert_eq!(format_number(42.0, "[$€]0", locale).text, "€42");
 }
