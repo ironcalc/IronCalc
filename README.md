@@ -16,8 +16,8 @@
 [codecov-badge]: https://codecov.io/gh/ironcalc/IronCalc/graph/badge.svg?token=ASJX12CHNR
 [codecov-url]: https://codecov.io/gh/ironcalc/IronCalc
 
-[actions-badge]: https://github.com/ironcalc/ironcalc/actions/workflows/rust-build-test.yaml/badge.svg
-[actions-url]: https://github.com/ironcalc/IronCalc/actions/workflows/rust-build-test.yaml?query=workflow%3ARust+branch%3Amain
+[actions-badge]: https://github.com/ironcalc/ironcalc/actions/workflows/build-test.yaml/badge.svg
+[actions-url]: https://github.com/ironcalc/IronCalc/actions/workflows/build-test.yaml?query=workflow%3ARust+branch%3Amain
 
 [docs-url]: https://docs.rs/ironcalc
 [docs-badge]: https://img.shields.io/docsrs/ironcalc?logo=rust&style=flat-square
