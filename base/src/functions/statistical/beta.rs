@@ -30,6 +30,7 @@ impl Model {
         let cumulative = match self.evaluate_node_in_context(&args[3], cell) {
             CalcResult::Boolean(b) => b,
             CalcResult::Number(n) => n != 0.0,
+            CalcResult::EmptyArg => false,
             CalcResult::String(s) => {
                 let up = s.to_ascii_uppercase();
                 if up == "TRUE" {
