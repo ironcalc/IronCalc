@@ -1,0 +1,7 @@
+bin/
+obj/
+
+IronCalc/runtimes/
+
+.idea/
+*.sln.DotSettings.user
