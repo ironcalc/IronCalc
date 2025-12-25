@@ -171,11 +171,12 @@ impl Model {
         }
 
         // probability <= 0 or probability > 1 → #NUM!
-        if p <= 0.0 || p > 1.0 {
+        // NB: p==0 or p==1 are actually valid inputs.
+        if p <= 0.0 || p >= 1.0 {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "probability must be in (0,1] in BETA.INV".to_string(),
+                "probability must be in (0,1) in BETA.INV".to_string(),
             );
         }
 
