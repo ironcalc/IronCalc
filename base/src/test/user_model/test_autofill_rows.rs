@@ -9,8 +9,8 @@ use crate::UserModel;
 fn basic_tests() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    // This is cell A3
-    model.set_user_input(0, 3, 1, "alpha").unwrap();
+    model.set_user_input(0, 3, 1, "alpha").unwrap(); // A3
+
     // We autofill from A3 to A5
     model
         .auto_fill_rows(
@@ -62,13 +62,13 @@ fn alpha_beta_gamma() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
     // cells A1:B3
-    model.set_user_input(0, 1, 1, "Alpher").unwrap();
-    model.set_user_input(0, 2, 1, "Bethe").unwrap();
-    model.set_user_input(0, 3, 1, "Gamow").unwrap();
-    model.set_user_input(0, 1, 2, "=A1").unwrap();
-    model.set_user_input(0, 2, 2, "=A2").unwrap();
-    model.set_user_input(0, 3, 2, "=A3").unwrap();
-    // We autofill from A1:B3 to A9
+    model.set_user_input(0, 1, 1, "Alpher").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "Bethe").unwrap(); // A2
+    model.set_user_input(0, 3, 1, "Gamow").unwrap(); // A3
+    model.set_user_input(0, 1, 2, "=A1").unwrap(); // B1
+    model.set_user_input(0, 2, 2, "=A2").unwrap(); // B2
+    model.set_user_input(0, 3, 2, "=A3").unwrap(); // B3
+                                                   // We autofill from A1:B3 to A9:B9
     model
         .auto_fill_rows(
             &Area {
@@ -82,64 +82,32 @@ fn alpha_beta_gamma() {
         )
         .unwrap();
 
-    assert_eq!(
-        model.get_formatted_cell_value(0, 4, 1),
-        Ok("Alpher".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 5, 1),
-        Ok("Bethe".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 6, 1),
-        Ok("Gamow".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 7, 1),
-        Ok("Alpher".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 8, 1),
-        Ok("Bethe".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 9, 1),
-        Ok("Gamow".to_string())
-    );
+    let expected_values = ["Alpher", "Bethe", "Gamow"];
+    for row in 4..=9 {
+        let expected_value = expected_values[((row - 1) % 3) as usize];
 
-    assert_eq!(
-        model.get_formatted_cell_value(0, 4, 2),
-        Ok("Alpher".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 5, 2),
-        Ok("Bethe".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 6, 2),
-        Ok("Gamow".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 7, 2),
-        Ok("Alpher".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 8, 2),
-        Ok("Bethe".to_string())
-    );
-    assert_eq!(
-        model.get_formatted_cell_value(0, 9, 2),
-        Ok("Gamow".to_string())
-    );
+        // A
+        assert_eq!(
+            model.get_formatted_cell_value(0, row, 1),
+            Ok(expected_value.to_string()),
+        );
 
-    assert_eq!(model.get_cell_content(0, 4, 2), Ok("=A4".to_string()));
+        // B
+        assert_eq!(
+            model.get_formatted_cell_value(0, row, 2),
+            Ok(expected_value.to_string()),
+        );
+
+        // B
+        assert_eq!(model.get_cell_content(0, row, 2), Ok(format!("=A{}", row)),);
+    }
 }
 
 #[test]
 fn styles() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    // cells A1:B3
+    // cells A1:A3
     model.set_user_input(0, 1, 1, "Alpher").unwrap();
     model.set_user_input(0, 2, 1, "Bethe").unwrap();
     model.set_user_input(0, 3, 1, "Gamow").unwrap();
@@ -165,6 +133,7 @@ fn styles() {
         .update_range_style(&a3, "fill.bg_color", "#334455")
         .unwrap();
 
+    // We autofill from A1:A3 to A9
     model
         .auto_fill_rows(
             &Area {
@@ -187,22 +156,26 @@ fn styles() {
 
     model.undo().unwrap();
 
+    // A4
     assert_eq!(model.get_cell_content(0, 4, 1), Ok("".to_string()));
-    // Check that cell A5 has A2 style
+    // Check that cell A5 does NOT have A2 style
     let style = model.get_cell_style(0, 5, 1).unwrap();
     assert!(!style.font.i);
-    // A6 would have the style of A3
+
+    // A6 would have NOT the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
     assert_eq!(style.fill.bg_color, None);
 
     model.redo().unwrap();
     assert_eq!(
-        model.get_formatted_cell_value(0, 4, 1),
+        model.get_formatted_cell_value(0, 4, 1), // A4
         Ok("Alpher".to_string())
     );
+
     // Check that cell A5 has A2 style
     let style = model.get_cell_style(0, 5, 1).unwrap();
     assert!(style.font.i);
+
     // A6 would have the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
     assert_eq!(style.fill.bg_color, Some("#334455".to_string()));
@@ -287,8 +260,7 @@ fn upwards_4() {
 fn errors() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    // cells A10:A13
-    model.set_user_input(0, 4, 1, "Margaret Burbidge").unwrap();
+    model.set_user_input(0, 4, 1, "Margaret Burbidge").unwrap(); // A4
 
     // Invalid sheet
     assert_eq!(
