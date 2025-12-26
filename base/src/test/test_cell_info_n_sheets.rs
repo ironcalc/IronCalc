@@ -5,10 +5,10 @@ use crate::test::util::new_empty_model;
 #[test]
 fn arguments() {
     let mut model = new_empty_model();
-    model._set("A1", "=CELL("address",A1)");
+    model._set("A1", "=CELL(\"address\",A1)");
     model._set("A2", "=CELL()");
 
-    model._set("A3", "=INFO("system")");
+    model._set("A3", "=INFO(\"system\")");
     model._set("A4", "=INFO()");
 
     model._set("A5", "=N(TRUE)");

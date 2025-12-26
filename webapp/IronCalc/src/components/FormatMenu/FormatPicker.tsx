@@ -9,7 +9,7 @@ type FormatPickerProps = {
   className?: string;
   open: boolean;
   onClose: () => void;
-  onExited?: () => void;
+  onExited: () => void;
   numFmt: string;
   onChange: (numberFmt: string) => void;
 };

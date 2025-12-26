@@ -5,7 +5,7 @@ use crate::{
     number_format::to_precision,
 };
 
-impl Model {
+impl<'a> Model<'a> {
     // DELTA(number1, [number2])
     pub(crate) fn fn_delta(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();

@@ -1,37 +1,43 @@
 use std::collections::HashMap;
 use std::fs;
 
+use bitcode::Encode;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
-use crate::constants::{Dates, LOCAL_TYPE};
+use crate::constants::{DateFormats, Dates, LOCAL_TYPE};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 struct CaGCalendarsFormat {
     format: HashMap<String, HashMap<String, String>>,
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 struct CaGCalendarsII {
     months: CaGCalendarsFormat,
     days: CaGCalendarsFormat,
+    #[serde(rename = "dateFormats")]
+    date_formats: DateFormats,
+    #[serde(rename = "timeFormats")]
+    time_formats: DateFormats,
+    #[serde(rename = "dateTimeFormats")]
+    date_time_formats: DateFormats,
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 struct CaGCalendarsI {
     gregorian: CaGCalendarsII,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 struct CaGCalendars {
     calendars: CaGCalendarsI,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 struct CaGId {
-    identity: Value,
+    // identity: Value,
     dates: CaGCalendars,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Encode)]
 struct CaGregorian {
     main: HashMap<String, CaGId>,
 }
@@ -51,6 +57,7 @@ pub fn get_dates_formatting(cldr_dir: &str, locale_id: &str) -> Result<Dates, &'
     // for the difference between stand-alone and format. We will use only the format mode
     let months_format = &gregorian.months.format;
     let days_format = &gregorian.days.format;
+
     let mut day_names = vec![];
     let mut day_names_short = vec![];
 
@@ -79,5 +86,8 @@ pub fn get_dates_formatting(cldr_dir: &str, locale_id: &str) -> Result<Dates, &'
         months,
         months_short,
         months_letter,
+        date_formats: gregorian.date_formats.to_excel_formats(),
+        time_formats: gregorian.time_formats.clone(),
+        date_time_formats: gregorian.date_time_formats.clone(),
     })
 }

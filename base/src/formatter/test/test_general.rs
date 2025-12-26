@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
 
 use crate::{
     formatter::format::format_number,
@@ -292,4 +293,10 @@ fn test_date() {
         format_number(41181.0, "ddd-mmmmmmm-yy", locale).text,
         "Sat-September-12"
     );
+}
+
+#[test]
+fn test_german_locale() {
+    let locale = get_locale("de").expect("");
+    assert_eq!(format_number(1234.56, "General", locale).text, "1234,56");
 }

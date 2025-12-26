@@ -6,7 +6,7 @@ use crate::{
 
 use super::util::compare_values;
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn fn_true(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             CalcResult::Boolean(true)

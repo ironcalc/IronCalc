@@ -4,7 +4,7 @@ use crate::{
     model::{Model, ParsedDefinedName},
 };
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
@@ -373,6 +373,8 @@ impl Model {
         CalcResult::Number(sheet_count)
     }
 
+    /// INFO(info_type, [reference])
+    /// NB: In Excel "info_type" is localized. Here it is always in English.
     pub(crate) fn fn_cell(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if arg_count == 0 || arg_count > 2 {

@@ -2,13 +2,13 @@
 
 use crate::{
     expressions::types::Area,
+    test::user_model::util::new_empty_user_model,
     types::{Alignment, HorizontalAlignment, VerticalAlignment},
-    UserModel,
 };
 
 #[test]
 fn basic_fonts() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -77,7 +77,7 @@ fn basic_fonts() {
 
     let send_queue = model.flush_send_queue();
 
-    let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model2 = new_empty_user_model();
     model2.apply_external_diffs(&send_queue).unwrap();
 
     let style = model2.get_cell_style(0, 1, 1).unwrap();
@@ -90,7 +90,7 @@ fn basic_fonts() {
 
 #[test]
 fn font_errors() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -133,7 +133,7 @@ fn font_errors() {
 
 #[test]
 fn basic_fill() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -161,7 +161,7 @@ fn basic_fill() {
 
     let send_queue = model.flush_send_queue();
 
-    let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model2 = new_empty_user_model();
     model2.apply_external_diffs(&send_queue).unwrap();
 
     let style = model2.get_cell_style(0, 1, 1).unwrap();
@@ -171,7 +171,7 @@ fn basic_fill() {
 
 #[test]
 fn fill_errors() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -192,7 +192,7 @@ fn fill_errors() {
 
 #[test]
 fn basic_format() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -222,7 +222,7 @@ fn basic_format() {
 
     let send_queue = model.flush_send_queue();
 
-    let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model2 = new_empty_user_model();
     model2.apply_external_diffs(&send_queue).unwrap();
 
     let style = model2.get_cell_style(0, 1, 1).unwrap();
@@ -231,7 +231,7 @@ fn basic_format() {
 
 #[test]
 fn basic_alignment() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -322,7 +322,7 @@ fn basic_alignment() {
 
 #[test]
 fn alignment_errors() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -370,7 +370,7 @@ fn alignment_errors() {
 
 #[test]
 fn basic_wrap_text() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -418,7 +418,7 @@ fn basic_wrap_text() {
 
 #[test]
 fn false_removes_value() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,
@@ -439,7 +439,7 @@ fn false_removes_value() {
 
 #[test]
 fn cell_clear_formatting() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let range = Area {
         sheet: 0,
         row: 1,

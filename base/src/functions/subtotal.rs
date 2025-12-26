@@ -32,7 +32,7 @@ pub enum CellTableStatus {
     Filtered,
 }
 
-impl Model {
+impl<'a> Model<'a> {
     fn get_table_for_cell(&self, sheet_index: u32, row: i32, column: i32) -> bool {
         let worksheet = match self.workbook.worksheet(sheet_index) {
             Ok(ws) => ws,

@@ -1,5 +1,6 @@
 use crate::{
-    expressions::token::Error, language::Language, number_format::to_excel_precision_str, types::*,
+    expressions::token::Error, language::Language, locale::Locale,
+    number_format::to_excel_precision_str, types::*,
 };
 
 /// A CellValue is the representation of the cell content.
@@ -122,12 +123,31 @@ impl Cell {
         }
     }
 
-    pub fn get_text(&self, shared_strings: &[String], language: &Language) -> String {
+    pub fn get_localized_text(
+        &self,
+        shared_strings: &[String],
+        locale: &Locale,
+        language: &Language,
+    ) -> String {
         match self.value(shared_strings, language) {
             CellValue::None => "".to_string(),
             CellValue::String(v) => v,
-            CellValue::Boolean(v) => v.to_string().to_uppercase(),
-            CellValue::Number(v) => to_excel_precision_str(v),
+            CellValue::Boolean(v) => {
+                if v {
+                    language.booleans.r#true.to_string()
+                } else {
+                    language.booleans.r#false.to_string()
+                }
+            }
+            CellValue::Number(v) => {
+                let value = to_excel_precision_str(v);
+
+                if locale.numbers.symbols.decimal != "." {
+                    value.replace(".", &locale.numbers.symbols.decimal)
+                } else {
+                    value
+                }
+            }
         }
     }
 
@@ -171,7 +191,13 @@ impl Cell {
         match self.value(shared_strings, language) {
             CellValue::None => "".to_string(),
             CellValue::String(value) => value,
-            CellValue::Boolean(value) => value.to_string().to_uppercase(),
+            CellValue::Boolean(value) => {
+                if value {
+                    language.booleans.r#true.to_string()
+                } else {
+                    language.booleans.r#false.to_string()
+                }
+            }
             CellValue::Number(value) => format_number(value),
         }
     }
