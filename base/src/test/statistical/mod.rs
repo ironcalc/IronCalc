@@ -1,4 +1,5 @@
 mod test_fn_avedev;
+mod test_fn_beta_dist;
 mod test_fn_binom;
 mod test_fn_chisq;
 mod test_fn_chisq_test;
