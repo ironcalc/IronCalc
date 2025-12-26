@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
-use crate::types::CellType;
+use crate::types::{Cell, CellType};
 
 #[test]
 fn test_cell_get_type() {
@@ -18,7 +19,11 @@ fn test_cell_get_type() {
     model._set("A10", "=\"foo\"");
     model._set("A11", "=1/0");
     model._set("A12", "=1>0");
+    model._set("A13", "=42"); // an Cell::EmptyCell, considered to be a CellType::Number
     model.evaluate();
+
+    model.cell_clear_contents(0, 13, 1).unwrap(); // A13
+    model._set("A14", "=42"); // a CellFormula
 
     assert_eq!(model._get_cell("A1").get_type(), CellType::Text);
     assert_eq!(model._get_cell("A2").get_type(), CellType::Number);
@@ -32,4 +37,79 @@ fn test_cell_get_type() {
     assert_eq!(model._get_cell("A10").get_type(), CellType::Text);
     assert_eq!(model._get_cell("A11").get_type(), CellType::ErrorValue);
     assert_eq!(model._get_cell("A12").get_type(), CellType::LogicalValue);
+    assert_eq!(model._get_cell("A13").get_type(), CellType::Number);
+    assert_eq!(model._get_cell("A14").get_type(), CellType::Number);
+}
+
+#[test]
+fn test_cell_get_text_on_boolean_cell() {
+    let mut model = new_empty_model();
+
+    model.set_user_input(0, 1, 1, "TRUE".to_string()).unwrap();
+    model.evaluate();
+
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "TRUE");
+}
+
+#[test]
+fn test_cell_value_on_empty_shared_string() {
+    let mut model = new_empty_model();
+
+    let _update_result = model
+        .workbook
+        .worksheet_mut(0)
+        .unwrap()
+        .set_cell_with_string(1, 1, 1, 1); // A1
+
+    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "");
+}
+
+#[test]
+fn test_from_f64_for_cell_value() {
+    // Arrange
+    let float = 42.42;
+    // Act
+    let result: CellValue = float.into();
+    // Assert
+    assert_eq!(result, CellValue::Number(42.42));
+}
+
+#[test]
+fn test_from_string_for_cell_value() {
+    // Arrange
+    let string = "42".to_string();
+    // Act
+    let result: CellValue = string.into();
+    // Assert
+    assert_eq!(result, CellValue::String("42".to_string()));
+}
+
+#[test]
+fn test_from_str_for_cell_value() {
+    // Arrange
+    let str = "42";
+    // Act
+    let result: CellValue = str.into();
+    // Assert
+    assert_eq!(result, CellValue::String("42".to_string()));
+}
+
+#[test]
+fn test_from_bool_for_cell_value() {
+    // Arrange
+    let boot = true;
+    // Act
+    let result: CellValue = boot.into();
+    // Assert
+    assert_eq!(result, CellValue::Boolean(true));
+}
+
+#[test]
+fn test_cell_has_formula() {
+    // Arrange
+    let cell = Cell::new_formula(1, 1);
+    // Act
+    let result = cell.has_formula();
+    // Assert
+    assert!(result);
 }

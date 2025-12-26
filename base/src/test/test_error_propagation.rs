@@ -15,7 +15,7 @@ fn test_simple_error_propagation() {
         Cell::CellFormulaError { o, .. } => {
             assert_eq!(o, "Sheet1!A1");
         }
-        _ => panic!("Unreachable"),
+        _ => unreachable!(),
     }
 }
 
