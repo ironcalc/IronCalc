@@ -1534,7 +1534,7 @@ impl<'a> UserModel<'a> {
                 let target_value;
 
                 // compute the new value and set it
-                if let Some(detected_progression) = possible_progression {
+                if let Some(ref detected_progression) = possible_progression {
                     target_value = detected_progression.next(range_idx);
                 } else {
                     target_value = self
