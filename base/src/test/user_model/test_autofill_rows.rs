@@ -38,7 +38,7 @@ fn basic_tests() {
 fn one_cell_down() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    model.set_user_input(0, 1, 1, "23").unwrap();
+    model.set_user_input(0, 1, 1, "23").unwrap(); // A1
     model
         .auto_fill_rows(
             &Area {
@@ -52,8 +52,40 @@ fn one_cell_down() {
         )
         .unwrap();
     assert_eq!(
-        model.get_formatted_cell_value(0, 2, 1),
+        model.get_formatted_cell_value(0, 2, 1), // A2
         Ok("23".to_string())
+    );
+}
+
+#[test]
+fn one_cell_down_with_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "40").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "41").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            5,
+        )
+        .unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 3, 1), // A3
+        Ok("42".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 1), // A4
+        Ok("43".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 5, 1), // A5
+        Ok("44".to_string())
     );
 }
 
@@ -68,7 +100,8 @@ fn alpha_beta_gamma() {
     model.set_user_input(0, 1, 2, "=A1").unwrap(); // B1
     model.set_user_input(0, 2, 2, "=A2").unwrap(); // B2
     model.set_user_input(0, 3, 2, "=A3").unwrap(); // B3
-                                                   // We autofill from A1:B3 to A9:B9
+
+    // We autofill from A1:B3 to A9:B9
     model
         .auto_fill_rows(
             &Area {
