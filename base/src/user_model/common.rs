@@ -64,6 +64,49 @@ pub struct BorderArea {
     pub(crate) r#type: BorderType,
 }
 
+trait SequenceDetector {
+    fn detect(&self, values: &[String]) -> Option<ArithmeticProgression>;
+}
+
+struct IntegerProgressionDetector;
+
+#[derive(Copy, Clone)]
+struct ArithmeticProgression {
+    last: i64,
+    step: i64,
+}
+
+impl ArithmeticProgression {
+    fn next(&self, i: usize) -> String {
+        (self.last + self.step * (i as i64 + 1)).to_string()
+    }
+}
+
+impl SequenceDetector for IntegerProgressionDetector {
+    fn detect(&self, values: &[String]) -> Option<ArithmeticProgression> {
+        values
+            .iter()
+            .map(|s| s.parse::<i64>())
+            .collect::<Result<Vec<_>, _>>()
+            .ok()
+            .filter(|nums| nums.len() >= 2)
+            .and_then(|numbers| {
+                let step = numbers[1] - numbers[0];
+                if step == 0 {
+                    return None;
+                }
+                let is_progression = numbers.windows(2).all(|w| w[1] - w[0] == step);
+
+                if is_progression {
+                    let last = numbers[numbers.len() - 1];
+                    Some(ArithmeticProgression { last, step })
+                } else {
+                    None
+                }
+            })
+    }
+}
+
 fn boolean(value: &str) -> Result<bool, String> {
     match value {
         "true" => Ok(true),
@@ -1499,9 +1542,9 @@ impl<'a> UserModel<'a> {
             // we go downwards, we start from `row1 + height1` to `to_row`,
             anchor_row = row1;
             sign = 1;
-            row_range = (row1 + height1..to_row + 1).collect();
+            row_range = (row1 + height1..=to_row).collect();
         } else if to_row < row1 {
-            // we go upwards, starting from `row1 - `` all the way to `to_row`
+            // we go upwards, starting from `row1 - 1` all the way to `to_row`
             anchor_row = row1 + height1 - 1;
             sign = -1;
             row_range = (to_row..row1).rev().collect();
@@ -1511,7 +1554,11 @@ impl<'a> UserModel<'a> {
 
         for column in column1..column1 + width1 {
             let mut index = 0;
-            for row_ref in &row_range {
+            let values = (row1..height1 + row1)
+                .map(|row| self.get_cell_content(sheet, row, column))
+                .collect::<Result<Vec<_>, _>>()?;
+            let possible_progression = IntegerProgressionDetector.detect(&values);
+            for (range_idx, row_ref) in row_range.iter().enumerate() {
                 // Save value and style first
                 let row = *row_ref;
                 let old_value = self
@@ -1522,11 +1569,18 @@ impl<'a> UserModel<'a> {
                     .cloned();
                 let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
 
-                // compute the new value and set it
                 let source_row = anchor_row + index;
-                let target_value = self
-                    .model
-                    .extend_to(sheet, source_row, column, row, column)?;
+                let target_value;
+
+                // compute the new value and set it
+                if let Some(detected_progression) = possible_progression {
+                    target_value = detected_progression.next(range_idx);
+                } else {
+                    target_value = self
+                        .model
+                        .extend_to(sheet, source_row, column, row, column)?;
+                }
+
                 self.model
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
