@@ -16,8 +16,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | AVERAGEA                 | <Badge type="tip" text="Available" />            | –             |
 | AVERAGEIF                | <Badge type="tip" text="Available" />            | –             |
 | AVERAGEIFS               | <Badge type="tip" text="Available" />            | –             |
-| BETA.DIST                | <Badge type="info" text="Not implemented yet" /> | –             |
-| BETA.INV                 | <Badge type="info" text="Not implemented yet" /> | –             |
+| BETA.DIST                | <Badge type="tip" text="Available" />            | –             |
+| BETA.INV                 | <Badge type="tip" text="Available" />            | –             |
 | BINOM.DIST               | <Badge type="info" text="Not implemented yet" /> | –             |
 | BINOM.DIST.RANGE         | <Badge type="info" text="Not implemented yet" /> | –             |
 | BINOM.INV                | <Badge type="info" text="Not implemented yet" /> | –             |
