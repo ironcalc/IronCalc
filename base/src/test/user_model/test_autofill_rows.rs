@@ -75,6 +75,7 @@ fn one_cell_down_with_progression() {
             5,
         )
         .unwrap();
+
     assert_eq!(
         model.get_formatted_cell_value(0, 3, 1), // A3
         Ok("42".to_string())
