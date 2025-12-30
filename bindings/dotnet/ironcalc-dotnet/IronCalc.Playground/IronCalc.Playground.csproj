@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+
+    <Import Project="../LinkToNativeLibrary.props" />
+
+    <ItemGroup>
+      <ProjectReference Include="..\IronCalc\IronCalc.csproj" />
+    </ItemGroup>
+
+</Project>
