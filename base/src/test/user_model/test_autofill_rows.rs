@@ -125,12 +125,12 @@ fn float_progression() {
 }
 
 #[test]
-fn suffixed_number_detector_progression() {
+fn float_tolerance_progression() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    model.set_user_input(0, 1, 1, "Project1.5").unwrap(); // A1
-    model.set_user_input(0, 2, 1, "Project2.5").unwrap(); // A2
-    model.set_user_input(0, 3, 1, "Project3.5").unwrap(); // A3
+    model.set_user_input(0, 1, 1, "40.00000000001").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "41.00000000001").unwrap(); // A2
+    model.set_user_input(0, 3, 1, "42.00000000001").unwrap(); // A3
     model
         .auto_fill_rows(
             &Area {
@@ -146,15 +146,199 @@ fn suffixed_number_detector_progression() {
 
     assert_eq!(
         model.get_cell_content(0, 4, 1), // A4
-        Ok("Project4.5".to_string())
+        Ok("43.00000000001".to_string())
     );
     assert_eq!(
         model.get_cell_content(0, 5, 1), // A5
-        Ok("Project5.5".to_string())
+        Ok("44.00000000001".to_string())
     );
     assert_eq!(
         model.get_cell_content(0, 6, 1), // A6
-        Ok("Project6.5".to_string())
+        Ok("45.00000000001".to_string())
+    );
+}
+
+#[test]
+fn constant_value_autofill() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "5").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "5").unwrap(); // A2
+    model.set_user_input(0, 3, 1, "5").unwrap(); // A3
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 3,
+            },
+            6,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("5".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 5, 1), // A5
+        Ok("5".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 6, 1), // A6
+        Ok("5".to_string())
+    );
+}
+
+#[test]
+fn not_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "4").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "2").unwrap(); // A2
+    model.set_user_input(0, 3, 1, "4").unwrap(); // A3
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 3,
+            },
+            6,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("4".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 5, 1), // A5
+        Ok("2".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 6, 1), // A6
+        Ok("4".to_string())
+    );
+}
+
+#[test]
+fn suffixed_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Project1").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "Project2").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("Project3".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("Project4".to_string())
+    );
+}
+
+#[test]
+fn suffixed_float_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Project1.5").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "Project2.5").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("Project3.5".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("Project4.5".to_string())
+    );
+}
+
+#[test]
+fn not_suffixed_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Project1").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "AProject2").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("Project1".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("AProject2".to_string())
+    );
+}
+
+#[test]
+fn suffixed_not_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Project1").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "Project1").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("Project1".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("Project1".to_string())
     );
 }
 
