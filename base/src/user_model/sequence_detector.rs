@@ -1,37 +1,24 @@
-pub(crate) enum Progression {
-    Integer(IntegerProgression),
-    Float {
-        last: f64,
-        step: f64,
-        precision: usize,
-    },
-    SuffixedNumber {
-        progression: IntegerProgression,
-        prefix: String,
-    },
+pub(crate) struct NumericProgression {
+    last: f64,
+    step: f64,
 }
-
-pub(crate) struct IntegerProgression {
-    last: i64,
-    step: i64,
-}
-impl IntegerProgression {
+impl NumericProgression {
     fn next(&self, i: usize) -> String {
-        (self.last + self.step * (i as i64 + 1)).to_string()
+        (self.last + self.step * (i as f64 + 1.0)).to_string()
     }
 }
 
+pub(crate) enum Progression {
+    Numeric(NumericProgression),
+    SuffixedNumber {
+        progression: NumericProgression,
+        prefix: String,
+    },
+}
 impl Progression {
     pub(crate) fn next(&self, i: usize) -> String {
         match self {
-            Progression::Integer(int_p) => IntegerProgression::next(int_p, i),
-            Progression::Float {
-                last,
-                step,
-                precision,
-            } => {
-                format!("{:.precision$}", last + step * (i as f64 + 1.0))
-            }
+            Progression::Numeric(num_prog) => NumericProgression::next(num_prog, i),
             Progression::SuffixedNumber {
                 progression,
                 prefix,
@@ -44,36 +31,9 @@ trait SequenceDetector {
     fn detect(&self, values: &[String]) -> Option<Progression>;
 }
 
-struct IntegerProgressionDetector;
+struct NumericProgressionDetector;
 
-impl SequenceDetector for IntegerProgressionDetector {
-    fn detect(&self, values: &[String]) -> Option<Progression> {
-        values
-            .iter()
-            .map(|s| s.parse::<i64>())
-            .collect::<Result<Vec<_>, _>>()
-            .ok()
-            .filter(|nums| nums.len() >= 2)
-            .and_then(|numbers| {
-                let step = numbers[1] - numbers[0];
-                if step == 0 {
-                    return None;
-                }
-                let is_progression = numbers.windows(2).all(|w| w[1] - w[0] == step);
-
-                if is_progression {
-                    let last = numbers[numbers.len() - 1];
-                    Some(Progression::Integer(IntegerProgression { last, step }))
-                } else {
-                    None
-                }
-            })
-    }
-}
-
-struct FloatProgressionDetector;
-
-impl SequenceDetector for FloatProgressionDetector {
+impl SequenceDetector for NumericProgressionDetector {
     fn detect(&self, values: &[String]) -> Option<Progression> {
         values
             .iter()
@@ -86,25 +46,17 @@ impl SequenceDetector for FloatProgressionDetector {
                 if step.abs() < 1e-9 {
                     return None;
                 }
+
                 let is_progression = numbers
                     .windows(2)
                     .all(|w| (w[1] - w[0] - step).abs() < 1e-9);
-
-                if is_progression {
-                    let last = numbers[numbers.len() - 1];
-                    let precision = values
-                        .iter()
-                        .map(|s| s.split('.').nth(1).map_or(0, |p| p.len()))
-                        .max()
-                        .unwrap_or(0);
-                    Some(Progression::Float {
-                        last,
-                        step,
-                        precision,
-                    })
-                } else {
-                    None
+                if !is_progression {
+                    return None;
                 }
+
+                let last = numbers[numbers.len() - 1];
+
+                Some(Progression::Numeric(NumericProgression { last, step }))
             })
     }
 }
@@ -146,23 +98,29 @@ impl SequenceDetector for SuffixedNumberDetector {
             return None;
         }
 
-        let prefix = &value0[..value0.len() - suffix_indexes[0]];
+        let (prefixes, suffixes): (Vec<String>, Vec<String>) = values
+            .iter()
+            .zip(suffix_indexes.iter())
+            .map(|(value, &suffix_len)| {
+                let suffix_start = value.len() - suffix_len;
+                (
+                    value[..suffix_start].to_string(), // prefix
+                    value[suffix_start..].to_string(), // suffix
+                )
+            })
+            .unzip();
 
-        let is_contain_prefix = values.iter().all(|value| value.contains(prefix));
+        let prefix0 = &value0[..value0.len() - suffix_indexes[0]];
+
+        let is_contain_prefix = prefixes.iter().all(|prefix| prefix.eq(prefix0));
         if !is_contain_prefix {
             return None;
         }
 
-        let suffixes = values
-            .iter()
-            .zip(suffix_indexes.iter())
-            .map(|(value, &index)| value[value.len() - index..].to_string())
-            .collect::<Vec<_>>();
-
-        if let Some(Progression::Integer(c)) = IntegerProgressionDetector.detect(&suffixes) {
+        if let Some(Progression::Numeric(c)) = NumericProgressionDetector.detect(&suffixes) {
             return Some(Progression::SuffixedNumber {
                 progression: c,
-                prefix: prefix.to_string(),
+                prefix: prefix0.to_string(),
             });
         }
 
@@ -171,10 +129,7 @@ impl SequenceDetector for SuffixedNumberDetector {
 }
 
 pub(crate) fn detect_progression(values: &[String]) -> Option<Progression> {
-    if let Some(progression) = IntegerProgressionDetector.detect(values) {
-        return Some(progression);
-    }
-    if let Some(progression) = FloatProgressionDetector.detect(values) {
+    if let Some(progression) = NumericProgressionDetector.detect(values) {
         return Some(progression);
     }
     if let Some(progression) = SuffixedNumberDetector.detect(values) {
