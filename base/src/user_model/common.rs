@@ -23,10 +23,7 @@ use crate::user_model::history::{
     ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
 };
 
-use super::{
-    border_utils::is_max_border,
-    sequence_detector::{IntegerProgressionDetector, SequenceDetector},
-};
+use super::{border_utils::is_max_border, sequence_detector::detect_progression};
 
 /// Data for the clipboard
 pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
@@ -1518,7 +1515,7 @@ impl<'a> UserModel<'a> {
             let values = (row1..height1 + row1)
                 .map(|row| self.get_cell_content(sheet, row, column))
                 .collect::<Result<Vec<_>, _>>()?;
-            let possible_progression = IntegerProgressionDetector.detect(&values);
+            let possible_progression = detect_progression(&values);
             for (range_idx, row_ref) in row_range.iter().enumerate() {
                 // Save value and style first
                 let row = *row_ref;
