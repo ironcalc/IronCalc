@@ -58,7 +58,7 @@ fn one_cell_down() {
 }
 
 #[test]
-fn one_cell_down_with_progression() {
+fn int_progression() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
     model.set_user_input(0, 1, 1, "40").unwrap(); // A1
@@ -87,6 +87,74 @@ fn one_cell_down_with_progression() {
     assert_eq!(
         model.get_formatted_cell_value(0, 5, 1), // A5
         Ok("44".to_string())
+    );
+}
+
+#[test]
+fn float_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "40.5").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "41.0").unwrap(); // A2
+    model.set_user_input(0, 3, 1, "41.5").unwrap(); // A3
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 3,
+            },
+            6,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("42".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 5, 1), // A5
+        Ok("42.5".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 6, 1), // A6
+        Ok("43".to_string())
+    );
+}
+
+#[test]
+fn suffixed_number_detector_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Project1.5").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "Project2.5").unwrap(); // A2
+    model.set_user_input(0, 3, 1, "Project3.5").unwrap(); // A3
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 3,
+            },
+            6,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("Project4.5".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 5, 1), // A5
+        Ok("Project5.5".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 6, 1), // A6
+        Ok("Project6.5".to_string())
     );
 }
 
