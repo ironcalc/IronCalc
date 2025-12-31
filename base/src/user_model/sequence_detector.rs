@@ -67,7 +67,7 @@ impl SuffixedNumberDetector {
     fn suffix_index(value: &str) -> usize {
         let mut rev = String::new();
 
-        let a = value
+        let potential_numeric_suffixes = value
             .chars()
             .rev()
             .map_while(|x| {
@@ -76,10 +76,10 @@ impl SuffixedNumberDetector {
             })
             .collect::<Vec<_>>();
 
-        if value.len() == a.len() {
+        if value.len() == potential_numeric_suffixes.len() {
             0
         } else {
-            a.len()
+            potential_numeric_suffixes.len()
         }
     }
 }
@@ -93,8 +93,8 @@ impl SequenceDetector for SuffixedNumberDetector {
 
         let suffix_indexes: Vec<_> = values.iter().map(|v| Self::suffix_index(v)).collect();
 
-        let is_contain_suffix = suffix_indexes.iter().all(|i| *i != 0);
-        if !is_contain_suffix {
+        let all_have_suffixes = suffix_indexes.iter().all(|i| *i != 0);
+        if !all_have_suffixes {
             return None;
         }
 
@@ -112,14 +112,16 @@ impl SequenceDetector for SuffixedNumberDetector {
 
         let prefix0 = &value0[..value0.len() - suffix_indexes[0]];
 
-        let is_contain_prefix = prefixes.iter().all(|prefix| prefix.eq(prefix0));
-        if !is_contain_prefix {
+        let all_have_same_prefix = prefixes.iter().all(|prefix| prefix.eq(prefix0));
+        if !all_have_same_prefix {
             return None;
         }
 
-        if let Some(Progression::Numeric(c)) = NumericProgressionDetector.detect(&suffixes) {
+        if let Some(Progression::Numeric(numeric_progression_from_suffixes)) =
+            NumericProgressionDetector.detect(&suffixes)
+        {
             return Some(Progression::SuffixedNumber {
-                progression: c,
+                progression: numeric_progression_from_suffixes,
                 prefix: prefix0.to_string(),
             });
         }
