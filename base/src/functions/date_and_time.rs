@@ -1559,6 +1559,16 @@ impl<'a> Model<'a> {
             Ok(h) => h,
             Err(e) => return e,
         };
+
+        // Checks if all days are weekends
+        if weekend_mask == [true, true, true, true, true, true, true] {
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Invalid weekend mask".to_string(),
+            };
+        }
+
         while days != 0 {
             if days > 0 {
                 date += chrono::Duration::days(1);
