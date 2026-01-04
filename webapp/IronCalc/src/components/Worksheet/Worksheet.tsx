@@ -22,7 +22,7 @@ import {
 } from "../WorksheetCanvas/constants";
 import WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
-import CellContextMenu from "./CellContextMenu";
+import CellContextMenu from "./ContextMenus/CellContextMenu";
 import usePointer from "./usePointer";
 
 function useWindowSize() {
