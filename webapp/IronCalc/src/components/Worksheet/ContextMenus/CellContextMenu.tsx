@@ -17,7 +17,7 @@ const red_color = theme.palette.error.main;
 interface CellContextMenuProps {
   open: boolean;
   onClose: () => void;
-  anchorEl: HTMLDivElement | null;
+  anchorPosition: { top: number; left: number } | null;
   onInsertRowAbove: () => void;
   onInsertRowBelow: () => void;
   onInsertColumnLeft: () => void;
@@ -41,7 +41,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
   const {
     open,
     onClose,
-    anchorEl,
+    anchorPosition,
     onInsertRowAbove,
     onInsertRowBelow,
     onInsertColumnLeft,
@@ -79,72 +79,75 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
       <StyledMenu
         open={open}
         onClose={onClose}
-        anchorEl={anchorEl}
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "left",
-        }}
-        transformOrigin={{
-          vertical: "bottom",
-          horizontal: 6,
-        }}
+        transitionDuration={0}
+        anchorReference="anchorPosition"
+        anchorPosition={anchorPosition ?? undefined}
       >
         <StyledMenuItem
           ref={insertColumnRef}
+          disableRipple
           onClick={() => setInsertColumnMenuOpen(true)}
         >
-          <BetweenVerticalStartStyled />
+          <BetweenVerticalStart />
           <ItemNameStyled>{t("cell_context.insert_column")}</ItemNameStyled>
           <ChevronRightStyled />
         </StyledMenuItem>
         <StyledMenuItem
           ref={insertRowRef}
+          disableRipple
           onClick={() => setInsertRowMenuOpen(true)}
         >
-          <BetweenHorizontalStartStyled />
+          <BetweenHorizontalStart />
           <ItemNameStyled>{t("cell_context.insert_row")}</ItemNameStyled>
           <ChevronRightStyled />
         </StyledMenuItem>
         <MenuDivider />
         <StyledMenuItem
           ref={moveRowRef}
+          disableRipple
           onClick={() => setMoveRowMenuOpen(true)}
         >
-          <ArrowUpDownStyled />
+          <ArrowUpDown />
           <ItemNameStyled>{t("cell_context.move_row")}</ItemNameStyled>
           <ChevronRightStyled />
         </StyledMenuItem>
         <StyledMenuItem
           ref={moveColumnRef}
+          disableRipple
           onClick={() => setMoveColumnMenuOpen(true)}
         >
-          <ArrowLeftRightStyled />
+          <ArrowLeftRight />
           <ItemNameStyled>{t("cell_context.move_column")}</ItemNameStyled>
           <ChevronRightStyled />
         </StyledMenuItem>
         <MenuDivider />
-        <StyledMenuItem ref={freezeRef} onClick={() => setFreezeMenuOpen(true)}>
-          <StyledSnowflake />
+        <StyledMenuItem
+          ref={freezeRef}
+          disableRipple
+          onClick={() => setFreezeMenuOpen(true)}
+        >
+          <Snowflake />
           <ItemNameStyled>{t("cell_context.freeze")}</ItemNameStyled>
           <ChevronRightStyled />
         </StyledMenuItem>
         <MenuDivider />
-        <StyledMenuItem onClick={onDeleteRow}>
-          <StyledTrash />
+        <DeleteButton disableRipple onClick={onDeleteRow}>
+          <Trash2 />
           <ItemNameStyled style={{ color: red_color }}>
             {t("cell_context.delete_row", { row })}
           </ItemNameStyled>
-        </StyledMenuItem>
-        <StyledMenuItem onClick={onDeleteColumn}>
-          <StyledTrash />
+        </DeleteButton>
+        <DeleteButton disableRipple onClick={onDeleteColumn}>
+          <Trash2 />
           <ItemNameStyled style={{ color: red_color }}>
             {t("cell_context.delete_column", { column })}
           </ItemNameStyled>
-        </StyledMenuItem>
+        </DeleteButton>
       </StyledMenu>
       <StyledMenu
         open={insertRowMenuOpen}
         onClose={() => setInsertRowMenuOpen(false)}
+        transitionDuration={0}
         anchorEl={insertRowRef.current}
         anchorOrigin={{
           vertical: "top",
@@ -152,6 +155,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
         }}
       >
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             setInsertRowMenuOpen(false);
             onInsertRowAbove();
@@ -160,6 +164,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
           <ItemNameStyled>{t("cell_context.insert_row_above")}</ItemNameStyled>
         </StyledMenuItem>
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             setInsertRowMenuOpen(false);
             onInsertRowBelow();
@@ -171,6 +176,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
       <StyledMenu
         open={insertColumnMenuOpen}
         onClose={() => setInsertColumnMenuOpen(false)}
+        transitionDuration={0}
         anchorEl={insertColumnRef.current}
         anchorOrigin={{
           vertical: "top",
@@ -178,6 +184,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
         }}
       >
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             setInsertColumnMenuOpen(false);
             onInsertColumnLeft();
@@ -188,6 +195,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
           </ItemNameStyled>
         </StyledMenuItem>
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             setInsertColumnMenuOpen(false);
             onInsertColumnRight();
@@ -201,6 +209,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
       <StyledMenu
         open={moveRowMenuOpen}
         onClose={() => setMoveRowMenuOpen(false)}
+        transitionDuration={0}
         anchorEl={moveRowRef.current}
         anchorOrigin={{
           vertical: "top",
@@ -208,6 +217,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
         }}
       >
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             onMoveRowUp();
             setMoveRowMenuOpen(false);
@@ -216,6 +226,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
           <ItemNameStyled>{t("cell_context.move_row_up")}</ItemNameStyled>
         </StyledMenuItem>
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             onMoveRowDown();
             setMoveRowMenuOpen(false);
@@ -227,6 +238,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
       <StyledMenu
         open={moveColumnMenuOpen}
         onClose={() => setMoveColumnMenuOpen(false)}
+        transitionDuration={0}
         anchorEl={moveColumnRef.current}
         anchorOrigin={{
           vertical: "top",
@@ -234,6 +246,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
         }}
       >
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             onMoveColumnLeft();
             setMoveColumnMenuOpen(false);
@@ -242,6 +255,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
           <ItemNameStyled>{t("cell_context.move_column_left")}</ItemNameStyled>
         </StyledMenuItem>
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             onMoveColumnRight();
             setMoveColumnMenuOpen(false);
@@ -253,6 +267,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
       <StyledMenu
         open={freezeMenuOpen}
         onClose={() => setFreezeMenuOpen(false)}
+        transitionDuration={0}
         anchorEl={freezeRef.current}
         anchorOrigin={{
           vertical: "top",
@@ -260,6 +275,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
         }}
       >
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             onFreezeColumns();
             setFreezeMenuOpen(false);
@@ -270,6 +286,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
           </ItemNameStyled>
         </StyledMenuItem>
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             onFreezeRows();
             setFreezeMenuOpen(false);
@@ -281,6 +298,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
         </StyledMenuItem>
         <MenuDivider />
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             onUnfreezeColumns();
             setFreezeMenuOpen(false);
@@ -289,6 +307,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
           <ItemNameStyled>{t("cell_context.unfreeze_columns")}</ItemNameStyled>
         </StyledMenuItem>
         <StyledMenuItem
+          disableRipple
           onClick={() => {
             onUnfreezeRows();
             setFreezeMenuOpen(false);
@@ -301,49 +320,7 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
   );
 };
 
-const BetweenVerticalStartStyled = styled(BetweenVerticalStart)`
-  width: 16px;
-  height: 16px;
-  color: ${theme.palette.grey[900]};
-  padding-right: 10px;
-`;
-
-const BetweenHorizontalStartStyled = styled(BetweenHorizontalStart)`
-  width: 16px;
-  height: 16px;
-  color: ${theme.palette.grey[900]};
-  padding-right: 10px;
-`;
-
-const ArrowLeftRightStyled = styled(ArrowLeftRight)`
-  width: 16px;
-  height: 16px;
-  color: ${theme.palette.grey[900]};
-  padding-right: 10px;
-`;
-
-const ArrowUpDownStyled = styled(ArrowUpDown)`
-  width: 16px;
-  height: 16px;
-  color: ${theme.palette.grey[900]};
-  padding-right: 10px;
-`;
-
-const StyledSnowflake = styled(Snowflake)`
-  width: 16px;
-  height: 16px;
-  color: ${theme.palette.grey[900]};
-  padding-right: 10px;
-`;
-
-const StyledTrash = styled(Trash2)`
-  width: 16px;
-  height: 16px;
-  color: ${red_color};
-  padding-right: 10px;
-`;
-
-const StyledMenu = styled(Menu)({
+export const StyledMenu = styled(Menu)({
   "& .MuiPaper-root": {
     borderRadius: 8,
     paddingTop: 4,
@@ -354,7 +331,7 @@ const StyledMenu = styled(Menu)({
   },
 });
 
-const StyledMenuItem = styled(MenuItem)`
+export const StyledMenuItem = styled(MenuItem)`
   display: flex;
   justify-content: flex-start;
   font-size: 12px;
@@ -364,9 +341,28 @@ const StyledMenuItem = styled(MenuItem)`
   border-radius: 4px;
   padding: 8px;
   height: 32px;
+  gap: 8px;
+  svg {
+    width: 16px;
+    height: 16px;
+    color: ${theme.palette.grey[600]};
+  },
 `;
 
-const MenuDivider = styled("div")`
+export const DeleteButton = styled(StyledMenuItem)`
+  color: ${theme.palette.error.main};
+  svg {
+    color: ${theme.palette.error.main};
+  }
+  &:hover {
+    background-color: ${theme.palette.error.main}1A;
+  }
+  &:active {
+    background-color: ${theme.palette.error.main}1A;
+  }
+`;
+
+export const MenuDivider = styled("div")`
   width: 100%;
   margin: auto;
   margin-top: 4px;
@@ -374,15 +370,16 @@ const MenuDivider = styled("div")`
   border-top: 1px solid ${theme.palette.grey[200]};
 `;
 
-const ItemNameStyled = styled("div")`
+export const ItemNameStyled = styled("div")`
   font-size: 12px;
   color: ${theme.palette.grey[900]};
   flex-grow: 2;
 `;
 
-const ChevronRightStyled = styled(ChevronRight)`
+export const ChevronRightStyled = styled(ChevronRight)`
   width: 16px;
   height: 16px;
+  color: ${theme.palette.grey[900]};
 `;
 
 export default CellContextMenu;
