@@ -27,6 +27,7 @@ import WorksheetCanvas, {
 import type { WorkbookState } from "../workbookState";
 import CellContextMenu from "./ContextMenus/CellContextMenu";
 import ColHeaderContextMenu from "./ContextMenus/ColHeaderContextMenu";
+import RowHeaderContextMenu from "./ContextMenus/RowHeaderContextMenu";
 import usePointer from "./usePointer";
 
 function useWindowSize() {
@@ -68,6 +69,8 @@ const Worksheet = forwardRef(
 
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
     const [colHeaderContextMenuOpen, setColHeaderContextMenuOpen] =
+      useState(false);
+    const [rowHeaderContextMenuOpen, setRowHeaderContextMenuOpen] =
       useState(false);
     const [contextMenuPosition, setContextMenuPosition] = useState<{
       top: number;
@@ -300,7 +303,7 @@ const Worksheet = forwardRef(
               left: event.clientX,
             });
 
-            // Detect if right-click is on column header
+            // Detect if right-click is on column header or row header
             const canvas = canvasElement.current;
             if (canvas) {
               const canvasRect = canvas.getBoundingClientRect();
@@ -315,6 +318,17 @@ const Worksheet = forwardRef(
                 y < headerRowHeight
               ) {
                 setColHeaderContextMenuOpen(true);
+                return;
+              }
+
+              // Check if click is in row header area
+              if (
+                x > 0 &&
+                x < headerColumnWidth &&
+                y > headerRowHeight &&
+                y < canvasRect.height
+              ) {
+                setRowHeaderContextMenuOpen(true);
                 return;
               }
             }
@@ -490,6 +504,48 @@ const Worksheet = forwardRef(
           frozenColumnsCount={model.getFrozenColumnsCount(
             model.getSelectedSheet(),
           )}
+        />
+        <RowHeaderContextMenu
+          open={rowHeaderContextMenuOpen}
+          onClose={() => setRowHeaderContextMenuOpen(false)}
+          anchorPosition={contextMenuPosition}
+          onInsertRowAbove={(): void => {
+            const view = model.getSelectedView();
+            model.insertRows(view.sheet, view.row, 1);
+            setRowHeaderContextMenuOpen(false);
+          }}
+          onInsertRowBelow={(): void => {
+            const view = model.getSelectedView();
+            model.insertRows(view.sheet, view.row + 1, 1);
+            setRowHeaderContextMenuOpen(false);
+          }}
+          onMoveRowUp={(): void => {
+            const view = model.getSelectedView();
+            model.moveRow(view.sheet, view.row, -1);
+            setRowHeaderContextMenuOpen(false);
+          }}
+          onMoveRowDown={(): void => {
+            const view = model.getSelectedView();
+            model.moveRow(view.sheet, view.row, 1);
+            setRowHeaderContextMenuOpen(false);
+          }}
+          onFreezeRows={(): void => {
+            const view = model.getSelectedView();
+            model.setFrozenRowsCount(view.sheet, view.row);
+            setRowHeaderContextMenuOpen(false);
+          }}
+          onUnfreezeRows={(): void => {
+            const sheet = model.getSelectedSheet();
+            model.setFrozenRowsCount(sheet, 0);
+            setRowHeaderContextMenuOpen(false);
+          }}
+          onDeleteRow={(): void => {
+            const view = model.getSelectedView();
+            model.deleteRows(view.sheet, view.row, 1);
+            setRowHeaderContextMenuOpen(false);
+          }}
+          row={model.getSelectedView().row}
+          frozenRowsCount={model.getFrozenRowsCount(model.getSelectedSheet())}
         />
       </Wrapper>
     );
