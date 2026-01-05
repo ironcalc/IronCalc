@@ -56,6 +56,20 @@ const ColorPicker = ({
     onClose();
   };
 
+  const renderColorSwatch = (presetColor: string) => {
+    const isSelected =
+      selectedColor.toUpperCase() === presetColor.toUpperCase();
+    return (
+      <SelectableColorSwatch
+        key={presetColor}
+        $color={presetColor}
+        onClick={() => handleColorSelect(presetColor)}
+      >
+        {isSelected && <CheckIcon $color={presetColor} />}
+      </SelectableColorSwatch>
+    );
+  };
+
   // Colors definitions
   const mainColors = [
     "#FFFFFF",
@@ -140,46 +154,11 @@ const ColorPicker = ({
       </MenuItemWrapper>
       <HorizontalDivider />
       <ColorsWrapper>
-        <ColorList>
-          {mainColors.map((presetColor) => (
-            <SelectableColorSwatch
-              key={presetColor}
-              $color={presetColor}
-              $isSelected={
-                selectedColor.toUpperCase() === presetColor.toUpperCase()
-              }
-              onClick={(): void => {
-                setSelectedColor(presetColor);
-                handleColorSelect(presetColor);
-              }}
-            >
-              {selectedColor.toUpperCase() === presetColor.toUpperCase() && (
-                <CheckIcon $color={presetColor} />
-              )}
-            </SelectableColorSwatch>
-          ))}
-        </ColorList>
+        <ColorList>{mainColors.map(renderColorSwatch)}</ColorList>
         <ColorGrid>
           {toneArrays.map((tones) => (
             <ColorGridCol key={tones.join("-")}>
-              {tones.map((presetColor) => (
-                <SelectableColorSwatch
-                  key={presetColor}
-                  $color={presetColor}
-                  $isSelected={
-                    selectedColor.toUpperCase() === presetColor.toUpperCase()
-                  }
-                  onClick={(): void => {
-                    setSelectedColor(presetColor);
-                    handleColorSelect(presetColor);
-                  }}
-                >
-                  {selectedColor.toUpperCase() ===
-                    presetColor.toUpperCase() && (
-                    <CheckIcon $color={presetColor} />
-                  )}
-                </SelectableColorSwatch>
-              ))}
+              {tones.map(renderColorSwatch)}
             </ColorGridCol>
           ))}
         </ColorGrid>
@@ -239,7 +218,7 @@ const MenuItemWrapper = styled(MenuItem)`
 `;
 
 const MenuItemText = styled("div")`
-  color: #000;
+  color: ${theme.palette.text.primary};
 `;
 
 const MenuItemSquare = styled.div`
@@ -286,7 +265,7 @@ const ColorSwatch = styled.button<{ $color: string }>`
   height: 16px;
   padding: 0px;
   ${({ $color }): string => {
-    if ($color.toUpperCase() === "#FFFFFF") {
+    if ($color.toUpperCase() === theme.palette.common.white) {
       return `border: 1px solid ${theme.palette.grey["300"]};`;
     }
     return `border: 1px solid ${$color};`;
@@ -304,33 +283,10 @@ const ColorSwatch = styled.button<{ $color: string }>`
   }
 `;
 
-const SelectableColorSwatch = styled.button<{
-  $color: string;
-  $isSelected: boolean;
-}>`
-  width: 16px;
-  height: 16px;
-  padding: 0px;
+const SelectableColorSwatch = styled(ColorSwatch)`
   display: flex;
   align-items: center;
   justify-content: center;
-  ${({ $color }): string => {
-    if ($color.toUpperCase() === "#FFFFFF") {
-      return `border: 1px solid ${theme.palette.grey["300"]};`;
-    }
-    return `border: 1px solid ${$color};`;
-  }}
-  background-color: ${({ $color }): string => {
-    return $color === "transparent" ? "none" : $color;
-  }};
-  box-sizing: border-box;
-  margin-top: 0px;
-  border-radius: 4px;
-  &:hover {
-    cursor: pointer;
-    outline: 1px solid ${theme.palette.grey["300"]};
-    outline-offset: 1px;
-  }
 `;
 
 // This function checks if a color is light or dark
