@@ -1,3 +1,5 @@
+use crate::locale::Locale;
+
 pub(crate) struct NumericProgression {
     last: f64,
     step: f64,
@@ -8,12 +10,31 @@ impl NumericProgression {
     }
 }
 
+pub(crate) struct DateProgression {
+    numeric_progression: NumericProgression,
+    dates: Vec<String>,
+}
+
+impl DateProgression {
+    fn next(&self, i: usize) -> String {
+        let num_next_index = self
+            .numeric_progression
+            .next(i)
+            .parse::<f64>()
+            .unwrap_or(0.0);
+        let months_len = self.dates.len() as f64;
+        let next_index = (num_next_index % months_len + months_len) % months_len;
+        self.dates[next_index as usize].clone()
+    }
+}
+
 pub(crate) enum Progression {
     Numeric(NumericProgression),
     SuffixedNumber {
         progression: NumericProgression,
         prefix: String,
     },
+    Date(DateProgression),
 }
 impl Progression {
     pub(crate) fn next(&self, i: usize) -> String {
@@ -23,6 +44,7 @@ impl Progression {
                 progression,
                 prefix,
             } => format!("{}{}", prefix, progression.next(i)),
+            Progression::Date(date_prog) => DateProgression::next(date_prog, i),
         }
     }
 }
@@ -130,11 +152,65 @@ impl SequenceDetector for SuffixedNumberDetector {
     }
 }
 
-pub(crate) fn detect_progression(values: &[String]) -> Option<Progression> {
+struct DateProgressionDetector<'a> {
+    locale: &'a Locale,
+}
+
+impl<'a> DateProgressionDetector<'a> {
+    fn find_progression(values: &[String], dates: &[String]) -> Option<Progression> {
+        let indexes = values
+            .iter()
+            .map(|value| {
+                dates
+                    .iter()
+                    .position(|date| date.eq_ignore_ascii_case(value))
+                    .map(|idx| idx.to_string())
+            })
+            .collect::<Option<Vec<_>>>();
+
+        if let Some(indices) = indexes {
+            if let Some(Progression::Numeric(numeric_progression)) =
+                NumericProgressionDetector.detect(&indices)
+            {
+                let date_progression = DateProgression {
+                    numeric_progression,
+                    dates: dates.to_vec(),
+                };
+                return Some(Progression::Date(date_progression));
+            }
+        }
+        None
+    }
+}
+
+impl<'a> SequenceDetector for DateProgressionDetector<'a> {
+    fn detect(&self, values: &[String]) -> Option<Progression> {
+        if values.len() < 2 {
+            return None;
+        }
+
+        let dates = &self.locale.dates;
+
+        [
+            &dates.day_names,
+            &dates.day_names_short,
+            &dates.months,
+            &dates.months_short,
+            &dates.months_letter,
+        ]
+        .iter()
+        .find_map(|&names_vec| Self::find_progression(values, names_vec))
+    }
+}
+
+pub(crate) fn detect_progression(values: &[String], locale: &Locale) -> Option<Progression> {
     if let Some(progression) = NumericProgressionDetector.detect(values) {
         return Some(progression);
     }
     if let Some(progression) = SuffixedNumberDetector.detect(values) {
+        return Some(progression);
+    }
+    if let Some(progression) = (DateProgressionDetector { locale }).detect(values) {
         return Some(progression);
     }
     None
