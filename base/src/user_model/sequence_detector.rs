@@ -5,8 +5,8 @@ pub(crate) struct NumericProgression {
     step: f64,
 }
 impl NumericProgression {
-    fn next(&self, i: usize) -> String {
-        (self.last + self.step * (i as f64 + 1.0)).to_string()
+    fn next(&self, i: usize) -> f64 {
+        self.last + self.step * (i as f64 + 1.0)
     }
 }
 
@@ -17,11 +17,7 @@ pub(crate) struct DateProgression {
 
 impl DateProgression {
     fn next(&self, i: usize) -> String {
-        let num_next_index = self
-            .numeric_progression
-            .next(i)
-            .parse::<f64>()
-            .unwrap_or(0.0);
+        let num_next_index = self.numeric_progression.next(i);
         let months_len = self.dates.len() as f64;
         let next_index = (num_next_index % months_len + months_len) % months_len;
         self.dates[next_index as usize].clone()
@@ -39,7 +35,7 @@ pub(crate) enum Progression {
 impl Progression {
     pub(crate) fn next(&self, i: usize) -> String {
         match self {
-            Progression::Numeric(num_prog) => NumericProgression::next(num_prog, i),
+            Progression::Numeric(num_prog) => NumericProgression::next(num_prog, i).to_string(),
             Progression::SuffixedNumber {
                 progression,
                 prefix,
