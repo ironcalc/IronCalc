@@ -1512,10 +1512,11 @@ impl<'a> UserModel<'a> {
 
         for column in column1..column1 + width1 {
             let mut index = 0;
+            let locale = &self.model.locale;
             let values = (row1..height1 + row1)
                 .map(|row| self.get_cell_content(sheet, row, column))
                 .collect::<Result<Vec<_>, _>>()?;
-            let possible_progression = detect_progression(&values);
+            let possible_progression = detect_progression(&values, locale);
             for (range_idx, row_ref) in row_range.iter().enumerate() {
                 // Save value and style first
                 let row = *row_ref;

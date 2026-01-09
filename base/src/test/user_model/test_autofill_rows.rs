@@ -2,6 +2,7 @@
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
+use crate::locale::get_locale;
 use crate::test::util::new_empty_model;
 use crate::UserModel;
 
@@ -339,6 +340,124 @@ fn suffixed_not_int_progression() {
     assert_eq!(
         model.get_cell_content(0, 4, 1), // A4
         Ok("Project1".to_string())
+    );
+}
+
+#[test]
+fn month_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "January").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "February").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("March".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("April".to_string())
+    );
+}
+
+#[test]
+fn rev_month_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "February").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "January").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("December".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("November".to_string())
+    );
+}
+
+#[test]
+fn de_locale_month_progression() {
+    let mut model = new_empty_model();
+    model.locale = get_locale("de").unwrap().clone();
+    let mut model = UserModel::from_model(model);
+
+    model.set_user_input(0, 1, 1, "Januar").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "Februar").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("März".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("April".to_string())
+    );
+}
+
+#[test]
+fn short_month_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Jan").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "Feb").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("Mar".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("Apr".to_string())
     );
 }
 
