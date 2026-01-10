@@ -18,9 +18,9 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | AVERAGEIFS               | <Badge type="tip" text="Available" />            | –             |
 | BETA.DIST                | <Badge type="tip" text="Available" />            | –             |
 | BETA.INV                 | <Badge type="tip" text="Available" />            | –             |
-| BINOM.DIST               | <Badge type="info" text="Not implemented yet" /> | –             |
-| BINOM.DIST.RANGE         | <Badge type="info" text="Not implemented yet" /> | –             |
-| BINOM.INV                | <Badge type="info" text="Not implemented yet" /> | –             |
+| BINOM.DIST               | <Badge type="tip" text="Available" />            | –             |
+| BINOM.DIST.RANGE         | <Badge type="tip" text="Available" />            | –             |
+| BINOM.INV                | <Badge type="tip" text="Available" />            | –             |
 | CHISQ.DIST               | <Badge type="info" text="Not implemented yet" /> | –             |
 | CHISQ.DIST.RT            | <Badge type="info" text="Not implemented yet" /> | –             |
 | CHISQ.INV                | <Badge type="info" text="Not implemented yet" /> | –             |
@@ -75,7 +75,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MEDIAN                   | <Badge type="info" text="Not implemented yet" /> | –             |
 | MODE.MULT                | <Badge type="info" text="Not implemented yet" /> | –             |
 | MODE.SNGL                | <Badge type="info" text="Not implemented yet" /> | –             |
-| NEGBINOM.DIST            | <Badge type="info" text="Not implemented yet" /> | –             |
+| NEGBINOM.DIST            | <Badge type="tip" text="Available" />            | –             |
 | NORM.DIST                | <Badge type="info" text="Not implemented yet" /> | –             |
 | NORM.INV                 | <Badge type="info" text="Not implemented yet" /> | –             |
 | NORM.S.DIST              | <Badge type="info" text="Not implemented yet" /> | –             |
