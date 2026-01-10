@@ -84,3 +84,63 @@ fn test_fn_negbinom_dist_smoke() {
     assert_eq!(model._get_text("A6"), *"#NUM!");
     assert_eq!(model._get_text("A7"), *"#NUM!");
 }
+
+#[test]
+fn test_arguments() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BINOM.DIST()");
+    model._set("A2", "=BINOM.DIST(3)");
+    model._set("A3", "=BINOM.DIST(3, 10)");
+    model._set("A4", "=BINOM.DIST(3, 10, 0.3)");
+    model._set("A5", "=BINOM.DIST(3, 10, 0.3, FALSE)");
+    model._set("A6", "=BINOM.DIST(3, 10, 0.3, FALSE, TRUE)");
+
+    model._set("B1", "=BINOM.DIST.RANGE()");
+    model._set("B2", "=BINOM.DIST.RANGE(10)");
+    model._set("B3", "=BINOM.DIST.RANGE(10, 0.3)");
+    model._set("B4", "=BINOM.DIST.RANGE(10, 0.3, 3)");
+    model._set("B5", "=BINOM.DIST.RANGE(10, 0.3, 3, 4)");
+    model._set("B6", "=BINOM.DIST.RANGE(10, 0.3, 3, 4, TRUE)");
+
+    model._set("C1", "=BINOM.INV()");
+    model._set("C2", "=BINOM.INV(10)");
+    model._set("C3", "=BINOM.INV(10, 0.5)");
+    model._set("C4", "=BINOM.INV(10, 0.5, 0.5)");
+    model._set("C5", "=BINOM.INV(10, 0.5, 0.5, TRUE)");
+
+    model._set("D1", "=NEGBINOM.DIST()");
+    model._set("D2", "=NEGBINOM.DIST(5)");
+    model._set("D3", "=NEGBINOM.DIST(5, 10)");
+    model._set("D4", "=NEGBINOM.DIST(5, 10, 0.3)");
+    model._set("D5", "=NEGBINOM.DIST(5, 10, 0.3, TRUE)");
+    model._set("D6", "=NEGBINOM.DIST(5, 10, 0.3, TRUE, FALSE)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+    assert_eq!(model._get_text("A5"), *"0.266827932");
+    assert_eq!(model._get_text("A6"), *"#ERROR!");
+
+    assert_eq!(model._get_text("B1"), *"#ERROR!");
+    assert_eq!(model._get_text("B2"), *"#ERROR!");
+    assert_eq!(model._get_text("B3"), *"#ERROR!");
+    assert_eq!(model._get_text("B4"), *"0.266827932");
+    assert_eq!(model._get_text("B5"), *"0.466948881");
+    assert_eq!(model._get_text("B6"), *"#ERROR!");
+
+    assert_eq!(model._get_text("C1"), *"#ERROR!");
+    assert_eq!(model._get_text("C2"), *"#ERROR!");
+    assert_eq!(model._get_text("C3"), *"#ERROR!");
+    assert_eq!(model._get_text("C4"), *"5");
+    assert_eq!(model._get_text("C5"), *"#ERROR!");
+
+    assert_eq!(model._get_text("D1"), *"#ERROR!");
+    assert_eq!(model._get_text("D2"), *"#ERROR!");
+    assert_eq!(model._get_text("D3"), *"#ERROR!");
+    assert_eq!(model._get_text("D4"), *"#ERROR!");
+    assert_eq!(model._get_text("D5"), *"0.003652521");
+    assert_eq!(model._get_text("D6"), *"#ERROR!");
+}
