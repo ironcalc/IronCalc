@@ -97,8 +97,7 @@
   },
   "navigation": {
     "add_sheet": "Add sheet",
-    "sheet_list": "Sheet list",
-    "link": "Open ironcalc.com"
+    "sheet_list": "Sheet list"
   },
   "name_manager_dialog": {
     "title": "Named Ranges",
@@ -172,24 +171,30 @@
     "open_regional_settings": "Open regional settings",
     "title": "Regional Settings",
     "close": "Close dialog",
-    "locale_and_timezone": {
-      "title": "Locale & Timezone",
+    "locale": {
+      "title": "Locale",
       "locale_label": "Locale",
       "locale_example1": "Number",
       "locale_example2": "Date",
       "locale_example3": "Date and Time",
-      "locale_example4": "First day of the week",
-      "timezone_label": "Timezone",
-      "timezone_example1": "TODAY()",
-      "timezone_example2": "NOW()",
-      "display_language_label": "Display language",
+      "locale_example4": "First day of the week"
+    },
+    "language": {
+      "title": "Language",
+      "language_label": "Engine Language",
+      "language_helper": "Controls the language used in function names and error messages.",
       "display_language": {
-        "english": "English",
-        "spanish": "Spanish",
-        "french": "French",
-        "german": "German",
-        "italian": "Italian"
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "de": "Deutsch",
+        "it": "Italiano"
       }
+    },
+    "timezone": {
+      "title": "Timezone",
+      "timezone_label": "Timezone",
+      "timezone_helper": "Modifying this setting will impact date- and time-related functions, including TODAY() and NOW()."
     }
   }
 }
