@@ -205,7 +205,7 @@ const RegionalSettingsButton = styled(StyledButton)`
 
 const TextDivider = styled("div")`
   width: 1px;
-  height: 80%;
+  height: 60%;
   background-color: ${theme.palette.grey["300"]};
 `;
 
