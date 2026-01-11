@@ -10,7 +10,6 @@ import {
   MenuItem,
   Select,
   TextField,
-  Tooltip,
 } from "@mui/material";
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -73,34 +72,18 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
     <Container>
       <Header>
         <HeaderTitle>{t("regional_settings.title")}</HeaderTitle>
-        <Tooltip
-          title={t("right_drawer.close")}
-          slotProps={{
-            popper: {
-              modifiers: [
-                {
-                  name: "offset",
-                  options: {
-                    offset: [0, -8],
-                  },
-                },
-              ],
-            },
+        <IconButtonWrapper
+          onClick={properties.onClose}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              properties.onClose();
+            }
           }}
+          aria-label={t("right_drawer.close")}
+          tabIndex={0}
         >
-          <IconButtonWrapper
-            onClick={properties.onClose}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                properties.onClose();
-              }
-            }}
-            aria-label={t("right_drawer.close")}
-            tabIndex={0}
-          >
-            <X />
-          </IconButtonWrapper>
-        </Tooltip>
+          <X />
+        </IconButtonWrapper>
       </Header>
 
       <Content

@@ -146,35 +146,18 @@ const NamedRanges = ({
             </IconButtonWrapper>
           </Tooltip>
           <EditHeaderTitle>{headerTitle}</EditHeaderTitle>
-
-          <Tooltip
-            title={t("right_drawer.close")}
-            slotProps={{
-              popper: {
-                modifiers: [
-                  {
-                    name: "offset",
-                    options: {
-                      offset: [0, -8],
-                    },
-                  },
-                ],
-              },
+          <IconButtonWrapper
+            onClick={onClose}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                onClose();
+              }
             }}
+            aria-label={t("right_drawer.close")}
+            tabIndex={0}
           >
-            <IconButtonWrapper
-              onClick={onClose}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  onClose();
-                }
-              }}
-              aria-label={t("right_drawer.close")}
-              tabIndex={0}
-            >
-              <X />
-            </IconButtonWrapper>
-          </Tooltip>
+            <X />
+          </IconButtonWrapper>
         </EditHeader>
         <Content>
           <EditNamedRange
@@ -208,34 +191,18 @@ const NamedRanges = ({
     <Container>
       <Header>
         <HeaderTitle>{t("name_manager_dialog.title")}</HeaderTitle>
-        <Tooltip
-          title={t("right_drawer.close")}
-          slotProps={{
-            popper: {
-              modifiers: [
-                {
-                  name: "offset",
-                  options: {
-                    offset: [0, -8],
-                  },
-                },
-              ],
-            },
+        <IconButtonWrapper
+          onClick={onClose}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              onClose();
+            }
           }}
+          aria-label={t("right_drawer.close")}
+          tabIndex={0}
         >
-          <IconButtonWrapper
-            onClick={onClose}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                onClose();
-              }
-            }}
-            aria-label={t("right_drawer.close")}
-            tabIndex={0}
-          >
-            <X />
-          </IconButtonWrapper>
-        </Tooltip>
+          <X />
+        </IconButtonWrapper>
       </Header>
       <Content>
         {definedNameList.length === 0 ? (
