@@ -23,7 +23,8 @@ use crate::user_model::history::{
     ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
 };
 
-use super::border_utils::is_max_border;
+use super::{border_utils::is_max_border, sequence_detector::detect_progression};
+
 /// Data for the clipboard
 pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
 
@@ -1499,9 +1500,9 @@ impl<'a> UserModel<'a> {
             // we go downwards, we start from `row1 + height1` to `to_row`,
             anchor_row = row1;
             sign = 1;
-            row_range = (row1 + height1..to_row + 1).collect();
+            row_range = (row1 + height1..=to_row).collect();
         } else if to_row < row1 {
-            // we go upwards, starting from `row1 - `` all the way to `to_row`
+            // we go upwards, starting from `row1 - 1` all the way to `to_row`
             anchor_row = row1 + height1 - 1;
             sign = -1;
             row_range = (to_row..row1).rev().collect();
@@ -1511,7 +1512,12 @@ impl<'a> UserModel<'a> {
 
         for column in column1..column1 + width1 {
             let mut index = 0;
-            for row_ref in &row_range {
+            let locale = &self.model.locale;
+            let values = (row1..height1 + row1)
+                .map(|row| self.get_cell_content(sheet, row, column))
+                .collect::<Result<Vec<_>, _>>()?;
+            let possible_progression = detect_progression(&values, locale);
+            for (range_idx, row_ref) in row_range.iter().enumerate() {
                 // Save value and style first
                 let row = *row_ref;
                 let old_value = self
@@ -1522,11 +1528,18 @@ impl<'a> UserModel<'a> {
                     .cloned();
                 let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
 
-                // compute the new value and set it
                 let source_row = anchor_row + index;
-                let target_value = self
-                    .model
-                    .extend_to(sheet, source_row, column, row, column)?;
+                let target_value;
+
+                // compute the new value and set it
+                if let Some(ref detected_progression) = possible_progression {
+                    target_value = detected_progression.next(range_idx);
+                } else {
+                    target_value = self
+                        .model
+                        .extend_to(sheet, source_row, column, row, column)?;
+                }
+
                 self.model
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
