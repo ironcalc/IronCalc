@@ -13,9 +13,9 @@ import {
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { theme } from "../../../theme";
 
-type WorkbookSettingsDialogProps = {
+type RegionalSettingsProps = {
   open: boolean;
   onClose: () => void;
   initialLocale: string;
@@ -24,7 +24,7 @@ type WorkbookSettingsDialogProps = {
   onSave: (locale: string, timezone: string, language: string) => void;
 };
 
-const WorkbookSettingsDialog = (properties: WorkbookSettingsDialogProps) => {
+const RegionalSettings = (properties: RegionalSettingsProps) => {
   const { t } = useTranslation();
   const locales = getSupportedLocales();
 
@@ -478,4 +478,4 @@ const StyledButton = styled("div")`
   }
 `;
 
-export default WorkbookSettingsDialog;
+export default RegionalSettings;
