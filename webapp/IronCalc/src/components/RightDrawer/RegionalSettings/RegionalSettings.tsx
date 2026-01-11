@@ -33,6 +33,9 @@ const localeDisplayNames: Record<string, string> = {
   it: "it-IT",
 };
 
+// Derive supported languages from localeDisplayNames keys
+const SUPPORTED_LANGUAGES = Object.keys(localeDisplayNames);
+
 export const getLocaleDisplayName = (locale: string): string => {
   return localeDisplayNames[locale] ?? locale;
 };
@@ -180,7 +183,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                   marginThreshold: 0,
                 }}
               >
-                {["en", "es", "fr", "de", "it"].map((lang) => (
+                {SUPPORTED_LANGUAGES.map((lang) => (
                   <StyledMenuItem key={lang} value={lang}>
                     {t(`regional_settings.language.display_language.${lang}`)}
                     {lang !== "en" && (

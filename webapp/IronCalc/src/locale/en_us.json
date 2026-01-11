@@ -176,7 +176,7 @@
       "locale_label": "Locale",
       "locale_example1": "Number",
       "locale_example2": "Date and Time",
-      "locale_example3": "Formula delimitter"
+      "locale_example3": "Formula delimiter"
     },
     "language": {
       "title": "Language",
