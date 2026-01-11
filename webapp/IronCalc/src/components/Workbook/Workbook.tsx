@@ -12,7 +12,10 @@ import {
 } from "../clipboard";
 import { TOOLBAR_HEIGHT } from "../constants";
 import FormulaBar from "../FormulaBar/FormulaBar";
-import RightDrawer, { DEFAULT_DRAWER_WIDTH } from "../RightDrawer/RightDrawer";
+import RightDrawer, {
+  DEFAULT_DRAWER_WIDTH,
+  type DrawerType,
+} from "../RightDrawer/RightDrawer";
 import SheetTabBar from "../SheetTabBar";
 import Toolbar from "../Toolbar/Toolbar";
 import {
@@ -45,6 +48,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
 
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
+  const [drawerType, setDrawerType] = useState<DrawerType>("namedRanges");
+
+  const openDrawer = useCallback((type: DrawerType) => {
+    setDrawerType(type);
+    setDrawerOpen(true);
+  }, []);
 
   const worksheets = model.getWorksheetsProperties();
   const info = worksheets.map(
@@ -688,7 +697,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model={model}
           workbookState={workbookState}
           openDrawer={() => {
-            setDrawerOpen(true);
+            openDrawer("namedRanges");
           }}
           canEdit={true}
         />
@@ -744,15 +753,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             model.hideSheet(selectedSheet);
             setRedrawId((value) => value + 1);
           }}
-          onSettingsChange={(
-            locale: string,
-            timezone: string,
-            language: string,
-          ) => {
-            model.setLocale(locale);
-            model.setTimezone(timezone);
-            model.setLanguage(language);
-            setRedrawId((id) => id + 1);
+          onOpenRegionalSettings={() => {
+            openDrawer("regionalSettings");
           }}
           model={model}
         />
@@ -772,6 +774,16 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             .map((s) => s.name);
           const selectedView = model.getSelectedView();
           return getFullRangeToString(selectedView, worksheetNames);
+        }}
+        drawerType={drawerType}
+        initialLocale={model.getLocale()}
+        initialTimezone={model.getTimezone()}
+        initialLanguage={model.getLanguage()}
+        onSettingsSave={(locale, timezone, language) => {
+          model.setLocale(locale);
+          model.setTimezone(timezone);
+          model.setLanguage(language);
+          setRedrawId((id) => id + 1);
         }}
       />
     </Container>

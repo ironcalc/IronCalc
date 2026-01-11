@@ -4,11 +4,12 @@ import {
   Autocomplete,
   type AutocompleteProps,
   Box,
-  Dialog,
+  Button,
   FormControl,
   MenuItem,
   Select,
   TextField,
+  Tooltip,
 } from "@mui/material";
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -16,7 +17,6 @@ import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 
 type RegionalSettingsProps = {
-  open: boolean;
   onClose: () => void;
   initialLocale: string;
   initialTimezone: string;
@@ -41,13 +41,10 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
   );
 
   useEffect(() => {
-    if (properties.open) {
-      setSelectedLocale(properties.initialLocale);
-      setSelectedTimezone(properties.initialTimezone);
-      setSelectedLanguage(properties.initialLanguage);
-    }
+    setSelectedLocale(properties.initialLocale);
+    setSelectedTimezone(properties.initialTimezone);
+    setSelectedLanguage(properties.initialLanguage);
   }, [
-    properties.open,
     properties.initialLocale,
     properties.initialTimezone,
     properties.initialLanguage,
@@ -59,39 +56,49 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
   };
 
   return (
-    <StyledDialog
-      open={properties.open}
-      onClose={(_event, reason) => {
-        if (reason === "backdropClick" || reason === "escapeKeyDown") {
-          properties.onClose();
-        }
-      }}
-    >
-      <StyledDialogTitle>
-        {t("workbook_settings.title")}
-        <Cross
-          onClick={properties.onClose}
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              properties.onClose();
-            }
+    <Container>
+      <Header>
+        <HeaderTitle>{t("regional_settings.title")}</HeaderTitle>
+        <Tooltip
+          title={t("right_drawer.close")}
+          slotProps={{
+            popper: {
+              modifiers: [
+                {
+                  name: "offset",
+                  options: {
+                    offset: [0, -8],
+                  },
+                },
+              ],
+            },
           }}
         >
-          <X />
-        </Cross>
-      </StyledDialogTitle>
+          <IconButtonWrapper
+            onClick={properties.onClose}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                properties.onClose();
+              }
+            }}
+            aria-label={t("right_drawer.close")}
+            tabIndex={0}
+          >
+            <X />
+          </IconButtonWrapper>
+        </Tooltip>
+      </Header>
 
-      <StyledDialogContent
+      <Content
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <StyledSectionTitle>
-          {t("workbook_settings.locale_and_timezone.title")}
+          {t("regional_settings.locale_and_timezone.title")}
         </StyledSectionTitle>
         <FieldWrapper>
           <StyledLabel htmlFor="locale">
-            {t("workbook_settings.locale_and_timezone.locale_label")}
+            {t("regional_settings.locale_and_timezone.locale_label")}
           </StyledLabel>
           <FormControl fullWidth>
             <StyledSelect
@@ -117,19 +124,19 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             </StyledSelect>
             <HelperBox>
               <Row>
-                {t("workbook_settings.locale_and_timezone.locale_example1")}
+                {t("regional_settings.locale_and_timezone.locale_example1")}
                 <RowValue>1,234.56</RowValue>
               </Row>
               <Row>
-                {t("workbook_settings.locale_and_timezone.locale_example2")}
+                {t("regional_settings.locale_and_timezone.locale_example2")}
                 <RowValue>12/31/2025</RowValue>
               </Row>
               <Row>
-                {t("workbook_settings.locale_and_timezone.locale_example3")}
+                {t("regional_settings.locale_and_timezone.locale_example3")}
                 <RowValue>11/23/2025 09:21:06 PM</RowValue>
               </Row>
               <Row>
-                {t("workbook_settings.locale_and_timezone.locale_example4")}
+                {t("regional_settings.locale_and_timezone.locale_example4")}
                 <RowValue>Monday</RowValue>
               </Row>
             </HelperBox>
@@ -137,7 +144,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
         </FieldWrapper>
         <FieldWrapper>
           <StyledLabel htmlFor="timezone">
-            {t("workbook_settings.locale_and_timezone.timezone_label")}
+            {t("regional_settings.locale_and_timezone.timezone_label")}
           </StyledLabel>
           <FormControl fullWidth>
             <StyledAutocomplete
@@ -172,11 +179,11 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             />
             <HelperBox>
               <Row>
-                {t("workbook_settings.locale_and_timezone.timezone_example1")}
+                {t("regional_settings.locale_and_timezone.timezone_example1")}
                 <RowValue>23/11/2025</RowValue>
               </Row>
               <Row>
-                {t("workbook_settings.locale_and_timezone.timezone_example2")}
+                {t("regional_settings.locale_and_timezone.timezone_example2")}
                 <RowValue>11/23/2025 09:21:06 PM</RowValue>
               </Row>
             </HelperBox>
@@ -184,7 +191,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
         </FieldWrapper>
         <FieldWrapper>
           <StyledLabel htmlFor="display_language">
-            {t("workbook_settings.locale_and_timezone.display_language_label")}
+            {t("regional_settings.locale_and_timezone.display_language_label")}
           </StyledLabel>
           <FormControl fullWidth>
             <StyledSelect
@@ -204,69 +211,69 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             >
               <StyledMenuItem key="en" value="en">
                 {t(
-                  "workbook_settings.locale_and_timezone.display_language.english",
+                  "regional_settings.locale_and_timezone.display_language.english",
                 )}
               </StyledMenuItem>
               <StyledMenuItem key="es" value="es">
                 {t(
-                  "workbook_settings.locale_and_timezone.display_language.spanish",
+                  "regional_settings.locale_and_timezone.display_language.spanish",
                 )}
               </StyledMenuItem>
               <StyledMenuItem key="fr" value="fr">
                 {t(
-                  "workbook_settings.locale_and_timezone.display_language.french",
+                  "regional_settings.locale_and_timezone.display_language.french",
                 )}
               </StyledMenuItem>
               <StyledMenuItem key="de" value="de">
                 {t(
-                  "workbook_settings.locale_and_timezone.display_language.german",
+                  "regional_settings.locale_and_timezone.display_language.german",
                 )}
               </StyledMenuItem>
               <StyledMenuItem key="it" value="it">
                 {t(
-                  "workbook_settings.locale_and_timezone.display_language.italian",
+                  "regional_settings.locale_and_timezone.display_language.italian",
                 )}
               </StyledMenuItem>
             </StyledSelect>
           </FormControl>
         </FieldWrapper>
-      </StyledDialogContent>
+      </Content>
 
-      <DialogFooter>
-        <StyledButton onClick={handleSave} tabIndex={0}>
-          <Check
-            style={{ width: "16px", height: "16px", marginRight: "8px" }}
-          />
+      <Footer>
+        <SaveButton
+          variant="contained"
+          disableElevation
+          startIcon={<Check size={16} />}
+          onClick={handleSave}
+        >
           {t("num_fmt.save")}
-        </StyledButton>
-      </DialogFooter>
-    </StyledDialog>
+        </SaveButton>
+      </Footer>
+    </Container>
   );
 };
 
-const StyledDialog = styled(Dialog)`
-  & .MuiPaper-root {
-    max-width: 320px;
-    width: 320px;
-    min-width: 280px;
-    border-radius: 8px;
-    padding: 0px;
-  }
-`;
+const Container = styled("div")({
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+});
 
-const StyledDialogTitle = styled("div")`
-  display: flex;
-  align-items: center;
-  height: 44px;
-  font-size: 14px;
-  font-weight: 500;
-  font-family: Inter;
-  padding: 0px 12px;
-  justify-content: space-between;
-  border-bottom: 1px solid ${theme.palette.grey["300"]};
-`;
+const Header = styled("div")({
+  height: "40px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  padding: "0 8px",
+  borderBottom: `1px solid ${theme.palette.grey[300]}`,
+});
 
-const Cross = styled("div")`
+const HeaderTitle = styled("div")({
+  width: "100%",
+  fontSize: "12px",
+});
+
+const IconButtonWrapper = styled("div")`
   &:hover {
     background-color: ${theme.palette.grey["50"]};
   }
@@ -284,13 +291,15 @@ const Cross = styled("div")`
   }
 `;
 
-const StyledDialogContent = styled("div")`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 12px;
-  margin: 12px;
-`;
+const Content = styled("div")({
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+  fontSize: "12px",
+  padding: "12px",
+  overflow: "auto",
+});
 
 const StyledSectionTitle = styled("h1")`
   font-size: 14px;
@@ -451,31 +460,21 @@ const StyledLabel = styled("label")`
   display: block;
 `;
 
-const DialogFooter = styled("div")`
+const Footer = styled("div")`
   color: ${theme.palette.grey[700]};
   display: flex;
   align-items: center;
   border-top: 1px solid ${theme.palette.grey["300"]};
   font-family: Inter;
   justify-content: flex-end;
-  padding: 12px;
+  padding: 8px;
+  gap: 8px;
 `;
 
-const StyledButton = styled("div")`
-  cursor: pointer;
-  color: ${theme.palette.common.white};
-  background: ${theme.palette.primary.main};
-  padding: 0px 10px;
-  height: 36px;
-  line-height: 36px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  font-family: "Inter";
-  font-size: 14px;
-  &:hover {
-    background: ${theme.palette.primary.dark};
-  }
+const SaveButton = styled(Button)`
+  text-transform: none;
+  min-width: fit-content;
+  font-size: 12px;
 `;
 
 export default RegionalSettings;

@@ -6,10 +6,13 @@ import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import { TOOLBAR_HEIGHT } from "../constants";
 import NamedRanges from "./NamedRanges/NamedRanges";
+import RegionalSettings from "./RegionalSettings/RegionalSettings";
 
 const DEFAULT_DRAWER_WIDTH = 360;
 const MIN_DRAWER_WIDTH = 300;
 const MAX_DRAWER_WIDTH = 500;
+
+export type DrawerType = "namedRanges" | "regionalSettings";
 
 interface RightDrawerProps {
   isOpen: boolean;
@@ -19,6 +22,12 @@ interface RightDrawerProps {
   model: Model;
   onUpdate: () => void;
   getSelectedArea: () => string;
+  drawerType: DrawerType;
+  // Regional settings props
+  initialLocale: string;
+  initialTimezone: string;
+  initialLanguage: string;
+  onSettingsSave: (locale: string, timezone: string, language: string) => void;
 }
 
 const RightDrawer = ({
@@ -29,6 +38,11 @@ const RightDrawer = ({
   getSelectedArea,
   model,
   onUpdate,
+  drawerType,
+  initialLocale,
+  initialTimezone,
+  initialLanguage,
+  onSettingsSave,
 }: RightDrawerProps) => {
   const { t } = useTranslation();
   const [drawerWidth, setDrawerWidth] = useState(width);
@@ -80,6 +94,30 @@ const RightDrawer = ({
     return null;
   }
 
+  const renderDrawerContent = () => {
+    switch (drawerType) {
+      case "regionalSettings":
+        return (
+          <RegionalSettings
+            onClose={onClose}
+            initialLocale={initialLocale}
+            initialTimezone={initialTimezone}
+            initialLanguage={initialLanguage}
+            onSave={onSettingsSave}
+          />
+        );
+      default:
+        return (
+          <NamedRanges
+            onClose={onClose}
+            model={model}
+            onUpdate={onUpdate}
+            getSelectedArea={getSelectedArea}
+          />
+        );
+    }
+  };
+
   return (
     <DrawerContainer $drawerWidth={drawerWidth}>
       <ResizeHandle
@@ -89,14 +127,7 @@ const RightDrawer = ({
         aria-label={t("right_drawer.resize_drawer")}
       />
       <Divider />
-      <DrawerContent>
-        <NamedRanges
-          onClose={onClose}
-          model={model}
-          onUpdate={onUpdate}
-          getSelectedArea={getSelectedArea}
-        />
-      </DrawerContent>
+      <DrawerContent>{renderDrawerContent()}</DrawerContent>
     </DrawerContainer>
   );
 };
