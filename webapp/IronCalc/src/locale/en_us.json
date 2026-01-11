@@ -162,7 +162,7 @@
     "add": "Add new color",
     "default": "Default color",
     "no_fill": "No fill",
-    "custom": "Recent"
+    "recent": "Recent"
   },
   "right_drawer": {
     "close": "Close",

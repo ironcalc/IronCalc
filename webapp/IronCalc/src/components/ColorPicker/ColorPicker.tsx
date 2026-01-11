@@ -164,7 +164,7 @@ const ColorPicker = ({
         </ColorGrid>
       </ColorsWrapper>
       <HorizontalDivider />
-      <RecentLabel>{t("color_picker.custom")}</RecentLabel>
+      <RecentLabel>{t("color_picker.recent")}</RecentLabel>
       <RecentColorsList>
         {recentColors.current.length > 0 ? (
           recentColors.current.map((recentColor) => (
@@ -265,10 +265,11 @@ const ColorSwatch = styled.button<{ $color: string }>`
   height: 16px;
   padding: 0px;
   ${({ $color }): string => {
-    if ($color.toUpperCase() === theme.palette.common.white) {
+    const upperColor = $color.toUpperCase();
+    if (upperColor === "#FFFFFF" || upperColor === "#FFF") {
       return `border: 1px solid ${theme.palette.grey["300"]};`;
     }
-    return `border: 1px solid ${$color};`;
+    return "border: none;";
   }}
   background-color: ${({ $color }): string => {
     return $color === "transparent" ? "none" : $color;
@@ -292,7 +293,13 @@ const SelectableColorSwatch = styled(ColorSwatch)`
 // This function checks if a color is light or dark
 const isLightColor = (hex: string): boolean => {
   const n = parseInt(hex.slice(1), 16);
-  return (((n >> 16) & 255) + ((n >> 8) & 255) + (n & 255)) / 3 > 160;
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+
+  // We use luminance weighting (https://en.wikipedia.org/wiki/Relative_luminance)
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 160;
 };
 
 const CheckIcon = styled(Check)<{ $color: string }>`
