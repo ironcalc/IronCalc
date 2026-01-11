@@ -1561,7 +1561,7 @@ impl Model {
         };
 
         // Checks if all days are weekends
-        if weekend_mask == [true, true, true, true, true, true, true] {
+        if weekend_mask == [true; 7] {
             return CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
