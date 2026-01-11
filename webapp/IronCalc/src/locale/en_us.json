@@ -168,9 +168,9 @@
     "close": "Close",
     "resize_drawer": "Resize drawer"
   },
-  "workbook_settings": {
+  "regional_settings": {
     "open_regional_settings": "Open regional settings",
-    "title": "Workbook Settings",
+    "title": "Regional Settings",
     "close": "Close dialog",
     "locale_and_timezone": {
       "title": "Locale & Timezone",

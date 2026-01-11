@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { IronCalcLogo } from "../../icons";
 import { theme } from "../../theme";
 import { NAVIGATION_HEIGHT } from "../constants";
-import RegionalSettings from "../RightDrawer/RegionalSettings/RegionalSettings";
 import { StyledButton } from "../Toolbar/Toolbar";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
@@ -24,18 +23,13 @@ export interface SheetTabBarProps {
   onSheetDeleted: () => void;
   onHideSheet: () => void;
   model: Model;
-  onSettingsChange: (
-    locale: string,
-    timezone: string,
-    language: string,
-  ) => void;
+  onOpenRegionalSettings: () => void;
 }
 
 function SheetTabBar(props: SheetTabBarProps) {
   const { t } = useTranslation();
   const { workbookState, onSheetSelected, sheets, selectedIndex } = props;
   const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
-  const [workbookSettingsOpen, setWorkbookSettingsOpen] = useState(false);
   const open = Boolean(anchorEl);
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -97,12 +91,11 @@ function SheetTabBar(props: SheetTabBarProps) {
         </SheetInner>
       </Sheets>
       <RightContainer>
-        <Tooltip title={t("workbook_settings.open_regional_settings")}>
+        <Tooltip title={t("regional_settings.open_regional_settings")}>
           <RegionalSettingsButton
             $pressed={false}
             onClick={() => {
-              setWorkbookSettingsOpen(true);
-              // props.onOpenWorkbookSettings();
+              props.onOpenRegionalSettings();
             }}
           >
             en-US / English
@@ -126,16 +119,6 @@ function SheetTabBar(props: SheetTabBarProps) {
           handleClose();
         }}
         selectedIndex={selectedIndex}
-      />
-      <RegionalSettings
-        open={workbookSettingsOpen}
-        onClose={() => setWorkbookSettingsOpen(false)}
-        initialLocale={props.model.getLocale()}
-        initialTimezone={props.model.getTimezone()}
-        initialLanguage={props.model.getLanguage()}
-        onSave={(locale: string, timezone: string, language: string) => {
-          props.onSettingsChange(locale, timezone, language);
-        }}
       />
     </Container>
   );
