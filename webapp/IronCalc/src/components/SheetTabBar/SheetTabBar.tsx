@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { IronCalcLogo } from "../../icons";
 import { theme } from "../../theme";
 import { NAVIGATION_HEIGHT } from "../constants";
+import { getLocaleDisplayName } from "../RightDrawer/RegionalSettings/RegionalSettings";
 import { StyledButton } from "../Toolbar/Toolbar";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
@@ -98,16 +99,18 @@ function SheetTabBar(props: SheetTabBarProps) {
               props.onOpenRegionalSettings();
             }}
           >
-            en-US / English
+            {getLocaleDisplayName(props.model.getLocale())}
+            <TextDivider />
+            {t(
+              `regional_settings.language.display_language.${props.model.getLanguage()}`,
+            )}
           </RegionalSettingsButton>
         </Tooltip>
-        <Tooltip title={t("navigation.link")}>
-          <LogoLink
-            onClick={() => window.open("https://www.ironcalc.com", "_blank")}
-          >
-            <IronCalcLogo />
-          </LogoLink>
-        </Tooltip>
+        <LogoLink
+          onClick={() => window.open("https://www.ironcalc.com", "_blank")}
+        >
+          <IronCalcLogo />
+        </LogoLink>
       </RightContainer>
       <SheetListMenu
         anchorEl={anchorEl}
@@ -197,6 +200,13 @@ const RegionalSettingsButton = styled(StyledButton)`
   padding: 4px 8px;
   color: ${theme.palette.grey["600"]};
   text-wrap: nowrap;
+  gap: 8px;
+`;
+
+const TextDivider = styled("div")`
+  width: 1px;
+  height: 80%;
+  background-color: ${theme.palette.grey["300"]};
 `;
 
 const LogoLink = styled("div")`

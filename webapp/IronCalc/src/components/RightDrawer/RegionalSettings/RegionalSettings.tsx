@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   FormControl,
+  FormHelperText,
   MenuItem,
   Select,
   TextField,
@@ -22,6 +23,19 @@ type RegionalSettingsProps = {
   initialTimezone: string;
   initialLanguage: string;
   onSave: (locale: string, timezone: string, language: string) => void;
+};
+
+// Display mapping for locale codes (e.g., "en" -> "en-US")
+const localeDisplayNames: Record<string, string> = {
+  en: "en-US",
+  es: "es-ES",
+  fr: "fr-FR",
+  de: "de-DE",
+  it: "it-IT",
+};
+
+export const getLocaleDisplayName = (locale: string): string => {
+  return localeDisplayNames[locale] ?? locale;
 };
 
 const RegionalSettings = (properties: RegionalSettingsProps) => {
@@ -93,150 +107,135 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <StyledSectionTitle>
-          {t("regional_settings.locale_and_timezone.title")}
-        </StyledSectionTitle>
-        <FieldWrapper>
-          <StyledLabel htmlFor="locale">
-            {t("regional_settings.locale_and_timezone.locale_label")}
-          </StyledLabel>
-          <FormControl fullWidth>
-            <StyledSelect
-              id="locale"
-              value={selectedLocale}
-              onChange={(event) => {
-                setSelectedLocale(event.target.value as string);
-              }}
-              MenuProps={{
-                PaperProps: {
-                  sx: menuPaperStyles,
-                },
-                TransitionProps: {
-                  timeout: 0,
-                },
-              }}
-            >
-              {locales.map((locale) => (
-                <StyledMenuItem key={locale} value={locale}>
-                  {locale}
-                </StyledMenuItem>
-              ))}
-            </StyledSelect>
-            <HelperBox>
-              <Row>
-                {t("regional_settings.locale_and_timezone.locale_example1")}
-                <RowValue>1,234.56</RowValue>
-              </Row>
-              <Row>
-                {t("regional_settings.locale_and_timezone.locale_example2")}
-                <RowValue>12/31/2025</RowValue>
-              </Row>
-              <Row>
-                {t("regional_settings.locale_and_timezone.locale_example3")}
-                <RowValue>11/23/2025 09:21:06 PM</RowValue>
-              </Row>
-              <Row>
-                {t("regional_settings.locale_and_timezone.locale_example4")}
-                <RowValue>Monday</RowValue>
-              </Row>
-            </HelperBox>
-          </FormControl>
-        </FieldWrapper>
-        <FieldWrapper>
-          <StyledLabel htmlFor="timezone">
-            {t("regional_settings.locale_and_timezone.timezone_label")}
-          </StyledLabel>
-          <FormControl fullWidth>
-            <StyledAutocomplete
-              id="timezone"
-              value={selectedTimezone}
-              onChange={(_event, newValue) => {
-                setSelectedTimezone(newValue);
-              }}
-              options={timezones}
-              renderInput={(params) => <TextField {...params} />}
-              renderOption={(props, option) => (
-                <StyledMenuItem {...props} key={option as string}>
-                  {option as string}
-                </StyledMenuItem>
-              )}
-              disableClearable
-              slotProps={{
-                paper: {
-                  sx: menuPaperStyles,
-                },
-                popper: {
-                  sx: {
-                    "& .MuiAutocomplete-paper": {
-                      transition: "none !important",
+        <FormSection>
+          <StyledSectionTitle>
+            {t("regional_settings.locale.title")}
+          </StyledSectionTitle>
+          <FieldWrapper>
+            <StyledLabel htmlFor="locale">
+              {t("regional_settings.locale.locale_label")}
+            </StyledLabel>
+            <FormControl fullWidth>
+              <StyledSelect
+                id="locale"
+                value={selectedLocale}
+                onChange={(event) => {
+                  setSelectedLocale(event.target.value as string);
+                }}
+                renderValue={(value) => getLocaleDisplayName(value as string)}
+                MenuProps={{
+                  PaperProps: {
+                    sx: menuPaperStyles,
+                  },
+                  TransitionProps: {
+                    timeout: 0,
+                  },
+                }}
+              >
+                {locales.map((locale) => (
+                  <StyledMenuItem key={locale} value={locale}>
+                    {getLocaleDisplayName(locale)}
+                  </StyledMenuItem>
+                ))}
+              </StyledSelect>
+              <HelperBox>
+                <Row>
+                  {t("regional_settings.locale.locale_example1")}
+                  <RowValue>1,234.56</RowValue>
+                </Row>
+                <Row>
+                  {t("regional_settings.locale.locale_example2")}
+                  <RowValue>12/31/2025</RowValue>
+                </Row>
+                <Row>
+                  {t("regional_settings.locale.locale_example3")}
+                  <RowValue>11/23/2025 09:21:06 PM</RowValue>
+                </Row>
+              </HelperBox>
+            </FormControl>
+          </FieldWrapper>
+        </FormSection>
+        <FormSection>
+          <StyledSectionTitle>
+            {t("regional_settings.language.title")}
+          </StyledSectionTitle>
+          <FieldWrapper>
+            <StyledLabel htmlFor="language">
+              {t("regional_settings.language.language_label")}
+            </StyledLabel>
+            <FormControl fullWidth>
+              <StyledSelect
+                id="language"
+                value={selectedLanguage}
+                onChange={(event) => {
+                  setSelectedLanguage(event.target.value as string);
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: menuPaperStyles,
+                  },
+                  TransitionProps: {
+                    timeout: 0,
+                  },
+                }}
+              >
+                {["en", "es", "fr", "de", "it"].map((lang) => (
+                  <StyledMenuItem key={lang} value={lang}>
+                    {t(`regional_settings.language.display_language.${lang}`)}
+                  </StyledMenuItem>
+                ))}
+              </StyledSelect>
+              <StyledHelperText>
+                {t("regional_settings.language.language_helper")}
+              </StyledHelperText>
+            </FormControl>
+          </FieldWrapper>
+        </FormSection>
+        <FormSection>
+          <StyledSectionTitle>
+            {t("regional_settings.timezone.title")}
+          </StyledSectionTitle>
+          <FieldWrapper>
+            <StyledLabel htmlFor="timezone">
+              {t("regional_settings.timezone.timezone_label")}
+            </StyledLabel>
+            <FormControl fullWidth>
+              <StyledAutocomplete
+                id="timezone"
+                value={selectedTimezone}
+                onChange={(_event, newValue) => {
+                  setSelectedTimezone(newValue);
+                }}
+                options={timezones}
+                renderInput={(params) => <TextField {...params} />}
+                renderOption={(props, option) => (
+                  <StyledMenuItem {...props} key={option as string}>
+                    {option as string}
+                  </StyledMenuItem>
+                )}
+                disableClearable
+                slotProps={{
+                  paper: {
+                    sx: menuPaperStyles,
+                  },
+                  popper: {
+                    sx: {
+                      "& .MuiAutocomplete-paper": {
+                        transition: "none !important",
+                      },
                     },
                   },
-                },
-                popupIndicator: {
-                  disableRipple: true,
-                },
-              }}
-            />
-            <HelperBox>
-              <Row>
-                {t("regional_settings.locale_and_timezone.timezone_example1")}
-                <RowValue>23/11/2025</RowValue>
-              </Row>
-              <Row>
-                {t("regional_settings.locale_and_timezone.timezone_example2")}
-                <RowValue>11/23/2025 09:21:06 PM</RowValue>
-              </Row>
-            </HelperBox>
-          </FormControl>
-        </FieldWrapper>
-        <FieldWrapper>
-          <StyledLabel htmlFor="display_language">
-            {t("regional_settings.locale_and_timezone.display_language_label")}
-          </StyledLabel>
-          <FormControl fullWidth>
-            <StyledSelect
-              id="display_language"
-              value={selectedLanguage}
-              onChange={(event) => {
-                setSelectedLanguage(event.target.value as string);
-              }}
-              MenuProps={{
-                PaperProps: {
-                  sx: menuPaperStyles,
-                },
-                TransitionProps: {
-                  timeout: 0,
-                },
-              }}
-            >
-              <StyledMenuItem key="en" value="en">
-                {t(
-                  "regional_settings.locale_and_timezone.display_language.english",
-                )}
-              </StyledMenuItem>
-              <StyledMenuItem key="es" value="es">
-                {t(
-                  "regional_settings.locale_and_timezone.display_language.spanish",
-                )}
-              </StyledMenuItem>
-              <StyledMenuItem key="fr" value="fr">
-                {t(
-                  "regional_settings.locale_and_timezone.display_language.french",
-                )}
-              </StyledMenuItem>
-              <StyledMenuItem key="de" value="de">
-                {t(
-                  "regional_settings.locale_and_timezone.display_language.german",
-                )}
-              </StyledMenuItem>
-              <StyledMenuItem key="it" value="it">
-                {t(
-                  "regional_settings.locale_and_timezone.display_language.italian",
-                )}
-              </StyledMenuItem>
-            </StyledSelect>
-          </FormControl>
-        </FieldWrapper>
+                  popupIndicator: {
+                    disableRipple: true,
+                  },
+                }}
+              />
+              <StyledHelperText>
+                {t("regional_settings.timezone.timezone_helper")}
+              </StyledHelperText>
+            </FormControl>
+          </FieldWrapper>
+        </FormSection>
       </Content>
 
       <Footer>
@@ -295,11 +294,20 @@ const Content = styled("div")({
   flex: 1,
   display: "flex",
   flexDirection: "column",
-  gap: "12px",
   fontSize: "12px",
-  padding: "12px",
   overflow: "auto",
 });
+
+const FormSection = styled("div")`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 12px;
+  border-bottom: 1px solid ${theme.palette.grey[300]};
+  &:last-child {
+    border-bottom: none;
+  }
+`;
 
 const StyledSectionTitle = styled("h1")`
   font-size: 14px;
@@ -329,6 +337,16 @@ const StyledSelect = styled(Select)`
     right: 4px !important;
   }
 `;
+
+const StyledHelperText = styled(FormHelperText)(() => ({
+  fontSize: "12px",
+  fontFamily: "Inter",
+  color: theme.palette.grey[500],
+  margin: 0,
+  marginTop: "6px",
+  padding: 0,
+  lineHeight: 1.4,
+}));
 
 const HelperBox = styled("div")`
   display: flex;
