@@ -1,6 +1,7 @@
 mod test_actions;
 mod test_arabic_roman;
 mod test_binary_search;
+mod test_ceiling_floor;
 mod test_cell;
 mod test_cell_clear_contents;
 mod test_circular_references;
