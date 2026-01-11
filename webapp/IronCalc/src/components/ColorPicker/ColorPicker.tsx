@@ -290,14 +290,18 @@ const SelectableColorSwatch = styled(ColorSwatch)`
   justify-content: center;
 `;
 
-// This function checks if a color is light or dark. This is needed to determine the text color for the check icon, as it's not visible on light colors.
+// This function checks if a color is light or dark.
+// This is needed to determine the text color for the check icon, as it's not visible on light colors.
 const isLightColor = (hex: string): boolean => {
   const n = parseInt(hex.slice(1), 16);
   const r = (n >> 16) & 255;
   const g = (n >> 8) & 255;
   const b = n & 255;
 
-  // We use luminance weighting to determine if the color is light or dark (https://en.wikipedia.org/wiki/Relative_luminance). The threshold of 160 (out of max ~255) means: if the calculated luminance is above 160, the color is considered "light" and a black checkmark is used. Otherwise, a white checkmark ensures visibility on darker backgrounds.
+  // We use luminance weighting to determine if the color is light or dark
+  // (https://en.wikipedia.org/wiki/Relative_luminance). The threshold of 160 (out of max ~255)
+  // means: if the calculated luminance is above 160, the color is considered "light" and a black
+  // checkmark is used. Otherwise, a white checkmark ensures visibility on darker backgrounds.
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
   return luminance > 160;
 };
