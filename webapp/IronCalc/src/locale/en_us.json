@@ -164,8 +164,8 @@
     "recent": "Recent"
   },
   "right_drawer": {
-    "close": "Close",
-    "resize_drawer": "Resize drawer"
+    "resize_drawer": "Resize drawer",
+    "close": "Close"
   },
   "regional_settings": {
     "open_regional_settings": "Open regional settings",
