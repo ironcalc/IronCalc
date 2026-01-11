@@ -190,7 +190,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                       <SecondaryText>
                         (
                         {t(
-                          `regional_settings.language.display_language_en.${lang}`,
+                          `regional_settings.language.display_language_current_lang.${lang}`,
                         )}
                         )
                       </SecondaryText>
