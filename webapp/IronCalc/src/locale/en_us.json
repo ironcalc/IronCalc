@@ -169,7 +169,7 @@
     "resize_drawer": "Resize drawer"
   },
   "workbook_settings": {
-    "open_settings": "Open settings",
+    "open_regional_settings": "Open regional settings",
     "title": "Workbook Settings",
     "close": "Close dialog",
     "locale_and_timezone": {

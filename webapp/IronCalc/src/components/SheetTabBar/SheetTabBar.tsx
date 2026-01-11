@@ -1,13 +1,13 @@
 import type { Model } from "@ironcalc/wasm";
 import { styled, Tooltip } from "@mui/material";
-import { EllipsisVertical, Menu, Plus } from "lucide-react";
+import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IronCalcLogo } from "../../icons";
 import { theme } from "../../theme";
 import { NAVIGATION_HEIGHT } from "../constants";
+import RegionalSettings from "../RightDrawer/RegionalSettings/RegionalSettings";
 import { StyledButton } from "../Toolbar/Toolbar";
-import WorkbookSettingsDialog from "../WorkbookSettings/WorkbookSettingsDialog";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
 import SheetTab from "./SheetTab";
@@ -97,23 +97,23 @@ function SheetTabBar(props: SheetTabBarProps) {
         </SheetInner>
       </Sheets>
       <RightContainer>
-        <Tooltip title={t("navigation.link")}>
-          <LogoLink
-            onClick={() => window.open("https://www.ironcalc.com", "_blank")}
-          >
-            <IronCalcLogo />
-          </LogoLink>
-        </Tooltip>
-        <Tooltip title={t("workbook_settings.open_settings")}>
-          <StyledButton
+        <Tooltip title={t("workbook_settings.open_regional_settings")}>
+          <RegionalSettingsButton
             $pressed={false}
             onClick={() => {
               setWorkbookSettingsOpen(true);
               // props.onOpenWorkbookSettings();
             }}
           >
-            <EllipsisVertical />
-          </StyledButton>
+            en-US / English
+          </RegionalSettingsButton>
+        </Tooltip>
+        <Tooltip title={t("navigation.link")}>
+          <LogoLink
+            onClick={() => window.open("https://www.ironcalc.com", "_blank")}
+          >
+            <IronCalcLogo />
+          </LogoLink>
         </Tooltip>
       </RightContainer>
       <SheetListMenu
@@ -127,7 +127,7 @@ function SheetTabBar(props: SheetTabBarProps) {
         }}
         selectedIndex={selectedIndex}
       />
-      <WorkbookSettingsDialog
+      <RegionalSettings
         open={workbookSettingsOpen}
         onClose={() => setWorkbookSettingsOpen(false)}
         initialLocale={props.model.getLocale()}
@@ -194,13 +194,26 @@ const VerticalDivider = styled("div")`
   }
 `;
 
-const RightContainer = styled("a")`
+const RightContainer = styled("div")`
   display: flex;
+  flex-direction: row;
   align-items: center;
   color: ${theme.palette.primary.main};
   height: 100%;
   padding: 0px 8px;
   gap: 4px;
+  flex-shrink: 0;
+  width: auto;
+  @media (max-width: 769px) {
+    display: none;
+  }
+`;
+
+const RegionalSettingsButton = styled(StyledButton)`
+  min-width: fit-content;
+  padding: 4px 8px;
+  color: ${theme.palette.grey["600"]};
+  text-wrap: nowrap;
 `;
 
 const LogoLink = styled("div")`
@@ -219,9 +232,6 @@ const LogoLink = styled("div")`
     background-color: ${theme.palette.grey["100"]};
     transition: "all 0.2s";
     outline: 1px solid ${theme.palette.grey["200"]};
-  }
-  @media (max-width: 769px) {
-    display: none;
   }
 `;
 
