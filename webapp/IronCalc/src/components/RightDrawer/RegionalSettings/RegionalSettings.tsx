@@ -113,6 +113,15 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                   TransitionProps: {
                     timeout: 0,
                   },
+                  anchorOrigin: {
+                    vertical: "bottom",
+                    horizontal: "center",
+                  },
+                  transformOrigin: {
+                    vertical: "top",
+                    horizontal: "center",
+                  },
+                  marginThreshold: 0,
                 }}
               >
                 {locales.map((locale) => (
@@ -128,11 +137,11 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 </Row>
                 <Row>
                   {t("regional_settings.locale.locale_example2")}
-                  <RowValue>12/31/2025</RowValue>
+                  <RowValue>12/31/2025 09:21:06 PM</RowValue>
                 </Row>
                 <Row>
                   {t("regional_settings.locale.locale_example3")}
-                  <RowValue>11/23/2025 09:21:06 PM</RowValue>
+                  <RowValue>Semicolon (;)</RowValue>
                 </Row>
               </HelperBox>
             </FormControl>
@@ -160,11 +169,29 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                   TransitionProps: {
                     timeout: 0,
                   },
+                  anchorOrigin: {
+                    vertical: "bottom",
+                    horizontal: "center",
+                  },
+                  transformOrigin: {
+                    vertical: "top",
+                    horizontal: "center",
+                  },
+                  marginThreshold: 0,
                 }}
               >
                 {["en", "es", "fr", "de", "it"].map((lang) => (
                   <StyledMenuItem key={lang} value={lang}>
                     {t(`regional_settings.language.display_language.${lang}`)}
+                    {lang !== "en" && (
+                      <SecondaryText>
+                        (
+                        {t(
+                          `regional_settings.language.display_language_en.${lang}`,
+                        )}
+                        )
+                      </SecondaryText>
+                    )}
                   </StyledMenuItem>
                 ))}
               </StyledSelect>
@@ -199,7 +226,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 disableClearable
                 slotProps={{
                   paper: {
-                    sx: menuPaperStyles,
+                    sx: { ...menuPaperStyles, margin: "4px 0px" },
                   },
                   popper: {
                     sx: {
@@ -364,6 +391,11 @@ const RowValue = styled("span")`
   color: ${theme.palette.grey[500]};
 `;
 
+const SecondaryText = styled("span")`
+  color: ${theme.palette.grey[500]};
+  margin-left: 4px;
+`;
+
 // Autocomplete with customized styles
 // Value => string,
 // multiple => false, (we cannot select multiple timezones)
@@ -421,6 +453,10 @@ const menuPaperStyles = {
     height: "32px !important",
     padding: "8px !important",
     minHeight: "32px !important",
+  },
+  "& .MuiAutocomplete-option[aria-selected='true']": {
+    backgroundColor: `${theme.palette.grey[100]} !important`,
+    fontWeight: "500 !important",
   },
 };
 

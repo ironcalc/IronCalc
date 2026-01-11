@@ -175,9 +175,8 @@
       "title": "Locale",
       "locale_label": "Locale",
       "locale_example1": "Number",
-      "locale_example2": "Date",
-      "locale_example3": "Date and Time",
-      "locale_example4": "First day of the week"
+      "locale_example2": "Date and Time",
+      "locale_example3": "Formula delimitter"
     },
     "language": {
       "title": "Language",
@@ -189,6 +188,13 @@
         "fr": "Français",
         "de": "Deutsch",
         "it": "Italiano"
+      },
+      "display_language_en": {
+        "en": "English",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "it": "Italian"
       }
     },
     "timezone": {
