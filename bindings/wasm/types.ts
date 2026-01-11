@@ -234,3 +234,13 @@ export interface DefinedName {
   scope?: number;
   formula: string;
 }
+
+export interface FmtSettings {
+  currency: string;
+  short_date: string;
+  short_date_example: string;
+  long_date: string;
+  long_date_example: string;
+  number_fmt: string;
+  number_example: string;
+}

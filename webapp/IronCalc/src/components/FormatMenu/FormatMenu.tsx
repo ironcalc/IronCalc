@@ -1,16 +1,18 @@
+import type { FmtSettings } from "@ironcalc/wasm";
 import { Menu, MenuItem, styled } from "@mui/material";
 import { Check } from "lucide-react";
 import { type ComponentProps, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import FormatPicker from "./FormatPicker";
-import { KNOWN_FORMATS, NumberFormats } from "./formatUtil";
+import { NumberFormats } from "./formatUtil";
 
 type FormatMenuProps = {
   children: React.ReactNode;
   numFmt: string;
   onChange: (numberFmt: string) => void;
-  onExited?: () => void;
-  anchorOrigin?: ComponentProps<typeof Menu>["anchorOrigin"];
+  onExited: () => void;
+  anchorOrigin: ComponentProps<typeof Menu>["anchorOrigin"];
+  formatOptions: FmtSettings;
 };
 
 const FormatMenu = (properties: FormatMenuProps) => {
@@ -18,6 +20,8 @@ const FormatMenu = (properties: FormatMenuProps) => {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isPickerOpen, setPickerOpen] = useState(false);
   const anchorElement = useRef<HTMLDivElement>(null);
+
+  const formatOptions = properties.formatOptions;
 
   const onSelect = useCallback(
     (s: string) => {
@@ -27,7 +31,26 @@ const FormatMenu = (properties: FormatMenuProps) => {
     [properties.onChange],
   );
 
-  const isCustomFormat = !KNOWN_FORMATS.has(properties.numFmt);
+  const isAutoFormat = properties.numFmt === NumberFormats.AUTO;
+  const isNumberFormat = properties.numFmt === formatOptions.number_fmt;
+  const isPercentageFormat = properties.numFmt === NumberFormats.PERCENTAGE;
+  const isCurrencyEurosFormat =
+    properties.numFmt === NumberFormats.CURRENCY_EUR;
+  const isCurrencyUsdFormat = properties.numFmt === NumberFormats.CURRENCY_USD;
+  const isCurrencyGbpFormat = properties.numFmt === NumberFormats.CURRENCY_GBP;
+  const isShortDateFormat = properties.numFmt === formatOptions.short_date;
+  const isLongDateFormat = properties.numFmt === formatOptions.long_date;
+
+  const isCustomFormat = !(
+    isAutoFormat ||
+    isNumberFormat ||
+    isPercentageFormat ||
+    isCurrencyEurosFormat ||
+    isCurrencyUsdFormat ||
+    isCurrencyGbpFormat ||
+    isShortDateFormat ||
+    isLongDateFormat
+  );
 
   return (
     <>
@@ -52,27 +75,25 @@ const FormatMenu = (properties: FormatMenuProps) => {
       >
         <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.AUTO)}>
           <MenuItemText>
-            <CheckIcon $active={properties.numFmt === NumberFormats.AUTO} />
+            <CheckIcon $active={isAutoFormat} />
             {t("toolbar.format_menu.auto")}
           </MenuItemText>
         </MenuItemWrapper>
         <MenuDivider />
-        <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.NUMBER)}>
+        <MenuItemWrapper
+          onClick={(): void => onSelect(formatOptions.number_fmt)}
+        >
           <MenuItemText>
-            <CheckIcon $active={properties.numFmt === NumberFormats.NUMBER} />
+            <CheckIcon $active={isNumberFormat} />
             {t("toolbar.format_menu.number")}
           </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.number_example")}
-          </MenuItemExample>
+          <MenuItemExample>{formatOptions.number_example}</MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.PERCENTAGE)}
         >
           <MenuItemText>
-            <CheckIcon
-              $active={properties.numFmt === NumberFormats.PERCENTAGE}
-            />
+            <CheckIcon $active={isPercentageFormat} />
             {t("toolbar.format_menu.percentage")}
           </MenuItemText>
           <MenuItemExample>
@@ -85,9 +106,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
           onClick={(): void => onSelect(NumberFormats.CURRENCY_EUR)}
         >
           <MenuItemText>
-            <CheckIcon
-              $active={properties.numFmt === NumberFormats.CURRENCY_EUR}
-            />
+            <CheckIcon $active={isCurrencyEurosFormat} />
             {t("toolbar.format_menu.currency_eur")}
           </MenuItemText>
           <MenuItemExample>
@@ -98,9 +117,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
           onClick={(): void => onSelect(NumberFormats.CURRENCY_USD)}
         >
           <MenuItemText>
-            <CheckIcon
-              $active={properties.numFmt === NumberFormats.CURRENCY_USD}
-            />
+            <CheckIcon $active={isCurrencyUsdFormat} />
             {t("toolbar.format_menu.currency_usd")}
           </MenuItemText>
           <MenuItemExample>
@@ -111,9 +128,7 @@ const FormatMenu = (properties: FormatMenuProps) => {
           onClick={(): void => onSelect(NumberFormats.CURRENCY_GBP)}
         >
           <MenuItemText>
-            <CheckIcon
-              $active={properties.numFmt === NumberFormats.CURRENCY_GBP}
-            />
+            <CheckIcon $active={isCurrencyGbpFormat} />
             {t("toolbar.format_menu.currency_gbp")}
           </MenuItemText>
           <MenuItemExample>
@@ -123,30 +138,22 @@ const FormatMenu = (properties: FormatMenuProps) => {
 
         <MenuDivider />
         <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.DATE_SHORT)}
+          onClick={(): void => onSelect(formatOptions.short_date)}
         >
           <MenuItemText>
-            <CheckIcon
-              $active={properties.numFmt === NumberFormats.DATE_SHORT}
-            />
+            <CheckIcon $active={isShortDateFormat} />
             {t("toolbar.format_menu.date_short")}
           </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.date_short_example")}
-          </MenuItemExample>
+          <MenuItemExample>{formatOptions.short_date_example}</MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.DATE_LONG)}
+          onClick={(): void => onSelect(formatOptions.long_date)}
         >
           <MenuItemText>
-            <CheckIcon
-              $active={properties.numFmt === NumberFormats.DATE_LONG}
-            />
+            <CheckIcon $active={isLongDateFormat} />
             {t("toolbar.format_menu.date_long")}
           </MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.date_long_example")}
-          </MenuItemExample>
+          <MenuItemExample>{formatOptions.long_date_example}</MenuItemExample>
         </MenuItemWrapper>
 
         <MenuDivider />
@@ -204,7 +211,9 @@ const MenuDivider = styled("div")`
   border-top: 1px solid #eeeeee;
 `;
 
-const CheckIcon = styled(Check)<{ $active: boolean }>`
+const CheckIcon = styled(Check, {
+  shouldForwardProp: (prop) => prop !== "$active",
+})<{ $active: boolean }>`
   width: 16px;
   height: 16px;
   color: ${(props) => (props.$active ? "currentColor" : "transparent")};

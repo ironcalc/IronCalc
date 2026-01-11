@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::expressions::lexer::LexerMode;
 
-use crate::expressions::parser::stringify::{to_rc_format, to_string};
-use crate::expressions::parser::Parser;
+use crate::expressions::parser::stringify::to_rc_format;
+use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
 use crate::expressions::types::CellReferenceRC;
 
 struct Formula<'a> {
@@ -14,7 +14,7 @@ struct Formula<'a> {
 #[test]
 fn test_parser_formulas_with_full_ranges() {
     let worksheets = vec!["Sheet1".to_string(), "Second Sheet".to_string()];
-    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
 
     let formulas = vec![
         Formula {
@@ -59,7 +59,10 @@ fn test_parser_formulas_with_full_ranges() {
             },
         );
         assert_eq!(to_rc_format(&t), formula.formula_r1c1);
-        assert_eq!(to_string(&t, &cell_reference), formula.formula_a1);
+        assert_eq!(
+            to_english_localized_string(&t, &cell_reference),
+            formula.formula_a1
+        );
     }
 
     // Now the inverse
@@ -74,14 +77,17 @@ fn test_parser_formulas_with_full_ranges() {
             },
         );
         assert_eq!(to_rc_format(&t), formula.formula_r1c1);
-        assert_eq!(to_string(&t, &cell_reference), formula.formula_a1);
+        assert_eq!(
+            to_english_localized_string(&t, &cell_reference),
+            formula.formula_a1
+        );
     }
 }
 
 #[test]
 fn test_range_inverse_order() {
     let worksheets = vec!["Sheet1".to_string(), "Sheet2".to_string()];
-    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -96,7 +102,7 @@ fn test_range_inverse_order() {
         &cell_reference,
     );
     assert_eq!(
-        to_string(&t, &cell_reference),
+        to_english_localized_string(&t, &cell_reference),
         "SUM(C2:D4)*SUM(Sheet2!C4:D20)*SUM($C4:D$20)".to_string()
     );
 }

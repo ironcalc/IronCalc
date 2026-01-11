@@ -9,7 +9,7 @@ use crate::{
     locale::get_locale,
 };
 
-fn new_language_lexer(formula: &str, locale: &str, language: &str) -> Lexer {
+fn new_language_lexer<'a>(formula: &str, locale: &str, language: &str) -> Lexer<'a> {
     let locale = get_locale(locale).unwrap();
     let language = get_language(language).unwrap();
     Lexer::new(formula, LexerMode::A1, locale, language)

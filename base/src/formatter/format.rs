@@ -128,6 +128,9 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             if (1.0e-8..1.0e+11).contains(&value_abs) {
                 let mut text = format!("{value:.9}");
                 text = text.trim_end_matches('0').trim_end_matches('.').to_string();
+                if locale.numbers.symbols.decimal != "." {
+                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
+                }
                 Formatted {
                     text,
                     color: None,
@@ -145,13 +148,17 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                 value /= 10.0_f64.powf(exponent);
                 let sign = if exponent < 0.0 { '-' } else { '+' };
                 let s = format!("{value:.5}");
+                let mut text = format!(
+                    "{}E{}{:02}",
+                    s.trim_end_matches('0').trim_end_matches('.'),
+                    sign,
+                    exponent.abs()
+                );
+                if locale.numbers.symbols.decimal != "." {
+                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
+                }
                 Formatted {
-                    text: format!(
-                        "{}E{}{:02}",
-                        s.trim_end_matches('0').trim_end_matches('.'),
-                        sign,
-                        exponent.abs()
-                    ),
+                    text,
                     color: None,
                     error: None,
                 }
@@ -388,6 +395,30 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         let minute = minutes as i32;
                         text = format!("{text}{minute:02}");
                     }
+                    TextToken::ElapsedHour => {
+                        let hour = (value * 24.0).floor() as i32;
+                        text = format!("{text}{hour}");
+                    }
+                    TextToken::ElapsedHourPadded => {
+                        let hour = (value * 24.0).floor() as i32;
+                        text = format!("{text}{hour:02}");
+                    }
+                    TextToken::ElapsedMinute => {
+                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        text = format!("{text}{minute}");
+                    }
+                    TextToken::ElapsedMinutePadded => {
+                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        text = format!("{text}{minute:02}");
+                    }
+                    TextToken::ElapsedSecond => {
+                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        text = format!("{text}{second}");
+                    }
+                    TextToken::ElapsedSecondPadded => {
+                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        text = format!("{text}{second:02}");
+                    }
                 }
             }
             Formatted {
@@ -425,8 +456,13 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                 }
             }
             let l_exp = exponent_part.len() as i32;
-            let mut int_part: Vec<char> = format!("{}", value_abs.floor()).chars().collect();
-            if value_abs as i64 == 0 {
+            let int_number = if p.precision == 0 {
+                value_abs.round()
+            } else {
+                value_abs.floor()
+            };
+            let mut int_part: Vec<char> = format!("{}", int_number).chars().collect();
+            if int_number as i64 == 0 {
                 int_part = vec![];
             }
             let fract_part = get_fract_part(value_abs, p.precision, int_part.len());
@@ -443,6 +479,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let decimal_separator = symbols.decimal.to_owned();
             // There probably are better ways to check if a number at a given precision is negative :/
             let is_negative = value < -(10.0_f64.powf(-(p.precision as f64)));
+            let mut needs_period = false;
 
             for token in tokens {
                 match token {
@@ -466,10 +503,13 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{value}");
                     }
                     TextToken::Period => {
-                        text = format!("{text}{decimal_separator}");
+                        // if !fract_part.is_empty() &&  {
+                        //     text = format!("{text}{decimal_separator}");
+                        // }
+                        needs_period = true;
                     }
                     TextToken::Digit(digit) => {
-                        if digit.number == 'i' {
+                        if digit.number.is_integer() {
                             // 1. Integer part
                             let index = digit.index;
                             let number_index = ln - digit_count + index;
@@ -519,22 +559,39 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                 }
                                 digit_index = number_index + 1;
                             }
-                        } else if digit.number == 'd' {
+                        } else if digit.number.is_decimal() {
                             // 2. After the decimal point
                             let index = digit.index as usize;
                             if index < fract_part.len() {
-                                text = format!("{}{}", text, fract_part[index]);
+                                if needs_period {
+                                    text = format!(
+                                        "{}{}{}",
+                                        text, decimal_separator, fract_part[index]
+                                    );
+                                } else {
+                                    text = format!("{}{}", text, fract_part[index]);
+                                }
                             } else if digit.kind == '0' {
-                                text = format!("{text}0");
+                                if needs_period {
+                                    text = format!("{text}{}0", decimal_separator);
+                                } else {
+                                    text = format!("{text}0");
+                                }
                             } else if digit.kind == '?' {
                                 text = format!("{text} ");
+                            } else if digit.kind == '#' && needs_period {
+                                // FIXME: This is what Excel does, but it transforms "3" into "3."
+                                text = format!("{text}{}", decimal_separator);
                             }
-                        } else if digit.number == 'e' {
+                            needs_period = false;
+                        } else if digit.number.is_exponent() {
                             // 3. Exponent part
                             let index = digit.index;
                             if index == 0 {
                                 if exponent_is_negative {
                                     text = format!("{text}E-");
+                                } else if p.scientific_minus {
+                                    text = format!("{text}E");
                                 } else {
                                     text = format!("{text}E+");
                                 }
@@ -581,6 +638,12 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::Second => {}
                     TextToken::SecondPadded => {}
                     TextToken::AMPM => {}
+                    TextToken::ElapsedHour => {}
+                    TextToken::ElapsedHourPadded => {}
+                    TextToken::ElapsedMinute => {}
+                    TextToken::ElapsedMinutePadded => {}
+                    TextToken::ElapsedSecond => {}
+                    TextToken::ElapsedSecondPadded => {}
                 }
             }
             Formatted {
@@ -752,13 +815,15 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
 pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
+    decimal_separator: u8,
+    group_separator: u8,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
     let scientific_format = "0.00E+00";
 
     // Check if it is a percentage
     if let Some(p) = value.strip_suffix('%') {
-        let (f, options) = parse_number(p.trim())?;
+        let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
         if options.is_scientific {
             return Ok((f / 100.0, Some(scientific_format.to_string())));
         }
@@ -774,7 +839,7 @@ pub(crate) fn parse_formatted_number(
     // check if it is a currency in currencies
     for currency in currencies {
         if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
-            let (f, options) = parse_number(p.trim())?;
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));
             }
@@ -783,7 +848,7 @@ pub(crate) fn parse_formatted_number(
             }
             return Ok((-f, Some(format!("{currency}#,##0"))));
         } else if let Some(p) = value.strip_prefix(currency) {
-            let (f, options) = parse_number(p.trim())?;
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));
             }
@@ -792,7 +857,7 @@ pub(crate) fn parse_formatted_number(
             }
             return Ok((f, Some(format!("{currency}#,##0"))));
         } else if let Some(p) = value.strip_suffix(currency) {
-            let (f, options) = parse_number(p.trim())?;
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));
             }
@@ -811,7 +876,7 @@ pub(crate) fn parse_formatted_number(
     }
 
     // Lastly we check if it is a number
-    let (f, options) = parse_number(value)?;
+    let (f, options) = parse_number(value, decimal_separator, group_separator)?;
     if options.is_scientific {
         return Ok((f, Some(scientific_format.to_string())));
     }
@@ -834,7 +899,11 @@ struct NumberOptions {
 
 // tries to parse 'value' as a number.
 // If it is a number it either uses commas as thousands separator or it does not
-fn parse_number(value: &str) -> Result<(f64, NumberOptions), String> {
+fn parse_number(
+    value: &str,
+    decimal_separator: u8,
+    group_separator: u8,
+) -> Result<(f64, NumberOptions), String> {
     let mut position = 0;
     let bytes = value.as_bytes();
     let len = bytes.len();
@@ -842,8 +911,6 @@ fn parse_number(value: &str) -> Result<(f64, NumberOptions), String> {
         return Err("Cannot parse number".to_string());
     }
     let mut chars = String::from("");
-    let decimal_separator = b'.';
-    let group_separator = b',';
     let mut group_separator_index = Vec::new();
     // get the sign
     let sign = if bytes[0] == b'-' {

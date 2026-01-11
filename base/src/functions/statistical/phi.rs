@@ -1,7 +1,7 @@
 use crate::expressions::types::CellReferenceIndex;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
-impl Model {
+impl<'a> Model<'a> {
     // PHI(x) = standard normal PDF at x
     pub(crate) fn fn_phi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {

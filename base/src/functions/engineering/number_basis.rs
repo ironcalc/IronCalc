@@ -31,7 +31,7 @@ fn from_binary_to_decimal(value: f64) -> Result<i64, String> {
     Ok(result)
 }
 
-impl Model {
+impl<'a> Model<'a> {
     // BIN2DEC(number)
     pub(crate) fn fn_bin2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {

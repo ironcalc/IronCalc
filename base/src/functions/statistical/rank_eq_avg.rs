@@ -3,7 +3,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl Model {
+impl<'a> Model<'a> {
     // Helper to collect numeric values from the 2nd argument of RANK.*
     fn collect_rank_values(
         &mut self,

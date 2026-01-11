@@ -185,15 +185,15 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
 
 /// Tests that file in file_path produces the same results in Excel and in IronCalc.
 pub fn test_file(file_path: &str) -> Result<(), String> {
-    let model1 = load_from_xlsx(file_path, "en", "UTC").unwrap();
-    let mut model2 = load_from_xlsx(file_path, "en", "UTC").unwrap();
+    let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
+    let mut model2 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
     model2.evaluate();
     compare_models(&model1, &model2)
 }
 
 /// Tests that file in file_path can be converted to xlsx and read again
 pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(), String> {
-    let model1 = load_from_xlsx(file_path, "en", "UTC").unwrap();
+    let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
 
     let base_name = Path::new(file_path).file_name().unwrap().to_str().unwrap();
 
@@ -202,7 +202,7 @@ pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(),
     // test can save
     save_to_xlsx(&model1, temp_file_path).unwrap();
     // test can open
-    let mut model2 = load_from_xlsx(temp_file_path, "en", "UTC").unwrap();
+    let mut model2 = load_from_xlsx(temp_file_path, "en", "UTC", "en").unwrap();
     model2.evaluate();
     compare_models(&model1, &model2)
 }
@@ -214,9 +214,9 @@ mod tests {
 
     #[test]
     fn compare_different_sheets() {
-        let mut model1 = Model::new_empty("model", "en", "UTC").unwrap();
+        let mut model1 = Model::new_empty("model", "en", "UTC", "en").unwrap();
         model1.new_sheet();
-        let model2 = Model::new_empty("model", "en", "UTC").unwrap();
+        let model2 = Model::new_empty("model", "en", "UTC", "en").unwrap();
 
         assert!(compare(&model1, &model2).is_err());
     }

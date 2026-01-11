@@ -4,7 +4,7 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
-impl Model {
+impl<'a> Model<'a> {
     // Z.TEST(array, x, [sigma])
     pub(crate) fn fn_z_test(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // 2 or 3 arguments

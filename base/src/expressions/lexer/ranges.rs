@@ -4,7 +4,7 @@ use crate::expressions::{token::TokenType, utils::column_to_number};
 use super::Lexer;
 use super::{ParsedRange, ParsedReference, Result};
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     /// Consumes a reference in A1 style like:
     /// AS23, $AS23, AS$23, $AS$23, R12
     /// Or returns an error

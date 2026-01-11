@@ -16,7 +16,7 @@ use crate::expressions::token::{TableReference, TableSpecifier};
 use super::Result;
 use super::{Lexer, LexerError};
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     fn consume_table_specifier(&mut self) -> Result<Option<TableSpecifier>> {
         if self.peek_char() == Some('#') {
             // It's a specifier

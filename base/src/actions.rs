@@ -1,5 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::parser::stringify::{to_string, to_string_displaced, DisplaceData};
+use crate::expressions::parser::stringify::{
+    to_localized_string, to_string_displaced, DisplaceData,
+};
 use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
 
@@ -8,7 +10,7 @@ use crate::model::Model;
 // In IronCalc, if one of the edges of the range is deleted will replace the edge with #REF!
 // I feel this is unimportant for now.
 
-impl Model {
+impl<'a> Model<'a> {
     fn shift_cell_formula(
         &mut self,
         sheet: u32,
@@ -29,7 +31,7 @@ impl Model {
                 column,
             };
             // FIXME: This is not a very performant way if the formula has changed :S.
-            let formula = to_string(node, &cell_reference);
+            let formula = to_localized_string(node, &cell_reference, self.locale, self.language);
             let formula_displaced = to_string_displaced(node, &cell_reference, displace_data);
             if formula != formula_displaced {
                 self.update_cell_with_formula(sheet, row, column, format!("={formula_displaced}"))?;
@@ -108,7 +110,13 @@ impl Model {
         // FIXME: we need some user_input getter instead of get_text
         let formula_or_value = self
             .get_cell_formula(sheet, source_row, source_column)?
-            .unwrap_or_else(|| source_cell.get_text(&self.workbook.shared_strings, &self.language));
+            .unwrap_or_else(|| {
+                source_cell.get_localized_text(
+                    &self.workbook.shared_strings,
+                    self.locale,
+                    self.language,
+                )
+            });
         self.set_user_input(sheet, target_row, target_column, formula_or_value)?;
         self.workbook
             .worksheet_mut(sheet)?
@@ -490,9 +498,15 @@ impl Model {
                 .cell(r.row, column)
                 .ok_or("Expected Cell to exist")?;
             let style_idx = cell.get_style();
-            let formula_or_value = self
-                .get_cell_formula(sheet, r.row, column)?
-                .unwrap_or_else(|| cell.get_text(&self.workbook.shared_strings, &self.language));
+            let formula_or_value =
+                self.get_cell_formula(sheet, r.row, column)?
+                    .unwrap_or_else(|| {
+                        cell.get_localized_text(
+                            &self.workbook.shared_strings,
+                            self.locale,
+                            self.language,
+                        )
+                    });
             original_cells.push((r.row, formula_or_value, style_idx));
             self.cell_clear_all(sheet, r.row, column)?;
         }
@@ -577,9 +591,9 @@ impl Model {
                 .cell(row, *c)
                 .ok_or("Expected Cell to exist")?;
             let style_idx = cell.get_style();
-            let formula_or_value = self
-                .get_cell_formula(sheet, row, *c)?
-                .unwrap_or_else(|| cell.get_text(&self.workbook.shared_strings, &self.language));
+            let formula_or_value = self.get_cell_formula(sheet, row, *c)?.unwrap_or_else(|| {
+                cell.get_localized_text(&self.workbook.shared_strings, self.locale, self.language)
+            });
             original_cells.push((*c, formula_or_value, style_idx));
             self.cell_clear_all(sheet, row, *c)?;
         }

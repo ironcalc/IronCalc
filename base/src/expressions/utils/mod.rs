@@ -211,7 +211,7 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
 pub fn is_valid_identifier(name: &str) -> bool {
     // https://support.microsoft.com/en-us/office/names-in-formulas-fc2935f9-115d-4bef-a370-3aa8bb4c91f1
     // https://github.com/MartinTrummer/excel-names/
-    let upper = name.to_ascii_uppercase();
+    let upper = name.to_uppercase();
     // length of chars
     let len = upper.chars().count();
 

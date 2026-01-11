@@ -20,7 +20,7 @@ fn arguments() {
         "#ERROR!",
         "Wrong number of arguments"
     );
-    assert_eq!(model._get_text("A2"), *"20/03/2023 14:44:25");
+    assert_eq!(model._get_text("A2"), *"3/20/2023, 2:44 PM");
     assert_eq!(
         model._get_text("A3"),
         "#VALUE!",
@@ -35,5 +35,5 @@ fn returns_date_time() {
     model._set("A1", "=NOW()");
     model.evaluate();
     let text = model._get_text("A1");
-    assert_eq!(text, *"20/03/2023 13:44:25");
+    assert_eq!(text, *"3/20/2023, 1:44 PM");
 }

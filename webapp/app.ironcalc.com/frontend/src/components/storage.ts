@@ -2,10 +2,11 @@ import { Model } from "@ironcalc/workbook";
 import { base64ToBytes, bytesToBase64 } from "./util";
 
 const MAX_WORKBOOKS = 50;
+const DEFAULT_LANGUAGE = "en";
 
 type ModelsMetadata = Record<
   string,
-  { name: string; createdAt: number; pinned?: boolean }
+  { name: string; createdAt: number; pinned: boolean; language: string }
 >;
 
 function randomUUID(): string {
@@ -27,11 +28,17 @@ export function updateNameSelectedWorkbook(model: Model, newName: string) {
     const modelsJson = localStorage.getItem("models");
     if (modelsJson) {
       try {
-        const models = JSON.parse(modelsJson);
+        const models: ModelsMetadata = JSON.parse(modelsJson);
         if (models[uuid]) {
           models[uuid].name = newName;
+          models[uuid].language = model.getLanguage();
         } else {
-          models[uuid] = { name: newName, createdAt: Date.now() };
+          models[uuid] = {
+            name: newName,
+            createdAt: Date.now(),
+            language: model.getLanguage(),
+            pinned: false,
+          };
         }
         localStorage.setItem("models", JSON.stringify(models));
       } catch (_e) {
@@ -48,26 +55,7 @@ export function getModelsMetadata(): ModelsMetadata {
   if (!modelsJson) {
     modelsJson = "{}";
   }
-  const models = JSON.parse(modelsJson);
-
-  // Migrate old format to new format
-  const migratedModels: ModelsMetadata = {};
-  for (const [uuid, value] of Object.entries(models)) {
-    if (typeof value === "string") {
-      // Old format: just the name string
-      migratedModels[uuid] = { name: value, createdAt: Date.now() };
-    } else if (typeof value === "object" && value !== null && "name" in value) {
-      // New format: object with name and createdAt
-      migratedModels[uuid] = value as { name: string; createdAt: number };
-    }
-  }
-
-  // Save migrated data back to localStorage
-  if (JSON.stringify(models) !== JSON.stringify(migratedModels)) {
-    localStorage.setItem("models", JSON.stringify(migratedModels));
-  }
-
-  return migratedModels;
+  return JSON.parse(modelsJson);
 }
 
 // Pick a different name Workbook{N} where N = 1, 2, 3
@@ -88,10 +76,10 @@ function getNewName(existingNames: string[]): string {
 export function createModelWithSafeTimezone(name: string): Model {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return new Model(name, "en", tz);
-  } catch {
-    console.warn("Failed to get timezone, defaulting to UTC");
-    return new Model(name, "en", "UTC");
+    return new Model(name, "en", tz, DEFAULT_LANGUAGE);
+  } catch (e) {
+    console.warn("Failed to get timezone, defaulting to UTC", e);
+    return new Model(name, "en", "UTC", DEFAULT_LANGUAGE);
   }
 }
 
@@ -104,7 +92,12 @@ export function createNewModel(): Model {
   localStorage.setItem("selected", uuid);
   localStorage.setItem(uuid, bytesToBase64(model.toBytes()));
 
-  models[uuid] = { name, createdAt: Date.now() };
+  models[uuid] = {
+    name,
+    createdAt: Date.now(),
+    language: model.getLanguage(),
+    pinned: false,
+  };
   localStorage.setItem("models", JSON.stringify(models));
   return model;
 }
@@ -114,8 +107,9 @@ export function loadSelectedModelFromStorage(): Model | null {
   if (uuid) {
     // We try to load the selected model
     const modelBytesString = localStorage.getItem(uuid);
+    const language = getModelsMetadata()[uuid]?.language || DEFAULT_LANGUAGE;
     if (modelBytesString) {
-      return Model.from_bytes(base64ToBytes(modelBytesString));
+      return Model.from_bytes(base64ToBytes(modelBytesString), language);
     }
   }
   return null;
@@ -140,6 +134,13 @@ export function saveSelectedModelInStorage(model: Model) {
   if (uuid) {
     const modeBytes = model.toBytes();
     localStorage.setItem(uuid, bytesToBase64(modeBytes));
+    let modelsJson = localStorage.getItem("models");
+    if (!modelsJson) {
+      modelsJson = "{}";
+    }
+    const models: ModelsMetadata = JSON.parse(modelsJson);
+    models[uuid].language = model.getLanguage();
+    localStorage.setItem("models", JSON.stringify(models));
   }
 }
 
@@ -151,16 +152,22 @@ export function saveModelToStorage(model: Model) {
   if (!modelsJson) {
     modelsJson = "{}";
   }
-  const models = JSON.parse(modelsJson);
-  models[uuid] = { name: model.getName(), createdAt: Date.now() };
+  const models: ModelsMetadata = JSON.parse(modelsJson);
+  models[uuid] = {
+    name: model.getName(),
+    createdAt: Date.now(),
+    language: model.getLanguage(),
+    pinned: false,
+  };
   localStorage.setItem("models", JSON.stringify(models));
 }
 
 export function selectModelFromStorage(uuid: string): Model | null {
   localStorage.setItem("selected", uuid);
   const modelBytesString = localStorage.getItem(uuid);
+  const language = getModelsMetadata()[uuid]?.language || DEFAULT_LANGUAGE;
   if (modelBytesString) {
-    return Model.from_bytes(base64ToBytes(modelBytesString));
+    return Model.from_bytes(base64ToBytes(modelBytesString), language);
   }
   return null;
 }
@@ -210,8 +217,10 @@ export function deleteModelByUuid(uuid: string): Model | null {
   // If it wasn't the selected model, return the currently selected model
   if (selectedUuid) {
     const modelBytesString = localStorage.getItem(selectedUuid);
+    const language =
+      getModelsMetadata()[selectedUuid]?.language || DEFAULT_LANGUAGE;
     if (modelBytesString) {
-      return Model.from_bytes(base64ToBytes(modelBytesString));
+      return Model.from_bytes(base64ToBytes(modelBytesString), language);
     }
   }
 
@@ -234,11 +243,14 @@ export function isWorkbookPinned(uuid: string): boolean {
 
 export function duplicateModel(uuid: string): Model | null {
   const originalModel = selectModelFromStorage(uuid);
-  if (!originalModel) return null;
+  if (!originalModel) {
+    return null;
+  }
 
-  const duplicatedModel = Model.from_bytes(originalModel.toBytes());
+  const language = originalModel.getLanguage();
+  const duplicatedModel = Model.from_bytes(originalModel.toBytes(), language);
   const models = getModelsMetadata();
-  const originalName = models[uuid]?.name || "Workbook";
+  const originalName = models[uuid].name;
   const existingNames = Object.values(models).map((m) => m.name);
 
   // Find next available number
@@ -255,7 +267,12 @@ export function duplicateModel(uuid: string): Model | null {
   localStorage.setItem("selected", newUuid);
   localStorage.setItem(newUuid, bytesToBase64(duplicatedModel.toBytes()));
 
-  models[newUuid] = { name: newName, createdAt: Date.now() };
+  models[newUuid] = {
+    name: newName,
+    createdAt: Date.now(),
+    language,
+    pinned: false,
+  };
   localStorage.setItem("models", JSON.stringify(models));
 
   return duplicatedModel;

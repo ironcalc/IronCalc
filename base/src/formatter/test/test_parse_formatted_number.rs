@@ -1,8 +1,12 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::formatter::format::parse_formatted_number as parse;
+use crate::formatter::format::parse_formatted_number;
 
 const PARSE_ERROR_MSG: &str = "Could not parse number";
+
+fn parse(input: &str, currencies: &[&str]) -> Result<(f64, Option<String>), String> {
+    parse_formatted_number(input, currencies, b'.', b',')
+}
 
 #[test]
 fn numbers() {

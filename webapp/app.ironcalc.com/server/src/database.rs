@@ -27,8 +27,7 @@ pub async fn add_model(
         .execute(&mut **db)
         .await
         .map_err(|e| {
-            io::Error::new(
-                io::ErrorKind::Other,
+            io::Error::other(
                 format!("Failed to save to the database: {}", e),
             )
         })?;

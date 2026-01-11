@@ -2,36 +2,39 @@ use std::{collections::HashMap, sync::OnceLock};
 
 use bitcode::{Decode, Encode};
 
-#[derive(Encode, Decode, Clone)]
+#[derive(Encode, Decode)]
 pub struct Locale {
     pub dates: Dates,
     pub numbers: NumbersProperties,
     pub currency: Currency,
 }
 
-#[derive(Encode, Decode, Clone)]
+#[derive(Encode, Decode)]
 pub struct Currency {
     pub iso: String,
     pub symbol: String,
 }
 
-#[derive(Encode, Decode, Clone)]
+#[derive(Encode, Decode)]
 pub struct NumbersProperties {
     pub symbols: NumbersSymbols,
     pub decimal_formats: DecimalFormats,
     pub currency_formats: CurrencyFormats,
 }
 
-#[derive(Encode, Decode, Clone)]
+#[derive(Encode, Decode)]
 pub struct Dates {
     pub day_names: Vec<String>,
     pub day_names_short: Vec<String>,
     pub months: Vec<String>,
     pub months_short: Vec<String>,
     pub months_letter: Vec<String>,
+    pub date_formats: DateFormats,
+    pub time_formats: DateFormats,
+    pub date_time_formats: DateFormats,
 }
 
-#[derive(Encode, Decode, Clone)]
+#[derive(Encode, Decode)]
 pub struct NumbersSymbols {
     pub decimal: String,
     pub group: String,
@@ -49,7 +52,7 @@ pub struct NumbersSymbols {
 }
 
 // See: https://cldr.unicode.org/translation/number-currency-formats/number-and-currency-patterns
-#[derive(Encode, Decode, Clone)]
+#[derive(Encode, Decode)]
 pub struct CurrencyFormats {
     pub standard: String,
     pub standard_alpha_next_to_number: Option<String>,
@@ -59,9 +62,30 @@ pub struct CurrencyFormats {
     pub accounting_no_currency: String,
 }
 
-#[derive(Encode, Decode, Clone)]
+#[derive(Encode, Decode)]
 pub struct DecimalFormats {
     pub standard: String,
+}
+
+#[derive(Encode, Decode)]
+pub struct DateFormats {
+    pub full: String,
+    pub long: String,
+    pub medium: String,
+    pub short: String,
+}
+
+#[derive(Encode, Decode)]
+pub struct TimeFormats {
+    pub full: String,
+    pub long: String,
+    pub medium: String,
+    pub short: String,
+}
+
+pub fn get_default_locale() -> &'static Locale {
+    #[allow(clippy::unwrap_used)]
+    get_locale("en").unwrap()
 }
 
 static LOCALES: OnceLock<HashMap<String, Locale>> = OnceLock::new();
@@ -73,7 +97,12 @@ fn get_locales() -> &'static HashMap<String, Locale> {
     })
 }
 
-pub fn get_locale(id: &str) -> Result<&Locale, String> {
+/// Get all available locale IDs.
+pub fn get_supported_locales() -> Vec<String> {
+    get_locales().keys().cloned().collect()
+}
+
+pub fn get_locale(id: &str) -> Result<&'static Locale, String> {
     get_locales()
         .get(id)
         .ok_or_else(|| format!("Invalid locale: '{id}'"))

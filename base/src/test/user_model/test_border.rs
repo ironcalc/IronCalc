@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::test::user_model::util::new_empty_user_model;
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
     expressions::{types::Area, utils::number_to_column},
@@ -96,7 +97,7 @@ fn check_borders(model: &UserModel) {
 
 #[test]
 fn borders_all() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     // We set an outer border in cells F5:H9
     let range = &Area {
         sheet: 0,
@@ -252,7 +253,7 @@ fn borders_all() {
 
 #[test]
 fn borders_inner() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     check_borders(&model);
     // We set an outer border in cells F5:H9
     let range = &Area {
@@ -340,7 +341,7 @@ fn borders_inner() {
 
 #[test]
 fn borders_outer() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     // We set an outer border in cells F5:H9
     let range = &Area {
         sheet: 0,
@@ -484,7 +485,7 @@ fn borders_outer() {
 
 #[test]
 fn borders_top() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     // We set an outer border in cells F5:H9
     let range = &Area {
         sheet: 0,
@@ -609,7 +610,7 @@ fn borders_top() {
 
 #[test]
 fn borders_right() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     // We set an outer border in cells F5:H9
     let range = &Area {
         sheet: 0,
@@ -666,7 +667,7 @@ fn borders_right() {
 
 #[test]
 fn borders_bottom() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     // We set an outer border in cells F5:H9
     let range = &Area {
         sheet: 0,
@@ -719,7 +720,7 @@ fn borders_bottom() {
 
 #[test]
 fn borders_left() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     // We set an outer border in cells F5:H9
     let range = &Area {
         sheet: 0,
@@ -787,7 +788,7 @@ fn borders_left() {
 
 #[test]
 fn none_borders_get_neighbour() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     // We set an outer border in cells F5:
     let range = &Area {
         sheet: 0,
@@ -889,7 +890,7 @@ fn none_borders_get_neighbour() {
 
 #[test]
 fn heavier_borders() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     model._set_cell_border("F5", "#F2F2F2");
 
@@ -915,7 +916,7 @@ fn heavier_borders() {
 
 #[test]
 fn lighter_borders() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     model._set_cell_border("F5", "#000000");
 
@@ -962,7 +963,7 @@ fn lighter_borders() {
 
 #[test]
 fn autofill() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     model._set_area_border("C4:F6", "#F4F4F4", "All");
 
@@ -1007,7 +1008,7 @@ fn autofill() {
 
 #[test]
 fn border_top() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     model._set_area_border("C4:F6", "#000000", "All");
 

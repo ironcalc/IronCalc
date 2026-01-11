@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::expressions::{
     parser::{
-        stringify::{to_excel_string, to_string},
-        Parser,
+        stringify::to_excel_string,
+        tests::utils::{new_parser, to_english_localized_string},
     },
     types::CellReferenceRC,
 };
@@ -13,7 +13,7 @@ use crate::expressions::parser::static_analysis::add_implicit_intersection;
 #[test]
 fn simple_test() {
     let worksheets = vec!["Sheet1".to_string()];
-    let mut parser = Parser::new(worksheets, vec![], HashMap::new());
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
 
     // Reference cell is Sheet1!A1
     let cell_reference = CellReferenceRC {
@@ -72,7 +72,7 @@ fn simple_test() {
     for (formula, expected) in cases {
         let mut t = parser.parse(formula, &cell_reference);
         add_implicit_intersection(&mut t, true);
-        let r = to_string(&t, &cell_reference);
+        let r = to_english_localized_string(&t, &cell_reference);
         assert_eq!(r, expected);
         let excel_formula = to_excel_string(&t, &cell_reference);
         assert_eq!(excel_formula, formula);
