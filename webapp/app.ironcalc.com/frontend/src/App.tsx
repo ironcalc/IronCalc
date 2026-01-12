@@ -4,6 +4,7 @@ import styled from "@emotion/styled";
 import { IronCalc, IronCalcIcon, init, Model } from "@ironcalc/workbook";
 import { Modal } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FileBar } from "./components/FileBar";
 import LeftDrawer from "./components/LeftDrawer/LeftDrawer";
 import {
@@ -31,6 +32,8 @@ function App() {
   const [isTemplatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [localStorageId, setLocalStorageId] = useState<number>(1);
+
+  const { i18n } = useTranslation();
 
   useEffect(() => {
     async function start() {
@@ -167,7 +170,7 @@ function App() {
           setIsDrawerOpen={setIsDrawerOpen}
           setLocalStorageId={setLocalStorageId}
         />
-        <IronCalc model={model} />
+        <IronCalc model={model} language={i18n.language} />
       </MainContent>
       {showWelcomeDialog && (
         <WelcomeDialog

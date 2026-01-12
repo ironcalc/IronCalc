@@ -1,0 +1,206 @@
+{
+  "toolbar": {
+    "redo": "Rétablir",
+    "undo": "Annuler",
+    "copy_styles": "Copier les styles",
+    "clear_formatting": "Effacer la mise en forme",
+    "euro": "Format Euro",
+    "percentage": "Format Pourcentage",
+    "bold": "Gras",
+    "italic": "Italique",
+    "underline": "Souligné",
+    "strike_through": "Barré",
+    "align_left": "Aligner à gauche",
+    "align_right": "Aligner à droite",
+    "align_center": "Centrer",
+    "format_number": "Format de nombre",
+    "font_color": "Couleur de police",
+    "fill_color": "Couleur de remplissage",
+    "increase_font_size": "Augmenter la taille de la police",
+    "decrease_font_size": "Diminuer la taille de la police",
+    "decimal_places_increase": "Augmenter les décimales",
+    "decimal_places_decrease": "Diminuer les décimales",
+    "show_hide_grid_lines": "Afficher/masquer le quadrillage",
+    "named_ranges": "Plages nommées",
+    "vertical_align_bottom": "Aligner en bas",
+    "vertical_align_middle": "Aligner au milieu",
+    "vertical_align_top": "Aligner en haut",
+    "selected_png": "Exporter la zone sélectionnée en PNG",
+    "wrap_text": "Renvoyer à la ligne",
+    "scroll_left": "Faire défiler vers la gauche",
+    "scroll_right": "Faire défiler vers la droite",
+    "format_menu": {
+      "auto": "Automatique",
+      "number": "Nombre",
+      "percentage": "Pourcentage",
+      "currency_eur": "Euro (EUR)",
+      "currency_usd": "Dollar (USD)",
+      "currency_gbp": "Livre sterling (GBP)",
+      "date_short": "Date courte",
+      "date_long": "Date longue",
+      "custom": "Personnalisé",
+      "number_example": "1 000,00",
+      "percentage_example": "10 %",
+      "currency_eur_example": "€",
+      "currency_usd_example": "$",
+      "currency_gbp_example": "£",
+      "date_short_example": "24/09/2024",
+      "date_long_example": "mardi 24 septembre 2024"
+    },
+    "borders": {
+      "title": "Bordures",
+      "all": "Toutes les bordures",
+      "inner": "Bordures intérieures",
+      "outer": "Bordures extérieures",
+      "top": "Bordures supérieures",
+      "bottom": "Bordures inférieures",
+      "clear": "Supprimer les bordures",
+      "left": "Bordures gauches",
+      "right": "Bordures droites",
+      "horizontal": "Bordures horizontales",
+      "vertical": "Bordures verticales",
+      "color": "Couleur de bordure",
+      "style": "Style de bordure"
+    }
+  },
+  "num_fmt": {
+    "title": "Format de nombre personnalisé",
+    "label": "Format de nombre",
+    "close": "Fermer la boîte de dialogue",
+    "save": "Enregistrer"
+  },
+  "sheet_rename": {
+    "rename": "Enregistrer",
+    "label": "Nouveau nom",
+    "title": "Renommer la feuille",
+    "close": "Fermer la boîte de dialogue"
+  },
+  "sheet_delete": {
+    "title": "Êtes-vous sûr ?",
+    "message": "La feuille « {{sheetName}} » sera supprimée.",
+    "confirm": "Oui, supprimer la feuille",
+    "cancel": "Annuler"
+  },
+  "sheet_tab": {
+    "rename": "Renommer",
+    "change_color": "Changer la couleur",
+    "delete": "Supprimer",
+    "hide_sheet": "Masquer la feuille"
+  },
+  "formula_input": {
+    "update": "Mettre à jour",
+    "label": "Formule",
+    "title": "Mettre à jour la formule"
+  },
+  "formula_bar": {
+    "manage_named_ranges": "Gérer les plages nommées"
+  },
+  "navigation": {
+    "add_sheet": "Ajouter une feuille",
+    "sheet_list": "Liste des feuilles"
+  },
+  "name_manager_dialog": {
+    "title": "Plages nommées",
+    "empty_message1": "Aucune plage nommée n’a encore été ajoutée.",
+    "empty_message2": "Cliquez sur « Ajouter » pour en créer une.",
+    "name": "Nom",
+    "range": "Portée",
+    "scope": "Plage",
+    "help": "À propos des plages nommées",
+    "new": "Ajouter",
+    "workbook": "Classeur",
+    "global": "(Global)",
+    "close": "Fermer la boîte de dialogue",
+    "delete": "Supprimer la plage",
+    "edit": "Modifier la plage",
+    "back_to_list": "Retour à la liste",
+    "add_new_range": "Ajouter une nouvelle plage",
+    "edit_range": "Modifier la plage",
+    "new_named_range": "Nouvelle plage nommée",
+    "range_name": "Nom de la plage",
+    "enter_range_name": "Saisir le nom de la plage",
+    "scope_label": "Portée",
+    "scope_helper": "La portée de la plage nommée détermine où elle est disponible.",
+    "refers_to": "Fait référence à",
+    "enter_formula": "Saisir la formule",
+    "cancel": "Annuler",
+    "apply": "Appliquer les modifications",
+    "discard": "Annuler les modifications",
+    "errors": {
+      "range_name_required": "Le nom de la plage est obligatoire",
+      "name_cannot_contain_spaces": "Le nom ne peut pas contenir d’espaces",
+      "name_cannot_start_with_number": "Le nom ne peut pas commencer par un chiffre",
+      "name_invalid_characters": "Le nom contient des caractères non valides. Utilisez uniquement des lettres, chiffres, traits de soulignement et points. Il doit commencer par une lettre ou un trait de soulignement.",
+      "name_already_exists": "Ce nom existe déjà dans la portée sélectionnée"
+    }
+  },
+  "cell_context": {
+    "insert_row_above": "Insérer 1 ligne au-dessus",
+    "insert_row_below": "Insérer 1 ligne en dessous",
+    "insert_column_before": "Insérer 1 colonne à gauche",
+    "insert_column_after": "Insérer 1 colonne à droite",
+    "freeze_columns": "Figer jusqu’à la colonne « {{column}} »",
+    "freeze_rows": "Figer jusqu’à la ligne « {{row}} »",
+    "unfreeze_rows": "Libérer les lignes",
+    "unfreeze_columns": "Libérer les colonnes",
+    "delete_row": "Supprimer la ligne « {{row}} »",
+    "delete_column": "Supprimer la colonne « {{column}} »",
+    "freeze": "Figer",
+    "insert_row": "Insérer une ligne",
+    "insert_column": "Insérer une colonne",
+    "move_row": "Déplacer la ligne",
+    "move_column": "Déplacer la colonne",
+    "move_row_up": "Déplacer la ligne vers le haut",
+    "move_row_down": "Déplacer la ligne vers le bas",
+    "move_column_left": "Déplacer la colonne vers la gauche",
+    "move_column_right": "Déplacer la colonne vers la droite"
+  },
+  "color_picker": {
+    "apply": "Ajouter la couleur",
+    "cancel": "Annuler",
+    "add": "Ajouter une nouvelle couleur",
+    "default": "Couleur par défaut",
+    "no_fill": "Sans remplissage",
+    "recent": "Récentes"
+  },
+  "right_drawer": {
+    "resize_drawer": "Redimensionner le panneau",
+    "close": "Fermer"
+  },
+  "regional_settings": {
+    "open_regional_settings": "Ouvrir les paramètres régionaux",
+    "title": "Paramètres régionaux",
+    "close": "Fermer la boîte de dialogue",
+    "locale": {
+      "title": "Paramètres régionaux",
+      "locale_label": "Paramètres régionaux",
+      "locale_example1": "Nombre",
+      "locale_example2": "Date et heure",
+      "locale_example3": "Délimiteur de formule"
+    },
+    "language": {
+      "title": "Langue",
+      "language_label": "Langue du moteur",
+      "language_helper": "Contrôle la langue utilisée pour les noms de fonctions et les messages d’erreur.",
+      "display_language": {
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "de": "Deutsch",
+        "it": "Italiano"
+      },
+      "display_language_current_lang": {
+        "en": "Anglais",
+        "es": "Espagnol",
+        "fr": "Français",
+        "de": "Allemand",
+        "it": "Italien"
+      }
+    },
+    "timezone": {
+      "title": "Fuseau horaire",
+      "timezone_label": "Fuseau horaire",
+      "timezone_helper": "Modifier ce paramètre aura un impact sur les fonctions liées à la date et à l’heure, y compris TODAY() et NOW()."
+    }
+  }
+}

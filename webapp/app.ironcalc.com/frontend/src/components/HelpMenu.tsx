@@ -2,11 +2,13 @@ import styled from "@emotion/styled";
 import { Menu } from "@mui/material";
 import { BookOpen, Keyboard } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MenuItemWrapper } from "./FileMenu";
 
 export function HelpMenu() {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const anchorElement = useRef<HTMLButtonElement>(null);
+  const { t } = useTranslation();
 
   const handleClick = () => {
     setMenuOpen(true);
@@ -27,7 +29,7 @@ export function HelpMenu() {
         onClick={handleClick}
         $isActive={isMenuOpen}
       >
-        Help
+        {t("file_bar.help")}
       </HelpButton>
       <Menu
         id="help-menu"

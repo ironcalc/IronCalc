@@ -28,7 +28,7 @@ export const Workbook = () => {
         right: "0px",
       }}
     >
-      <IronCalc model={model} />
+      <IronCalc model={model} language="en-US" />
     </div>
   );
 };
