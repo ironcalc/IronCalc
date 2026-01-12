@@ -2,8 +2,8 @@ import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
 import { FileDown, FileUp, Plus, Table2, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
-// import TemplatesDialog from "./WelcomeDialog/TemplatesDialog";
 import { getModelsMetadata, getSelectedUuid } from "./storage";
 import UploadFileDialog from "./UploadFileDialog";
 
@@ -21,6 +21,7 @@ export function FileMenu(props: {
   const models = getModelsMetadata();
   const selectedUuid = getSelectedUuid();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <>
@@ -32,7 +33,7 @@ export function FileMenu(props: {
         $isActive={isMenuOpen}
         aria-haspopup="true"
       >
-        File
+        {t("file_bar.file")}
       </FileMenuWrapper>
       <Menu
         open={isMenuOpen}

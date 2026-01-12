@@ -1,0 +1,206 @@
+{
+  "toolbar": {
+    "redo": "Wiederholen",
+    "undo": "Rückgängig",
+    "copy_styles": "Formatierung kopieren",
+    "clear_formatting": "Formatierung löschen",
+    "euro": "Als Euro formatieren",
+    "percentage": "Als Prozent formatieren",
+    "bold": "Fett",
+    "italic": "Kursiv",
+    "underline": "Unterstrichen",
+    "strike_through": "Durchgestrichen",
+    "align_left": "Links ausrichten",
+    "align_right": "Rechts ausrichten",
+    "align_center": "Zentrieren",
+    "format_number": "Zahlenformat",
+    "font_color": "Schriftfarbe",
+    "fill_color": "Füllfarbe",
+    "increase_font_size": "Schriftgröße erhöhen",
+    "decrease_font_size": "Schriftgröße verringern",
+    "decimal_places_increase": "Dezimalstellen erhöhen",
+    "decimal_places_decrease": "Dezimalstellen verringern",
+    "show_hide_grid_lines": "Gitternetzlinien ein-/ausblenden",
+    "named_ranges": "Benannte Bereiche",
+    "vertical_align_bottom": "Unten ausrichten",
+    "vertical_align_middle": "Mittig ausrichten",
+    "vertical_align_top": "Oben ausrichten",
+    "selected_png": "Ausgewählten Bereich als PNG exportieren",
+    "wrap_text": "Text umbrechen",
+    "scroll_left": "Nach links scrollen",
+    "scroll_right": "Nach rechts scrollen",
+    "format_menu": {
+      "auto": "Automatisch",
+      "number": "Zahl",
+      "percentage": "Prozent",
+      "currency_eur": "Euro (EUR)",
+      "currency_usd": "Dollar (USD)",
+      "currency_gbp": "Britisches Pfund (GBP)",
+      "date_short": "Kurzes Datum",
+      "date_long": "Langes Datum",
+      "custom": "Benutzerdefiniert",
+      "number_example": "1.000,00",
+      "percentage_example": "10%",
+      "currency_eur_example": "€",
+      "currency_usd_example": "$",
+      "currency_gbp_example": "£",
+      "date_short_example": "24.09.2024",
+      "date_long_example": "Dienstag, 24. September 2024"
+    },
+    "borders": {
+      "title": "Rahmen",
+      "all": "Alle Rahmen",
+      "inner": "Innere Rahmen",
+      "outer": "Äußere Rahmen",
+      "top": "Oberer Rahmen",
+      "bottom": "Unterer Rahmen",
+      "clear": "Rahmen entfernen",
+      "left": "Linker Rahmen",
+      "right": "Rechter Rahmen",
+      "horizontal": "Horizontale Rahmen",
+      "vertical": "Vertikale Rahmen",
+      "color": "Rahmenfarbe",
+      "style": "Rahmenstil"
+    }
+  },
+  "num_fmt": {
+    "title": "Benutzerdefiniertes Zahlenformat",
+    "label": "Zahlenformat",
+    "close": "Dialog schließen",
+    "save": "Speichern"
+  },
+  "sheet_rename": {
+    "rename": "Speichern",
+    "label": "Neuer Name",
+    "title": "Tabellenblatt umbenennen",
+    "close": "Dialog schließen"
+  },
+  "sheet_delete": {
+    "title": "Bist du sicher?",
+    "message": "Das Tabellenblatt '{{sheetName}}' wird gelöscht.",
+    "confirm": "Ja, Tabellenblatt löschen",
+    "cancel": "Abbrechen"
+  },
+  "sheet_tab": {
+    "rename": "Umbenennen",
+    "change_color": "Farbe ändern",
+    "delete": "Löschen",
+    "hide_sheet": "Tabellenblatt ausblenden"
+  },
+  "formula_input": {
+    "update": "Aktualisieren",
+    "label": "Formel",
+    "title": "Formel aktualisieren"
+  },
+  "formula_bar": {
+    "manage_named_ranges": "Benannte Bereiche verwalten"
+  },
+  "navigation": {
+    "add_sheet": "Tabellenblatt hinzufügen",
+    "sheet_list": "Tabellenblattliste"
+  },
+  "name_manager_dialog": {
+    "title": "Benannte Bereiche",
+    "empty_message1": "Es wurden noch keine benannten Bereiche hinzugefügt.",
+    "empty_message2": "Klicke auf „Neu hinzufügen“, um einen anzulegen.",
+    "name": "Name",
+    "range": "Geltungsbereich",
+    "scope": "Bereich",
+    "help": "Über benannte Bereiche",
+    "new": "Neu hinzufügen",
+    "workbook": "Arbeitsmappe",
+    "global": "(Global)",
+    "close": "Dialog schließen",
+    "delete": "Bereich löschen",
+    "edit": "Bereich bearbeiten",
+    "back_to_list": "Zurück zur Liste",
+    "add_new_range": "Neuen Bereich hinzufügen",
+    "edit_range": "Bereich bearbeiten",
+    "new_named_range": "Neuer benannter Bereich",
+    "range_name": "Bereichsname",
+    "enter_range_name": "Bereichsnamen eingeben",
+    "scope_label": "Geltungsbereich",
+    "scope_helper": "Der Geltungsbereich bestimmt, wo der benannte Bereich verfügbar ist.",
+    "refers_to": "Bezieht sich auf",
+    "enter_formula": "Formel eingeben",
+    "cancel": "Abbrechen",
+    "apply": "Änderungen übernehmen",
+    "discard": "Änderungen verwerfen",
+    "errors": {
+      "range_name_required": "Der Bereichsname ist erforderlich",
+      "name_cannot_contain_spaces": "Der Name darf keine Leerzeichen enthalten",
+      "name_cannot_start_with_number": "Der Name darf nicht mit einer Zahl beginnen",
+      "name_invalid_characters": "Der Name enthält ungültige Zeichen. Verwende nur Buchstaben, Zahlen, Unterstriche und Punkte. Muss mit einem Buchstaben oder Unterstrich beginnen.",
+      "name_already_exists": "Dieser Name existiert bereits im ausgewählten Geltungsbereich"
+    }
+  },
+  "cell_context": {
+    "insert_row_above": "1 Zeile oberhalb einfügen",
+    "insert_row_below": "1 Zeile unterhalb einfügen",
+    "insert_column_before": "1 Spalte links einfügen",
+    "insert_column_after": "1 Spalte rechts einfügen",
+    "freeze_columns": "Bis Spalte '{{column}}' fixieren",
+    "freeze_rows": "Bis Zeile '{{row}}' fixieren",
+    "unfreeze_rows": "Fixierung der Zeilen aufheben",
+    "unfreeze_columns": "Fixierung der Spalten aufheben",
+    "delete_row": "Zeile '{{row}}' löschen",
+    "delete_column": "Spalte '{{column}}' löschen",
+    "freeze": "Fixieren",
+    "insert_row": "Zeile einfügen",
+    "insert_column": "Spalte einfügen",
+    "move_row": "Zeile verschieben",
+    "move_column": "Spalte verschieben",
+    "move_row_up": "Zeile nach oben verschieben",
+    "move_row_down": "Zeile nach unten verschieben",
+    "move_column_left": "Spalte nach links verschieben",
+    "move_column_right": "Spalte nach rechts verschieben"
+  },
+  "color_picker": {
+    "apply": "Farbe hinzufügen",
+    "cancel": "Abbrechen",
+    "add": "Neue Farbe hinzufügen",
+    "default": "Standardfarbe",
+    "no_fill": "Keine Füllung",
+    "recent": "Zuletzt verwendet"
+  },
+  "right_drawer": {
+    "resize_drawer": "Größe der Seitenleiste ändern",
+    "close": "Schließen"
+  },
+  "regional_settings": {
+    "open_regional_settings": "Regionaleinstellungen öffnen",
+    "title": "Regionaleinstellungen",
+    "close": "Dialog schließen",
+    "locale": {
+      "title": "Regionaleinstellung",
+      "locale_label": "Regionaleinstellung",
+      "locale_example1": "Zahl",
+      "locale_example2": "Datum und Uhrzeit",
+      "locale_example3": "Formeltrennzeichen"
+    },
+    "language": {
+      "title": "Sprache",
+      "language_label": "Engine-Sprache",
+      "language_helper": "Legt die Sprache für Funktionsnamen und Fehlermeldungen fest.",
+      "display_language": {
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "de": "Deutsch",
+        "it": "Italiano"
+      },
+      "display_language_current_lang": {
+        "en": "Englisch",
+        "es": "Spanisch",
+        "fr": "Französisch",
+        "de": "Deutsch",
+        "it": "Italienisch"
+      }
+    },
+    "timezone": {
+      "title": "Zeitzone",
+      "timezone_label": "Zeitzone",
+      "timezone_helper": "Das Ändern dieser Einstellung wirkt sich auf datums- und zeitbezogene Funktionen aus, einschließlich TODAY() und NOW()."
+    }
+  }
+}
