@@ -23,10 +23,10 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ATAN            | <Badge type="tip" text="Available" />          | [ATAN](math_and_trigonometry/atan) |
 | ATAN2           | <Badge type="tip" text="Available" />          | [ATAN2](math_and_trigonometry/atan2) |
 | ATANH           | <Badge type="tip" text="Available" />          | [ATANH](math_and_trigonometry/atanh) |
-| BASE            | <Badge type="info" text="Not implemented yet" /> | –             |
-| CEILING         | <Badge type="info" text="Not implemented yet" /> | –             |
-| CEILING.MATH    | <Badge type="info" text="Not implemented yet" /> | –             |
-| CEILING.PRECISE | <Badge type="info" text="Not implemented yet" /> | –             |
+| BASE            | <Badge type="tip" text="Available" /> | –             |
+| CEILING         | <Badge type="tip" text="Available" /> | –             |
+| CEILING.MATH    | <Badge type="tip" text="Available" /> | –             |
+| CEILING.PRECISE | <Badge type="tip" text="Available" /> | –             |
 | COMBIN          | <Badge type="tip" text="Available" />          | –             |
 | COMBINA         | <Badge type="tip" text="Available" />          | –             |
 | COS             | <Badge type="tip" text="Available" />          | [COS](math_and_trigonometry/cos) |
@@ -35,19 +35,19 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | COTH            | <Badge type="tip" text="Available" />          | –             |
 | CSC             | <Badge type="tip" text="Available" />          | –             |
 | CSCH            | <Badge type="tip" text="Available" />          | –             |
-| DECIMAL         | <Badge type="info" text="Not implemented yet" /> | –             |
+| DECIMAL         | <Badge type="tip" text="Available" /> | –             |
 | DEGREES         | <Badge type="tip" text="Available" /> | [DEGREES](math_and_trigonometry/degrees) |
 | EVEN            | <Badge type="tip" text="Available" /> | [EVEN](math_and_trigonometry/even) |
 | EXP             | <Badge type="tip" text="Available" /> | –             |
-| FACT            | <Badge type="info" text="Not implemented yet" /> | –             |
-| FACTDOUBLE      | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR           | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR.MATH      | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR.PRECISE   | <Badge type="info" text="Not implemented yet" /> | –             |
-| GCD             | <Badge type="info" text="Not implemented yet" /> | –             |
+| FACT            | <Badge type="tip" text="Available" /> | –             |
+| FACTDOUBLE      | <Badge type="tip" text="Available" /> | –             |
+| FLOOR           | <Badge type="tip" text="Available" /> | –             |
+| FLOOR.MATH      | <Badge type="tip" text="Available" /> | –             |
+| FLOOR.PRECISE   | <Badge type="tip" text="Available" /> | –             |
+| GCD             | <Badge type="tip" text="Available" /> | –             |
 | INT             | <Badge type="tip" text="Available" />          | –             |
-| ISO.CEILING     | <Badge type="info" text="Not implemented yet" /> | –             |
-| LCM             | <Badge type="info" text="Not implemented yet" /> | –             |
+| ISO.CEILING     | <Badge type="tip" text="Available" /> | –             |
+| LCM             | <Badge type="tip" text="Available" /> | –             |
 | LET             | <Badge type="info" text="Not implemented yet" /> | –             |
 | LN              | <Badge type="tip" text="Available" />           | –             |
 | LOG             | <Badge type="tip" text="Available" />           | –             |
@@ -60,7 +60,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MULTINOMIAL     | <Badge type="info" text="Not implemented yet" /> | –             |
 | MUNIT           | <Badge type="info" text="Not implemented yet" /> | –             |
 | ODD             | <Badge type="tip" text="Available" /> | [ODD](math_and_trigonometry/odd) |
-| PI              | <Badge type="info" text="Not implemented yet" /> | –             |
+| PI              | <Badge type="tip" text="Available" /> | –             |
 | POWER           | <Badge type="tip" text="Available" />          | –             |
 | PRODUCT         | <Badge type="tip" text="Available" />          | –             |
 | QUOTIENT        | <Badge type="tip" text="Available" /> | [QUOTIENT](math_and_trigonometry/quotient) |
@@ -87,9 +87,9 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SUMIFS          | <Badge type="tip" text="Available" />         | –             |
 | SUMPRODUCT      | <Badge type="info" text="Not implemented yet" /> | –             |
 | SUMSQ           | <Badge type="tip" text="Available" />          | –             |
-| SUMX2MY2        | <Badge type="info" text="Not implemented yet" /> | –             |
-| SUMX2PY2        | <Badge type="info" text="Not implemented yet" /> | –             |
-| SUMXMY2         | <Badge type="info" text="Not implemented yet" /> | –             |
+| SUMX2MY2        | <Badge type="tip" text="Available" /> | –             |
+| SUMX2PY2        | <Badge type="tip" text="Available" /> | –             |
+| SUMXMY2         | <Badge type="tip" text="Available" /> | –             |
 | TAN             | <Badge type="tip" text="Available" />          | [TAN](math_and_trigonometry/tan) |
 | TANH            | <Badge type="tip" text="Available" />          | [TANH](math_and_trigonometry/tanh) |
 | TRUNC           | <Badge type="tip" text="Available" />          | –             |
