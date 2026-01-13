@@ -201,7 +201,7 @@
     "timezone": {
       "title": "Fuso orario",
       "timezone_label": "Fuso orario",
-      "timezone_helper": "La modifica di questa impostazione influirà sulle funzioni relative a data e ora, incluse TODAY() e NOW()."
+      "timezone_helper": "La modifica di questa impostazione influirà sulle funzioni relative a data e ora, incluse ADESSO() e OGGI()."
     }
   }
 }
