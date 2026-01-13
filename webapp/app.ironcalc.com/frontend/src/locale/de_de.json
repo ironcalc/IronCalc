@@ -2,6 +2,7 @@
   "app": {
     "title": "IronCalc"
   },
+  "default_workbook_name": "Arbeitsmappe",
   "welcome_dialog": {
     "title": "Willkommen bei IronCalc",
     "subtitle": "Beginnen Sie mit einer leeren Arbeitsmappe oder einer fertigen Vorlage.",

@@ -2,6 +2,7 @@
   "app": {
     "title": "IronCalc"
   },
+  "default_workbook_name": "Classeur",
   "welcome_dialog": {
     "title": "Bienvenue sur IronCalc",
     "subtitle": "Commencez avec un classeur vierge ou un modèle prêt à l'emploi.",
