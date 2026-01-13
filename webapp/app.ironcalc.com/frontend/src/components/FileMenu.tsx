@@ -62,8 +62,13 @@ export function FileMenu(props: {
         anchorEl={anchorElement.current}
         autoFocus={false}
         disableRestoreFocus={true}
+        transitionDuration={0}
         sx={{
-          "& .MuiPaper-root": { borderRadius: "8px", padding: "4px 0px" },
+          "& .MuiPaper-root": {
+            borderRadius: "8px",
+            padding: "4px 0px",
+            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
+          },
           "& .MuiList-root": { padding: "0" },
           transform: "translate(-4px, 4px)",
         }}
@@ -142,14 +147,15 @@ export function FileMenu(props: {
           vertical: "top",
           horizontal: "left",
         }}
+        transitionDuration={0}
         sx={{
           pointerEvents: "none",
           "& .MuiPaper-root": {
             borderRadius: "8px",
             padding: "4px 0px",
             pointerEvents: "auto",
-            marginLeft: "4px",
             marginTop: "-4px",
+            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
           },
           "& .MuiList-root": { padding: "0" },
         }}
@@ -255,8 +261,10 @@ export const MenuItemWrapper = styled(MenuItem)`
   font-size: 12px;
   gap: 8px;
   svg {
+    max-width: 16px;
     min-width: 16px;
-    height: 100%;
+    max-height: 16px;
+    min-height: 16px;
     color: #757575;
   }
 `;

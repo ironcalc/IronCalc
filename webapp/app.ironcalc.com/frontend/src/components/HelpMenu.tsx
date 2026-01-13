@@ -38,11 +38,13 @@ export function HelpMenu() {
         onClose={handleClose}
         autoFocus={false}
         disableRestoreFocus={true}
+        transitionDuration={0}
         sx={{
           "& .MuiPaper-root": {
             borderRadius: "8px",
             padding: "4px 0px",
             transform: "translate(-4px, 4px)",
+            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
           },
           "& .MuiList-root": { padding: "0" },
           transform: "translate(-4px, 4px)",

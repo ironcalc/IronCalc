@@ -213,6 +213,8 @@ function UploadFileDialog(properties: {
 const DialogWrapper = styled(Dialog)`
   .MuiDialog-paper {
     width: 460px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
   }
   .MuiBackdrop-root {
     background-color: rgba(0, 0, 0, 0.1);
