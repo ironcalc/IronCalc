@@ -6,7 +6,6 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
-import LanguageSelector from "./LanguageSelector";
 import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
@@ -149,9 +148,6 @@ export function FileBar(properties: {
         </Tooltip>
       </WorkbookTitleWrapper>
       <Spacer ref={spacerRef} />
-      <LanguageSelectorWrapper>
-        <LanguageSelector />
-      </LanguageSelectorWrapper>
       <DialogContainer>
         <ShareButton onClick={() => setIsDialogOpen(true)} />
         {isDialogOpen && (
@@ -165,10 +161,6 @@ export function FileBar(properties: {
     </FileBarWrapper>
   );
 }
-
-const LanguageSelectorWrapper = styled("div")`
-  margin-right: 16px;
-`;
 
 // We want the workbook title to be exactly an the center of the page,
 // so we need an absolute position
