@@ -206,7 +206,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
     return (
       <SectionContainer key={title}>
         <SectionTitle>
-          {title === "Pinned" && <Pin />}
+          {title === t("left_drawer.pinned") && <Pin />}
           {title}
         </SectionTitle>
         {uuids.map(renderWorkbookItem)}
@@ -218,10 +218,10 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
 
   return (
     <>
-      {renderSection("Pinned", pinnedModels)}
-      {renderSection("Today", modelsCreatedToday)}
-      {renderSection("Last 30 Days", modelsCreatedThisMonth)}
-      {renderSection("Older", olderModels)}
+      {renderSection(t("left_drawer.pinned"), pinnedModels)}
+      {renderSection(t("left_drawer.today"), modelsCreatedToday)}
+      {renderSection(t("left_drawer.last_30_days"), modelsCreatedThisMonth)}
+      {renderSection(t("left_drawer.older"), olderModels)}
 
       <StyledMenu
         anchorEl={menuAnchorEl}
