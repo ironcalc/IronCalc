@@ -2,6 +2,7 @@
   "app": {
     "title": "IronCalc"
   },
+  "default_workbook_name": "Libro",
   "welcome_dialog": {
     "title": "Bienvenido a IronCalc",
     "subtitle": "Comienza con un libro en blanco o una plantilla prediseñada.",

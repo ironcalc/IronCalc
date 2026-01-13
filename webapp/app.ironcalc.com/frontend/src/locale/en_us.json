@@ -2,6 +2,7 @@
   "app": {
     "title": "IronCalc"
   },
+  "default_workbook_name": "Workbook",
   "welcome_dialog": {
     "title": "Welcome to IronCalc",
     "subtitle": "Start with a blank workbook or a ready-made template.",

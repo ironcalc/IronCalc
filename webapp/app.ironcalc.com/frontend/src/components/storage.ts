@@ -1,4 +1,5 @@
 import { Model } from "@ironcalc/workbook";
+import i18n from "../i18n";
 import { base64ToBytes, bytesToBase64 } from "./util";
 
 const MAX_WORKBOOKS = 50;
@@ -60,7 +61,7 @@ export function getModelsMetadata(): ModelsMetadata {
 
 // Pick a different name Workbook{N} where N = 1, 2, 3
 function getNewName(existingNames: string[]): string {
-  const baseName = "Workbook";
+  const baseName = i18n.t("default_workbook_name");
   let index = 1;
   while (index < MAX_WORKBOOKS) {
     const name = `${baseName}${index}`;
@@ -70,7 +71,7 @@ function getNewName(existingNames: string[]): string {
     }
   }
   // FIXME: Too many workbooks?
-  return "Workbook-Infinity";
+  return `${baseName}-Infinity`;
 }
 
 export function createModelWithSafeTimezone(name: string): Model {

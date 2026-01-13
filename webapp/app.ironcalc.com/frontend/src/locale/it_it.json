@@ -2,6 +2,7 @@
   "app": {
     "title": "IronCalc"
   },
+  "default_workbook_name": "Cartella",
   "welcome_dialog": {
     "title": "Benvenuto su IronCalc",
     "subtitle": "Inizia con una cartella di lavoro vuota o un modello pronto all'uso.",
