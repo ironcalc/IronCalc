@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
 import {
+  Check,
   ChevronRight,
   FileDown,
   FileUp,
@@ -31,16 +32,16 @@ export function FileMenu(props: {
   const models = getModelsMetadata();
   const selectedUuid = getSelectedUuid();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const handleMainMenuClose = () => {
     setMenuOpen(false);
     setLanguageMenuOpen(false);
   };
 
-  const handleLanguageItemSelect = () => {
+  const handleLanguageItemSelect = (language: string) => {
+    i18n.changeLanguage(language);
     handleMainMenuClose();
-    // Handle the selection here
   };
 
   return (
@@ -160,14 +161,45 @@ export function FileMenu(props: {
           },
         }}
       >
-        <MenuItemWrapper onClick={handleLanguageItemSelect}>
-          Option 1
+        <MenuItemWrapper onClick={() => handleLanguageItemSelect("en-US")}>
+          {i18n.language === "en-US" ? (
+            <Check size={16} />
+          ) : (
+            <IconPlaceholder />
+          )}
+          English
         </MenuItemWrapper>
-        <MenuItemWrapper onClick={handleLanguageItemSelect}>
-          Option 2
+        <MenuItemWrapper onClick={() => handleLanguageItemSelect("es-ES")}>
+          {i18n.language === "es-ES" ? (
+            <Check size={16} />
+          ) : (
+            <IconPlaceholder />
+          )}
+          Español
         </MenuItemWrapper>
-        <MenuItemWrapper onClick={handleLanguageItemSelect}>
-          Option 3
+        <MenuItemWrapper onClick={() => handleLanguageItemSelect("fr-FR")}>
+          {i18n.language === "fr-FR" ? (
+            <Check size={16} />
+          ) : (
+            <IconPlaceholder />
+          )}
+          Français
+        </MenuItemWrapper>
+        <MenuItemWrapper onClick={() => handleLanguageItemSelect("de-DE")}>
+          {i18n.language === "de-DE" ? (
+            <Check size={16} />
+          ) : (
+            <IconPlaceholder />
+          )}
+          Deutsch
+        </MenuItemWrapper>
+        <MenuItemWrapper onClick={() => handleLanguageItemSelect("it-IT")}>
+          {i18n.language === "it-IT" ? (
+            <Check size={16} />
+          ) : (
+            <IconPlaceholder />
+          )}
+          Italiano
         </MenuItemWrapper>
       </Menu>
       <Modal
@@ -231,6 +263,11 @@ export const MenuItemWrapper = styled(MenuItem)`
 
 export const MenuItemText = styled("div")`
   width: 100%;
+`;
+
+const IconPlaceholder = styled.div`
+  width: 16px;
+  min-width: 16px;
 `;
 
 const FileMenuWrapper = styled.button<{ $isActive: boolean }>`
