@@ -39,11 +39,11 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | DEGREES         | <Badge type="tip" text="Available" /> | [DEGREES](math_and_trigonometry/degrees) |
 | EVEN            | <Badge type="tip" text="Available" /> | [EVEN](math_and_trigonometry/even) |
 | EXP             | <Badge type="tip" text="Available" /> | –             |
-| FACT            | <Badge type="info" text="Not implemented yet" /> | –             |
-| FACTDOUBLE      | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR           | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR.MATH      | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR.PRECISE   | <Badge type="info" text="Not implemented yet" /> | –             |
+| FACT            | <Badge type="tip" text="Available" /> | –             |
+| FACTDOUBLE      | <Badge type="tip" text="Available" /> | –             |
+| FLOOR           | <Badge type="tip" text="Available" />          | –             |
+| FLOOR.MATH      | <Badge type="tip" text="Available" />          | –             |
+| FLOOR.PRECISE   | <Badge type="tip" text="Available" />          | –             |
 | GCD             | <Badge type="info" text="Not implemented yet" /> | –             |
 | INT             | <Badge type="tip" text="Available" />          | –             |
 | ISO.CEILING     | <Badge type="info" text="Not implemented yet" /> | –             |
