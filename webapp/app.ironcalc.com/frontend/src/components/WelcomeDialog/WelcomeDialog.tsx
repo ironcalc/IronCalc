@@ -61,7 +61,7 @@ function WelcomeDialog(properties: {
             onClick={() => handleTemplateSelect("blank")}
           />
         </TemplatesListWrapper>
-        <ListTitle>{t("welcome_dialog.templates")}</ListTitle>
+        <ListTitle>{t("welcome_dialog.templates.templates")}</ListTitle>
         <TemplatesList
           selectedTemplate={selectedTemplate}
           handleTemplateSelect={handleTemplateSelect}
