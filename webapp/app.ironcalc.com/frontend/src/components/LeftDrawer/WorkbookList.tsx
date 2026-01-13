@@ -227,6 +227,9 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
         anchorEl={menuAnchorEl}
         open={Boolean(menuAnchorEl)}
         onClose={handleMenuClose}
+        autoFocus={false}
+        disableRestoreFocus={true}
+        transitionDuration={0}
         MenuListProps={{
           dense: true,
         }}
@@ -387,11 +390,11 @@ const StyledMenu = styled(Menu)`
   .MuiPaper-root {
     border-radius: 8px;
     padding: 4px 0px;
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.01);
-  },
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  }
   .MuiList-root {
     padding: 0;
-  },
+  }
 `;
 
 const SectionContainer = styled("div")`

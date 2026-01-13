@@ -67,7 +67,6 @@ DeleteWorkbookDialog.displayName = "DeleteWorkbookDialog";
 
 // some colors taken from the IronCalc palette
 const COMMON_WHITE = "#FFF";
-const COMMON_BLACK = "#272525";
 
 const ERROR_MAIN = "#EB5757";
 const ERROR_DARK = "#CB4C4C";
@@ -91,7 +90,7 @@ const DialogWrapper = styled.div`
   gap: 16px;
   padding: 12px;
   border-radius: 8px;
-  box-shadow: 0px 1px 3px 0px ${COMMON_BLACK}1A;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
   width: 280px;
   max-width: calc(100% - 40px);
   z-index: 50;
