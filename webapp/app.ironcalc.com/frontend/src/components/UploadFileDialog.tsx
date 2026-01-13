@@ -1,6 +1,7 @@
 import { Dialog, styled } from "@mui/material";
 import { BookOpen, FileUp, X } from "lucide-react";
 import { type DragEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 function UploadFileDialog(properties: {
   onClose: () => void;
@@ -10,7 +11,7 @@ function UploadFileDialog(properties: {
   const [message, setMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const crossRef = useRef<HTMLDivElement>(null);
-
+  const { t } = useTranslation();
   const { onModelUpload } = properties;
 
   useEffect(() => {
@@ -105,12 +106,12 @@ function UploadFileDialog(properties: {
     >
       <UploadTitle>
         <span style={{ flexGrow: 2, marginLeft: 12 }}>
-          Import an .xlsx file
+          {t("file_bar.file_menu.import.title")}
         </span>
         <Cross
           style={{ marginRight: 12 }}
           onClick={handleClose}
-          title="Close Dialog"
+          title={t("file_bar.file_menu.import.close_dialog")}
           ref={crossRef}
           tabIndex={0}
           onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
@@ -142,7 +143,7 @@ function UploadFileDialog(properties: {
               </div>
               <div style={{ fontSize: 12 }}>
                 <span style={{ color: "#333333" }}>
-                  Drag and drop a file here or{" "}
+                  {t("file_bar.file_menu.import.subtitle")}{" "}
                 </span>
                 <input
                   ref={fileInputRef}
@@ -174,7 +175,7 @@ function UploadFileDialog(properties: {
                     }
                   }}
                 >
-                  click to browse
+                  {t("file_bar.file_menu.import.subtitle_link")}
                 </DocLink>
               </div>
               <div style={{ flexGrow: 2 }} />
@@ -202,7 +203,7 @@ function UploadFileDialog(properties: {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn more about importing files into IronCalc
+          {t("file_bar.file_menu.import.learn_more")}
         </UploadFooterLink>
       </UploadFooter>
     </DialogWrapper>

@@ -1,6 +1,7 @@
 import { Dialog, styled } from "@mui/material";
 import { X } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import TemplatesList, {
   Cross,
   DialogContent,
@@ -12,6 +13,7 @@ function TemplatesDialog(properties: {
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
 }) {
+  const { t } = useTranslation();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
 
   const handleClose = () => {
@@ -25,11 +27,13 @@ function TemplatesDialog(properties: {
   return (
     <DialogWrapper open={true} onClose={() => {}}>
       <DialogTemplateHeader>
-        <span style={{ flexGrow: 2, marginLeft: 12 }}>Choose a template</span>
+        <span style={{ flexGrow: 2, marginLeft: 12 }}>
+          {t("welcome_dialog.templates.choose_template")}
+        </span>
         <Cross
           style={{ marginRight: 12 }}
           onClick={handleClose}
-          title="Close Dialog"
+          title={t("welcome_dialog.close_dialog")}
           tabIndex={0}
           onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
         >
@@ -46,7 +50,7 @@ function TemplatesDialog(properties: {
         <DialogFooterButton
           onClick={() => properties.onSelectTemplate(selectedTemplate)}
         >
-          Create workbook
+          {t("welcome_dialog.create_workbook")}
         </DialogFooterButton>
       </DialogFooter>
     </DialogWrapper>

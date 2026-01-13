@@ -29,7 +29,7 @@ export function HelpMenu() {
         onClick={handleClick}
         $isActive={isMenuOpen}
       >
-        {t("file_bar.help")}
+        {t("file_bar.help_menu.button")}
       </HelpButton>
       <Menu
         id="help-menu"
@@ -65,7 +65,7 @@ export function HelpMenu() {
           }}
         >
           <BookOpen />
-          Documentation
+          {t("file_bar.help_menu.documentation")}
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
@@ -78,7 +78,7 @@ export function HelpMenu() {
           }}
         >
           <Keyboard />
-          Keyboard Shortcuts
+          {t("file_bar.help_menu.keyboard_shortcuts")}
         </MenuItemWrapper>
       </Menu>
     </div>

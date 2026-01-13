@@ -2,10 +2,12 @@ import styled from "@emotion/styled";
 import { Alert } from "@mui/material";
 import { CircleAlert, X } from "lucide-react";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 const ALERT_DISMISSED_KEY = "localStorageAlertDismissed";
 
 function LocalStorageAlert() {
+  const { t } = useTranslation();
   const [isAlertVisible, setIsAlertVisible] = useState(
     () => localStorage.getItem(ALERT_DISMISSED_KEY) !== "true",
   );
@@ -40,13 +42,13 @@ function LocalStorageAlert() {
         zIndex: 1,
       }}
     >
-      <AlertTitle>Heads up!</AlertTitle>
-      <AlertBody>
-        IronCalc stores your data only in your browser's local storage.
-      </AlertBody>
+      <AlertTitle>{t("left_drawer.alert.title")}</AlertTitle>
+      <AlertBody>{t("left_drawer.alert.subtitle")}</AlertBody>
       <AlertBody style={{ marginTop: "6px" }}>
-        <strong>Download your XLSX often</strong> – future versions may not open
-        current workbooks, even if shared.
+        <Trans
+          i18nKey="left_drawer.alert.subtitle2"
+          components={{ bold: <strong /> }}
+        />
       </AlertBody>
     </AlertWrapper>
   );

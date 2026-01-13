@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 interface DeleteWorkbookDialogProperties {
   onClose: () => void;
@@ -9,6 +10,7 @@ interface DeleteWorkbookDialogProperties {
 }
 
 function DeleteWorkbookDialog(properties: DeleteWorkbookDialogProperties) {
+  const { t } = useTranslation();
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -32,10 +34,15 @@ function DeleteWorkbookDialog(properties: DeleteWorkbookDialogProperties) {
         <Trash2 />
       </IconWrapper>
       <ContentWrapper>
-        <Title>Are you sure?</Title>
+        <Title>{t("file_bar.file_menu.delete_workbook.title")}</Title>
         <Body>
-          The workbook <strong>'{properties.workbookName}'</strong> will be
-          permanently deleted. This action cannot be undone.
+          <Trans
+            i18nKey="file_bar.file_menu.delete_workbook.subtitle"
+            components={{ bold: <strong /> }}
+            values={{
+              workbookName: properties.workbookName,
+            }}
+          />
         </Body>
         <ButtonGroup>
           <DeleteButton
@@ -45,9 +52,11 @@ function DeleteWorkbookDialog(properties: DeleteWorkbookDialogProperties) {
             }}
             ref={deleteButtonRef}
           >
-            Yes, delete workbook
+            {t("file_bar.file_menu.delete_workbook.confirm_button")}
           </DeleteButton>
-          <CancelButton onClick={properties.onClose}>Cancel</CancelButton>
+          <CancelButton onClick={properties.onClose}>
+            {t("file_bar.file_menu.delete_workbook.cancel_button")}
+          </CancelButton>
         </ButtonGroup>
       </ContentWrapper>
     </DialogWrapper>

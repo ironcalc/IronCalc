@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
 import { DeleteButton, MenuDivider, MenuItemWrapper } from "../FileMenu";
 import { downloadModel } from "../rpc";
@@ -29,6 +30,7 @@ interface WorkbookListProps {
 }
 
 function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
+  const { t } = useTranslation();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedWorkbookUuid, setSelectedWorkbookUuid] = useState<
     string | null
@@ -252,7 +254,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
           disableRipple
         >
           <FileDown />
-          Download (.xlsx)
+          {t("left_drawer.workbook_menu.download")}
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
@@ -268,8 +270,8 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
             <Pin />
           )}
           {selectedWorkbookUuid && isWorkbookPinned(selectedWorkbookUuid)
-            ? "Unpin"
-            : "Pin"}
+            ? t("left_drawer.workbook_menu.unpin")
+            : t("left_drawer.workbook_menu.pin")}
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
@@ -280,7 +282,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
           disableRipple
         >
           <Copy />
-          Duplicate
+          {t("left_drawer.workbook_menu.duplicate")}
         </MenuItemWrapper>
         <MenuDivider />
         <DeleteButton
@@ -293,7 +295,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
           disableRipple
         >
           <Trash2 size={16} />
-          Delete workbook
+          {t("left_drawer.workbook_menu.delete")}
         </DeleteButton>
       </StyledMenu>
 

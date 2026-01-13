@@ -1,6 +1,14 @@
 import styled from "@emotion/styled";
 import { Menu, MenuItem, Modal } from "@mui/material";
-import { FileDown, FileUp, Plus, Table2, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  FileDown,
+  FileUp,
+  Globe,
+  Plus,
+  Table2,
+  Trash2,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
@@ -17,11 +25,23 @@ export function FileMenu(props: {
 }) {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isImportMenuOpen, setImportMenuOpen] = useState(false);
+  const [isLanguageMenuOpen, setLanguageMenuOpen] = useState(false);
   const anchorElement = useRef<HTMLButtonElement>(null);
+  const languageMenuAnchor = useRef<HTMLLIElement>(null);
   const models = getModelsMetadata();
   const selectedUuid = getSelectedUuid();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { t } = useTranslation();
+
+  const handleMainMenuClose = () => {
+    setMenuOpen(false);
+    setLanguageMenuOpen(false);
+  };
+
+  const handleLanguageItemSelect = () => {
+    handleMainMenuClose();
+    // Handle the selection here
+  };
 
   return (
     <>
@@ -33,11 +53,11 @@ export function FileMenu(props: {
         $isActive={isMenuOpen}
         aria-haspopup="true"
       >
-        {t("file_bar.file")}
+        {t("file_bar.file_menu.button")}
       </FileMenuWrapper>
       <Menu
         open={isMenuOpen}
-        onClose={(): void => setMenuOpen(false)}
+        onClose={handleMainMenuClose}
         anchorEl={anchorElement.current}
         autoFocus={false}
         disableRestoreFocus={true}
@@ -60,7 +80,7 @@ export function FileMenu(props: {
           }}
         >
           <Plus />
-          New blank workbook
+          {t("file_bar.file_menu.new_blank_workbook")}
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
@@ -69,7 +89,7 @@ export function FileMenu(props: {
           }}
         >
           <Table2 />
-          New from template
+          {t("file_bar.file_menu.new_from_template")}
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={() => {
@@ -78,12 +98,12 @@ export function FileMenu(props: {
           }}
         >
           <FileUp />
-          Import
+          {t("file_bar.file_menu.import.button")}
         </MenuItemWrapper>
         <MenuDivider />
         <MenuItemWrapper onClick={props.onDownload}>
           <FileDown />
-          Download (.xlsx)
+          <MenuItemText>{t("file_bar.file_menu.download")}</MenuItemText>
         </MenuItemWrapper>
         <DeleteButton
           onClick={() => {
@@ -92,8 +112,63 @@ export function FileMenu(props: {
           }}
         >
           <Trash2 />
-          Delete workbook
+          <MenuItemText>
+            {t("file_bar.file_menu.delete_workbook.button")}
+          </MenuItemText>
         </DeleteButton>
+        <MenuDivider />
+        <MenuItemWrapper
+          ref={languageMenuAnchor}
+          onMouseEnter={() => setLanguageMenuOpen(true)}
+          onMouseLeave={() => setLanguageMenuOpen(false)}
+          sx={{ justifyContent: "space-between" }}
+        >
+          <Globe />
+          <MenuItemText>
+            {t("file_bar.file_menu.display_language")}
+          </MenuItemText>
+          <ChevronRight size={16} />
+        </MenuItemWrapper>
+      </Menu>
+      <Menu
+        open={isLanguageMenuOpen}
+        anchorEl={languageMenuAnchor.current}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+        sx={{
+          pointerEvents: "none",
+          "& .MuiPaper-root": {
+            borderRadius: "8px",
+            padding: "4px 0px",
+            pointerEvents: "auto",
+            marginLeft: "4px",
+            marginTop: "-4px",
+          },
+          "& .MuiList-root": { padding: "0" },
+        }}
+        onClose={handleMainMenuClose}
+        slotProps={{
+          paper: {
+            onMouseEnter: () => setLanguageMenuOpen(true),
+            onMouseLeave: () => setLanguageMenuOpen(false),
+          },
+        }}
+      >
+        <MenuItemWrapper onClick={handleLanguageItemSelect}>
+          Option 1
+        </MenuItemWrapper>
+        <MenuItemWrapper onClick={handleLanguageItemSelect}>
+          Option 2
+        </MenuItemWrapper>
+        <MenuItemWrapper onClick={handleLanguageItemSelect}>
+          Option 3
+        </MenuItemWrapper>
       </Menu>
       <Modal
         open={isImportMenuOpen}
@@ -148,10 +223,14 @@ export const MenuItemWrapper = styled(MenuItem)`
   font-size: 12px;
   gap: 8px;
   svg {
-    width: 16px;
+    min-width: 16px;
     height: 100%;
     color: #757575;
   }
+`;
+
+export const MenuItemText = styled("div")`
+  width: 100%;
 `;
 
 const FileMenuWrapper = styled.button<{ $isActive: boolean }>`

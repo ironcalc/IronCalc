@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
 import { IconButton, Tooltip } from "@mui/material";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { DialogHeaderLogoWrapper } from "../WelcomeDialog/WelcomeDialog";
 
 interface DrawerHeaderProps {
@@ -9,6 +10,7 @@ interface DrawerHeaderProps {
 }
 
 function DrawerHeader({ onNewModel }: DrawerHeaderProps) {
+  const { t } = useTranslation();
   return (
     <HeaderContainer>
       <LogoWrapper>
@@ -18,7 +20,7 @@ function DrawerHeader({ onNewModel }: DrawerHeaderProps) {
         <Title>IronCalc</Title>
       </LogoWrapper>
       <Tooltip
-        title="New workbook"
+        title={t("left_drawer.new_workbook")}
         slotProps={{
           popper: {
             modifiers: [

@@ -3,6 +3,7 @@ import type { Model } from "@ironcalc/workbook";
 import { IconButton, Tooltip } from "@mui/material";
 import { CloudOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
 import LanguageSelector from "./LanguageSelector";
@@ -41,9 +42,9 @@ export function FileBar(properties: {
   const spacerRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
-
-  const cloudWarningText1 = `This workbook is stored only in your browser. To keep it safe, download it as .xlsx.`;
-  const cloudWarningText2 = ` Future versions may be incompatible.`;
+  const { t } = useTranslation();
+  const cloudWarningText1 = `${t("file_bar.title_input.warning_text1")}`;
+  const cloudWarningText2 = `${t("file_bar.title_input.warning_text2")}`;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -57,7 +58,7 @@ export function FileBar(properties: {
   return (
     <FileBarWrapper>
       <Tooltip
-        title="Toggle sidebar"
+        title={t("file_bar.toggle_sidebar")}
         slotProps={{
           popper: {
             modifiers: [

@@ -1,7 +1,9 @@
 import styled from "@emotion/styled";
 import { BookOpen } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 function DrawerFooter() {
+  const { t } = useTranslation();
   return (
     <StyledDrawerFooter>
       <FooterLink
@@ -12,7 +14,7 @@ function DrawerFooter() {
         <OpenBookIcon>
           <BookOpen />
         </OpenBookIcon>
-        <FooterLinkText>Documentation</FooterLinkText>
+        <FooterLinkText>{t("left_drawer.documentation")}</FooterLinkText>
       </FooterLink>
     </StyledDrawerFooter>
   );

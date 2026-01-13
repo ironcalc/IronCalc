@@ -3,6 +3,7 @@ import { Button, Dialog, styled, TextField } from "@mui/material";
 import { Check, Copy, GlobeLock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { shareModel } from "./rpc";
 
 function ShareWorkbookDialog(properties: {
@@ -12,6 +13,7 @@ function ShareWorkbookDialog(properties: {
 }) {
   const [url, setUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const generateUrl = async () => {
@@ -83,14 +85,16 @@ function ShareWorkbookDialog(properties: {
             onClick={handleCopy}
           >
             {copied ? <StyledCheck /> : <StyledCopy />}
-            {copied ? "Copied!" : "Copy URL"}
+            {copied
+              ? t("file_bar.share_popover.copied")
+              : t("file_bar.share_popover.copy_url")}
           </StyledButton>
         </URLWrapper>
       </DialogContent>
 
       <UploadFooter>
         <GlobeLock />
-        Anyone with the link will be able to access a copy of this workbook
+        {t("file_bar.share_popover.info_text")}
       </UploadFooter>
     </DialogWrapper>
   );
