@@ -3,6 +3,10 @@
     "title": "IronCalc"
   },
   "default_workbook_name": "Libro",
+  "errors": {
+    "model_not_found": "Modelo no encontrado o error al cargar",
+    "example_not_found": "Archivo de ejemplo no encontrado o error al cargar"
+  },
   "welcome_dialog": {
     "title": "Bienvenido a IronCalc",
     "subtitle": "Comienza con un libro en blanco o una plantilla prediseñada.",
@@ -52,7 +56,9 @@
         "subtitle": "Arrastra y suelta un archivo aquí o",
         "subtitle_link": "haz clic para seleccionar",
         "learn_more": "Más información sobre cómo importar archivos a IronCalc",
-        "close_dialog": "Cerrar diálogo"
+        "close_dialog": "Cerrar diálogo",
+        "uploading": "Subiendo {{fileName}}...",
+        "drop_file_here": "Suelta el archivo aquí"
       },
       "download": "Descargar (.xlsx)",
       "delete_workbook": {

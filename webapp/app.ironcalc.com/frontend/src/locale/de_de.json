@@ -3,6 +3,10 @@
     "title": "IronCalc"
   },
   "default_workbook_name": "Arbeitsmappe",
+  "errors": {
+    "model_not_found": "Modell nicht gefunden oder Ladefehler",
+    "example_not_found": "Beispieldatei nicht gefunden oder Ladefehler"
+  },
   "welcome_dialog": {
     "title": "Willkommen bei IronCalc",
     "subtitle": "Beginnen Sie mit einer leeren Arbeitsmappe oder einer fertigen Vorlage.",
@@ -52,7 +56,9 @@
         "subtitle": "Datei hier ablegen oder",
         "subtitle_link": "klicken zum Durchsuchen",
         "learn_more": "Erfahren Sie mehr über das Importieren von Dateien in IronCalc",
-        "close_dialog": "Dialog schließen"
+        "close_dialog": "Dialog schließen",
+        "uploading": "{{fileName}} wird hochgeladen...",
+        "drop_file_here": "Datei hier ablegen"
       },
       "download": "Herunterladen (.xlsx)",
       "delete_workbook": {

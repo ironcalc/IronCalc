@@ -52,7 +52,7 @@ function App() {
           localStorage.removeItem("selected");
           setModel(importedModel);
         } catch (_e) {
-          alert("Model not found, or failed to load");
+          alert(t("errors.model_not_found"));
         }
       } else if (exampleFilename) {
         try {
@@ -61,7 +61,7 @@ function App() {
           localStorage.removeItem("selected");
           setModel(importedModel);
         } catch (_e) {
-          alert("Example file not found, or failed to load");
+          alert(t("errors.example_not_found"));
         }
       } else {
         // try to load from local storage
@@ -76,7 +76,7 @@ function App() {
       }
     }
     start();
-  }, []);
+  }, [t]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: localStorageId needed to detect name changes (model mutates internally)
   useEffect(() => {

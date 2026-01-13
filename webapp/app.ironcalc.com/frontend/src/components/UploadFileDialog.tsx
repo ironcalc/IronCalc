@@ -77,7 +77,9 @@ function UploadFileDialog(properties: {
   };
 
   const handleFileUpload = (file: File) => {
-    setMessage(`Uploading ${file.name}...`);
+    setMessage(
+      t("file_bar.file_menu.import.uploading", { fileName: file.name }),
+    );
 
     // Read the file as ArrayBuffer
     const reader = new FileReader();
@@ -183,7 +185,7 @@ function UploadFileDialog(properties: {
           ) : (
             <>
               <div style={{ flexGrow: 2 }} />
-              <div>Drop file here</div>
+              <div>{t("file_bar.file_menu.import.drop_file_here")}</div>
               <div style={{ flexGrow: 2 }} />
             </>
           )}

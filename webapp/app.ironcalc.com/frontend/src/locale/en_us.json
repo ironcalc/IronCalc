@@ -3,6 +3,10 @@
     "title": "IronCalc"
   },
   "default_workbook_name": "Workbook",
+  "errors": {
+    "model_not_found": "Model not found, or failed to load",
+    "example_not_found": "Example file not found, or failed to load"
+  },
   "welcome_dialog": {
     "title": "Welcome to IronCalc",
     "subtitle": "Start with a blank workbook or a ready-made template.",
@@ -52,7 +56,9 @@
         "subtitle": "Drag and drop a file here or",
         "subtitle_link": "click to browse",
         "learn_more": "Learn more about importing files into IronCalc",
-        "close_dialog": "Close dialog"
+        "close_dialog": "Close dialog",
+        "uploading": "Uploading {{fileName}}...",
+        "drop_file_here": "Drop file here"
       },
       "download": "Download (.xlsx)",
       "delete_workbook": {

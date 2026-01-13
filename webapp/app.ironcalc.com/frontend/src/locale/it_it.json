@@ -3,6 +3,10 @@
     "title": "IronCalc"
   },
   "default_workbook_name": "Cartella",
+  "errors": {
+    "model_not_found": "Modello non trovato o errore durante il caricamento",
+    "example_not_found": "File di esempio non trovato o errore durante il caricamento"
+  },
   "welcome_dialog": {
     "title": "Benvenuto su IronCalc",
     "subtitle": "Inizia con una cartella di lavoro vuota o un modello pronto all'uso.",
@@ -52,7 +56,9 @@
         "subtitle": "Trascina e rilascia un file qui o",
         "subtitle_link": "clicca per sfogliare",
         "learn_more": "Scopri di più sull'importazione di file in IronCalc",
-        "close_dialog": "Chiudi finestra"
+        "close_dialog": "Chiudi finestra",
+        "uploading": "Caricamento di {{fileName}}...",
+        "drop_file_here": "Rilascia il file qui"
       },
       "download": "Scarica (.xlsx)",
       "delete_workbook": {
