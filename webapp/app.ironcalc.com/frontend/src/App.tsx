@@ -25,6 +25,7 @@ import {
 } from "./components/storage";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
+import i18n from "./i18n";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
@@ -170,7 +171,7 @@ function App() {
           setIsDrawerOpen={setIsDrawerOpen}
           setLocalStorageId={setLocalStorageId}
         />
-        <IronCalc model={model} />
+        <IronCalc model={model} language={i18n.language} />
       </MainContent>
       {showWelcomeDialog && (
         <WelcomeDialog
