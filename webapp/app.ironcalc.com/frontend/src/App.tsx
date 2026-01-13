@@ -33,7 +33,7 @@ function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [localStorageId, setLocalStorageId] = useState<number>(1);
 
-  const { i18n } = useTranslation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     async function start() {
@@ -92,7 +92,7 @@ function App() {
     return (
       <Loading>
         <IronCalcIcon style={{ width: 24, height: 24, marginBottom: 16 }} />
-        <div>Loading IronCalc</div>
+        <div>{t("loading_screen.message")}</div>
       </Loading>
     );
   }
@@ -170,7 +170,7 @@ function App() {
           setIsDrawerOpen={setIsDrawerOpen}
           setLocalStorageId={setLocalStorageId}
         />
-        <IronCalc model={model} language={i18n.language} />
+        <IronCalc model={model} />
       </MainContent>
       {showWelcomeDialog && (
         <WelcomeDialog

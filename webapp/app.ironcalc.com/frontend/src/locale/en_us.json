@@ -1,7 +1,85 @@
 {
+  "app": {
+    "title": "IronCalc"
+  },
+  "welcome_dialog": {
+    "title": "Welcome to IronCalc",
+    "subtitle": "Start with a blank workbook or a ready-made template.",
+    "close_dialog": "Close dialog",
+    "new": "New",
+    "blank_workbook": "Blank workbook",
+    "blank_workbook_description": "Create from scratch or upload your own file.",
+    "templates": {
+      "choose_template": "Choose a template",
+      "templates": "Templates",
+      "mortgage_calculator": "Mortgage calculator",
+      "mortgage_calculator_description": "Estimate payments, interest, and overall cost.",
+      "travel_expenses_tracker": "Travel expenses tracker",
+      "travel_expenses_tracker_description": "Track trip costs and stay on budget."
+    },
+    "create_workbook": "Create workbook"
+  },
+  "left_drawer": {
+    "new_workbook": "New workbook",
+    "pinned": "Pinned",
+    "today": "Today",
+    "last_30_days": "Last 30 Days",
+    "older": "Older",
+    "workbook_menu": {
+      "download": "Download (.xlsx)",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "duplicate": "Duplicate",
+      "delete": "Delete workbook"
+    },
+    "alert": {
+      "title": "Heads up!",
+      "subtitle": "IronCalc stores your data only in your browser's local storage.",
+      "subtitle2": "<bold>Download your XLSX often</bold> – future versions may not open current workbooks, even if shared."
+    },
+    "documentation": "Documentation"
+  },
   "file_bar": {
-    "file": "File",
-    "help": "Help",
-    "share": "Share"
+    "toggle_sidebar": "Toggle sidebar",
+    "file_menu": {
+      "button": "File",
+      "new_blank_workbook": "New blank workbook",
+      "new_from_template": "New from template",
+      "import": {
+        "button": "Import",
+        "title": "Import an .xlsx file",
+        "subtitle": "Drag and drop a file here or",
+        "subtitle_link": "click to browse",
+        "learn_more": "Learn more about importing files into IronCalc",
+        "close_dialog": "Close dialog"
+      },
+      "download": "Download (.xlsx)",
+      "delete_workbook": {
+        "button": "Delete workbook",
+        "title": "Are you sure?",
+        "subtitle": "The workbook <bold>'{{workbookName}}'</bold> will be permanently deleted. This action cannot be undone.",
+        "confirm_button": "Yes, delete workbook",
+        "cancel_button": "Cancel"
+      },
+      "display_language": "Display language"
+    },
+    "help_menu": {
+      "button": "Help",
+      "documentation": "Documentation",
+      "keyboard_shortcuts": "Keyboard Shortcuts"
+    },
+    "title_input": {
+      "warning_text1": "This workbook is stored only in your browser. To keep it safe, download it as .xlsx.",
+      "warning_text2": " Future versions may be incompatible."
+    },
+    "share_popover": {
+      "button": "Share",
+      "copy_url": "Copy URL",
+      "copied": "Copied!",
+      "info_text": "Anyone with the link will be able to access a copy of this workbook"
+    }
+  },
+  "loading_screen": {
+    "message": "Loading IronCalc"
   }
 }

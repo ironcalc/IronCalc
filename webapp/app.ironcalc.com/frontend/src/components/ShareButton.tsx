@@ -1,12 +1,14 @@
 import styled from "@emotion/styled";
 import { Share2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function ShareButton(properties: { onClick: () => void }) {
   const { onClick } = properties;
+  const { t } = useTranslation();
   return (
     <Wrapper onClick={onClick} onKeyDown={() => {}}>
       <ShareIcon />
-      <ShareText>Share</ShareText>
+      <ShareText>{t("file_bar.share_popover.button")}</ShareText>
     </Wrapper>
   );
 }

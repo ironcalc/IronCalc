@@ -2,6 +2,7 @@ import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
 import { styled } from "@mui/material";
 import { Table, X } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import TemplatesList, {
   Cross,
   DialogContent,
@@ -16,6 +17,7 @@ function WelcomeDialog(properties: {
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
 }) {
+  const { t } = useTranslation();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("blank");
 
   const handleClose = () => {
@@ -33,14 +35,14 @@ function WelcomeDialog(properties: {
           <DialogHeaderLogoWrapper>
             <IronCalcIcon />
           </DialogHeaderLogoWrapper>
-          <DialogHeaderTitle>Welcome to IronCalc</DialogHeaderTitle>
+          <DialogHeaderTitle>{t("welcome_dialog.title")}</DialogHeaderTitle>
           <DialogHeaderTitleSubtitle>
-            Start with a blank workbook or a ready-made template.
+            {t("welcome_dialog.subtitle")}
           </DialogHeaderTitleSubtitle>
         </DialogHeaderTitleWrapper>
         <Cross
           onClick={handleClose}
-          title="Close Dialog"
+          title={t("welcome_dialog.close_dialog")}
           tabIndex={0}
           onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
         >
@@ -48,18 +50,18 @@ function WelcomeDialog(properties: {
         </Cross>
       </DialogWelcomeHeader>
       <DialogContent>
-        <ListTitle>New</ListTitle>
+        <ListTitle>{t("welcome_dialog.new")}</ListTitle>
         <TemplatesListWrapper>
           <TemplatesListItem
-            title="Blank workbook"
-            description="Create from scratch or upload your own file."
+            title={t("welcome_dialog.blank_workbook")}
+            description={t("welcome_dialog.blank_workbook_description")}
             icon={<Table />}
             iconColor="#F2994A"
             active={selectedTemplate === "blank"}
             onClick={() => handleTemplateSelect("blank")}
           />
         </TemplatesListWrapper>
-        <ListTitle>Templates</ListTitle>
+        <ListTitle>{t("welcome_dialog.templates")}</ListTitle>
         <TemplatesList
           selectedTemplate={selectedTemplate}
           handleTemplateSelect={handleTemplateSelect}
@@ -69,7 +71,7 @@ function WelcomeDialog(properties: {
         <DialogFooterButton
           onClick={() => properties.onSelectTemplate(selectedTemplate)}
         >
-          Create workbook
+          {t("welcome_dialog.create_workbook")}
         </DialogFooterButton>
       </DialogFooter>
     </DialogWrapper>

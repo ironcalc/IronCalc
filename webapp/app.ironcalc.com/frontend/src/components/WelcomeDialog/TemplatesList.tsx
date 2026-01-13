@@ -1,5 +1,6 @@
 import { Dialog, styled } from "@mui/material";
 import { House, TicketsPlane } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import TemplatesListItem from "./TemplatesListItem";
 
 function TemplatesList(props: {
@@ -7,19 +8,24 @@ function TemplatesList(props: {
   handleTemplateSelect: (templateId: string) => void;
 }) {
   const { selectedTemplate, handleTemplateSelect } = props;
+  const { t } = useTranslation();
   return (
     <TemplatesListWrapper>
       <TemplatesListItem
-        title="Mortgage calculator"
-        description="Estimate payments, interest, and overall cost."
+        title={t("welcome_dialog.templates.mortgage_calculator")}
+        description={t(
+          "welcome_dialog.templates.mortgage_calculator_description",
+        )}
         icon={<House />}
         iconColor="#2F80ED"
         active={selectedTemplate === "mortgage_calculator"}
         onClick={() => handleTemplateSelect("mortgage_calculator")}
       />
       <TemplatesListItem
-        title="Travel expenses tracker"
-        description="Track trip costs and stay on budget."
+        title={t("welcome_dialog.templates.travel_expenses_tracker")}
+        description={t(
+          "welcome_dialog.templates.travel_expenses_tracker_description",
+        )}
         icon={<TicketsPlane />}
         iconColor="#EB5757"
         active={selectedTemplate === "travel_expenses_tracker"}
