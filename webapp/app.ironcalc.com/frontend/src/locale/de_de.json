@@ -1,7 +1,85 @@
 {
+  "app": {
+    "title": "IronCalc"
+  },
+  "welcome_dialog": {
+    "title": "Willkommen bei IronCalc",
+    "subtitle": "Beginnen Sie mit einer leeren Arbeitsmappe oder einer fertigen Vorlage.",
+    "close_dialog": "Dialog schließen",
+    "new": "Neu",
+    "blank_workbook": "Leere Arbeitsmappe",
+    "blank_workbook_description": "Von Grund auf erstellen oder eigene Datei hochladen.",
+    "templates": {
+      "choose_template": "Vorlage auswählen",
+      "templates": "Vorlagen",
+      "mortgage_calculator": "Hypothekenrechner",
+      "mortgage_calculator_description": "Zahlungen, Zinsen und Gesamtkosten schätzen.",
+      "travel_expenses_tracker": "Reisekostenerfassung",
+      "travel_expenses_tracker_description": "Reisekosten verfolgen und Budget einhalten."
+    },
+    "create_workbook": "Arbeitsmappe erstellen"
+  },
+  "left_drawer": {
+    "new_workbook": "Neue Arbeitsmappe",
+    "pinned": "Angeheftet",
+    "today": "Heute",
+    "last_30_days": "Letzte 30 Tage",
+    "older": "Älter",
+    "workbook_menu": {
+      "download": "Herunterladen (.xlsx)",
+      "pin": "Anheften",
+      "unpin": "Lösen",
+      "duplicate": "Duplizieren",
+      "delete": "Arbeitsmappe löschen"
+    },
+    "alert": {
+      "title": "Achtung!",
+      "subtitle": "IronCalc speichert Ihre Daten nur im lokalen Speicher Ihres Browsers.",
+      "subtitle2": "<bold>Laden Sie Ihre XLSX regelmäßig herunter</bold> – zukünftige Versionen können aktuelle Arbeitsmappen möglicherweise nicht öffnen, auch wenn sie geteilt wurden."
+    },
+    "documentation": "Dokumentation"
+  },
   "file_bar": {
-    "file": "Datei",
-    "help": "Hilfe",
-    "share": "Teilen"
+    "toggle_sidebar": "Seitenleiste umschalten",
+    "file_menu": {
+      "button": "Datei",
+      "new_blank_workbook": "Neue leere Arbeitsmappe",
+      "new_from_template": "Neu aus Vorlage",
+      "import": {
+        "button": "Importieren",
+        "title": "Eine .xlsx-Datei importieren",
+        "subtitle": "Datei hier ablegen oder",
+        "subtitle_link": "klicken zum Durchsuchen",
+        "learn_more": "Erfahren Sie mehr über das Importieren von Dateien in IronCalc",
+        "close_dialog": "Dialog schließen"
+      },
+      "download": "Herunterladen (.xlsx)",
+      "delete_workbook": {
+        "button": "Arbeitsmappe löschen",
+        "title": "Sind Sie sicher?",
+        "subtitle": "Die Arbeitsmappe <bold>'{{workbookName}}'</bold> wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+        "confirm_button": "Ja, Arbeitsmappe löschen",
+        "cancel_button": "Abbrechen"
+      },
+      "display_language": "Anzeigesprache"
+    },
+    "help_menu": {
+      "button": "Hilfe",
+      "documentation": "Dokumentation",
+      "keyboard_shortcuts": "Tastaturkürzel"
+    },
+    "title_input": {
+      "warning_text1": "Diese Arbeitsmappe wird nur in Ihrem Browser gespeichert. Um sie sicher aufzubewahren, laden Sie sie als .xlsx herunter.",
+      "warning_text2": " Zukünftige Versionen könnten inkompatibel sein."
+    },
+    "share_popover": {
+      "button": "Teilen",
+      "copy_url": "URL kopieren",
+      "copied": "Kopiert!",
+      "info_text": "Jeder mit dem Link kann auf eine Kopie dieser Arbeitsmappe zugreifen"
+    }
+  },
+  "loading_screen": {
+    "message": "IronCalc wird geladen"
   }
 }
