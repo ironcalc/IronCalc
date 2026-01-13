@@ -76,7 +76,7 @@ const AddButton = styled(IconButton)`
   height: 32px;
   width: 32px;
   padding: 8px;
-  border-radius: 4px;
+  border-radius: 6px;
 
   svg {
     stroke-width: 2px;

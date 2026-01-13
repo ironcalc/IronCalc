@@ -25,7 +25,7 @@ const StyledDrawerFooter = styled("div")`
   align-items: center;
   padding: 12px;
   justify-content: space-between;
-  max-height: 60px;
+  max-height: 50px;
   height: 60px;
   border-top: 1px solid #e0e0e0;
   box-sizing: border-box;

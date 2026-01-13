@@ -10,6 +10,7 @@ import {
   Table2,
   Trash2,
 } from "lucide-react";
+import type { ComponentProps } from "react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
@@ -257,7 +258,11 @@ export const MenuDivider = styled.div`
   border-top: 1px solid #eeeeee;
 `;
 
-export const MenuItemWrapper = styled(MenuItem)`
+const BaseMenuItem = (props: ComponentProps<typeof MenuItem>) => (
+  <MenuItem disableRipple {...props} />
+);
+
+export const MenuItemWrapper = styled(BaseMenuItem)`
   display: flex;
   justify-content: flex-start;
   font-size: 14px;
@@ -267,6 +272,8 @@ export const MenuItemWrapper = styled(MenuItem)`
   border-radius: 4px;
   padding: 8px;
   height: 32px;
+  min-height: 32px;
+  max-height: 32px;
   color: #000;
   font-size: 12px;
   gap: 8px;
@@ -294,7 +301,7 @@ const FileMenuWrapper = styled.button<{ $isActive: boolean }>`
   font-size: 12px;
   font-family: Inter;
   padding: 8px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   background-color: ${(props) => (props.$isActive ? "#e6e6e6" : "transparent")};
   border: none;

@@ -93,7 +93,7 @@ const HelpButton = styled.button<{ $isActive?: boolean }>`
   font-size: 12px;
   font-family: Inter;
   padding: 8px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   background-color: ${(props) => (props.$isActive ? "#e6e6e6" : "transparent")};
   border: none;
