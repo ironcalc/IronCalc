@@ -1,22 +1,18 @@
 import styled from "@emotion/styled";
-import { Menu } from "@mui/material";
+import { Popper } from "@mui/material";
 import { BookOpen, Keyboard } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { MenuItemWrapper } from "./FileMenu";
+import { MenuItemWrapper, MenuPaper } from "./FileMenu";
 
-export function HelpMenu() {
-  const [isMenuOpen, setMenuOpen] = useState(false);
+export function HelpMenu(props: {
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onHover: () => void;
+}) {
   const anchorElement = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
-
-  const handleClick = () => {
-    setMenuOpen(true);
-  };
-
-  const handleClose = () => {
-    setMenuOpen(false);
-  };
 
   return (
     <div>
@@ -24,65 +20,51 @@ export function HelpMenu() {
         type="button"
         ref={anchorElement}
         id="help-button"
-        aria-controls={isMenuOpen ? "help-menu" : undefined}
+        aria-controls={props.isOpen ? "help-menu" : undefined}
         aria-haspopup="true"
-        onClick={handleClick}
-        $isActive={isMenuOpen}
+        onClick={props.onOpen}
+        onMouseEnter={props.onHover}
+        $isActive={props.isOpen}
       >
         {t("file_bar.help_menu.button")}
       </HelpButton>
-      <Menu
+      <Popper
         id="help-menu"
         anchorEl={anchorElement.current}
-        open={isMenuOpen}
-        onClose={handleClose}
-        autoFocus={false}
-        disableRestoreFocus={true}
-        transitionDuration={0}
-        sx={{
-          "& .MuiPaper-root": {
-            borderRadius: "8px",
-            padding: "4px 0px",
-            transform: "translate(-4px, 4px)",
-            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
-          },
-          "& .MuiList-root": { padding: "0" },
-          transform: "translate(-4px, 4px)",
-        }}
-        slotProps={{
-          list: {
-            "aria-labelledby": "help-button",
-            tabIndex: -1,
-          },
-        }}
+        open={props.isOpen}
+        placement="bottom-start"
+        modifiers={[{ name: "offset", options: { offset: [-4, 4] } }]}
+        style={{ zIndex: 1300 }}
       >
-        <MenuItemWrapper
-          onClick={() => {
-            handleClose();
-            window.open(
-              "https://docs.ironcalc.com/web-application/about.html",
-              "_blank",
-              "noopener,noreferrer",
-            );
-          }}
-        >
-          <BookOpen />
-          {t("file_bar.help_menu.documentation")}
-        </MenuItemWrapper>
-        <MenuItemWrapper
-          onClick={() => {
-            handleClose();
-            window.open(
-              "https://docs.ironcalc.com/features/keyboard-shortcuts.html",
-              "_blank",
-              "noopener,noreferrer",
-            );
-          }}
-        >
-          <Keyboard />
-          {t("file_bar.help_menu.keyboard_shortcuts")}
-        </MenuItemWrapper>
-      </Menu>
+        <MenuPaper>
+          <MenuItemWrapper
+            onClick={() => {
+              props.onClose();
+              window.open(
+                "https://docs.ironcalc.com/web-application/about.html",
+                "_blank",
+                "noopener,noreferrer",
+              );
+            }}
+          >
+            <BookOpen />
+            {t("file_bar.help_menu.documentation")}
+          </MenuItemWrapper>
+          <MenuItemWrapper
+            onClick={() => {
+              props.onClose();
+              window.open(
+                "https://docs.ironcalc.com/features/keyboard-shortcuts.html",
+                "_blank",
+                "noopener,noreferrer",
+              );
+            }}
+          >
+            <Keyboard />
+            {t("file_bar.help_menu.keyboard_shortcuts")}
+          </MenuItemWrapper>
+        </MenuPaper>
+      </Popper>
     </div>
   );
 }

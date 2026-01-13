@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Menu, MenuItem, Modal } from "@mui/material";
+import { Menu, MenuItem, Modal, Popper } from "@mui/material";
 import {
   Check,
   ChevronRight,
@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "./DeleteWorkbookDialog";
 import { getModelsMetadata, getSelectedUuid } from "./storage";
@@ -25,8 +25,11 @@ export function FileMenu(props: {
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
   onLanguageChange: (language: string) => void;
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onHover: () => void;
 }) {
-  const [isMenuOpen, setMenuOpen] = useState(false);
   const [isImportMenuOpen, setImportMenuOpen] = useState(false);
   const [isLanguageMenuOpen, setLanguageMenuOpen] = useState(false);
   const anchorElement = useRef<HTMLButtonElement>(null);
@@ -36,8 +39,15 @@ export function FileMenu(props: {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { t, i18n } = useTranslation();
 
+  // Reset language submenu when main menu closes
+  useEffect(() => {
+    if (!props.isOpen) {
+      setLanguageMenuOpen(false);
+    }
+  }, [props.isOpen]);
+
   const handleMainMenuClose = () => {
-    setMenuOpen(false);
+    props.onClose();
     setLanguageMenuOpen(false);
   };
 
@@ -52,93 +62,85 @@ export function FileMenu(props: {
       <FileMenuWrapper
         type="button"
         id="file-menu-button"
-        onClick={(): void => setMenuOpen(true)}
+        onClick={props.onOpen}
+        onMouseEnter={props.onHover}
         ref={anchorElement}
-        $isActive={isMenuOpen}
+        $isActive={props.isOpen}
         aria-haspopup="true"
       >
         {t("file_bar.file_menu.button")}
       </FileMenuWrapper>
-      <Menu
-        open={isMenuOpen}
-        onClose={handleMainMenuClose}
+      <Popper
+        open={props.isOpen}
         anchorEl={anchorElement.current}
-        autoFocus={false}
-        disableRestoreFocus={true}
-        transitionDuration={0}
-        sx={{
-          "& .MuiPaper-root": {
-            borderRadius: "8px",
-            padding: "4px 0px",
-            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
-          },
-          "& .MuiList-root": { padding: "0" },
-          transform: "translate(-4px, 4px)",
-        }}
-        slotProps={{
-          list: {
-            "aria-labelledby": "file-menu-button",
-            tabIndex: -1,
-          },
-        }}
+        placement="bottom-start"
+        modifiers={[{ name: "offset", options: { offset: [-4, 4] } }]}
+        style={{ zIndex: 1300 }}
       >
-        <MenuItemWrapper
-          onClick={() => {
-            props.newModel();
-            setMenuOpen(false);
-          }}
-        >
-          <Plus />
-          {t("file_bar.file_menu.new_blank_workbook")}
-        </MenuItemWrapper>
-        <MenuItemWrapper
-          onClick={() => {
-            props.newModelFromTemplate();
-            setMenuOpen(false);
-          }}
-        >
-          <Table2 />
-          {t("file_bar.file_menu.new_from_template")}
-        </MenuItemWrapper>
-        <MenuItemWrapper
-          onClick={() => {
-            setImportMenuOpen(true);
-            setMenuOpen(false);
-          }}
-        >
-          <FileUp />
-          {t("file_bar.file_menu.import.button")}
-        </MenuItemWrapper>
-        <MenuDivider />
-        <MenuItemWrapper onClick={props.onDownload}>
-          <FileDown />
-          <MenuItemText>{t("file_bar.file_menu.download")}</MenuItemText>
-        </MenuItemWrapper>
-        <DeleteButton
-          onClick={() => {
-            setDeleteDialogOpen(true);
-            setMenuOpen(false);
-          }}
-        >
-          <Trash2 />
-          <MenuItemText>
-            {t("file_bar.file_menu.delete_workbook.button")}
-          </MenuItemText>
-        </DeleteButton>
-        <MenuDivider />
-        <MenuItemWrapper
-          ref={languageMenuAnchor}
-          onMouseEnter={() => setLanguageMenuOpen(true)}
-          onMouseLeave={() => setLanguageMenuOpen(false)}
-          sx={{ justifyContent: "space-between" }}
-        >
-          <Globe />
-          <MenuItemText>
-            {t("file_bar.file_menu.default_language")}
-          </MenuItemText>
-          <ChevronRight size={16} />
-        </MenuItemWrapper>
-      </Menu>
+        <MenuPaper>
+          <MenuItemWrapper
+            onClick={() => {
+              props.newModel();
+              props.onClose();
+            }}
+          >
+            <Plus />
+            {t("file_bar.file_menu.new_blank_workbook")}
+          </MenuItemWrapper>
+          <MenuItemWrapper
+            onClick={() => {
+              props.newModelFromTemplate();
+              props.onClose();
+            }}
+          >
+            <Table2 />
+            {t("file_bar.file_menu.new_from_template")}
+          </MenuItemWrapper>
+          <MenuItemWrapper
+            onClick={() => {
+              setImportMenuOpen(true);
+              props.onClose();
+            }}
+          >
+            <FileUp />
+            {t("file_bar.file_menu.import.button")}
+          </MenuItemWrapper>
+          <MenuDivider />
+          <MenuItemWrapper
+            onClick={() => {
+              props.onDownload();
+              props.onClose();
+            }}
+          >
+            <FileDown />
+            <MenuItemText>{t("file_bar.file_menu.download")}</MenuItemText>
+          </MenuItemWrapper>
+          <DeleteButton
+            onClick={() => {
+              setDeleteDialogOpen(true);
+              props.onClose();
+            }}
+          >
+            <Trash2 />
+            <MenuItemText>
+              {t("file_bar.file_menu.delete_workbook.button")}
+            </MenuItemText>
+          </DeleteButton>
+          <MenuDivider />
+          <MenuItemWrapper
+            ref={languageMenuAnchor}
+            onMouseEnter={() => setLanguageMenuOpen(true)}
+            onMouseLeave={() => setLanguageMenuOpen(false)}
+            sx={{ justifyContent: "space-between" }}
+          >
+            <Globe />
+            <MenuItemText>
+              {t("file_bar.file_menu.display_language")}
+            </MenuItemText>
+            <ChevronRight size={16} />
+          </MenuItemWrapper>
+        </MenuPaper>
+      </Popper>
       <Menu
         open={isLanguageMenuOpen}
         anchorEl={languageMenuAnchor.current}
@@ -321,4 +323,11 @@ export const DeleteButton = styled(MenuItemWrapper)`
   &:active {
     background-color: #EB57571A;
   }
+`;
+
+export const MenuPaper = styled.div`
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 0px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
 `;

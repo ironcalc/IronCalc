@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
-import { IconButton, Tooltip } from "@mui/material";
+import { ClickAwayListener, IconButton, Tooltip } from "@mui/material";
 import { CloudOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +12,8 @@ import { ShareButton } from "./ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
 import { updateNameSelectedWorkbook } from "./storage";
 import { WorkbookTitle } from "./WorkbookTitle";
+
+type OpenMenu = "file" | "help" | null;
 
 // This hook is used to get the width of the window
 function useWindowWidth() {
@@ -40,6 +42,7 @@ export function FileBar(properties: {
   onLanguageChange: (language: string) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const spacerRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
@@ -53,6 +56,8 @@ export function FileBar(properties: {
     const fileName = model.getName();
     await downloadModel(bytes, fileName);
   };
+
+  const closeMenus = () => setOpenMenu(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -95,17 +100,28 @@ export function FileBar(properties: {
         onDelete={properties.onDelete}
         onLanguageChange={properties.onLanguageChange}
       />
-      <DesktopMenuWrapper>
-        <FileMenu
-          newModel={properties.newModel}
-          newModelFromTemplate={properties.newModelFromTemplate}
-          setModel={properties.setModel}
-          onModelUpload={properties.onModelUpload}
-          onDownload={handleDownload}
-          onDelete={properties.onDelete}
-        />
-        <HelpMenu />
-      </DesktopMenuWrapper>
+      <ClickAwayListener onClickAway={closeMenus}>
+        <DesktopMenuWrapper>
+          <FileMenu
+            newModel={properties.newModel}
+            newModelFromTemplate={properties.newModelFromTemplate}
+            setModel={properties.setModel}
+            onModelUpload={properties.onModelUpload}
+            onDownload={handleDownload}
+            onDelete={properties.onDelete}
+            isOpen={openMenu === "file"}
+            onOpen={() => setOpenMenu("file")}
+            onClose={closeMenus}
+            onHover={() => openMenu && setOpenMenu("file")}
+          />
+          <HelpMenu
+            isOpen={openMenu === "help"}
+            onOpen={() => setOpenMenu("help")}
+            onClose={closeMenus}
+            onHover={() => openMenu && setOpenMenu("help")}
+          />
+        </DesktopMenuWrapper>
+      </ClickAwayListener>
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}
