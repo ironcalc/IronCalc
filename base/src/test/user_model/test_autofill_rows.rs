@@ -160,6 +160,31 @@ fn float_tolerance_progression() {
 }
 
 #[test]
+fn float_progression_rounds() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "41.8").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "41.9").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("42".to_string())
+    );
+}
+
+#[test]
 fn constant_value_autofill() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
@@ -260,8 +285,8 @@ fn suffixed_int_progression() {
 fn suffixed_float_progression() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    model.set_user_input(0, 1, 1, "Project1.5").unwrap(); // A1
-    model.set_user_input(0, 2, 1, "Project2.5").unwrap(); // A2
+    model.set_user_input(0, 1, 1, "Project1.8").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "Project1.9").unwrap(); // A2
     model
         .auto_fill_rows(
             &Area {
@@ -277,11 +302,11 @@ fn suffixed_float_progression() {
 
     assert_eq!(
         model.get_cell_content(0, 3, 1), // A3
-        Ok("Project3.5".to_string())
+        Ok("Project1.10".to_string())
     );
     assert_eq!(
         model.get_cell_content(0, 4, 1), // A4
-        Ok("Project4.5".to_string())
+        Ok("Project1.11".to_string())
     );
 }
 

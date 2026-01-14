@@ -49,39 +49,53 @@ trait SequenceDetector {
     fn detect(&self, values: &[String]) -> Option<Progression>;
 }
 
-struct NumericProgressionDetector;
+struct NumericProgressionDetector<'a> {
+    locale: &'a Locale,
+}
 
-impl SequenceDetector for NumericProgressionDetector {
+impl SequenceDetector for NumericProgressionDetector<'_> {
     fn detect(&self, values: &[String]) -> Option<Progression> {
+        let numbers = &self.locale.numbers;
+        let decimal = &numbers.symbols.decimal;
+        let group = &numbers.symbols.group;
+        let decimal_format = &numbers.decimal_formats.standard;
+        let group_separator_in_format = decimal_format.contains(group);
+
         values
             .iter()
-            .map(|s| s.parse::<f64>())
+            .map(|num| {
+                num.chars()
+                    .filter(|&c| c.to_string() != *group)
+                    .map(|c| if c.to_string() == *decimal { '.' } else { c })
+                    .collect::<String>()
+                    .parse::<f64>()
+            })
             .collect::<Result<Vec<_>, _>>()
             .ok()
             .filter(|nums| nums.len() >= 2)
-            .and_then(|numbers| {
-                let step = numbers[1] - numbers[0];
+            .and_then(|nums| {
+                let step = nums[1] - nums[0];
                 if step.abs() < 1e-9 {
                     return None;
                 }
 
-                let is_progression = numbers
-                    .windows(2)
-                    .all(|w| (w[1] - w[0] - step).abs() < 1e-9);
+                let is_progression = nums.windows(2).all(|w| (w[1] - w[0] - step).abs() < 1e-9);
                 if !is_progression {
                     return None;
                 }
 
-                let last = numbers[numbers.len() - 1];
+                let last = nums[nums.len() - 1];
 
                 Some(Progression::Numeric(NumericProgression { last, step }))
             })
     }
 }
 
-struct SuffixedNumberDetector;
+struct SuffixedNumberDetector<'a> {
+    locale: &'a Locale,
+}
 
-impl SuffixedNumberDetector {
+impl SuffixedNumberDetector<'_> {
     fn suffix_index(value: &str) -> usize {
         let mut rev = String::new();
 
@@ -90,7 +104,7 @@ impl SuffixedNumberDetector {
             .rev()
             .map_while(|x| {
                 rev.push(x);
-                rev.parse::<f64>().ok()
+                rev.parse::<i64>().ok()
             })
             .collect::<Vec<_>>();
 
@@ -102,7 +116,7 @@ impl SuffixedNumberDetector {
     }
 }
 
-impl SequenceDetector for SuffixedNumberDetector {
+impl SequenceDetector for SuffixedNumberDetector<'_> {
     fn detect(&self, values: &[String]) -> Option<Progression> {
         if values.len() < 2 {
             return None;
@@ -136,7 +150,10 @@ impl SequenceDetector for SuffixedNumberDetector {
         }
 
         if let Some(Progression::Numeric(numeric_progression_from_suffixes)) =
-            NumericProgressionDetector.detect(&suffixes)
+            (NumericProgressionDetector {
+                locale: self.locale,
+            })
+            .detect(&suffixes)
         {
             return Some(Progression::SuffixedNumber {
                 progression: numeric_progression_from_suffixes,
@@ -153,7 +170,7 @@ struct DateProgressionDetector<'a> {
 }
 
 impl<'a> DateProgressionDetector<'a> {
-    fn find_progression(values: &[String], dates: &[String]) -> Option<Progression> {
+    fn find_progression(&self, values: &[String], dates: &[String]) -> Option<Progression> {
         let indexes = values
             .iter()
             .map(|value| {
@@ -165,8 +182,10 @@ impl<'a> DateProgressionDetector<'a> {
             .collect::<Option<Vec<_>>>();
 
         if let Some(indices) = indexes {
-            if let Some(Progression::Numeric(numeric_progression)) =
-                NumericProgressionDetector.detect(&indices)
+            if let Some(Progression::Numeric(numeric_progression)) = (NumericProgressionDetector {
+                locale: self.locale,
+            })
+            .detect(&indices)
             {
                 let date_progression = DateProgression {
                     numeric_progression,
@@ -195,15 +214,20 @@ impl<'a> SequenceDetector for DateProgressionDetector<'a> {
             &dates.months_letter,
         ]
         .iter()
-        .find_map(|&names_vec| Self::find_progression(values, names_vec))
+        .find_map(|&names_vec| {
+            (Self {
+                locale: self.locale,
+            })
+            .find_progression(values, names_vec)
+        })
     }
 }
 
 pub(crate) fn detect_progression(values: &[String], locale: &Locale) -> Option<Progression> {
-    if let Some(progression) = NumericProgressionDetector.detect(values) {
+    if let Some(progression) = (NumericProgressionDetector { locale }).detect(values) {
         return Some(progression);
     }
-    if let Some(progression) = SuffixedNumberDetector.detect(values) {
+    if let Some(progression) = (SuffixedNumberDetector { locale }).detect(values) {
         return Some(progression);
     }
     if let Some(progression) = (DateProgressionDetector { locale }).detect(values) {
