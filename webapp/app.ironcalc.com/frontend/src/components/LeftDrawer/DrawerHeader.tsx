@@ -57,7 +57,6 @@ const LogoWrapper = styled("div")`
   display: flex;
   align-items: center;
   gap: 8px;
-
 `;
 
 const Title = styled("h1")`
