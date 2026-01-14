@@ -27,6 +27,7 @@ const Wrapper = styled("div")`
   font-family: "Inter";
   font-size: 12px;
   border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 2px;
   &:hover {
     background: #d68742;
   }
