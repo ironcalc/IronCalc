@@ -513,6 +513,47 @@ mod tests {
         assert_eq!(progression.next(1), "2,1");
     }
 
+    // need to add the Indian locale
+    #[test]
+    #[ignore]
+    fn test_numeric_grouping_validation_locale_in() {
+        let locale = get_locale("in").unwrap();
+        let detector = NumericProgressionDetector { locale };
+
+        let values = vec!["10,00,000".to_string(), "20,00,000".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "3000000");
+
+        let values = vec!["1,00,000".to_string(), "2,00,000".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "300000");
+
+        let values = vec!["1,00,000.50".to_string(), "2,00,000.50".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "300000.5");
+
+        let values = vec!["1,000".to_string(), "2,000".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "3000");
+
+        let values = vec!["1,23,45,678".to_string(), "2,23,45,678".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "32345678");
+
+        let values = vec!["-1,00,000.5".to_string(), "-1,00,001.5".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "-100002.5");
+
+        let values = vec!["1,000,000".to_string(), "2,000,000".to_string()];
+        assert!(detector.detect(&values).is_none());
+
+        let values = vec!["1,0000,000".to_string(), "2,0000,000".to_string()];
+        assert!(detector.detect(&values).is_none());
+
+        let values = vec!["1,00,00,00".to_string(), "2,00,00,00".to_string()];
+        assert!(detector.detect(&values).is_none());
+    }
+
     #[test]
     fn test_suffixed_progression_detector() {
         let locale = get_locale("en").unwrap();
@@ -588,6 +629,9 @@ mod tests {
         let values = vec!["Jan".to_string(), "Mar".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "May");
+
+        let values = vec!["Jan".to_string(), "Feb".to_string(), "Apr".to_string()];
+        assert!(detector.detect(&values).is_none());
     }
 
     #[test]
@@ -622,27 +666,27 @@ mod tests {
     fn test_detect_progression() {
         let locale = get_locale("en").unwrap();
 
-        let values1 = vec!["1".to_string(), "3".to_string()];
-        let p1 = detect_progression(&values1, locale).unwrap();
-        assert_eq!(p1.next(0), "5");
+        let values = vec!["1".to_string(), "3".to_string()];
+        let p = detect_progression(&values, locale).unwrap();
+        assert_eq!(p.next(0), "5");
 
-        let values2 = vec!["X10".to_string(), "X20".to_string()];
-        let p2 = detect_progression(&values2, locale).unwrap();
-        assert_eq!(p2.next(0), "X30");
+        let values = vec!["X10".to_string(), "X20".to_string()];
+        let p = detect_progression(&values, locale).unwrap();
+        assert_eq!(p.next(0), "X30");
 
-        let values3 = vec!["Mar".to_string(), "Apr".to_string()];
-        let p3 = detect_progression(&values3, locale).unwrap();
-        assert_eq!(p3.next(0), "May");
+        let values = vec!["Mar".to_string(), "Apr".to_string()];
+        let p = detect_progression(&values, locale).unwrap();
+        assert_eq!(p.next(0), "May");
 
-        let values4 = vec!["1".to_string(), "A".to_string(), "foo".to_string()];
-        assert!(detect_progression(&values4, locale).is_none());
+        let values = vec!["1".to_string(), "A".to_string(), "foo".to_string()];
+        assert!(detect_progression(&values, locale).is_none());
 
-        let values5 = vec!["1".to_string(), "2".to_string()];
-        let p5 = detect_progression(&values5, locale).unwrap();
-        match p5 {
+        let values = vec!["1".to_string(), "2".to_string()];
+        let p = detect_progression(&values, locale).unwrap();
+        match p {
             Progression::Numeric(_) => {}
-            _ => panic!("Should be numeric progression"),
+            _ => unreachable!(),
         }
-        assert_eq!(p5.next(0), "3");
+        assert_eq!(p.next(0), "3");
     }
 }
