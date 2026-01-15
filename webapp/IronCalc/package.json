@@ -2,6 +2,7 @@
   "name": "@ironcalc/workbook",
   "version": "0.6.0",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/ironcalc.js",
   "module": "./dist/ironcalc.js",
   "source": "./src/index.ts",
@@ -15,11 +16,8 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
     "@ironcalc/wasm": "file:../../bindings/wasm/pkg",
     "@mui/material": "^7.3.5",
-    "@mui/system": "^7.3.5",
     "i18next": "^25.6.1",
     "lucide-react": "^0.553.0",
     "react-colorful": "^5.6.1",
@@ -41,6 +39,8 @@
   },
   "peerDependencies": {
     "@types/react": "^18.0.0 || ^19.2.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "react": "^18.0.0 || ^19.2.0",
     "react-dom": "^18.0.0 || ^19.2.0"
   },
