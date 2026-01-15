@@ -27,7 +27,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ISOMITTED  | <Badge type="info" text="Not implemented yet" /> | –             |
 | ISREF      | <Badge type="tip" text="Available" />          | –             |
 | ISTEXT     | <Badge type="tip" text="Available" />          | –             |
-| N          | <Badge type="info" text="Not implemented yet" /> | –             |
+| N          | <Badge type="tip" text="Available" />          | –             |
 | NA         | <Badge type="tip" text="Available" />          | –             |
 | SHEET      | <Badge type="tip" text="Available" />          | –             |
 | SHEETS     | <Badge type="tip" text="Available" />          | –             |
