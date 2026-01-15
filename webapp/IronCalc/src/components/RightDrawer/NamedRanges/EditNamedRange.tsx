@@ -58,8 +58,9 @@ const EditNamedRange = ({
 }: EditNamedRangeProps) => {
   const getDefaultName = () => {
     if (initialName) return initialName;
+    const rangePrefix = t("name_manager_dialog.default_range_prefix");
     let counter = 1;
-    let defaultName = `Range${counter}`;
+    let defaultName = `${rangePrefix}${counter}`;
     const worksheets = model.getWorksheetsProperties();
     const scopeIndex = worksheets.findIndex((s) => s.name === initialScope);
     const newScope = scopeIndex >= 0 ? scopeIndex : undefined;
@@ -71,7 +72,7 @@ const EditNamedRange = ({
       )
     ) {
       counter++;
-      defaultName = `Range${counter}`;
+      defaultName = `${rangePrefix}${counter}`;
     }
     return defaultName;
   };

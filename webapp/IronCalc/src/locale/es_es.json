@@ -126,6 +126,7 @@
     "cancel": "Cancelar",
     "apply": "Aplicar cambios",
     "discard": "Descartar cambios",
+    "default_range_prefix": "Rango",
     "errors": {
       "range_name_required": "El nombre del rango es obligatorio",
       "name_cannot_contain_spaces": "El nombre no puede contener espacios",
