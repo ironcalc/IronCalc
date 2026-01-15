@@ -429,7 +429,7 @@ fn rev_month_progression() {
 #[test]
 fn de_locale_month_progression() {
     let mut model = new_empty_model();
-    model.locale = get_locale("de").unwrap().clone();
+    model.locale = get_locale("de").unwrap();
     let mut model = UserModel::from_model(model);
 
     model.set_user_input(0, 1, 1, "Januar").unwrap(); // A1
