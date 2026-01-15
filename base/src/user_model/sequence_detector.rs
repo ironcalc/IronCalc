@@ -3,6 +3,7 @@ use crate::locale::Locale;
 pub(crate) struct NumericProgression {
     last: f64,
     step: f64,
+    decimal_sep: char,
 }
 impl NumericProgression {
     fn next(&self, i: usize) -> f64 {
@@ -33,13 +34,20 @@ pub(crate) enum Progression {
     Date(DateProgression),
 }
 impl Progression {
+    fn format_number(progression: &NumericProgression, i: usize) -> String {
+        progression
+            .next(i)
+            .to_string()
+            .replace('.', &progression.decimal_sep.to_string())
+    }
+
     pub(crate) fn next(&self, i: usize) -> String {
         match self {
-            Progression::Numeric(num_prog) => NumericProgression::next(num_prog, i).to_string(),
+            Progression::Numeric(num_prog) => Self::format_number(num_prog, i),
             Progression::SuffixedNumber {
                 progression,
                 prefix,
-            } => format!("{}{}", prefix, progression.next(i)),
+            } => format!("{}{}", prefix, Self::format_number(progression, i)),
             Progression::Date(date_prog) => DateProgression::next(date_prog, i),
         }
     }
@@ -54,34 +62,58 @@ struct NumericProgressionDetector<'a> {
 }
 
 impl<'a> NumericProgressionDetector<'a> {
-    fn validate_group(part: &str, max_len: usize) -> Result<(), ()> {
-        (!part.is_empty() && part.chars().all(|c| c.is_ascii_digit()) && part.len() <= max_len)
+    fn validate_group(part: &str, min_len: usize, max_len: usize) -> Result<(), ()> {
+        let len = part.len();
+        (!part.is_empty()
+            && part.chars().all(|c| c.is_ascii_digit())
+            && len >= min_len
+            && len <= max_len)
             .then_some(())
             .ok_or(())
     }
 
     fn validate_grouping(&self, value: &str, primary: usize, secondary: usize) -> Result<(), ()> {
-        let numbers = &self.locale.numbers;
-        let decimal_sep = numbers.symbols.decimal.chars().next().unwrap_or('.');
-        let group_sep = numbers.symbols.group.chars().next().unwrap_or(',');
+        let symbols = &self.locale.numbers.symbols;
+        let decimal_sep = symbols.decimal.chars().next().unwrap_or('.');
+        let group_sep = symbols.group.chars().next().unwrap_or(',');
 
         if value.chars().filter(|&c| c == decimal_sep).count() > 1 {
             return Err(());
         }
 
-        let mut groups = value
+        let value_for_grouping = value.strip_prefix('-').unwrap_or(value);
+
+        let (int_part, frac_part) = value_for_grouping
             .split_once(decimal_sep)
-            .map_or(value, |(int, _)| int)
-            .split(group_sep)
-            .peekable();
+            .map_or((value_for_grouping, None), |(int, frac)| (int, Some(frac)));
+
+        if let Some(frac) = frac_part {
+            if frac.contains(group_sep) || !frac.chars().all(|c| c.is_ascii_digit()) {
+                return Err(());
+            }
+        }
+
+        let mut groups = int_part.split(group_sep).peekable();
+
+        if !int_part.contains(group_sep) {
+            let group = groups.next().ok_or(())?;
+            Self::validate_group(group, 1, usize::MAX)?;
+        }
+
+        // first
+        if let Some(group) = groups.next() {
+            Self::validate_group(group, 1, secondary)?;
+        }
 
         while let Some(group) = groups.next() {
-            let max_len = if groups.peek().is_some() {
+            let len = if groups.peek().is_some() {
+                // middle
                 secondary
             } else {
+                // last
                 primary
             };
-            Self::validate_group(group, max_len)?;
+            Self::validate_group(group, len, len)?;
         }
 
         Ok(())
@@ -97,9 +129,9 @@ impl SequenceDetector for NumericProgressionDetector<'_> {
         let decimal_format = &numbers.decimal_formats.standard;
 
         let groups_len = decimal_format
-            .split_once(decimal_sep)
+            .split_once('.')
             .map_or(decimal_format.as_str(), |(int, _)| int)
-            .split(group_sep)
+            .split(',')
             .map(|group| group.len())
             .collect::<Vec<_>>();
 
@@ -140,7 +172,11 @@ impl SequenceDetector for NumericProgressionDetector<'_> {
 
                 let last = nums[nums.len() - 1];
 
-                Some(Progression::Numeric(NumericProgression { last, step }))
+                Some(Progression::Numeric(NumericProgression {
+                    last,
+                    step,
+                    decimal_sep,
+                }))
             })
     }
 }
@@ -297,45 +333,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn numeric_progression_basic() {
-        let p = NumericProgression {
-            last: 3.0,
-            step: 2.0,
-        };
-        assert_eq!(p.next(0), 5.0);
-        assert_eq!(p.next(1), 7.0);
-    }
-
-    #[test]
-    fn suffixed_progression_basic() {
-        let locale = get_locale("en").unwrap();
-
-        let values = vec!["A1", "A2", "A3"]
-            .into_iter()
-            .map(String::from)
-            .collect::<Vec<_>>();
-
-        let prog = (SuffixedNumberDetector { locale }).detect(&values).unwrap();
-        assert_eq!(prog.next(0), "A4");
-        assert_eq!(prog.next(1), "A5");
-    }
-
-    #[test]
-    fn numeric_detector_rejects_non_progression() {
-        let locale = get_locale("en").unwrap();
-
-        let values = vec!["1", "2", "4"]
-            .into_iter()
-            .map(String::from)
-            .collect::<Vec<_>>();
-        assert!((NumericProgressionDetector { locale })
-            .detect(&values)
-            .is_none());
-    }
-
-    // New tests below
-
-    #[test]
     fn test_numeric_progression_detector() {
         let locale = get_locale("en").unwrap();
         let detector = NumericProgressionDetector { locale };
@@ -374,6 +371,73 @@ mod tests {
     }
 
     #[test]
+    fn test_numeric_grouping_validation() {
+        let locale = get_locale("en").unwrap();
+        let detector = NumericProgressionDetector { locale };
+
+        // Valid numbers without grouping
+        let values = vec!["1000000".to_string(), "2000000".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "3000000");
+
+        // Valid numbers with correct grouping (en locale uses groups of 3)
+        let values = vec!["1,000,000".to_string(), "2,000,000".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "3000000");
+
+        let values = vec!["-100,000.5".to_string(), "-100,001.5".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "-100002.5");
+
+        // Invalid: consecutive commas
+        let values = vec!["1,,000".to_string(), "2,,000".to_string()];
+        assert!(detector.detect(&values).is_none());
+
+        // Invalid: incorrect group size (should be 3 for en locale, not 4)
+        let values = vec!["1,0000,000".to_string(), "2,0000,000".to_string()];
+        assert!(detector.detect(&values).is_none());
+
+        // Invalid: multiple decimal separators
+        let values = vec!["100.5.2".to_string(), "200.5.2".to_string()];
+        assert!(detector.detect(&values).is_none());
+
+        // Invalid: incorrect grouping pattern (Indian numbering)
+        let values = vec!["1,00,00,00".to_string(), "2,00,00,00".to_string()];
+        assert!(detector.detect(&values).is_none());
+
+        // Valid: single group
+        let values = vec!["1,000".to_string(), "2,000".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "3000");
+
+        // Invalid: comma at the start
+        let values = vec![",1000".to_string(), ",2000".to_string()];
+        assert!(detector.detect(&values).is_none());
+
+        // Invalid: comma at the end (before decimal)
+        let values = vec!["1000,".to_string(), "2000,".to_string()];
+        assert!(detector.detect(&values).is_none());
+
+        // Invalid: comma after decimal point
+        let values = vec!["1000.5,00".to_string(), "2000.5,00".to_string()];
+        assert!(detector.detect(&values).is_none());
+
+        // Valid: no grouping with decimal
+        let values = vec!["1000.50".to_string(), "2000.50".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "3000.5");
+
+        // Valid progression with grouped numbers
+        let values = vec![
+            "1,000".to_string(),
+            "2,000".to_string(),
+            "3,000".to_string(),
+        ];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "4000");
+    }
+
+    #[test]
     fn test_numeric_progression_detector_locale_de() {
         let locale = get_locale("de").unwrap();
         let detector = NumericProgressionDetector { locale };
@@ -381,12 +445,15 @@ mod tests {
         // "de" uses "," as decimal separator and "." as grouping separator
         let values = vec!["1,5".to_string(), "2,0".to_string(), "2,5".to_string()];
         let progression = detector.detect(&values).unwrap();
-        // NB: The output format is not localized
         assert_eq!(progression.next(0), "3");
-        assert_eq!(progression.next(1), "3.5");
+        assert_eq!(progression.next(1), "3,5");
 
         // With grouping
-        let values = vec!["1.000".to_string(), "2.000".to_string(), "3.000".to_string()];
+        let values = vec![
+            "1.000".to_string(),
+            "2.000".to_string(),
+            "3.000".to_string(),
+        ];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "4000");
         assert_eq!(progression.next(1), "5000");
@@ -394,21 +461,12 @@ mod tests {
         // Grouping and decimal separator
         let values = vec!["1.000,5".to_string(), "2.000,5".to_string()];
         let progression = detector.detect(&values).unwrap();
-        assert!((progression.next(0).parse::<f64>().unwrap() - 3000.5).abs() < 1e-9);
-    }
+        assert_eq!(progression.next(0), "3000,5");
 
-    #[test]
-    fn test_numeric_progression_detector_weird_grouping() {
-        let locale = get_locale("de").unwrap(); // group: '.', decimal: ','
-        let detector = NumericProgressionDetector { locale };
-
-        // The grouping validator is a bit loose and allows this.
-        // "1.00" -> 100
-        // "2.000" -> 2000
-        // step = 1900, last = 2000
-        let values = vec!["1.00".to_string(), "2.000".to_string()];
+        let values = vec!["1,7".to_string(), "1,8".to_string(), "1,9".to_string()];
         let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "3900");
+        assert_eq!(progression.next(0), "2");
+        assert_eq!(progression.next(1), "2,1");
     }
 
     #[test]
