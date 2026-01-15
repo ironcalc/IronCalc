@@ -126,6 +126,7 @@
     "cancel": "Abbrechen",
     "apply": "Änderungen übernehmen",
     "discard": "Änderungen verwerfen",
+    "default_range_prefix": "Bereich",
     "errors": {
       "range_name_required": "Der Bereichsname ist erforderlich",
       "name_cannot_contain_spaces": "Der Name darf keine Leerzeichen enthalten",

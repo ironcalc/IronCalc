@@ -126,6 +126,7 @@
     "cancel": "Cancel",
     "apply": "Apply changes",
     "discard": "Discard changes",
+    "default_range_prefix": "Range",
     "errors": {
       "range_name_required": "Range name is required",
       "name_cannot_contain_spaces": "Name cannot contain spaces",

@@ -126,6 +126,7 @@
     "cancel": "Annuler",
     "apply": "Appliquer les modifications",
     "discard": "Annuler les modifications",
+    "default_range_prefix": "Plage",
     "errors": {
       "range_name_required": "Le nom de la plage est obligatoire",
       "name_cannot_contain_spaces": "Le nom ne peut pas contenir d’espaces",

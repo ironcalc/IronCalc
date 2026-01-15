@@ -126,6 +126,7 @@
     "cancel": "Annulla",
     "apply": "Applica modifiche",
     "discard": "Annulla modifiche",
+    "default_range_prefix": "Intervallo",
     "errors": {
       "range_name_required": "Il nome dell'intervallo è obbligatorio",
       "name_cannot_contain_spaces": "Il nome non può contenere spazi",
