@@ -53,22 +53,76 @@ struct NumericProgressionDetector<'a> {
     locale: &'a Locale,
 }
 
+impl<'a> NumericProgressionDetector<'a> {
+    fn validate_group(part: &str, max_len: usize) -> Result<(), ()> {
+        (!part.is_empty() && part.chars().all(|c| c.is_ascii_digit()) && part.len() <= max_len)
+            .then_some(())
+            .ok_or(())
+    }
+
+    fn validate_grouping(&self, value: &str, primary: usize, secondary: usize) -> Result<(), ()> {
+        let numbers = &self.locale.numbers;
+        let decimal_sep = numbers.symbols.decimal.chars().next().unwrap_or('.');
+        let group_sep = numbers.symbols.group.chars().next().unwrap_or(',');
+
+        if value.chars().filter(|&c| c == decimal_sep).count() > 1 {
+            return Err(());
+        }
+
+        let mut groups = value
+            .split_once(decimal_sep)
+            .map_or(value, |(int, _)| int)
+            .split(group_sep)
+            .peekable();
+
+        while let Some(group) = groups.next() {
+            let max_len = if groups.peek().is_some() {
+                secondary
+            } else {
+                primary
+            };
+            Self::validate_group(group, max_len)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl SequenceDetector for NumericProgressionDetector<'_> {
     fn detect(&self, values: &[String]) -> Option<Progression> {
         let numbers = &self.locale.numbers;
-        let decimal = &numbers.symbols.decimal;
-        let group = &numbers.symbols.group;
+
+        let decimal_sep = numbers.symbols.decimal.chars().next().unwrap_or('.');
+        let group_sep = numbers.symbols.group.chars().next().unwrap_or(',');
         let decimal_format = &numbers.decimal_formats.standard;
-        let group_separator_in_format = decimal_format.contains(group);
+
+        let groups_len = decimal_format
+            .split_once(decimal_sep)
+            .map_or(decimal_format.as_str(), |(int, _)| int)
+            .split(group_sep)
+            .map(|group| group.len())
+            .collect::<Vec<_>>();
+
+        let primary = groups_len.last().unwrap_or(&3);
+        let secondary = if groups_len.len() > 2 {
+            groups_len
+                .get(groups_len.len().saturating_sub(2)) // penultimate
+                .unwrap_or(&3)
+        } else {
+            primary
+        };
 
         values
             .iter()
             .map(|num| {
+                self.validate_grouping(num, *primary, *secondary)?;
+
                 num.chars()
-                    .filter(|&c| c.to_string() != *group)
-                    .map(|c| if c.to_string() == *decimal { '.' } else { c })
+                    .filter(|&c| c != group_sep)
+                    .map(|c| if c == decimal_sep { '.' } else { c })
                     .collect::<String>()
                     .parse::<f64>()
+                    .map_err(|_| ())
             })
             .collect::<Result<Vec<_>, _>>()
             .ok()
