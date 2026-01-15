@@ -165,7 +165,7 @@ impl SequenceDetector for NumericProgressionDetector<'_> {
                     return None;
                 }
 
-                let is_progression = nums.windows(2).all(|w| (w[1] - w[0] - step).abs() < 1e-9);
+                let is_progression = nums.windows(2).all(|w| (w[1] - w[0] - step).abs() < 1e-6);
                 if !is_progression {
                     return None;
                 }
@@ -343,12 +343,6 @@ mod tests {
         assert_eq!(progression.next(0), "4");
         assert_eq!(progression.next(1), "5");
 
-        // Floating point numbers
-        let values = vec!["1.5".to_string(), "2.0".to_string(), "2.5".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "3");
-        assert_eq!(progression.next(1), "3.5");
-
         // Negative step
         let values = vec!["10".to_string(), "8".to_string(), "6".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -368,6 +362,91 @@ mod tests {
         // No progression
         let values = vec!["1".to_string(), "3".to_string(), "4".to_string()];
         assert!(detector.detect(&values).is_none());
+    }
+
+    #[test]
+    fn test_numeric_float() {
+        let locale = get_locale("en").unwrap();
+        let detector = NumericProgressionDetector { locale };
+
+        // Basic decimal progression
+        let values = vec!["1.5".to_string(), "2.0".to_string(), "2.5".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "3");
+        assert_eq!(progression.next(1), "3.5");
+
+        // Large numbers with small decimal steps
+        let values = vec![
+            "1000000.1".to_string(),
+            "1000000.2".to_string(),
+            "1000000.3".to_string(),
+        ];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "1000000.4");
+
+        // Very small decimal steps (precision test)
+        let values = vec!["0.1".to_string(), "0.2".to_string(), "0.3".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "0.4");
+
+        // Very small decimals
+        let values = vec![
+            "0.001".to_string(),
+            "0.002".to_string(),
+            "0.003".to_string(),
+        ];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "0.004");
+
+        // Fractional steps
+        let values = vec!["1.25".to_string(), "1.75".to_string(), "2.25".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "2.75");
+        assert_eq!(progression.next(1), "3.25");
+
+        // Negative decimal numbers
+        let values = vec!["-1.5".to_string(), "-1.0".to_string(), "-0.5".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "0");
+        assert_eq!(progression.next(1), "0.5");
+
+        // Decreasing decimal progression
+        let values = vec!["10.5".to_string(), "9.5".to_string(), "8.5".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "7.5");
+
+        // Mixed precision decimals
+        let values = vec!["1.0".to_string(), "1.5".to_string(), "2.0".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "2.5");
+
+        // Very large numbers with decimals
+        let values = vec![
+            "999999999.1".to_string(),
+            "999999999.2".to_string(),
+            "999999999.3".to_string(),
+        ];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "999999999.4");
+
+        // Zero crossing with decimals
+        let values = vec!["-0.5".to_string(), "0.0".to_string(), "0.5".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "1");
+
+        // Repeating decimal step
+        let values = vec!["0.3".to_string(), "0.6".to_string(), "0.9".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "1.2");
+
+        // Very small step with large base (precision critical)
+        let values = vec![
+            "10000.01".to_string(),
+            "10000.02".to_string(),
+            "10000.03".to_string(),
+        ];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "10000.04");
     }
 
     #[test]
