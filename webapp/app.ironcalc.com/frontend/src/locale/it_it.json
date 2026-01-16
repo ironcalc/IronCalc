@@ -45,7 +45,8 @@
     "documentation": "Documentazione"
   },
   "file_bar": {
-    "toggle_sidebar": "Mostra/nascondi barra laterale",
+    "open_sidebar": "Apri barra laterale",
+    "close_sidebar": "Chiudi barra laterale",
     "file_menu": {
       "button": "File",
       "new_blank_workbook": "Nuova cartella di lavoro vuota",
