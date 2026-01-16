@@ -221,7 +221,7 @@ const CloudButton = styled("div")`
   }
   &:hover {
     svg {
-        color: #757575;
+      color: #757575;
     }
   }
 `;
