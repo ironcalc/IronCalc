@@ -43,9 +43,7 @@
       "percentage_example": "10%",
       "currency_eur_example": "€",
       "currency_usd_example": "$",
-      "currency_gbp_example": "£",
-      "date_short_example": "24/09/2024",
-      "date_long_example": "martedì 24 settembre 2024"
+      "currency_gbp_example": "£"
     },
     "borders": {
       "title": "Bordi",
@@ -177,7 +175,9 @@
       "locale_label": "Impostazioni locali",
       "locale_example1": "Numero",
       "locale_example2": "Data e ora",
-      "locale_example3": "Separatore formule"
+      "locale_example3": "Separatore formule",
+      "delimiter_comma": "Virgola",
+      "delimiter_semicolon": "Punto e virgola"
     },
     "language": {
       "title": "Lingua",

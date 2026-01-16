@@ -43,9 +43,7 @@
       "percentage_example": "10 %",
       "currency_eur_example": "€",
       "currency_usd_example": "$",
-      "currency_gbp_example": "£",
-      "date_short_example": "24/09/2024",
-      "date_long_example": "mardi 24 septembre 2024"
+      "currency_gbp_example": "£"
     },
     "borders": {
       "title": "Bordures",
@@ -177,7 +175,9 @@
       "locale_label": "Paramètres régionaux",
       "locale_example1": "Nombre",
       "locale_example2": "Date et heure",
-      "locale_example3": "Délimiteur de formule"
+      "locale_example3": "Délimiteur de formule",
+      "delimiter_comma": "Virgule",
+      "delimiter_semicolon": "Point-virgule"
     },
     "language": {
       "title": "Langue",

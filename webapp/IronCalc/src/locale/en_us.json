@@ -43,9 +43,7 @@
       "percentage_example": "10%",
       "currency_eur_example": "€",
       "currency_usd_example": "$",
-      "currency_gbp_example": "£",
-      "date_short_example": "09/24/2024",
-      "date_long_example": "Tuesday, September 24, 2024"
+      "currency_gbp_example": "£"
     },
     "borders": {
       "title": "Borders",
@@ -177,7 +175,9 @@
       "locale_label": "Locale",
       "locale_example1": "Number",
       "locale_example2": "Date and Time",
-      "locale_example3": "Formula delimiter"
+      "locale_example3": "Formula delimiter",
+      "delimiter_comma": "Comma",
+      "delimiter_semicolon": "Semicolon"
     },
     "language": {
       "title": "Language",
