@@ -36,6 +36,49 @@ const localeDisplayNames: Record<string, string> = {
 // Derive supported languages from localeDisplayNames keys
 const SUPPORTED_LANGUAGES = Object.keys(localeDisplayNames);
 
+// Locale-specific format examples (independent of display language)
+// delimiterType is used to look up the translated word, delimiterChar is the actual character
+const localeFormatExamples: Record<
+  string,
+  {
+    number: string;
+    dateTime: string;
+    delimiterType: "comma" | "semicolon";
+    delimiterChar: string;
+  }
+> = {
+  en: {
+    number: "1,234.56",
+    dateTime: "10/17/2026 09:21:06 PM",
+    delimiterType: "comma",
+    delimiterChar: ",",
+  },
+  es: {
+    number: "1.234,56",
+    dateTime: "17/10/2026 21:21:06",
+    delimiterType: "semicolon",
+    delimiterChar: ";",
+  },
+  fr: {
+    number: "1 234,56",
+    dateTime: "17/10/2026 21:21:06",
+    delimiterType: "semicolon",
+    delimiterChar: ";",
+  },
+  de: {
+    number: "1.234,56",
+    dateTime: "17.10.2026 21:21:06",
+    delimiterType: "semicolon",
+    delimiterChar: ";",
+  },
+  it: {
+    number: "1.234,56",
+    dateTime: "17/10/2026 21:21:06",
+    delimiterType: "semicolon",
+    delimiterChar: ";",
+  },
+};
+
 export const getLocaleDisplayName = (locale: string): string => {
   return localeDisplayNames[locale] ?? locale;
 };
@@ -136,15 +179,22 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
               <HelperBox>
                 <Row>
                   {t("regional_settings.locale.locale_example1")}
-                  <RowValue>1,234.56</RowValue>
+                  <RowValue>
+                    {localeFormatExamples[selectedLocale]?.number ?? "1,234.56"}
+                  </RowValue>
                 </Row>
                 <Row>
                   {t("regional_settings.locale.locale_example2")}
-                  <RowValue>12/31/2025 09:21:06 PM</RowValue>
+                  <RowValue>
+                    {localeFormatExamples[selectedLocale]?.dateTime ??
+                      "10/17/2026 09:21:06 PM"}
+                  </RowValue>
                 </Row>
                 <Row>
                   {t("regional_settings.locale.locale_example3")}
-                  <RowValue>Semicolon (;)</RowValue>
+                  <RowValue>
+                    {`${t(`regional_settings.locale.delimiter_${localeFormatExamples[selectedLocale]?.delimiterType ?? "comma"}`)} (${localeFormatExamples[selectedLocale]?.delimiterChar ?? ","})`}
+                  </RowValue>
                 </Row>
               </HelperBox>
             </FormControl>
