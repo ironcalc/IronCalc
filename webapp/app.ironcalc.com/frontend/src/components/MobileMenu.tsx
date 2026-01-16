@@ -139,8 +139,6 @@ export function MobileMenu(props: MobileMenuProps) {
         <MenuDivider />
         <MenuItemWrapper
           ref={mobileLanguageMenuAnchor}
-          onMouseEnter={() => setMobileLanguageMenuOpen(true)}
-          onMouseLeave={() => setMobileLanguageMenuOpen(false)}
           onClick={() => setMobileLanguageMenuOpen(!isMobileLanguageMenuOpen)}
           sx={{ justifyContent: "space-between" }}
         >
@@ -204,12 +202,6 @@ export function MobileMenu(props: MobileMenuProps) {
           "& .MuiList-root": { padding: "0" },
         }}
         onClose={handleMobileMenuClose}
-        slotProps={{
-          paper: {
-            onMouseEnter: () => setMobileLanguageMenuOpen(true),
-            onMouseLeave: () => setMobileLanguageMenuOpen(false),
-          },
-        }}
       >
         <MenuItemWrapper onClick={() => handleMobileLanguageSelect("en-US")}>
           {i18n.language === "en-US" ? (
@@ -274,7 +266,7 @@ export function MobileMenu(props: MobileMenuProps) {
         <DeleteWorkbookDialog
           onClose={() => setMobileDeleteDialogOpen(false)}
           onConfirm={props.onDelete}
-          workbookName={selectedUuid ? models[selectedUuid].name : ""}
+          workbookName={(selectedUuid && models[selectedUuid]?.name) || ""}
         />
       </Modal>
     </>
