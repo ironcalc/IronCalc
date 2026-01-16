@@ -1,4 +1,3 @@
-import "./index.css";
 import type { Model } from "@ironcalc/wasm";
 import { ThemeProvider } from "@mui/material";
 import Workbook from "./components/Workbook/Workbook.tsx";
