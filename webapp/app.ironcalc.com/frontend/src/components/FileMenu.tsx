@@ -305,7 +305,7 @@ const FileMenuWrapper = styled.button<{ $isActive: boolean }>`
   padding: 8px;
   border-radius: 6px;
   cursor: pointer;
-  background-color: ${(props) => (props.$isActive ? "#e6e6e6" : "transparent")};
+  background-color: ${(props) => (props.$isActive ? "#f2f2f2" : "transparent")};
   border: none;
   &:hover {
     background-color: #f2f2f2;
