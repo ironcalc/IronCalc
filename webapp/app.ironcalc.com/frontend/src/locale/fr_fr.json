@@ -45,7 +45,8 @@
     "documentation": "Documentation"
   },
   "file_bar": {
-    "toggle_sidebar": "Afficher/masquer la barre latérale",
+    "open_sidebar": "Ouvrir la barre latérale",
+    "close_sidebar": "Fermer la barre latérale",
     "file_menu": {
       "button": "Fichier",
       "new_blank_workbook": "Nouveau classeur vierge",

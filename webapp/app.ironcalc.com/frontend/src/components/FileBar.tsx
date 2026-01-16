@@ -71,7 +71,11 @@ export function FileBar(properties: {
   return (
     <FileBarWrapper>
       <Tooltip
-        title={t("file_bar.toggle_sidebar")}
+        title={t(
+          properties.isDrawerOpen
+            ? "file_bar.close_sidebar"
+            : "file_bar.open_sidebar",
+        )}
         slotProps={{
           popper: {
             modifiers: [
