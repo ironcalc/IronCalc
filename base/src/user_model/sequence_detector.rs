@@ -336,6 +336,7 @@ pub(crate) fn detect_progression(values: &[String], locale: &Locale) -> Option<P
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use crate::locale::get_locale;
 
     use super::*;
