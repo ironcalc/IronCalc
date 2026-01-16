@@ -193,7 +193,18 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 <Row>
                   {t("regional_settings.locale.locale_example3")}
                   <RowValue>
-                    {`${t(`regional_settings.locale.delimiter_${localeFormatExamples[selectedLocale]?.delimiterType ?? "comma"}`)} (${localeFormatExamples[selectedLocale]?.delimiterChar ?? ","})`}
+                    {(() => {
+                      const delimiterType =
+                        localeFormatExamples[selectedLocale]?.delimiterType ??
+                        "comma";
+                      const delimiterChar =
+                        localeFormatExamples[selectedLocale]?.delimiterChar ??
+                        ",";
+                      const delimiterLabel = t(
+                        `regional_settings.locale.delimiter_${delimiterType}`,
+                      );
+                      return `${delimiterLabel} (${delimiterChar})`;
+                    })()}
                   </RowValue>
                 </Row>
               </HelperBox>
