@@ -68,7 +68,7 @@
         "confirm_button": "Oui, supprimer le classeur",
         "cancel_button": "Annuler"
       },
-      "display_language": "Langue d'affichage"
+      "default_language": "Langue par défaut"
     },
     "help_menu": {
       "button": "Aide",

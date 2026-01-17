@@ -33,9 +33,6 @@ const localeDisplayNames: Record<string, string> = {
   it: "it-IT",
 };
 
-// Derive supported languages from localeDisplayNames keys
-const SUPPORTED_LANGUAGES = Object.keys(localeDisplayNames);
-
 // Locale-specific format examples (independent of display language)
 // delimiterType is used to look up the translated word, delimiterChar is the actual character
 const localeFormatExamples: Record<
@@ -208,60 +205,6 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                   </RowValue>
                 </Row>
               </HelperBox>
-            </FormControl>
-          </FieldWrapper>
-        </FormSection>
-        <FormSection>
-          <StyledSectionTitle>
-            {t("regional_settings.language.title")}
-          </StyledSectionTitle>
-          <FieldWrapper>
-            <StyledLabel htmlFor="language">
-              {t("regional_settings.language.language_label")}
-            </StyledLabel>
-            <FormControl fullWidth>
-              <StyledSelect
-                id="language"
-                value={selectedLanguage}
-                onChange={(event) => {
-                  setSelectedLanguage(event.target.value as string);
-                }}
-                MenuProps={{
-                  PaperProps: {
-                    sx: menuPaperStyles,
-                  },
-                  TransitionProps: {
-                    timeout: 0,
-                  },
-                  anchorOrigin: {
-                    vertical: "bottom",
-                    horizontal: "center",
-                  },
-                  transformOrigin: {
-                    vertical: "top",
-                    horizontal: "center",
-                  },
-                  marginThreshold: 0,
-                }}
-              >
-                {SUPPORTED_LANGUAGES.map((lang) => (
-                  <StyledMenuItem key={lang} value={lang}>
-                    {t(`regional_settings.language.display_language.${lang}`)}
-                    {lang !== "en" && (
-                      <SecondaryText>
-                        (
-                        {t(
-                          `regional_settings.language.display_language_current_lang.${lang}`,
-                        )}
-                        )
-                      </SecondaryText>
-                    )}
-                  </StyledMenuItem>
-                ))}
-              </StyledSelect>
-              <StyledHelperText>
-                {t("regional_settings.language.language_helper")}
-              </StyledHelperText>
             </FormControl>
           </FieldWrapper>
         </FormSection>
@@ -453,11 +396,6 @@ const RowValue = styled("span")`
   font-family: Inter;
   font-weight: normal;
   color: ${theme.palette.grey[500]};
-`;
-
-const SecondaryText = styled("span")`
-  color: ${theme.palette.grey[500]};
-  margin-left: 4px;
 `;
 
 // Autocomplete with customized styles

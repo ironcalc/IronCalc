@@ -244,10 +244,6 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
       >
         <MenuItemWrapper
           onClick={() => {
-            console.log(
-              "Download clicked, selectedWorkbookUuid:",
-              selectedWorkbookUuid,
-            );
             if (selectedWorkbookUuid) {
               handleDownload(selectedWorkbookUuid);
             }

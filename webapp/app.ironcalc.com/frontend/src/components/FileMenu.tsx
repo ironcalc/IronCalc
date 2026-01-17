@@ -23,6 +23,7 @@ export function FileMenu(props: {
   onDownload: () => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
+  onLanguageChange: (language: string) => void;
 }) {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isImportMenuOpen, setImportMenuOpen] = useState(false);
@@ -41,6 +42,7 @@ export function FileMenu(props: {
 
   const handleLanguageItemSelect = (language: string) => {
     i18n.changeLanguage(language);
+    props.onLanguageChange(language);
     handleMainMenuClose();
   };
 
@@ -131,7 +133,7 @@ export function FileMenu(props: {
         >
           <Globe />
           <MenuItemText>
-            {t("file_bar.file_menu.display_language")}
+            {t("file_bar.file_menu.default_language")}
           </MenuItemText>
           <ChevronRight size={16} />
         </MenuItemWrapper>
@@ -173,7 +175,15 @@ export function FileMenu(props: {
           ) : (
             <IconPlaceholder />
           )}
-          English
+          English (en-US)
+        </MenuItemWrapper>
+        <MenuItemWrapper onClick={() => handleLanguageItemSelect("en-GB")}>
+          {i18n.language === "en-GB" ? (
+            <Check size={16} />
+          ) : (
+            <IconPlaceholder />
+          )}
+          English (en-GB)
         </MenuItemWrapper>
         <MenuItemWrapper onClick={() => handleLanguageItemSelect("es-ES")}>
           {i18n.language === "es-ES" ? (
@@ -181,7 +191,7 @@ export function FileMenu(props: {
           ) : (
             <IconPlaceholder />
           )}
-          Español
+          Español (es-ES)
         </MenuItemWrapper>
         <MenuItemWrapper onClick={() => handleLanguageItemSelect("fr-FR")}>
           {i18n.language === "fr-FR" ? (
@@ -189,7 +199,7 @@ export function FileMenu(props: {
           ) : (
             <IconPlaceholder />
           )}
-          Français
+          Français (fr-FR)
         </MenuItemWrapper>
         <MenuItemWrapper onClick={() => handleLanguageItemSelect("de-DE")}>
           {i18n.language === "de-DE" ? (
@@ -197,7 +207,7 @@ export function FileMenu(props: {
           ) : (
             <IconPlaceholder />
           )}
-          Deutsch
+          Deutsch (de-DE)
         </MenuItemWrapper>
         <MenuItemWrapper onClick={() => handleLanguageItemSelect("it-IT")}>
           {i18n.language === "it-IT" ? (
@@ -205,7 +215,7 @@ export function FileMenu(props: {
           ) : (
             <IconPlaceholder />
           )}
-          Italiano
+          Italiano (it-IT)
         </MenuItemWrapper>
       </Menu>
       <Modal

@@ -1,9 +1,10 @@
 import "./App.css";
 import styled from "@emotion/styled";
+import type { IronCalcHandle } from "@ironcalc/workbook";
 // From IronCalc
 import { IronCalc, IronCalcIcon, init, Model } from "@ironcalc/workbook";
 import { Modal } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileBar } from "./components/FileBar";
 import LeftDrawer from "./components/LeftDrawer/LeftDrawer";
@@ -17,15 +18,17 @@ import {
   createNewModel,
   deleteModelByUuid,
   deleteSelectedModel,
+  getShortLocaleCode,
   isStorageEmpty,
+  loadDefaultLocaleFromStorage,
   loadSelectedModelFromStorage,
+  saveDefaultLocaleInStorage,
   saveModelToStorage,
   saveSelectedModelInStorage,
   selectModelFromStorage,
 } from "./components/storage";
 import TemplatesDialog from "./components/WelcomeDialog/TemplatesDialog";
 import WelcomeDialog from "./components/WelcomeDialog/WelcomeDialog";
-import i18n from "./i18n";
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
@@ -34,7 +37,20 @@ function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [localStorageId, setLocalStorageId] = useState<number>(1);
 
-  const { t } = useTranslation();
+  const ironCalcRef = useRef<IronCalcHandle>(null);
+
+  const handleLanguageChange = (language: string) => {
+    if (ironCalcRef.current) {
+      ironCalcRef.current.setLanguage(language);
+      saveDefaultLocaleInStorage(language);
+      if (model) {
+        model.setLocale(getShortLocaleCode(language));
+        saveSelectedModelInStorage(model);
+      }
+    }
+  };
+
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     async function start() {
@@ -43,41 +59,50 @@ function App() {
       const urlParams = new URLSearchParams(queryString);
       const modelHash = urlParams.get("model");
       const exampleFilename = urlParams.get("example");
+      const language = loadDefaultLocaleFromStorage();
+      const localeShort = getShortLocaleCode(language);
       // If there is a model name ?model=modelHash we try to load it
       // if there is not, or the loading failed we load an empty model
       if (modelHash) {
         // Get a remote model
         try {
           const model_bytes = await get_model(modelHash);
-          const importedModel = Model.from_bytes(model_bytes, "en");
+          const importedModel = Model.from_bytes(model_bytes, localeShort);
           localStorage.removeItem("selected");
           setModel(importedModel);
         } catch (_e) {
-          alert(t("errors.model_not_found"));
+          console.log("Failed to load model from hash:", modelHash);
         }
       } else if (exampleFilename) {
         try {
           const model_bytes = await get_documentation_model(exampleFilename);
-          const importedModel = Model.from_bytes(model_bytes, "en");
+          const importedModel = Model.from_bytes(model_bytes, localeShort);
           localStorage.removeItem("selected");
           setModel(importedModel);
         } catch (_e) {
-          alert(t("errors.example_not_found"));
+          console.log("Failed to load example model:", exampleFilename);
         }
       } else {
         // try to load from local storage
-        const newModel = loadSelectedModelFromStorage();
-        if (!newModel) {
+        const result = loadSelectedModelFromStorage();
+        if (!result) {
           setShowWelcomeDialog(true);
           const createdModel = createModelWithSafeTimezone("template");
           setModel(createdModel);
         } else {
+          const newModel = result;
           setModel(newModel);
         }
       }
+      i18n.changeLanguage(language);
+      setTimeout(() => {
+        if (ironCalcRef.current) {
+          ironCalcRef.current.setLanguage(language);
+        }
+      }, 0);
     }
     start();
-  }, [t]);
+  }, [i18n.changeLanguage]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: localStorageId needed to detect name changes (model mutates internally)
   useEffect(() => {
@@ -156,7 +181,9 @@ function App() {
             const blob = await uploadFile(arrayBuffer, fileName);
 
             const bytes = new Uint8Array(await blob.arrayBuffer());
-            const newModel = Model.from_bytes(bytes, "en");
+            const locale = loadDefaultLocaleFromStorage();
+            const localeShort = getShortLocaleCode(locale);
+            const newModel = Model.from_bytes(bytes, localeShort);
             saveModelToStorage(newModel);
 
             setModel(newModel);
@@ -170,8 +197,9 @@ function App() {
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
           setLocalStorageId={setLocalStorageId}
+          onLanguageChange={handleLanguageChange}
         />
-        <IronCalc model={model} language={i18n.language} />
+        <IronCalc model={model} ref={ironCalcRef} />
       </MainContent>
       {showWelcomeDialog && (
         <WelcomeDialog
@@ -191,7 +219,12 @@ function App() {
               }
               default: {
                 const model_bytes = await get_documentation_model(templateId);
-                const importedModel = Model.from_bytes(model_bytes, "en");
+                const locale = loadDefaultLocaleFromStorage();
+                const localeShort = getShortLocaleCode(locale);
+                const importedModel = Model.from_bytes(
+                  model_bytes,
+                  localeShort,
+                );
                 saveModelToStorage(importedModel);
                 setModel(importedModel);
                 break;
@@ -211,7 +244,9 @@ function App() {
           onClose={() => setTemplatesDialogOpen(false)}
           onSelectTemplate={async (fileName) => {
             const model_bytes = await get_documentation_model(fileName);
-            const importedModel = Model.from_bytes(model_bytes, "en");
+            const locale = loadDefaultLocaleFromStorage();
+            const localeShort = getShortLocaleCode(locale);
+            const importedModel = Model.from_bytes(model_bytes, localeShort);
             saveModelToStorage(importedModel);
             setModel(importedModel);
             setTemplatesDialogOpen(false);

@@ -36,6 +36,7 @@ export function FileBar(properties: {
   isDrawerOpen: boolean;
   setIsDrawerOpen: (open: boolean) => void;
   setLocalStorageId: (updater: (id: number) => number) => void;
+  onLanguageChange: (language: string) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -90,6 +91,7 @@ export function FileBar(properties: {
           await downloadModel(bytes, fileName);
         }}
         onDelete={properties.onDelete}
+        onLanguageChange={properties.onLanguageChange}
       />
       <HelpMenu />
       <WorkbookTitleWrapper>

@@ -3,12 +3,63 @@ import i18n from "../i18n";
 import { base64ToBytes, bytesToBase64 } from "./util";
 
 const MAX_WORKBOOKS = 50;
-const DEFAULT_LANGUAGE = "en";
 
 type ModelsMetadata = Record<
   string,
-  { name: string; createdAt: number; pinned: boolean; language: string }
+  {
+    name: string;
+    createdAt: number;
+    pinned: boolean;
+  }
 >;
+
+// Returns the default UI language based on the browser settings
+// ['en-US', 'en-GB', 'es-ES', 'fr-FR', 'de-DE', 'it-IT']
+function getDefaultUILocale(): string {
+  const lang = navigator.language || navigator.languages[0] || "en-US";
+  if (lang.startsWith("es")) {
+    return "es-ES";
+  } else if (lang.startsWith("fr")) {
+    return "fr-FR";
+  } else if (lang.startsWith("de")) {
+    return "de-DE";
+  } else if (lang === "en-GB") {
+    return "en-GB";
+  } else if (lang.startsWith("it")) {
+    return "it-IT";
+  }
+
+  return "en-US";
+}
+
+// Converts long language codes to short ones used by the Model
+export function getShortLocaleCode(longCode: string): string {
+  switch (longCode) {
+    case "es-ES": {
+      return "es";
+    }
+    case "fr-FR": {
+      return "fr";
+    }
+    case "de-DE": {
+      return "de";
+    }
+    case "it-IT": {
+      return "it";
+    }
+    case "en-GB": {
+      return "en-GB";
+    }
+    default: {
+      return "en";
+    }
+  }
+}
+
+// en-US => en, en-GB => en, es-ES => es, fr-FR => fr, de-DE => de, it-IT => it
+function getLanguageFromLocale(locale: string): string {
+  return locale.split("-")[0];
+}
 
 function randomUUID(): string {
   try {
@@ -23,6 +74,20 @@ function randomUUID(): string {
   }
 }
 
+export function saveDefaultLocaleInStorage(locale: string) {
+  localStorage.setItem("default_locale", locale);
+}
+
+export function loadDefaultLocaleFromStorage(): string {
+  const lang = localStorage.getItem("default_locale");
+  if (lang) {
+    return lang;
+  }
+  const l = getDefaultUILocale();
+  saveDefaultLocaleInStorage(l);
+  return l;
+}
+
 export function updateNameSelectedWorkbook(model: Model, newName: string) {
   const uuid = localStorage.getItem("selected");
   if (uuid) {
@@ -32,12 +97,10 @@ export function updateNameSelectedWorkbook(model: Model, newName: string) {
         const models: ModelsMetadata = JSON.parse(modelsJson);
         if (models[uuid]) {
           models[uuid].name = newName;
-          models[uuid].language = model.getLanguage();
         } else {
           models[uuid] = {
             name: newName,
             createdAt: Date.now(),
-            language: model.getLanguage(),
             pinned: false,
           };
         }
@@ -75,12 +138,15 @@ function getNewName(existingNames: string[]): string {
 }
 
 export function createModelWithSafeTimezone(name: string): Model {
+  const locale = loadDefaultLocaleFromStorage();
+  const language = locale.split("-")[0];
+  const localeShort = getShortLocaleCode(locale);
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return new Model(name, "en", tz, DEFAULT_LANGUAGE);
+    return new Model(name, localeShort, tz, language);
   } catch (e) {
     console.warn("Failed to get timezone, defaulting to UTC", e);
-    return new Model(name, "en", "UTC", DEFAULT_LANGUAGE);
+    return new Model(name, localeShort, "UTC", language);
   }
 }
 
@@ -96,7 +162,6 @@ export function createNewModel(): Model {
   models[uuid] = {
     name,
     createdAt: Date.now(),
-    language: model.getLanguage(),
     pinned: false,
   };
   localStorage.setItem("models", JSON.stringify(models));
@@ -108,7 +173,7 @@ export function loadSelectedModelFromStorage(): Model | null {
   if (uuid) {
     // We try to load the selected model
     const modelBytesString = localStorage.getItem(uuid);
-    const language = getModelsMetadata()[uuid]?.language || DEFAULT_LANGUAGE;
+    const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
     if (modelBytesString) {
       return Model.from_bytes(base64ToBytes(modelBytesString), language);
     }
@@ -140,7 +205,6 @@ export function saveSelectedModelInStorage(model: Model) {
       modelsJson = "{}";
     }
     const models: ModelsMetadata = JSON.parse(modelsJson);
-    models[uuid].language = model.getLanguage();
     localStorage.setItem("models", JSON.stringify(models));
   }
 }
@@ -157,7 +221,6 @@ export function saveModelToStorage(model: Model) {
   models[uuid] = {
     name: model.getName(),
     createdAt: Date.now(),
-    language: model.getLanguage(),
     pinned: false,
   };
   localStorage.setItem("models", JSON.stringify(models));
@@ -166,7 +229,7 @@ export function saveModelToStorage(model: Model) {
 export function selectModelFromStorage(uuid: string): Model | null {
   localStorage.setItem("selected", uuid);
   const modelBytesString = localStorage.getItem(uuid);
-  const language = getModelsMetadata()[uuid]?.language || DEFAULT_LANGUAGE;
+  const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
   if (modelBytesString) {
     return Model.from_bytes(base64ToBytes(modelBytesString), language);
   }
@@ -218,8 +281,7 @@ export function deleteModelByUuid(uuid: string): Model | null {
   // If it wasn't the selected model, return the currently selected model
   if (selectedUuid) {
     const modelBytesString = localStorage.getItem(selectedUuid);
-    const language =
-      getModelsMetadata()[selectedUuid]?.language || DEFAULT_LANGUAGE;
+    const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
     if (modelBytesString) {
       return Model.from_bytes(base64ToBytes(modelBytesString), language);
     }
@@ -271,7 +333,6 @@ export function duplicateModel(uuid: string): Model | null {
   models[newUuid] = {
     name: newName,
     createdAt: Date.now(),
-    language,
     pinned: false,
   };
   localStorage.setItem("models", JSON.stringify(models));

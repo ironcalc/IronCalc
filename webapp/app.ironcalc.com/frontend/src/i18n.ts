@@ -8,6 +8,7 @@ import translationIT from "./locale/it_it.json";
 
 const resources = {
   "en-US": { translation: translationEN },
+  "en-GB": { translation: translationEN },
   "es-ES": { translation: translationES },
   "fr-FR": { translation: translationFR },
   "de-DE": { translation: translationDE },

@@ -68,7 +68,7 @@
         "confirm_button": "Sí, eliminar libro",
         "cancel_button": "Cancelar"
       },
-      "display_language": "Idioma de visualización"
+      "default_language": "Idioma predeterminado"
     },
     "help_menu": {
       "button": "Ayuda",

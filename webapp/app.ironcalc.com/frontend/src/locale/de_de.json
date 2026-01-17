@@ -68,7 +68,7 @@
         "confirm_button": "Ja, Arbeitsmappe löschen",
         "cancel_button": "Abbrechen"
       },
-      "display_language": "Anzeigesprache"
+      "default_language": "Standardsprache"
     },
     "help_menu": {
       "button": "Hilfe",

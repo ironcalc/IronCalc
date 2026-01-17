@@ -68,7 +68,7 @@
         "confirm_button": "Yes, delete workbook",
         "cancel_button": "Cancel"
       },
-      "display_language": "Display language"
+      "default_language": "Default language"
     },
     "help_menu": {
       "button": "Help",
