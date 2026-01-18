@@ -1,6 +1,3 @@
-//Testing DMIN_DMAX_DAVERAGE_DSUM_DCOUNT_DGET functions
-//Database functions require 3 arguments
-
 #![allow(clippy::unwrap_used)]
 
 use crate::test::util::new_empty_model;
