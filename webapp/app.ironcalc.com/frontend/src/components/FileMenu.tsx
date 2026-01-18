@@ -135,7 +135,7 @@ export function FileMenu(props: {
           >
             <Globe />
             <MenuItemText>
-              {t("file_bar.file_menu.display_language")}
+              {t("file_bar.file_menu.default_language")}
             </MenuItemText>
             <ChevronRight size={16} />
           </MenuItemWrapper>

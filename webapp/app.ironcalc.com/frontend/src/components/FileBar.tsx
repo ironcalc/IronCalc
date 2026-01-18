@@ -4,6 +4,7 @@ import { ClickAwayListener, IconButton, Tooltip } from "@mui/material";
 import { CloudOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
 import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
 import { MobileMenu } from "./MobileMenu";
@@ -68,6 +69,8 @@ export function FileBar(properties: {
     }
   }, [width]);
 
+  const isMobile = width < MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE;
+
   return (
     <FileBarWrapper>
       <Tooltip
@@ -96,36 +99,40 @@ export function FileBar(properties: {
           {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
         </DrawerButton>
       </Tooltip>
-      <MobileMenu
-        newModel={properties.newModel}
-        newModelFromTemplate={properties.newModelFromTemplate}
-        onDownload={handleDownload}
-        onModelUpload={properties.onModelUpload}
-        onDelete={properties.onDelete}
-        onLanguageChange={properties.onLanguageChange}
-      />
-      <ClickAwayListener onClickAway={closeMenus}>
-        <DesktopMenuWrapper>
-          <FileMenu
-            newModel={properties.newModel}
-            newModelFromTemplate={properties.newModelFromTemplate}
-            setModel={properties.setModel}
-            onModelUpload={properties.onModelUpload}
-            onDownload={handleDownload}
-            onDelete={properties.onDelete}
-            isOpen={openMenu === "file"}
-            onOpen={() => setOpenMenu("file")}
-            onClose={closeMenus}
-            onHover={() => openMenu && setOpenMenu("file")}
-          />
-          <HelpMenu
-            isOpen={openMenu === "help"}
-            onOpen={() => setOpenMenu("help")}
-            onClose={closeMenus}
-            onHover={() => openMenu && setOpenMenu("help")}
-          />
-        </DesktopMenuWrapper>
-      </ClickAwayListener>
+      {isMobile ? (
+        <MobileMenu
+          newModel={properties.newModel}
+          newModelFromTemplate={properties.newModelFromTemplate}
+          onDownload={handleDownload}
+          onModelUpload={properties.onModelUpload}
+          onDelete={properties.onDelete}
+          onLanguageChange={properties.onLanguageChange}
+        />
+      ) : (
+        <ClickAwayListener onClickAway={closeMenus}>
+          <DesktopMenuWrapper>
+            <FileMenu
+              newModel={properties.newModel}
+              newModelFromTemplate={properties.newModelFromTemplate}
+              setModel={properties.setModel}
+              onModelUpload={properties.onModelUpload}
+              onDownload={handleDownload}
+              onDelete={properties.onDelete}
+              isOpen={openMenu === "file"}
+              onOpen={() => setOpenMenu("file")}
+              onClose={closeMenus}
+              onHover={() => openMenu && setOpenMenu("file")}
+              onLanguageChange={properties.onLanguageChange}
+            />
+            <HelpMenu
+              isOpen={openMenu === "help"}
+              onOpen={() => setOpenMenu("help")}
+              onClose={closeMenus}
+              onHover={() => openMenu && setOpenMenu("help")}
+            />
+          </DesktopMenuWrapper>
+        </ClickAwayListener>
+      )}
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}
@@ -292,13 +299,8 @@ const DialogContainer = styled("div")`
   }
 `;
 
-// Desktop menu wrapper - hidden on mobile
 const DesktopMenuWrapper = styled("div")`
   display: flex;
   align-items: center;
   gap: 2px;
-
-  @media (max-width: 768px) {
-    display: none;
-  }
 `;
