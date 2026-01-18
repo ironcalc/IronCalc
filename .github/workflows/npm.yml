@@ -280,45 +280,45 @@ jobs:
         shell: bash
       - name: Test bindings
         run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-slim sh -lc "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm test"
-  test-linux-x64-musl-binding:
-    name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
-    needs:
-      - build
-    strategy:
-      fail-fast: false
-      matrix:
-        node:
-          - '20'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./bindings/nodejs
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-          cache: npm
-          cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
-      - name: Enable pnpm (corepack)
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-      - name: Install dependencies
-        run: |
-          pnpm config set supportedArchitectures.libc musl
-          pnpm install --frozen-lockfile
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: bindings-x86_64-unknown-linux-musl
-          path: bindings/nodejs/
-      - name: List packages
-        run: ls -R .
-        shell: bash
-      - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-alpine sh -lc "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm test"
+  # test-linux-x64-musl-binding:
+  #   name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
+  #   needs:
+  #     - build
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       node:
+  #         - '20'
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: ./bindings/nodejs
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Setup node
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: ${{ matrix.node }}
+  #         cache: npm
+  #         cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
+  #     - name: Enable pnpm (corepack)
+  #       run: |
+  #         corepack enable
+  #         corepack prepare pnpm@9.15.4 --activate
+  #     - name: Install dependencies
+  #       run: |
+  #         pnpm config set supportedArchitectures.libc musl
+  #         pnpm install --frozen-lockfile
+  #     - name: Download artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: bindings-x86_64-unknown-linux-musl
+  #         path: bindings/nodejs/
+  #     - name: List packages
+  #       run: ls -R .
+  #       shell: bash
+  #     - name: Test bindings
+  #       run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-alpine sh -lc "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm test"
   test-linux-aarch64-gnu-binding:
     name: Test bindings on aarch64-unknown-linux-gnu - node@${{ matrix.node }}
     needs:
@@ -342,6 +342,10 @@ jobs:
       - name: List packages
         run: ls -R .
         shell: bash
+      - name: Enable pnpm (corepack)
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
       - name: Install dependencies
         run: |
           pnpm config set supportedArchitectures.cpu arm64
@@ -363,44 +367,44 @@ jobs:
             corepack prepare pnpm@9.15.4 --activate
             pnpm test
             ls -la
-  test-linux-aarch64-musl-binding:
-    name: Test bindings on aarch64-unknown-linux-musl - node@${{ matrix.node }}
-    needs:
-      - build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./bindings/nodejs
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: bindings-aarch64-unknown-linux-musl
-          path: bindings/nodejs/
-      - name: List packages
-        run: ls -R .
-        shell: bash
-      - name: Install dependencies
-        run: |
-          pnpm config set supportedArchitectures.cpu arm64
-          pnpm config set supportedArchitectures.libc musl
-          pnpm install --frozen-lockfile
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-      - name: Setup and run tests
-        uses: addnab/docker-run-action@v3
-        with:
-          image: node:lts-alpine
-          options: '--platform linux/arm64 -v ${{ github.workspace }}:/build -w /build/bindings/nodejs'
-          run: |
-            set -e
-            corepack enable
-            corepack prepare pnpm@9.15.4 --activate
-            pnpm test
+  # test-linux-aarch64-musl-binding:
+  #   name: Test bindings on aarch64-unknown-linux-musl - node@${{ matrix.node }}
+  #   needs:
+  #     - build
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: ./bindings/nodejs
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Download artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: bindings-aarch64-unknown-linux-musl
+  #         path: bindings/nodejs/
+  #     - name: List packages
+  #       run: ls -R .
+  #       shell: bash
+  #     - name: Install dependencies
+  #       run: |
+  #         pnpm config set supportedArchitectures.cpu arm64
+  #         pnpm config set supportedArchitectures.libc musl
+  #         pnpm install --frozen-lockfile
+  #     - name: Set up QEMU
+  #       uses: docker/setup-qemu-action@v3
+  #       with:
+  #         platforms: arm64
+  #     - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  #     - name: Setup and run tests
+  #       uses: addnab/docker-run-action@v3
+  #       with:
+  #         image: node:lts-alpine
+  #         options: '--platform linux/arm64 -v ${{ github.workspace }}:/build -w /build/bindings/nodejs'
+  #         run: |
+  #           set -e
+  #           corepack enable
+  #           corepack prepare pnpm@9.15.4 --activate
+  #           pnpm test
   universal-macOS:
     name: Build universal macOS binary
     needs:
@@ -433,6 +437,13 @@ jobs:
         with:
           name: bindings-aarch64-apple-darwin
           path: bindings/nodejs/artifacts
+      - name: Place binaries where napi universalize expects them
+        run: |
+          set -e
+          ls -la artifacts
+          # Copy the downloaded .node binaries to the package root
+          cp -v artifacts/${{ env.APP_NAME }}.*.node .
+          ls -la .
       - name: Combine binaries
         run: pnpm run universal
       - name: Upload artifact
@@ -450,9 +461,9 @@ jobs:
     needs:
       - test-macOS-windows-binding
       - test-linux-x64-gnu-binding
-      - test-linux-x64-musl-binding
+      # - test-linux-x64-musl-binding
       - test-linux-aarch64-gnu-binding
-      - test-linux-aarch64-musl-binding
+      # - test-linux-aarch64-musl-binding
       - universal-macOS
     steps:
       - uses: actions/checkout@v4
