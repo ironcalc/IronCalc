@@ -130,11 +130,13 @@ jobs:
         if: ${{ !matrix.settings.docker }}
         with:
           node-version: 20
-          cache: pnpm
+          cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
       - name: Enable pnpm (corepack)
         if: ${{ !matrix.settings.docker }}
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest-10 --activate
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         if: ${{ !matrix.settings.docker }}
@@ -203,11 +205,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
+          cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
           architecture: x64
       - name: Enable pnpm (corepack)
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest-10 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download artifacts
@@ -239,10 +243,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
+          cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
       - name: Enable pnpm (corepack)
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest-10 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download artifacts
@@ -254,7 +260,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-slim sh -lc "corepack enable && pnpm test"
+        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-slim sh -lc "corepack enable && corepack prepare pnpm@latest-10 --activate && pnpm test"
   test-linux-x64-musl-binding:
     name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
     needs:
@@ -274,10 +280,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
+          cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
       - name: Enable pnpm (corepack)
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest-10 --activate
       - name: Install dependencies
         run: |
           pnpm config set supportedArchitectures.libc musl
@@ -291,7 +299,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-alpine sh -lc "corepack enable && pnpm test"
+        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-alpine sh -lc "corepack enable && corepack prepare pnpm@latest-10 --activate && pnpm test"
   test-linux-aarch64-gnu-binding:
     name: Test bindings on aarch64-unknown-linux-gnu - node@${{ matrix.node }}
     needs:
@@ -333,6 +341,7 @@ jobs:
           run: |
             set -e
             corepack enable
+            corepack prepare pnpm@latest-10 --activate
             pnpm test
             ls -la
   test-linux-aarch64-musl-binding:
@@ -371,6 +380,7 @@ jobs:
           run: |
             set -e
             corepack enable
+            corepack prepare pnpm@latest-10 --activate
             pnpm test
   universal-macOS:
     name: Build universal macOS binary
@@ -386,10 +396,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+          cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
       - name: Enable pnpm (corepack)
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest-10 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download macOS x64 artifact
@@ -429,10 +441,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+          cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
       - name: Enable pnpm (corepack)
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest-10 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download all artifacts
