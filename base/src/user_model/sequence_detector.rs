@@ -12,7 +12,7 @@ impl NumericProgression {
 }
 
 pub(crate) struct SuffixedProgression {
-    progression: NumericProgression,
+    numeric_progression: NumericProgression,
     prefix: String,
 }
 impl SuffixedProgression {
@@ -20,7 +20,7 @@ impl SuffixedProgression {
         format!(
             "{}{}",
             self.prefix,
-            Progression::format_number(&self.progression, i)
+            Progression::format_number(&self.numeric_progression, i)
         )
     }
 }
@@ -96,7 +96,7 @@ impl<'a> NumericProgressionDetector<'a> {
             .map_or((value_for_grouping, None), |(int, frac)| (int, Some(frac)));
 
         if let Some(frac) = frac_part {
-            if frac.contains(group_sep) || !frac.chars().all(|c| c.is_ascii_digit()) {
+            if !frac.chars().all(|c| c.is_ascii_digit()) {
                 return Err(());
             }
         }
@@ -254,7 +254,7 @@ impl SequenceDetector for SuffixedNumberDetector<'_> {
             .detect(&suffixes)
         {
             return Some(Progression::SuffixedNumber(SuffixedProgression {
-                progression: numeric_progression_from_suffixes,
+                numeric_progression: numeric_progression_from_suffixes,
                 prefix: prefix0.to_string(),
             }));
         }
@@ -312,12 +312,7 @@ impl<'a> SequenceDetector for DateProgressionDetector<'a> {
             &dates.months_letter,
         ]
         .iter()
-        .find_map(|&names_vec| {
-            (Self {
-                locale: self.locale,
-            })
-            .find_progression(values, names_vec)
-        })
+        .find_map(|&names_vec| self.find_progression(values, names_vec))
     }
 }
 
