@@ -67,6 +67,7 @@ export function FileBar(properties: {
       setMaxTitleWidth(bb.right - bb.left - 50);
     }
   }, [width]);
+  const isMobile = width < 768; 
 
   return (
     <FileBarWrapper>
@@ -96,17 +97,19 @@ export function FileBar(properties: {
           {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
         </DrawerButton>
       </Tooltip>
-      <MobileMenu
-        newModel={properties.newModel}
-        newModelFromTemplate={properties.newModelFromTemplate}
-        onDownload={handleDownload}
-        onModelUpload={properties.onModelUpload}
-        onDelete={properties.onDelete}
-        onLanguageChange={properties.onLanguageChange}
-      />
-      <ClickAwayListener onClickAway={closeMenus}>
-        <DesktopMenuWrapper>
-          <FileMenu
+      {isMobile ? (
+        <MobileMenu
+          newModel={properties.newModel}
+          newModelFromTemplate={properties.newModelFromTemplate}
+          onDownload={handleDownload}
+          onModelUpload={properties.onModelUpload}
+          onDelete={properties.onDelete}
+          onLanguageChange={properties.onLanguageChange}
+        />
+      ) : (
+        <ClickAwayListener onClickAway={closeMenus}>
+          <DesktopMenuWrapper>
+            <FileMenu
             newModel={properties.newModel}
             newModelFromTemplate={properties.newModelFromTemplate}
             setModel={properties.setModel}
@@ -117,6 +120,7 @@ export function FileBar(properties: {
             onOpen={() => setOpenMenu("file")}
             onClose={closeMenus}
             onHover={() => openMenu && setOpenMenu("file")}
+            onLanguageChange={properties.onLanguageChange}
           />
           <HelpMenu
             isOpen={openMenu === "help"}
@@ -126,6 +130,7 @@ export function FileBar(properties: {
           />
         </DesktopMenuWrapper>
       </ClickAwayListener>
+      )}
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}

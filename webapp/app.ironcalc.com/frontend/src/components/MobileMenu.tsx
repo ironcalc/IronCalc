@@ -31,6 +31,7 @@ interface MobileMenuProps {
   onDownload: () => Promise<void>;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
+  onLanguageChange: (language: string) => void;
 }
 
 export function MobileMenu(props: MobileMenuProps) {
@@ -51,6 +52,7 @@ export function MobileMenu(props: MobileMenuProps) {
 
   const handleMobileLanguageSelect = (language: string) => {
     i18n.changeLanguage(language);
+    props.onLanguageChange(language);
     handleMobileMenuClose();
   };
 
@@ -87,7 +89,6 @@ export function MobileMenu(props: MobileMenuProps) {
           },
         }}
       >
-        {/* File Menu Items */}
         <MenuItemWrapper
           onClick={() => {
             props.newModel();
@@ -144,12 +145,11 @@ export function MobileMenu(props: MobileMenuProps) {
         >
           <Globe />
           <MenuItemText>
-            {t("file_bar.file_menu.display_language")}
+            {t("file_bar.file_menu.default_language")}
           </MenuItemText>
           <ChevronRight size={16} />
         </MenuItemWrapper>
         <MenuDivider />
-        {/* Help Menu Items */}
         <MenuItemWrapper
           onClick={() => {
             handleMobileMenuClose();
@@ -177,7 +177,6 @@ export function MobileMenu(props: MobileMenuProps) {
           {t("file_bar.help_menu.keyboard_shortcuts")}
         </MenuItemWrapper>
       </Menu>
-      {/* Language Submenu for Mobile */}
       <Menu
         open={isMobileLanguageMenuOpen}
         anchorEl={mobileLanguageMenuAnchor.current}
@@ -209,7 +208,15 @@ export function MobileMenu(props: MobileMenuProps) {
           ) : (
             <IconPlaceholder />
           )}
-          English
+          English (en-US)
+        </MenuItemWrapper>
+        <MenuItemWrapper onClick={() => handleMobileLanguageSelect("en-GB")}>
+          {i18n.language === "en-GB" ? (
+            <Check size={16} />
+          ) : (
+            <IconPlaceholder />
+          )}
+          English (en-GB)
         </MenuItemWrapper>
         <MenuItemWrapper onClick={() => handleMobileLanguageSelect("es-ES")}>
           {i18n.language === "es-ES" ? (
@@ -217,7 +224,7 @@ export function MobileMenu(props: MobileMenuProps) {
           ) : (
             <IconPlaceholder />
           )}
-          Español
+          Español (es-ES)
         </MenuItemWrapper>
         <MenuItemWrapper onClick={() => handleMobileLanguageSelect("fr-FR")}>
           {i18n.language === "fr-FR" ? (
@@ -225,7 +232,7 @@ export function MobileMenu(props: MobileMenuProps) {
           ) : (
             <IconPlaceholder />
           )}
-          Français
+          Français (fr-FR)
         </MenuItemWrapper>
         <MenuItemWrapper onClick={() => handleMobileLanguageSelect("de-DE")}>
           {i18n.language === "de-DE" ? (
@@ -233,7 +240,7 @@ export function MobileMenu(props: MobileMenuProps) {
           ) : (
             <IconPlaceholder />
           )}
-          Deutsch
+          Deutsch (de-DE)
         </MenuItemWrapper>
         <MenuItemWrapper onClick={() => handleMobileLanguageSelect("it-IT")}>
           {i18n.language === "it-IT" ? (
@@ -241,7 +248,7 @@ export function MobileMenu(props: MobileMenuProps) {
           ) : (
             <IconPlaceholder />
           )}
-          Italiano
+          Italiano (it-IT)
         </MenuItemWrapper>
       </Menu>
       {/* Mobile Import Dialog */}
