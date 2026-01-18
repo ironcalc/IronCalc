@@ -36,7 +36,7 @@ jobs:
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               corepack enable &&
-              corepack prepare pnpm@latest-10 --activate &&
+              corepack prepare pnpm@9.15.4 --activate &&
               pnpm install --frozen-lockfile &&
               pnpm run build --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
@@ -47,7 +47,7 @@ jobs:
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               corepack enable &&
-              corepack prepare pnpm@latest-10 --activate &&
+              corepack prepare pnpm@9.15.4 --activate &&
               pnpm install --frozen-lockfile &&
               pnpm run build --target x86_64-unknown-linux-musl
           - host: macos-latest
@@ -57,7 +57,7 @@ jobs:
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               corepack enable &&
-              corepack prepare pnpm@latest-10 --activate &&
+              corepack prepare pnpm@9.15.4 --activate &&
               pnpm install --frozen-lockfile &&
               pnpm run build --target aarch64-apple-darwin
           - host: ubuntu-latest
@@ -69,7 +69,7 @@ jobs:
               rustup default 1.90.0 &&
               rustup target add aarch64-unknown-linux-gnu &&
               corepack enable &&
-              corepack prepare pnpm@latest-10 --activate &&
+              corepack prepare pnpm@9.15.4 --activate &&
               pnpm install --frozen-lockfile &&
               pnpm run build --target aarch64-unknown-linux-gnu
           - host: ubuntu-latest
@@ -86,7 +86,7 @@ jobs:
               export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
               export PKG_CONFIG_ALLOW_CROSS=1
               corepack enable
-              corepack prepare pnpm@latest-10 --activate
+              corepack prepare pnpm@9.15.4 --activate
               pnpm install --frozen-lockfile
               pnpm run build --target armv7-unknown-linux-gnueabihf
           # - host: ubuntu-latest
@@ -124,7 +124,7 @@ jobs:
               rustup default 1.90.0 &&
               rustup target add aarch64-unknown-linux-musl &&
               corepack enable &&
-              corepack prepare pnpm@latest-10 --activate &&
+              corepack prepare pnpm@9.15.4 --activate &&
               pnpm install --frozen-lockfile &&
               pnpm run build --target aarch64-unknown-linux-musl
           - host: windows-latest
@@ -154,7 +154,7 @@ jobs:
         if: ${{ !matrix.settings.docker }}
         run: |
           corepack enable
-          corepack prepare pnpm@latest-10 --activate
+          corepack prepare pnpm@9.15.4 --activate
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         if: ${{ !matrix.settings.docker }}
@@ -229,7 +229,7 @@ jobs:
       - name: Enable pnpm (corepack)
         run: |
           corepack enable
-          corepack prepare pnpm@latest-10 --activate
+          corepack prepare pnpm@9.15.4 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download artifacts
@@ -266,7 +266,7 @@ jobs:
       - name: Enable pnpm (corepack)
         run: |
           corepack enable
-          corepack prepare pnpm@latest-10 --activate
+          corepack prepare pnpm@9.15.4 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download artifacts
@@ -278,7 +278,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-slim sh -lc "corepack enable && corepack prepare pnpm@latest-10 --activate && pnpm test"
+        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-slim sh -lc "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm test"
   test-linux-x64-musl-binding:
     name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
     needs:
@@ -303,7 +303,7 @@ jobs:
       - name: Enable pnpm (corepack)
         run: |
           corepack enable
-          corepack prepare pnpm@latest-10 --activate
+          corepack prepare pnpm@9.15.4 --activate
       - name: Install dependencies
         run: |
           pnpm config set supportedArchitectures.libc musl
@@ -317,7 +317,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-alpine sh -lc "corepack enable && corepack prepare pnpm@latest-10 --activate && pnpm test"
+        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-alpine sh -lc "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm test"
   test-linux-aarch64-gnu-binding:
     name: Test bindings on aarch64-unknown-linux-gnu - node@${{ matrix.node }}
     needs:
@@ -359,7 +359,7 @@ jobs:
           run: |
             set -e
             corepack enable
-            corepack prepare pnpm@latest-10 --activate
+            corepack prepare pnpm@9.15.4 --activate
             pnpm test
             ls -la
   test-linux-aarch64-musl-binding:
@@ -398,7 +398,7 @@ jobs:
           run: |
             set -e
             corepack enable
-            corepack prepare pnpm@latest-10 --activate
+            corepack prepare pnpm@9.15.4 --activate
             pnpm test
   universal-macOS:
     name: Build universal macOS binary
@@ -419,7 +419,7 @@ jobs:
       - name: Enable pnpm (corepack)
         run: |
           corepack enable
-          corepack prepare pnpm@latest-10 --activate
+          corepack prepare pnpm@9.15.4 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download macOS x64 artifact
@@ -464,7 +464,7 @@ jobs:
       - name: Enable pnpm (corepack)
         run: |
           corepack enable
-          corepack prepare pnpm@latest-10 --activate
+          corepack prepare pnpm@9.15.4 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Download all artifacts
