@@ -2037,10 +2037,21 @@ impl<'a> UserModel<'a> {
 
     /// Sets the timezone for the model
     pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
+        let diff_list = vec![Diff::SetTimezone {
+            old_value: self.get_timezone(),
+            new_value: timezone.to_string(),
+        }];
+        self.push_diff_list(diff_list);
         self.model.set_timezone(timezone)
     }
+
     /// Sets the locale for the model
     pub fn set_locale(&mut self, locale: &str) -> Result<(), String> {
+        let diff_list = vec![Diff::SetLocale {
+            old_value: self.get_locale(),
+            new_value: locale.to_string(),
+        }];
+        self.push_diff_list(diff_list);
         self.model.set_locale(locale)
     }
 
@@ -2389,6 +2400,18 @@ impl<'a> UserModel<'a> {
                     self.model.move_row_action(*sheet, *row + *delta, -*delta)?;
                     needs_evaluation = true;
                 }
+                Diff::SetLocale {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_locale(old_value)?;
+                }
+                Diff::SetTimezone {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_timezone(old_value)?;
+                }
             }
         }
         if needs_evaluation {
@@ -2607,6 +2630,18 @@ impl<'a> UserModel<'a> {
                 Diff::MoveRow { sheet, row, delta } => {
                     self.model.move_row_action(*sheet, *row, *delta)?;
                     needs_evaluation = true;
+                }
+                Diff::SetLocale {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_locale(new_value)?;
+                }
+                Diff::SetTimezone {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_timezone(new_value)?;
                 }
             }
         }
