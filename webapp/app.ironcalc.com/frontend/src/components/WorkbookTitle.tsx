@@ -98,7 +98,7 @@ const TitleInput = styled("input")`
   text-align: center;
   height: 20px;
   line-height: 20px;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: inherit;
   outline: none;
   resize: none;

@@ -57,7 +57,6 @@ const LogoWrapper = styled("div")`
   display: flex;
   align-items: center;
   gap: 8px;
-
 `;
 
 const Title = styled("h1")`
@@ -76,7 +75,7 @@ const AddButton = styled(IconButton)`
   height: 32px;
   width: 32px;
   padding: 8px;
-  border-radius: 4px;
+  border-radius: 6px;
 
   svg {
     stroke-width: 2px;

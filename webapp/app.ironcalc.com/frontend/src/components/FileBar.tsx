@@ -1,16 +1,20 @@
 import styled from "@emotion/styled";
 import type { Model } from "@ironcalc/workbook";
-import { IconButton, Tooltip } from "@mui/material";
+import { ClickAwayListener, IconButton, Tooltip } from "@mui/material";
 import { CloudOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
 import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
+import { MobileMenu } from "./MobileMenu";
 import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
 import { updateNameSelectedWorkbook } from "./storage";
 import { WorkbookTitle } from "./WorkbookTitle";
+
+type OpenMenu = "file" | "help" | null;
 
 // This hook is used to get the width of the window
 function useWindowWidth() {
@@ -39,12 +43,22 @@ export function FileBar(properties: {
   onLanguageChange: (language: string) => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const spacerRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
   const { t } = useTranslation();
   const cloudWarningText1 = `${t("file_bar.title_input.warning_text1")}`;
   const cloudWarningText2 = `${t("file_bar.title_input.warning_text2")}`;
+
+  const handleDownload = async () => {
+    const model = properties.model;
+    const bytes = model.toBytes();
+    const fileName = model.getName();
+    await downloadModel(bytes, fileName);
+  };
+
+  const closeMenus = () => setOpenMenu(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -55,10 +69,16 @@ export function FileBar(properties: {
     }
   }, [width]);
 
+  const isMobile = width < MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE;
+
   return (
     <FileBarWrapper>
       <Tooltip
-        title={t("file_bar.toggle_sidebar")}
+        title={t(
+          properties.isDrawerOpen
+            ? "file_bar.close_sidebar"
+            : "file_bar.open_sidebar",
+        )}
         slotProps={{
           popper: {
             modifiers: [
@@ -79,21 +99,40 @@ export function FileBar(properties: {
           {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
         </DrawerButton>
       </Tooltip>
-      <FileMenu
-        newModel={properties.newModel}
-        newModelFromTemplate={properties.newModelFromTemplate}
-        setModel={properties.setModel}
-        onModelUpload={properties.onModelUpload}
-        onDownload={async () => {
-          const model = properties.model;
-          const bytes = model.toBytes();
-          const fileName = model.getName();
-          await downloadModel(bytes, fileName);
-        }}
-        onDelete={properties.onDelete}
-        onLanguageChange={properties.onLanguageChange}
-      />
-      <HelpMenu />
+      {isMobile ? (
+        <MobileMenu
+          newModel={properties.newModel}
+          newModelFromTemplate={properties.newModelFromTemplate}
+          onDownload={handleDownload}
+          onModelUpload={properties.onModelUpload}
+          onDelete={properties.onDelete}
+          onLanguageChange={properties.onLanguageChange}
+        />
+      ) : (
+        <ClickAwayListener onClickAway={closeMenus}>
+          <DesktopMenuWrapper>
+            <FileMenu
+              newModel={properties.newModel}
+              newModelFromTemplate={properties.newModelFromTemplate}
+              setModel={properties.setModel}
+              onModelUpload={properties.onModelUpload}
+              onDownload={handleDownload}
+              onDelete={properties.onDelete}
+              isOpen={openMenu === "file"}
+              onOpen={() => setOpenMenu("file")}
+              onClose={closeMenus}
+              onHover={() => openMenu && setOpenMenu("file")}
+              onLanguageChange={properties.onLanguageChange}
+            />
+            <HelpMenu
+              isOpen={openMenu === "help"}
+              onOpen={() => setOpenMenu("help")}
+              onClose={closeMenus}
+              onHover={() => openMenu && setOpenMenu("help")}
+            />
+          </DesktopMenuWrapper>
+        </ClickAwayListener>
+      )}
       <WorkbookTitleWrapper>
         <WorkbookTitle
           name={properties.model.getName()}
@@ -104,6 +143,9 @@ export function FileBar(properties: {
           }}
           maxWidth={maxTitleWidth}
         />
+      </WorkbookTitleWrapper>
+      <Spacer ref={spacerRef} />
+      <RightSideWrapper>
         <Tooltip
           title={
             <div
@@ -113,7 +155,7 @@ export function FileBar(properties: {
               <div style={{ fontWeight: "bold" }}>{cloudWarningText2}</div>
             </div>
           }
-          placement="bottom"
+          placement="bottom-end"
           enterTouchDelay={0}
           enterDelay={500}
           slotProps={{
@@ -122,7 +164,7 @@ export function FileBar(properties: {
                 {
                   name: "offset",
                   options: {
-                    offset: [0, -10],
+                    offset: [0, -16],
                   },
                 },
               ],
@@ -148,18 +190,17 @@ export function FileBar(properties: {
             <CloudOff />
           </CloudButton>
         </Tooltip>
-      </WorkbookTitleWrapper>
-      <Spacer ref={spacerRef} />
-      <DialogContainer>
-        <ShareButton onClick={() => setIsDialogOpen(true)} />
-        {isDialogOpen && (
-          <ShareWorkbookDialog
-            onClose={() => setIsDialogOpen(false)}
-            onModelUpload={properties.onModelUpload}
-            model={properties.model}
-          />
-        )}
-      </DialogContainer>
+        <DialogContainer>
+          <ShareButton onClick={() => setIsDialogOpen(true)} />
+          {isDialogOpen && (
+            <ShareWorkbookDialog
+              onClose={() => setIsDialogOpen(false)}
+              onModelUpload={properties.onModelUpload}
+              model={properties.model}
+            />
+          )}
+        </DialogContainer>
+      </RightSideWrapper>
     </FileBarWrapper>
   );
 }
@@ -182,18 +223,17 @@ const CloudButton = styled("div")`
   justify-content: center;
   cursor: default;
   background-color: transparent;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 8px;
-  &:hover {
-    background-color: #f2f2f2;
-  }
-  &:active {
-    background-color: #e0e0e0;
-  }
   svg {
     width: 16px;
     height: 16px;
     color: #bdbdbd;
+  }
+  &:hover {
+    svg {
+      color: #757575;
+    }
   }
 `;
 
@@ -209,7 +249,7 @@ const DrawerButton = styled(IconButton)`
   height: 32px;
   width: 32px;
   padding: 8px;
-  border-radius: 4px;
+  border-radius: 6px;
 
   svg {
     stroke-width: 2px;
@@ -239,6 +279,12 @@ const FileBarWrapper = styled("div")`
   justify-content: space-between;
 `;
 
+const RightSideWrapper = styled("div")`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
 const DialogContainer = styled("div")`
   position: relative;
   display: inline-block;
@@ -251,4 +297,10 @@ const DialogContainer = styled("div")`
     left: 0;
     transform: translateY(8px);
   }
+`;
+
+const DesktopMenuWrapper = styled("div")`
+  display: flex;
+  align-items: center;
+  gap: 2px;
 `;

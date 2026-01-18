@@ -45,7 +45,8 @@
     "documentation": "Dokumentation"
   },
   "file_bar": {
-    "toggle_sidebar": "Seitenleiste umschalten",
+    "open_sidebar": "Seitenleiste öffnen",
+    "close_sidebar": "Seitenleiste schließen",
     "file_menu": {
       "button": "Datei",
       "new_blank_workbook": "Neue leere Arbeitsmappe",
