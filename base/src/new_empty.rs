@@ -164,12 +164,23 @@ impl<'a> Model<'a> {
         self.evaluate();
     }
 
+    /// Gets the base name for new sheets
+    fn get_sheet_name(&self) -> String {
+        let language = self.language;
+        match language.code.as_str() {
+            "en" => "Sheet".to_string(),
+            "es" => "Hoja".to_string(),
+            "fr" => "Feuil".to_string(),
+            "de" => "Tabelle".to_string(),
+            "it" => "Foglio".to_string(),
+            _ => "Sheet".to_string(),
+        }
+    }
+
     /// Adds a sheet with a automatically generated name
     pub fn new_sheet(&mut self) -> (String, u32) {
         // First we find a name
-
-        // TODO: The name should depend on the locale
-        let base_name = "Sheet";
+        let base_name = self.get_sheet_name();
         let base_name_uppercase = base_name.to_uppercase();
         let mut index = 1;
         while self
@@ -402,11 +413,20 @@ impl<'a> Model<'a> {
             },
         );
 
+        let sheet_name = match language.code.as_str() {
+            "en" => "Sheet1".to_string(),
+            "es" => "Hoja1".to_string(),
+            "fr" => "Feuil1".to_string(),
+            "de" => "Tabelle1".to_string(),
+            "it" => "Foglio1".to_string(),
+            _ => "Sheet1".to_string(),
+        };
+
         // String versions of the locale are added here to simplify the serialize/deserialize logic
         let workbook = Workbook {
             shared_strings: vec![],
             defined_names: vec![],
-            worksheets: vec![Model::new_empty_worksheet("Sheet1", 1, &[&0])],
+            worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, &[&0])],
             styles: Default::default(),
             name: name.to_string(),
             settings: WorkbookSettings {

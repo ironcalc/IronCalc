@@ -5,27 +5,41 @@ import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
 import { theme } from "./theme.ts";
 import "./i18n";
-import { useEffect } from "react";
+import { forwardRef, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
 
 interface IronCalcProperties {
   model: Model;
-  language: string;
 }
 
-function IronCalc(properties: IronCalcProperties) {
-  const { i18n } = useTranslation();
-
-  useEffect(() => {
-    if (i18n.language !== properties.language) {
-      i18n.changeLanguage(properties.language);
-    }
-  }, [properties.language, i18n]);
-  return (
-    <ThemeProvider theme={theme}>
-      <Workbook model={properties.model} workbookState={new WorkbookState()} />
-    </ThemeProvider>
-  );
+export interface IronCalcHandle {
+  setLanguage: (language: string) => void;
 }
+
+const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
+  (properties, ref) => {
+    const { i18n } = useTranslation();
+
+    useImperativeHandle(ref, () => ({
+      setLanguage(language: string) {
+        if (i18n.language !== language) {
+          i18n.changeLanguage(language);
+          const lang = language.split("-")[0];
+          properties.model.setLanguage(lang);
+        }
+      },
+    }));
+    return (
+      <ThemeProvider theme={theme}>
+        <Workbook
+          model={properties.model}
+          workbookState={new WorkbookState()}
+        />
+      </ThemeProvider>
+    );
+  },
+);
+
+IronCalc.displayName = "IronCalc";
 
 export default IronCalc;

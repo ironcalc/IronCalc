@@ -13,7 +13,9 @@ impl<'a> Model<'a> {
         if cell.contains('!') {
             self.parse_reference(cell).unwrap()
         } else {
-            self.parse_reference(&format!("Sheet1!{cell}")).unwrap()
+            let sheet_name = self.get_worksheets_properties()[0].name.clone();
+            self.parse_reference(&format!("{sheet_name}!{cell}"))
+                .unwrap()
         }
     }
     pub fn _set(&mut self, cell: &str, value: &str) {

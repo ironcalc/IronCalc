@@ -68,7 +68,7 @@
         "confirm_button": "Sì, elimina cartella di lavoro",
         "cancel_button": "Annulla"
       },
-      "display_language": "Lingua di visualizzazione"
+      "default_language": "Lingua predefinita"
     },
     "help_menu": {
       "button": "Aiuto",

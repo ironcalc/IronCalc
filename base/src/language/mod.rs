@@ -401,3 +401,16 @@ pub fn get_language(id: &str) -> Result<&'static Language, String> {
         .get(id)
         .ok_or_else(|| format!("Language is not supported: '{id}'"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_load_languages() {
+        let languages = get_languages();
+        assert!(!languages.is_empty());
+        for (code, language) in languages.iter() {
+            assert_eq!(code, &language.code);
+        }
+    }
+}

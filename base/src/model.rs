@@ -2413,7 +2413,7 @@ impl<'a> Model<'a> {
 
     /// Gets the current language
     pub fn get_language(&self) -> String {
-        self.language.name.clone()
+        self.language.code.clone()
     }
 
     /// Gets the timezone of the model
