@@ -170,7 +170,7 @@ impl<'a> Model<'a> {
         match language.code.as_str() {
             "en" => "Sheet".to_string(),
             "es" => "Hoja".to_string(),
-            "fr" => "Feuille".to_string(),
+            "fr" => "Feuil".to_string(),
             "de" => "Tabelle".to_string(),
             "it" => "Foglio".to_string(),
             _ => "Sheet".to_string(),
@@ -416,7 +416,7 @@ impl<'a> Model<'a> {
         let sheet_name = match language.code.as_str() {
             "en" => "Sheet1".to_string(),
             "es" => "Hoja1".to_string(),
-            "fr" => "Feuille1".to_string(),
+            "fr" => "Feuil1".to_string(),
             "de" => "Tabelle1".to_string(),
             "it" => "Foglio1".to_string(),
             _ => "Sheet1".to_string(),
