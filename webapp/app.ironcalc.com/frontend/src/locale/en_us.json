@@ -45,7 +45,8 @@
     "documentation": "Documentation"
   },
   "file_bar": {
-    "toggle_sidebar": "Toggle sidebar",
+    "open_sidebar": "Open sidebar",
+    "close_sidebar": "Close sidebar",
     "file_menu": {
       "button": "File",
       "new_blank_workbook": "New blank workbook",

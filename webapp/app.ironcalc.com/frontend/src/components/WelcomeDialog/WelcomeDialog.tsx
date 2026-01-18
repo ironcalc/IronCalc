@@ -118,7 +118,8 @@ export const DialogHeaderLogoWrapper = styled("div")`
   padding: 10px;
   margin-bottom: 12px;
   border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 2px;
   transform: rotate(-8deg);
   user-select: none;
 
