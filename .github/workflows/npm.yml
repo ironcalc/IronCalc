@@ -24,9 +24,9 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: yarn build --target x86_64-apple-darwin
+            build: pnpm run build --target x86_64-apple-darwin
           - host: windows-latest
-            build: yarn build --target x86_64-pc-windows-msvc
+            build: pnpm run build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
@@ -35,7 +35,7 @@ jobs:
               set -e &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
-              yarn build --target x86_64-unknown-linux-gnu
+              pnpm run build --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
@@ -43,14 +43,14 @@ jobs:
               set -e &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
-              yarn build --target x86_64-unknown-linux-musl
+              pnpm run build --target x86_64-unknown-linux-musl
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
               set -e &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
-              yarn build --target aarch64-apple-darwin
+              pnpm run build --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
@@ -59,7 +59,7 @@ jobs:
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               rustup target add aarch64-unknown-linux-gnu &&
-              yarn build --target aarch64-unknown-linux-gnu
+              pnpm run build --target aarch64-unknown-linux-gnu
           - host: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
             setup: |
@@ -73,7 +73,7 @@ jobs:
               export AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar
               export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
               export PKG_CONFIG_ALLOW_CROSS=1
-              yarn build --target armv7-unknown-linux-gnueabihf
+              pnpm run build --target armv7-unknown-linux-gnueabihf
           # - host: ubuntu-latest
           #   target: armv7-unknown-linux-musleabihf
           #   build: |
@@ -85,21 +85,21 @@ jobs:
           #     export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER="zig cc -target armv7-linux-musleabihf -mfpu=vfpv3-d16 -mfloat-abi=hard"
           #     export AR_armv7_unknown_linux_musleabihf="zig ar"
           #     export PKG_CONFIG_ALLOW_CROSS=1
-          #     yarn build --target armv7-unknown-linux-musleabihf
+          #     pnpm run build --target armv7-unknown-linux-musleabihf
           - host: ubuntu-latest
             target: aarch64-linux-android
             build: |
               set -e &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
-              yarn build --target aarch64-linux-android
+              pnpm run build --target aarch64-linux-android
           - host: ubuntu-latest
             target: armv7-linux-androideabi
             build: |
               set -e &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
-              yarn build --target armv7-linux-androideabi
+              pnpm run build --target armv7-linux-androideabi
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
@@ -108,16 +108,16 @@ jobs:
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               rustup target add aarch64-unknown-linux-musl &&
-              yarn build --target aarch64-unknown-linux-musl
+              pnpm run build --target aarch64-unknown-linux-musl
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: yarn build --target aarch64-pc-windows-msvc
+            build: pnpm run build --target aarch64-pc-windows-msvc
           - host: ubuntu-latest
             target: riscv64gc-unknown-linux-gnu
             setup: |
               sudo apt-get update
               sudo apt-get install gcc-riscv64-linux-gnu -y
-            build: yarn build --target riscv64gc-unknown-linux-gnu
+            build: pnpm run build --target riscv64gc-unknown-linux-gnu
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     defaults:
@@ -132,6 +132,9 @@ jobs:
           node-version: 20
           cache: pnpm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
+      - name: Enable pnpm (corepack)
+        if: ${{ !matrix.settings.docker }}
+        run: corepack enable
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         if: ${{ !matrix.settings.docker }}
@@ -157,7 +160,8 @@ jobs:
         if: ${{ matrix.settings.setup }}
         shell: bash
       - name: Install dependencies
-        run: yarn install
+        if: ${{ !matrix.settings.docker }}
+        run: pnpm install --frozen-lockfile
       - name: Build in docker
         uses: addnab/docker-run-action@v3
         if: ${{ matrix.settings.docker }}
@@ -202,8 +206,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
           architecture: x64
+      - name: Enable pnpm (corepack)
+        run: corepack enable
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -213,7 +219,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: yarn test
+        run: pnpm test
   test-linux-x64-gnu-binding:
     name: Test bindings on Linux-x64-gnu - node@${{ matrix.node }}
     needs:
@@ -235,8 +241,10 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: pnpm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
+      - name: Enable pnpm (corepack)
+        run: corepack enable
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -246,7 +254,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-slim yarn test
+        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-slim sh -lc "corepack enable && pnpm test"
   test-linux-x64-musl-binding:
     name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
     needs:
@@ -268,10 +276,12 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: pnpm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
+      - name: Enable pnpm (corepack)
+        run: corepack enable
       - name: Install dependencies
         run: |
-          yarn config set supportedArchitectures.libc "musl"
-          yarn install
+          pnpm config set supportedArchitectures.libc musl
+          pnpm install --frozen-lockfile
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -281,7 +291,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-alpine yarn test
+        run: docker run --rm -v $(pwd):/build -w /build/bindings/nodejs node:${{ matrix.node }}-alpine sh -lc "corepack enable && pnpm test"
   test-linux-aarch64-gnu-binding:
     name: Test bindings on aarch64-unknown-linux-gnu - node@${{ matrix.node }}
     needs:
@@ -307,9 +317,9 @@ jobs:
         shell: bash
       - name: Install dependencies
         run: |
-          yarn config set supportedArchitectures.cpu "arm64"
-          yarn config set supportedArchitectures.libc "glibc"
-          yarn install
+          pnpm config set supportedArchitectures.cpu arm64
+          pnpm config set supportedArchitectures.libc glibc
+          pnpm install --frozen-lockfile
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
@@ -322,7 +332,8 @@ jobs:
           options: '--platform linux/arm64 -v ${{ github.workspace }}:/build -w /build/bindings/nodejs'
           run: |
             set -e
-            yarn test
+            corepack enable
+            pnpm test
             ls -la
   test-linux-aarch64-musl-binding:
     name: Test bindings on aarch64-unknown-linux-musl - node@${{ matrix.node }}
@@ -344,9 +355,9 @@ jobs:
         shell: bash
       - name: Install dependencies
         run: |
-          yarn config set supportedArchitectures.cpu "arm64"
-          yarn config set supportedArchitectures.libc "musl"
-          yarn install
+          pnpm config set supportedArchitectures.cpu arm64
+          pnpm config set supportedArchitectures.libc musl
+          pnpm install --frozen-lockfile
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
@@ -359,7 +370,8 @@ jobs:
           options: '--platform linux/arm64 -v ${{ github.workspace }}:/build -w /build/bindings/nodejs'
           run: |
             set -e
-            yarn test
+            corepack enable
+            pnpm test
   universal-macOS:
     name: Build universal macOS binary
     needs:
@@ -376,8 +388,10 @@ jobs:
           node-version: 20
           cache: pnpm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
+      - name: Enable pnpm (corepack)
+        run: corepack enable
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: Download macOS x64 artifact
         uses: actions/download-artifact@v4
         with:
@@ -389,7 +403,7 @@ jobs:
           name: bindings-aarch64-apple-darwin
           path: bindings/nodejs/artifacts
       - name: Combine binaries
-        run: yarn universal
+        run: pnpm run universal
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -417,14 +431,16 @@ jobs:
           node-version: 20
           cache: pnpm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
+      - name: Enable pnpm (corepack)
+        run: corepack enable
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: bindings/nodejs/artifacts
       - name: Move artifacts
-        run: yarn artifacts
+        run: pnpm run artifacts
       - name: List packages
         run: ls -R ./npm
         shell: bash
