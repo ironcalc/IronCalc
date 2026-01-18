@@ -201,7 +201,7 @@
     "timezone": {
       "title": "Zeitzone",
       "timezone_label": "Zeitzone",
-      "timezone_helper": "Das Ändern dieser Einstellung wirkt sich auf datums- und zeitbezogene Funktionen aus, einschließlich TODAY() und NOW()."
+      "timezone_helper": "Das Ändern dieser Einstellung wirkt sich auf datums- und zeitbezogene Funktionen aus, einschließlich HEUTE() und JETZT()."
     }
   }
 }

@@ -201,7 +201,7 @@
     "timezone": {
       "title": "Fuseau horaire",
       "timezone_label": "Fuseau horaire",
-      "timezone_helper": "Modifier ce paramètre aura un impact sur les fonctions liées à la date et à l’heure, y compris TODAY() et NOW()."
+      "timezone_helper": "Modifier ce paramètre aura un impact sur les fonctions liées à la date et à l’heure, y compris AUJOURDHUI() et MAINTENANT()."
     }
   }
 }
