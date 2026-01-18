@@ -35,6 +35,9 @@ jobs:
               set -e &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
+              corepack enable &&
+              corepack prepare pnpm@latest-10 --activate &&
+              pnpm install --frozen-lockfile &&
               pnpm run build --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
@@ -43,6 +46,9 @@ jobs:
               set -e &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
+              corepack enable &&
+              corepack prepare pnpm@latest-10 --activate &&
+              pnpm install --frozen-lockfile &&
               pnpm run build --target x86_64-unknown-linux-musl
           - host: macos-latest
             target: aarch64-apple-darwin
@@ -50,6 +56,9 @@ jobs:
               set -e &&
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
+              corepack enable &&
+              corepack prepare pnpm@latest-10 --activate &&
+              pnpm install --frozen-lockfile &&
               pnpm run build --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
@@ -59,6 +68,9 @@ jobs:
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               rustup target add aarch64-unknown-linux-gnu &&
+              corepack enable &&
+              corepack prepare pnpm@latest-10 --activate &&
+              pnpm install --frozen-lockfile &&
               pnpm run build --target aarch64-unknown-linux-gnu
           - host: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
@@ -73,6 +85,9 @@ jobs:
               export AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar
               export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
               export PKG_CONFIG_ALLOW_CROSS=1
+              corepack enable
+              corepack prepare pnpm@latest-10 --activate
+              pnpm install --frozen-lockfile
               pnpm run build --target armv7-unknown-linux-gnueabihf
           # - host: ubuntu-latest
           #   target: armv7-unknown-linux-musleabihf
@@ -108,6 +123,9 @@ jobs:
               rustup toolchain install 1.90.0 &&
               rustup default 1.90.0 &&
               rustup target add aarch64-unknown-linux-musl &&
+              corepack enable &&
+              corepack prepare pnpm@latest-10 --activate &&
+              pnpm install --frozen-lockfile &&
               pnpm run build --target aarch64-unknown-linux-musl
           - host: windows-latest
             target: aarch64-pc-windows-msvc
