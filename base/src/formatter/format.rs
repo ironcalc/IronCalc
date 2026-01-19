@@ -685,7 +685,7 @@ fn parse_month(month_str: &str, locale: &Locale) -> Result<(u32, String), String
                     return Ok((y, "m".to_string()));
                 }
             }
-            Err(_) => return Err("Not a valid year".to_string()),
+            Err(_) => return Err("Not a valid month".to_string()),
         }
     }
 
