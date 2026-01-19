@@ -479,11 +479,13 @@ jobs:
           corepack prepare pnpm@9.15.4 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Download all artifacts
+      - name: Download all artifacts (flatten)
         uses: actions/download-artifact@v4
         with:
-          path: bindings/nodejs/artifacts
-      - name: Move artifacts
+          path: ./bindings/nodejs
+          merge-multiple: true
+      - name: Collect artifacts into npm dirs
+        working-directory: bindings/nodejs
         run: pnpm run artifacts
       - name: List packages
         run: ls -R ./npm
