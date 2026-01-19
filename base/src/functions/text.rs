@@ -1210,15 +1210,7 @@ impl<'a> Model<'a> {
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::String(text) => {
                 let currencies = vec!["$", "€"];
-                let (decimal_separator, group_separator) =
-                    if self.locale.numbers.symbols.decimal == "," {
-                        (b',', b'.')
-                    } else {
-                        (b'.', b',')
-                    };
-                if let Ok((value, _)) =
-                    parse_formatted_number(&text, &currencies, decimal_separator, group_separator)
-                {
+                if let Ok((value, _)) = parse_formatted_number(&text, &currencies, &self.locale) {
                     return CalcResult::Number(value);
                 };
                 CalcResult::Error {

@@ -1561,15 +1561,14 @@ impl<'a> Model<'a> {
                 if !currencies.iter().any(|e| e == currency) {
                     currencies.push(currency);
                 }
-                let (decimal_separator, group_separator) =
-                    if self.locale.numbers.symbols.decimal == "," {
-                        (b',', b'.')
-                    } else {
-                        (b'.', b',')
-                    };
+
                 //  We try to parse as number
+                // let date_formats = &self.locale.dates.date_formats;
+                // let date_short = date_formats.short.clone();
+                // let date_long = date_formats.long.clone();
                 if let Ok((v, number_format)) =
-                    parse_formatted_number(&value, &currencies, decimal_separator, group_separator)
+                    parse_formatted_number(&value, &currencies, self.locale)
+                //, decimal_separator, group_separator, date_formats)
                 {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:

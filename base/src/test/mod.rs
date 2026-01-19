@@ -69,6 +69,7 @@ mod test_number_format;
 mod test_arrays;
 mod test_cell_info_n_sheets;
 mod test_combin_combina;
+mod test_datetime_format;
 mod test_escape_quotes;
 mod test_even_odd;
 mod test_exp_sign;

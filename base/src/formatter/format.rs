@@ -667,13 +667,13 @@ fn parse_day(day_str: &str) -> Result<(u32, String), String> {
                     return Ok((y, "d".to_string()));
                 }
             }
-            Err(_) => return Err("Not a valid year".to_string()),
+            Err(_) => return Err("Not a valid day".to_string()),
         }
     }
     Err("Not a valid day".to_string())
 }
 
-fn parse_month(month_str: &str) -> Result<(u32, String), String> {
+fn parse_month(month_str: &str, locale: &Locale) -> Result<(u32, String), String> {
     let bytes = month_str.bytes();
     let bytes_len = bytes.len();
     if bytes_len <= 2 {
@@ -688,30 +688,16 @@ fn parse_month(month_str: &str) -> Result<(u32, String), String> {
             Err(_) => return Err("Not a valid year".to_string()),
         }
     }
-    let month_names_short = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
-    ];
-    let month_names_long = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ];
-    if let Some(m) = month_names_short.iter().position(|&r| r == month_str) {
+
+    let month_names_short = &locale.dates.months_short;
+    let month_names_long = &locale.dates.months;
+    if let Some(m) = month_names_short.iter().position(|r| r == month_str) {
         return Ok((m as u32 + 1, "mmm".to_string()));
     }
-    if let Some(m) = month_names_long.iter().position(|&r| r == month_str) {
+    if let Some(m) = month_names_long.iter().position(|r| r == month_str) {
         return Ok((m as u32 + 1, "mmmm".to_string()));
     }
-    Err("Not a valid day".to_string())
+    Err("Not a valid month".to_string())
 }
 
 fn parse_year(year_str: &str) -> Result<(i32, String), String> {
@@ -759,7 +745,7 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // NOTE 1: The separator has to be the same
 // NOTE 2: In some engines "2/3" is implemented ad "2/March of the present year"
 // NOTE 3: I did not implement the "short date"
-fn parse_date(value: &str) -> Result<(i32, String), String> {
+fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
     let separator = if value.contains('/') {
         '/'
     } else if value.contains('-') {
@@ -770,6 +756,7 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
 
     let parts: Vec<&str> = value.split(separator).collect();
     let mut is_iso_date = false;
+    let mut day_first = true;
     let (day_str, month_str, year_str) = if parts.len() == 3 {
         if parts[0].len() == 4 {
             // ISO date  yyyy-mm-dd
@@ -782,13 +769,20 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
             is_iso_date = true;
             (parts[2], parts[1], parts[0])
         } else {
-            (parts[0], parts[1], parts[2])
+            //  localized date dd-mm-yyyy or mm-dd-yyyy
+            // TODO: A bit hacky, but works for now
+            if locale.dates.date_formats.short.starts_with('d') {
+                (parts[0], parts[1], parts[2])
+            } else {
+                day_first = false;
+                (parts[1], parts[0], parts[2])
+            }
         }
     } else {
         return Err("Not a valid date".to_string());
     };
     let (day, day_format) = parse_day(day_str)?;
-    let (month, month_format) = parse_month(month_str)?;
+    let (month, month_format) = parse_month(month_str, locale)?;
     let (year, year_format) = parse_year(year_str)?;
     let serial_number = match date_to_serial_number(day, month, year) {
         Ok(n) => n,
@@ -798,6 +792,11 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
         Ok((
             serial_number,
             format!("yyyy{separator}{month_format}{separator}{day_format}"),
+        ))
+    } else if !day_first {
+        Ok((
+            serial_number,
+            format!("{month_format}{separator}{day_format}{separator}{year_format}"),
         ))
     } else {
         Ok((
@@ -815,11 +814,16 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
 pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
-    decimal_separator: u8,
-    group_separator: u8,
+    locale: &Locale,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
     let scientific_format = "0.00E+00";
+
+    let (decimal_separator, group_separator) = if locale.numbers.symbols.decimal == "," {
+        (b',', b'.')
+    } else {
+        (b'.', b',')
+    };
 
     // Check if it is a percentage
     if let Some(p) = value.strip_suffix('%') {
@@ -871,7 +875,7 @@ pub(crate) fn parse_formatted_number(
     }
 
     // check if it is a date. NOTE: we don't trim the original here
-    if let Ok((serial_number, format)) = parse_date(original) {
+    if let Ok((serial_number, format)) = parse_date(original, &locale) {
         return Ok((serial_number as f64, Some(format)));
     }
 
