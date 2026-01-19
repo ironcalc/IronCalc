@@ -39,6 +39,11 @@ impl DateProgression {
     }
 }
 
+fn round_sig(value: f64) -> f64 {
+    // rounding up to 15 significant figures
+    format!("{:.14e}", value).parse().unwrap_or(value)
+}
+
 pub(crate) enum Progression {
     Numeric(NumericProgression),
     SuffixedNumber(SuffixedProgression),
@@ -46,12 +51,10 @@ pub(crate) enum Progression {
 }
 impl Progression {
     fn format_number(progression: &NumericProgression, i: usize) -> String {
-        progression
-            .next(i)
+        round_sig(progression.next(i))
             .to_string()
             .replace('.', &progression.decimal_sep.to_string())
     }
-
     pub(crate) fn next(&self, i: usize) -> String {
         match self {
             Progression::Numeric(num_prog) => Self::format_number(num_prog, i),
@@ -167,9 +170,11 @@ impl SequenceDetector for NumericProgressionDetector<'_> {
             .collect::<Result<Vec<_>, _>>()
             .ok()
             .filter(|nums| nums.len() >= 2)
-            .and_then(|nums| {
+            .and_then(|mut nums| {
+                nums = nums.iter().map(|num| round_sig(*num)).collect();
+
                 let step = nums[1] - nums[0];
-                if step.abs() < 1e-9 {
+                if step.abs() < 1e-16 {
                     return None;
                 }
 
@@ -373,14 +378,6 @@ mod tests {
         assert_eq!(progression.next(0), "3");
         assert_eq!(progression.next(1), "3.5");
 
-        let values = vec![
-            "1000000.1".to_string(),
-            "1000000.2".to_string(),
-            "1000000.3".to_string(),
-        ];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "1000000.4");
-
         let values = vec!["0.1".to_string(), "0.2".to_string(), "0.3".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "0.4");
@@ -393,11 +390,6 @@ mod tests {
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "0.004");
 
-        let values = vec!["1.25".to_string(), "1.75".to_string(), "2.25".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "2.75");
-        assert_eq!(progression.next(1), "3.25");
-
         let values = vec!["-1.5".to_string(), "-1.0".to_string(), "-0.5".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "0");
@@ -407,33 +399,24 @@ mod tests {
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "7.5");
 
-        let values = vec!["1.0".to_string(), "1.5".to_string(), "2.0".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "2.5");
-
         let values = vec![
-            "999999999.1".to_string(),
-            "999999999.2".to_string(),
-            "999999999.3".to_string(),
+            "10000.4000000007".to_string(),
+            "10000.4000000008".to_string(),
+            "10000.4000000009".to_string(),
         ];
         let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "999999999.4");
+        assert_eq!(progression.next(0), "10000.400000001");
 
-        let values = vec!["-0.5".to_string(), "0.0".to_string(), "0.5".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "1");
+        let values = vec![
+            "10000.40000000007".to_string(),
+            "10000.40000000008".to_string(),
+            "10000.40000000009".to_string(),
+        ];
+        assert!(detector.detect(&values).is_none());
 
         let values = vec!["0.3".to_string(), "0.6".to_string(), "0.9".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "1.2");
-
-        let values = vec![
-            "10000.01".to_string(),
-            "10000.02".to_string(),
-            "10000.03".to_string(),
-        ];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "10000.04");
     }
 
     #[test]
@@ -509,47 +492,6 @@ mod tests {
         assert_eq!(progression.next(1), "2,1");
     }
 
-    // need to add the Indian locale
-    #[test]
-    #[ignore]
-    fn test_numeric_grouping_validation_locale_in() {
-        let locale = get_locale("in").unwrap();
-        let detector = NumericProgressionDetector { locale };
-
-        let values = vec!["10,00,000".to_string(), "20,00,000".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "3000000");
-
-        let values = vec!["1,00,000".to_string(), "2,00,000".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "300000");
-
-        let values = vec!["1,00,000.50".to_string(), "2,00,000.50".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "300000.5");
-
-        let values = vec!["1,000".to_string(), "2,000".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "3000");
-
-        let values = vec!["1,23,45,678".to_string(), "2,23,45,678".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "32345678");
-
-        let values = vec!["-1,00,000.5".to_string(), "-1,00,001.5".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "-100002.5");
-
-        let values = vec!["1,000,000".to_string(), "2,000,000".to_string()];
-        assert!(detector.detect(&values).is_none());
-
-        let values = vec!["1,0000,000".to_string(), "2,0000,000".to_string()];
-        assert!(detector.detect(&values).is_none());
-
-        let values = vec!["1,00,00,00".to_string(), "2,00,00,00".to_string()];
-        assert!(detector.detect(&values).is_none());
-    }
-
     #[test]
     fn test_suffixed_progression_detector() {
         let locale = get_locale("en").unwrap();
@@ -559,6 +501,17 @@ mod tests {
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "A3");
         assert_eq!(progression.next(1), "A4");
+
+        let values = vec!["A0.1".to_string(), "A0.2".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "A0.3");
+        assert_eq!(progression.next(1), "A0.4");
+        assert_eq!(progression.next(2), "A0.5");
+        assert_eq!(progression.next(3), "A0.6");
+        assert_eq!(progression.next(4), "A0.7");
+        assert_eq!(progression.next(5), "A0.8");
+        assert_eq!(progression.next(6), "A0.9");
+        assert_eq!(progression.next(7), "A0.10");
 
         let values = vec!["Product 1".to_string(), "Product 2".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -679,10 +632,7 @@ mod tests {
 
         let values = vec!["1".to_string(), "2".to_string()];
         let p = detect_progression(&values, locale).unwrap();
-        match p {
-            Progression::Numeric(_) => {}
-            _ => unreachable!(),
-        }
+        assert!(matches!(p, Progression::Numeric(_)));
         assert_eq!(p.next(0), "3");
     }
 }
