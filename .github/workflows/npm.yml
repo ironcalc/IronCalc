@@ -465,31 +465,49 @@ jobs:
       - test-linux-aarch64-gnu-binding
       # - test-linux-aarch64-musl-binding
       - universal-macOS
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: bindings/nodejs/pnpm-lock.yaml
+
       - name: Enable pnpm (corepack)
         run: |
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Download all artifacts (flatten)
         uses: actions/download-artifact@v4
         with:
           path: ./bindings/nodejs
           merge-multiple: true
+
+      - name: Move downloaded binaries into ./artifacts for napi
+        run: |
+          set -e
+          mkdir -p artifacts
+          shopt -s nullglob
+          for f in ./*.node; do
+            mv -v "$f" artifacts/
+          done
+          echo "Artifacts directory:"
+          ls -la artifacts
+
       - name: Collect artifacts into npm dirs
-        working-directory: bindings/nodejs
         run: pnpm run artifacts
+
       - name: List packages
         run: ls -R ./npm
         shell: bash
+
       - name: Publish
         run: |
           echo "${{ github.event.inputs.publish }}"
