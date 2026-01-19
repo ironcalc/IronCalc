@@ -524,12 +524,12 @@ fn test_sum_function_eur() {
 fn input_dates() {
     let mut model = new_empty_model();
     model
-        .set_user_input(0, 1, 1, "3/4/2025".to_string())
+        .set_user_input(0, 1, 1, "4/3/2025".to_string())
         .unwrap();
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), "3/4/2025");
+    assert_eq!(model._get_text("A1"), "4/3/2025");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(45750.0))
