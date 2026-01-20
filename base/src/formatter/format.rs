@@ -875,7 +875,7 @@ pub(crate) fn parse_formatted_number(
     }
 
     // check if it is a date. NOTE: we don't trim the original here
-    if let Ok((serial_number, format)) = parse_date(original, &locale) {
+    if let Ok((serial_number, format)) = parse_date(original, locale) {
         return Ok((serial_number as f64, Some(format)));
     }
 
