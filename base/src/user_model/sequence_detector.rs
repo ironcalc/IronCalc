@@ -41,7 +41,19 @@ impl DateProgression {
 
 fn round_sig(value: f64) -> f64 {
     // rounding up to 15 significant figures
-    format!("{:.14e}", value).parse().unwrap_or(value)
+    if value == 0.0 {
+        return 0.0;
+    }
+    let rounded = value.round();
+    if (value - rounded).abs() <= 1e-11 * value.abs().max(1.0) {
+        return rounded;
+    }
+    let sign = value.signum();
+    let abs_value = value.abs();
+    let exponent = abs_value.log10().floor();
+    let normalized = abs_value / 10.0_f64.powf(exponent);
+    let rounded_normalized = (normalized * 1e14).round() / 1e14;
+    sign * rounded_normalized * 10.0_f64.powf(exponent)
 }
 
 pub(crate) enum Progression {
