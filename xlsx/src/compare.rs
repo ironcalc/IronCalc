@@ -183,6 +183,7 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
     }
 }
 
+// Cheesy way to get the locale from the workbook metadata sheet
 fn get_workbook_metadata(model: &Model) -> String {
     // let mut index = 0;
     let mut metadata_sheet_index = None;
@@ -194,9 +195,9 @@ fn get_workbook_metadata(model: &Model) -> String {
     }
     let default_locale = "en".to_string();
     if let Some(sheet_index) = metadata_sheet_index {
-        if let Ok(a1) = model.get_formatted_cell_value(sheet_index, 0, 1) {
+        if let Ok(a1) = model.get_formatted_cell_value(sheet_index, 1, 1) {
             if a1 == "Locale" {
-                match model.get_formatted_cell_value(sheet_index, 0, 2) {
+                match model.get_formatted_cell_value(sheet_index, 1, 2) {
                     Ok(v) if v == "en-GB" => {
                         return "en-GB".to_string();
                     }
@@ -210,9 +211,10 @@ fn get_workbook_metadata(model: &Model) -> String {
 
 /// Tests that file in file_path produces the same results in Excel and in IronCalc.
 pub fn test_file(file_path: &str) -> Result<(), String> {
-    let mut model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
+    // FIXME: we need to load the model twice :S
+    let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
     let locale = get_workbook_metadata(&model1);
-    model1.set_locale(&locale)?;
+    let model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
     let mut model2 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
     model2.evaluate();
     compare_models(&model1, &model2)
@@ -220,9 +222,11 @@ pub fn test_file(file_path: &str) -> Result<(), String> {
 
 /// Tests that file in file_path can be converted to xlsx and read again
 pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(), String> {
-    let mut model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
+    // FIXME: we need to evaluate the model twice :S
+    let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
     let locale = get_workbook_metadata(&model1);
-    model1.set_locale(&locale)?;
+
+    let model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
 
     let base_name = Path::new(file_path).file_name().unwrap().to_str().unwrap();
 
