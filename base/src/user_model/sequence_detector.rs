@@ -174,7 +174,7 @@ impl SequenceDetector for NumericProgressionDetector<'_> {
                 nums = nums.iter().map(|num| round_sig(*num)).collect();
 
                 let step = nums[1] - nums[0];
-                if step.abs() < 1e-16 {
+                if step.abs() < 1e-14 {
                     return None;
                 }
 
