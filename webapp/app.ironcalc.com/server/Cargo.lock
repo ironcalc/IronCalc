@@ -142,7 +142,7 @@ checksum = "c59bdb34bc650a32731b31bd8f0829cc15d24a708ee31559e0bb34f2bc320cba"
 
 [[package]]
 name = "atomic"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d818003e740b63afc82337e3160717f4f63078720a810b7b903e70a5d1d2994"
 dependencies = [
@@ -934,7 +934,7 @@ dependencies = [
 
 [[package]]
 name = "ironcalc"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bitcode",
  "chrono",
@@ -949,7 +949,7 @@ dependencies = [
 
 [[package]]
 name = "ironcalc_base"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bitcode",
  "chrono",
@@ -1981,7 +1981,7 @@ dependencies = [
 
 [[package]]
 name = "state"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b8c4a4445d81357df8b1a650d0d0d6fbbbfe99d064aa5e02f3e4022061476d8"
 dependencies = [
