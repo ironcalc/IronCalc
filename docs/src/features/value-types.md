@@ -7,7 +7,7 @@ lang: en-US
 # Value Types
 
 ::: warning
-**Note:** This draft page is under construction 🚧
+**Note:** This page is under construction 🚧
 :::
 
 In IronCalc a value, a result of a calculation, can be one of the following.
