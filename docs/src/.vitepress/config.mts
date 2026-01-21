@@ -45,10 +45,8 @@ export default defineConfig({
           { text: "About the web application", link: "/web-application/about" },
           { text: "Importing Files", link: "/web-application/importing-files" },
           { text: "Sharing Files", link: "/web-application/sharing-files" },
-          {
-            text: "Name Manager",
-            link: "/web-application/name-manager",
-          }
+          { text: "Language selector", link: "/web-application/language-selector" },
+          { text: "Managing Workbooks", link: "/web-application/managing-workbooks" },
         ],
       },
       {
@@ -56,6 +54,10 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: "Formatting Values", link: "/features/formatting-values" },
+          {
+            text: "Name Manager",
+            link: "/features/name-manager",
+          },
           { text: "Using Styles", link: "/features/using-styles" },
           { text: "Keyboard Shortcuts", link: "/features/keyboard-shortcuts" },
           {
