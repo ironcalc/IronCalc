@@ -1,6 +1,6 @@
 [package]
 name = "ironcalc"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Nicolás Hatcher <nicolas@theuniverse.today>"]
 edition = "2021"
 homepage = "https://www.ironcalc.com"
@@ -20,7 +20,7 @@ thiserror = "1.0"
 # Uses `../base` when used locally, and uses
 # the inicated version from crates.io when published.
 # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#multiple-locations
-ironcalc_base = { path = "../base", version = "0.6" }
+ironcalc_base = { path = "../base", version = "0.7" }
 itertools = "0.12"
 chrono = "0.4"
 bitcode = "0.6.8"
