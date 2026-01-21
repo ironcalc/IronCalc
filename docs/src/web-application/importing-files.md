@@ -6,14 +6,17 @@ lang: en-US
 
 # Importing Files
 
-IronCalc supports direct importing of Excel files (.xlsx). Before proceeding, please ensure your file meets the required format.
+IronCalc supports importing **Excel files (`.xlsx`)**. You can open existing spreadsheets and continue working on them directly in IronCalc.
 
 ## How to Import Files
 
-You can upload files using one of the following methods:
+1. In the top-left corner of the screen, click on **File** and then **Import**. This will open a dialog.
 
-- **Drag and Drop**: Drag your `.xlsx` file and drop it into the designated upload area on the interface.
-- **Click to Upload**: Click on the central upload area and select your file from your device.
+![Import dialog](./importing-files01.png)
+
+2. From the dialog, upload your file using one of the following methods:
+   - **Drag and Drop**: Drag your `.xlsx` file and drop it onto the upload area.
+   - **Click to Browse**: Click on the orange link and select a file from your device.
 
 ::: info
 The maximum file size allowed is **10 MB**.

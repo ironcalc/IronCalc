@@ -8,15 +8,15 @@ lang: en-US
 
 The IronCalc web application serves multiple purposes:
 
-- **Showcasing Capabilities**: It provides a visual demonstration of what IronCalc can do, highlighting its core features and performance.
+- **Showcasing capabilities**: See what IronCalc can do and explore its core features and performance firsthand.
 
-- **Testing Features**: Users can experiment with various functionalities, making it a useful tool for exploring IronCalc's potential.
+- **Testing features**: Experiment with various functionalities and discover IronCalc's potential.
 
-- **A Practical Alternative**: Beyond testing, the web app is designed to function as a lightweight alternative to traditional spreadsheet systems.
+- **A practical alternative**: Beyond testing, the web app works as a **lightweight alternative** to traditional spreadsheet software.
 
-IronCalc is a **work in progress** project, meaning it is constantly evolving. New features and improvements are regularly added to enhance your experience.
+IronCalc is a **work in progress**, meaning it's constantly evolving. New features and improvements are added regularly.
 
-To stay updated:
+To stay updated,
 
 - Check out our [Changelog](https://github.com/ironcalc/IronCalc/releases) for the latest updates.
-- Follow us on [Discord](https://discord.gg/zZYWfh3RHJ) or [social media](https://bsky.app/profile/ironcalc.com) for announcements and sneak peeks at upcoming features.
+- Follow us on [Discord](https://discord.gg/zZYWfh3RHJ) or [Bluesky](https://bsky.app/profile/ironcalc.com) for announcements and sneak peeks at upcoming features.

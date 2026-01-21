@@ -6,23 +6,25 @@ lang: en-US
 
 # Sharing Files
 
-IronCalc makes it easy to share your files with others. Follow these steps to share a sheet and understand how sharing works.
-
-## How to Share a File
-
-1. **Click the Share Button**:  
-   In the web app, click the **"Share"** button located in the top-right corner of the interface.
-
-2. **Copy the URL**:  
-   Upon clicking, the sharing URL will be automatically copied to your clipboard.
-
-3. **Share the URL**:  
-   Paste the URL into a message, email, or browser to share it or open the sheet.
+IronCalc allows you to share your spreadsheets with others via a URL or QR code.
 
 ## How Sharing Works
 
-- **Snapshot of the Original Sheet**:  
-   When the URL is used to open the sheet, it displays the version of the sheet that was visible when the **"Share"** button was clicked. Please note that **any changes made to the original sheet after sharing will not be reflected in the shared version**.
+- **Snapshot of the original sheet**:  
+   The shared URL opens a **snapshot** of the sheet as it was when you clicked **Share**. Any changes made to the original sheet after sharing **will not** be reflected in the shared version.
 
-- **Changes in the Shared Version**:  
-  Any modifications made in the shared sheet (even if it’s an existing sheet) will **not** overwrite or affect the original sheet.
+- **Changes in the shared version**:  
+   Any edits made to the shared sheet **will not** affect or overwrite the original. Each shared link is independent.
+
+## How to Share a File
+
+1. **Click the Share button**:  
+   In the top-right corner of the screen, click the **Share** button. This will open a small dialog.
+
+   ![Share dialog](./sharing-files01.png)
+
+2. **Copy the URL**:  
+   After clicking, the button, the sharing URL will be automatically copied to your clipboard. You can also scan the **QR code** with your phone for quick access.
+
+3. **Share the URL**:  
+   Paste the URL into a message, email, or browser to share or open the sheet.
