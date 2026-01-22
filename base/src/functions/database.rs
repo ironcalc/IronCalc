@@ -1,9 +1,7 @@
-use chrono::Datelike;
-
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::date_to_serial_number,
+    formatter::format::parse_formatted_number,
     Model,
 };
 
@@ -764,34 +762,11 @@ impl<'a> Model<'a> {
             }
         }
 
-        // Is it a number?
-        let rhs_num = criteria.parse::<f64>().ok();
-
-        // Is it a date?
-        // FIXME: We should parse dates according to locale settings
-        let rhs_date = criteria.parse::<chrono::NaiveDate>().ok();
+        let formatted_number = parse_formatted_number(&criteria, &[], self.locale);
 
         match op {
             ">" | ">=" | "<" | "<=" => {
-                if let Some(d) = rhs_date {
-                    // date comparison
-                    let serial = match date_to_serial_number(d.day(), d.month(), d.year()) {
-                        Ok(sn) => sn as f64,
-                        Err(_) => return false,
-                    };
-
-                    if let CalcResult::Number(n) = db_val {
-                        match op {
-                            ">" => *n > serial,
-                            ">=" => *n >= serial,
-                            "<" => *n < serial,
-                            "<=" => *n <= serial,
-                            _ => false,
-                        }
-                    } else {
-                        false
-                    }
-                } else if let Some(t) = rhs_num {
+                if let Ok((t, _)) = formatted_number {
                     // numeric comparison
                     if let CalcResult::Number(n) = db_val {
                         match op {
@@ -834,7 +809,7 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
-                let rhs = if let Some(n) = rhs_num {
+                let rhs = if let Ok((n, _)) = formatted_number {
                     CalcResult::Number(n)
                 } else {
                     CalcResult::String(criteria.to_lowercase())
@@ -847,7 +822,7 @@ impl<'a> Model<'a> {
             }
             _ => {
                 // equality. For strings, support wildcards (*, ?)
-                if let Some(n) = rhs_num {
+                if let Ok((n, _)) = formatted_number {
                     // numeric equals
                     if let CalcResult::Number(m) = db_val {
                         (*m - n).abs() <= f64::EPSILON
