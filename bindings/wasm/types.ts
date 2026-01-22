@@ -237,6 +237,7 @@ export interface DefinedName {
 
 export interface FmtSettings {
   currency: string;
+  currency_format: string;
   short_date: string;
   short_date_example: string;
   long_date: string;

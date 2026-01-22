@@ -62,6 +62,7 @@ struct DefinedName {
 #[derive(Serialize)]
 struct FmtSettings {
     currency: String,
+    currency_format: String,
     short_date: String,
     short_date_example: String,
     long_date: String,
@@ -74,6 +75,7 @@ impl From<ironcalc_base::FmtSettings> for FmtSettings {
     fn from(settings: ironcalc_base::FmtSettings) -> Self {
         FmtSettings {
             currency: settings.currency,
+            currency_format: settings.currency_format,
             short_date: settings.short_date,
             short_date_example: settings.short_date_example,
             long_date: settings.long_date,
