@@ -55,15 +55,6 @@ import {
   NumberFormats,
 } from "../FormatMenu/formatUtil";
 
-type Currency = "USD" | "EUR" | "GBP";
-
-export interface FormatOptions {
-  numberFmt: string;
-  currency: Currency;
-  shortDate: boolean;
-  longDate: boolean;
-}
-
 type ToolbarProperties = {
   canUndo: boolean;
   canRedo: boolean;
@@ -236,7 +227,9 @@ function Toolbar(properties: ToolbarProperties) {
               type="button"
               $pressed={false}
               onClick={(): void => {
-                properties.onNumberFormatPicked(NumberFormats.CURRENCY_EUR);
+                properties.onNumberFormatPicked(
+                  properties.formatOptions.currency_format,
+                );
               }}
               disabled={!canEdit}
             >

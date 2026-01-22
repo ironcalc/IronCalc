@@ -87,6 +87,8 @@ pub(crate) enum ParsedDefinedName {
 pub struct FmtSettings {
     /// Currency format
     pub currency: String,
+    /// Currency format with symbol
+    pub currency_format: String,
     /// Short date format
     pub short_date: String,
     /// Example of short date format
@@ -2425,6 +2427,7 @@ impl<'a> Model<'a> {
     pub fn get_fmt_settings(&self) -> FmtSettings {
         let day_example = 46006.0; // December 15, 2025
         let currency = self.locale.currency.iso.clone();
+        let currency_symbol = &self.locale.currency.symbol;
         // "M/d/yy"
         let short_date = &self.locale.dates.date_formats.short;
         // "M/d/yyyy"
@@ -2434,10 +2437,17 @@ impl<'a> Model<'a> {
         // Number format ("#,##0.###")
         // The CLDR formats are a bit different than Excel's
         // let number_fmt = self.locale.numbers.decimal_formats.standard.clone();
+        // "#,##0.00 ¤" Currency format might have weird spaces
+        let currency_format_template = &self.locale.numbers.currency_formats.standard;
+        let currency_format = currency_format_template
+            .replace("¤", &format!("\"{}\"", currency_symbol))
+            .replace(" ", " ");
+
         let number_fmt = "#,##0.00".to_string();
         let number_example = format_number(1234.567, &number_fmt, self.locale).text;
         FmtSettings {
             currency,
+            currency_format,
             short_date: short_date.clone(),
             long_date: long_date.clone(),
             short_date_example,
