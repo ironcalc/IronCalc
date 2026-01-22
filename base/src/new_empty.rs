@@ -270,8 +270,10 @@ impl<'a> Model<'a> {
         if !is_valid_sheet_name(new_name) {
             return Err(format!("Invalid name for a sheet: '{new_name}'."));
         }
-        if self.get_sheet_index_by_name(new_name).is_some() {
-            return Err(format!("Sheet already exists: '{new_name}'."));
+        if let Some(new_index) = self.get_sheet_index_by_name(new_name) {
+            if new_index != sheet_index {
+                return Err(format!("Sheet already exists: '{new_name}'."));
+            }
         }
         // Gets the new name and checks that a sheet with that index exists
         let old_name = self.workbook.worksheet(sheet_index)?.get_name();
