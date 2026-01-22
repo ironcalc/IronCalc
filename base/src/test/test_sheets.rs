@@ -52,6 +52,14 @@ fn test_rename_delete_to_existing() {
 }
 
 #[test]
+fn rename_into_different_case() {
+    let mut model = new_empty_model();
+    let r = model.rename_sheet("Sheet1", "sHeEt1");
+    assert!(r.is_ok());
+    assert_eq!(model.workbook.get_worksheet_names(), ["sHeEt1"]);
+}
+
+#[test]
 fn test_rename_one_sheet() {
     let mut model = new_empty_model();
     let r = model.rename_sheet("Sheet1", "Sheet2");
