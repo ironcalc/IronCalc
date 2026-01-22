@@ -735,7 +735,7 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // short_date -> month separator year
 // long_date -> day separator month separator year
 // iso_date -> long_year separator number_month separator number_day
-// separator -> "/" | "-"
+// separator -> "/" | "-" | "."
 // day -> number | padded number
 // month -> number_month | name_month
 // number_month -> number | padded number |
@@ -750,6 +750,8 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
         '/'
     } else if value.contains('-') {
         '-'
+    } else if value.contains('.') {
+        '.'
     } else {
         return Err("Not a valid date".to_string());
     };
