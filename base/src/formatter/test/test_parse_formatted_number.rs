@@ -209,3 +209,11 @@ fn iso_dates() {
         Err(PARSE_ERROR_MSG.to_string())
     );
 }
+
+#[test]
+fn long_dates_with_dots() {
+    assert_eq!(
+        parse("03.02.2024", &["$"]),
+        Ok((45353.0, Some("mm.dd.yyyy".to_string())))
+    );
+}
