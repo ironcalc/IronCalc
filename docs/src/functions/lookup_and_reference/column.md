@@ -11,7 +11,7 @@ The COLUMN function in IronCalc is a lookup & reference formula that is used to 
 ### Syntax
 **COLUMN(<span title="Reference" style="color:#1E88E5">reference</span>) => <span title="Number" style="color:#1E88E5">column</span>**
 ### Argument descriptions
-* *reference* ([cell](/features/value-types#references), [optional](/features/optional-arguments.md)). The cell, column, range, or [Named Range](/web-application/name-manager.html) for which you wish to find the column number.
+* *reference* ([cell](/features/value-types#references), [optional](/features/optional-arguments.md)). The cell, column, range, or [Named Range](/features/name-manager.html) for which you wish to find the column number.
 ### Additional guidance
 * When referencing a range of cells, only the column number of the leftmost cell will be returned.
 * You are also able to reference complete columns instead of individual cells.
