@@ -11,11 +11,11 @@ The COLUMNS function in IronCalc is a lookup & reference formula that is used to
 ### Syntax
 **COLUMNS(<span title="Reference" style="color:#1E88E5">reference</span>) => <span title="Number" style="color:#1E88E5">columns</span>**
 ### Argument descriptions
-* *reference* ([cell](/features/value-types#references)). The cells, columns, array, range, or [Named Range](/web-application/name-manager.html) which you wish to evaluate.
+* *reference* ([cell](/features/value-types#references)). The cells, columns, array, range, or [Named Range](/features/name-manager.html) which you wish to evaluate.
 ### Additional guidance
 * When using COLUMNS a reference must be included.
 * You are able to reference either complete columns or individual cells.
-* When referencing [Named Range](/web-application/name-manager.html), the complete column must have the label. Referencing individual cells using Named Ranges in COLUMNS is not supported.
+* When referencing [Named Range](/features/name-manager.html), the complete column must have the label. Referencing individual cells using Named Ranges in COLUMNS is not supported.
 * When using a Named Range as a reference, the reference is not case sensitive.
 * IronCalc supports the use of both *Absolute* ($A$1) and *Relative* (A1) references.
 * Cross-sheet references are also supported.
