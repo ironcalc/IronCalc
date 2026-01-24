@@ -2,6 +2,7 @@
   "name": "@ironcalc/workbook",
   "version": "0.7.0",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/ironcalc.js",
   "module": "./dist/ironcalc.js",
   "source": "./src/index.ts",
@@ -15,14 +16,8 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
     "@ironcalc/wasm": "file:../../bindings/wasm/pkg",
-    "@mui/material": "^7.3.7",
-    "i18next": "^25.7.4",
-    "lucide-react": "^0.562.0",
-    "react-colorful": "^5.6.1",
-    "react-i18next": "^16.5.3"
+    "react-colorful": "^5.6.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.5",
@@ -39,9 +34,15 @@
     "vitest": "^4.0.8"
   },
   "peerDependencies": {
+    "i18next": "^25.7.4",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^7.3.7",
     "@types/react": "^18.0.0 || ^19.2.0",
-    "react": "^18.0.0 || ^19.2.0",
-    "react-dom": "^18.0.0 || ^19.2.0"
+    "lucide-react": "^0.562.0",
+    "react-dom": "^18.0.0 || ^19.2.0",
+    "react-i18next": "^16.5.3",
+    "react": "^18.0.0 || ^19.2.0"
   },
   "files": [
     "dist"
