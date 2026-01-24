@@ -1,4 +1,5 @@
 import { type BorderOptions, BorderStyle, BorderType } from "@ironcalc/wasm";
+import MenuItem from "@mui/material/MenuItem";
 import Popover, { type PopoverOrigin } from "@mui/material/Popover";
 import { styled } from "@mui/material/styles";
 import {
@@ -294,36 +295,60 @@ const BorderPicker = (properties: BorderPickerProps) => {
           }}
         >
           <BorderStyleDialog>
-            <LineWrapper
+            <StyledMenuItem
               onClick={() => {
                 setBorderStyle(BorderStyle.Thin);
                 setStylePickerOpen(false);
               }}
-              $checked={borderStyle === BorderStyle.Thin}
+              selected={borderStyle === BorderStyle.Thin}
             >
-              <BorderDescription>Thin</BorderDescription>
               <SolidLine />
-            </LineWrapper>
-            <LineWrapper
+            </StyledMenuItem>
+            <StyledMenuItem
               onClick={() => {
                 setBorderStyle(BorderStyle.Medium);
                 setStylePickerOpen(false);
               }}
-              $checked={borderStyle === BorderStyle.Medium}
+              selected={borderStyle === BorderStyle.Medium}
             >
-              <BorderDescription>Medium</BorderDescription>
               <MediumLine />
-            </LineWrapper>
-            <LineWrapper
+            </StyledMenuItem>
+            <StyledMenuItem
               onClick={() => {
                 setBorderStyle(BorderStyle.Thick);
                 setStylePickerOpen(false);
               }}
-              $checked={borderStyle === BorderStyle.Thick}
+              selected={borderStyle === BorderStyle.Thick}
             >
-              <BorderDescription>Thick</BorderDescription>
               <ThickLine />
-            </LineWrapper>
+            </StyledMenuItem>
+            <StyledMenuItem
+              onClick={() => {
+                setBorderStyle(BorderStyle.Double);
+                setStylePickerOpen(false);
+              }}
+              selected={borderStyle === BorderStyle.Double}
+            >
+              <DoubleLine />
+            </StyledMenuItem>
+            <StyledMenuItem
+              onClick={() => {
+                setBorderStyle(BorderStyle.Dotted);
+                setStylePickerOpen(false);
+              }}
+              selected={borderStyle === BorderStyle.Dotted}
+            >
+              <DottedLine />
+            </StyledMenuItem>
+            <StyledMenuItem
+              onClick={() => {
+                setBorderStyle(BorderStyle.MediumDashed);
+                setStylePickerOpen(false);
+              }}
+              selected={borderStyle === BorderStyle.MediumDashed}
+            >
+              <MediumDashedLine />
+            </StyledMenuItem>
           </BorderStyleDialog>
         </StyledPopover>
       </div>
@@ -331,24 +356,23 @@ const BorderPicker = (properties: BorderPickerProps) => {
   );
 };
 
-type LineWrapperProperties = { $checked: boolean };
-const LineWrapper = styled("div")<LineWrapperProperties>`
+const StyledMenuItem = styled(MenuItem)`
   display: flex;
   flex-direction: row;
   align-items: center;
-  background-color: ${({ $checked }): string => {
-    if ($checked) {
-      return theme.palette.grey["200"];
-    }
-    return "inherit;";
-  }};
-  &:hover {
-    border: 1px solid ${theme.palette.grey["200"]};
-  }
+  justify-content: center;
+  height: 32px;
   padding: 8px;
-  cursor: pointer;
   border-radius: 4px;
-  border: 1px solid white;
+  &::before {
+    content: none;
+  }
+  &.Mui-selected {
+    background-color: ${({ theme }) => theme.palette.action.hover};
+    &:hover {
+      background-color: ${({ theme }) => theme.palette.action.hover};
+    }
+  }
 `;
 
 const SolidLine = styled("div")`
@@ -362,6 +386,38 @@ const MediumLine = styled("div")`
 const ThickLine = styled("div")`
   width: 68px;
   border-top: 3px solid ${theme.palette.grey["900"]};
+`;
+
+const DoubleLine = styled("div")`
+  width: 68px;
+  height: 3px;
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid ${theme.palette.grey["900"]};
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid ${theme.palette.grey["900"]};
+  }
+`;
+
+const DottedLine = styled("div")`
+  width: 68px;
+  border-top: 1px dotted ${theme.palette.grey["900"]};
+`;
+
+const MediumDashedLine = styled("div")`
+  width: 68px;
+  border-top: 2px dashed ${theme.palette.grey["900"]};
 `;
 
 const Divider = styled("div")`
@@ -436,10 +492,6 @@ const BorderPickerDialog = styled("div")`
   background: ${({ theme }): string => theme.palette.background.default};
   display: flex;
   flex-direction: column;
-`;
-
-const BorderDescription = styled("div")`
-  width: 70px;
 `;
 
 type TypeButtonProperties = { $pressed: boolean; $underlinedColor?: string };
