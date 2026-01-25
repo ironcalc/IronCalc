@@ -69,6 +69,32 @@ const BorderPicker = (properties: BorderPickerProps) => {
 
   const borderColorButton = useRef(null);
   const borderStyleButton = useRef(null);
+  const stylePickerCloseTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleStylePickerOpen = () => {
+    if (stylePickerCloseTimeout.current) {
+      clearTimeout(stylePickerCloseTimeout.current);
+    }
+    setStylePickerOpen(true);
+  };
+
+  const handleStylePickerClose = () => {
+    if (stylePickerCloseTimeout.current) {
+      clearTimeout(stylePickerCloseTimeout.current);
+    }
+    stylePickerCloseTimeout.current = setTimeout(() => {
+      setStylePickerOpen(false);
+    }, 150);
+  };
+
+  useEffect(
+    () => () => {
+      if (stylePickerCloseTimeout.current) {
+        clearTimeout(stylePickerCloseTimeout.current);
+      }
+    },
+    [],
+  );
 
   if (!properties.anchorEl.current) {
     return null;
@@ -260,8 +286,8 @@ const BorderPicker = (properties: BorderPickerProps) => {
               </MenuItemWrapper>
 
               <MenuItemWrapper
-                onMouseEnter={() => setStylePickerOpen(true)}
-                onMouseLeave={() => setStylePickerOpen(false)}
+                onMouseEnter={handleStylePickerOpen}
+                onMouseLeave={handleStylePickerClose}
                 ref={borderStyleButton}
               >
                 <BorderStyleIcon />
@@ -308,8 +334,8 @@ const BorderPicker = (properties: BorderPickerProps) => {
               ]}
             >
               <StylePicker
-                onMouseEnter={() => setStylePickerOpen(true)}
-                onMouseLeave={() => setStylePickerOpen(false)}
+                onMouseEnter={handleStylePickerOpen}
+                onMouseLeave={handleStylePickerClose}
               >
                 <StyledMenuItem
                   onClick={() => {
