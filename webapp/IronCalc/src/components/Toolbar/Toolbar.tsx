@@ -415,7 +415,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.borders.title")}>
             <StyledButton
               type="button"
-              $pressed={false}
+              $pressed={borderPickerOpen}
               onClick={() => setBorderPickerOpen(true)}
               ref={borderButton}
               disabled={!canEdit}
@@ -582,6 +582,7 @@ function Toolbar(properties: ToolbarProperties) {
           transformOrigin={{ vertical: "top", horizontal: "left" }}
         />
         <BorderPicker
+          placement="bottom-start"
           onChange={(border): void => {
             properties.onBorderChanged(border);
           }}
