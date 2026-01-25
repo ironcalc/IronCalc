@@ -144,7 +144,76 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   };
 
   const onIncreaseFontSize = (delta: number) => {
+    /** Automatically adjusts row heights when font size changes. */
+    const DEFAULT_ROW_HEIGHT = 28;
+
+    const {
+      sheet,
+      range: [rowStart, columnStart, rowEnd, columnEnd],
+    } = model.getSelectedView();
+
+    /** Normalize the range (selection can be from bottom-right to top-left) */
+    const actualRowStart = Math.min(rowStart, rowEnd);
+    const actualRowEnd = Math.max(rowStart, rowEnd);
+    const actualColumnStart = Math.min(columnStart, columnEnd);
+    const actualColumnEnd = Math.max(columnStart, columnEnd);
+
+    /** Capture current state BEFORE updating font size */
+    const rowData: Array<{
+      row: number;
+      oldFontSize: number;
+      oldRowHeight: number;
+      maxLineCount: number;
+    }> = [];
+
+    for (let row = actualRowStart; row <= actualRowEnd; row++) {
+      let maxFontSize = 0;
+      let maxLineCount = 1;
+      for (let col = actualColumnStart; col <= actualColumnEnd; col++) {
+        const style = model.getCellStyle(sheet, row, col);
+        maxFontSize = Math.max(maxFontSize, style.font.sz);
+
+        // Count lines in cell content (we add new lines with Alt+Enter / Option+Enter)
+        const cellContent = model.getCellContent(sheet, row, col);
+        const lineCount = cellContent.split("\n").length;
+        maxLineCount = Math.max(maxLineCount, lineCount);
+      }
+      const oldRowHeight = model.getRowHeight(sheet, row);
+      rowData.push({
+        row,
+        oldFontSize: maxFontSize,
+        oldRowHeight,
+        maxLineCount,
+      });
+    }
+
+    /** Update the font size in the model */
     updateRangeStyle("font.size_delta", `${delta}`);
+
+    /** Adjust row heights based on the new font sizes and line counts */
+    for (const { row, oldFontSize, oldRowHeight, maxLineCount } of rowData) {
+      const newFontSize = oldFontSize + delta;
+
+      if (oldRowHeight < DEFAULT_ROW_HEIGHT) {
+        continue;
+      }
+
+      const lineHeight = newFontSize * 1.5;
+      const requiredHeight = (maxLineCount - 1) * lineHeight + 8 + newFontSize;
+
+      let newRowHeight: number;
+      if (requiredHeight > DEFAULT_ROW_HEIGHT) {
+        newRowHeight = requiredHeight;
+      } else {
+        newRowHeight = DEFAULT_ROW_HEIGHT;
+      }
+
+      if (Math.abs(newRowHeight - oldRowHeight) > 0.1) {
+        model.setRowsHeight(sheet, row, row, newRowHeight);
+      }
+    }
+
+    setRedrawId((id) => id + 1);
   };
 
   const onCopyStyles = () => {
