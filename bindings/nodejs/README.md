@@ -1,4 +1,4 @@
-# IronCalc nodejs bindingds
+# IronCalc nodejs bindings
 
 
 Example usage:
@@ -6,7 +6,7 @@ Example usage:
 ```javascript
 import { Model } from '@ironcalc/nodejs';
  
-const model = new Model("Workbook1", "en", "UTC");
+const model = new Model("Workbook1", "en", "UTC", "en");
 
 model.setUserInput(0, 1, 1, "=1+1");
 

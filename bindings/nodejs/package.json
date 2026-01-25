@@ -1,8 +1,17 @@
 {
   "name": "@ironcalc/nodejs",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "main": "index.js",
   "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ironcalc/ironcalc.git",
+    "directory": "bindings/nodejs"
+  },
+  "homepage": "https://www.ironcalc.com/",
+  "bugs": {
+    "url": "https://github.com/ironcalc/ironcalc/issues"
+  },
   "napi": {
     "binaryName": "nodejs",
     "targets": [
