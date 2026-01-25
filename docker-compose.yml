@@ -1,12 +1,12 @@
 services:
   server:
-    image: ghcr.io/ironcalc/ironcalc-server:0.7.0
+    image: ghcr.io/ironcalc/ironcalc-server:0.7.1
     build:
       context: .
       target: server-runtime
 
   caddy:
-    image: ghcr.io/ironcalc/ironcalc-caddy:0.7.0
+    image: ghcr.io/ironcalc/ironcalc-caddy:0.7.1
     build:
       context: .
       target: caddy-runtime
