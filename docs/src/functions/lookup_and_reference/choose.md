@@ -72,4 +72,4 @@ CHOOSE returns a value of the same type as the selected argument. The returned v
 - For more information about selection by index, see Wikipedia’s article on [array indexing](https://en.wikipedia.org/wiki/Array_data_structure#Indexing).
 - See also IronCalc’s [IF](/functions/logical/if) and [IFS](/functions/logical/ifs) functions.
 - Visit Microsoft Excel’s [CHOOSE function](https://support.microsoft.com/en-us/office/choose-function-fc5c184f-cb62-4ec7-a46e-38653b98f5bc) documentation.
-- Both [Google Sheets](https://support.google.com/docs/answer/3093361) and [LibreOffice Calc](https://wiki.documentfoundation.org/Documentation/Calc_Functions/CHOOSE) provide equivalent CHOOSE functions.
+- Both [Google Sheets](https://support.google.com/docs/answer/3093371) and [LibreOffice Calc](https://wiki.documentfoundation.org/Documentation/Calc_Functions/CHOOSE) provide equivalent CHOOSE functions.
