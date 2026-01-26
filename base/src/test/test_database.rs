@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::test::util::new_empty_model;
+use crate::Model;
 
 #[test]
 fn arguments() {
@@ -69,9 +70,9 @@ fn arguments() {
 }
 
 #[test]
-fn locale_ISO_format() {
+fn locale_iso_format() {
     // ISO format with YYYY-MM-DD format. Works with any locale.
-    let mut model = Model::new_empty("model", "en-US", "UTC", "en").unwrap();
+    let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
 
     // Create database
     model._set("A1", "ID");
@@ -119,7 +120,7 @@ fn locale_ISO_format() {
     assert_eq!(model._get_text("A16"), *"2");
     assert_eq!(model._get_text("A17"), *"720000");
     assert_eq!(model._get_text("A18"), *"360000");
-    assert_eq!(model._get_text("A19"), *"848.528137423857");
+    assert_eq!(model._get_text("A19"), *"848.528137424");
     assert_eq!(model._get_text("A20"), *"600");
 }
 
@@ -174,14 +175,14 @@ fn locale_uk() {
     assert_eq!(model._get_text("A16"), *"2");
     assert_eq!(model._get_text("A17"), *"720000");
     assert_eq!(model._get_text("A18"), *"360000");
-    assert_eq!(model._get_text("A19"), *"848.528137423857");
+    assert_eq!(model._get_text("A19"), *"848.528137424");
     assert_eq!(model._get_text("A20"), *"600");
 }
 
 #[test]
 fn locale_us() {
     // en-US locale with MM/DD/YY format
-    let mut model = Model::new_empty("model", "en-US", "UTC", "en").unwrap();
+    let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
 
     // Create database
     model._set("A1", "ID");
@@ -229,14 +230,14 @@ fn locale_us() {
     assert_eq!(model._get_text("A16"), *"2");
     assert_eq!(model._get_text("A17"), *"720000");
     assert_eq!(model._get_text("A18"), *"360000");
-    assert_eq!(model._get_text("A19"), *"848.528137423857");
+    assert_eq!(model._get_text("A19"), *"848.528137424");
     assert_eq!(model._get_text("A20"), *"600");
 }
 
 #[test]
 fn locale_de() {
     // de-DE locale with D.M.YYYY format
-    let mut model = Model::new_empty("model", "de-DE", "UTC", "en").unwrap();
+    let mut model = Model::new_empty("model", "de", "UTC", "en").unwrap();
 
     // Create database
     model._set("A1", "ID");
@@ -259,18 +260,18 @@ fn locale_de() {
     model._set("B7", "15.1.2026"); // DGET needs an exact match
 
     // Test functions
-    model._set("A9", "=DMIN(A1:C4, C1, A6:A7)");
-    model._set("A10", "=DMAX(A1:C4, C1, A6:A7)");
-    model._set("A11", "=DAVERAGE(A1:C4, C1, A6:A7)");
-    model._set("A12", "=DSUM(A1:C4, C1, A6:A7)");
-    model._set("A13", "=DPRODUCT(A1:C4, C1, A6:A7)");
-    model._set("A14", "=DGET(A1:C4, C1, B6:B7)");
-    model._set("A15", "=DCOUNT(A1:C4, C1, A6:A7)");
-    model._set("A16", "=DCOUNTA(A1:C4, C1, A6:A7)");
-    model._set("A17", "=DVAR(A1:C4, C1, A6:A7)");
-    model._set("A18", "=DVARP(A1:C4, C1, A6:A7)");
-    model._set("A19", "=DSTDEV(A1:C4, C1, A6:A7)");
-    model._set("A20", "=DSTDEVP(A1:C4, C1, A6:A7)");
+    model._set("A9", "=DMIN(A1:C4; C1; A6:A7)");
+    model._set("A10", "=DMAX(A1:C4; C1; A6:A7)");
+    model._set("A11", "=DAVERAGE(A1:C4; C1; A6:A7)");
+    model._set("A12", "=DSUM(A1:C4; C1; A6:A7)");
+    model._set("A13", "=DPRODUCT(A1:C4; C1; A6:A7)");
+    model._set("A14", "=DGET(A1:C4; C1; B6:B7)");
+    model._set("A15", "=DCOUNT(A1:C4; C1; A6:A7)");
+    model._set("A16", "=DCOUNTA(A1:C4; C1; A6:A7)");
+    model._set("A17", "=DVAR(A1:C4; C1; A6:A7)");
+    model._set("A18", "=DVARP(A1:C4; C1; A6:A7)");
+    model._set("A19", "=DSTDEV(A1:C4; C1; A6:A7)");
+    model._set("A20", "=DSTDEVP(A1:C4; C1; A6:A7)");
 
     model.evaluate();
 
@@ -284,34 +285,34 @@ fn locale_de() {
     assert_eq!(model._get_text("A16"), *"2");
     assert_eq!(model._get_text("A17"), *"720000");
     assert_eq!(model._get_text("A18"), *"360000");
-    assert_eq!(model._get_text("A19"), *"848.528137423857");
+    assert_eq!(model._get_text("A19"), *"848,528137424");
     assert_eq!(model._get_text("A20"), *"600");
 }
 
 #[test]
 fn locale_wrong_format() {
     // en-US locale with incorrect D.M.YYYY format
-    let mut model = Model::new_empty("model", "en-US", "UTC", "en").unwrap();
+    let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
 
     // Create database
     model._set("A1", "ID");
     model._set("B1", "Date");
     model._set("C1", "Amount");
     model._set("A2", "1");
-    model._set("B2", "15.1.2026");
+    model._set("B2", "10.1.2026");
     model._set("C2", "1200");
     model._set("A3", "2");
-    model._set("B3", "15.3.2026");
+    model._set("B3", "10.3.2026");
     model._set("C3", "900");
     model._set("A4", "3");
-    model._set("B4", "15.6.2026");
+    model._set("B4", "10.6.2026");
     model._set("C4", "2100");
 
     // Define criteria
     model._set("A6", "Date");
     model._set("A7", ">=1.3.2026");
     model._set("B6", "Date");
-    model._set("B7", "15.1.2026"); // DGET needs an exact match
+    model._set("B7", "10.1.2026"); // DGET needs an exact match
 
     // Test functions - results should be the same as using empty criteria
     model._set("A9", "=DMIN(A1:C4, C1, A6:A7)");
@@ -333,7 +334,7 @@ fn locale_wrong_format() {
     model._set("B11", "=DAVERAGE(A1:C4, C1, C6:C7)");
     model._set("B12", "=DSUM(A1:C4, C1, C6:C7)");
     model._set("B13", "=DPRODUCT(A1:C4, C1, C6:C7)");
-    model._set("B14", "=DGET(A1:C4, C1, C6:C7)");
+    model._set("B14", "=DGET(A1:C4, C1, B6:B7)");
     model._set("B15", "=DCOUNT(A1:C4, C1, C6:C7)");
     model._set("B16", "=DCOUNTA(A1:C4, C1, C6:C7)");
     model._set("B17", "=DVAR(A1:C4, C1, C6:C7)");
@@ -353,8 +354,8 @@ fn locale_wrong_format() {
     assert_eq!(model._get_text("A16"), *"3");
     assert_eq!(model._get_text("A17"), *"390000");
     assert_eq!(model._get_text("A18"), *"260000");
-    assert_eq!(model._get_text("A19"), *"624.49979983984");
-    assert_eq!(model._get_text("A20"), *"509.901951359278");
+    assert_eq!(model._get_text("A19"), *"624.49979984");
+    assert_eq!(model._get_text("A20"), *"509.901951359");
 
     assert_eq!(model._get_text("B9"), *"900");
     assert_eq!(model._get_text("B10"), *"2100");
@@ -366,6 +367,6 @@ fn locale_wrong_format() {
     assert_eq!(model._get_text("B16"), *"3");
     assert_eq!(model._get_text("B17"), *"390000");
     assert_eq!(model._get_text("B18"), *"260000");
-    assert_eq!(model._get_text("B19"), *"624.49979983984");
-    assert_eq!(model._get_text("B20"), *"509.901951359278");
+    assert_eq!(model._get_text("B19"), *"624.49979984");
+    assert_eq!(model._get_text("B20"), *"509.901951359");
 }
