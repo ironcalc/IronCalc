@@ -1,6 +1,5 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
 import { Button, styled, Tooltip } from "@mui/material";
-import { t } from "i18next";
 import {
   ArrowLeft,
   BookOpen,
@@ -11,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { parseRangeInSheet } from "../../Editor/util";
 import EditNamedRange, {
@@ -38,6 +38,7 @@ const NamedRanges = ({
   const [editingDefinedName, setEditingDefinedName] =
     useState<DefinedName | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const { t } = useTranslation();
 
   const handleListItemClick = (definedName: DefinedName) => {
     setEditingDefinedName(definedName);

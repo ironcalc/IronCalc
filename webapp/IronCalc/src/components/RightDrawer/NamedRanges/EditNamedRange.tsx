@@ -9,9 +9,9 @@ import {
   styled,
   TextField,
 } from "@mui/material";
-import { t } from "i18next";
 import { Check, MousePointerClick, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { getFullRangeToString } from "../../util";
 import { Footer, NewButton } from "./NamedRanges";
@@ -56,6 +56,7 @@ const EditNamedRange = ({
   editingDefinedName,
   model,
 }: EditNamedRangeProps) => {
+  const { t } = useTranslation();
   const getDefaultName = () => {
     if (initialName) return initialName;
     const rangePrefix = t("name_manager_dialog.default_range_prefix");
