@@ -265,6 +265,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "csbindgen"
+version = "1.9.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27370712d5831ee4ba8ddbde134cd1c6a3418e96ba4b9d1d88f27a3169013400"
+dependencies = [
+ "regex",
+ "syn",
+]
+
+[[package]]
 name = "csv"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -557,6 +567,14 @@ dependencies = [
  "thiserror",
  "uuid",
  "zip",
+]
+
+[[package]]
+name = "ironcalc-dotnet"
+version = "0.0.1-beta1"
+dependencies = [
+ "csbindgen",
+ "ironcalc",
 ]
 
 [[package]]
