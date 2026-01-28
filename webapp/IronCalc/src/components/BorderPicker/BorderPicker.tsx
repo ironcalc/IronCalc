@@ -1,5 +1,7 @@
 import { type BorderOptions, BorderStyle, BorderType } from "@ironcalc/wasm";
-import Popover, { type PopoverOrigin } from "@mui/material/Popover";
+import ClickAwayListener from "@mui/material/ClickAwayListener";
+import MenuItem from "@mui/material/MenuItem";
+import Popper, { type PopperPlacementType } from "@mui/material/Popper";
 import { styled } from "@mui/material/styles";
 import {
   Grid2X2 as BorderAllIcon,
@@ -29,8 +31,7 @@ type BorderPickerProps = {
   onChange: (border: BorderOptions) => void;
   onClose: () => void;
   anchorEl: React.RefObject<HTMLElement | null>;
-  anchorOrigin?: PopoverOrigin;
-  transformOrigin?: PopoverOrigin;
+  placement: PopperPlacementType;
   open: boolean;
 };
 
@@ -68,287 +69,354 @@ const BorderPicker = (properties: BorderPickerProps) => {
 
   const borderColorButton = useRef(null);
   const borderStyleButton = useRef(null);
+  const stylePickerCloseTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleStylePickerOpen = () => {
+    if (stylePickerCloseTimeout.current) {
+      clearTimeout(stylePickerCloseTimeout.current);
+    }
+    setStylePickerOpen(true);
+  };
+
+  const handleStylePickerClose = () => {
+    if (stylePickerCloseTimeout.current) {
+      clearTimeout(stylePickerCloseTimeout.current);
+    }
+    stylePickerCloseTimeout.current = setTimeout(() => {
+      setStylePickerOpen(false);
+    }, 150);
+  };
+
+  useEffect(
+    () => () => {
+      if (stylePickerCloseTimeout.current) {
+        clearTimeout(stylePickerCloseTimeout.current);
+      }
+    },
+    [],
+  );
+
+  if (!properties.anchorEl.current) {
+    return null;
+  }
+
   return (
-    <StyledPopover
+    <StyledPopper
       open={properties.open}
-      onClose={onClose}
       anchorEl={properties.anchorEl.current}
-      anchorOrigin={
-        properties.anchorOrigin || { vertical: "bottom", horizontal: "left" }
-      }
-      transformOrigin={
-        properties.transformOrigin || { vertical: "top", horizontal: "left" }
-      }
+      placement={properties.placement || "bottom-start"}
+      keepMounted={false}
+      modifiers={[
+        {
+          name: "offset",
+          options: {
+            offset: [-4, 4],
+          },
+        },
+      ]}
     >
-      <div>
-        <BorderPickerDialog>
-          <Borders>
-            <Line>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.All}
-                onClick={() => {
-                  if (borderSelected === BorderType.All) {
-                    setBorderSelected(null);
-                  } else {
-                    setBorderSelected(BorderType.All);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.all")}
+      <ClickAwayListener onClickAway={onClose}>
+        <PopperContent>
+          <BorderPickerDialog>
+            <Borders>
+              <Line>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.All}
+                  onClick={() => {
+                    if (borderSelected === BorderType.All) {
+                      setBorderSelected(null);
+                    } else {
+                      setBorderSelected(BorderType.All);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.all")}
+                >
+                  <BorderAllIcon />
+                </Button>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.Inner}
+                  onClick={() => {
+                    if (borderSelected === BorderType.Inner) {
+                      setBorderSelected(null);
+                    } else {
+                      setBorderSelected(BorderType.Inner);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.inner")}
+                >
+                  <BorderInnerIcon />
+                </Button>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.CenterH}
+                  onClick={() => {
+                    if (borderSelected === BorderType.CenterH) {
+                      setBorderSelected(null);
+                    } else {
+                      setBorderSelected(BorderType.CenterH);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.horizontal")}
+                >
+                  <BorderCenterHIcon />
+                </Button>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.CenterV}
+                  onClick={() => {
+                    if (borderSelected === BorderType.CenterV) {
+                      setBorderSelected(null);
+                    } else {
+                      setBorderSelected(BorderType.CenterV);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.vertical")}
+                >
+                  <BorderCenterVIcon />
+                </Button>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.Outer}
+                  onClick={() => {
+                    if (borderSelected === BorderType.Outer) {
+                      setBorderSelected(BorderType.None);
+                    } else {
+                      setBorderSelected(BorderType.Outer);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.outer")}
+                >
+                  <BorderOuterIcon />
+                </Button>
+              </Line>
+              <Line>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.None}
+                  onClick={() => {
+                    if (borderSelected === BorderType.None) {
+                      setBorderSelected(BorderType.None);
+                    } else {
+                      setBorderSelected(BorderType.None);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.clear")}
+                >
+                  <BorderNoneIcon />
+                </Button>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.Top}
+                  onClick={() => {
+                    if (borderSelected === BorderType.Top) {
+                      setBorderSelected(BorderType.None);
+                    } else {
+                      setBorderSelected(BorderType.Top);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.top")}
+                >
+                  <BorderTopIcon />
+                </Button>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.Right}
+                  onClick={() => {
+                    if (borderSelected === BorderType.Right) {
+                      setBorderSelected(BorderType.None);
+                    } else {
+                      setBorderSelected(BorderType.Right);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.right")}
+                >
+                  <BorderRightIcon />
+                </Button>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.Bottom}
+                  onClick={() => {
+                    if (borderSelected === BorderType.Bottom) {
+                      setBorderSelected(BorderType.None);
+                    } else {
+                      setBorderSelected(BorderType.Bottom);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.bottom")}
+                >
+                  <BorderBottomIcon />
+                </Button>
+                <Button
+                  type="button"
+                  $pressed={borderSelected === BorderType.Left}
+                  onClick={() => {
+                    if (borderSelected === BorderType.Left) {
+                      setBorderSelected(BorderType.None);
+                    } else {
+                      setBorderSelected(BorderType.Left);
+                    }
+                  }}
+                  disabled={false}
+                  title={t("toolbar.borders.left")}
+                >
+                  <BorderLeftIcon />
+                </Button>
+              </Line>
+            </Borders>
+            <Divider />
+            <Styles>
+              <MenuItemWrapper
+                onClick={() => setColorPickerOpen(true)}
+                ref={borderColorButton}
               >
-                <BorderAllIcon />
-              </Button>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.Inner}
-                onClick={() => {
-                  if (borderSelected === BorderType.Inner) {
-                    setBorderSelected(null);
-                  } else {
-                    setBorderSelected(BorderType.Inner);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.inner")}
-              >
-                <BorderInnerIcon />
-              </Button>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.CenterH}
-                onClick={() => {
-                  if (borderSelected === BorderType.CenterH) {
-                    setBorderSelected(null);
-                  } else {
-                    setBorderSelected(BorderType.CenterH);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.horizontal")}
-              >
-                <BorderCenterHIcon />
-              </Button>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.CenterV}
-                onClick={() => {
-                  if (borderSelected === BorderType.CenterV) {
-                    setBorderSelected(null);
-                  } else {
-                    setBorderSelected(BorderType.CenterV);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.vertical")}
-              >
-                <BorderCenterVIcon />
-              </Button>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.Outer}
-                onClick={() => {
-                  if (borderSelected === BorderType.Outer) {
-                    setBorderSelected(BorderType.None);
-                  } else {
-                    setBorderSelected(BorderType.Outer);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.outer")}
-              >
-                <BorderOuterIcon />
-              </Button>
-            </Line>
-            <Line>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.None}
-                onClick={() => {
-                  if (borderSelected === BorderType.None) {
-                    setBorderSelected(BorderType.None);
-                  } else {
-                    setBorderSelected(BorderType.None);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.clear")}
-              >
-                <BorderNoneIcon />
-              </Button>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.Top}
-                onClick={() => {
-                  if (borderSelected === BorderType.Top) {
-                    setBorderSelected(BorderType.None);
-                  } else {
-                    setBorderSelected(BorderType.Top);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.top")}
-              >
-                <BorderTopIcon />
-              </Button>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.Right}
-                onClick={() => {
-                  if (borderSelected === BorderType.Right) {
-                    setBorderSelected(BorderType.None);
-                  } else {
-                    setBorderSelected(BorderType.Right);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.right")}
-              >
-                <BorderRightIcon />
-              </Button>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.Bottom}
-                onClick={() => {
-                  if (borderSelected === BorderType.Bottom) {
-                    setBorderSelected(BorderType.None);
-                  } else {
-                    setBorderSelected(BorderType.Bottom);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.bottom")}
-              >
-                <BorderBottomIcon />
-              </Button>
-              <Button
-                type="button"
-                $pressed={borderSelected === BorderType.Left}
-                onClick={() => {
-                  if (borderSelected === BorderType.Left) {
-                    setBorderSelected(BorderType.None);
-                  } else {
-                    setBorderSelected(BorderType.Left);
-                  }
-                }}
-                disabled={false}
-                title={t("toolbar.borders.left")}
-              >
-                <BorderLeftIcon />
-              </Button>
-            </Line>
-          </Borders>
-          <Divider />
-          <Styles>
-            <ButtonWrapper
-              onClick={() => setColorPickerOpen(true)}
-              ref={borderColorButton}
-            >
-              <PencilLine />
+                <PencilLine />
+                <MenuItemText>Border color</MenuItemText>
+                <ChevronRightStyled />
+              </MenuItemWrapper>
 
-              <div style={{ flexGrow: 2 }}>Border color</div>
-              <ChevronRightStyled />
-            </ButtonWrapper>
-
-            <ButtonWrapper
-              onClick={() => setStylePickerOpen(true)}
-              ref={borderStyleButton}
+              <MenuItemWrapper
+                onMouseEnter={handleStylePickerOpen}
+                onMouseLeave={handleStylePickerClose}
+                ref={borderStyleButton}
+              >
+                <BorderStyleIcon />
+                <MenuItemText>Border style</MenuItemText>
+                <ChevronRightStyled />
+              </MenuItemWrapper>
+            </Styles>
+          </BorderPickerDialog>
+          <ColorPicker
+            color={borderColor}
+            defaultColor={theme.palette.common.black}
+            title={t("color_picker.default")}
+            onChange={(color): void => {
+              setBorderColor(color);
+              setColorPickerOpen(false);
+            }}
+            onClose={() => {
+              setColorPickerOpen(false);
+            }}
+            anchorEl={borderColorButton}
+            open={colorPickerOpen}
+            anchorOrigin={{
+              vertical: "top",
+              horizontal: "right",
+            }}
+            transformOrigin={{
+              vertical: "top",
+              horizontal: "left",
+            }}
+          />
+          {borderStyleButton.current && (
+            <StyledPopper
+              open={stylePickerOpen}
+              anchorEl={borderStyleButton.current}
+              placement="right-start"
+              keepMounted={false}
+              modifiers={[
+                {
+                  name: "offset",
+                  options: {
+                    offset: [-4, 0],
+                  },
+                },
+              ]}
             >
-              <BorderStyleIcon />
-              <div style={{ flexGrow: 2 }}>Border style</div>
-              <ChevronRightStyled />
-            </ButtonWrapper>
-          </Styles>
-        </BorderPickerDialog>
-        <ColorPicker
-          color={borderColor}
-          defaultColor="#000000"
-          title={t("color_picker.default")}
-          onChange={(color): void => {
-            setBorderColor(color);
-            setColorPickerOpen(false);
-          }}
-          onClose={() => {
-            setColorPickerOpen(false);
-          }}
-          anchorEl={borderColorButton}
-          open={colorPickerOpen}
-          anchorOrigin={{
-            vertical: "top", // Keep vertical alignment at the top
-            horizontal: "right", // Set horizontal alignment to right
-          }}
-          transformOrigin={{
-            vertical: "top", // Keep vertical alignment at the top
-            horizontal: "left", // Set horizontal alignment to left
-          }}
-        />
-        <StyledPopover
-          open={stylePickerOpen}
-          onClose={(): void => {
-            setStylePickerOpen(false);
-          }}
-          anchorEl={borderStyleButton.current}
-          anchorOrigin={{
-            vertical: "top",
-            horizontal: "right",
-          }}
-        >
-          <BorderStyleDialog>
-            <LineWrapper
-              onClick={() => {
-                setBorderStyle(BorderStyle.Thin);
-                setStylePickerOpen(false);
-              }}
-              $checked={borderStyle === BorderStyle.Thin}
-            >
-              <BorderDescription>Thin</BorderDescription>
-              <SolidLine />
-            </LineWrapper>
-            <LineWrapper
-              onClick={() => {
-                setBorderStyle(BorderStyle.Medium);
-                setStylePickerOpen(false);
-              }}
-              $checked={borderStyle === BorderStyle.Medium}
-            >
-              <BorderDescription>Medium</BorderDescription>
-              <MediumLine />
-            </LineWrapper>
-            <LineWrapper
-              onClick={() => {
-                setBorderStyle(BorderStyle.Thick);
-                setStylePickerOpen(false);
-              }}
-              $checked={borderStyle === BorderStyle.Thick}
-            >
-              <BorderDescription>Thick</BorderDescription>
-              <ThickLine />
-            </LineWrapper>
-          </BorderStyleDialog>
-        </StyledPopover>
-      </div>
-    </StyledPopover>
+              <StylePicker
+                onMouseEnter={handleStylePickerOpen}
+                onMouseLeave={handleStylePickerClose}
+              >
+                <StyledMenuItem
+                  onClick={() => {
+                    setBorderStyle(BorderStyle.Thin);
+                    setStylePickerOpen(false);
+                  }}
+                  selected={borderStyle === BorderStyle.Thin}
+                >
+                  <SolidLine />
+                </StyledMenuItem>
+                <StyledMenuItem
+                  onClick={() => {
+                    setBorderStyle(BorderStyle.Medium);
+                    setStylePickerOpen(false);
+                  }}
+                  selected={borderStyle === BorderStyle.Medium}
+                >
+                  <MediumLine />
+                </StyledMenuItem>
+                <StyledMenuItem
+                  onClick={() => {
+                    setBorderStyle(BorderStyle.Thick);
+                    setStylePickerOpen(false);
+                  }}
+                  selected={borderStyle === BorderStyle.Thick}
+                >
+                  <ThickLine />
+                </StyledMenuItem>
+                <StyledMenuItem
+                  onClick={() => {
+                    setBorderStyle(BorderStyle.Double);
+                    setStylePickerOpen(false);
+                  }}
+                  selected={borderStyle === BorderStyle.Double}
+                >
+                  <DoubleLine />
+                </StyledMenuItem>
+                <StyledMenuItem
+                  onClick={() => {
+                    setBorderStyle(BorderStyle.Dotted);
+                    setStylePickerOpen(false);
+                  }}
+                  selected={borderStyle === BorderStyle.Dotted}
+                >
+                  <DottedLine />
+                </StyledMenuItem>
+                <StyledMenuItem
+                  onClick={() => {
+                    setBorderStyle(BorderStyle.MediumDashed);
+                    setStylePickerOpen(false);
+                  }}
+                  selected={borderStyle === BorderStyle.MediumDashed}
+                >
+                  <MediumDashedLine />
+                </StyledMenuItem>
+              </StylePicker>
+            </StyledPopper>
+          )}
+        </PopperContent>
+      </ClickAwayListener>
+    </StyledPopper>
   );
 };
 
-type LineWrapperProperties = { $checked: boolean };
-const LineWrapper = styled("div")<LineWrapperProperties>`
+const StyledMenuItem = styled(MenuItem)`
   display: flex;
   flex-direction: row;
   align-items: center;
-  background-color: ${({ $checked }): string => {
-    if ($checked) {
-      return theme.palette.grey["200"];
-    }
-    return "inherit;";
-  }};
-  &:hover {
-    border: 1px solid ${theme.palette.grey["200"]};
-  }
+  justify-content: center;
+  height: 32px;
   padding: 8px;
-  cursor: pointer;
   border-radius: 4px;
-  border: 1px solid white;
+  &::before {
+    content: none;
+  }
+  &.Mui-selected {
+    background-color: ${({ theme }) => theme.palette.action.hover};
+    &:hover {
+      background-color: ${({ theme }) => theme.palette.action.hover};
+    }
+  }
 `;
 
 const SolidLine = styled("div")`
@@ -362,6 +430,38 @@ const MediumLine = styled("div")`
 const ThickLine = styled("div")`
   width: 68px;
   border-top: 3px solid ${theme.palette.grey["900"]};
+`;
+
+const DoubleLine = styled("div")`
+  width: 68px;
+  height: 3px;
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid ${theme.palette.grey["900"]};
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid ${theme.palette.grey["900"]};
+  }
+`;
+
+const DottedLine = styled("div")`
+  width: 68px;
+  border-top: 1px dotted ${theme.palette.grey["900"]};
+`;
+
+const MediumDashedLine = styled("div")`
+  width: 68px;
+  border-top: 2px dashed ${theme.palette.grey["900"]};
 `;
 
 const Divider = styled("div")`
@@ -390,56 +490,62 @@ const Line = styled("div")`
   gap: 4px;
 `;
 
-const ButtonWrapper = styled("div")`
+const BaseMenuItem = (props: React.ComponentProps<typeof MenuItem>) => (
+  <MenuItem disableRipple {...props} />
+);
+
+const MenuItemWrapper = styled(BaseMenuItem)`
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  justify-content: flex-start;
   border-radius: 4px;
-  gap: 8px;
-  &:hover {
-    background-color: ${theme.palette.grey["200"]};
-    border-top-color: ${(): string => theme.palette.grey["200"]};
-  }
-  cursor: pointer;
   padding: 8px;
+  height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  color: ${theme.palette.common.black};
+  font-size: 12px;
+  gap: 8px;
   svg {
-    width: 16px;
-    height: 16px;
+    max-width: 16px;
+    min-width: 16px;
+    max-height: 16px;
+    min-height: 16px;
+    color: ${theme.palette.grey[600]};
   }
 `;
 
-const BorderStyleDialog = styled("div")`
+const MenuItemText = styled("div")`
+  flex-grow: 1;
+`;
+
+const PopperContent = styled("div")`
+  border-radius: 8px;
+  border: 0px solid ${({ theme }): string => theme.palette.background.default};
+  box-shadow: 1px 2px 8px rgba(139, 143, 173, 0.5);
   background: ${({ theme }): string => theme.palette.background.default};
+  font-family: ${({ theme }) => theme.typography.fontFamily};
+  font-size: 12px;
+  overflow: hidden;
+`;
+
+const StylePicker = styled(PopperContent)`
   padding: 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
 `;
 
-const StyledPopover = styled(Popover)`
-  .MuiPopover-paper {
-    border-radius: 8px;
-    border: 0px solid ${({ theme }): string => theme.palette.background.default};
-    box-shadow: 1px 2px 8px rgba(139, 143, 173, 0.5);
+const StyledPopper = styled(Popper)`
+  z-index: 1300;
+  &[data-popper-placement] {
+    pointer-events: auto;
   }
-  .MuiPopover-padding {
-    padding: 0px;
-  }
-  .MuiList-padding {
-    padding: 0px;
-  }
-  font-family: ${({ theme }) => theme.typography.fontFamily};
-  font-size: 12px;
 `;
 
 const BorderPickerDialog = styled("div")`
   background: ${({ theme }): string => theme.palette.background.default};
   display: flex;
   flex-direction: column;
-`;
-
-const BorderDescription = styled("div")`
-  width: 70px;
 `;
 
 type TypeButtonProperties = { $pressed: boolean; $underlinedColor?: string };
