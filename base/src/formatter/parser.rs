@@ -3,7 +3,7 @@ use super::lexer::{Compare, Lexer, Token};
 pub struct Digit {
     pub kind: char, // '#' | '?' | '0'
     pub index: i32,
-    pub number: char, // 'i' | 'd' | 'e' (integer, decimal or exponent)
+    pub number: NumberState, // 'i' | 'd' | 'e' (integer, decimal or exponent)
 }
 
 pub enum TextToken {
@@ -27,6 +27,19 @@ pub enum TextToken {
     MonthLetter,
     YearShort,
     Year,
+    Hour,
+    HourPadded,
+    Minute,
+    MinutePadded,
+    Second,
+    SecondPadded,
+    ElapsedHour,
+    ElapsedHourPadded,
+    ElapsedMinute,
+    ElapsedMinutePadded,
+    ElapsedSecond,
+    ElapsedSecondPadded,
+    AMPM,
 }
 pub struct NumberPart {
     pub color: Option<i32>,
@@ -45,6 +58,7 @@ pub struct NumberPart {
 
 pub struct DatePart {
     pub color: Option<i32>,
+    pub use_ampm: bool,
     pub tokens: Vec<TextToken>,
 }
 
@@ -62,6 +76,27 @@ pub enum ParsePart {
 pub struct Parser {
     pub parts: Vec<ParsePart>,
     lexer: Lexer,
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum NumberState {
+    Integer,
+    Decimal,
+    Exponent,
+}
+
+impl NumberState {
+    pub fn is_integer(&self) -> bool {
+        matches!(self, NumberState::Integer)
+    }
+
+    pub fn is_decimal(&self) -> bool {
+        matches!(self, NumberState::Decimal)
+    }
+
+    pub fn is_exponent(&self) -> bool {
+        matches!(self, NumberState::Exponent)
+    }
 }
 
 impl ParsePart {
@@ -83,6 +118,10 @@ impl ParsePart {
     }
 }
 
+// Numbers:
+// [integer section][decimal point][fractional section][optional exponent]
+// So #,##0.00 is valid but 0.00#,## is not.
+
 impl Parser {
     pub fn new(format: &str) -> Self {
         let lexer = Lexer::new(format);
@@ -101,6 +140,7 @@ impl Parser {
         let mut digit_count = 0;
         let mut precision = 0;
         let mut is_date = false;
+        let mut use_ampm = false;
         let mut is_number = false;
         let mut found_decimal_dot = false;
         let mut use_thousands = false;
@@ -113,9 +153,10 @@ impl Parser {
         let mut is_scientific = false;
         let mut scientific_minus = false;
         let mut exponent_digit_count = 0;
-        let mut number = 'i';
+        let mut number = NumberState::Integer;
         let mut index = 0;
         let mut currency = None;
+        let mut is_time = false;
 
         while token != Token::EOF && token != Token::Separator {
             let next_token = self.lexer.next_token();
@@ -140,7 +181,7 @@ impl Parser {
                     }
                 }
                 Token::Comma => {
-                    // If it is in between digit token then we use the thousand separator
+                    // If it is in between digit tokens then we use the thousand separator
                     if last_token_is_digit && next_token_is_digit {
                         use_thousands = true;
                     } else if digit_count > 0 {
@@ -155,11 +196,11 @@ impl Parser {
                     percent += 1;
                 }
                 Token::Period => {
-                    if !found_decimal_dot {
+                    if is_number && !found_decimal_dot {
                         tokens.push(TextToken::Period);
                         found_decimal_dot = true;
-                        if number == 'i' {
-                            number = 'd';
+                        if number.is_integer() {
+                            number = NumberState::Decimal;
                             index = 0;
                         }
                     } else {
@@ -200,6 +241,9 @@ impl Parser {
                     index += 1;
                 }
                 Token::Literal(value) => {
+                    if value == ':' {
+                        is_time = true;
+                    }
                     tokens.push(TextToken::Literal(value));
                 }
                 Token::Text(value) => {
@@ -236,12 +280,22 @@ impl Parser {
                     tokens.push(TextToken::MonthName);
                 }
                 Token::Month => {
-                    is_date = true;
-                    tokens.push(TextToken::Month);
+                    if is_time {
+                        // minute
+                        tokens.push(TextToken::Minute);
+                    } else {
+                        is_date = true;
+                        tokens.push(TextToken::Month);
+                    }
                 }
                 Token::MonthPadded => {
-                    is_date = true;
-                    tokens.push(TextToken::MonthPadded);
+                    if is_time {
+                        // minute padded
+                        tokens.push(TextToken::MinutePadded);
+                    } else {
+                        is_date = true;
+                        tokens.push(TextToken::MonthPadded);
+                    }
                 }
                 Token::MonthLetter => {
                     is_date = true;
@@ -255,14 +309,43 @@ impl Parser {
                     is_date = true;
                     tokens.push(TextToken::Year);
                 }
+                Token::Hour => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::Hour);
+                }
+                Token::HourPadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::HourPadded);
+                }
+                Token::Second => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::Second);
+                }
+                Token::SecondPadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::SecondPadded);
+                }
+                Token::AMPM => {
+                    is_date = true;
+                    use_ampm = true;
+                    tokens.push(TextToken::AMPM);
+                }
                 Token::Scientific => {
                     if !is_scientific {
                         index = 0;
-                        number = 'e';
+                        number = NumberState::Exponent;
                     }
                     is_scientific = true;
                 }
                 Token::ScientificMinus => {
+                    if !is_scientific {
+                        index = 0;
+                        number = NumberState::Exponent;
+                    }
                     is_scientific = true;
                     scientific_minus = true;
                 }
@@ -274,6 +357,36 @@ impl Parser {
                     return ParsePart::Error(ErrorPart {});
                 }
                 Token::EOF => {}
+                Token::ElapsedHour => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedHour);
+                }
+                Token::ElapsedMinute => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedMinute);
+                }
+                Token::ElapsedSecond => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedSecond);
+                }
+                Token::ElapsedHourPadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedHourPadded);
+                }
+                Token::ElapsedMinutePadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedMinutePadded);
+                }
+                Token::ElapsedSecondPadded => {
+                    is_date = true;
+                    is_time = true;
+                    tokens.push(TextToken::ElapsedSecondPadded);
+                }
             }
             last_token_is_digit = token_is_digit;
             token = next_token;
@@ -282,7 +395,11 @@ impl Parser {
             if is_number {
                 return ParsePart::Error(ErrorPart {});
             }
-            ParsePart::Date(DatePart { color, tokens })
+            ParsePart::Date(DatePart {
+                color,
+                use_ampm,
+                tokens,
+            })
         } else {
             ParsePart::Number(NumberPart {
                 color,

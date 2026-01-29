@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::UserModel;
+use crate::test::user_model::util::new_empty_user_model;
 
 #[test]
 fn model_evaluates_automatically() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "=1 + 1").unwrap();
 
     assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("2".to_string()));
@@ -13,7 +13,7 @@ fn model_evaluates_automatically() {
 
 #[test]
 fn pause_resume_evaluation() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.pause_evaluation();
     model.set_user_input(0, 1, 1, "=1+1").unwrap();
     assert_eq!(

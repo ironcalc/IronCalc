@@ -1,0 +1,93 @@
+{
+  "app": {
+    "title": "IronCalc"
+  },
+  "default_workbook_name": "Cartella",
+  "errors": {
+    "model_not_found": "Modello non trovato o errore durante il caricamento",
+    "example_not_found": "File di esempio non trovato o errore durante il caricamento"
+  },
+  "welcome_dialog": {
+    "title": "Benvenuto su IronCalc",
+    "subtitle": "Inizia con una cartella di lavoro vuota o un modello pronto all'uso.",
+    "close_dialog": "Chiudi finestra",
+    "new": "Nuovo",
+    "blank_workbook": "Cartella di lavoro vuota",
+    "blank_workbook_description": "Crea da zero o carica il tuo file.",
+    "templates": {
+      "choose_template": "Scegli un modello",
+      "templates": "Modelli",
+      "mortgage_calculator": "Calcolatore mutuo",
+      "mortgage_calculator_description": "Stima pagamenti, interessi e costo totale.",
+      "travel_expenses_tracker": "Tracciamento spese di viaggio",
+      "travel_expenses_tracker_description": "Tieni traccia dei costi di viaggio e rispetta il budget."
+    },
+    "create_workbook": "Crea cartella di lavoro"
+  },
+  "left_drawer": {
+    "new_workbook": "Nuova cartella di lavoro",
+    "pinned": "Fissati",
+    "today": "Oggi",
+    "last_30_days": "Ultimi 30 giorni",
+    "older": "Più vecchi",
+    "workbook_menu": {
+      "download": "Scarica (.xlsx)",
+      "pin": "Fissa",
+      "unpin": "Rimuovi fissaggio",
+      "duplicate": "Duplica",
+      "delete": "Elimina cartella di lavoro"
+    },
+    "alert": {
+      "title": "Attenzione!",
+      "subtitle": "IronCalc memorizza i tuoi dati solo nella memoria locale del browser.",
+      "subtitle2": "<bold>Scarica spesso il tuo XLSX</bold> – le versioni future potrebbero non aprire le cartelle di lavoro attuali, anche se condivise."
+    },
+    "documentation": "Documentazione"
+  },
+  "file_bar": {
+    "open_sidebar": "Apri barra laterale",
+    "close_sidebar": "Chiudi barra laterale",
+    "file_menu": {
+      "button": "File",
+      "new_blank_workbook": "Nuova cartella di lavoro vuota",
+      "new_from_template": "Nuovo da modello",
+      "import": {
+        "button": "Importa",
+        "title": "Importa un file .xlsx",
+        "subtitle": "Trascina e rilascia un file qui o",
+        "subtitle_link": "clicca per sfogliare",
+        "learn_more": "Scopri di più sull'importazione di file in IronCalc",
+        "close_dialog": "Chiudi finestra",
+        "uploading": "Caricamento di {{fileName}}...",
+        "drop_file_here": "Rilascia il file qui"
+      },
+      "download": "Scarica (.xlsx)",
+      "delete_workbook": {
+        "button": "Elimina cartella di lavoro",
+        "title": "Sei sicuro?",
+        "subtitle": "La cartella di lavoro <bold>'{{workbookName}}'</bold> verrà eliminata definitivamente. Questa azione non può essere annullata.",
+        "confirm_button": "Sì, elimina cartella di lavoro",
+        "cancel_button": "Annulla"
+      },
+      "default_language": "Lingua predefinita"
+    },
+    "help_menu": {
+      "button": "Aiuto",
+      "documentation": "Documentazione",
+      "keyboard_shortcuts": "Scorciatoie da tastiera"
+    },
+    "title_input": {
+      "warning_text1": "Questa cartella di lavoro è memorizzata solo nel tuo browser. Per tenerla al sicuro, scaricala come .xlsx.",
+      "warning_text2": " Le versioni future potrebbero essere incompatibili."
+    },
+    "share_popover": {
+      "button": "Condividi",
+      "copy_url": "Copia URL",
+      "copied": "Copiato!",
+      "info_text": "Chiunque abbia il link potrà accedere a una copia di questa cartella di lavoro"
+    }
+  },
+  "loading_screen": {
+    "message": "Caricamento di IronCalc"
+  }
+}

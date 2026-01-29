@@ -6,7 +6,7 @@ lang: en-US
 
 # Serial Numbers
 ::: warning
-**Note:** This draft page is under construction 🚧
+**Note:** This page is under construction 🚧
 :::
 **Note**:	For convenience, dates presented on this page are formatted in accordance with the ISO 8601 international standard. IronCalc can recognize and display dates in other formats.
 

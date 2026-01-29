@@ -11,7 +11,7 @@ use crate::expressions::{
     types::ParsedReference,
 };
 
-fn new_lexer(formula: &str, a1_mode: bool) -> Lexer {
+fn new_lexer(formula: &str, a1_mode: bool) -> Lexer<'_> {
     let locale = get_locale("en").unwrap();
     let language = get_language("en").unwrap();
     let mode = if a1_mode {
@@ -655,7 +655,9 @@ fn test_comma() {
 
     // Used for testing locales where the comma is the decimal separator
     let mut lx = new_lexer("12,34", false);
-    lx.locale.numbers.symbols.decimal = ",".to_string();
+    let locale = get_locale("de").unwrap();
+    lx.locale = locale;
+
     assert_eq!(lx.next_token(), Number(12.34));
     assert_eq!(lx.next_token(), EOF);
 }

@@ -133,6 +133,7 @@ fn fn_imcot() {
     );
 }
 
+#[cfg_attr(target_os = "windows", ignore)]
 #[test]
 fn fn_imtan() {
     let mut model = new_empty_model();

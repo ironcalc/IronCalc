@@ -7,7 +7,7 @@ lang: en-US
 # Optional Arguments
 
 ::: warning
-**Note:** This draft page is under construction 🚧
+**Note:** This page is under construction 🚧
 :::
 
 Any IronCalc function may accept zero, one or more arguments, which are values passed to the function when it is called from a spreadsheet formula.

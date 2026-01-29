@@ -1,7 +1,7 @@
 use ironcalc::{base::Model, export::save_to_xlsx};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut model = Model::new_empty("widths-and-heights", "en", "UTC")?;
+    let mut model = Model::new_empty("widths-and-heights", "en", "UTC", "en")?;
     // Cell C5
     let (sheet, row, column) = (0, 5, 3);
     // Make the first column 4 times as width

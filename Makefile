@@ -10,10 +10,13 @@ lint:
 format:
 	cargo fmt
 
-.PHONY: tests
-tests: lint
+.PHONY: test-rust
+test-rust:
 	cargo test
 	make remove-artifacts
+
+.PHONY: test-js
+test-js:
 	# Regretabbly we need to build the wasm twice, once for the nodejs tests
 	# and a second one for the vitest.
 	cd bindings/wasm/ && \
@@ -22,8 +25,14 @@ tests: lint
 	  wasm-bindgen --target nodejs --typescript --out-dir pkg --out-name xlsx ../../target/wasm32-unknown-unknown/release/xlsx_wasm.wasm && \
 	  node tests/test.mjs && \
 	  make
-	cd webapp/IronCalc/ && npm run test
+	cd webapp/IronCalc/ && npm install && npm run test
+
+.PHONY: test-python
+test-python:
 	cd bindings/python && ./run_tests.sh && ./run_examples.sh
+
+.PHONY: tests
+tests: lint test-rust test-js test-python
 
 .PHONY: remove-artifacts
 remove-artifacts:

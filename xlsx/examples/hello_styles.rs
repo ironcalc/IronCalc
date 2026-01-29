@@ -1,7 +1,7 @@
 use ironcalc::{base::Model, export::save_to_xlsx};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut model = Model::new_empty("hello_styles", "en", "UTC")?;
+    let mut model = Model::new_empty("hello_styles", "en", "UTC", "en")?;
 
     // We are going to change styles in cell A1
     let (sheet, row, column) = (0, 1, 1);

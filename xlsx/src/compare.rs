@@ -183,17 +183,50 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
     }
 }
 
+// Cheesy way to get the locale from the workbook metadata sheet
+fn get_workbook_metadata(model: &Model) -> String {
+    // let mut index = 0;
+    let mut metadata_sheet_index = None;
+    for (index, ws) in model.workbook.worksheets.iter().enumerate() {
+        if ws.name.eq_ignore_ascii_case("METADATA") {
+            metadata_sheet_index = Some(index as u32);
+            break;
+        }
+    }
+    let default_locale = "en".to_string();
+    if let Some(sheet_index) = metadata_sheet_index {
+        if let Ok(a1) = model.get_formatted_cell_value(sheet_index, 1, 1) {
+            if a1 == "Locale" {
+                match model.get_formatted_cell_value(sheet_index, 1, 2) {
+                    Ok(v) if v == "en-GB" => {
+                        return "en-GB".to_string();
+                    }
+                    _ => return default_locale,
+                }
+            }
+        }
+    }
+    default_locale
+}
+
 /// Tests that file in file_path produces the same results in Excel and in IronCalc.
 pub fn test_file(file_path: &str) -> Result<(), String> {
-    let model1 = load_from_xlsx(file_path, "en", "UTC").unwrap();
-    let mut model2 = load_from_xlsx(file_path, "en", "UTC").unwrap();
+    // FIXME: we need to load the model twice :S
+    let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
+    let locale = get_workbook_metadata(&model1);
+    let model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
+    let mut model2 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
     model2.evaluate();
     compare_models(&model1, &model2)
 }
 
 /// Tests that file in file_path can be converted to xlsx and read again
 pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(), String> {
-    let model1 = load_from_xlsx(file_path, "en", "UTC").unwrap();
+    // FIXME: we need to evaluate the model twice :S
+    let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
+    let locale = get_workbook_metadata(&model1);
+
+    let model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
 
     let base_name = Path::new(file_path).file_name().unwrap().to_str().unwrap();
 
@@ -202,7 +235,7 @@ pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(),
     // test can save
     save_to_xlsx(&model1, temp_file_path).unwrap();
     // test can open
-    let mut model2 = load_from_xlsx(temp_file_path, "en", "UTC").unwrap();
+    let mut model2 = load_from_xlsx(temp_file_path, &locale, "UTC", "en").unwrap();
     model2.evaluate();
     compare_models(&model1, &model2)
 }
@@ -214,9 +247,9 @@ mod tests {
 
     #[test]
     fn compare_different_sheets() {
-        let mut model1 = Model::new_empty("model", "en", "UTC").unwrap();
+        let mut model1 = Model::new_empty("model", "en", "UTC", "en").unwrap();
         model1.new_sheet();
-        let model2 = Model::new_empty("model", "en", "UTC").unwrap();
+        let model2 = Model::new_empty("model", "en", "UTC", "en").unwrap();
 
         assert!(compare(&model1, &model2).is_err());
     }
