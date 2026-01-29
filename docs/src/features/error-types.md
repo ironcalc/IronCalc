@@ -6,10 +6,6 @@ lang: en-US
 
 # Error Types
 
-::: warning
-**Note:** This draft page is under construction 🚧
-:::
-
 The result of a formula is sometimes an _error_. In some situations those errors are expected and your formulas might be dealing with them.
 The error `#N/A` might signal that there is no data to evaluate the formula yet. Maybe the payroll has not been introduced for that month just yet.
 

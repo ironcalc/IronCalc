@@ -3,7 +3,7 @@
 use crate::{
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW},
     expressions::types::Area,
-    UserModel,
+    test::user_model::util::new_empty_user_model,
 };
 
 #[test]
@@ -11,7 +11,7 @@ fn delete_column_formatting() {
     // We are going to delete formatting in column G (7)
     // There are cells with their own styles
     // There are rows with their own styles
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let cell_g123 = Area {
         sheet: 0,
         row: 123,
@@ -103,7 +103,7 @@ fn delete_column_formatting() {
 
 #[test]
 fn column_width() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model
         .set_columns_width(0, 7, 7, DEFAULT_COLUMN_WIDTH * 2.0)
         .unwrap();
@@ -143,7 +143,7 @@ fn column_width() {
 
 #[test]
 fn column_row_style_undo() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model
         .set_columns_width(0, 7, 7, DEFAULT_COLUMN_WIDTH * 2.0)
         .unwrap();
@@ -205,7 +205,7 @@ fn column_row_style_undo() {
 
 #[test]
 fn column_row_row_height_undo() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     let column_g_range = Area {
         sheet: 0,

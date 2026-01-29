@@ -50,7 +50,7 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = "".to_string();
         for arg in args {
@@ -149,7 +149,7 @@ impl Model {
                 Ok(s) => s,
                 Err(s) => return s,
             };
-            let d = format_number(value, &format_code, &self.locale);
+            let d = format_number(value, &format_code, self.locale);
             if let Some(_e) = d.error {
                 return CalcResult::Error {
                     error: Error::VALUE,
@@ -1210,7 +1210,7 @@ impl Model {
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::String(text) => {
                 let currencies = vec!["$", "€"];
-                if let Ok((value, _)) = parse_formatted_number(&text, &currencies) {
+                if let Ok((value, _)) = parse_formatted_number(&text, &currencies, self.locale) {
                     return CalcResult::Number(value);
                 };
                 CalcResult::Error {

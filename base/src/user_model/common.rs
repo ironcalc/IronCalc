@@ -11,7 +11,7 @@ use crate::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
     },
-    model::Model,
+    model::{FmtSettings, Model},
     types::{
         Alignment, BorderItem, Cell, CellType, Col, HorizontalAlignment, SheetProperties,
         SheetState, Style, VerticalAlignment,
@@ -23,7 +23,8 @@ use crate::user_model::history::{
     ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
 };
 
-use super::border_utils::is_max_border;
+use super::{border_utils::is_max_border, sequence_detector::detect_progression};
+
 /// Data for the clipboard
 pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
 
@@ -208,7 +209,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 /// ```rust
 /// # use ironcalc_base::UserModel;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut model = UserModel::new_empty("model", "en", "UTC")?;
+/// let mut model = UserModel::new_empty("model", "en", "UTC", "en")?;
 /// model.set_user_input(0, 1, 1, "=1+1")?;
 /// assert_eq!(model.get_formatted_cell_value(0, 1, 1)?, "2");
 /// model.undo()?;
@@ -218,20 +219,20 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 /// # Ok(())
 /// # }
 /// ```
-pub struct UserModel {
-    pub(crate) model: Model,
+pub struct UserModel<'a> {
+    pub(crate) model: Model<'a>,
     history: History,
     send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
 }
 
-impl Debug for UserModel {
+impl<'a> Debug for UserModel<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UserModel").finish()
     }
 }
 
-impl UserModel {
+impl<'a> UserModel<'a> {
     /// Creates a user model from an existing model
     pub fn from_model(model: Model) -> UserModel {
         UserModel {
@@ -246,8 +247,13 @@ impl UserModel {
     ///
     /// See also:
     /// * [Model::new_empty]
-    pub fn new_empty(name: &str, locale_id: &str, timezone: &str) -> Result<UserModel, String> {
-        let model = Model::new_empty(name, locale_id, timezone)?;
+    pub fn new_empty(
+        name: &'a str,
+        locale_id: &'a str,
+        timezone: &'a str,
+        language_id: &'a str,
+    ) -> Result<UserModel<'a>, String> {
+        let model = Model::new_empty(name, locale_id, timezone, language_id)?;
         Ok(UserModel {
             model,
             history: History::default(),
@@ -260,8 +266,8 @@ impl UserModel {
     ///
     /// See also:
     /// * [Model::from_bytes]
-    pub fn from_bytes(s: &[u8]) -> Result<UserModel, String> {
-        let model = Model::from_bytes(s)?;
+    pub fn from_bytes(s: &[u8], language_id: &'a str) -> Result<UserModel<'a>, String> {
+        let model = Model::from_bytes(s, language_id)?;
         Ok(UserModel {
             model,
             history: History::default(),
@@ -279,7 +285,7 @@ impl UserModel {
     }
 
     /// Returns the internal model
-    pub fn get_model(&self) -> &Model {
+    pub fn get_model(&self) -> &Model<'_> {
         &self.model
     }
 
@@ -458,7 +464,7 @@ impl UserModel {
     /// * [Model::get_cell_content]
     #[inline]
     pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
-        self.model.get_cell_content(sheet, row, column)
+        self.model.get_localized_cell_content(sheet, row, column)
     }
 
     /// Returns the formatted value of a cell
@@ -630,6 +636,7 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
@@ -659,6 +666,7 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
@@ -1495,9 +1503,9 @@ impl UserModel {
             // we go downwards, we start from `row1 + height1` to `to_row`,
             anchor_row = row1;
             sign = 1;
-            row_range = (row1 + height1..to_row + 1).collect();
+            row_range = (row1 + height1..=to_row).collect();
         } else if to_row < row1 {
-            // we go upwards, starting from `row1 - `` all the way to `to_row`
+            // we go upwards, starting from `row1 - 1` all the way to `to_row`
             anchor_row = row1 + height1 - 1;
             sign = -1;
             row_range = (to_row..row1).rev().collect();
@@ -1507,7 +1515,12 @@ impl UserModel {
 
         for column in column1..column1 + width1 {
             let mut index = 0;
-            for row_ref in &row_range {
+            let locale = &self.model.locale;
+            let values = (row1..height1 + row1)
+                .map(|row| self.get_cell_content(sheet, row, column))
+                .collect::<Result<Vec<_>, _>>()?;
+            let possible_progression = detect_progression(&values, locale);
+            for (range_idx, row_ref) in row_range.iter().enumerate() {
                 // Save value and style first
                 let row = *row_ref;
                 let old_value = self
@@ -1518,11 +1531,18 @@ impl UserModel {
                     .cloned();
                 let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
 
-                // compute the new value and set it
                 let source_row = anchor_row + index;
-                let target_value = self
-                    .model
-                    .extend_to(sheet, source_row, column, row, column)?;
+                let target_value;
+
+                // compute the new value and set it
+                if let Some(ref detected_progression) = possible_progression {
+                    target_value = detected_progression.next(range_idx);
+                } else {
+                    target_value = self
+                        .model
+                        .extend_to(sheet, source_row, column, row, column)?;
+                }
+
                 self.model
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
@@ -2002,7 +2022,10 @@ impl UserModel {
         new_scope: Option<u32>,
         new_formula: &str,
     ) -> Result<(), String> {
-        let old_formula = self.model.get_defined_name_formula(name, scope)?;
+        let old_formula = self
+            .model
+            .get_defined_name_formula(name, scope)
+            .map_err(|_| "General: Failed to get old name")?;
         let diff_list = vec![Diff::UpdateDefinedName {
             name: name.to_string(),
             scope,
@@ -2016,6 +2039,61 @@ impl UserModel {
             .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
         self.evaluate_if_not_paused();
         Ok(())
+    }
+
+    /// validates a new defined name
+    pub fn is_valid_defined_name(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<Option<u32>, String> {
+        self.model.is_valid_defined_name(name, scope, formula)
+    }
+
+    /// Sets the timezone for the model
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
+        let diff_list = vec![Diff::SetTimezone {
+            old_value: self.get_timezone(),
+            new_value: timezone.to_string(),
+        }];
+        self.push_diff_list(diff_list);
+        self.model.set_timezone(timezone)
+    }
+
+    /// Sets the locale for the model
+    pub fn set_locale(&mut self, locale: &str) -> Result<(), String> {
+        let diff_list = vec![Diff::SetLocale {
+            old_value: self.get_locale(),
+            new_value: locale.to_string(),
+        }];
+        self.push_diff_list(diff_list);
+        self.model.set_locale(locale)
+    }
+
+    /// Gets the timezone of the model
+    pub fn get_timezone(&self) -> String {
+        self.model.get_timezone()
+    }
+
+    /// Gets the locale of the model
+    pub fn get_locale(&self) -> String {
+        self.model.get_locale()
+    }
+
+    /// Get the language for the model
+    pub fn get_language(&self) -> String {
+        self.model.get_language()
+    }
+
+    /// Sets the language for the model
+    pub fn set_language(&mut self, language: &str) -> Result<(), String> {
+        self.model.set_language(language)
+    }
+
+    /// Gets the formatting settings for the model
+    pub fn get_fmt_settings(&self) -> FmtSettings {
+        self.model.get_fmt_settings()
     }
 
     // **** Private methods ****** //
@@ -2338,6 +2416,18 @@ impl UserModel {
                     self.model.move_row_action(*sheet, *row + *delta, -*delta)?;
                     needs_evaluation = true;
                 }
+                Diff::SetLocale {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_locale(old_value)?;
+                }
+                Diff::SetTimezone {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_timezone(old_value)?;
+                }
             }
         }
         if needs_evaluation {
@@ -2556,6 +2646,18 @@ impl UserModel {
                 Diff::MoveRow { sheet, row, delta } => {
                     self.model.move_row_action(*sheet, *row, *delta)?;
                     needs_evaluation = true;
+                }
+                Diff::SetLocale {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_locale(new_value)?;
+                }
+                Diff::SetTimezone {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_timezone(new_value)?;
                 }
             }
         }

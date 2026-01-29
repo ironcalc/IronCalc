@@ -1,13 +1,11 @@
 import type { CellStyle, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
+import { theme } from "../../theme";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
 import {
   COLUMN_WIDTH_SCALE,
-  LAST_COLUMN,
-  LAST_ROW,
-  ROW_HEIGH_SCALE,
   cellPadding,
   defaultTextColor,
   gridColor,
@@ -17,7 +15,10 @@ import {
   headerSelectedBackground,
   headerSelectedColor,
   headerTextColor,
+  LAST_COLUMN,
+  LAST_ROW,
   outlineColor,
+  ROW_HEIGH_SCALE,
 } from "./constants";
 import { attachOutlineHandle } from "./outlineHandle";
 import { computeWrappedLines, hexToRGBA10Percent } from "./util";
@@ -721,7 +722,7 @@ export default class WorksheetCanvas {
     const style = this.model.getCellStyle(selectedSheet, row, column);
 
     // first the background
-    let backgroundColor = "#FFFFFF";
+    let backgroundColor = theme.palette.common.white;
     if (style.fill.fg_color) {
       backgroundColor = style.fill.fg_color;
     }
@@ -1036,14 +1037,21 @@ export default class WorksheetCanvas {
     width: number,
     div: HTMLDivElement,
     selected: boolean,
+    isFullColumnSelected: boolean,
   ): void {
     div.style.boxSizing = "border-box";
     div.style.width = `${width}px`;
     div.style.height = `${headerRowHeight}px`;
     div.style.backgroundColor = selected
-      ? headerSelectedBackground
+      ? isFullColumnSelected
+        ? theme.palette.primary.main
+        : headerSelectedBackground
       : headerBackground;
-    div.style.color = selected ? headerSelectedColor : headerTextColor;
+    div.style.color = selected
+      ? isFullColumnSelected
+        ? theme.palette.common.white
+        : headerSelectedColor
+      : headerTextColor;
     div.style.fontWeight = "bold";
     div.style.borderLeft = `1px solid ${headerBorderColor}`;
     div.style.borderTop = `1px solid ${headerBorderColor}`;
@@ -1071,9 +1079,15 @@ export default class WorksheetCanvas {
     const { sheet: selectedSheet, range } = this.model.getSelectedView();
     let rowStart = range[0];
     let rowEnd = range[2];
+    let columnStart = range[1];
+    let columnEnd = range[3];
     if (rowStart > rowEnd) {
       [rowStart, rowEnd] = [rowEnd, rowStart];
     }
+    if (columnStart > columnEnd) {
+      [columnStart, columnEnd] = [columnEnd, columnStart];
+    }
+    const isFullRowSelected = columnStart === 1 && columnEnd === LAST_COLUMN;
     const context = this.ctx;
 
     let topLeftCornerY = headerRowHeight + 0.5;
@@ -1085,7 +1099,9 @@ export default class WorksheetCanvas {
       context.fillStyle = headerBorderColor;
       context.fillRect(0.5, topLeftCornerY, headerColumnWidth, rowHeight);
       context.fillStyle = selected
-        ? headerSelectedBackground
+        ? isFullRowSelected
+          ? theme.palette.primary.main
+          : headerSelectedBackground
         : headerBackground;
       context.fillRect(
         0.5,
@@ -1097,7 +1113,11 @@ export default class WorksheetCanvas {
         context.fillStyle = outlineColor;
         context.fillRect(headerColumnWidth - 1, topLeftCornerY, 1, rowHeight);
       }
-      context.fillStyle = selected ? headerSelectedColor : headerTextColor;
+      context.fillStyle = selected
+        ? isFullRowSelected
+          ? theme.palette.common.white
+          : headerSelectedColor
+        : headerTextColor;
       context.font = `bold 12px ${defaultCellFontFamily}`;
       context.fillText(
         `${row}`,
@@ -1122,11 +1142,17 @@ export default class WorksheetCanvas {
     const { columnHeaders } = this;
     let deltaX = 0;
     const { range } = this.model.getSelectedView();
+    let rowStart = range[0];
+    let rowEnd = range[2];
     let columnStart = range[1];
     let columnEnd = range[3];
     if (columnStart > columnEnd) {
       [columnStart, columnEnd] = [columnEnd, columnStart];
     }
+    if (rowStart > rowEnd) {
+      [rowStart, rowEnd] = [rowEnd, rowStart];
+    }
+    const isFullColumnSelected = rowStart === 1 && rowEnd === LAST_ROW;
     for (const header of columnHeaders.querySelectorAll(".column-header"))
       header.remove();
     for (const handle of columnHeaders.querySelectorAll(
@@ -1146,7 +1172,12 @@ export default class WorksheetCanvas {
     // Frozen headers
     for (let column = 1; column <= frozenColumns; column += 1) {
       const selected = column >= columnStart && column <= columnEnd;
-      deltaX += this.addColumnHeader(deltaX, column, selected);
+      deltaX += this.addColumnHeader(
+        deltaX,
+        column,
+        selected,
+        isFullColumnSelected,
+      );
     }
 
     if (frozenColumns !== 0) {
@@ -1162,7 +1193,12 @@ export default class WorksheetCanvas {
 
     for (let column = firstColumn; column <= lastColumn; column += 1) {
       const selected = column >= columnStart && column <= columnEnd;
-      deltaX += this.addColumnHeader(deltaX, column, selected);
+      deltaX += this.addColumnHeader(
+        deltaX,
+        column,
+        selected,
+        isFullColumnSelected,
+      );
     }
 
     columnHeaders.style.width = `${deltaX}px`;
@@ -1172,6 +1208,7 @@ export default class WorksheetCanvas {
     deltaX: number,
     column: number,
     selected: boolean,
+    isFullColumnSelected: boolean,
   ): number {
     const columnWidth = this.getColumnWidth(
       this.model.getSelectedSheet(),
@@ -1182,7 +1219,7 @@ export default class WorksheetCanvas {
     div.textContent = columnNameFromNumber(column);
     this.columnHeaders.insertBefore(div, null);
 
-    this.styleColumnHeader(columnWidth, div, selected);
+    this.styleColumnHeader(columnWidth, div, selected, isFullColumnSelected);
     this.addColumnResizeHandle(deltaX + columnWidth, column, columnWidth);
     return columnWidth;
   }
@@ -1523,7 +1560,9 @@ export default class WorksheetCanvas {
       return;
     }
     cellOutline.style.visibility = "visible";
-    cellOutlineHandle.style.visibility = "visible";
+    cellOutlineHandle.style.visibility = this.workbookState.isSelecting()
+      ? "hidden"
+      : "visible";
     areaOutline.style.visibility = "visible";
 
     const [selectedSheet, selectedRow, selectedColumn] =
@@ -1582,7 +1621,9 @@ export default class WorksheetCanvas {
       handleY += this.getRowHeight(selectedSheet, rowStart);
     } else {
       areaOutline.style.visibility = "visible";
-      cellOutlineHandle.style.visibility = "visible";
+      cellOutlineHandle.style.visibility = this.workbookState.isSelecting()
+        ? "hidden"
+        : "visible";
       const [areaX, areaY] = this.getCoordinatesByCell(rowStart, columnStart);
       const [areaWidth, areaHeight] = this.getAreaDimensions(
         rowStart,
@@ -1592,10 +1633,13 @@ export default class WorksheetCanvas {
       );
       handleX = areaX + areaWidth;
       handleY = areaY + areaHeight;
+      const isSelecting = this.workbookState.isSelecting();
+      // Add 1px when selecting to compensate for missing border
+      const borderCompensation = isSelecting ? 1 : 0;
       areaOutline.style.left = `${areaX - padding - 1}px`;
       areaOutline.style.top = `${areaY - padding - 1}px`;
-      areaOutline.style.width = `${areaWidth + 2 * padding + 1}px`;
-      areaOutline.style.height = `${areaHeight + 2 * padding + 1}px`;
+      areaOutline.style.width = `${areaWidth + 2 * padding + 1 + borderCompensation}px`;
+      areaOutline.style.height = `${areaHeight + 2 * padding + 1 + borderCompensation}px`;
       const clipLeft = rowStart < topLeftCell.row && rowStart > frozenRows;
       const clipTop =
         columnStart < topLeftCell.column && columnStart > frozenColumns;
@@ -1607,7 +1651,9 @@ export default class WorksheetCanvas {
         clipLeft,
         clipTop,
       );
-      areaOutline.style.border = `1px solid ${outlineColor}`;
+      areaOutline.style.border = isSelecting
+        ? "none"
+        : `1px solid ${outlineColor}`;
       // hide the handle if it is out of the visible area
       if (
         (rowEnd > frozenRows && rowEnd < topLeftCell.row - 1) ||

@@ -4,6 +4,7 @@ mod border;
 mod border_utils;
 mod common;
 pub(crate) mod history;
+mod sequence_detector;
 mod ui;
 
 pub use common::UserModel;

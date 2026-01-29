@@ -96,3 +96,14 @@ fn test_fn_tan_pi2() {
     // This is consistent with IEEE 754 but inconsistent with Excel
     assert_eq!(model._get_text("A1"), *"1.63312E+16");
 }
+
+#[test]
+fn test_trigonometric_identity() {
+    let mut model = new_empty_model();
+    model._set("A1", "=COTH(1)*CSCH(1)");
+    model._set("A2", "=COSH(1)/(SINH(1))^2");
+    model._set("A3", "=A1=A2");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A3"), *"TRUE");
+}

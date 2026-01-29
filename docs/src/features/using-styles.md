@@ -6,23 +6,30 @@ lang: en-US
 
 # Using Styles
 
-In IronCalc you can aldo customize the appearance of your data with a variety of style options:
+IronCalc lets you customize the appearance of your data with a variety of style options:
 
-- **Background Colors**: Apply colors to cell backgrounds.
-- **Text Colors**: Change the color of the text within cells.
-- **Borders**: Add or modify borders around cells, including **border color** and **line thickness** (thin, medium or thick).
-- **Font Styles**: Use **bold**, _italics_, _underlined_, or **strikethrough** text for emphasis.
-- **Alignment**: Align text both **horizontally** and **vertically**, with options to **align middle** for both axes for perfect centering.
+- **Background colors**: Apply colors to cell backgrounds.
+- **Text colors**: Change the color of text within cells.
+- **Borders**: Add or modify borders around cells, including **border color** and **line thickness** (thin, medium, or thick).
+- **Font styles**: Use **bold**, *italic*, <u>underline</u>, or ~~strikethrough~~ text for emphasis.
+- **Alignment**: Align text **horizontally** and **vertically**, with options to center on both axes.
+- **Text wrapping**: Keep the default text overflow, or enable wrapping within cells.
 
 You can also **show or hide grid lines** for a cleaner layout.
 
 ## Adjusting Row and Column Dimensions
 
-You can also customize the layout by modifying:
+Customize the layout by modifying:
 
-- **Row Heights**: Adjust the height of rows to fit your content.
-- **Column Widths**: Resize columns for optimal visibility of data.
+- **Row heights**: Adjust the height of rows to fit your content.
+- **Column widths**: Resize columns for optimal visibility.
+
+## Freezing Rows and Columns
+
+You can freeze one or more rows and columns so they stay visible while scrolling. To do this, right-click anywhere on the canvas and use the **context menu**. Frozen rows and columns remain fixed while the rest of the content scrolls.
 
 ## Copying and Pasting Styles
 
-Styles can be easily **copied and pasted** from one cell or cell range to another. Simply copy the cell with the desired style and paste it into another cell or range to apply the same formatting.
+Styles can be **copied and pasted** from one cell or range to another. Simply copy a cell with the desired style and paste it elsewhere to apply the same formatting.
+
+To clear formatting, use the **Clear formatting** button on the left side of the toolbar.

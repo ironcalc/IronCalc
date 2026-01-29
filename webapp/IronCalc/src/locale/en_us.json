@@ -5,7 +5,7 @@
     "copy_styles": "Copy styles",
     "clear_formatting": "Clear formatting",
     "euro": "Format as Euro",
-    "percentage": "Format as Percentage",
+    "percentage": "Format as percentage",
     "bold": "Bold",
     "italic": "Italic",
     "underline": "Underline",
@@ -21,19 +21,21 @@
     "decimal_places_increase": "Increase decimal places",
     "decimal_places_decrease": "Decrease decimal places",
     "show_hide_grid_lines": "Show/hide grid lines",
-    "name_manager": "Name manager",
+    "named_ranges": "Named ranges",
     "vertical_align_bottom": "Align bottom",
-    "vertical_align_middle": " Align middle",
+    "vertical_align_middle": "Align middle",
     "vertical_align_top": "Align top",
-    "selected_png": "Export Selected area as PNG",
+    "selected_png": "Export selected area as PNG",
     "wrap_text": "Wrap text",
+    "scroll_left": "Scroll left",
+    "scroll_right": "Scroll right",
     "format_menu": {
       "auto": "Auto",
       "number": "Number",
       "percentage": "Percentage",
       "currency_eur": "Euro (EUR)",
       "currency_usd": "Dollar (USD)",
-      "currency_gbp": "British Pound (GBD)",
+      "currency_gbp": "British Pound (GBP)",
       "date_short": "Short date",
       "date_long": "Long date",
       "custom": "Custom",
@@ -41,9 +43,7 @@
       "percentage_example": "10%",
       "currency_eur_example": "€",
       "currency_usd_example": "$",
-      "currency_gbp_example": "£",
-      "date_short_example": "09/24/2024",
-      "date_long_example": "Tuesday, September 24, 2024"
+      "currency_gbp_example": "£"
     },
     "borders": {
       "title": "Borders",
@@ -79,10 +79,19 @@
     "confirm": "Yes, delete sheet",
     "cancel": "Cancel"
   },
+  "sheet_tab": {
+    "rename": "Rename",
+    "change_color": "Change Color",
+    "delete": "Delete",
+    "hide_sheet": "Hide sheet"
+  },
   "formula_input": {
     "update": "Update",
     "label": "Formula",
     "title": "Update formula"
+  },
+  "formula_bar": {
+    "manage_named_ranges": "Manage Named Ranges"
   },
   "navigation": {
     "add_sheet": "Add sheet",
@@ -95,15 +104,34 @@
     "name": "Name",
     "range": "Scope",
     "scope": "Range",
-    "help": "Learn more about Named Ranges",
+    "help": "About Named Ranges",
     "new": "Add new",
     "workbook": "Workbook",
     "global": "(Global)",
     "close": "Close dialog",
     "delete": "Delete Range",
     "edit": "Edit Range",
+    "back_to_list": "Back to list",
+    "add_new_range": "Add a new range",
+    "edit_range": "Edit range",
+    "new_named_range": "New Named Range",
+    "range_name": "Range name",
+    "enter_range_name": "Enter range name",
+    "scope_label": "Scope",
+    "scope_helper": "The scope of the named range determines where it is available.",
+    "refers_to": "Refers to",
+    "enter_formula": "Enter formula",
+    "cancel": "Cancel",
     "apply": "Apply changes",
-    "discard": "Discard changes"
+    "discard": "Discard changes",
+    "default_range_prefix": "Range",
+    "errors": {
+      "range_name_required": "Range name is required",
+      "name_cannot_contain_spaces": "Name cannot contain spaces",
+      "name_cannot_start_with_number": "Name cannot start with a number",
+      "name_invalid_characters": "Name contains invalid characters. Use only letters, numbers, underscores, and periods. Must start with a letter or underscore.",
+      "name_already_exists": "This name already exists in the selected scope"
+    }
   },
   "cell_context": {
     "insert_row_above": "Insert 1 row above",
@@ -132,6 +160,48 @@
     "add": "Add new color",
     "default": "Default color",
     "no_fill": "No fill",
-    "custom": "Custom"
+    "recent": "Recent"
+  },
+  "right_drawer": {
+    "resize_drawer": "Resize drawer",
+    "close": "Close"
+  },
+  "regional_settings": {
+    "open_regional_settings": "Open regional settings",
+    "title": "Regional Settings",
+    "close": "Close dialog",
+    "locale": {
+      "title": "Locale",
+      "locale_label": "Locale",
+      "locale_example1": "Number",
+      "locale_example2": "Date and Time",
+      "locale_example3": "Formula delimiter",
+      "delimiter_comma": "Comma",
+      "delimiter_semicolon": "Semicolon"
+    },
+    "language": {
+      "title": "Language",
+      "language_label": "Engine Language",
+      "language_helper": "Controls the language used in function names and error messages.",
+      "display_language": {
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "de": "Deutsch",
+        "it": "Italiano"
+      },
+      "display_language_current_lang": {
+        "en": "English",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "it": "Italian"
+      }
+    },
+    "timezone": {
+      "title": "Timezone",
+      "timezone_label": "Timezone",
+      "timezone_helper": "Modifying this setting will impact date- and time-related functions, including TODAY() and NOW()."
+    }
   }
 }

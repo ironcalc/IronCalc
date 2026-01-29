@@ -5,7 +5,11 @@ use wasm_bindgen::{
 };
 
 use ironcalc_base::{
-    expressions::{lexer::util::get_tokens as tokenizer, types::Area, utils::number_to_column},
+    expressions::{
+        lexer::util::get_tokens as tokenizer,
+        types::Area,
+        utils::{number_to_column, quote_name as quote_name_ic},
+    },
     types::{CellType, Style},
     worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
@@ -31,6 +35,23 @@ pub fn column_name_from_number(column: i32) -> Result<String, JsError> {
     }
 }
 
+#[wasm_bindgen(js_name = "quoteName")]
+pub fn quote_name(name: &str) -> String {
+    quote_name_ic(name)
+}
+
+/// Gets all timezones
+#[wasm_bindgen(js_name = "getAllTimezones")]
+pub fn get_all_timezones() -> Vec<String> {
+    ironcalc_base::get_all_timezones()
+}
+
+/// Gets all supported locales
+#[wasm_bindgen(js_name = "getSupportedLocales")]
+pub fn get_supported_locales() -> Vec<String> {
+    ironcalc_base::get_supported_locales()
+}
+
 #[derive(Serialize)]
 struct DefinedName {
     name: String,
@@ -44,21 +65,63 @@ struct NewSheet {
     index: u32,
 }
 
+#[derive(Serialize)]
+struct FmtSettings {
+    currency: String,
+    currency_format: String,
+    short_date: String,
+    short_date_example: String,
+    long_date: String,
+    long_date_example: String,
+    number_fmt: String,
+    number_example: String,
+}
+
+impl From<ironcalc_base::FmtSettings> for FmtSettings {
+    fn from(settings: ironcalc_base::FmtSettings) -> Self {
+        FmtSettings {
+            currency: settings.currency,
+            currency_format: settings.currency_format,
+            short_date: settings.short_date,
+            short_date_example: settings.short_date_example,
+            long_date: settings.long_date,
+            long_date_example: settings.long_date_example,
+            number_fmt: settings.number_fmt,
+            number_example: settings.number_example,
+        }
+    }
+}
+
+fn leak_str(s: &str) -> &'static str {
+    Box::leak(s.to_owned().into_boxed_str())
+}
+
 #[wasm_bindgen]
 pub struct Model {
-    model: BaseModel,
+    model: BaseModel<'static>,
 }
 
 #[wasm_bindgen]
 impl Model {
     #[wasm_bindgen(constructor)]
-    pub fn new(name: &str, locale: &str, timezone: &str) -> Result<Model, JsError> {
-        let model = BaseModel::new_empty(name, locale, timezone).map_err(to_js_error)?;
+    pub fn new(
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<Model, JsError> {
+        let name = leak_str(name);
+        let locale = leak_str(locale);
+        let timezone = leak_str(timezone);
+        let language_id = leak_str(language_id);
+        let model =
+            BaseModel::new_empty(name, locale, timezone, language_id).map_err(to_js_error)?;
         Ok(Model { model })
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Result<Model, JsError> {
-        let model = BaseModel::from_bytes(bytes).map_err(to_js_error)?;
+    pub fn from_bytes(bytes: &[u8], language_id: &str) -> Result<Model, JsError> {
+        let language_id = leak_str(language_id);
+        let model = BaseModel::from_bytes(bytes, language_id).map_err(to_js_error)?;
         Ok(Model { model })
     }
 
@@ -773,5 +836,65 @@ impl Model {
         self.model
             .get_first_non_empty_in_row_after_column(sheet, row, column)
             .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "isValidDefinedName")]
+    pub fn is_valid_defined_name(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<(), JsError> {
+        match self.model.is_valid_defined_name(name, scope, formula) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(to_js_error(e.to_string())),
+        }
+    }
+
+    #[wasm_bindgen(js_name = "setTimezone")]
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), JsError> {
+        self.model
+            .set_timezone(timezone)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "setLocale")]
+    pub fn set_locale(&mut self, locale: &str) -> Result<(), JsError> {
+        self.model
+            .set_locale(locale)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Gets the timezone of the model
+    #[wasm_bindgen(js_name = "getTimezone")]
+    pub fn get_timezone(&self) -> String {
+        self.model.get_timezone()
+    }
+
+    /// Gets the locale of the model
+    #[wasm_bindgen(js_name = "getLocale")]
+    pub fn get_locale(&self) -> String {
+        self.model.get_locale()
+    }
+
+    /// Gets the language of the model
+    #[wasm_bindgen(js_name = "getLanguage")]
+    pub fn get_language(&self) -> String {
+        self.model.get_language()
+    }
+
+    /// Sets the language of the model
+    #[wasm_bindgen(js_name = "setLanguage")]
+    pub fn set_language(&mut self, language: &str) -> Result<(), JsError> {
+        self.model
+            .set_language(language)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    /// Gets Settings format info
+    #[wasm_bindgen(js_name = "getFmtSettings", unchecked_return_type = "FmtSettings")]
+    pub fn get_fmt_settings(&self) -> Result<JsValue, JsError> {
+        let settings: FmtSettings = self.model.get_fmt_settings().into();
+        serde_wasm_bindgen::to_value(&settings).map_err(|e| to_js_error(e.to_string()))
     }
 }

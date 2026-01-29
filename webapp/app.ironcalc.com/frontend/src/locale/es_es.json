@@ -1,0 +1,93 @@
+{
+  "app": {
+    "title": "IronCalc"
+  },
+  "default_workbook_name": "Libro",
+  "errors": {
+    "model_not_found": "Modelo no encontrado o error al cargar",
+    "example_not_found": "Archivo de ejemplo no encontrado o error al cargar"
+  },
+  "welcome_dialog": {
+    "title": "Bienvenido a IronCalc",
+    "subtitle": "Comienza con un libro en blanco o una plantilla prediseñada.",
+    "close_dialog": "Cerrar diálogo",
+    "new": "Nuevo",
+    "blank_workbook": "Libro en blanco",
+    "blank_workbook_description": "Crea desde cero o sube tu propio archivo.",
+    "templates": {
+      "choose_template": "Elegir una plantilla",
+      "templates": "Plantillas",
+      "mortgage_calculator": "Calculadora de hipoteca",
+      "mortgage_calculator_description": "Estima pagos, intereses y coste total.",
+      "travel_expenses_tracker": "Seguimiento de gastos de viaje",
+      "travel_expenses_tracker_description": "Controla los costes del viaje y mantente dentro del presupuesto."
+    },
+    "create_workbook": "Crear libro"
+  },
+  "left_drawer": {
+    "new_workbook": "Nuevo libro",
+    "pinned": "Fijados",
+    "today": "Hoy",
+    "last_30_days": "Últimos 30 días",
+    "older": "Más antiguos",
+    "workbook_menu": {
+      "download": "Descargar (.xlsx)",
+      "pin": "Fijar",
+      "unpin": "Desfijar",
+      "duplicate": "Duplicar",
+      "delete": "Eliminar libro"
+    },
+    "alert": {
+      "title": "Atención",
+      "subtitle": "IronCalc almacena tus datos solo en el almacenamiento local de tu navegador.",
+      "subtitle2": "<bold>Descarga tu XLSX con frecuencia</bold> – las versiones futuras podrían no abrir los libros actuales, incluso si se comparten."
+    },
+    "documentation": "Documentación"
+  },
+  "file_bar": {
+    "open_sidebar": "Abrir barra lateral",
+    "close_sidebar": "Cerrar barra lateral",
+    "file_menu": {
+      "button": "Archivo",
+      "new_blank_workbook": "Nuevo libro en blanco",
+      "new_from_template": "Nuevo desde plantilla",
+      "import": {
+        "button": "Importar",
+        "title": "Importar un archivo .xlsx",
+        "subtitle": "Arrastra y suelta un archivo aquí o",
+        "subtitle_link": "haz clic para seleccionar",
+        "learn_more": "Más información sobre cómo importar archivos a IronCalc",
+        "close_dialog": "Cerrar diálogo",
+        "uploading": "Subiendo {{fileName}}...",
+        "drop_file_here": "Suelta el archivo aquí"
+      },
+      "download": "Descargar (.xlsx)",
+      "delete_workbook": {
+        "button": "Eliminar libro",
+        "title": "¿Estás seguro?",
+        "subtitle": "El libro <bold>'{{workbookName}}'</bold> será eliminado permanentemente. Esta acción no se puede deshacer.",
+        "confirm_button": "Sí, eliminar libro",
+        "cancel_button": "Cancelar"
+      },
+      "default_language": "Idioma predeterminado"
+    },
+    "help_menu": {
+      "button": "Ayuda",
+      "documentation": "Documentación",
+      "keyboard_shortcuts": "Atajos de teclado"
+    },
+    "title_input": {
+      "warning_text1": "Este libro se almacena solo en tu navegador. Para mantenerlo seguro, descárgalo como .xlsx.",
+      "warning_text2": " Las versiones futuras podrían ser incompatibles."
+    },
+    "share_popover": {
+      "button": "Compartir",
+      "copy_url": "Copiar URL",
+      "copied": "¡Copiado!",
+      "info_text": "Cualquier persona con el enlace podrá acceder a una copia de este libro"
+    }
+  },
+  "loading_screen": {
+    "message": "Cargando IronCalc"
+  }
+}

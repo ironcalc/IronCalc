@@ -1,23 +1,97 @@
 use pyo3::exceptions::PyException;
 use pyo3::{create_exception, prelude::*, wrap_pyfunction};
 
-use types::{PySheetProperty, PyStyle};
-use xlsx::base::types::Style;
-use xlsx::base::Model;
+use types::{PyCellType, PySheetProperty, PyStyle};
+use xlsx::base::types::{Style, Workbook};
+use xlsx::base::{Model, UserModel};
 
 use xlsx::export::{save_to_icalc, save_to_xlsx};
 use xlsx::import;
 
 mod types;
 
-use crate::types::PyCellType;
-
 create_exception!(_ironcalc, WorkbookError, PyException);
+
+fn leak_str(s: &str) -> &'static str {
+    Box::leak(s.to_owned().into_boxed_str())
+}
+
+#[pyclass]
+pub struct PyUserModel {
+    /// The user model, which is a wrapper around the Model
+    pub model: UserModel<'static>,
+}
+
+#[pymethods]
+impl PyUserModel {
+    /// Saves the user model to an xlsx file
+    pub fn save_to_xlsx(&self, file: &str) -> PyResult<()> {
+        let model = self.model.get_model();
+        save_to_xlsx(model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    /// Saves the user model to file in the internal binary ic format
+    pub fn save_to_icalc(&self, file: &str) -> PyResult<()> {
+        let model = self.model.get_model();
+        save_to_icalc(model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    pub fn apply_external_diffs(&mut self, external_diffs: &[u8]) -> PyResult<()> {
+        self.model
+            .apply_external_diffs(external_diffs)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    pub fn flush_send_queue(&mut self) -> Vec<u8> {
+        self.model.flush_send_queue()
+    }
+
+    pub fn set_user_input(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+    ) -> PyResult<()> {
+        self.model
+            .set_user_input(sheet, row, column, value)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    pub fn get_formatted_cell_value(&self, sheet: u32, row: i32, column: i32) -> PyResult<String> {
+        self.model
+            .get_formatted_cell_value(sheet, row, column)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    /// Gets the dimensions of a worksheet, returning the bounds of all non-empty cells.
+    /// Returns a tuple of (min_row, max_row, min_column, max_column).
+    /// For an empty sheet, returns (1, 1, 1, 1).
+    pub fn get_sheet_dimensions(&self, sheet: u32) -> PyResult<(i32, i32, i32, i32)> {
+        let model = self.model.get_model();
+        let worksheet = model
+            .workbook
+            .worksheet(sheet)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+        let dimension = worksheet.dimension();
+        Ok((
+            dimension.min_row,
+            dimension.max_row,
+            dimension.min_column,
+            dimension.max_column,
+        ))
+    }
+
+    pub fn to_bytes(&self) -> PyResult<Vec<u8>> {
+        let bytes = self.model.to_bytes();
+        Ok(bytes)
+    }
+}
 
 /// This is a model implementing the 'raw' API
 #[pyclass]
 pub struct PyModel {
-    model: Model,
+    model: Model<'static>,
 }
 
 #[pymethods]
@@ -30,6 +104,12 @@ impl PyModel {
     /// Saves the model to file in the internal binary ic format
     pub fn save_to_icalc(&self, file: &str) -> PyResult<()> {
         save_to_icalc(&self.model, file).map_err(|e| WorkbookError::new_err(e.to_string()))
+    }
+
+    /// To bytes
+    pub fn to_bytes(&self) -> PyResult<Vec<u8>> {
+        let bytes = self.model.to_bytes();
+        Ok(bytes)
     }
 
     /// Evaluates the workbook
@@ -63,7 +143,7 @@ impl PyModel {
     /// Get raw value
     pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> PyResult<String> {
         self.model
-            .get_cell_content(sheet, row, column)
+            .get_localized_cell_content(sheet, row, column)
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 
@@ -225,6 +305,24 @@ impl PyModel {
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 
+    /// Gets the dimensions of a worksheet, returning the bounds of all non-empty cells.
+    /// Returns a tuple of (min_row, max_row, min_column, max_column).
+    /// For an empty sheet, returns (1, 1, 1, 1).
+    pub fn get_sheet_dimensions(&self, sheet: u32) -> PyResult<(i32, i32, i32, i32)> {
+        let worksheet = self
+            .model
+            .workbook
+            .worksheet(sheet)
+            .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+        let dimension = worksheet.dimension();
+        Ok((
+            dimension.min_row,
+            dimension.max_row,
+            dimension.min_column,
+            dimension.max_column,
+        ))
+    }
+
     #[allow(clippy::panic)]
     pub fn test_panic(&self) -> PyResult<()> {
         panic!("This function panics for testing panic handling");
@@ -235,26 +333,109 @@ impl PyModel {
 
 /// Loads a function from an xlsx file
 #[pyfunction]
-pub fn load_from_xlsx(file_path: &str, locale: &str, tz: &str) -> PyResult<PyModel> {
-    let model = import::load_from_xlsx(file_path, locale, tz)
+pub fn load_from_xlsx(
+    file_path: &str,
+    locale: &str,
+    tz: &str,
+    language_id: &str,
+) -> PyResult<PyModel> {
+    // let locale = leak_str(locale);
+    // let tz = leak_str(tz);
+    let language_id = leak_str(language_id);
+
+    let model = import::load_from_xlsx(file_path, locale, tz, language_id)
         .map_err(|e| WorkbookError::new_err(e.to_string()))?;
     Ok(PyModel { model })
 }
 
 /// Loads a function from icalc binary representation
 #[pyfunction]
-pub fn load_from_icalc(file_name: &str) -> PyResult<PyModel> {
-    let model =
-        import::load_from_icalc(file_name).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+pub fn load_from_icalc(file_name: &str, language_id: &str) -> PyResult<PyModel> {
+    let language_id = leak_str(language_id);
+    let model = import::load_from_icalc(file_name, language_id)
+        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
     Ok(PyModel { model })
 }
 
-/// Creates an empty model
+/// Loads a model from bytes
+/// This function expects the bytes to be in the internal binary ic format
+/// which is the same format used by the `save_to_icalc` function.
 #[pyfunction]
-pub fn create(name: &str, locale: &str, tz: &str) -> PyResult<PyModel> {
-    let model =
-        Model::new_empty(name, locale, tz).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+pub fn load_from_bytes(bytes: &[u8], language_id: &str) -> PyResult<PyModel> {
+    let workbook: Workbook =
+        bitcode::decode(bytes).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let language_id = leak_str(language_id);
+    let model = Model::from_workbook(workbook, language_id)
+        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
     Ok(PyModel { model })
+}
+
+/// Creates an empty model in the raw API
+#[pyfunction]
+pub fn create(name: &str, locale: &str, tz: &str, language_id: &str) -> PyResult<PyModel> {
+    let name = leak_str(name);
+    let locale = leak_str(locale);
+    let tz = leak_str(tz);
+    let language_id = leak_str(language_id);
+    let model = Model::new_empty(name, locale, tz, language_id)
+        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    Ok(PyModel { model })
+}
+
+/// Creates a model with the user model API
+#[pyfunction]
+pub fn create_user_model(
+    name: &str,
+    locale: &str,
+    tz: &str,
+    language_id: &str,
+) -> PyResult<PyUserModel> {
+    let name = leak_str(name);
+    let locale = leak_str(locale);
+    let tz = leak_str(tz);
+    let language_id = leak_str(language_id);
+    let model = UserModel::new_empty(name, locale, tz, language_id)
+        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    Ok(PyUserModel { model })
+}
+
+/// Creates a user model from an Excel file
+#[pyfunction]
+pub fn create_user_model_from_xlsx(
+    file_path: &str,
+    locale: &str,
+    tz: &str,
+    language_id: &str,
+) -> PyResult<PyUserModel> {
+    let language_id = leak_str(language_id);
+    let model = import::load_from_xlsx(file_path, locale, tz, language_id)
+        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = UserModel::from_model(model);
+    Ok(PyUserModel { model })
+}
+
+/// Creates a user model from an icalc file
+#[pyfunction]
+pub fn create_user_model_from_icalc(file_name: &str, language_id: &str) -> PyResult<PyUserModel> {
+    let language_id = leak_str(language_id);
+    let model = import::load_from_icalc(file_name, language_id)
+        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let model = UserModel::from_model(model);
+    Ok(PyUserModel { model })
+}
+
+/// Creates a user model from bytes
+/// This function expects the bytes to be in the internal binary ic format
+/// which is the same format used by the `save_to_icalc` function.
+#[pyfunction]
+pub fn create_user_model_from_bytes(bytes: &[u8], language_id: &str) -> PyResult<PyUserModel> {
+    let workbook: Workbook =
+        bitcode::decode(bytes).map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let language_id = leak_str(language_id);
+    let model = Model::from_workbook(workbook, language_id)
+        .map_err(|e| WorkbookError::new_err(e.to_string()))?;
+    let user_model = UserModel::from_model(model);
+    Ok(PyUserModel { model: user_model })
 }
 
 #[pyfunction]
@@ -272,7 +453,14 @@ fn ironcalc(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create, m)?)?;
     m.add_function(wrap_pyfunction!(load_from_xlsx, m)?)?;
     m.add_function(wrap_pyfunction!(load_from_icalc, m)?)?;
+    m.add_function(wrap_pyfunction!(load_from_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(test_panic, m)?)?;
+
+    // User model functions
+    m.add_function(wrap_pyfunction!(create_user_model, m)?)?;
+    m.add_function(wrap_pyfunction!(create_user_model_from_bytes, m)?)?;
+    m.add_function(wrap_pyfunction!(create_user_model_from_xlsx, m)?)?;
+    m.add_function(wrap_pyfunction!(create_user_model_from_icalc, m)?)?;
 
     Ok(())
 }

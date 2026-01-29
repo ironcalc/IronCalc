@@ -12,14 +12,10 @@ Although IronCalc is ready for use, it’s important to understand its current l
 
 IronCalc currently does not implement arrays or array formulas. These are planned and are coming very soon, as they are the highest priority on the engine side.
 
-## **Only English Supported**
-
-The MVP version of IronCalc supports only the English language. However, version 1.0 will include support for three languages: **English**, **German**, and **Spanish**.
-
-## **No Autocomplete**
-
-Spreadsheet users are accustomed to autocompleting sequences (e.g., filling in `4, 5, 6` after `1, 2, 3`). This feature is not yet available in IronCalc but is on the roadmap for future updates.
-
-## **Charts** <Badge type="info" text="Not Planned for v1" />
+## **Charts** <Badge type="info" text="Planned" />
 
 Although charts are an essential feature for any serious spreadsheet program, they are not planned for version 1.0. Adding chart support will become a high priority after the release of version 1.0.
+
+## **Collaboration** <Badge type="info" text="Planned" />
+
+Real-time collaboration—where multiple users can view and edit the same spreadsheet simultaneously—is not yet available in IronCalc. Currently, spreadsheets cannot be edited concurrently from different devices or by different users. This feature is on the roadmap for future development.

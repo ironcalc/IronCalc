@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::UserModel;
+use crate::test::user_model::util::new_empty_user_model;
 
 #[test]
 fn create_defined_name() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
     model
         .new_defined_name("myName", None, "Sheet1!$A$1")
@@ -38,7 +38,7 @@ fn create_defined_name() {
 
 #[test]
 fn scopes() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
 
     // Global
@@ -78,7 +78,7 @@ fn scopes() {
 
 #[test]
 fn delete_sheet() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model
         .set_user_input(0, 2, 1, r#"=CONCATENATE(MyName, " world!")"#)
@@ -116,7 +116,7 @@ fn delete_sheet() {
 
 #[test]
 fn change_scope() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model
         .set_user_input(0, 2, 1, r#"=CONCATENATE(MyName, " world!")"#)
@@ -143,7 +143,7 @@ fn change_scope() {
 
 #[test]
 fn rename_defined_name() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model
         .set_user_input(0, 2, 1, r#"=CONCATENATE(MyName, " world!")"#)
@@ -175,7 +175,7 @@ fn rename_defined_name() {
 
 #[test]
 fn rename_defined_name_operations() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "42").unwrap();
     model.set_user_input(0, 1, 2, "123").unwrap();
 
@@ -210,7 +210,7 @@ fn rename_defined_name_operations() {
 
     assert_eq!(
         model.get_cell_content(0, 3, 1),
-        Ok("=badDunction(-respuesta)".to_string())
+        Ok("=baddunction(-respuesta)".to_string())
     );
 
     // A defined name with the same name but different scope
@@ -219,7 +219,7 @@ fn rename_defined_name_operations() {
 
 #[test]
 fn rename_defined_name_string_operations() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model.set_user_input(0, 1, 2, "World").unwrap();
 
@@ -245,7 +245,7 @@ fn rename_defined_name_string_operations() {
 
 #[test]
 fn invalid_names() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model
         .new_defined_name("MyName", None, "Sheet1!$A$1")
@@ -254,25 +254,25 @@ fn invalid_names() {
     // spaces
     assert_eq!(
         model.new_defined_name("A real", None, "Sheet1!$A$1"),
-        Err("Invalid defined name".to_string())
+        Err("Name: Invalid defined name".to_string())
     );
 
     // Starts with number
     assert_eq!(
         model.new_defined_name("2real", None, "Sheet1!$A$1"),
-        Err("Invalid defined name".to_string())
+        Err("Name: Invalid defined name".to_string())
     );
 
     // Updating also fails
     assert_eq!(
         model.update_defined_name("MyName", None, "My Name", None, "Sheet1!$A$1"),
-        Err("Invalid defined name".to_string())
+        Err("Name: Invalid defined name".to_string())
     );
 }
 
 #[test]
 fn already_existing() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
 
     model
         .new_defined_name("MyName", None, "Sheet1!$A$1")
@@ -284,19 +284,19 @@ fn already_existing() {
     // Can't create a new name with the same name
     assert_eq!(
         model.new_defined_name("MyName", None, "Sheet1!$A$2"),
-        Err("Defined name already exists".to_string())
+        Err("Name: Defined name already exists".to_string())
     );
 
     // Can't update one into an existing
     assert_eq!(
         model.update_defined_name("Another", None, "MyName", None, "Sheet1!$A$1"),
-        Err("Defined name already exists".to_string())
+        Err("Name: Defined name already exists".to_string())
     );
 }
 
 #[test]
 fn invalid_sheet() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model
         .new_defined_name("MyName", None, "Sheet1!$A$1")
@@ -304,25 +304,25 @@ fn invalid_sheet() {
 
     assert_eq!(
         model.new_defined_name("Mything", Some(2), "Sheet1!$A$1"),
-        Err("Invalid sheet index".to_string())
+        Err("Scope: Invalid sheet index".to_string())
     );
 
     assert_eq!(
         model.update_defined_name("MyName", None, "MyName", Some(2), "Sheet1!$A$1"),
-        Err("Invalid sheet index".to_string())
+        Err("Scope: Invalid sheet index".to_string())
     );
 
     assert_eq!(
         model.update_defined_name("MyName", Some(9), "YourName", None, "Sheet1!$A$1"),
-        Err("Invalid sheet index".to_string())
+        Err("General: Failed to get old name".to_string())
     );
 }
 
 #[test]
 fn invalid_formula() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
-    model.new_defined_name("MyName", None, "A1").unwrap();
+    assert!(model.new_defined_name("MyName", None, "A1").is_err());
 
     model.set_user_input(0, 1, 2, "=MyName").unwrap();
 
@@ -334,7 +334,7 @@ fn invalid_formula() {
 
 #[test]
 fn undo_redo() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model.set_user_input(0, 2, 1, "Hola").unwrap();
     model.set_user_input(0, 1, 2, r#"=MyName&"!""#).unwrap();
@@ -387,7 +387,7 @@ fn undo_redo() {
 
     let send_queue = model.flush_send_queue();
 
-    let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model2 = new_empty_user_model();
     model2.apply_external_diffs(&send_queue).unwrap();
 
     assert_eq!(model2.get_defined_name_list().len(), 1);
@@ -399,7 +399,7 @@ fn undo_redo() {
 
 #[test]
 fn change_scope_to_first_sheet() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.new_sheet().unwrap();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
     model
@@ -426,7 +426,7 @@ fn change_scope_to_first_sheet() {
 
 #[test]
 fn rename_sheet() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.new_sheet().unwrap();
     model.set_user_input(0, 1, 1, "Hello").unwrap();
 
