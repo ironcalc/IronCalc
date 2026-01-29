@@ -2,7 +2,7 @@
 
 use crate::{
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN},
-    test::util::new_empty_model,
+    test::{user_model::util::new_empty_user_model, util::new_empty_model},
     UserModel,
 };
 
@@ -14,7 +14,7 @@ fn simple_insert_row() {
     for row in 1..5 {
         assert!(model.set_user_input(sheet, row, column, "123").is_ok());
     }
-    assert!(model.insert_row(sheet, 3).is_ok());
+    assert!(model.insert_rows(sheet, 3, 1).is_ok());
     assert_eq!(
         model.get_formatted_cell_value(sheet, 3, column).unwrap(),
         ""
@@ -40,7 +40,7 @@ fn simple_insert_column() {
     for column in 1..5 {
         assert!(model.set_user_input(sheet, row, column, "123").is_ok());
     }
-    assert!(model.insert_column(sheet, 3).is_ok());
+    assert!(model.insert_columns(sheet, 3, 1).is_ok());
     assert_eq!(model.get_formatted_cell_value(sheet, row, 3).unwrap(), "");
 
     assert!(model.undo().is_ok());
@@ -62,7 +62,7 @@ fn simple_delete_column() {
         .set_columns_width(0, 5, 5, DEFAULT_COLUMN_WIDTH * 3.0)
         .unwrap();
 
-    model.delete_column(0, 5).unwrap();
+    model.delete_columns(0, 5, 1).unwrap();
 
     assert_eq!(model.get_formatted_cell_value(0, 2, 5), Ok("".to_string()));
     assert_eq!(model.get_column_width(0, 5), Ok(DEFAULT_COLUMN_WIDTH));
@@ -74,7 +74,7 @@ fn simple_delete_column() {
 
     let send_queue = model.flush_send_queue();
 
-    let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model2 = new_empty_user_model();
     model2.apply_external_diffs(&send_queue).unwrap();
 
     assert_eq!(
@@ -92,20 +92,20 @@ fn delete_column_errors() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
     assert_eq!(
-        model.delete_column(1, 1),
+        model.delete_columns(1, 1, 1),
         Err("Invalid sheet index".to_string())
     );
 
     assert_eq!(
-        model.delete_column(0, 0),
+        model.delete_columns(0, 0, 1),
         Err("Column number '0' is not valid.".to_string())
     );
     assert_eq!(
-        model.delete_column(0, LAST_COLUMN + 1),
-        Err("Column number '16385' is not valid.".to_string())
+        model.delete_columns(0, LAST_COLUMN + 1, 1),
+        Err(format!("Column number '{}' is not valid.", LAST_COLUMN + 1))
     );
 
-    assert_eq!(model.delete_column(0, LAST_COLUMN), Ok(()));
+    assert_eq!(model.delete_columns(0, LAST_COLUMN, 1), Ok(()));
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn simple_delete_row() {
         .set_rows_height(0, 15, 15, DEFAULT_ROW_HEIGHT * 3.0)
         .unwrap();
 
-    model.delete_row(0, 15).unwrap();
+    model.delete_rows(0, 15, 1).unwrap();
 
     assert_eq!(model.get_formatted_cell_value(0, 15, 6), Ok("".to_string()));
     assert_eq!(model.get_row_height(0, 15), Ok(DEFAULT_ROW_HEIGHT));
@@ -134,7 +134,7 @@ fn simple_delete_row() {
 
     let send_queue = model.flush_send_queue();
 
-    let mut model2 = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model2 = new_empty_user_model();
     model2.apply_external_diffs(&send_queue).unwrap();
 
     assert_eq!(
@@ -150,14 +150,14 @@ fn simple_delete_row_no_style() {
     let mut model = UserModel::from_model(model);
     model.set_user_input(0, 15, 4, "3").unwrap();
     model.set_user_input(0, 15, 6, "=D15*2").unwrap();
-    model.delete_row(0, 15).unwrap();
+    model.delete_rows(0, 15, 1).unwrap();
 
     assert_eq!(model.get_formatted_cell_value(0, 15, 6), Ok("".to_string()));
 }
 
 #[test]
 fn row_heigh_increases_automatically() {
-    let mut model = UserModel::new_empty("Workbook1", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     assert_eq!(model.get_row_height(0, 1), Ok(DEFAULT_ROW_HEIGHT));
 
     // Entering a single line does not change the height
@@ -180,14 +180,14 @@ fn insert_row_evaluates() {
     model.set_user_input(0, 1, 1, "42").unwrap();
     model.set_user_input(0, 1, 2, "=A1*2").unwrap();
 
-    assert!(model.insert_row(0, 1).is_ok());
+    assert!(model.insert_rows(0, 1, 1).is_ok());
     assert_eq!(model.get_formatted_cell_value(0, 2, 2).unwrap(), "84");
     model.undo().unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "84");
     model.redo().unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 2, 2).unwrap(), "84");
 
-    model.delete_row(0, 1).unwrap();
+    model.delete_rows(0, 1, 1).unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "84");
     assert_eq!(model.get_cell_content(0, 1, 2).unwrap(), "=A1*2");
 }
@@ -199,7 +199,7 @@ fn insert_column_evaluates() {
     model.set_user_input(0, 1, 1, "42").unwrap();
     model.set_user_input(0, 10, 1, "=A1*2").unwrap();
 
-    assert!(model.insert_column(0, 1).is_ok());
+    assert!(model.insert_columns(0, 1, 1).is_ok());
     assert_eq!(model.get_formatted_cell_value(0, 10, 2).unwrap(), "84");
 
     model.undo().unwrap();
@@ -207,7 +207,7 @@ fn insert_column_evaluates() {
     model.redo().unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 10, 2).unwrap(), "84");
 
-    model.delete_column(0, 1).unwrap();
+    model.delete_columns(0, 1, 1).unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 10, 1).unwrap(), "84");
     assert_eq!(model.get_cell_content(0, 10, 1).unwrap(), "=A1*2");
 }

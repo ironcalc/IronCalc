@@ -15,7 +15,7 @@ pub struct Formatted {
 
 /// Returns the vector of chars of the fractional part of a *positive* number:
 /// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
-fn get_fract_part(value: f64, precision: i32) -> Vec<char> {
+fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
     let b = format!("{:.1$}", value.fract(), precision as usize)
         .chars()
         .collect::<Vec<char>>();
@@ -30,6 +30,12 @@ fn get_fract_part(value: f64, precision: i32) -> Vec<char> {
     if last_non_zero < 2 {
         return vec![];
     }
+    let max_len = if int_len > 15 {
+        2_usize
+    } else {
+        15_usize - int_len + 1
+    };
+    let last_non_zero = usize::min(last_non_zero, max_len + 1);
     b[2..last_non_zero].to_vec()
 }
 
@@ -120,8 +126,11 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             // We should have different codepaths for general formatting and errors
             let value_abs = value.abs();
             if (1.0e-8..1.0e+11).contains(&value_abs) {
-                let mut text = format!("{:.9}", value);
+                let mut text = format!("{value:.9}");
                 text = text.trim_end_matches('0').trim_end_matches('.').to_string();
+                if locale.numbers.symbols.decimal != "." {
+                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
+                }
                 Formatted {
                     text,
                     color: None,
@@ -138,14 +147,18 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                 let exponent = value_abs.log10().floor();
                 value /= 10.0_f64.powf(exponent);
                 let sign = if exponent < 0.0 { '-' } else { '+' };
-                let s = format!("{:.5}", value);
+                let s = format!("{value:.5}");
+                let mut text = format!(
+                    "{}E{}{:02}",
+                    s.trim_end_matches('0').trim_end_matches('.'),
+                    sign,
+                    exponent.abs()
+                );
+                if locale.numbers.symbols.decimal != "." {
+                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
+                }
                 Formatted {
-                    text: format!(
-                        "{}E{}{:02}",
-                        s.trim_end_matches('0').trim_end_matches('.'),
-                        sign,
-                        exponent.abs()
-                    ),
+                    text,
                     color: None,
                     error: None,
                 }
@@ -154,48 +167,72 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Date(p) => {
             let tokens = &p.tokens;
             let mut text = "".to_string();
-            let date = match from_excel_date(value as i64) {
-                Ok(d) => d,
-                Err(e) => {
-                    return Formatted {
-                        text: "#VALUE!".to_owned(),
-                        color: None,
-                        error: Some(e),
-                    }
-                }
-            };
+            let time_fract = value.fract();
+            let hours = (time_fract * 24.0).floor();
+            let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
+            let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
+            let date = from_excel_date(value as i64).ok();
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
-                        text = format!("{}{}", text, c);
+                        text = format!("{text}{c}");
                     }
                     TextToken::Text(t) => {
-                        text = format!("{}{}", text, t);
+                        text = format!("{text}{t}");
                     }
                     TextToken::Ghost(_) => {
                         // we just leave a whitespace
                         // This is what the TEXT function does
-                        text = format!("{} ", text);
+                        text = format!("{text} ");
                     }
                     TextToken::Spacer(_) => {
                         // we just leave a whitespace
                         // This is what the TEXT function does
-                        text = format!("{} ", text);
+                        text = format!("{text} ");
                     }
                     TextToken::Raw => {
-                        text = format!("{}{}", text, value);
+                        text = format!("{text}{value}");
                     }
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
-                    TextToken::Day => {
-                        let day = date.day() as usize;
-                        text = format!("{}{}", text, day);
-                    }
+                    TextToken::Day => match date {
+                        Some(date) => {
+                            let day = date.day() as usize;
+                            text = format!("{text}{day}");
+                        }
+                        None => {
+                            return Formatted {
+                                text: "#VALUE!".to_owned(),
+                                color: None,
+                                error: Some(format!("Invalid date value: '{value}'")),
+                            }
+                        }
+                    },
                     TextToken::DayPadded => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let day = date.day() as usize;
-                        text = format!("{}{:02}", text, day);
+                        text = format!("{text}{day:02}");
                     }
                     TextToken::DayNameShort => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let mut day = date.weekday().number_from_monday() as usize;
                         if day == 7 {
                             day = 0;
@@ -203,6 +240,16 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{}{}", text, &locale.dates.day_names_short[day]);
                     }
                     TextToken::DayName => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let mut day = date.weekday().number_from_monday() as usize;
                         if day == 7 {
                             day = 0;
@@ -210,31 +257,167 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{}{}", text, &locale.dates.day_names[day]);
                     }
                     TextToken::Month => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
-                        text = format!("{}{}", text, month);
+                        text = format!("{text}{month}");
                     }
                     TextToken::MonthPadded => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
-                        text = format!("{}{:02}", text, month);
+                        text = format!("{text}{month:02}");
                     }
                     TextToken::MonthNameShort => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
                         text = format!("{}{}", text, &locale.dates.months_short[month - 1]);
                     }
                     TextToken::MonthName => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
                         text = format!("{}{}", text, &locale.dates.months[month - 1]);
                     }
                     TextToken::MonthLetter => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         let month = date.month() as usize;
                         let months_letter = &locale.dates.months_letter[month - 1];
-                        text = format!("{}{}", text, months_letter);
+                        text = format!("{text}{months_letter}");
                     }
                     TextToken::YearShort => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         text = format!("{}{}", text, date.format("%y"));
                     }
                     TextToken::Year => {
+                        let date = match date {
+                            Some(d) => d,
+                            None => {
+                                return Formatted {
+                                    text: "#VALUE!".to_owned(),
+                                    color: None,
+                                    error: Some(format!("Invalid date value: '{value}'")),
+                                }
+                            }
+                        };
                         text = format!("{}{}", text, date.year());
+                    }
+                    TextToken::Hour => {
+                        let mut hour = hours as i32;
+                        if p.use_ampm {
+                            if hour == 0 {
+                                hour = 12;
+                            } else if hour > 12 {
+                                hour -= 12;
+                            }
+                        }
+                        text = format!("{text}{hour}");
+                    }
+                    TextToken::HourPadded => {
+                        let mut hour = hours as i32;
+                        if p.use_ampm {
+                            if hour == 0 {
+                                hour = 12;
+                            } else if hour > 12 {
+                                hour -= 12;
+                            }
+                        }
+                        text = format!("{text}{hour:02}");
+                    }
+                    TextToken::Second => {
+                        let second = seconds as i32;
+                        text = format!("{text}{second}");
+                    }
+                    TextToken::SecondPadded => {
+                        let second = seconds as i32;
+                        text = format!("{text}{second:02}");
+                    }
+                    TextToken::AMPM => {
+                        let ampm = if hours < 12.0 { "AM" } else { "PM" };
+                        text = format!("{text}{ampm}");
+                    }
+                    TextToken::Minute => {
+                        let minute = minutes as i32;
+                        text = format!("{text}{minute}");
+                    }
+                    TextToken::MinutePadded => {
+                        let minute = minutes as i32;
+                        text = format!("{text}{minute:02}");
+                    }
+                    TextToken::ElapsedHour => {
+                        let hour = (value * 24.0).floor() as i32;
+                        text = format!("{text}{hour}");
+                    }
+                    TextToken::ElapsedHourPadded => {
+                        let hour = (value * 24.0).floor() as i32;
+                        text = format!("{text}{hour:02}");
+                    }
+                    TextToken::ElapsedMinute => {
+                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        text = format!("{text}{minute}");
+                    }
+                    TextToken::ElapsedMinutePadded => {
+                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        text = format!("{text}{minute:02}");
+                    }
+                    TextToken::ElapsedSecond => {
+                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        text = format!("{text}{second}");
+                    }
+                    TextToken::ElapsedSecondPadded => {
+                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        text = format!("{text}{second:02}");
                     }
                 }
             }
@@ -247,7 +430,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
         ParsePart::Number(p) => {
             let mut text = "".to_string();
             if let Some(c) = p.currency {
-                text = format!("{}", c);
+                text = format!("{c}");
             }
             let tokens = &p.tokens;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
@@ -273,11 +456,16 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                 }
             }
             let l_exp = exponent_part.len() as i32;
-            let mut int_part: Vec<char> = format!("{}", value_abs.floor()).chars().collect();
-            if value_abs as i64 == 0 {
+            let int_number = if p.precision == 0 {
+                value_abs.round()
+            } else {
+                value_abs.floor()
+            };
+            let mut int_part: Vec<char> = format!("{}", int_number).chars().collect();
+            if int_number as i64 == 0 {
                 int_part = vec![];
             }
-            let fract_part = get_fract_part(value_abs, p.precision);
+            let fract_part = get_fract_part(value_abs, p.precision, int_part.len());
             // ln is the number of digits of the integer part of the value
             let ln = int_part.len() as i32;
             // digit count is the number of digit tokens ('0', '?' and '#') to the left of the decimal point
@@ -291,38 +479,42 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let decimal_separator = symbols.decimal.to_owned();
             // There probably are better ways to check if a number at a given precision is negative :/
             let is_negative = value < -(10.0_f64.powf(-(p.precision as f64)));
+            let mut needs_period = false;
 
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
-                        text = format!("{}{}", text, c);
+                        text = format!("{text}{c}");
                     }
                     TextToken::Text(t) => {
-                        text = format!("{}{}", text, t);
+                        text = format!("{text}{t}");
                     }
                     TextToken::Ghost(_) => {
                         // we just leave a whitespace
                         // This is what the TEXT function does
-                        text = format!("{} ", text);
+                        text = format!("{text} ");
                     }
                     TextToken::Spacer(_) => {
                         // we just leave a whitespace
                         // This is what the TEXT function does
-                        text = format!("{} ", text);
+                        text = format!("{text} ");
                     }
                     TextToken::Raw => {
-                        text = format!("{}{}", text, value);
+                        text = format!("{text}{value}");
                     }
                     TextToken::Period => {
-                        text = format!("{}{}", text, decimal_separator);
+                        // if !fract_part.is_empty() &&  {
+                        //     text = format!("{text}{decimal_separator}");
+                        // }
+                        needs_period = true;
                     }
                     TextToken::Digit(digit) => {
-                        if digit.number == 'i' {
+                        if digit.number.is_integer() {
                             // 1. Integer part
                             let index = digit.index;
                             let number_index = ln - digit_count + index;
                             if index == 0 && is_negative {
-                                text = format!("-{}", text);
+                                text = format!("-{text}");
                             }
                             if ln <= digit_count {
                                 // The number of digits is less or equal than the number of digit tokens
@@ -347,7 +539,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                     } else {
                                         ""
                                     };
-                                    text = format!("{}{}{}", text, c, sep);
+                                    text = format!("{text}{c}{sep}");
                                 }
                                 digit_index += 1;
                             } else {
@@ -367,24 +559,41 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                 }
                                 digit_index = number_index + 1;
                             }
-                        } else if digit.number == 'd' {
+                        } else if digit.number.is_decimal() {
                             // 2. After the decimal point
                             let index = digit.index as usize;
                             if index < fract_part.len() {
-                                text = format!("{}{}", text, fract_part[index]);
+                                if needs_period {
+                                    text = format!(
+                                        "{}{}{}",
+                                        text, decimal_separator, fract_part[index]
+                                    );
+                                } else {
+                                    text = format!("{}{}", text, fract_part[index]);
+                                }
                             } else if digit.kind == '0' {
-                                text = format!("{}0", text);
+                                if needs_period {
+                                    text = format!("{text}{}0", decimal_separator);
+                                } else {
+                                    text = format!("{text}0");
+                                }
                             } else if digit.kind == '?' {
-                                text = format!("{} ", text);
+                                text = format!("{text} ");
+                            } else if digit.kind == '#' && needs_period {
+                                // FIXME: This is what Excel does, but it transforms "3" into "3."
+                                text = format!("{text}{}", decimal_separator);
                             }
-                        } else if digit.number == 'e' {
+                            needs_period = false;
+                        } else if digit.number.is_exponent() {
                             // 3. Exponent part
                             let index = digit.index;
                             if index == 0 {
                                 if exponent_is_negative {
-                                    text = format!("{}E-", text);
+                                    text = format!("{text}E-");
+                                } else if p.scientific_minus {
+                                    text = format!("{text}E");
                                 } else {
-                                    text = format!("{}E+", text);
+                                    text = format!("{text}E+");
                                 }
                             }
                             let number_index = l_exp - (p.exponent_digit_count - index);
@@ -400,7 +609,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                         exponent_part[number_index as usize]
                                     };
 
-                                    text = format!("{}{}", text, c);
+                                    text = format!("{text}{c}");
                                 }
                             } else {
                                 for i in 0..number_index + 1 {
@@ -422,6 +631,19 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::MonthLetter => {}
                     TextToken::YearShort => {}
                     TextToken::Year => {}
+                    TextToken::Hour => {}
+                    TextToken::HourPadded => {}
+                    TextToken::Minute => {}
+                    TextToken::MinutePadded => {}
+                    TextToken::Second => {}
+                    TextToken::SecondPadded => {}
+                    TextToken::AMPM => {}
+                    TextToken::ElapsedHour => {}
+                    TextToken::ElapsedHourPadded => {}
+                    TextToken::ElapsedMinute => {}
+                    TextToken::ElapsedMinutePadded => {}
+                    TextToken::ElapsedSecond => {}
+                    TextToken::ElapsedSecondPadded => {}
                 }
             }
             Formatted {
@@ -445,13 +667,13 @@ fn parse_day(day_str: &str) -> Result<(u32, String), String> {
                     return Ok((y, "d".to_string()));
                 }
             }
-            Err(_) => return Err("Not a valid year".to_string()),
+            Err(_) => return Err("Not a valid day".to_string()),
         }
     }
     Err("Not a valid day".to_string())
 }
 
-fn parse_month(month_str: &str) -> Result<(u32, String), String> {
+fn parse_month(month_str: &str, locale: &Locale) -> Result<(u32, String), String> {
     let bytes = month_str.bytes();
     let bytes_len = bytes.len();
     if bytes_len <= 2 {
@@ -463,33 +685,19 @@ fn parse_month(month_str: &str) -> Result<(u32, String), String> {
                     return Ok((y, "m".to_string()));
                 }
             }
-            Err(_) => return Err("Not a valid year".to_string()),
+            Err(_) => return Err("Not a valid month".to_string()),
         }
     }
-    let month_names_short = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
-    ];
-    let month_names_long = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ];
-    if let Some(m) = month_names_short.iter().position(|&r| r == month_str) {
+
+    let month_names_short = &locale.dates.months_short;
+    let month_names_long = &locale.dates.months;
+    if let Some(m) = month_names_short.iter().position(|r| r == month_str) {
         return Ok((m as u32 + 1, "mmm".to_string()));
     }
-    if let Some(m) = month_names_long.iter().position(|&r| r == month_str) {
+    if let Some(m) = month_names_long.iter().position(|r| r == month_str) {
         return Ok((m as u32 + 1, "mmmm".to_string()));
     }
-    Err("Not a valid day".to_string())
+    Err("Not a valid month".to_string())
 }
 
 fn parse_year(year_str: &str) -> Result<(i32, String), String> {
@@ -527,7 +735,7 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // short_date -> month separator year
 // long_date -> day separator month separator year
 // iso_date -> long_year separator number_month separator number_day
-// separator -> "/" | "-"
+// separator -> "/" | "-" | "."
 // day -> number | padded number
 // month -> number_month | name_month
 // number_month -> number | padded number |
@@ -537,17 +745,20 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // NOTE 1: The separator has to be the same
 // NOTE 2: In some engines "2/3" is implemented ad "2/March of the present year"
 // NOTE 3: I did not implement the "short date"
-fn parse_date(value: &str) -> Result<(i32, String), String> {
+fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
     let separator = if value.contains('/') {
         '/'
     } else if value.contains('-') {
         '-'
+    } else if value.contains('.') {
+        '.'
     } else {
         return Err("Not a valid date".to_string());
     };
 
     let parts: Vec<&str> = value.split(separator).collect();
     let mut is_iso_date = false;
+    let mut day_first = true;
     let (day_str, month_str, year_str) = if parts.len() == 3 {
         if parts[0].len() == 4 {
             // ISO date  yyyy-mm-dd
@@ -560,13 +771,20 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
             is_iso_date = true;
             (parts[2], parts[1], parts[0])
         } else {
-            (parts[0], parts[1], parts[2])
+            //  localized date dd-mm-yyyy or mm-dd-yyyy
+            // TODO: A bit hacky, but works for now
+            if locale.dates.date_formats.short.starts_with('d') {
+                (parts[0], parts[1], parts[2])
+            } else {
+                day_first = false;
+                (parts[1], parts[0], parts[2])
+            }
         }
     } else {
         return Err("Not a valid date".to_string());
     };
     let (day, day_format) = parse_day(day_str)?;
-    let (month, month_format) = parse_month(month_str)?;
+    let (month, month_format) = parse_month(month_str, locale)?;
     let (year, year_format) = parse_year(year_str)?;
     let serial_number = match date_to_serial_number(day, month, year) {
         Ok(n) => n,
@@ -576,6 +794,11 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
         Ok((
             serial_number,
             format!("yyyy{separator}{month_format}{separator}{day_format}"),
+        ))
+    } else if !day_first {
+        Ok((
+            serial_number,
+            format!("{month_format}{separator}{day_format}{separator}{year_format}"),
         ))
     } else {
         Ok((
@@ -591,15 +814,22 @@ fn parse_date(value: &str) -> Result<(i32, String), String> {
 /// "30.34%" => (0.3034, "0.00%")
 /// 100€ => (100, "100€")
 pub(crate) fn parse_formatted_number(
-    value: &str,
+    original: &str,
     currencies: &[&str],
+    locale: &Locale,
 ) -> Result<(f64, Option<String>), String> {
-    let value = value.trim();
+    let value = original.trim();
     let scientific_format = "0.00E+00";
+
+    let (decimal_separator, group_separator) = if locale.numbers.symbols.decimal == "," {
+        (b',', b'.')
+    } else {
+        (b'.', b',')
+    };
 
     // Check if it is a percentage
     if let Some(p) = value.strip_suffix('%') {
-        let (f, options) = parse_number(p.trim())?;
+        let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
         if options.is_scientific {
             return Ok((f / 100.0, Some(scientific_format.to_string())));
         }
@@ -614,8 +844,8 @@ pub(crate) fn parse_formatted_number(
 
     // check if it is a currency in currencies
     for currency in currencies {
-        if let Some(p) = value.strip_prefix(&format!("-{}", currency)) {
-            let (f, options) = parse_number(p.trim())?;
+        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));
             }
@@ -624,7 +854,7 @@ pub(crate) fn parse_formatted_number(
             }
             return Ok((-f, Some(format!("{currency}#,##0"))));
         } else if let Some(p) = value.strip_prefix(currency) {
-            let (f, options) = parse_number(p.trim())?;
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));
             }
@@ -633,7 +863,7 @@ pub(crate) fn parse_formatted_number(
             }
             return Ok((f, Some(format!("{currency}#,##0"))));
         } else if let Some(p) = value.strip_suffix(currency) {
-            let (f, options) = parse_number(p.trim())?;
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
                 return Ok((f, Some(scientific_format.to_string())));
             }
@@ -646,12 +876,13 @@ pub(crate) fn parse_formatted_number(
         }
     }
 
-    if let Ok((serial_number, format)) = parse_date(value) {
+    // check if it is a date. NOTE: we don't trim the original here
+    if let Ok((serial_number, format)) = parse_date(original, locale) {
         return Ok((serial_number as f64, Some(format)));
     }
 
     // Lastly we check if it is a number
-    let (f, options) = parse_number(value)?;
+    let (f, options) = parse_number(value, decimal_separator, group_separator)?;
     if options.is_scientific {
         return Ok((f, Some(scientific_format.to_string())));
     }
@@ -674,7 +905,11 @@ struct NumberOptions {
 
 // tries to parse 'value' as a number.
 // If it is a number it either uses commas as thousands separator or it does not
-fn parse_number(value: &str) -> Result<(f64, NumberOptions), String> {
+fn parse_number(
+    value: &str,
+    decimal_separator: u8,
+    group_separator: u8,
+) -> Result<(f64, NumberOptions), String> {
     let mut position = 0;
     let bytes = value.as_bytes();
     let len = bytes.len();
@@ -682,8 +917,6 @@ fn parse_number(value: &str) -> Result<(f64, NumberOptions), String> {
         return Err("Cannot parse number".to_string());
     }
     let mut chars = String::from("");
-    let decimal_separator = b'.';
-    let group_separator = b',';
     let mut group_separator_index = Vec::new();
     // get the sign
     let sign = if bytes[0] == b'-' {

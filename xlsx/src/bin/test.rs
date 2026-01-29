@@ -22,7 +22,7 @@ fn main() {
     let file_name = &args[1];
     println!("Testing file: {file_name}");
     if let Err(message) = test_file(file_name) {
-        println!("{}", message);
+        println!("{message}");
         panic!("Model was evaluated inconsistently with XLSX data.")
     }
 
@@ -30,7 +30,7 @@ fn main() {
     let file_path = path::Path::new(file_name);
     let base_name = file_path.file_stem().unwrap().to_str().unwrap();
     let output_file_name = &format!("{base_name}.output.xlsx");
-    let mut model = load_from_xlsx(file_name, "en", "UTC").unwrap();
+    let mut model = load_from_xlsx(file_name, "en-GB", "UTC", "en").unwrap();
     model.evaluate();
     println!("Saving result as: {output_file_name}. Please open with Excel and test.");
     save_to_xlsx(&model, output_file_name).unwrap();

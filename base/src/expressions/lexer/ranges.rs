@@ -4,7 +4,7 @@ use crate::expressions::{token::TokenType, utils::column_to_number};
 use super::Lexer;
 use super::{ParsedRange, ParsedReference, Result};
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     /// Consumes a reference in A1 style like:
     /// AS23, $AS23, AS$23, $AS$23, R12
     /// Or returns an error
@@ -148,15 +148,16 @@ impl Lexer {
                     let row_left = match row_left.parse::<i32>() {
                         Ok(n) => n,
                         Err(_) => {
-                            return Err(self
-                                .set_error(&format!("Failed parsing row {}", row_left), position))
+                            return Err(
+                                self.set_error(&format!("Failed parsing row {row_left}"), position)
+                            )
                         }
                     };
                     let row_right = match row_right.parse::<i32>() {
                         Ok(n) => n,
                         Err(_) => {
                             return Err(self
-                                .set_error(&format!("Failed parsing row {}", row_right), position))
+                                .set_error(&format!("Failed parsing row {row_right}"), position))
                         }
                     };
                     if row_left > LAST_ROW {

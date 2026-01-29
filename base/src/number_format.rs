@@ -8,12 +8,12 @@ const DEFAULT_NUM_FMTS: &[&str] = &[
     "general",
     "0",
     "0.00",
-    "#,## 0",
-    "#,## 0.00",
-    "$#,## 0; \\ - $#,## 0",
-    "$#,## 0; [Red] \\ - $#,## 0",
-    "$#,## 0.00; \\ - $#,## 0.00",
-    "$#,## 0.00; [Red] \\ - $#,## 0.00",
+    "#,##0",
+    "#,##0.00",
+    "$#,##0; \\ - $#,##0",
+    "$#,##0; [Red] \\ - $#,##0",
+    "$#,##0.00; \\ - $#,##0.00",
+    "$#,##0.00; [Red] \\ - $#,##0.00",
     "0%",
     "0.00%",
     "0.00E + 00",
@@ -28,15 +28,15 @@ const DEFAULT_NUM_FMTS: &[&str] = &[
     "h:mm",
     "h:mm:ss",
     "m / d / yy h:mm",
-    "#,## 0;()#,## 0)",
-    "#,## 0; [Red]()#,## 0)",
-    "#,## 0.00;()#,## 0.00)",
-    "#,## 0.00; [Red]()#,## 0.00)",
-    "_()$”*#,## 0.00 _); _()$”* \\()#,## 0.00\\); _()$”* - ?? _); _()@_)",
+    "#,##0;()#,##0)",
+    "#,##0; [Red]()#,##0)",
+    "#,##0.00;()#,##0.00)",
+    "#,##0.00; [Red]()#,##0.00)",
+    "_()$”*#,##0.00 _); _()$”* \\()#,##0.00\\); _()$”* - ?? _); _()@_)",
     "mm:ss",
     "[h]:mm:ss",
     "mmss .0",
-    "## 0.0E + 0",
+    "##0.0E + 0",
     "@",
     "[$ -404] e / m / d ",
     "m / d / yy",
@@ -45,8 +45,8 @@ const DEFAULT_NUM_FMTS: &[&str] = &[
     "[$ -404] e / m / d",
     "t0",
     "t0.00",
-    "t#,## 0",
-    "t#,## 0.00",
+    "t#,##0",
+    "t#,##0.00",
     "t0%",
     "t0.00 %",
     "t#?/?",
@@ -112,29 +112,36 @@ pub fn to_precision(value: f64, precision: usize) -> f64 {
 /// ```
 /// This intends to be equivalent to the js: `${parseFloat(value.toPrecision(precision)})`
 /// See ([ecma](https://tc39.es/ecma262/#sec-number.prototype.toprecision)).
-/// FIXME: There has to be a better algorithm :/
 pub fn to_excel_precision_str(value: f64) -> String {
     to_precision_str(value, 15)
 }
+
+pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
+    if !value.is_finite() {
+        return value;
+    }
+
+    let s = format!("{:.*e}", precision.saturating_sub(1), value);
+    s.parse::<f64>().unwrap_or(value)
+}
+
 pub fn to_precision_str(value: f64, precision: usize) -> String {
-    if value.is_infinite() {
-        return "inf".to_string();
+    if !value.is_finite() {
+        if value.is_infinite() {
+            return "inf".to_string();
+        } else {
+            return "NaN".to_string();
+        }
     }
-    if value.is_nan() {
-        return "NaN".to_string();
-    }
-    let exponent = value.abs().log10().floor();
-    let base = value / 10.0_f64.powf(exponent);
-    let base = format!("{0:.1$}", base, precision - 1);
-    let value = format!("{}e{}", base, exponent).parse::<f64>().unwrap_or({
-        // TODO: do this in a way that does not require a possible error
-        0.0
-    });
+
+    let s = format!("{:.*e}", precision.saturating_sub(1), value);
+    let parsed = s.parse::<f64>().unwrap_or(value);
+
     // I would love to use the std library. There is not a speed concern here
     // problem is it doesn't do the right thing
     // Also ryu is my favorite _modern_ algorithm
     let mut buffer = ryu::Buffer::new();
-    let text = buffer.format(value);
+    let text = buffer.format(parsed);
     // The above algorithm converts 2 to 2.0 regrettably
     if let Some(stripped) = text.strip_suffix(".0") {
         return stripped.to_string();

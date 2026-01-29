@@ -11,7 +11,7 @@ use crate::{
         lexer::LexerMode,
         parser::{
             move_formula::{move_formula, MoveContext},
-            stringify::{rename_defined_name_in_node, to_rc_format, to_string},
+            stringify::{rename_defined_name_in_node, to_localized_string, to_rc_format},
             Node, Parser,
         },
         token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
@@ -24,8 +24,8 @@ use crate::{
     },
     functions::util::compare_values,
     implicit_intersection::implicit_intersection,
-    language::{get_language, Language},
-    locale::{get_locale, Currency, Locale},
+    language::{get_default_language, get_language, Language},
+    locale::{get_locale, Locale},
     types::*,
     utils as common,
 };
@@ -85,6 +85,26 @@ pub(crate) enum ParsedDefinedName {
     InvalidDefinedNameFormula,
 }
 
+/// Formatting settings for a locale
+pub struct FmtSettings {
+    /// Currency format
+    pub currency: String,
+    /// Currency format with symbol
+    pub currency_format: String,
+    /// Short date format
+    pub short_date: String,
+    /// Example of short date format
+    pub short_date_example: String,
+    /// Long date format
+    pub long_date: String,
+    /// Example of long date format
+    pub long_date_example: String,
+    /// Number format
+    pub number_fmt: String,
+    /// Example of number format
+    pub number_example: String,
+}
+
 /// A dynamical IronCalc model.
 ///
 /// Its is composed of a `Workbook`. Everything else are dynamical quantities:
@@ -97,7 +117,7 @@ pub(crate) enum ParsedDefinedName {
 /// * A list of cells with its status (evaluating, evaluated, not evaluated)
 /// * A dictionary with the shared strings and their indices.
 ///   This is an optimization for large files (~1 million rows)
-pub struct Model {
+pub struct Model<'a> {
     /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook,
     /// A list of parsed formulas
@@ -107,13 +127,13 @@ pub struct Model {
     /// An optimization to lookup strings faster
     pub(crate) shared_strings: HashMap<String, usize>,
     /// An instance of the parser
-    pub(crate) parser: Parser,
+    pub(crate) parser: Parser<'a>,
     /// The list of cells with formulas that are evaluated or being evaluated
     pub(crate) cells: HashMap<(u32, i32, i32), CellState>,
     /// The locale of the model
-    pub(crate) locale: Locale,
+    pub(crate) locale: &'a Locale,
     /// The language used
-    pub(crate) language: Language,
+    pub(crate) language: &'a Language,
     /// The timezone used to evaluate the model
     pub(crate) tz: Tz,
     /// The view id. A view consists of a selected sheet and ranges.
@@ -139,7 +159,7 @@ pub struct CellReference {
     pub column: i32,
 }
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn evaluate_node_with_reference(
         &mut self,
         node: &Node,
@@ -225,7 +245,7 @@ impl Model {
                 _ => CalcResult::new_error(
                     Error::ERROR,
                     cell,
-                    format!("Error with Implicit Intersection in cell {:?}", cell),
+                    format!("Error with Implicit Intersection in cell {cell:?}"),
                 ),
             },
             _ => self.evaluate_node_in_context(node, cell),
@@ -324,34 +344,40 @@ impl Model {
                 absolute_row1,
                 absolute_column2,
                 sheet_name: _,
-            } => CalcResult::Range {
-                left: CellReferenceIndex {
-                    sheet: *sheet_index,
-                    row: if *absolute_row1 {
-                        *row1
-                    } else {
-                        *row1 + cell.row
+            } => {
+                let r1 = if *absolute_row1 {
+                    *row1
+                } else {
+                    *row1 + cell.row
+                };
+                let r2 = if *absolute_row2 {
+                    *row2
+                } else {
+                    *row2 + cell.row
+                };
+                let c1 = if *absolute_column1 {
+                    *column1
+                } else {
+                    *column1 + cell.column
+                };
+                let c2 = if *absolute_column2 {
+                    *column2
+                } else {
+                    *column2 + cell.column
+                };
+                CalcResult::Range {
+                    left: CellReferenceIndex {
+                        sheet: *sheet_index,
+                        row: r1.min(r2),
+                        column: c1.min(c2),
                     },
-                    column: if *absolute_column1 {
-                        *column1
-                    } else {
-                        *column1 + cell.column
+                    right: CellReferenceIndex {
+                        sheet: *sheet_index,
+                        row: r1.max(r2),
+                        column: c1.max(c2),
                     },
-                },
-                right: CellReferenceIndex {
-                    sheet: *sheet_index,
-                    row: if *absolute_row2 {
-                        *row2
-                    } else {
-                        *row2 + cell.row
-                    },
-                    column: if *absolute_column2 {
-                        *column2
-                    } else {
-                        *column2 + cell.column
-                    },
-                },
-            },
+                }
+            }
             OpConcatenateKind { left, right } => {
                 let l = match self.get_string(left, cell) {
                     Ok(f) => f,
@@ -365,7 +391,7 @@ impl Model {
                         return s;
                     }
                 };
-                let result = format!("{}{}", l, r);
+                let result = format!("{l}{r}");
                 CalcResult::String(result)
             }
             OpProductKind { kind, left, right } => match kind {
@@ -385,7 +411,7 @@ impl Model {
             }
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             InvalidFunctionKind { name, args: _ } => {
-                CalcResult::new_error(Error::ERROR, cell, format!("Invalid function: {}", name))
+                CalcResult::new_error(Error::NAME, cell, format!("Invalid function: {name}"))
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
@@ -401,26 +427,26 @@ impl Model {
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
-                            format!("Defined name \"{}\" is not a reference.", name),
+                            format!("Defined name \"{name}\" is not a reference."),
                         ),
                     }
                 } else {
                     CalcResult::new_error(
                         Error::NAME,
                         cell,
-                        format!("Defined name \"{}\" not found.", name),
+                        format!("Defined name \"{name}\" not found."),
                     )
                 }
             }
             TableNameKind(s) => CalcResult::new_error(
                 Error::NAME,
                 cell,
-                format!("table name \"{}\" not supported.", s),
+                format!("table name \"{s}\" not supported."),
             ),
             WrongVariableKind(s) => CalcResult::new_error(
                 Error::NAME,
                 cell,
-                format!("Variable name \"{}\" not found.", s),
+                format!("Variable name \"{s}\" not found."),
             ),
             CompareKind { kind, left, right } => {
                 let l = self.evaluate_node_in_context(left, cell);
@@ -497,7 +523,7 @@ impl Model {
             } => CalcResult::new_error(
                 Error::ERROR,
                 cell,
-                format!("Error parsing {}: {}", formula, message),
+                format!("Error parsing {formula}: {message}"),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
             ImplicitIntersection {
@@ -510,7 +536,7 @@ impl Model {
                         None => CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error with Implicit Intersection in cell {:?}", cell),
+                            format!("Error with Implicit Intersection in cell {cell:?}"),
                         ),
                     }
                 }
@@ -690,7 +716,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// assert_eq!(model.workbook.worksheet(0)?.color, None);
     /// model.set_sheet_color(0, "#DBBE29")?;
     /// assert_eq!(model.workbook.worksheet(0)?.color, Some("#DBBE29".to_string()));
@@ -707,7 +733,7 @@ impl Model {
             worksheet.color = Some(color.to_string());
             return Ok(());
         }
-        Err(format!("Invalid color: {}", color))
+        Err(format!("Invalid color: {color}"))
     }
 
     /// Changes the visibility of a sheet
@@ -731,7 +757,7 @@ impl Model {
             BooleanCell { v, .. } => CalcResult::Boolean(*v),
             NumberCell { v, .. } => CalcResult::Number(*v),
             ErrorCell { ei, .. } => {
-                let message = ei.to_localized_error_string(&self.language);
+                let message = ei.to_localized_error_string(self.language);
                 CalcResult::new_error(ei.clone(), cell_reference, message)
             }
             SharedString { si, .. } => {
@@ -757,7 +783,7 @@ impl Model {
                     CalcResult::Error {
                         error: ei.clone(),
                         origin: cell_reference,
-                        message: ei.to_localized_error_string(&self.language),
+                        message: ei.to_localized_error_string(self.language),
                     }
                 }
             }
@@ -771,7 +797,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// assert_eq!(model.is_empty_cell(0, 1, 1)?, true);
     /// model.set_user_input(0, 1, 1, "Attention is all you need".to_string());
     /// assert_eq!(model.is_empty_cell(0, 1, 1)?, false);
@@ -849,9 +875,9 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::cell::CellValue;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// model.set_user_input(0, 1, 1, "Stella!".to_string());
-    /// let model2 = Model::from_bytes(&model.to_bytes())?;
+    /// let model2 = Model::from_bytes(&model.to_bytes(), "en")?;
     /// assert_eq!(
     ///     model2.get_cell_value_by_index(0, 1, 1),
     ///     Ok(CellValue::String("Stella!".to_string()))
@@ -862,10 +888,10 @@ impl Model {
     ///
     /// See also:
     /// * [Model::to_bytes]
-    pub fn from_bytes(s: &[u8]) -> Result<Model, String> {
+    pub fn from_bytes(s: &[u8], language_id: &'a str) -> Result<Model<'a>, String> {
         let workbook: Workbook =
             bitcode::decode(s).map_err(|e| format!("Error parsing workbook: {e}"))?;
-        Model::from_workbook(workbook)
+        Model::from_workbook(workbook, language_id)
     }
 
     /// Returns a model from a Workbook object
@@ -876,9 +902,9 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::cell::CellValue;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// model.set_user_input(0, 1, 1, "Stella!".to_string());
-    /// let model2 = Model::from_workbook(model.workbook)?;
+    /// let model2 = Model::from_workbook(model.workbook, "en")?;
     /// assert_eq!(
     ///     model2.get_cell_value_by_index(0, 1, 1),
     ///     Ok(CellValue::String("Stella!".to_string()))
@@ -886,7 +912,7 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_workbook(workbook: Workbook) -> Result<Model, String> {
+    pub fn from_workbook(workbook: Workbook, language_id: &str) -> Result<Model<'_>, String> {
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
 
@@ -902,20 +928,27 @@ impl Model {
         //     }
         //     tables.push(tables_in_sheet);
         // }
-        let parser = Parser::new(worksheet_names, defined_names, workbook.tables.clone());
+
         let cells = HashMap::new();
-        let locale = get_locale(&workbook.settings.locale)
-            .map_err(|_| "Invalid locale".to_string())?
-            .clone();
+        let locale =
+            get_locale(&workbook.settings.locale).map_err(|_| "Invalid locale".to_string())?;
         let tz: Tz = workbook
             .settings
             .tz
             .parse()
             .map_err(|_| format!("Invalid timezone: {}", workbook.settings.tz))?;
 
-        // FIXME: Add support for display languages
-        #[allow(clippy::expect_used)]
-        let language = get_language("en").expect("").clone();
+        let language = match get_language(language_id) {
+            Ok(lang) => lang,
+            Err(_) => return Err("Invalid language".to_string()),
+        };
+        let parser = Parser::new(
+            worksheet_names,
+            defined_names,
+            workbook.tables.clone(),
+            locale,
+            language,
+        );
         let mut shared_strings = HashMap::new();
         for (index, s) in workbook.shared_strings.iter().enumerate() {
             shared_strings.insert(s.to_string(), index);
@@ -948,7 +981,7 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::expressions::types::CellReferenceIndex;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// model.set_user_input(0, 1, 1, "Stella!".to_string());
     /// let reference = model.parse_reference("Sheet1!D40");
     /// assert_eq!(reference, Some(CellReferenceIndex {sheet: 0, row: 40, column: 4}));
@@ -1014,7 +1047,7 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::expressions::types::{Area, CellReferenceIndex};
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let source = CellReferenceIndex { sheet: 0, row: 3, column: 1};
     /// let target = CellReferenceIndex { sheet: 0, row: 50, column: 1};
     /// let area = Area { sheet: 0, row: 1, column: 1, width: 5, height: 4};
@@ -1037,7 +1070,7 @@ impl Model {
         let source_sheet_name = self
             .workbook
             .worksheet(source.sheet)
-            .map_err(|e| format!("Could not find source worksheet: {}", e))?
+            .map_err(|e| format!("Could not find source worksheet: {e}"))?
             .get_name();
         if source.sheet != area.sheet {
             return Err("Source and area are in different sheets".to_string());
@@ -1051,7 +1084,7 @@ impl Model {
         let target_sheet_name = self
             .workbook
             .worksheet(target.sheet)
-            .map_err(|e| format!("Could not find target worksheet: {}", e))?
+            .map_err(|e| format!("Could not find target worksheet: {e}"))?
             .get_name();
         if let Some(formula) = value.strip_prefix('=') {
             let cell_reference = CellReferenceRC {
@@ -1070,8 +1103,10 @@ impl Model {
                     row_delta: target.row - source.row,
                     column_delta: target.column - source.column,
                 },
+                self.locale,
+                self.language,
             );
-            Ok(format!("={}", formula_str))
+            Ok(format!("={formula_str}"))
         } else {
             Ok(value.to_string())
         }
@@ -1084,7 +1119,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "=B1*D4".to_string());
     /// let (target_row, target_column) = (30, 1);
@@ -1108,7 +1143,11 @@ impl Model {
         let cell = self.workbook.worksheet(sheet)?.cell(row, column);
         let result = match cell {
             Some(cell) => match cell.get_formula() {
-                None => cell.get_text(&self.workbook.shared_strings, &self.language),
+                None => cell.get_localized_text(
+                    &self.workbook.shared_strings,
+                    self.locale,
+                    self.language,
+                ),
                 Some(i) => {
                     let formula = &self.parsed_formulas[sheet as usize][i as usize];
                     let cell_ref = CellReferenceRC {
@@ -1116,7 +1155,10 @@ impl Model {
                         row: target_row,
                         column: target_column,
                     };
-                    format!("={}", to_string(formula, &cell_ref))
+                    format!(
+                        "={}",
+                        to_localized_string(formula, &cell_ref, self.locale, self.language)
+                    )
                 }
             },
             None => "".to_string(),
@@ -1132,7 +1174,7 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::expressions::types::CellReferenceIndex;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let source = CellReferenceIndex {sheet: 0, row: 1, column: 1};
     /// let target = CellReferenceIndex {sheet: 0, row: 30, column: 1};
     /// let result = model.extend_copied_value("=B1*D4", &source, &target)?;
@@ -1174,7 +1216,10 @@ impl Model {
                 row: target.row,
                 column: target.column,
             };
-            return Ok(format!("={}", to_string(formula, &cell_reference)));
+            return Ok(format!(
+                "={}",
+                to_localized_string(formula, &cell_reference, self.locale, self.language)
+            ));
         };
         Ok(value.to_string())
     }
@@ -1186,7 +1231,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "=SIN(B1*C3)+1".to_string());
     /// model.evaluate();
@@ -1197,7 +1242,7 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::get_cell_content()]
+    /// * [Model::get_localized_cell_content()]
     pub fn get_cell_formula(
         &self,
         sheet: u32,
@@ -1219,7 +1264,47 @@ impl Model {
                         row,
                         column,
                     };
-                    Ok(Some(format!("={}", to_string(formula, &cell_ref))))
+                    Ok(Some(format!(
+                        "={}",
+                        to_localized_string(formula, &cell_ref, self.locale, self.language)
+                    )))
+                }
+                None => Ok(None),
+            },
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the text for the formula in (`sheet`, `row`, `column`) in English if any
+    ///
+    /// See also:
+    /// * [Model::get_localized_cell_content()]
+    pub(crate) fn get_english_cell_formula(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<String>, String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        match worksheet.cell(row, column) {
+            Some(cell) => match cell.get_formula() {
+                Some(formula_index) => {
+                    let formula = &self
+                        .parsed_formulas
+                        .get(sheet as usize)
+                        .ok_or("missing sheet")?
+                        .get(formula_index as usize)
+                        .ok_or("missing formula")?;
+                    let cell_ref = CellReferenceRC {
+                        sheet: worksheet.get_name(),
+                        row,
+                        column,
+                    };
+                    let language_en = get_default_language();
+                    Ok(Some(format!(
+                        "={}",
+                        to_localized_string(formula, &cell_ref, self.locale, language_en)
+                    )))
                 }
                 None => Ok(None),
             },
@@ -1235,13 +1320,13 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "Hello!".to_string())?;
-    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "Hello!".to_string());
+    /// assert_eq!(model.get_localized_cell_content(sheet, row, column)?, "Hello!".to_string());
     ///
     /// model.update_cell_with_text(sheet, row, column, "Goodbye!")?;
-    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "Goodbye!".to_string());
+    /// assert_eq!(model.get_localized_cell_content(sheet, row, column)?, "Goodbye!".to_string());
     /// # Ok(())
     /// # }
     /// ```
@@ -1260,7 +1345,7 @@ impl Model {
     ) -> Result<(), String> {
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         let new_style_index;
-        if common::value_needs_quoting(value, &self.language) {
+        if common::value_needs_quoting(value, self.language) {
             new_style_index = self
                 .workbook
                 .styles
@@ -1285,13 +1370,13 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "TRUE".to_string())?;
-    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "TRUE".to_string());
+    /// assert_eq!(model.get_localized_cell_content(sheet, row, column)?, "TRUE".to_string());
     ///
     /// model.update_cell_with_bool(sheet, row, column, false)?;
-    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "FALSE".to_string());
+    /// assert_eq!(model.get_localized_cell_content(sheet, row, column)?, "FALSE".to_string());
     /// # Ok(())
     /// # }
     /// ```
@@ -1327,13 +1412,13 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "42".to_string())?;
-    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "42".to_string());
+    /// assert_eq!(model.get_localized_cell_content(sheet, row, column)?, "42".to_string());
     ///
     /// model.update_cell_with_number(sheet, row, column, 23.0)?;
-    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "23".to_string());
+    /// assert_eq!(model.get_localized_cell_content(sheet, row, column)?, "23".to_string());
     /// # Ok(())
     /// # }
     /// ```
@@ -1370,15 +1455,15 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "=A2*2".to_string())?;
     /// model.evaluate();
-    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "=A2*2".to_string());
+    /// assert_eq!(model.get_localized_cell_content(sheet, row, column)?, "=A2*2".to_string());
     ///
     /// model.update_cell_with_formula(sheet, row, column, "=A3*2".to_string())?;
     /// model.evaluate();
-    /// assert_eq!(model.get_cell_content(sheet, row, column)?, "=A3*2".to_string());
+    /// assert_eq!(model.get_localized_cell_content(sheet, row, column)?, "=A3*2".to_string());
     /// # Ok(())
     /// # }
     /// ```
@@ -1423,7 +1508,7 @@ impl Model {
     /// # use ironcalc_base::Model;
     /// # use ironcalc_base::cell::CellValue;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// model.set_user_input(0, 1, 1, "100$".to_string());
     /// model.set_user_input(0, 2, 1, "125$".to_string());
     /// model.set_user_input(0, 3, 1, "-10$".to_string());
@@ -1451,7 +1536,7 @@ impl Model {
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         if let Some(new_value) = value.strip_prefix('\'') {
             // First check if it needs quoting
-            let new_style = if common::value_needs_quoting(new_value, &self.language) {
+            let new_style = if common::value_needs_quoting(new_value, self.language) {
                 self.workbook
                     .styles
                     .get_style_with_quote_prefix(style_index)?
@@ -1488,8 +1573,11 @@ impl Model {
                 if !currencies.iter().any(|e| e == currency) {
                     currencies.push(currency);
                 }
+
                 //  We try to parse as number
-                if let Ok((v, number_format)) = parse_formatted_number(&value, &currencies) {
+                if let Ok((v, number_format)) =
+                    parse_formatted_number(&value, &currencies, self.locale)
+                {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:
                         // - we assign a date to already date-formatted cell
@@ -1516,7 +1604,7 @@ impl Model {
                 // Check is it is error value
                 let upper = value.to_uppercase();
                 let worksheet = self.workbook.worksheet_mut(sheet)?;
-                match get_error_by_name(&upper, &self.language) {
+                match get_error_by_name(&upper, self.language) {
                     Some(error) => {
                         worksheet.set_cell_with_error(row, column, error, new_style_index)?;
                     }
@@ -1548,7 +1636,7 @@ impl Model {
         // If the formula fails to parse try adding a parenthesis
         // SUM(A1:A3  => SUM(A1:A3)
         if let Node::ParseErrorKind { .. } = parsed_formula {
-            let new_parsed_formula = self.parser.parse(&format!("{})", formula), &cell_reference);
+            let new_parsed_formula = self.parser.parse(&format!("{formula})"), &cell_reference);
             match new_parsed_formula {
                 Node::ParseErrorKind { .. } => {}
                 _ => parsed_formula = new_parsed_formula,
@@ -1695,7 +1783,7 @@ impl Model {
             .cell(row, column)
             .cloned()
             .unwrap_or_default();
-        let cell_value = cell.value(&self.workbook.shared_strings, &self.language);
+        let cell_value = cell.value(&self.workbook.shared_strings, self.language);
         Ok(cell_value)
     }
 
@@ -1710,7 +1798,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "=1/3".to_string());
     /// model.evaluate();
@@ -1729,8 +1817,8 @@ impl Model {
             Some(cell) => {
                 let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
                 let formatted_value =
-                    cell.formatted_value(&self.workbook.shared_strings, &self.language, |value| {
-                        format_number(value, &format, &self.locale).text
+                    cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
+                        format_number(value, &format, self.locale).text
                     });
                 Ok(formatted_value)
             }
@@ -1746,10 +1834,16 @@ impl Model {
         })
     }
 
-    /// Returns a string with the cell content. If there is a formula returns the formula
+    /// Returns a string with the cell content in the given language and locale.
+    /// If there is a formula returns the formula
     /// If the cell is empty returns the empty string
-    /// Raises an error if there is no worksheet
-    pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
+    /// Returns an error if there is no worksheet
+    pub fn get_localized_cell_content(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<String, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
         let cell = match worksheet.cell(row, column) {
             Some(c) => c,
@@ -1763,9 +1857,16 @@ impl Model {
                     row,
                     column,
                 };
-                Ok(format!("={}", to_string(formula, &cell_ref)))
+                Ok(format!(
+                    "={}",
+                    to_localized_string(formula, &cell_ref, self.locale, self.language)
+                ))
             }
-            None => Ok(cell.get_text(&self.workbook.shared_strings, &self.language)),
+            None => Ok(cell.get_localized_text(
+                &self.workbook.shared_strings,
+                self.locale,
+                self.language,
+            )),
         }
     }
 
@@ -1817,7 +1918,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "100$".to_string());
     /// model.cell_clear_contents(sheet, row, column);
@@ -1844,7 +1945,7 @@ impl Model {
     /// ```rust
     /// # use ironcalc_base::Model;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut model = Model::new_empty("model", "en", "UTC")?;
+    /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// let (sheet, row, column) = (0, 1, 1);
     /// model.set_user_input(sheet, row, column, "100$".to_string());
     /// model.cell_clear_all(sheet, row, column);
@@ -1968,29 +2069,6 @@ impl Model {
         Ok(rows.join("\n"))
     }
 
-    /// Sets the currency of the model.
-    /// Currently we only support `USD`, `EUR`, `GBP` and `JPY`
-    /// NB: This is not preserved in the JSON.
-    pub fn set_currency(&mut self, iso: &str) -> Result<(), &str> {
-        // TODO: Add a full list
-        let symbol = if iso == "USD" {
-            "$"
-        } else if iso == "EUR" {
-            "€"
-        } else if iso == "GBP" {
-            "£"
-        } else if iso == "JPY" {
-            "¥"
-        } else {
-            return Err("Unsupported currency");
-        };
-        self.locale.currency = Currency {
-            symbol: symbol.to_string(),
-            iso: iso.to_string(),
-        };
-        Ok(())
-    }
-
     /// Returns the number of frozen rows in `sheet`
     pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
         if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {
@@ -2078,21 +2156,7 @@ impl Model {
         scope: Option<u32>,
         formula: &str,
     ) -> Result<(), String> {
-        if !is_valid_identifier(name) {
-            return Err("Invalid defined name".to_string());
-        };
-        let name_upper = name.to_uppercase();
-        let defined_names = &self.workbook.defined_names;
-        let sheet_id = match scope {
-            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
-            None => None,
-        };
-        // if the defined name already exist return error
-        for df in defined_names {
-            if df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id {
-                return Err("Defined name already exists".to_string());
-            }
-        }
+        let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
         self.workbook.defined_names.push(DefinedName {
             name: name.to_string(),
             formula: formula.to_string(),
@@ -2101,6 +2165,45 @@ impl Model {
         self.reset_parsed_structures();
 
         Ok(())
+    }
+
+    /// Validates if a defined name can be created
+    pub fn is_valid_defined_name(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<Option<u32>, String> {
+        if !is_valid_identifier(name) {
+            return Err("Name: Invalid defined name".to_string());
+        }
+        let name_upper = name.to_uppercase();
+        let defined_names = &self.workbook.defined_names;
+        let sheet_id = match scope {
+            Some(index) => match self.workbook.worksheet(index) {
+                Ok(ws) => Some(ws.sheet_id),
+                Err(_) => return Err("Scope: Invalid sheet index".to_string()),
+            },
+            None => None,
+        };
+        // if the defined name already exist return error
+        for df in defined_names {
+            if df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id {
+                return Err("Name: Defined name already exists".to_string());
+            }
+        }
+
+        // Make sure the formula is valid
+        match common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
+            self.get_sheet_index_by_name(name)
+        }) {
+            Ok(_) => {}
+            Err(_) => {
+                return Err("Formula: Invalid defined name formula".to_string());
+            }
+        };
+
+        Ok(sheet_id)
     }
 
     /// Delete defined name of name and scope
@@ -2136,7 +2239,7 @@ impl Model {
         new_formula: &str,
     ) -> Result<(), String> {
         if !is_valid_identifier(new_name) {
-            return Err("Invalid defined name".to_string());
+            return Err("Name: Invalid defined name".to_string());
         };
         let name_upper = name.to_uppercase();
         let new_name_upper = new_name.to_uppercase();
@@ -2144,18 +2247,28 @@ impl Model {
         if name_upper != new_name_upper || scope != new_scope {
             for key in self.parsed_defined_names.keys() {
                 if key.1.to_uppercase() == new_name_upper && key.0 == new_scope {
-                    return Err("Defined name already exists".to_string());
+                    return Err("Name: Defined name already exists".to_string());
                 }
             }
         }
         let defined_names = &self.workbook.defined_names;
         let sheet_id = match scope {
-            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
+            Some(index) => Some(
+                self.workbook
+                    .worksheet(index)
+                    .map_err(|_| "Scope: Invalid sheet index")?
+                    .sheet_id,
+            ),
             None => None,
         };
 
         let new_sheet_id = match new_scope {
-            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
+            Some(index) => Some(
+                self.workbook
+                    .worksheet(index)
+                    .map_err(|_| "Scope: Invalid sheet index")?
+                    .sheet_id,
+            ),
             None => None,
         };
 
@@ -2275,6 +2388,91 @@ impl Model {
             .keys()
             .map(|&(sheet, row, column)| CellReference { sheet, row, column })
             .collect()
+    }
+
+    /// Sets the locale of the model
+    pub fn set_locale(&mut self, locale_id: &str) -> Result<(), String> {
+        let locale = match get_locale(locale_id) {
+            Ok(l) => l,
+            Err(_) => return Err(format!("Invalid locale: {locale_id}")),
+        };
+        self.parser.set_locale(locale);
+        self.locale = locale;
+        self.workbook.settings.locale = locale_id.to_string();
+        self.evaluate();
+        Ok(())
+    }
+
+    /// Sets the timezone of the model
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
+        let tz: Tz = match &timezone.parse() {
+            Ok(tz) => *tz,
+            Err(_) => return Err(format!("Invalid timezone: {}", &timezone)),
+        };
+        self.tz = tz;
+        self.workbook.settings.tz = timezone.to_string();
+        self.evaluate();
+        Ok(())
+    }
+
+    /// Sets the language
+    pub fn set_language(&mut self, language_id: &str) -> Result<(), String> {
+        let language = match get_language(language_id) {
+            Ok(l) => l,
+            Err(_) => return Err(format!("Invalid language: {language_id}")),
+        };
+        self.parser.set_language(language);
+        self.language = language;
+        Ok(())
+    }
+
+    /// Gets the current language
+    pub fn get_language(&self) -> String {
+        self.language.code.clone()
+    }
+
+    /// Gets the timezone of the model
+    pub fn get_timezone(&self) -> String {
+        self.workbook.settings.tz.clone()
+    }
+
+    /// Gets the locale of the model
+    pub fn get_locale(&self) -> String {
+        self.workbook.settings.locale.clone()
+    }
+
+    /// Gets the formatting settings based on the locale
+    pub fn get_fmt_settings(&self) -> FmtSettings {
+        let day_example = 46006.0; // December 15, 2025
+        let currency = self.locale.currency.iso.clone();
+        let currency_symbol = &self.locale.currency.symbol;
+        // "M/d/yy"
+        let short_date = &self.locale.dates.date_formats.short;
+        // "M/d/yyyy"
+        let long_date = &self.locale.dates.date_formats.long;
+        let short_date_example = format_number(day_example, short_date, self.locale).text;
+        let long_date_example = format_number(day_example, long_date, self.locale).text;
+        // Number format ("#,##0.###")
+        // The CLDR formats are a bit different than Excel's
+        // let number_fmt = self.locale.numbers.decimal_formats.standard.clone();
+        // "#,##0.00 ¤" Currency format might have weird spaces
+        let currency_format_template = &self.locale.numbers.currency_formats.standard;
+        let currency_format = currency_format_template
+            .replace("¤", &format!("\"{}\"", currency_symbol))
+            .replace(" ", " ");
+
+        let number_fmt = "#,##0.00".to_string();
+        let number_example = format_number(1234.567, &number_fmt, self.locale).text;
+        FmtSettings {
+            currency,
+            currency_format,
+            short_date: short_date.clone(),
+            long_date: long_date.clone(),
+            short_date_example,
+            long_date_example,
+            number_fmt,
+            number_example,
+        }
     }
 }
 

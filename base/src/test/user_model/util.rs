@@ -2,7 +2,11 @@
 
 use crate::{expressions::types::Area, types::Border, BorderArea, UserModel};
 
-impl UserModel {
+pub fn new_empty_user_model<'a>() -> UserModel<'a> {
+    UserModel::new_empty("model", "en", "UTC", "en").unwrap()
+}
+
+impl<'a> UserModel<'a> {
     pub fn _set_cell_border(&mut self, cell: &str, color: &str) {
         let cell_reference = self.model._parse_reference(cell);
         let column = cell_reference.column;
@@ -11,11 +15,10 @@ impl UserModel {
             r##"{{
                 "item": {{
                     "style": "thin",
-                    "color": "{}"
+                    "color": "{color}"
                 }},
                 "type": "All"
-            }}"##,
-            color
+            }}"##
         ))
         .unwrap();
         let range = &Area {
@@ -40,11 +43,10 @@ impl UserModel {
             r##"{{
                 "item": {{
                     "style": "thin",
-                    "color": "{}"
+                    "color": "{color}"
                 }},
-                "type": "{}"
-            }}"##,
-            color, kind
+                "type": "{kind}"
+            }}"##
         ))
         .unwrap();
         let range = &Area {

@@ -33,7 +33,7 @@ TAN returns a unitless [number](/features/value-types#numbers) that is the trigo
 * The figure below illustrates the output of the TAN function for angles $x$ in the range -2$π$ to +2$π$.
 <center><img src="/functions/images/tangent-curve.png" width="350" alt="Graph showing tan(x) for x between -2π and +2π."></center>
 
-* Theoretically, $\text{tan}(x)$ is undefined for any critical $x$ that satisfies $x = \frac{\pi}{2} + k\pi$ (where $k$ is any integer). However, an exact representation of the mathmatical constant $\pi$ requires infinite precision, which cannot be achieved with the floating-point representation available. Hence, TAN will return very large or very small values close to critical $x$ values.
+* Theoretically, $\text{tan}(x)$ is undefined for any critical $x$ that satisfies $x = \frac{\pi}{2} + k\pi$ (where $k$ is any integer). However, an exact representation of the mathematical constant $\pi$ requires infinite precision, which cannot be achieved with the floating-point representation available. Hence, TAN will return very large or very small values close to critical $x$ values.
 ## Examples
 [See some examples in IronCalc](https://app.ironcalc.com/?example=tan).
 

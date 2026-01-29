@@ -11,10 +11,10 @@ use crate::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
     },
-    model::{CellReference, Model},
+    model::{CellReference, FmtSettings, Model},
     types::{
-        Alignment, BorderItem, CellType, Col, HorizontalAlignment, SheetProperties, SheetState,
-        Style, VerticalAlignment,
+        Alignment, BorderItem, Cell, CellType, Col, HorizontalAlignment, SheetProperties,
+        SheetState, Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
 };
@@ -23,7 +23,8 @@ use crate::user_model::history::{
     ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
 };
 
-use super::border_utils::is_max_border;
+use super::{border_utils::is_max_border, sequence_detector::detect_progression};
+
 /// Data for the clipboard
 pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
 
@@ -208,7 +209,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 /// ```rust
 /// # use ironcalc_base::UserModel;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut model = UserModel::new_empty("model", "en", "UTC")?;
+/// let mut model = UserModel::new_empty("model", "en", "UTC", "en")?;
 /// model.set_user_input(0, 1, 1, "=1+1")?;
 /// assert_eq!(model.get_formatted_cell_value(0, 1, 1)?, "2");
 /// model.undo()?;
@@ -218,20 +219,20 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 /// # Ok(())
 /// # }
 /// ```
-pub struct UserModel {
-    pub(crate) model: Model,
+pub struct UserModel<'a> {
+    pub(crate) model: Model<'a>,
     history: History,
     send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
 }
 
-impl Debug for UserModel {
+impl<'a> Debug for UserModel<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UserModel").finish()
     }
 }
 
-impl UserModel {
+impl<'a> UserModel<'a> {
     /// Creates a user model from an existing model
     pub fn from_model(model: Model) -> UserModel {
         UserModel {
@@ -246,8 +247,13 @@ impl UserModel {
     ///
     /// See also:
     /// * [Model::new_empty]
-    pub fn new_empty(name: &str, locale_id: &str, timezone: &str) -> Result<UserModel, String> {
-        let model = Model::new_empty(name, locale_id, timezone)?;
+    pub fn new_empty(
+        name: &'a str,
+        locale_id: &'a str,
+        timezone: &'a str,
+        language_id: &'a str,
+    ) -> Result<UserModel<'a>, String> {
+        let model = Model::new_empty(name, locale_id, timezone, language_id)?;
         Ok(UserModel {
             model,
             history: History::default(),
@@ -260,8 +266,8 @@ impl UserModel {
     ///
     /// See also:
     /// * [Model::from_bytes]
-    pub fn from_bytes(s: &[u8]) -> Result<UserModel, String> {
-        let model = Model::from_bytes(s)?;
+    pub fn from_bytes(s: &[u8], language_id: &'a str) -> Result<UserModel<'a>, String> {
+        let model = Model::from_bytes(s, language_id)?;
         Ok(UserModel {
             model,
             history: History::default(),
@@ -279,7 +285,7 @@ impl UserModel {
     }
 
     /// Returns the internal model
-    pub fn get_model(&self) -> &Model {
+    pub fn get_model(&self) -> &Model<'_> {
         &self.model
     }
 
@@ -458,7 +464,7 @@ impl UserModel {
     /// * [Model::get_cell_content]
     #[inline]
     pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
-        self.model.get_cell_content(sheet, row, column)
+        self.model.get_localized_cell_content(sheet, row, column)
     }
 
     /// Returns the formatted value of a cell
@@ -627,6 +633,7 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
@@ -656,11 +663,16 @@ impl UserModel {
             }
         }
         self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
         Ok(())
     }
 
-    fn clear_column_formatting(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        let mut diff_list = Vec::new();
+    fn clear_column_formatting(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
         let old_value = self.model.get_column_style(sheet, column)?;
         self.model.delete_column_style(sheet, column)?;
         diff_list.push(Diff::DeleteColumnStyle {
@@ -739,12 +751,15 @@ impl UserModel {
                 }
             }
         }
-        self.push_diff_list(diff_list);
         Ok(())
     }
 
-    fn clear_row_formatting(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        let mut diff_list = Vec::new();
+    fn clear_row_formatting(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        diff_list: &mut Vec<Diff>,
+    ) -> Result<(), String> {
         let old_value = self.model.get_row_style(sheet, row)?;
         self.model.delete_row_style(sheet, row)?;
         diff_list.push(Diff::DeleteRowStyle {
@@ -791,8 +806,6 @@ impl UserModel {
                 }
             }
         }
-        self.push_diff_list(diff_list);
-
         Ok(())
     }
 
@@ -803,19 +816,21 @@ impl UserModel {
     /// * [UserModel::range_clear_contents]
     pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
+        let mut diff_list = Vec::new();
         if range.row == 1 && range.height == LAST_ROW {
             for column in range.column..range.column + range.width {
-                self.clear_column_formatting(sheet, column)?;
+                self.clear_column_formatting(sheet, column, &mut diff_list)?;
             }
+            self.push_diff_list(diff_list);
             return Ok(());
         }
         if range.column == 1 && range.width == LAST_COLUMN {
             for row in range.row..range.row + range.height {
-                self.clear_row_formatting(sheet, row)?;
+                self.clear_row_formatting(sheet, row, &mut diff_list)?;
             }
+            self.push_diff_list(diff_list);
             return Ok(());
         }
-        let mut diff_list = Vec::new();
         for row in range.row..range.row + range.height {
             for column in range.column..range.column + range.width {
                 if let Some(old_style) = self.model.get_cell_style_or_none(sheet, row, column)? {
@@ -851,105 +866,184 @@ impl UserModel {
         Ok(())
     }
 
-    /// Inserts a row
+    /// Inserts `row_count` blank rows starting at `row` (both 0-based).
     ///
-    /// See also:
-    /// * [Model::insert_rows]
-    pub fn insert_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        let diff_list = vec![Diff::InsertRow { sheet, row }];
+    /// Parameters
+    /// * `sheet` – worksheet index.
+    /// * `row` – first row to insert.
+    /// * `row_count` – number of rows (> 0).
+    ///
+    /// History: the method pushes `row_count` [`crate::user_model::history::Diff::InsertRow`]
+    /// items **all using the same `row` index**.  Replaying those diffs (undo / redo)
+    /// is therefore immune to the row-shifts that happen after each individual
+    /// insertion.
+    ///
+    /// See also [`Model::insert_rows`].
+    pub fn insert_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        self.model.insert_rows(sheet, row, row_count)?;
+
+        let diff_list = vec![Diff::InsertRows {
+            sheet,
+            row,
+            count: row_count,
+        }];
         self.push_diff_list(diff_list);
-        self.model.insert_rows(sheet, row, 1)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
 
-    /// Deletes a row
+    /// Inserts `column_count` blank columns starting at `column` (0-based).
     ///
-    /// See also:
-    /// * [Model::delete_rows]
-    pub fn delete_row(&mut self, sheet: u32, row: i32) -> Result<(), String> {
-        let mut row_data = None;
+    /// Parameters
+    /// * `sheet` – worksheet index.
+    /// * `column` – first column to insert.
+    /// * `column_count` – number of columns (> 0).
+    ///
+    /// History: pushes one [`crate::user_model::history::Diff::InsertColumn`]
+    /// per inserted column, all with the same `column` value, preventing index
+    /// drift when the diffs are reapplied.
+    ///
+    /// See also [`Model::insert_columns`].
+    pub fn insert_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), String> {
+        self.model.insert_columns(sheet, column, column_count)?;
+
+        let diff_list = vec![Diff::InsertColumns {
+            sheet,
+            column,
+            count: column_count,
+        }];
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Deletes `row_count` rows starting at `row`.
+    ///
+    /// History: a [`crate::user_model::history::Diff::DeleteRow`] is created for
+    /// each row, ordered **bottom → top**.  Undo therefore recreates rows from
+    /// top → bottom and redo removes them bottom → top, avoiding index drift.
+    ///
+    /// See also [`Model::delete_rows`].
+    pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
-        for rd in &worksheet.rows {
-            if rd.r == row {
-                row_data = Some(rd.clone());
-                break;
+        let mut old_data = Vec::new();
+        // Collect data for all rows to be deleted
+        for r in row..row + row_count {
+            let mut row_data = None;
+            for rd in &worksheet.rows {
+                if rd.r == r {
+                    row_data = Some(rd.clone());
+                    break;
+                }
             }
+            let data = match worksheet.sheet_data.get(&r) {
+                Some(s) => s.clone(),
+                None => HashMap::new(),
+            };
+            old_data.push(RowData {
+                row: row_data,
+                data,
+            });
         }
-        let data = match worksheet.sheet_data.get(&row) {
-            Some(s) => s.clone(),
-            None => return Err(format!("Row number '{row}' is not valid.")),
-        };
-        let old_data = Box::new(RowData {
-            row: row_data,
-            data,
-        });
-        let diff_list = vec![Diff::DeleteRow {
+
+        self.model.delete_rows(sheet, row, row_count)?;
+
+        let diff_list = vec![Diff::DeleteRows {
             sheet,
             row,
+            count: row_count,
             old_data,
         }];
         self.push_diff_list(diff_list);
-        self.model.delete_rows(sheet, row, 1)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
 
-    /// Inserts a column
+    /// Deletes `column_count` columns starting at `column`.
     ///
-    /// See also:
-    /// * [Model::insert_columns]
-    pub fn insert_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
-        let diff_list = vec![Diff::InsertColumn { sheet, column }];
-        self.push_diff_list(diff_list);
-        self.model.insert_columns(sheet, column, 1)?;
-        self.evaluate_if_not_paused();
-        Ok(())
-    }
-
-    /// Deletes a column
+    /// History: pushes one [`crate::user_model::history::Diff::DeleteColumn`]
+    /// per column, **right → left**, so replaying the list is always safe with
+    /// respect to index shifts.
     ///
-    /// See also:
-    /// * [Model::delete_columns]
-    pub fn delete_column(&mut self, sheet: u32, column: i32) -> Result<(), String> {
+    /// See also [`Model::delete_columns`].
+    pub fn delete_columns(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        column_count: i32,
+    ) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
-        }
-
-        let mut column_data = None;
-        for col in &worksheet.cols {
-            let min = col.min;
-            let max = col.max;
-            if column >= min && column <= max {
-                column_data = Some(Col {
-                    min: column,
-                    max: column,
-                    width: col.width,
-                    custom_width: col.custom_width,
-                    style: col.style,
-                });
-                break;
+        let mut old_data = Vec::new();
+        // Collect data for all columns to be deleted
+        for c in column..column + column_count {
+            let mut column_data = None;
+            for col in &worksheet.cols {
+                if c >= col.min && c <= col.max {
+                    column_data = Some(Col {
+                        min: c,
+                        max: c,
+                        width: col.width,
+                        custom_width: col.custom_width,
+                        style: col.style,
+                    });
+                    break;
+                }
             }
-        }
 
-        let mut data = HashMap::new();
-        for (row, row_data) in &worksheet.sheet_data {
-            if let Some(cell) = row_data.get(&column) {
-                data.insert(*row, cell.clone());
+            let mut data = HashMap::new();
+            for (row_idx, row_data) in &worksheet.sheet_data {
+                if let Some(cell) = row_data.get(&c) {
+                    data.insert(*row_idx, cell.clone());
+                }
             }
-        }
 
-        let diff_list = vec![Diff::DeleteColumn {
-            sheet,
-            column,
-            old_data: Box::new(ColumnData {
+            old_data.push(ColumnData {
                 column: column_data,
                 data,
-            }),
+            });
+        }
+
+        self.model.delete_columns(sheet, column, column_count)?;
+
+        let diff_list = vec![Diff::DeleteColumns {
+            sheet,
+            column,
+            count: column_count,
+            old_data,
         }];
         self.push_diff_list(diff_list);
-        self.model.delete_columns(sheet, column, 1)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Moves a column horizontally and adjusts formulas
+    pub fn move_column_action(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        let diff_list = vec![Diff::MoveColumn {
+            sheet,
+            column,
+            delta,
+        }];
+        self.push_diff_list(diff_list);
+        self.model.move_column_action(sheet, column, delta)?;
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// Moves a row vertically and adjusts formulas
+    pub fn move_row_action(&mut self, sheet: u32, row: i32, delta: i32) -> Result<(), String> {
+        let diff_list = vec![Diff::MoveRow { sheet, row, delta }];
+        self.push_diff_list(diff_list);
+        self.model.move_row_action(sheet, row, delta)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -1406,9 +1500,9 @@ impl UserModel {
             // we go downwards, we start from `row1 + height1` to `to_row`,
             anchor_row = row1;
             sign = 1;
-            row_range = (row1 + height1..to_row + 1).collect();
+            row_range = (row1 + height1..=to_row).collect();
         } else if to_row < row1 {
-            // we go upwards, starting from `row1 - `` all the way to `to_row`
+            // we go upwards, starting from `row1 - 1` all the way to `to_row`
             anchor_row = row1 + height1 - 1;
             sign = -1;
             row_range = (to_row..row1).rev().collect();
@@ -1418,7 +1512,12 @@ impl UserModel {
 
         for column in column1..column1 + width1 {
             let mut index = 0;
-            for row_ref in &row_range {
+            let locale = &self.model.locale;
+            let values = (row1..height1 + row1)
+                .map(|row| self.get_cell_content(sheet, row, column))
+                .collect::<Result<Vec<_>, _>>()?;
+            let possible_progression = detect_progression(&values, locale);
+            for (range_idx, row_ref) in row_range.iter().enumerate() {
                 // Save value and style first
                 let row = *row_ref;
                 let old_value = self
@@ -1429,11 +1528,18 @@ impl UserModel {
                     .cloned();
                 let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
 
-                // compute the new value and set it
                 let source_row = anchor_row + index;
-                let target_value = self
-                    .model
-                    .extend_to(sheet, source_row, column, row, column)?;
+                let target_value;
+
+                // compute the new value and set it
+                if let Some(ref detected_progression) = possible_progression {
+                    target_value = detected_progression.next(range_idx);
+                } else {
+                    target_value = self
+                        .model
+                        .extend_to(sheet, source_row, column, row, column)?;
+                }
+
                 self.model
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
@@ -1487,10 +1593,10 @@ impl UserModel {
             return Err(format!("Invalid row: '{first_row}'"));
         }
         if !is_valid_column_number(last_column) {
-            return Err(format!("Invalid column: '{}'", last_column));
+            return Err(format!("Invalid column: '{last_column}'"));
         }
         if !is_valid_row(last_row) {
-            return Err(format!("Invalid row: '{}'", last_row));
+            return Err(format!("Invalid row: '{last_row}'"));
         }
 
         if !is_valid_row(to_column) {
@@ -1595,6 +1701,66 @@ impl UserModel {
         Ok(self.model.workbook.worksheet(sheet)?.show_grid_lines)
     }
 
+    /// Returns the largest column in the row less than a column whose cell has a non empty value.
+    /// If there are none it returns `None`.
+    /// This is useful when rendering a part of a worksheet to know which cells spill over
+    pub fn get_last_non_empty_in_row_before_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, String> {
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let data = worksheet.sheet_data.get(&row);
+        if let Some(row_data) = data {
+            let mut last_column = None;
+            let mut columns: Vec<i32> = row_data.keys().copied().collect();
+            columns.sort_unstable();
+            for col in columns {
+                if col < column {
+                    if let Some(cell) = worksheet.cell(row, col) {
+                        if matches!(cell, Cell::EmptyCell { .. }) {
+                            continue;
+                        }
+                    }
+                    last_column = Some(col);
+                }
+            }
+            Ok(last_column)
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Returns the smallest column in the row larger than "column" whose cell has a non empty value.
+    /// If there are none it returns `None`.
+    /// This is useful when rendering a part of a worksheet to know which cells spill over
+    pub fn get_first_non_empty_in_row_after_column(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<i32>, String> {
+        let worksheet = self.model.workbook.worksheet(sheet)?;
+        let data = worksheet.sheet_data.get(&row);
+        if let Some(row_data) = data {
+            let mut columns: Vec<i32> = row_data.keys().copied().collect();
+            // We sort the keys to ensure we are going from left to right
+            columns.sort_unstable();
+            for col in columns {
+                if col > column {
+                    if let Some(cell) = worksheet.cell(row, col) {
+                        if matches!(cell, Cell::EmptyCell { .. }) {
+                            continue;
+                        }
+                    }
+                    return Ok(Some(col));
+                }
+            }
+        }
+        Ok(None)
+    }
+
     /// Returns a copy of the selected area
     pub fn copy_to_clipboard(&self) -> Result<Clipboard, String> {
         let selected_area = self.get_selected_view();
@@ -1623,18 +1789,18 @@ impl UserModel {
                 text_row.push(text);
             }
             wtr.write_record(text_row)
-                .map_err(|e| format!("Error while processing csv: {}", e))?;
+                .map_err(|e| format!("Error while processing csv: {e}"))?;
             data.insert(row, data_row);
         }
 
         let csv = String::from_utf8(
             wtr.into_inner()
-                .map_err(|e| format!("Processing error: '{}'", e))?,
+                .map_err(|e| format!("Processing error: '{e}'"))?,
         )
-        .map_err(|e| format!("Error converting from utf8: '{}'", e))?;
+        .map_err(|e| format!("Error converting from utf8: '{e}'"))?;
 
         Ok(Clipboard {
-            csv,
+            csv: csv.trim().to_string(),
             data,
             sheet,
             range: (row_start, column_start, row_end, column_end),
@@ -1802,7 +1968,7 @@ impl UserModel {
         }
         self.push_diff_list(diff_list);
         // select the pasted area
-        self.set_selected_range(area.row, area.column, row, column)?;
+        self.set_selected_range(area.row, area.column, row - 1, column - 1)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -1853,7 +2019,10 @@ impl UserModel {
         new_scope: Option<u32>,
         new_formula: &str,
     ) -> Result<(), String> {
-        let old_formula = self.model.get_defined_name_formula(name, scope)?;
+        let old_formula = self
+            .model
+            .get_defined_name_formula(name, scope)
+            .map_err(|_| "General: Failed to get old name")?;
         let diff_list = vec![Diff::UpdateDefinedName {
             name: name.to_string(),
             scope,
@@ -1867,6 +2036,61 @@ impl UserModel {
             .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
         self.evaluate_if_not_paused();
         Ok(())
+    }
+
+    /// validates a new defined name
+    pub fn is_valid_defined_name(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<Option<u32>, String> {
+        self.model.is_valid_defined_name(name, scope, formula)
+    }
+
+    /// Sets the timezone for the model
+    pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
+        let diff_list = vec![Diff::SetTimezone {
+            old_value: self.get_timezone(),
+            new_value: timezone.to_string(),
+        }];
+        self.push_diff_list(diff_list);
+        self.model.set_timezone(timezone)
+    }
+
+    /// Sets the locale for the model
+    pub fn set_locale(&mut self, locale: &str) -> Result<(), String> {
+        let diff_list = vec![Diff::SetLocale {
+            old_value: self.get_locale(),
+            new_value: locale.to_string(),
+        }];
+        self.push_diff_list(diff_list);
+        self.model.set_locale(locale)
+    }
+
+    /// Gets the timezone of the model
+    pub fn get_timezone(&self) -> String {
+        self.model.get_timezone()
+    }
+
+    /// Gets the locale of the model
+    pub fn get_locale(&self) -> String {
+        self.model.get_locale()
+    }
+
+    /// Get the language for the model
+    pub fn get_language(&self) -> String {
+        self.model.get_language()
+    }
+
+    /// Sets the language for the model
+    pub fn set_language(&mut self, language: &str) -> Result<(), String> {
+        self.model.set_language(language)
+    }
+
+    /// Gets the formatting settings for the model
+    pub fn get_fmt_settings(&self) -> FmtSettings {
+        self.model.get_fmt_settings()
     }
 
     // **** Private methods ****** //
@@ -1967,45 +2191,56 @@ impl UserModel {
                         self.model.cell_clear_all(*sheet, *row, *column)?;
                     }
                 }
-                Diff::InsertRow { sheet, row } => {
-                    self.model.delete_rows(*sheet, *row, 1)?;
+                Diff::InsertRows { sheet, row, count } => {
+                    self.model.delete_rows(*sheet, *row, *count)?;
                     needs_evaluation = true;
                 }
-                Diff::DeleteRow {
+                Diff::DeleteRows {
                     sheet,
                     row,
+                    count: _,
                     old_data,
                 } => {
                     needs_evaluation = true;
-                    self.model.insert_rows(*sheet, *row, 1)?;
+                    self.model
+                        .insert_rows(*sheet, *row, old_data.len() as i32)?;
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
-                    if let Some(row_data) = old_data.row.clone() {
-                        worksheet.rows.push(row_data);
+                    for (i, row_data) in old_data.iter().enumerate() {
+                        let r = *row + i as i32;
+                        if let Some(row_style) = row_data.row.clone() {
+                            worksheet.rows.push(row_style);
+                        }
+                        worksheet.sheet_data.insert(r, row_data.data.clone());
                     }
-                    worksheet.sheet_data.insert(*row, old_data.data.clone());
                 }
-                Diff::InsertColumn { sheet, column } => {
-                    self.model.delete_columns(*sheet, *column, 1)?;
-                    needs_evaluation = true;
-                }
-                Diff::DeleteColumn {
+                Diff::InsertColumns {
                     sheet,
                     column,
+                    count,
+                } => {
+                    self.model.delete_columns(*sheet, *column, *count)?;
+                    needs_evaluation = true;
+                }
+                Diff::DeleteColumns {
+                    sheet,
+                    column,
+                    count: _,
                     old_data,
                 } => {
                     needs_evaluation = true;
-                    // inserts an empty column
-                    self.model.insert_columns(*sheet, *column, 1)?;
-                    // puts all the data back
+                    self.model
+                        .insert_columns(*sheet, *column, old_data.len() as i32)?;
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
-                    for (row, cell) in &old_data.data {
-                        worksheet.update_cell(*row, *column, cell.clone())?;
-                    }
-                    // makes sure that the width and style is correct
-                    if let Some(col) = &old_data.column {
-                        let width = col.width * constants::COLUMN_WIDTH_FACTOR;
-                        let style = col.style;
-                        worksheet.set_column_width_and_style(*column, width, style)?;
+                    for (i, col_data) in old_data.iter().enumerate() {
+                        let c = *column + i as i32;
+                        for (row, cell) in &col_data.data {
+                            worksheet.update_cell(*row, c, cell.clone())?;
+                        }
+                        if let Some(col) = &col_data.column {
+                            let width = col.width * constants::COLUMN_WIDTH_FACTOR;
+                            let style = col.style;
+                            worksheet.set_column_width_and_style(c, width, style)?;
+                        }
                     }
                 }
                 Diff::SetFrozenRowsCount {
@@ -2163,6 +2398,33 @@ impl UserModel {
                         self.model.delete_row_style(*sheet, *row)?;
                     }
                 }
+                Diff::MoveColumn {
+                    sheet,
+                    column,
+                    delta,
+                } => {
+                    // For undo, we apply the opposite move
+                    self.model
+                        .move_column_action(*sheet, *column + *delta, -*delta)?;
+                    needs_evaluation = true;
+                }
+                Diff::MoveRow { sheet, row, delta } => {
+                    // For undo, we apply the opposite move
+                    self.model.move_row_action(*sheet, *row + *delta, -*delta)?;
+                    needs_evaluation = true;
+                }
+                Diff::SetLocale {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_locale(old_value)?;
+                }
+                Diff::SetTimezone {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.set_timezone(old_value)?;
+                }
             }
         }
         if needs_evaluation {
@@ -2231,28 +2493,34 @@ impl UserModel {
                 } => self
                     .model
                     .set_cell_style(*sheet, *row, *column, new_value)?,
-                Diff::InsertRow { sheet, row } => {
-                    self.model.insert_rows(*sheet, *row, 1)?;
+                Diff::InsertRows { sheet, row, count } => {
+                    self.model.insert_rows(*sheet, *row, *count)?;
                     needs_evaluation = true;
                 }
-                Diff::DeleteRow {
+                Diff::DeleteRows {
                     sheet,
                     row,
+                    count,
                     old_data: _,
                 } => {
-                    self.model.delete_rows(*sheet, *row, 1)?;
+                    self.model.delete_rows(*sheet, *row, *count)?;
                     needs_evaluation = true;
                 }
-                Diff::InsertColumn { sheet, column } => {
-                    needs_evaluation = true;
-                    self.model.insert_columns(*sheet, *column, 1)?;
-                }
-                Diff::DeleteColumn {
+                Diff::InsertColumns {
                     sheet,
                     column,
+                    count,
+                } => {
+                    self.model.insert_columns(*sheet, *column, *count)?;
+                    needs_evaluation = true;
+                }
+                Diff::DeleteColumns {
+                    sheet,
+                    column,
+                    count,
                     old_data: _,
                 } => {
-                    self.model.delete_columns(*sheet, *column, 1)?;
+                    self.model.delete_columns(*sheet, *column, *count)?;
                     needs_evaluation = true;
                 }
                 Diff::SetFrozenRowsCount {
@@ -2364,6 +2632,30 @@ impl UserModel {
                 } => {
                     self.model.delete_row_style(*sheet, *row)?;
                 }
+                Diff::MoveColumn {
+                    sheet,
+                    column,
+                    delta,
+                } => {
+                    self.model.move_column_action(*sheet, *column, *delta)?;
+                    needs_evaluation = true;
+                }
+                Diff::MoveRow { sheet, row, delta } => {
+                    self.model.move_row_action(*sheet, *row, *delta)?;
+                    needs_evaluation = true;
+                }
+                Diff::SetLocale {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_locale(new_value)?;
+                }
+                Diff::SetTimezone {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.set_timezone(new_value)?;
+                }
             }
         }
 
@@ -2396,7 +2688,7 @@ mod tests {
             VerticalAlignment::Top,
         ];
         for a in all {
-            assert_eq!(vertical(&format!("{}", a)), Ok(a));
+            assert_eq!(vertical(&format!("{a}")), Ok(a));
         }
     }
 
@@ -2413,7 +2705,7 @@ mod tests {
             HorizontalAlignment::Right,
         ];
         for a in all {
-            assert_eq!(horizontal(&format!("{}", a)), Ok(a));
+            assert_eq!(horizontal(&format!("{a}")), Ok(a));
         }
     }
 }

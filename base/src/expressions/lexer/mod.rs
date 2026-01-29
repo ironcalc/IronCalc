@@ -79,19 +79,24 @@ pub enum LexerMode {
 
 /// Tokenize an input
 #[derive(Clone)]
-pub struct Lexer {
+pub struct Lexer<'a> {
     position: usize,
     next_token_position: Option<usize>,
     len: usize,
     chars: Vec<char>,
     mode: LexerMode,
-    locale: Locale,
-    language: Language,
+    locale: &'a Locale,
+    language: &'a Language,
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     /// Creates a new `Lexer` that returns the tokens of a formula.
-    pub fn new(formula: &str, mode: LexerMode, locale: &Locale, language: &Language) -> Lexer {
+    pub fn new(
+        formula: &str,
+        mode: LexerMode,
+        locale: &'a Locale,
+        language: &'a Language,
+    ) -> Lexer<'a> {
         let chars: Vec<char> = formula.chars().collect();
         let len = chars.len();
         Lexer {
@@ -100,14 +105,24 @@ impl Lexer {
             next_token_position: None,
             len,
             mode,
-            locale: locale.clone(),
-            language: language.clone(),
+            locale,
+            language,
         }
     }
 
     /// Changes the lexer mode
     pub fn set_lexer_mode(&mut self, mode: LexerMode) {
         self.mode = mode;
+    }
+
+    /// Sets the locale
+    pub fn set_locale(&mut self, locale: &'a Locale) {
+        self.locale = locale;
+    }
+
+    /// Sets the language
+    pub fn set_language(&mut self, language: &'a Language) {
+        self.language = language;
     }
 
     // FIXME: I don't think we should have `is_a1_mode` and   `get_formula`.
@@ -142,7 +157,7 @@ impl Lexer {
     pub fn expect(&mut self, tk: TokenType) -> Result<()> {
         let nt = self.next_token();
         if mem::discriminant(&nt) != mem::discriminant(&tk) {
-            return Err(self.set_error(&format!("Error, expected {:?}", tk), self.position));
+            return Err(self.set_error(&format!("Error, expected {tk:?}"), self.position));
         }
         Ok(())
     }
@@ -188,6 +203,7 @@ impl Lexer {
                     ':' => TokenType::Colon,
                     ';' => TokenType::Semicolon,
                     '@' => TokenType::At,
+                    '\\' => TokenType::Backslash,
                     ',' => {
                         if self.locale.numbers.symbols.decimal == "," {
                             match self.consume_number(',') {
@@ -308,11 +324,14 @@ impl Lexer {
                                 self.position = position - 1;
                                 return self.consume_range(None);
                             }
-                            let name_upper = name.to_ascii_uppercase();
+                            let name_upper = name.to_uppercase();
                             if name_upper == self.language.booleans.r#true {
                                 return TokenType::Boolean(true);
                             } else if name_upper == self.language.booleans.r#false {
                                 return TokenType::Boolean(false);
+                            }
+                            if self.peek_char() == Some('(') {
+                                return TokenType::Ident(name);
                             }
                             if self.mode == LexerMode::A1 {
                                 let parsed_reference = utils::parse_reference_a1(&name_upper);
@@ -511,7 +530,7 @@ impl Lexer {
         self.position = position;
         chars.parse::<i32>().map_err(|_| LexerError {
             position,
-            message: format!("Failed to parse to int: {}", chars),
+            message: format!("Failed to parse to int: {chars}"),
         })
     }
 
@@ -572,9 +591,7 @@ impl Lexer {
         }
         self.position = position;
         match chars.parse::<f64>() {
-            Err(_) => {
-                Err(self.set_error(&format!("Failed to parse to double: {}", chars), position))
-            }
+            Err(_) => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
             Ok(v) => Ok(v),
         }
     }

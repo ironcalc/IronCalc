@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use napi::{self, bindgen_prelude::*, JsUnknown, Result};
+use napi::{self, bindgen_prelude::*, Result, Unknown};
 use serde::Serialize;
 
 use ironcalc::{
@@ -28,29 +28,44 @@ fn to_node_error(error: XlsxError) -> Error {
   Error::new(Status::Unknown, error.to_string())
 }
 
+fn leak_str(s: &str) -> &'static str {
+  Box::leak(s.to_owned().into_boxed_str())
+}
+
 #[napi]
 pub struct Model {
-  model: BaseModel,
+  model: BaseModel<'static>,
 }
 
 #[napi]
 impl Model {
   #[napi(constructor)]
-  pub fn new(name: String, locale: String, timezone: String) -> Result<Self> {
-    let model = BaseModel::new_empty(&name, &locale, &timezone).map_err(to_js_error)?;
+  pub fn new(name: String, locale: String, timezone: String, language_id: String) -> Result<Self> {
+    let name = leak_str(&name);
+    let locale = leak_str(&locale);
+    let timezone = leak_str(&timezone);
+    let language_id = leak_str(&language_id);
+    let model = BaseModel::new_empty(name, locale, timezone, language_id).map_err(to_js_error)?;
     Ok(Self { model })
   }
 
   #[napi(factory)]
-  pub fn from_xlsx(file_path: String, locale: String, tz: String) -> Result<Model> {
-    let model = load_from_xlsx(&file_path, &locale, &tz)
+  pub fn from_xlsx(
+    file_path: String,
+    locale: String,
+    tz: String,
+    language_id: String,
+  ) -> Result<Model> {
+    let language_id = leak_str(&language_id);
+    let model = load_from_xlsx(&file_path, &locale, &tz, language_id)
       .map_err(|error| Error::new(Status::Unknown, error.to_string()))?;
     Ok(Self { model })
   }
 
   #[napi(factory)]
-  pub fn from_icalc(file_name: String) -> Result<Model> {
-    let model = load_from_icalc(&file_name)
+  pub fn from_icalc(file_name: String, language_id: String) -> Result<Model> {
+    let language_id = leak_str(&language_id);
+    let model = load_from_icalc(&file_name, language_id)
       .map_err(|error| Error::new(Status::Unknown, error.to_string()))?;
     Ok(Self { model })
   }
@@ -90,7 +105,7 @@ impl Model {
   pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String> {
     self
       .model
-      .get_cell_content(sheet, row, column)
+      .get_localized_cell_content(sheet, row, column)
       .map_err(to_js_error)
   }
 
@@ -127,7 +142,7 @@ impl Model {
     sheet: u32,
     row: i32,
     column: i32,
-    style: JsUnknown,
+    style: Unknown,
   ) -> Result<()> {
     let style: Style = env
       .from_js_value(style)
@@ -140,12 +155,12 @@ impl Model {
 
   #[napi(js_name = "getCellStyle")]
   pub fn get_cell_style(
-    &mut self,
+    &'_ self,
     env: Env,
     sheet: u32,
     row: i32,
     column: i32,
-  ) -> Result<JsUnknown> {
+  ) -> Result<Unknown<'_>> {
     let style = self
       .model
       .get_style_for_cell(sheet, row, column)
@@ -246,11 +261,11 @@ impl Model {
       .map_err(to_js_error)
   }
 
-  // I don't _think_ serializing to JsUnknown can't fail
+  // I don't _think_ serializing to Unknown can't fail
   // FIXME: Remove this clippy directive
   #[napi(js_name = "getWorksheetsProperties")]
   #[allow(clippy::unwrap_used)]
-  pub fn get_worksheets_properties(&self, env: Env) -> JsUnknown {
+  pub fn get_worksheets_properties(&'_ self, env: Env) -> Unknown<'_> {
     env
       .to_js_value(&self.model.get_worksheets_properties())
       .unwrap()
@@ -288,7 +303,7 @@ impl Model {
   }
 
   #[napi(js_name = "getDefinedNameList")]
-  pub fn get_defined_name_list(&self, env: Env) -> Result<JsUnknown> {
+  pub fn get_defined_name_list(&'_ self, env: Env) -> Result<Unknown<'_>> {
     let data: Vec<DefinedName> = self
       .model
       .workbook
@@ -339,5 +354,21 @@ impl Model {
       .model
       .delete_defined_name(&name, scope)
       .map_err(|e| to_js_error(e.to_string()))
+  }
+
+  #[napi(js_name = "moveColumn")]
+  pub fn move_column(&mut self, sheet: u32, column: i32, delta: i32) -> Result<()> {
+    self
+      .model
+      .move_column_action(sheet, column, delta)
+      .map_err(to_js_error)
+  }
+
+  #[napi(js_name = "moveRow")]
+  pub fn move_row(&mut self, sheet: u32, row: i32, delta: i32) -> Result<()> {
+    self
+      .model
+      .move_row_action(sheet, row, delta)
+      .map_err(to_js_error)
   }
 }

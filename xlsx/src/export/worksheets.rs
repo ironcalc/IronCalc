@@ -35,7 +35,7 @@ fn get_cell_style_attribute(s: i32) -> String {
     if s == 0 {
         "".to_string()
     } else {
-        format!(" s=\"{}\"", s)
+        format!(" s=\"{s}\"")
     }
 }
 
@@ -301,15 +301,53 @@ pub(crate) fn get_worksheet_xml(
         "".to_string()
     };
 
+    let frozen_rows = worksheet.frozen_rows;
+    let frozen_columns = worksheet.frozen_columns;
+
+    let pane = if frozen_rows > 0 && frozen_columns > 0 {
+        // There are both frozen rows and columns. There are four panes.
+        // The first column is the first column after the last frozen column.
+        let first_column = number_to_column(frozen_columns + 1).unwrap_or("A".to_string());
+        // This is the top left cell of the bottom right pane.
+        let top_left_cell = format!("{}{}", first_column, frozen_rows + 1);
+        // The meaning of the next two is irrelevant for IronCalc.
+        let top_right_active_cell = format!("{first_column}1");
+        let bottom_left_active_cell = format!("A{}", frozen_rows + 1);
+        // The bottom right active cell is the "true" selected cell and it does not need to reside on this pane.
+        format!(
+            "<pane xSplit=\"{frozen_columns}\" ySplit=\"{frozen_rows}\" topLeftCell=\"{top_left_cell}\" activePane=\"bottomRight\" state=\"frozen\"/>\
+             <selection pane=\"topRight\" activeCell=\"{top_right_active_cell}\" sqref=\"{top_right_active_cell}\"/>\
+             <selection pane=\"bottomLeft\" activeCell=\"{bottom_left_active_cell}\" sqref=\"{bottom_left_active_cell}\"/>\
+             <selection pane=\"bottomRight\" activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>",
+        )
+    } else if frozen_rows > 0 {
+        // Only frozen rows
+        let top_left_cell = format!("A{}", frozen_rows + 1);
+        format!(
+            "<pane ySplit=\"{frozen_rows}\" topLeftCell=\"{top_left_cell}\" activePane=\"bottomLeft\" state=\"frozen\"/>\
+            <selection pane=\"bottomLeft\" activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>",
+        )
+    } else if frozen_columns > 0 {
+        let top_left_cell = format!(
+            "{}1",
+            number_to_column(frozen_columns + 1).unwrap_or("A".to_string())
+        );
+        format!(
+            "<pane xSplit=\"{frozen_columns}\" topLeftCell=\"{top_left_cell}\" activePane=\"topRight\" state=\"frozen\"/>\
+             <selection pane=\"topRight\" activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>"
+        )
+    } else {
+        // No frozen rows or columns
+        format!(r#"<selection activeCell="{active_cell}" sqref="{sqref}"/>"#)
+    };
+
     format!(
-        "{XML_DECLARATION}
-<worksheet \
-xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" \
-xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
+        "{XML_DECLARATION}\
+<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
   <dimension ref=\"{dimension}\"/>\
   <sheetViews>\
     <sheetView workbookViewId=\"0\"{show_grid_lines}{tab_selected}>\
-        <selection activeCell=\"{active_cell}\" sqref=\"{sqref}\"/>\
+        {pane}\
     </sheetView>\
   </sheetViews>\
   {cols}\

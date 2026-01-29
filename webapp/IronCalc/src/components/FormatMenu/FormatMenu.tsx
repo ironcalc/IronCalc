@@ -1,4 +1,6 @@
+import type { FmtSettings } from "@ironcalc/wasm";
 import { Menu, MenuItem, styled } from "@mui/material";
+import { Check } from "lucide-react";
 import { type ComponentProps, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import FormatPicker from "./FormatPicker";
@@ -8,8 +10,9 @@ type FormatMenuProps = {
   children: React.ReactNode;
   numFmt: string;
   onChange: (numberFmt: string) => void;
-  onExited?: () => void;
-  anchorOrigin?: ComponentProps<typeof Menu>["anchorOrigin"];
+  onExited: () => void;
+  anchorOrigin: ComponentProps<typeof Menu>["anchorOrigin"];
+  formatOptions: FmtSettings;
 };
 
 const FormatMenu = (properties: FormatMenuProps) => {
@@ -18,12 +21,35 @@ const FormatMenu = (properties: FormatMenuProps) => {
   const [isPickerOpen, setPickerOpen] = useState(false);
   const anchorElement = useRef<HTMLDivElement>(null);
 
+  const formatOptions = properties.formatOptions;
+
   const onSelect = useCallback(
     (s: string) => {
       properties.onChange(s);
       setMenuOpen(false);
     },
     [properties.onChange],
+  );
+
+  const isAutoFormat = properties.numFmt === NumberFormats.AUTO;
+  const isNumberFormat = properties.numFmt === formatOptions.number_fmt;
+  const isPercentageFormat = properties.numFmt === NumberFormats.PERCENTAGE;
+  const isCurrencyEurosFormat =
+    properties.numFmt === NumberFormats.CURRENCY_EUR;
+  const isCurrencyUsdFormat = properties.numFmt === NumberFormats.CURRENCY_USD;
+  const isCurrencyGbpFormat = properties.numFmt === NumberFormats.CURRENCY_GBP;
+  const isShortDateFormat = properties.numFmt === formatOptions.short_date;
+  const isLongDateFormat = properties.numFmt === formatOptions.long_date;
+
+  const isCustomFormat = !(
+    isAutoFormat ||
+    isNumberFormat ||
+    isPercentageFormat ||
+    isCurrencyEurosFormat ||
+    isCurrencyUsdFormat ||
+    isCurrencyGbpFormat ||
+    isShortDateFormat ||
+    isLongDateFormat
   );
 
   return (
@@ -48,19 +74,28 @@ const FormatMenu = (properties: FormatMenuProps) => {
         }}
       >
         <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.AUTO)}>
-          <MenuItemText>{t("toolbar.format_menu.auto")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon $active={isAutoFormat} />
+            {t("toolbar.format_menu.auto")}
+          </MenuItemText>
         </MenuItemWrapper>
         <MenuDivider />
-        <MenuItemWrapper onClick={(): void => onSelect(NumberFormats.NUMBER)}>
-          <MenuItemText>{t("toolbar.format_menu.number")}</MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.number_example")}
-          </MenuItemExample>
+        <MenuItemWrapper
+          onClick={(): void => onSelect(formatOptions.number_fmt)}
+        >
+          <MenuItemText>
+            <CheckIcon $active={isNumberFormat} />
+            {t("toolbar.format_menu.number")}
+          </MenuItemText>
+          <MenuItemExample>{formatOptions.number_example}</MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.PERCENTAGE)}
         >
-          <MenuItemText>{t("toolbar.format_menu.percentage")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon $active={isPercentageFormat} />
+            {t("toolbar.format_menu.percentage")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.percentage_example")}
           </MenuItemExample>
@@ -70,7 +105,10 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.CURRENCY_EUR)}
         >
-          <MenuItemText>{t("toolbar.format_menu.currency_eur")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon $active={isCurrencyEurosFormat} />
+            {t("toolbar.format_menu.currency_eur")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.currency_eur_example")}
           </MenuItemExample>
@@ -78,7 +116,10 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.CURRENCY_USD)}
         >
-          <MenuItemText>{t("toolbar.format_menu.currency_usd")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon $active={isCurrencyUsdFormat} />
+            {t("toolbar.format_menu.currency_usd")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.currency_usd_example")}
           </MenuItemExample>
@@ -86,7 +127,10 @@ const FormatMenu = (properties: FormatMenuProps) => {
         <MenuItemWrapper
           onClick={(): void => onSelect(NumberFormats.CURRENCY_GBP)}
         >
-          <MenuItemText>{t("toolbar.format_menu.currency_gbp")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon $active={isCurrencyGbpFormat} />
+            {t("toolbar.format_menu.currency_gbp")}
+          </MenuItemText>
           <MenuItemExample>
             {t("toolbar.format_menu.currency_gbp_example")}
           </MenuItemExample>
@@ -94,25 +138,30 @@ const FormatMenu = (properties: FormatMenuProps) => {
 
         <MenuDivider />
         <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.DATE_SHORT)}
+          onClick={(): void => onSelect(formatOptions.short_date)}
         >
-          <MenuItemText>{t("toolbar.format_menu.date_short")}</MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.date_short_example")}
-          </MenuItemExample>
+          <MenuItemText>
+            <CheckIcon $active={isShortDateFormat} />
+            {t("toolbar.format_menu.date_short")}
+          </MenuItemText>
+          <MenuItemExample>{formatOptions.short_date_example}</MenuItemExample>
         </MenuItemWrapper>
         <MenuItemWrapper
-          onClick={(): void => onSelect(NumberFormats.DATE_LONG)}
+          onClick={(): void => onSelect(formatOptions.long_date)}
         >
-          <MenuItemText>{t("toolbar.format_menu.date_long")}</MenuItemText>
-          <MenuItemExample>
-            {t("toolbar.format_menu.date_long_example")}
-          </MenuItemExample>
+          <MenuItemText>
+            <CheckIcon $active={isLongDateFormat} />
+            {t("toolbar.format_menu.date_long")}
+          </MenuItemText>
+          <MenuItemExample>{formatOptions.long_date_example}</MenuItemExample>
         </MenuItemWrapper>
 
         <MenuDivider />
         <MenuItemWrapper onClick={(): void => setPickerOpen(true)}>
-          <MenuItemText>{t("toolbar.format_menu.custom")}</MenuItemText>
+          <MenuItemText>
+            <CheckIcon $active={isCustomFormat} />
+            {t("toolbar.format_menu.custom")}
+          </MenuItemText>
         </MenuItemWrapper>
       </StyledMenu>
       <FormatPicker
@@ -139,6 +188,7 @@ const StyledMenu = styled(Menu)`
 
 const MenuItemWrapper = styled(MenuItem)`
   display: flex;
+  align-items: center;
   justify-content: space-between;
   font-size: 12px;
   width: calc(100% - 8px);
@@ -161,8 +211,20 @@ const MenuDivider = styled("div")`
   border-top: 1px solid #eeeeee;
 `;
 
+const CheckIcon = styled(Check, {
+  shouldForwardProp: (prop) => prop !== "$active",
+})<{ $active: boolean }>`
+  width: 16px;
+  height: 16px;
+  color: ${(props) => (props.$active ? "currentColor" : "transparent")};
+  margin-right: 8px;
+  flex-shrink: 0;
+`;
+
 const MenuItemText = styled("div")`
   color: #000;
+  display: flex;
+  align-items: center;
 `;
 
 const MenuItemExample = styled("div")`

@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { type SelectedView, initSync } from "@ironcalc/wasm";
+import { initSync, type SelectedView } from "@ironcalc/wasm";
 import { expect, test } from "vitest";
 import {
   decreaseDecimalPlaces,

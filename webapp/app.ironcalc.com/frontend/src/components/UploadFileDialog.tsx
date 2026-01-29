@@ -1,6 +1,7 @@
 import { Dialog, styled } from "@mui/material";
 import { BookOpen, FileUp, X } from "lucide-react";
 import { type DragEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 function UploadFileDialog(properties: {
   onClose: () => void;
@@ -10,7 +11,7 @@ function UploadFileDialog(properties: {
   const [message, setMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const crossRef = useRef<HTMLDivElement>(null);
-
+  const { t } = useTranslation();
   const { onModelUpload } = properties;
 
   useEffect(() => {
@@ -76,7 +77,9 @@ function UploadFileDialog(properties: {
   };
 
   const handleFileUpload = (file: File) => {
-    setMessage(`Uploading ${file.name}...`);
+    setMessage(
+      t("file_bar.file_menu.import.uploading", { fileName: file.name }),
+    );
 
     // Read the file as ArrayBuffer
     const reader = new FileReader();
@@ -105,12 +108,12 @@ function UploadFileDialog(properties: {
     >
       <UploadTitle>
         <span style={{ flexGrow: 2, marginLeft: 12 }}>
-          Import an .xlsx file
+          {t("file_bar.file_menu.import.title")}
         </span>
         <Cross
           style={{ marginRight: 12 }}
           onClick={handleClose}
-          title="Close Dialog"
+          title={t("file_bar.file_menu.import.close_dialog")}
           ref={crossRef}
           tabIndex={0}
           onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
@@ -142,7 +145,7 @@ function UploadFileDialog(properties: {
               </div>
               <div style={{ fontSize: 12 }}>
                 <span style={{ color: "#333333" }}>
-                  Drag and drop a file here or{" "}
+                  {t("file_bar.file_menu.import.subtitle")}{" "}
                 </span>
                 <input
                   ref={fileInputRef}
@@ -174,7 +177,7 @@ function UploadFileDialog(properties: {
                     }
                   }}
                 >
-                  click to browse
+                  {t("file_bar.file_menu.import.subtitle_link")}
                 </DocLink>
               </div>
               <div style={{ flexGrow: 2 }} />
@@ -182,18 +185,16 @@ function UploadFileDialog(properties: {
           ) : (
             <>
               <div style={{ flexGrow: 2 }} />
-              <div>Drop file here</div>
+              <div>{t("file_bar.file_menu.import.drop_file_here")}</div>
               <div style={{ flexGrow: 2 }} />
             </>
           )}
         </DropZone>
       ) : (
         <DropZone>
-          <>
-            <div style={{ flexGrow: 2 }} />
-            <div>{message}</div>
-            <div style={{ flexGrow: 2 }} />
-          </>
+          <div style={{ flexGrow: 2 }} />
+          <div>{message}</div>
+          <div style={{ flexGrow: 2 }} />
         </DropZone>
       )}
 
@@ -204,7 +205,7 @@ function UploadFileDialog(properties: {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn more about importing files into IronCalc
+          {t("file_bar.file_menu.import.learn_more")}
         </UploadFooterLink>
       </UploadFooter>
     </DialogWrapper>
@@ -214,6 +215,8 @@ function UploadFileDialog(properties: {
 const DialogWrapper = styled(Dialog)`
   .MuiDialog-paper {
     width: 460px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
   }
   .MuiBackdrop-root {
     background-color: rgba(0, 0, 0, 0.1);

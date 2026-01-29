@@ -191,7 +191,7 @@ fn compute_ppmt(
 // All, except for rate are easily solvable in terms of the others.
 // In these formulas the payment (pmt) is normally negative
 
-impl Model {
+impl<'a> Model<'a> {
     fn get_array_of_numbers_generic(
         &mut self,
         arg: &Node,
@@ -231,7 +231,7 @@ impl Model {
                             CalcResult::new_error(
                                 Error::ERROR,
                                 *cell,
-                                format!("Invalid worksheet index: '{}'", sheet),
+                                format!("Invalid worksheet index: '{sheet}'"),
                             )
                         })?
                         .dimension()
@@ -245,7 +245,7 @@ impl Model {
                             CalcResult::new_error(
                                 Error::ERROR,
                                 *cell,
-                                format!("Invalid worksheet index: '{}'", sheet),
+                                format!("Invalid worksheet index: '{sheet}'"),
                             )
                         })?
                         .dimension()

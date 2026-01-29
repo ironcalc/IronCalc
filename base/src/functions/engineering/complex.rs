@@ -46,18 +46,18 @@ impl fmt::Display for Complex {
         // it is a bit weird what Excel does but it seems it uses general notation for
         // numbers > 1e-20 and scientific notation for the rest
         let y_str = if y.abs() <= 9e-20 {
-            format!("{:E}", y)
+            format!("{y:E}")
         } else if y == 1.0 {
             "".to_string()
         } else if y == -1.0 {
             "-".to_string()
         } else {
-            format!("{}", y)
+            format!("{y}")
         };
         let x_str = if x.abs() <= 9e-20 {
-            format!("{:E}", x)
+            format!("{x:E}")
         } else {
-            format!("{}", x)
+            format!("{x}")
         };
         if y == 0.0 && x == 0.0 {
             write!(f, "0")
@@ -182,7 +182,7 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
     }
 }
 
-impl Model {
+impl<'a> Model<'a> {
     fn get_complex_number(
         &mut self,
         node: &Node,

@@ -1,11 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
-use ironcalc_base::expressions::parser::static_analysis::add_implicit_intersection;
+use ironcalc_base::expressions::parser::{
+    new_parser_english, static_analysis::add_implicit_intersection,
+};
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use ironcalc_base::{
     expressions::{
-        parser::{stringify::to_rc_format, DefinedNameS, Parser},
+        parser::{stringify::to_rc_format, DefinedNameS},
         token::{get_error_by_english_name, Error},
         types::CellReferenceRC,
         utils::{column_to_number, parse_reference_a1},
@@ -81,7 +83,7 @@ fn parse_cell_reference(cell: &str) -> Result<(i32, i32), String> {
     if let Some(r) = parse_reference_a1(cell) {
         Ok((r.row, r.column))
     } else {
-        Err(format!("Invalid cell reference: '{}'", cell))
+        Err(format!("Invalid cell reference: '{cell}'"))
     }
 }
 
@@ -91,17 +93,15 @@ fn parse_range(range: &str) -> Result<(i32, i32, i32, i32), String> {
         if let Some(r) = parse_reference_a1(parts[0]) {
             Ok((r.row, r.column, r.row, r.column))
         } else {
-            Err(format!("Invalid range: '{}'", range))
+            Err(format!("Invalid range: '{range}'"))
         }
     } else if parts.len() == 2 {
         match (parse_reference_a1(parts[0]), parse_reference_a1(parts[1])) {
-            (Some(left), Some(right)) => {
-                return Ok((left.row, left.column, right.row, right.column));
-            }
-            _ => return Err(format!("Invalid range: '{}'", range)),
+            (Some(left), Some(right)) => Ok((left.row, left.column, right.row, right.column)),
+            _ => Err(format!("Invalid range: '{range}'")),
         }
     } else {
-        return Err(format!("Invalid range: '{}'", range));
+        Err(format!("Invalid range: '{range}'"))
     }
 }
 
@@ -266,30 +266,29 @@ enum ParseReferenceError {
 // There is a similar named function in ironcalc_base. We probably should fix both at the same time.
 // NB: Maybe use regexes for this?
 fn parse_reference(s: &str) -> Result<CellReferenceRC, ParseReferenceError> {
-    let bytes = s.as_bytes();
     let mut sheet_name = "".to_string();
     let mut column = "".to_string();
     let mut row = "".to_string();
     let mut state = "sheet"; // "sheet", "col", "row"
-    for &byte in bytes {
+    for ch in s.chars() {
         match state {
             "sheet" => {
-                if byte == b'!' {
+                if ch == '!' {
                     state = "col"
                 } else {
-                    sheet_name.push(byte as char);
+                    sheet_name.push(ch);
                 }
             }
             "col" => {
-                if byte.is_ascii_alphabetic() {
-                    column.push(byte as char);
+                if ch.is_ascii_alphabetic() {
+                    column.push(ch);
                 } else {
                     state = "row";
-                    row.push(byte as char);
+                    row.push(ch);
                 }
             }
             _ => {
-                row.push(byte as char);
+                row.push(ch);
             }
         }
     }
@@ -307,7 +306,7 @@ fn from_a1_to_rc(
     tables: HashMap<String, Table>,
     defined_names: Vec<DefinedNameS>,
 ) -> Result<String, XlsxError> {
-    let mut parser = Parser::new(worksheets.to_owned(), defined_names, tables);
+    let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
     let mut t = parser.parse(&formula, &cell_reference);
@@ -336,6 +335,7 @@ fn get_cell_from_excel(
     sheet_name: &str,
     cell_ref: &str,
     shared_strings: &mut Vec<String>,
+    rich_text_inline: Option<String>,
 ) -> Cell {
     // Possible cell types:
     // 18.18.11 ST_CellType (Cell Type)
@@ -390,27 +390,27 @@ fn get_cell_from_excel(
             }
             "d" => {
                 // Not implemented
-                println!("Invalid type (d) in {}!{}", sheet_name, cell_ref);
+                println!("Invalid type (d) in {sheet_name}!{cell_ref}");
                 Cell::ErrorCell {
                     ei: Error::NIMPL,
                     s: cell_style,
                 }
             }
             "inlineStr" => {
-                // Not implemented
-                println!("Invalid type (inlineStr) in {}!{}", sheet_name, cell_ref);
-                Cell::ErrorCell {
-                    ei: Error::NIMPL,
-                    s: cell_style,
-                }
+                let s = rich_text_inline.unwrap_or_default();
+                let si = if let Some(i) = shared_strings.iter().position(|r| r == &s) {
+                    i
+                } else {
+                    shared_strings.push(s.to_string());
+                    shared_strings.len() - 1
+                } as i32;
+
+                Cell::SharedString { si, s: cell_style }
             }
             "empty" => Cell::EmptyCell { s: cell_style },
             _ => {
                 // error
-                println!(
-                    "Unexpected type ({}) in {}!{}",
-                    cell_type, sheet_name, cell_ref
-                );
+                println!("Unexpected type ({cell_type}) in {sheet_name}!{cell_ref}");
                 Cell::ErrorCell {
                     ei: Error::ERROR,
                     s: cell_style,
@@ -444,15 +444,15 @@ fn get_cell_from_excel(
                     f: formula_index,
                     ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
                     s: cell_style,
-                    o: format!("{}!{}", sheet_name, cell_ref),
+                    o: format!("{sheet_name}!{cell_ref}"),
                     m: cell_value.unwrap_or("#ERROR!").to_string(),
                 }
             }
             "s" => {
                 // Not implemented
-                let o = format!("{}!{}", sheet_name, cell_ref);
+                let o = format!("{sheet_name}!{cell_ref}");
                 let m = Error::NIMPL.to_string();
-                println!("Invalid type (s) in {}!{}", sheet_name, cell_ref);
+                println!("Invalid type (s) in {sheet_name}!{cell_ref}");
                 Cell::CellFormulaError {
                     f: formula_index,
                     ei: Error::NIMPL,
@@ -471,8 +471,8 @@ fn get_cell_from_excel(
             }
             "d" => {
                 // Not implemented
-                println!("Invalid type (d) in {}!{}", sheet_name, cell_ref);
-                let o = format!("{}!{}", sheet_name, cell_ref);
+                println!("Invalid type (d) in {sheet_name}!{cell_ref}");
+                let o = format!("{sheet_name}!{cell_ref}");
                 let m = Error::NIMPL.to_string();
                 Cell::CellFormulaError {
                     f: formula_index,
@@ -483,25 +483,17 @@ fn get_cell_from_excel(
                 }
             }
             "inlineStr" => {
-                // Not implemented
-                let o = format!("{}!{}", sheet_name, cell_ref);
-                let m = Error::NIMPL.to_string();
-                println!("Invalid type (inlineStr) in {}!{}", sheet_name, cell_ref);
-                Cell::CellFormulaError {
+                // NB: This is untested, I don't know of any engine that uses inline strings in formulas
+                Cell::CellFormulaString {
                     f: formula_index,
-                    ei: Error::NIMPL,
+                    v: rich_text_inline.unwrap_or("".to_string()),
                     s: cell_style,
-                    o,
-                    m,
                 }
             }
             _ => {
                 // error
-                println!(
-                    "Unexpected type ({}) in {}!{}",
-                    cell_type, sheet_name, cell_ref
-                );
-                let o = format!("{}!{}", sheet_name, cell_ref);
+                println!("Unexpected type ({cell_type}) in {sheet_name}!{cell_ref}");
+                let o = format!("{sheet_name}!{cell_ref}");
                 let m = Error::ERROR.to_string();
                 Cell::CellFormulaError {
                     f: formula_index,
@@ -802,7 +794,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         // 18.3.1.4 c (Cell)
         // Child Elements:
         // * v: Cell value
-        // * is: Rich Text Inline (not used in IronCalc)
+        // * is: Rich Text Inline
         // * f: Formula
         // Attributes:
         // r: reference. A1 style
@@ -824,6 +816,26 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                 Some(vs[0].text().unwrap_or(""))
             } else {
                 None
+            };
+
+            // <c r="A1" t="inlineStr">
+            //   <is>
+            //     <t>Hello, World!</t>
+            //   </is>
+            // </c>
+            let cell_rich_text_nodes: Vec<Node> =
+                cell.children().filter(|n| n.has_tag_name("is")).collect();
+            let cell_rich_text = if cell_rich_text_nodes.is_empty() {
+                None
+            } else {
+                let texts: Vec<String> = cell_rich_text_nodes[0]
+                    .descendants()
+                    .filter(|n| n.has_tag_name("t"))
+                    .filter_map(|n| n.text())
+                    .map(|s| s.to_string())
+                    .collect();
+
+                Some(texts.join(""))
             };
 
             let cell_metadata = cell.attribute("cm");
@@ -886,7 +898,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                             Some(_) => {
                                 // It's the mother cell. We do not use the ref attribute in IronCalc
                                 let formula = fs[0].text().unwrap_or("").to_string();
-                                let context = format!("{}!{}", sheet_name, cell_ref);
+                                let context = format!("{sheet_name}!{cell_ref}");
                                 let formula = from_a1_to_rc(
                                     formula,
                                     worksheets,
@@ -949,7 +961,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                         }
                         // Its a cell with a simple formula
                         let formula = fs[0].text().unwrap_or("").to_string();
-                        let context = format!("{}!{}", sheet_name, cell_ref);
+                        let context = format!("{sheet_name}!{cell_ref}");
                         let formula = from_a1_to_rc(
                             formula,
                             worksheets,
@@ -968,8 +980,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                     }
                     _ => {
                         return Err(XlsxError::Xml(format!(
-                            "Invalid formula type {:?}.",
-                            formula_type,
+                            "Invalid formula type {formula_type:?}.",
                         )));
                     }
                 }
@@ -983,6 +994,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                 sheet_name,
                 cell_ref,
                 shared_strings,
+                cell_rich_text,
             );
             data_row.insert(column, cell);
         }
@@ -1110,4 +1122,17 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
         }
     }
     Ok((sheets, selected_sheet))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::import::worksheets::parse_reference;
+
+    #[test]
+    fn parse_reference_works() {
+        let cell_reference = parse_reference("📈 Overview!B2");
+        assert!(cell_reference.is_ok());
+        let cell_reference = cell_reference.unwrap();
+        assert_eq!(cell_reference.sheet, "📈 Overview");
+    }
 }

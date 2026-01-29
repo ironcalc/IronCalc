@@ -2,7 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::expressions::utils::{is_valid_column_number, is_valid_row};
+use crate::{
+    constants::{LAST_COLUMN, LAST_ROW},
+    expressions::utils::{is_valid_column_number, is_valid_row},
+    worksheet::NavigationDirection,
+};
 
 use super::common::UserModel;
 
@@ -17,7 +21,7 @@ pub struct SelectedView {
     pub left_column: i32,
 }
 
-impl UserModel {
+impl<'a> UserModel<'a> {
     /// Returns the selected sheet index
     pub fn get_selected_sheet(&self) -> u32 {
         if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
@@ -76,7 +80,7 @@ impl UserModel {
     /// Sets the the selected sheet
     pub fn set_selected_sheet(&mut self, sheet: u32) -> Result<(), String> {
         if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
+            return Err(format!("Invalid worksheet index {sheet}"));
         }
         if let Some(view) = self.model.workbook.views.get_mut(&0) {
             view.sheet = sheet;
@@ -98,7 +102,7 @@ impl UserModel {
             return Err(format!("Invalid row: '{row}'"));
         }
         if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
+            return Err(format!("Invalid worksheet index {sheet}"));
         }
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
@@ -110,7 +114,7 @@ impl UserModel {
         Ok(())
     }
 
-    /// Sets the selected range. Note that the selected cell must be in one of the corners.
+    /// Sets the selected range. Note that the selected cell must be in the selected range.
     pub fn set_selected_range(
         &mut self,
         start_row: i32,
@@ -138,24 +142,38 @@ impl UserModel {
             return Err(format!("Invalid row: '{end_row}'"));
         }
         if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
+            return Err(format!("Invalid worksheet index {sheet}"));
         }
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
                 let selected_row = view.row;
                 let selected_column = view.column;
-                // The selected cells must be on one of the corners of the selected range:
-                if selected_row != start_row && selected_row != end_row {
-                    return Err(format!(
-                        "The selected cells is not in one of the corners. Row: '{}' and row range '({}, {})'",
-                        selected_row, start_row, end_row
+                if start_row == 1 && end_row == LAST_ROW {
+                    // full row selected. The cell must be at the top or the bottom of the range
+                    if selected_column != start_column && selected_column != end_column {
+                        return Err(format!(
+                            "The selected cell is not the column edge. Column '{selected_column}' and column range '({start_column}, {end_column})'"
+                        ));
+                    }
+                } else if start_column == 1 && end_column == LAST_COLUMN {
+                    // full column selected. The cell must be at the left or the right of the range
+                    if selected_row != start_row && selected_row != end_row {
+                        return Err(format!(
+                            "The selected cell is not in the row edge. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
+                        ));
+                    }
+                } else {
+                    // The selected cell must be on one of the corners of the selected range:
+                    if selected_row != start_row && selected_row != end_row {
+                        return Err(format!(
+                        "The selected cell is not in one of the corners. Row: '{selected_row}' and row range '({start_row}, {end_row})'"
                     ));
-                }
-                if selected_column != start_column && selected_column != end_column {
-                    return Err(format!(
-                        "The selected cells is not in one of the corners. Column '{}' and column range '({}, {})'",
-                        selected_column, start_column, end_column
+                    }
+                    if selected_column != start_column && selected_column != end_column {
+                        return Err(format!(
+                        "The selected cell is not in one of the corners. Column '{selected_column}' and column range '({start_column}, {end_column})'"
                     ));
+                    }
                 }
                 view.range = [start_row, start_column, end_row, end_column];
             }
@@ -192,6 +210,17 @@ impl UserModel {
                 return Ok(());
             };
         let [row_start, column_start, row_end, column_end] = range;
+        if ["ArrowUp", "ArrowDown"].contains(&key) && row_start == 1 && row_end == LAST_ROW {
+            // full column selected, nothing to do
+            return Ok(());
+        }
+        if ["ArrowRight", "ArrowLeft"].contains(&key)
+            && column_start == 1
+            && column_end == LAST_COLUMN
+        {
+            // full row selected, nothing to do
+            return Ok(());
+        }
 
         match key {
             "ArrowRight" => {
@@ -307,7 +336,7 @@ impl UserModel {
             return Err(format!("Invalid row: '{top_row}'"));
         }
         if self.model.workbook.worksheet(sheet).is_err() {
-            return Err(format!("Invalid worksheet index {}", sheet));
+            return Err(format!("Invalid worksheet index {sheet}"));
         }
         if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
             if let Some(view) = worksheet.views.get_mut(&0) {
@@ -474,7 +503,7 @@ impl UserModel {
         // if the row is not fully visible we 'scroll' down until it is
         let mut height = 0.0;
         let mut row = view.top_row;
-        while row <= new_row + 1 {
+        while row <= new_row + 1 && row <= LAST_ROW {
             height += self.model.get_row_height(sheet, row)?;
             row += 1;
         }
@@ -682,6 +711,96 @@ impl UserModel {
             }
         }
 
+        Ok(())
+    }
+
+    /// User navigates to the edge in the given direction
+    pub fn on_navigate_to_edge_in_direction(
+        &mut self,
+        direction: NavigationDirection,
+    ) -> Result<(), String> {
+        let (sheet, window_height, window_width) =
+            if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
+                (view.sheet, view.window_height, view.window_width)
+            } else {
+                return Err("View not found".to_string());
+            };
+        let worksheet = match self.model.workbook.worksheet(sheet) {
+            Ok(s) => s,
+            Err(_) => return Err("Worksheet not found".to_string()),
+        };
+        let view = match worksheet.views.get(&self.model.view_id) {
+            Some(s) => s,
+            None => return Err("View not found".to_string()),
+        };
+        let row = view.row;
+        let column = view.column;
+        if !is_valid_row(row) || !is_valid_column_number(column) {
+            return Err("Invalid row or column".to_string());
+        }
+        let (new_row, new_column) =
+            worksheet.navigate_to_edge_in_direction(row, column, direction)?;
+        if !is_valid_row(new_row) || !is_valid_column_number(new_column) {
+            return Err("Invalid row or column after navigation".to_string());
+        }
+        if new_row == row && new_column == column {
+            return Ok(()); // No change in selection
+        }
+
+        let mut top_row = view.top_row;
+        let mut left_column = view.left_column;
+
+        match direction {
+            NavigationDirection::Left | NavigationDirection::Right => {
+                // If the new column is not fully visible we 'scroll' until it is
+                // We need to check two conditions:
+                // 1. new_column > view.left_column
+                // 2. right_column < new_column
+                if new_column < view.left_column {
+                    left_column = new_column;
+                } else {
+                    let mut c = new_column;
+                    let mut width = self.model.get_column_width(sheet, c)?;
+                    while c > 1 && width <= window_width as f64 {
+                        c -= 1;
+                        width += self.model.get_column_width(sheet, c)?;
+                    }
+                    if c > view.left_column {
+                        left_column = c;
+                    }
+                }
+            }
+            NavigationDirection::Up | NavigationDirection::Down => {
+                // If the new row is not fully visible we 'scroll' until it is
+                // We need to check two conditions:
+                // 1. new_row > view.top_row
+                // 2. bottom_row < new_row
+                if new_row < view.top_row {
+                    top_row = new_row;
+                } else {
+                    let mut r = new_row;
+                    let mut height = self.model.get_row_height(sheet, r)?;
+                    while r > 1 && height <= window_height as f64 {
+                        r -= 1;
+                        height += self.model.get_row_height(sheet, r)?;
+                    }
+                    if r > view.top_row {
+                        top_row = r;
+                    }
+                }
+            }
+        }
+
+        if let Ok(worksheet) = self.model.workbook.worksheet_mut(sheet) {
+            if let Some(view) = worksheet.views.get_mut(&self.model.view_id) {
+                view.row = new_row;
+                view.column = new_column;
+                view.range = [new_row, new_column, new_row, new_column];
+
+                view.top_row = top_row;
+                view.left_column = left_column;
+            }
+        }
         Ok(())
     }
 }

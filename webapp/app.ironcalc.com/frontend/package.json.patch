@@ -1,2 +1,2 @@
 "@ironcalc/ironcalc": "file:../../IronCalc",
-"@ironcalc/workbook": "^0.3.1",
+"@ironcalc/workbook": "^0.6.0",

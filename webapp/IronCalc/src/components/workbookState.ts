@@ -92,6 +92,7 @@ export class WorkbookState {
   private copyStyles: AreaStyles | null;
   private cell: EditingCell | null;
   private cutRange: CutRange | null;
+  private selecting: boolean;
 
   constructor() {
     // the extendTo area is the area we are covering
@@ -99,6 +100,15 @@ export class WorkbookState {
     this.copyStyles = null;
     this.cell = null;
     this.cutRange = null;
+    this.selecting = false;
+  }
+
+  isSelecting(): boolean {
+    return this.selecting;
+  }
+
+  setSelecting(value: boolean): void {
+    this.selecting = value;
   }
 
   getExtendToArea(): Area | null {

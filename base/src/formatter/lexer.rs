@@ -11,7 +11,7 @@ pub enum Token {
     Color(i32),              // [Red] or [Color 23]
     Condition(Compare, f64), // [<=100] (Comparator, number)
     Currency(char),          // [$€] ($ currency symbol)
-    Literal(char), // €, $, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or scaped \X
+    Literal(char), // €, $, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or escaped \X
     Spacer(char),  // *X
     Ghost(char),   // _X
     Text(String),  // "Text"
@@ -26,19 +26,29 @@ pub enum Token {
     Scientific,    // E+
     ScientificMinus, // E-
     General,       // General
-    // Dates
-    Day,            // d
-    DayPadded,      // dd
-    DayNameShort,   // ddd
-    DayName,        // dddd+
-    Month,          // m
-    MonthPadded,    // mm
-    MonthNameShort, // mmm
-    MonthName,      // mmmm or mmmmmm+
-    MonthLetter,    // mmmmm
-    YearShort,      // y or yy
-    Year,           // yyy+
-    // TODO: Hours Minutes and Seconds
+    // Dates and time
+    Day,                 // d
+    DayPadded,           // dd
+    DayNameShort,        // ddd
+    DayName,             // dddd+
+    Month,               // m (or minute)
+    MonthPadded,         // mm (or minute padded)
+    MonthNameShort,      // mmm
+    MonthName,           // mmmm or mmmmmm+
+    MonthLetter,         // mmmmm
+    YearShort,           // y or yy
+    Year,                // yyy+
+    Hour,                // h
+    HourPadded,          // hh
+    Second,              // s
+    SecondPadded,        // ss
+    ElapsedHour,         // [h]
+    ElapsedMinute,       // [m]
+    ElapsedSecond,       // [s]
+    ElapsedHourPadded,   // [hh]
+    ElapsedMinutePadded, // [mm]
+    ElapsedSecondPadded, // [ss]
+    AMPM,                // AM/PM (or A/P)
     ILLEGAL,
     EOF,
 }
@@ -85,7 +95,7 @@ impl Lexer {
         }
     }
 
-    fn peek_char(&mut self) -> Option<char> {
+    fn peek_char(&self) -> Option<char> {
         let position = self.position;
         if position < self.len {
             Some(self.chars[position])
@@ -121,7 +131,6 @@ impl Lexer {
                 chars.push(x);
             } else if position < len && self.chars[position] == '"' {
                 chars.push(x);
-                chars.push(self.chars[position]);
                 position += 1;
             } else {
                 self.position = position;
@@ -135,6 +144,11 @@ impl Lexer {
         let mut position = self.position;
         let len = self.len;
         let mut chars = "".to_string();
+        // first optional '-' sign
+        if position < len && self.chars[position] == '-' {
+            chars.push('-');
+            position += 1;
+        }
         // numbers before the '.'
         while position < len {
             let x = self.chars[position];
@@ -159,7 +173,7 @@ impl Lexer {
                 position += 1;
             }
         }
-        if position + 1 < len && self.chars[position] == 'e' {
+        if position + 1 < len && self.chars[position].eq_ignore_ascii_case(&'e') {
             // exponential side
             let x = self.chars[position + 1];
             if x == '-' || x == '+' || x.is_ascii_digit() {
@@ -207,10 +221,66 @@ impl Lexer {
                 return None;
             }
         }
+
         if let Some(v) = self.consume_number() {
-            return Some((cmp, v));
+            if self.read_next_char() == Some(']') {
+                return Some((cmp, v));
+            }
+        } else if self.read_next_char() == Some(']') {
+            return Some((cmp, 0.0));
         }
         None
+    }
+
+    // Consume elapsed time like [h], [hh], [m], [mm], [s], [ss]
+    fn consume_elapsed_time(&mut self) -> Option<Token> {
+        // We are called right after '['
+        let start_pos = self.position;
+
+        // First char must be one of: h, m, s
+        let unit = match self.read_next_char() {
+            Some(c) if ['h', 'H', 'm', 'M', 's', 'S'].contains(&c) => c.to_ascii_lowercase(),
+            _ => {
+                // Not elapsed time → rewind
+                self.position = start_pos;
+                return None;
+            }
+        };
+
+        // Count how many times the same unit repeats (so we detect h vs hh, etc.)
+        let mut count = 1;
+        while let Some(ch) = self.peek_char() {
+            if ch.to_ascii_lowercase() == unit {
+                count += 1;
+                self.read_next_char();
+            } else {
+                break;
+            }
+        }
+
+        // Must be closed by ']'
+        if self.read_next_char() != Some(']') {
+            // Not a well-formed [h], [hh], etc. → rewind
+            self.position = start_pos;
+            return None;
+        }
+
+        // Map (unit, count) to a token
+        let token = match (unit, count) {
+            ('h', 1) => Token::ElapsedHour,
+            ('h', 2) => Token::ElapsedHourPadded,
+            ('m', 1) => Token::ElapsedMinute,
+            ('m', 2) => Token::ElapsedMinutePadded,
+            ('s', 1) => Token::ElapsedSecond,
+            ('s', 2) => Token::ElapsedSecondPadded,
+            // Anything else like [hhh], [mmm], [sss] → not considered elapsed time
+            _ => {
+                self.position = start_pos;
+                return None;
+            }
+        };
+
+        Some(token)
     }
 
     fn consume_color(&mut self) -> Option<i32> {
@@ -220,7 +290,8 @@ impl Lexer {
         let mut chars = "".to_string();
         while let Some(ch) = self.read_next_char() {
             if ch == ']' {
-                if let Some(index) = colors.iter().position(|&x| x == chars.to_lowercase()) {
+                let lc = chars.to_lowercase();
+                if let Some(index) = colors.iter().position(|&x| x == lc) {
                     return Some(index as i32);
                 }
                 if !chars.starts_with("Color") {
@@ -276,12 +347,17 @@ impl Lexer {
                             // currency
                             self.read_next_char();
                             if let Some(currency) = self.read_next_char() {
-                                self.read_next_char();
-                                return Token::Currency(currency);
+                                if self.read_next_char() == Some(']') {
+                                    return Token::Currency(currency);
+                                }
                             }
                             self.set_error("Failed to parse currency");
                             Token::ILLEGAL
                         } else {
+                            // try bracketed (elapsed) time
+                            if let Some(token) = self.consume_elapsed_time() {
+                                return token;
+                            }
                             // Color
                             if let Some(index) = self.consume_color() {
                                 return Token::Color(index);
@@ -333,7 +409,7 @@ impl Lexer {
                         } else if s == '-' {
                             Token::ScientificMinus
                         } else {
-                            self.set_error(&format!("Unexpected char: {}. Expected + or -", s));
+                            self.set_error(&format!("Unexpected char: {s}. Expected + or -"));
                             Token::ILLEGAL
                         }
                     } else {
@@ -361,8 +437,8 @@ impl Lexer {
                         self.read_next_char();
                     }
                     match m {
-                        1 => Token::Month,
-                        2 => Token::MonthPadded,
+                        1 => Token::Month,       // (or minute)
+                        2 => Token::MonthPadded, // (or minute padded)
                         3 => Token::MonthNameShort,
                         4 => Token::MonthName,
                         5 => Token::MonthLetter,
@@ -381,18 +457,79 @@ impl Lexer {
                         Token::Year
                     }
                 }
+                'h' | 'H' => {
+                    let mut h = 1;
+                    while let Some(c) = self.peek_char() {
+                        if c.eq_ignore_ascii_case(&'h') {
+                            h += 1;
+                            self.read_next_char();
+                        } else {
+                            break;
+                        }
+                    }
+                    if h == 1 {
+                        Token::Hour
+                    } else if h == 2 {
+                        Token::HourPadded
+                    } else {
+                        self.set_error("Unexpected character after 'h'");
+                        Token::ILLEGAL
+                    }
+                }
+                's' => {
+                    let mut s = 1;
+                    while let Some('s') = self.peek_char() {
+                        s += 1;
+                        self.read_next_char();
+                    }
+                    if s == 1 {
+                        Token::Second
+                    } else if s == 2 {
+                        Token::SecondPadded
+                    } else {
+                        self.set_error("Unexpected character after 's'");
+                        Token::ILLEGAL
+                    }
+                }
+                'A' | 'a' => {
+                    if let Some('M') | Some('m') = self.peek_char() {
+                        self.read_next_char();
+                    } else {
+                        self.set_error("Unexpected character after 'A'");
+                        return Token::ILLEGAL;
+                    }
+                    if let Some('/') = self.peek_char() {
+                        self.read_next_char();
+                    } else {
+                        self.set_error("Unexpected character after 'AM'");
+                        return Token::ILLEGAL;
+                    }
+                    if let Some('P') | Some('p') = self.peek_char() {
+                        self.read_next_char();
+                    } else {
+                        self.set_error("Unexpected character after 'AM'");
+                        return Token::ILLEGAL;
+                    }
+                    if let Some('M') | Some('m') = self.peek_char() {
+                        self.read_next_char();
+                    } else {
+                        self.set_error("Unexpected character after 'AMP'");
+                        return Token::ILLEGAL;
+                    }
+                    Token::AMPM
+                }
                 'g' | 'G' => {
                     for c in "eneral".chars() {
                         let cc = self.read_next_char();
                         if Some(c) != cc {
-                            self.set_error(&format!("Unexpected character: {}", x));
+                            self.set_error(&format!("Unexpected character: {x}"));
                             return Token::ILLEGAL;
                         }
                     }
                     Token::General
                 }
                 _ => {
-                    self.set_error(&format!("Unexpected character: {}", x));
+                    self.set_error(&format!("Unexpected character: {x}"));
                     Token::ILLEGAL
                 }
             },

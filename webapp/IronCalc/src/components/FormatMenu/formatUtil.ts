@@ -32,13 +32,11 @@ export function decreaseDecimalPlaces(numberFormat: string): string {
   return newNumberFormat;
 }
 
+// FIXME: Remove all of them
 export enum NumberFormats {
   AUTO = "general",
   CURRENCY_EUR = '"€"#,##0.00',
   CURRENCY_USD = '"$"#,##0.00',
   CURRENCY_GBP = '"£"#,##0.00',
-  DATE_SHORT = 'dd"/"mm"/"yyyy',
-  DATE_LONG = 'dddd"," mmmm dd"," yyyy',
   PERCENTAGE = "0.00%",
-  NUMBER = "#,##0.00",
 }

@@ -5,6 +5,8 @@ use super::{
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
     expressions::token::OpUnary,
+    language::Language,
+    locale::Locale,
 };
 use crate::{
     expressions::types::{Area, CellReferenceRC},
@@ -38,39 +40,79 @@ pub(crate) struct MoveContext<'a> {
 /// We are moving a formula in (row, column) to (row+row_delta, column + column_delta).
 /// All references that do not point to a cell in area will be left untouched.
 /// All references that point to a cell in area will be displaced
-pub(crate) fn move_formula(node: &Node, move_context: &MoveContext) -> String {
-    to_string_moved(node, move_context)
+pub(crate) fn move_formula(
+    node: &Node,
+    move_context: &MoveContext,
+    locale: &Locale,
+    language: &Language,
+) -> String {
+    to_string_moved(node, move_context, locale, language)
 }
 
-fn move_function(name: &str, args: &Vec<Node>, move_context: &MoveContext) -> String {
+fn move_function(
+    name: &str,
+    args: &Vec<Node>,
+    move_context: &MoveContext,
+    locale: &Locale,
+    language: &Language,
+) -> String {
     let mut first = true;
     let mut arguments = "".to_string();
     for el in args {
         if !first {
-            arguments = format!("{},{}", arguments, to_string_moved(el, move_context));
+            arguments = format!(
+                "{},{}",
+                arguments,
+                to_string_moved(el, move_context, locale, language)
+            );
         } else {
             first = false;
-            arguments = to_string_moved(el, move_context);
+            arguments = to_string_moved(el, move_context, locale, language);
         }
     }
-    format!("{}({})", name, arguments)
+    format!("{name}({arguments})")
 }
 
-pub(crate) fn to_string_array_node(node: &ArrayNode) -> String {
-    match node {
-        ArrayNode::Boolean(value) => format!("{}", value).to_ascii_uppercase(),
-        ArrayNode::Number(number) => to_excel_precision_str(*number),
-        ArrayNode::String(value) => format!("\"{}\"", value),
-        ArrayNode::Error(kind) => format!("{}", kind),
+fn format_number_locale(number: f64, locale: &Locale) -> String {
+    let s = to_excel_precision_str(number);
+    let decimal = &locale.numbers.symbols.decimal;
+    if decimal == "." {
+        s
+    } else {
+        s.replace('.', decimal)
     }
 }
 
-fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
+pub(crate) fn to_string_array_node(
+    node: &ArrayNode,
+    locale: &Locale,
+    language: &Language,
+) -> String {
+    match node {
+        ArrayNode::Boolean(value) => {
+            if *value {
+                language.booleans.r#true.to_uppercase()
+            } else {
+                language.booleans.r#false.to_uppercase()
+            }
+        }
+        ArrayNode::Number(number) => format_number_locale(*number, locale),
+        ArrayNode::String(value) => format!("\"{value}\""),
+        ArrayNode::Error(kind) => format!("{kind}"),
+    }
+}
+
+fn to_string_moved(
+    node: &Node,
+    move_context: &MoveContext,
+    locale: &Locale,
+    language: &Language,
+) -> String {
     use self::Node::*;
     match node {
-        BooleanKind(value) => format!("{}", value).to_ascii_uppercase(),
-        NumberKind(number) => to_excel_precision_str(*number),
-        StringKind(value) => format!("\"{}\"", value),
+        BooleanKind(value) => format!("{value}").to_uppercase(),
+        NumberKind(number) => format_number_locale(*number, locale),
+        StringKind(value) => format!("\"{value}\""),
         ReferenceKind {
             sheet_name,
             sheet_index,
@@ -241,7 +283,7 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
                 full_row,
                 full_column,
             );
-            format!("{}:{}", s1, s2)
+            format!("{s1}:{s2}")
         }
         WrongReferenceKind {
             sheet_name,
@@ -325,59 +367,85 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
                 full_row,
                 full_column,
             );
-            format!("{}:{}", s1, s2)
+            format!("{s1}:{s2}")
         }
         OpRangeKind { left, right } => format!(
             "{}:{}",
-            to_string_moved(left, move_context),
-            to_string_moved(right, move_context),
+            to_string_moved(left, move_context, locale, language),
+            to_string_moved(right, move_context, locale, language),
         ),
         OpConcatenateKind { left, right } => format!(
             "{}&{}",
-            to_string_moved(left, move_context),
-            to_string_moved(right, move_context),
+            to_string_moved(left, move_context, locale, language),
+            to_string_moved(right, move_context, locale, language),
         ),
         OpSumKind { kind, left, right } => format!(
             "{}{}{}",
-            to_string_moved(left, move_context),
+            to_string_moved(left, move_context, locale, language),
             kind,
-            to_string_moved(right, move_context),
+            to_string_moved(right, move_context, locale, language),
         ),
         OpProductKind { kind, left, right } => {
             let x = match **left {
-                OpSumKind { .. } => format!("({})", to_string_moved(left, move_context)),
-                CompareKind { .. } => format!("({})", to_string_moved(left, move_context)),
-                _ => to_string_moved(left, move_context),
+                OpSumKind { .. } => format!(
+                    "({})",
+                    to_string_moved(left, move_context, locale, language)
+                ),
+                CompareKind { .. } => format!(
+                    "({})",
+                    to_string_moved(left, move_context, locale, language)
+                ),
+                _ => to_string_moved(left, move_context, locale, language),
             };
             let y = match **right {
-                OpSumKind { .. } => format!("({})", to_string_moved(right, move_context)),
-                CompareKind { .. } => format!("({})", to_string_moved(right, move_context)),
-                OpProductKind { .. } => format!("({})", to_string_moved(right, move_context)),
+                OpSumKind { .. } => format!(
+                    "({})",
+                    to_string_moved(right, move_context, locale, language)
+                ),
+                CompareKind { .. } => format!(
+                    "({})",
+                    to_string_moved(right, move_context, locale, language)
+                ),
+                OpProductKind { .. } => format!(
+                    "({})",
+                    to_string_moved(right, move_context, locale, language)
+                ),
                 UnaryKind { .. } => {
-                    format!("({})", to_string_moved(right, move_context))
+                    format!(
+                        "({})",
+                        to_string_moved(right, move_context, locale, language)
+                    )
                 }
-                _ => to_string_moved(right, move_context),
+                _ => to_string_moved(right, move_context, locale, language),
             };
-            format!("{}{}{}", x, kind, y)
+            format!("{x}{kind}{y}")
         }
         OpPowerKind { left, right } => format!(
             "{}^{}",
-            to_string_moved(left, move_context),
-            to_string_moved(right, move_context),
+            to_string_moved(left, move_context, locale, language),
+            to_string_moved(right, move_context, locale, language),
         ),
-        InvalidFunctionKind { name, args } => move_function(name, args, move_context),
+        InvalidFunctionKind { name, args } => {
+            move_function(name, args, move_context, locale, language)
+        }
         FunctionKind { kind, args } => {
-            let name = &kind.to_string();
-            move_function(name, args, move_context)
+            let name = &kind.to_localized_name(language);
+            move_function(name, args, move_context, locale, language)
         }
         ArrayKind(args) => {
             let mut first_row = true;
             let mut matrix_string = String::new();
 
             // Each element in `args` is assumed to be one "row" (itself a `Vec<T>`).
+            let row_separator = if locale.numbers.symbols.decimal == "." {
+                ';'
+            } else {
+                '/'
+            };
+            let col_separator = if row_separator == ';' { ',' } else { ';' };
             for row in args {
                 if !first_row {
-                    matrix_string.push(',');
+                    matrix_string.push(col_separator);
                 } else {
                     first_row = false;
                 }
@@ -387,13 +455,13 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
                 let mut row_string = String::new();
                 for el in row {
                     if !first_col {
-                        row_string.push(',');
+                        row_string.push(row_separator);
                     } else {
                         first_col = false;
                     }
 
                     // Reuse your existing element-stringification function
-                    row_string.push_str(&to_string_array_node(el));
+                    row_string.push_str(&to_string_array_node(el, locale, language));
                 }
 
                 // Enclose the row in braces
@@ -403,22 +471,28 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             }
 
             // Enclose the whole matrix in braces
-            format!("{{{}}}", matrix_string)
+            format!("{{{matrix_string}}}")
         }
         DefinedNameKind((name, ..)) => name.to_string(),
         TableNameKind(name) => name.to_string(),
         WrongVariableKind(name) => name.to_string(),
         CompareKind { kind, left, right } => format!(
             "{}{}{}",
-            to_string_moved(left, move_context),
+            to_string_moved(left, move_context, locale, language),
             kind,
-            to_string_moved(right, move_context),
+            to_string_moved(right, move_context, locale, language),
         ),
         UnaryKind { kind, right } => match kind {
-            OpUnary::Minus => format!("-{}", to_string_moved(right, move_context)),
-            OpUnary::Percentage => format!("{}%", to_string_moved(right, move_context)),
+            OpUnary::Minus => format!(
+                "-{}",
+                to_string_moved(right, move_context, locale, language)
+            ),
+            OpUnary::Percentage => format!(
+                "{}%",
+                to_string_moved(right, move_context, locale, language)
+            ),
         },
-        ErrorKind(kind) => format!("{}", kind),
+        ErrorKind(kind) => format!("{kind}"),
         ParseErrorKind {
             formula,
             message: _,
@@ -429,7 +503,10 @@ fn to_string_moved(node: &Node, move_context: &MoveContext) -> String {
             automatic: _,
             child,
         } => {
-            format!("@{}", to_string_moved(child, move_context))
+            format!(
+                "@{}",
+                to_string_moved(child, move_context, locale, language)
+            )
         }
     }
 }

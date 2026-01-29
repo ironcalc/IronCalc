@@ -4,19 +4,19 @@ use ironcalc::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut model = Model::new_empty("hello-calc.xlsx", "en", "UTC")?;
+    let mut model = Model::new_empty("hello-calc.xlsx", "en", "UTC", "en")?;
     // Adds a square of numbers in the first sheet
     for row in 1..100 {
         for column in 1..100 {
             let value = row * column;
-            model.set_user_input(0, row, column, format!("{}", value))?;
+            model.set_user_input(0, row, column, format!("{value}"))?;
         }
     }
     // Adds a new sheet
     model.add_sheet("Calculation")?;
     // column 100 is CV
     let last_column = number_to_column(100).ok_or("Invalid column number")?;
-    let formula = format!("=SUM(Sheet1!A1:{}100)", last_column);
+    let formula = format!("=SUM(Sheet1!A1:{last_column}100)");
     model.set_user_input(1, 1, 1, formula)?;
 
     // evaluates

@@ -6,7 +6,4 @@ lang: en-US
 
 # The desktop application
 
-::: warning
-🚧 This function is not yet available in IronCalc.
-[Follow development here](https://github.com/ironcalc/IronCalc/issues/57)
-:::
+A standalone desktop application for Windows, macOS, and Linux is not yet available. Once released, it will allow you to work with spreadsheets offline without needing a browser. This feature is planned but developement hasn't started yet. [Follow the progress here](https://github.com/ironcalc/IronCalc/issues/57).

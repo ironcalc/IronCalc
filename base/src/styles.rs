@@ -154,7 +154,7 @@ impl Styles {
                 return Ok(cell_style.xf_id);
             }
         }
-        Err(format!("Style '{}' not found", style_name))
+        Err(format!("Style '{style_name}' not found"))
     }
 
     pub fn create_named_style(&mut self, style_name: &str, style: &Style) -> Result<(), String> {
@@ -213,7 +213,7 @@ impl Styles {
 }
 
 // TODO: Try to find a better spot for styles setters
-impl Model {
+impl<'a> Model<'a> {
     pub fn set_cell_style(
         &mut self,
         sheet: u32,
