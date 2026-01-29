@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{constants::DEFAULT_COLUMN_WIDTH, test::user_model::util::new_empty_user_model, UserModel};
+use crate::{
+    constants::DEFAULT_COLUMN_WIDTH, test::user_model::util::new_empty_user_model, UserModel,
+};
 
 #[test]
 fn add_undo_redo() {
