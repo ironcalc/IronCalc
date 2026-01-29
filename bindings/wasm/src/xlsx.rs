@@ -18,8 +18,8 @@ pub fn from_xlsx_bytes(
 ) -> Result<Vec<u8>, JsError> {
     let workbook = load_from_xlsx_bytes(bytes, name, locale, timezone)
         .map_err(|e| to_js_error(e.to_string()))?;
-    let base_model =
-        BaseWorkbookModel::from_workbook(workbook, language_id).map_err(|e| to_js_error(e.to_string()))?;
+    let base_model = BaseWorkbookModel::from_workbook(workbook, language_id)
+        .map_err(|e| to_js_error(e.to_string()))?;
     Ok(base_model.to_bytes())
 }
 
