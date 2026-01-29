@@ -436,7 +436,7 @@ impl Model {
             .unwrap_or_default())
     }
 
-    #[wasm_bindgen(js_name = "getSheetDimensions")]
+    #[wasm_bindgen(js_name = "getSheetDimensions", unchecked_return_type = "WorksheetDimension")]
     pub fn get_sheet_dimensions(&self, sheet: u32) -> Result<JsValue, JsError> {
         let dimension = self
             .model
