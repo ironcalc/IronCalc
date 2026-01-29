@@ -6,26 +6,32 @@ import type {
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import { useCallback, useEffect, useRef, useState } from "react";
-import FormulaBar from "../FormulaBar/FormulaBar";
-import SheetTabBar from "../SheetTabBar";
-import Toolbar from "../Toolbar/Toolbar";
-import Worksheet from "../Worksheet/Worksheet";
-import {
-  COLUMN_WIDTH_SCALE,
-  LAST_COLUMN,
-  ROW_HEIGH_SCALE,
-} from "../WorksheetCanvas/constants";
-import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
-import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
 } from "../clipboard";
+import { TOOLBAR_HEIGHT } from "../constants";
+import FormulaBar from "../FormulaBar/FormulaBar";
+import RightDrawer, {
+  DEFAULT_DRAWER_WIDTH,
+  type DrawerType,
+} from "../RightDrawer/RightDrawer";
+import SheetTabBar from "../SheetTabBar";
+import Toolbar from "../Toolbar/Toolbar";
 import {
-  type NavigationKey,
   getCellAddress,
   getFullRangeToString,
+  type NavigationKey,
 } from "../util";
+import Worksheet from "../Worksheet/Worksheet";
+import {
+  COLUMN_WIDTH_SCALE,
+  LAST_COLUMN,
+  LAST_ROW,
+  ROW_HEIGH_SCALE,
+} from "../WorksheetCanvas/constants";
+import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
+import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 
@@ -39,6 +45,15 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
+
+  const [isDrawerOpen, setDrawerOpen] = useState(false);
+  const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
+  const [drawerType, setDrawerType] = useState<DrawerType>("namedRanges");
+
+  const openDrawer = useCallback((type: DrawerType) => {
+    setDrawerType(type);
+    setDrawerOpen(true);
+  }, []);
 
   const worksheets = model.getWorksheetsProperties();
   const info = worksheets.map(
@@ -161,6 +176,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     }
   };
 
+  const fmtSettings = model.getFmtSettings();
+
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
   // the Rust end
   const { onKeyDown } = useKeyboardNavigation({
@@ -249,8 +266,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       onToggleUnderline(!value);
     },
     onNavigationToEdge: (direction: NavigationKey): void => {
-      console.log(direction);
-      throw new Error("Function not implemented.");
+      model.onNavigateToEdgeInDirection(direction);
+      setRedrawId((id) => id + 1);
     },
     onPageDown: (): void => {
       model.onPageDown();
@@ -316,6 +333,21 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     },
     onEscape: (): void => {
       workbookState.clearCutRange();
+      workbookState.setCopyStyles(null);
+      const el = rootRef.current?.getElementsByClassName("sheet-container")[0];
+      if (el) {
+        (el as HTMLElement).style.cursor = "auto";
+      }
+      setRedrawId((id) => id + 1);
+    },
+    onSelectColumn: (): void => {
+      const { column } = model.getSelectedView();
+      model.setSelectedRange(1, column, LAST_ROW, column);
+      setRedrawId((id) => id + 1);
+    },
+    onSelectRow: (): void => {
+      const { row } = model.getSelectedView();
+      model.setSelectedRange(row, 1, row, LAST_COLUMN);
       setRedrawId((id) => id + 1);
     },
     root: rootRef,
@@ -473,7 +505,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           sheet,
           clipboardId,
         });
-        event.clipboardData.setData("text/plain", data.csv);
+        event.clipboardData.setData("text/plain", data.csv.trim());
         event.clipboardData.setData("application/json", clipboardJsonStr);
         event.preventDefault();
         event.stopPropagation();
@@ -649,108 +681,124 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setShowGridLines(sheet, show);
           setRedrawId((id) => id + 1);
         }}
-        nameManagerProperties={{
-          newDefinedName: (
-            name: string,
-            scope: number | undefined,
-            formula: string,
-          ) => {
-            model.newDefinedName(name, scope, formula);
+        formatOptions={fmtSettings}
+      />
+      <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? drawerWidth : 0}>
+        <FormulaBar
+          cellAddress={cellAddress()}
+          formulaValue={formulaValue()}
+          onChange={() => {
             setRedrawId((id) => id + 1);
-          },
-          updateDefinedName: (
-            name: string,
-            scope: number | undefined,
-            newName: string,
-            newScope: number | undefined,
-            newFormula: string,
-          ) => {
-            model.updateDefinedName(name, scope, newName, newScope, newFormula);
+            focusWorkbook();
+          }}
+          onTextUpdated={() => {
             setRedrawId((id) => id + 1);
-          },
-          deleteDefinedName: (name: string, scope: number | undefined) => {
-            model.deleteDefinedName(name, scope);
+          }}
+          model={model}
+          workbookState={workbookState}
+          openDrawer={() => {
+            openDrawer("namedRanges");
+          }}
+          canEdit={true}
+        />
+        <Worksheet
+          model={model}
+          workbookState={workbookState}
+          refresh={(): void => {
             setRedrawId((id) => id + 1);
-          },
-          selectedArea: () => {
-            const worksheetNames = worksheets.map((s) => s.name);
-            const selectedView = model.getSelectedView();
+          }}
+          ref={worksheetRef}
+        />
 
-            return getFullRangeToString(selectedView, worksheetNames);
-          },
-          worksheets,
-          definedNameList: model.getDefinedNameList(),
-        }}
-      />
-      <FormulaBar
-        cellAddress={cellAddress()}
-        formulaValue={formulaValue()}
-        onChange={() => {
-          setRedrawId((id) => id + 1);
-          focusWorkbook();
-        }}
-        onTextUpdated={() => {
-          setRedrawId((id) => id + 1);
-        }}
-        model={model}
-        workbookState={workbookState}
-      />
-      <Worksheet
-        model={model}
-        workbookState={workbookState}
-        refresh={(): void => {
-          setRedrawId((id) => id + 1);
-        }}
-        ref={worksheetRef}
-      />
-
-      <SheetTabBar
-        sheets={info}
-        selectedIndex={model.getSelectedSheet()}
-        workbookState={workbookState}
-        onSheetSelected={(sheet: number): void => {
-          if (info[sheet].state !== "visible") {
-            model.unhideSheet(sheet);
-          }
-          model.setSelectedSheet(sheet);
-          setRedrawId((value) => value + 1);
-        }}
-        onAddBlankSheet={(): void => {
-          model.newSheet();
-          setRedrawId((value) => value + 1);
-        }}
-        onSheetColorChanged={(hex: string): void => {
-          try {
-            model.setSheetColor(model.getSelectedSheet(), hex);
+        <SheetTabBar
+          sheets={info}
+          selectedIndex={model.getSelectedSheet()}
+          workbookState={workbookState}
+          onSheetSelected={(sheet: number): void => {
+            if (info[sheet].state !== "visible") {
+              model.unhideSheet(sheet);
+            }
+            model.setSelectedSheet(sheet);
             setRedrawId((value) => value + 1);
-          } catch (e) {
-            // TODO: Show a proper modal dialog
-            alert(`${e}`);
-          }
-        }}
-        onSheetRenamed={(name: string): void => {
-          try {
-            model.renameSheet(model.getSelectedSheet(), name);
+          }}
+          onAddBlankSheet={(): void => {
+            model.newSheet();
             setRedrawId((value) => value + 1);
-          } catch (e) {
-            // TODO: Show a proper modal dialog
-            alert(`${e}`);
-          }
+          }}
+          onSheetColorChanged={(hex: string): void => {
+            try {
+              model.setSheetColor(model.getSelectedSheet(), hex);
+              setRedrawId((value) => value + 1);
+            } catch (e) {
+              // TODO: Show a proper modal dialog
+              alert(`${e}`);
+            }
+          }}
+          onSheetRenamed={(name: string): void => {
+            try {
+              model.renameSheet(model.getSelectedSheet(), name);
+              setRedrawId((value) => value + 1);
+            } catch (e) {
+              // TODO: Show a proper modal dialog
+              alert(`${e}`);
+            }
+          }}
+          onSheetDeleted={(): void => {
+            const selectedSheet = model.getSelectedSheet();
+            model.deleteSheet(selectedSheet);
+            setRedrawId((value) => value + 1);
+          }}
+          onHideSheet={(): void => {
+            const selectedSheet = model.getSelectedSheet();
+            model.hideSheet(selectedSheet);
+            setRedrawId((value) => value + 1);
+          }}
+          onOpenRegionalSettings={() => {
+            openDrawer("regionalSettings");
+          }}
+          model={model}
+        />
+      </WorksheetAreaLeft>
+      <RightDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        width={drawerWidth}
+        onWidthChange={setDrawerWidth}
+        model={model}
+        onUpdate={() => {
+          setRedrawId((id) => id + 1);
         }}
-        onSheetDeleted={(): void => {
-          const selectedSheet = model.getSelectedSheet();
-          model.deleteSheet(selectedSheet);
-          setRedrawId((value) => value + 1);
+        getSelectedArea={() => {
+          const worksheetNames = model
+            .getWorksheetsProperties()
+            .map((s) => s.name);
+          const selectedView = model.getSelectedView();
+          return getFullRangeToString(selectedView, worksheetNames);
         }}
-        onHideSheet={(): void => {
-          const selectedSheet = model.getSelectedSheet();
-          model.hideSheet(selectedSheet);
-          setRedrawId((value) => value + 1);
+        drawerType={drawerType}
+        initialLocale={model.getLocale()}
+        initialTimezone={model.getTimezone()}
+        initialLanguage={model.getLanguage()}
+        onSettingsSave={(locale, timezone, language) => {
+          model.setLocale(locale);
+          model.setTimezone(timezone);
+          model.setLanguage(language);
+          setRedrawId((id) => id + 1);
         }}
       />
     </Container>
   );
 };
+
+type WorksheetAreaLeftProps = { $drawerWidth: number };
+const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
+  ({ $drawerWidth }) => ({
+    position: "absolute",
+    top: `${TOOLBAR_HEIGHT}px`,
+    width: `calc(100% - ${$drawerWidth}px)`,
+    height: `calc(100% - ${TOOLBAR_HEIGHT}px)`,
+  }),
+);
 
 const Container = styled("div")`
   display: flex;

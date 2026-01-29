@@ -1,5 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::parser::stringify::{to_string, to_string_displaced, DisplaceData};
+use crate::expressions::parser::stringify::{
+    to_localized_string, to_string_displaced, DisplaceData,
+};
 use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
 
@@ -8,7 +10,7 @@ use crate::model::Model;
 // In IronCalc, if one of the edges of the range is deleted will replace the edge with #REF!
 // I feel this is unimportant for now.
 
-impl Model {
+impl<'a> Model<'a> {
     fn shift_cell_formula(
         &mut self,
         sheet: u32,
@@ -29,7 +31,7 @@ impl Model {
                 column,
             };
             // FIXME: This is not a very performant way if the formula has changed :S.
-            let formula = to_string(node, &cell_reference);
+            let formula = to_localized_string(node, &cell_reference, self.locale, self.language);
             let formula_displaced = to_string_displaced(node, &cell_reference, displace_data);
             if formula != formula_displaced {
                 self.update_cell_with_formula(sheet, row, column, format!("={formula_displaced}"))?;
@@ -108,7 +110,13 @@ impl Model {
         // FIXME: we need some user_input getter instead of get_text
         let formula_or_value = self
             .get_cell_formula(sheet, source_row, source_column)?
-            .unwrap_or_else(|| source_cell.get_text(&self.workbook.shared_strings, &self.language));
+            .unwrap_or_else(|| {
+                source_cell.get_localized_text(
+                    &self.workbook.shared_strings,
+                    self.locale,
+                    self.language,
+                )
+            });
         self.set_user_input(sheet, target_row, target_column, formula_or_value)?;
         self.workbook
             .worksheet_mut(sheet)?
@@ -211,6 +219,12 @@ impl Model {
     ) -> Result<(), String> {
         if column_count <= 0 {
             return Err("Please use insert columns instead".to_string());
+        }
+        if !(1..=LAST_COLUMN).contains(&column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        if column + column_count - 1 > LAST_COLUMN {
+            return Err("Cannot delete columns beyond the last column of the sheet".to_string());
         }
 
         // first column being deleted
@@ -384,6 +398,13 @@ impl Model {
         if row_count <= 0 {
             return Err("Please use insert rows instead".to_string());
         }
+        if !(1..=LAST_ROW).contains(&row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        if row + row_count - 1 > LAST_ROW {
+            return Err("Cannot delete rows beyond the last row of the sheet".to_string());
+        }
+
         // Move cells
         let worksheet = &self.workbook.worksheet(sheet)?;
         let mut all_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
@@ -444,7 +465,7 @@ impl Model {
     ///    * Column is one of the extremes of the range. The new extreme would be target_column.
     ///      Range is then normalized
     ///    * Any other case, range is left unchanged.
-    ///      NOTE: This does NOT move the data in the columns or move the colum styles
+    ///      NOTE: This moves the data and column styles along with the formulas
     pub fn move_column_action(
         &mut self,
         sheet: u32,
@@ -460,7 +481,76 @@ impl Model {
             return Err("Initial column out of boundaries".to_string());
         }
 
-        // TODO: Add the actual displacement of data and styles
+        if delta == 0 {
+            return Ok(());
+        }
+
+        // Preserve cell contents, width and style of the column being moved
+        let original_refs = self
+            .workbook
+            .worksheet(sheet)?
+            .column_cell_references(column)?;
+        let mut original_cells = Vec::new();
+        for r in &original_refs {
+            let cell = self
+                .workbook
+                .worksheet(sheet)?
+                .cell(r.row, column)
+                .ok_or("Expected Cell to exist")?;
+            let style_idx = cell.get_style();
+            let formula_or_value =
+                self.get_cell_formula(sheet, r.row, column)?
+                    .unwrap_or_else(|| {
+                        cell.get_localized_text(
+                            &self.workbook.shared_strings,
+                            self.locale,
+                            self.language,
+                        )
+                    });
+            original_cells.push((r.row, formula_or_value, style_idx));
+            self.cell_clear_all(sheet, r.row, column)?;
+        }
+
+        let width = self.workbook.worksheet(sheet)?.get_column_width(column)?;
+        let style = self.workbook.worksheet(sheet)?.get_column_style(column)?;
+
+        if delta > 0 {
+            for c in column + 1..=target_column {
+                let refs = self.workbook.worksheet(sheet)?.column_cell_references(c)?;
+                for r in refs {
+                    self.move_cell(sheet, r.row, c, r.row, c - 1)?;
+                }
+
+                let w = self.workbook.worksheet(sheet)?.get_column_width(c)?;
+                let s = self.workbook.worksheet(sheet)?.get_column_style(c)?;
+                self.workbook
+                    .worksheet_mut(sheet)?
+                    .set_column_width_and_style(c - 1, w, s)?;
+            }
+        } else {
+            for c in (target_column..=column - 1).rev() {
+                let refs = self.workbook.worksheet(sheet)?.column_cell_references(c)?;
+                for r in refs {
+                    self.move_cell(sheet, r.row, c, r.row, c + 1)?;
+                }
+
+                let w = self.workbook.worksheet(sheet)?.get_column_width(c)?;
+                let s = self.workbook.worksheet(sheet)?.get_column_style(c)?;
+                self.workbook
+                    .worksheet_mut(sheet)?
+                    .set_column_width_and_style(c + 1, w, s)?;
+            }
+        }
+
+        for (r, value, style_idx) in original_cells {
+            self.set_user_input(sheet, r, target_column, value)?;
+            self.workbook
+                .worksheet_mut(sheet)?
+                .set_cell_style(r, target_column, style_idx)?;
+        }
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_column_width_and_style(target_column, width, style)?;
 
         // Update all formulas in the workbook
         self.displace_cells(
@@ -470,6 +560,90 @@ impl Model {
                 delta,
             }),
         )?;
+
+        Ok(())
+    }
+
+    /// Displaces cells due to a move row action
+    /// from initial_row to target_row = initial_row + row_delta
+    /// References will be updated following the same rules as move_column_action
+    /// NOTE: This moves the data and row styles along with the formulas
+    pub fn move_row_action(&mut self, sheet: u32, row: i32, delta: i32) -> Result<(), String> {
+        // Check boundaries
+        let target_row = row + delta;
+        if !(1..=LAST_ROW).contains(&target_row) {
+            return Err("Target row out of boundaries".to_string());
+        }
+        if !(1..=LAST_ROW).contains(&row) {
+            return Err("Initial row out of boundaries".to_string());
+        }
+
+        if delta == 0 {
+            return Ok(());
+        }
+
+        let original_cols = self.get_columns_for_row(sheet, row, false)?;
+        let mut original_cells = Vec::new();
+        for c in &original_cols {
+            let cell = self
+                .workbook
+                .worksheet(sheet)?
+                .cell(row, *c)
+                .ok_or("Expected Cell to exist")?;
+            let style_idx = cell.get_style();
+            let formula_or_value = self.get_cell_formula(sheet, row, *c)?.unwrap_or_else(|| {
+                cell.get_localized_text(&self.workbook.shared_strings, self.locale, self.language)
+            });
+            original_cells.push((*c, formula_or_value, style_idx));
+            self.cell_clear_all(sheet, row, *c)?;
+        }
+
+        if delta > 0 {
+            for r in row + 1..=target_row {
+                let cols = self.get_columns_for_row(sheet, r, false)?;
+                for c in cols {
+                    self.move_cell(sheet, r, c, r - 1, c)?;
+                }
+            }
+        } else {
+            for r in (target_row..=row - 1).rev() {
+                let cols = self.get_columns_for_row(sheet, r, false)?;
+                for c in cols {
+                    self.move_cell(sheet, r, c, r + 1, c)?;
+                }
+            }
+        }
+
+        for (c, value, style_idx) in original_cells {
+            self.set_user_input(sheet, target_row, c, value)?;
+            self.workbook
+                .worksheet_mut(sheet)?
+                .set_cell_style(target_row, c, style_idx)?;
+        }
+
+        let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
+        let mut new_rows = Vec::new();
+        for r in worksheet.rows.iter() {
+            if r.r == row {
+                let mut nr = r.clone();
+                nr.r = target_row;
+                new_rows.push(nr);
+            } else if delta > 0 && r.r > row && r.r <= target_row {
+                let mut nr = r.clone();
+                nr.r -= 1;
+                new_rows.push(nr);
+            } else if delta < 0 && r.r < row && r.r >= target_row {
+                let mut nr = r.clone();
+                nr.r += 1;
+                new_rows.push(nr);
+            } else {
+                new_rows.push(r.clone());
+            }
+        }
+        worksheet.rows = new_rows;
+
+        // Update all formulas in the workbook
+        self.displace_cells(&(DisplaceData::RowMove { sheet, row, delta }))?;
 
         Ok(())
     }

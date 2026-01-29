@@ -445,11 +445,13 @@ impl Default for Fill {
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum HorizontalAlignment {
     Center,
     CenterContinuous,
     Distributed,
     Fill,
+    #[default]
     General,
     Justify,
     Left,
@@ -457,11 +459,6 @@ pub enum HorizontalAlignment {
 }
 
 // Note that alignment in "General" depends on type
-impl Default for HorizontalAlignment {
-    fn default() -> Self {
-        Self::General
-    }
-}
 
 impl HorizontalAlignment {
     fn is_default(&self) -> bool {
@@ -487,7 +484,9 @@ impl Display for HorizontalAlignment {
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum VerticalAlignment {
+    #[default]
     Bottom,
     Center,
     Distributed,
@@ -498,12 +497,6 @@ pub enum VerticalAlignment {
 impl VerticalAlignment {
     fn is_default(&self) -> bool {
         self == &VerticalAlignment::default()
-    }
-}
-
-impl Default for VerticalAlignment {
-    fn default() -> Self {
-        Self::Bottom
     }
 }
 

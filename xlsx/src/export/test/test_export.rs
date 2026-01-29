@@ -7,8 +7,8 @@ use crate::export::save_to_icalc;
 use crate::import::load_from_icalc;
 use crate::{export::save_to_xlsx, import::load_from_xlsx};
 
-pub fn new_empty_model() -> Model {
-    Model::new_empty("model", "en", "UTC").unwrap()
+pub fn new_empty_model<'a>() -> Model<'a> {
+    Model::new_empty("model", "en", "UTC", "en").unwrap()
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn test_values() {
         let temp_file_name = "temp_file_test_values.xlsx";
         save_to_xlsx(&model, temp_file_name).unwrap();
 
-        let model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
+        let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
         assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "123.456");
         assert_eq!(
             model.get_formatted_cell_value(0, 2, 1).unwrap(),
@@ -66,7 +66,7 @@ fn test_values() {
         let temp_file_name = "temp_file_test_values.ic";
         save_to_icalc(&model, temp_file_name).unwrap();
 
-        let model = load_from_icalc(temp_file_name).unwrap();
+        let model = load_from_icalc(temp_file_name, "en").unwrap();
         assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "123.456");
         assert_eq!(
             model.get_formatted_cell_value(0, 2, 1).unwrap(),
@@ -89,6 +89,44 @@ fn test_values() {
 }
 
 #[test]
+fn frozen_rows() {
+    let mut model = new_empty_model();
+    model.set_frozen_rows(0, 23).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_frozen_rows.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_eq!(model.get_frozen_rows_count(0).unwrap(), 23);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
+fn frozen_columns() {
+    let mut model = new_empty_model();
+    model.set_frozen_columns(0, 42).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_frozen_columns.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_eq!(model.get_frozen_columns_count(0).unwrap(), 42);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
+fn frozen_rows_and_columns() {
+    let mut model = new_empty_model();
+    model.set_frozen_rows(0, 23).unwrap();
+    model.set_frozen_columns(0, 42).unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_frozen_rows_and_columns.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_eq!(model.get_frozen_rows_count(0).unwrap(), 23);
+    assert_eq!(model.get_frozen_columns_count(0).unwrap(), 42);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+#[test]
 fn test_formulas() {
     let mut model = new_empty_model();
     model.set_user_input(0, 1, 1, "5.5".to_string()).unwrap();
@@ -106,7 +144,7 @@ fn test_formulas() {
     let temp_file_name = "temp_file_test_formulas.xlsx";
     save_to_xlsx(&model, temp_file_name).unwrap();
 
-    let model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "11");
     assert_eq!(model.get_formatted_cell_value(0, 2, 2).unwrap(), "13");
     assert_eq!(model.get_formatted_cell_value(0, 3, 2).unwrap(), "15");
@@ -128,7 +166,7 @@ fn test_sheets() {
     let temp_file_name = "temp_file_test_sheets.xlsx";
     save_to_xlsx(&model, temp_file_name).unwrap();
 
-    let model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
     assert_eq!(
         model.workbook.get_worksheet_names(),
         vec!["Sheet1", "With space", "Tango & Cash", "你好世界"]
@@ -157,7 +195,7 @@ fn test_named_styles() {
     let temp_file_name = "temp_file_test_named_styles.xlsx";
     save_to_xlsx(&model, temp_file_name).unwrap();
 
-    let model = load_from_xlsx(temp_file_name, "en", "UTC").unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
     assert!(model
         .workbook
         .styles

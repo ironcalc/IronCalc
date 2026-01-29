@@ -10,7 +10,7 @@ use crate::expressions::{
 use crate::language::get_language;
 use crate::locale::get_locale;
 
-fn new_lexer(formula: &str) -> Lexer {
+fn new_lexer(formula: &str) -> Lexer<'_> {
     let locale = get_locale("en").unwrap();
     let language = get_language("en").unwrap();
     Lexer::new(formula, LexerMode::A1, locale, language)

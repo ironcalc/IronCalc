@@ -1,13 +1,14 @@
 import type { Model } from "@ironcalc/wasm";
 import { type PointerEvent, type RefObject, useCallback, useRef } from "react";
 import { isInReferenceMode } from "../Editor/util";
+import type { Cell } from "../types";
+import { rangeToStr } from "../util";
+import { LAST_COLUMN, LAST_ROW } from "../WorksheetCanvas/constants";
 import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import {
   headerColumnWidth,
   headerRowHeight,
 } from "../WorksheetCanvas/worksheetCanvas";
-import type { Cell } from "../types";
-import { rangeToStr } from "../util";
 import type { WorkbookState } from "../workbookState";
 
 interface PointerSettings {
@@ -34,6 +35,10 @@ interface PointerEvents {
 const usePointer = (options: PointerSettings): PointerEvents => {
   const isSelecting = useRef(false);
   const isInsertingRef = useRef(false);
+  const isSelectingRows = useRef(false);
+  const initialRowRef = useRef<number | null>(null);
+  const isSelectingColumns = useRef(false);
+  const initialColumnRef = useRef<number | null>(null);
 
   const onPointerMove = useCallback(
     (event: PointerEvent): void => {
@@ -43,10 +48,17 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         return;
       }
 
-      if (!(isSelecting.current || isInsertingRef.current)) {
+      if (
+        !(
+          isSelecting.current ||
+          isInsertingRef.current ||
+          isSelectingRows.current ||
+          isSelectingColumns.current
+        )
+      ) {
         return;
       }
-      const { canvasElement, model, worksheetCanvas } = options;
+      const { canvasElement, model, worksheetCanvas, refresh } = options;
       const canvas = canvasElement.current;
       const worksheet = worksheetCanvas.current;
       // Silence the linter
@@ -57,6 +69,66 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       const x = event.clientX - canvasRect.x;
       const y = event.clientY - canvasRect.y;
 
+      if (isSelectingRows.current) {
+        // Prevent text selection during row dragging
+        event.preventDefault();
+        // Handle row selection dragging
+        if (initialRowRef.current === null) {
+          return;
+        }
+        let targetRow: number | null = null;
+        if (x >= 0 && x < headerColumnWidth && y >= headerRowHeight) {
+          const cell = worksheet.getCellByCoordinates(headerColumnWidth, y);
+          if (cell) targetRow = cell.row;
+        } else if (x >= headerColumnWidth && y >= headerRowHeight) {
+          const cell = worksheet.getCellByCoordinates(x, y);
+          if (cell) targetRow = cell.row;
+        }
+
+        if (targetRow !== null) {
+          const initialRow = initialRowRef.current;
+          model.setSelectedCell(Math.min(initialRow, targetRow), 1);
+          model.setSelectedRange(
+            Math.min(initialRow, targetRow),
+            1,
+            Math.max(initialRow, targetRow),
+            LAST_COLUMN,
+          );
+          refresh();
+        }
+        return;
+      }
+
+      if (isSelectingColumns.current) {
+        // Prevent text selection during column dragging
+        event.preventDefault();
+        // Handle column selection dragging
+        if (initialColumnRef.current === null) {
+          return;
+        }
+        let targetColumn: number | null = null;
+        if (x >= headerColumnWidth && y >= 0 && y < headerRowHeight) {
+          const cell = worksheet.getCellByCoordinates(x, headerRowHeight);
+          if (cell) targetColumn = cell.column;
+        } else if (x >= headerColumnWidth && y >= headerRowHeight) {
+          const cell = worksheet.getCellByCoordinates(x, y);
+          if (cell) targetColumn = cell.column;
+        }
+
+        if (targetColumn !== null) {
+          const initialColumn = initialColumnRef.current;
+          model.setSelectedCell(1, Math.min(initialColumn, targetColumn));
+          model.setSelectedRange(
+            1,
+            Math.min(initialColumn, targetColumn),
+            LAST_ROW,
+            Math.max(initialColumn, targetColumn),
+          );
+          refresh();
+        }
+        return;
+      }
+
       const cell = worksheet.getCellByCoordinates(x, y);
       if (!cell) {
         return;
@@ -65,7 +137,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       if (isSelecting.current) {
         options.onAreaSelecting(cell);
       } else if (isInsertingRef.current) {
-        const { refresh, workbookState } = options;
+        const { workbookState } = options;
         const editingCell = workbookState.getEditingCell();
         if (!editingCell || !editingCell.referencedRange) {
           return;
@@ -98,6 +170,16 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       } else if (isInsertingRef.current) {
         const { worksheetElement } = options;
         isInsertingRef.current = false;
+        worksheetElement.current?.releasePointerCapture(event.pointerId);
+      } else if (isSelectingRows.current) {
+        const { worksheetElement } = options;
+        isSelectingRows.current = false;
+        initialRowRef.current = null;
+        worksheetElement.current?.releasePointerCapture(event.pointerId);
+      } else if (isSelectingColumns.current) {
+        const { worksheetElement } = options;
+        isSelectingColumns.current = false;
+        initialColumnRef.current = null;
         worksheetElement.current?.releasePointerCapture(event.pointerId);
       }
     },
@@ -157,7 +239,17 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           // Click on a row number
           const cell = worksheet.getCellByCoordinates(headerColumnWidth, y);
           if (cell) {
-            onRowSelected(cell.row, event.shiftKey);
+            if (event.shiftKey) {
+              // Shift+click: extend selection
+              onRowSelected(cell.row, true);
+            } else {
+              // Regular click: start drag selection
+              event.preventDefault();
+              initialRowRef.current = cell.row;
+              isSelectingRows.current = true;
+              worksheetWrapper.setPointerCapture(event.pointerId);
+              onRowSelected(cell.row, false);
+            }
           }
         } else if (
           x > headerColumnWidth &&
@@ -168,7 +260,17 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           // Click on a column letter
           const cell = worksheet.getCellByCoordinates(x, headerRowHeight);
           if (cell) {
-            onColumnSelected(cell.column, event.shiftKey);
+            if (event.shiftKey) {
+              // Shift+click: extend selection
+              onColumnSelected(cell.column, true);
+            } else {
+              // Regular click: start drag selection
+              event.preventDefault();
+              initialColumnRef.current = cell.column;
+              isSelectingColumns.current = true;
+              worksheetWrapper.setPointerCapture(event.pointerId);
+              onColumnSelected(cell.column, false);
+            }
           }
         }
         return;
@@ -179,6 +281,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       if (cell) {
         if (editingCell) {
           if (
+            model.getSelectedSheet() === editingCell.sheet &&
             cell.row === editingCell.row &&
             cell.column === editingCell.column
           ) {

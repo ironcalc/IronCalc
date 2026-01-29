@@ -1,0 +1,93 @@
+{
+  "app": {
+    "title": "IronCalc"
+  },
+  "default_workbook_name": "Classeur",
+  "errors": {
+    "model_not_found": "Modèle introuvable ou échec du chargement",
+    "example_not_found": "Fichier d'exemple introuvable ou échec du chargement"
+  },
+  "welcome_dialog": {
+    "title": "Bienvenue sur IronCalc",
+    "subtitle": "Commencez avec un classeur vierge ou un modèle prêt à l'emploi.",
+    "close_dialog": "Fermer la boîte de dialogue",
+    "new": "Nouveau",
+    "blank_workbook": "Classeur vierge",
+    "blank_workbook_description": "Créez à partir de zéro ou téléchargez votre propre fichier.",
+    "templates": {
+      "choose_template": "Choisir un modèle",
+      "templates": "Modèles",
+      "mortgage_calculator": "Calculateur hypothécaire",
+      "mortgage_calculator_description": "Estimez les paiements, les intérêts et le coût total.",
+      "travel_expenses_tracker": "Suivi des frais de voyage",
+      "travel_expenses_tracker_description": "Suivez les coûts de voyage et respectez votre budget."
+    },
+    "create_workbook": "Créer un classeur"
+  },
+  "left_drawer": {
+    "new_workbook": "Nouveau classeur",
+    "pinned": "Épinglés",
+    "today": "Aujourd'hui",
+    "last_30_days": "30 derniers jours",
+    "older": "Plus anciens",
+    "workbook_menu": {
+      "download": "Télécharger (.xlsx)",
+      "pin": "Épingler",
+      "unpin": "Désépingler",
+      "duplicate": "Dupliquer",
+      "delete": "Supprimer le classeur"
+    },
+    "alert": {
+      "title": "Attention !",
+      "subtitle": "IronCalc stocke vos données uniquement dans le stockage local de votre navigateur.",
+      "subtitle2": "<bold>Téléchargez souvent votre XLSX</bold> – les versions futures pourraient ne pas ouvrir les classeurs actuels, même s'ils sont partagés."
+    },
+    "documentation": "Documentation"
+  },
+  "file_bar": {
+    "open_sidebar": "Ouvrir la barre latérale",
+    "close_sidebar": "Fermer la barre latérale",
+    "file_menu": {
+      "button": "Fichier",
+      "new_blank_workbook": "Nouveau classeur vierge",
+      "new_from_template": "Nouveau à partir d'un modèle",
+      "import": {
+        "button": "Importer",
+        "title": "Importer un fichier .xlsx",
+        "subtitle": "Glissez-déposez un fichier ici ou",
+        "subtitle_link": "cliquez pour parcourir",
+        "learn_more": "En savoir plus sur l'importation de fichiers dans IronCalc",
+        "close_dialog": "Fermer la boîte de dialogue",
+        "uploading": "Téléchargement de {{fileName}}...",
+        "drop_file_here": "Déposez le fichier ici"
+      },
+      "download": "Télécharger (.xlsx)",
+      "delete_workbook": {
+        "button": "Supprimer le classeur",
+        "title": "Êtes-vous sûr ?",
+        "subtitle": "Le classeur <bold>'{{workbookName}}'</bold> sera définitivement supprimé. Cette action ne peut pas être annulée.",
+        "confirm_button": "Oui, supprimer le classeur",
+        "cancel_button": "Annuler"
+      },
+      "default_language": "Langue par défaut"
+    },
+    "help_menu": {
+      "button": "Aide",
+      "documentation": "Documentation",
+      "keyboard_shortcuts": "Raccourcis clavier"
+    },
+    "title_input": {
+      "warning_text1": "Ce classeur est stocké uniquement dans votre navigateur. Pour le conserver en sécurité, téléchargez-le au format .xlsx.",
+      "warning_text2": " Les versions futures pourraient être incompatibles."
+    },
+    "share_popover": {
+      "button": "Partager",
+      "copy_url": "Copier l'URL",
+      "copied": "Copié !",
+      "info_text": "Toute personne disposant du lien pourra accéder à une copie de ce classeur"
+    }
+  },
+  "loading_screen": {
+    "message": "Chargement d'IronCalc"
+  }
+}

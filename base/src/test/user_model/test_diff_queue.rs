@@ -65,8 +65,8 @@ fn queue_undo_redo_multiple() {
         model1.set_user_input(0, row, 17, "=ROW()").unwrap();
     }
 
-    model1.insert_row(0, 3).unwrap();
-    model1.insert_row(0, 3).unwrap();
+    model1.insert_rows(0, 3, 1).unwrap();
+    model1.insert_rows(0, 3, 1).unwrap();
 
     // undo al of them
     while model1.can_undo() {

@@ -196,6 +196,7 @@ fn test_names() {
     assert!(is_valid_identifier("_."));
     assert!(is_valid_identifier("_1"));
     assert!(is_valid_identifier("\\."));
+    assert!(is_valid_identifier("truñe"));
 
     // invalid
     assert!(!is_valid_identifier("true"));
@@ -209,6 +210,7 @@ fn test_names() {
     assert!(!is_valid_identifier("1true"));
 
     assert!(!is_valid_identifier("test€"));
-    assert!(!is_valid_identifier("truñe"));
     assert!(!is_valid_identifier("tr&ue"));
+
+    assert!(!is_valid_identifier("LOG10"));
 }

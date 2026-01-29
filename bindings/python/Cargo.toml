@@ -1,6 +1,6 @@
 [package]
 name = "pyroncalc"
-version = "0.5.0"
+version = "0.7.1"
 edition = "2021"
 
 
@@ -12,10 +12,14 @@ crate-type = ["cdylib"]
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-xlsx = { package= "ironcalc", path = "../../xlsx", version = "0.5.0" }
-pyo3 = { version = "0.23", features = ["extension-module"] }
+xlsx = { package= "ironcalc", path = "../../xlsx", version = "0.7.1" }
+pyo3 = { version = "0.27.2", features = ["extension-module"] }
+bitcode = "0.6.8"
 
 
 [features]
 extension-module = ["pyo3/extension-module"]
 default = ["extension-module"]
+
+[build-dependencies]
+pyo3-build-config = "0.27.2"

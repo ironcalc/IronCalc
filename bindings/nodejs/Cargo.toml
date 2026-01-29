@@ -1,16 +1,16 @@
 [package]
 edition = "2021"
 name = "ironcalc_nodejs"
-version = "0.5.0"
+version = "0.7.1"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
 # Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
-napi = { version = "2.12.2", default-features = false, features = ["napi4", "serde-json"] }
-napi-derive = "2.12.2"
-ironcalc = { path = "../../xlsx", version = "0.5.0" }
+napi = { version = "3.3", default-features = false, features = ["napi4", "serde-json"] }
+napi-derive = "3.2"
+ironcalc = { path = "../../xlsx", version = "0.7.1" }
 serde = { version = "1.0", features = ["derive"] }
 
 [build-dependencies]

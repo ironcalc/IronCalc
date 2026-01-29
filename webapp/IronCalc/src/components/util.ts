@@ -1,6 +1,9 @@
+import {
+  columnNameFromNumber,
+  quoteName,
+  type SelectedView,
+} from "@ironcalc/wasm";
 import type { Area, Cell } from "./types";
-
-import { type SelectedView, columnNameFromNumber } from "@ironcalc/wasm";
 import { LAST_COLUMN, LAST_ROW } from "./WorksheetCanvas/constants";
 
 /**
@@ -66,7 +69,8 @@ export function rangeToStr(
   referenceName: string,
 ): string {
   const { sheet, rowStart, rowEnd, columnStart, columnEnd } = range;
-  const sheetName = sheet === referenceSheet ? "" : `'${referenceName}'!`;
+  const sheetName =
+    sheet === referenceSheet ? "" : `${quoteName(referenceName)}!`;
   if (rowStart === rowEnd && columnStart === columnEnd) {
     return `${sheetName}${columnNameFromNumber(columnStart)}${rowStart}`;
   }
@@ -82,7 +86,7 @@ export function getFullRangeToString(
   worksheetNames: string[],
 ): string {
   const [rowStart, columnStart, rowEnd, columnEnd] = selectedView.range;
-  const sheetName = `${worksheetNames[selectedView.sheet]}`;
+  const sheetName = quoteName(worksheetNames[selectedView.sheet]);
 
   if (rowStart === rowEnd && columnStart === columnEnd) {
     return `${sheetName}!$${columnNameFromNumber(columnStart)}$${rowStart}`;

@@ -211,15 +211,19 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
 pub fn is_valid_identifier(name: &str) -> bool {
     // https://support.microsoft.com/en-us/office/names-in-formulas-fc2935f9-115d-4bef-a370-3aa8bb4c91f1
     // https://github.com/MartinTrummer/excel-names/
-    // NOTE: We are being much more restrictive than Excel.
-    // In particular we do not support non ascii characters.
-    let upper = name.to_ascii_uppercase();
-    let bytes = upper.as_bytes();
-    let len = bytes.len();
+    let upper = name.to_uppercase();
+    // length of chars
+    let len = upper.chars().count();
+
+    let mut chars = upper.chars();
+
     if len > 255 || len == 0 {
         return false;
     }
-    let first = bytes[0] as char;
+    let first = match chars.next() {
+        Some(ch) => ch,
+        None => return false,
+    };
     // The first character of a name must be a letter, an underscore character (_), or a backslash (\).
     if !(first.is_ascii_alphabetic() || first == '_' || first == '\\') {
         return false;
@@ -237,20 +241,10 @@ pub fn is_valid_identifier(name: &str) -> bool {
     if parse_reference_r1c1(name).is_some() {
         return false;
     }
-    let mut i = 1;
-    while i < len {
-        let ch = bytes[i] as char;
-        match ch {
-            'a'..='z' => {}
-            'A'..='Z' => {}
-            '0'..='9' => {}
-            '_' => {}
-            '.' => {}
-            _ => {
-                return false;
-            }
+    for ch in chars {
+        if !(ch.is_alphanumeric() || ch == '_' || ch == '.') {
+            return false;
         }
-        i += 1;
     }
 
     true
@@ -259,15 +253,23 @@ pub fn is_valid_identifier(name: &str) -> bool {
 fn name_needs_quoting(name: &str) -> bool {
     let chars = name.chars();
     // it contains any of these characters: ()'$,;-+{} or space
-    for char in chars {
+    for (i, char) in chars.enumerate() {
         if [' ', '(', ')', '\'', '$', ',', ';', '-', '+', '{', '}'].contains(&char) {
             return true;
         }
+        // if it starts with a number
+        if i == 0 && char.is_ascii_digit() {
+            return true;
+        }
     }
-    // TODO:
-    // cell reference in A1 notation, e.g. B1048576 is quoted, B1048577 is not
-    // cell reference in R1C1 notation, e.g. RC, RC2, R5C, R-4C, RC-8, R, C
-    // integers
+    if parse_reference_a1(name).is_some() {
+        // cell reference in A1 notation, e.g. B1048576 is quoted, B1048577 is not
+        return true;
+    }
+    if parse_reference_r1c1(name).is_some() {
+        // cell reference in R1C1 notation, e.g. RC, RC2, R5C, R-4C, RC-8, R, C
+        return true;
+    }
     false
 }
 
@@ -278,4 +280,33 @@ pub fn quote_name(name: &str) -> String {
         return format!("'{}'", name.replace('\'', "''"));
     };
     name.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_quote_name() {
+        assert_eq!(quote_name("Sheet1"), "Sheet1");
+        assert_eq!(quote_name("Sheet 1"), "'Sheet 1'");
+        // escape and quote
+        assert_eq!(quote_name("Sheet1'"), "'Sheet1'''");
+        assert_eq!(quote_name("Data(2024)"), "'Data(2024)'");
+        assert_eq!(quote_name("Data$2024"), "'Data$2024'");
+        assert_eq!(quote_name("Data-2024"), "'Data-2024'");
+        assert_eq!(quote_name("Data+2024"), "'Data+2024'");
+        assert_eq!(quote_name("Data,2024"), "'Data,2024'");
+        assert_eq!(quote_name("Data;2024"), "'Data;2024'");
+        assert_eq!(quote_name("Data{2024}"), "'Data{2024}'");
+
+        assert_eq!(quote_name("2024"), "'2024'");
+        assert_eq!(quote_name("1Data"), "'1Data'");
+        assert_eq!(quote_name("A1"), "'A1'");
+        assert_eq!(quote_name("R1C1"), "'R1C1'");
+        assert_eq!(quote_name("MySheet"), "MySheet");
+
+        assert_eq!(quote_name("B1048576"), "'B1048576'");
+        assert_eq!(quote_name("B1048577"), "B1048577");
+    }
 }

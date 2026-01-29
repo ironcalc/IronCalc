@@ -1,7 +1,10 @@
 #[cfg(feature = "use_regex_lite")]
 use regex_lite as regex;
 
-use crate::{calc_result::CalcResult, expressions::token::is_english_error_string};
+use crate::{
+    calc_result::CalcResult, expressions::token::is_english_error_string,
+    number_format::to_excel_precision,
+};
 
 /// This test for exact match (modulo case).
 ///   * strings are not cast into bools or numbers
@@ -34,6 +37,8 @@ pub(crate) fn values_are_equal(left: &CalcResult, right: &CalcResult) -> bool {
 pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     match (left, right) {
         (CalcResult::Number(value1), CalcResult::Number(value2)) => {
+            let value1 = to_excel_precision(*value1, 15);
+            let value2 = to_excel_precision(*value2, 15);
             if (value2 - value1).abs() < f64::EPSILON {
                 return 0;
             }

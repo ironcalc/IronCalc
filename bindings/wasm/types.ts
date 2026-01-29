@@ -241,3 +241,14 @@ export interface WorksheetDimension {
   min_column: number;
   max_column: number;
 }
+
+export interface FmtSettings {
+  currency: string;
+  currency_format: string;
+  short_date: string;
+  short_date_example: string;
+  long_date: string;
+  long_date_example: string;
+  number_fmt: string;
+  number_example: string;
+}

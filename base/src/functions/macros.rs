@@ -68,14 +68,14 @@ macro_rules! single_number_fn {
                                 },
                                 // If String, parse to f64 then apply or #VALUE! error
                                 ArrayNode::String(s) => {
-                                    let node = match s.parse::<f64>() {
-                                        Ok(f) => match $op(f) {
+                                    let node = match self.cast_number(&s) {
+                                        Some(f) => match $op(f) {
                                             Ok(x) => ArrayNode::Number(x),
                                             Err(Error::DIV) => ArrayNode::Error(Error::DIV),
                                             Err(Error::VALUE) => ArrayNode::Error(Error::VALUE),
                                             Err(e) => ArrayNode::Error(e),
                                         },
-                                        Err(_) => ArrayNode::Error(Error::VALUE),
+                                        None => ArrayNode::Error(Error::VALUE),
                                     };
                                     data_row.push(node);
                                 }

@@ -36,14 +36,13 @@ async fn download(data: Data<'_>) -> io::Result<FileResponder> {
         .await
         .unwrap();
     if !bytes.is_complete() {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
+        return Err(io::Error::other(
             "The file was not fully uploaded",
         ));
     };
 
-    let model = IModel::from_bytes(&bytes).map_err(|e| {
-        io::Error::new(io::ErrorKind::Other, format!("Error creating model, '{e}'"))
+    let model = IModel::from_bytes(&bytes, "en").map_err(|e| {
+        io::Error::other(format!("Error creating model, '{e}'"))
     })?;
 
     let mut buffer: Vec<u8> = Vec::new();
@@ -51,7 +50,7 @@ async fn download(data: Data<'_>) -> io::Result<FileResponder> {
         let cursor = Cursor::new(&mut buffer);
         let mut writer = BufWriter::new(cursor);
         save_xlsx_to_writer(&model, &mut writer).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("Error saving model: '{e}'"))
+            io::Error::other(format!("Error saving model: '{e}'"))
         })?;
         writer.flush().unwrap();
     }
@@ -82,8 +81,7 @@ async fn share(db: Connection<IronCalcDB>, data: Data<'_>) -> io::Result<String>
     let hash = id::new_id();
     let bytes = data.open(MAX_SIZE_MB.megabytes()).into_bytes().await?;
     if !bytes.is_complete() {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
+        return Err(io::Error::other(
             "file was not fully uploaded",
         ));
     }
@@ -111,15 +109,14 @@ async fn upload(data: Data<'_>, name: &str) -> io::Result<Vec<u8>> {
     println!("start upload");
     let bytes = data.open(MAX_SIZE_MB.megabytes()).into_bytes().await?;
     if !bytes.is_complete() {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
+        return Err(io::Error::other(
             "file was not fully uploaded",
         ));
     }
     let workbook = load_from_xlsx_bytes(&bytes, name.trim_end_matches(".xlsx"), "en", "UTC")
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Error loading model: '{e}'")))?;
-    let model = IModel::from_workbook(workbook).map_err(|e| {
-        io::Error::new(io::ErrorKind::Other, format!("Error creating model: '{e}'"))
+        .map_err(|e| io::Error::other(format!("Error loading model: '{e}'")))?;
+    let model = IModel::from_workbook(workbook, "en").map_err(|e| {
+        io::Error::other(format!("Error creating model: '{e}'"))
     })?;
     println!("end upload");
     Ok(model.to_bytes())

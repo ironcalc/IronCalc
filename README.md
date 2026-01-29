@@ -16,8 +16,8 @@
 [codecov-badge]: https://codecov.io/gh/ironcalc/IronCalc/graph/badge.svg?token=ASJX12CHNR
 [codecov-url]: https://codecov.io/gh/ironcalc/IronCalc
 
-[actions-badge]: https://github.com/ironcalc/ironcalc/actions/workflows/rust-build-test.yaml/badge.svg
-[actions-url]: https://github.com/ironcalc/IronCalc/actions/workflows/rust-build-test.yaml?query=workflow%3ARust+branch%3Amain
+[actions-badge]: https://github.com/ironcalc/ironcalc/actions/workflows/build-test.yaml/badge.svg
+[actions-url]: https://github.com/ironcalc/IronCalc/actions/workflows/build-test.yaml?query=workflow%3ARust+branch%3Amain
 
 [docs-url]: https://docs.rs/ironcalc
 [docs-badge]: https://img.shields.io/docsrs/ironcalc?logo=rust&style=flat-square
@@ -31,7 +31,17 @@ This repository contains the main engine and the xlsx reader and writer.
 
 Programmed in Rust, you will be able to use it from a variety of programming languages like Python, JavaScript (wasm), nodejs and possibly R, Julia or Go.
 
-We will build different _skins_: in the terminal, as a desktop application or use it in you own web application.
+We will build different _skins_: in the terminal, as a desktop application or use it in your own web application.
+
+# Docker
+
+If you have docker installed just run:
+
+```bash
+docker compose up --build
+```
+
+head over to <http://localhost:2080> to test the application.
 
 # Building
 
@@ -84,12 +94,12 @@ And then use this code in `main.rs`:
 
 ```rust
 use ironcalc::{
-    base::{expressions::utils::number_to_column, model::Model},
+    base::{expressions::utils::number_to_column, Model},
     export::save_to_xlsx,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut model = Model::new_empty("hello-calc.xlsx", "en", "UTC")?;
+    let mut model = Model::new_empty("hello-calc.xlsx", "en", "UTC", "en")?;
     // Adds a square of numbers in the first sheet
     for row in 1..100 {
         for column in 1..100 {
