@@ -169,7 +169,7 @@ test('track changed cells - multi-sheet cascading with defined name', () => {
     model.newSheet();
     model.renameSheet(2, "Sheet3");
     // Define a name 'TotalSales' for Sheet1!A1:A2
-    model.newDefinedName("TotalSales", 0, "=Sheet1!A1:A2");
+    model.newDefinedName("TotalSales", 0, "Sheet1!A1:A2");
     // Set values in Sheet1
     model.setUserInput(0, 1, 1, "100");
     model.setUserInput(0, 2, 1, "200");

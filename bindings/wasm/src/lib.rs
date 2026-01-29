@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use wasm_bindgen::{
     prelude::{wasm_bindgen, JsError},
     JsValue,
