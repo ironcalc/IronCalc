@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{constants::DEFAULT_COLUMN_WIDTH, test::user_model::util::new_empty_user_model};
+use crate::{constants::DEFAULT_COLUMN_WIDTH, test::user_model::util::new_empty_user_model, UserModel};
 
 #[test]
 fn add_undo_redo() {
@@ -102,7 +102,7 @@ fn new_sheet_selects_it() {
 
 #[test]
 fn new_sheet_returns_index_and_name() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = UserModel::new_empty("model", "en", "UTC", "en").unwrap();
     let (name, index) = model.new_sheet().unwrap();
     assert_eq!(name, "Sheet2");
     assert_eq!(index, 1);
