@@ -132,53 +132,53 @@ test("autofill", () => {
 });
 
 test('toXLSXBytes returns data', () => {
-    const model = new Model('Workbook1', 'en', 'UTC');
-    const bytes = toXLSXBytes(model.toBytes());
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    const bytes = toXLSXBytes(model.toBytes(), 'en');
     assert.ok(bytes instanceof Uint8Array);
     assert.ok(bytes.length > 0);
 });
 
 test('toBytes returns data', () => {
-    const model = new Model('Workbook1', 'en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
     const bytes = model.toBytes();
     assert.ok(bytes instanceof Uint8Array);
     assert.ok(bytes.length > 0);
 });
 
 test('fromBytes loads model', () => {
-    const model = new Model('Workbook1', 'en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.setUserInput(0, 1, 1, '42');
     const bytes = model.toBytes();
-    const m2 = Model.fromBytes(bytes);
+    const m2 = Model.fromBytes(bytes, 'en');
     assert.strictEqual(m2.getCellContent(0, 1, 1), '42');
 });
 
 test('fromXLSXBytes loads model', () => {
-    const model = new Model('Workbook1', 'en', 'UTC');
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.setUserInput(0, 1, 1, '5');
-    const xlsxBytes = toXLSXBytes(model.toBytes());
-    const modelBytes = fromXLSXBytes(xlsxBytes, 'Workbook1', 'en', 'UTC');
-    const m2 = Model.fromBytes(modelBytes);
+    const xlsxBytes = toXLSXBytes(model.toBytes(), 'en');
+    const modelBytes = fromXLSXBytes(xlsxBytes, 'Workbook1', 'en', 'UTC', 'en');
+    const m2 = Model.fromBytes(modelBytes, 'en');
     assert.strictEqual(m2.getCellContent(0, 1, 1), '5');
 });
 
 test('roundtrip via xlsx bytes', () => {
-    const m1 = new Model('Workbook1', 'en', 'UTC');
+    const m1 = new Model('Workbook1', 'en', 'UTC', 'en');
     m1.setUserInput(0, 1, 1, '7');
     m1.setUserInput(0, 1, 2, '=A1*3');
-    const xlsxBytes = toXLSXBytes(m1.toBytes());
-    const m2Bytes = fromXLSXBytes(xlsxBytes, 'Workbook1', 'en', 'UTC');
-    const m2 = Model.fromBytes(m2Bytes);
+    const xlsxBytes = toXLSXBytes(m1.toBytes(), 'en');
+    const m2Bytes = fromXLSXBytes(xlsxBytes, 'Workbook1', 'en', 'UTC', 'en');
+    const m2 = Model.fromBytes(m2Bytes, 'en');
     m2.evaluate();
     assert.strictEqual(m2.getFormattedCellValue(0, 1, 2), '21');
 });
 
 test('roundtrip via bytes', () => {
-    const m1 = new Model('Workbook1', 'en', 'UTC');
+    const m1 = new Model('Workbook1', 'en', 'UTC', 'en');
     m1.setUserInput(0, 1, 1, '9');
     m1.setUserInput(0, 1, 2, '=A1*4');
     const bytes = m1.toBytes();
-    const m2 = Model.fromBytes(bytes);
+    const m2 = Model.fromBytes(bytes, 'en');
     m2.evaluate();
     assert.strictEqual(m2.getFormattedCellValue(0, 1, 2), '36');
 });

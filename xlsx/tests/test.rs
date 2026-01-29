@@ -69,8 +69,8 @@ fn test_load_from_icalc_bytes() {
     let mut file = fs::File::open("tests/example.ic").unwrap();
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes).unwrap();
-    let model = load_from_icalc_bytes(&bytes).unwrap();
-    let model_from_file = load_from_icalc("tests/example.ic").unwrap();
+    let model = load_from_icalc_bytes(&bytes, "en").unwrap();
+    let model_from_file = load_from_icalc("tests/example.ic", "en").unwrap();
     assert_eq!(model.workbook, model_from_file.workbook);
 }
 
