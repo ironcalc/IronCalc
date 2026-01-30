@@ -391,6 +391,33 @@ const BorderPicker = (properties: BorderPickerProps) => {
                 >
                   <MediumDashedLine />
                 </StyledMenuItem>
+                <StyledMenuItem
+                  onClick={() => {
+                    setBorderStyle(BorderStyle.SlantDashDot);
+                    setStylePickerOpen(false);
+                  }}
+                  selected={borderStyle === BorderStyle.SlantDashDot}
+                >
+                  <SlantDashDotLine />
+                </StyledMenuItem>
+                <StyledMenuItem
+                  onClick={() => {
+                    setBorderStyle(BorderStyle.MediumDashDot);
+                    setStylePickerOpen(false);
+                  }}
+                  selected={borderStyle === BorderStyle.MediumDashDot}
+                >
+                  <MediumDashDotLine />
+                </StyledMenuItem>
+                <StyledMenuItem
+                  onClick={() => {
+                    setBorderStyle(BorderStyle.MediumDashDotDot);
+                    setStylePickerOpen(false);
+                  }}
+                  selected={borderStyle === BorderStyle.MediumDashDotDot}
+                >
+                  <MediumDashDotDotLine />
+                </StyledMenuItem>
               </StylePicker>
             </StyledPopper>
           )}
@@ -399,6 +426,15 @@ const BorderPicker = (properties: BorderPickerProps) => {
     </StyledPopper>
   );
 };
+
+const borderLineColor = theme.palette.grey["900"];
+const borderLinePreviewWidth = 68;
+
+const dashDotGradient = (color: string) =>
+  `repeating-linear-gradient(90deg, ${color} 0px 4px, transparent 4px 6px, ${color} 6px 7px, transparent 7px 9px)`;
+
+const dashDotDotGradient = (color: string) =>
+  `repeating-linear-gradient(90deg, ${color} 0px 4px, transparent 4px 6px, ${color} 6px 7px, transparent 7px 9px, ${color} 9px 10px, transparent 10px 12px)`;
 
 const StyledMenuItem = styled(MenuItem)`
   display: flex;
@@ -420,20 +456,20 @@ const StyledMenuItem = styled(MenuItem)`
 `;
 
 const SolidLine = styled("div")`
-  width: 68px;
+  width: ${borderLinePreviewWidth}px;
   border-top: 1px solid ${theme.palette.grey["900"]};
 `;
 const MediumLine = styled("div")`
-  width: 68px;
+  width: ${borderLinePreviewWidth}px;
   border-top: 2px solid ${theme.palette.grey["900"]};
 `;
 const ThickLine = styled("div")`
-  width: 68px;
+  width: ${borderLinePreviewWidth}px;
   border-top: 3px solid ${theme.palette.grey["900"]};
 `;
 
 const DoubleLine = styled("div")`
-  width: 68px;
+  width: ${borderLinePreviewWidth}px;
   height: 3px;
   position: relative;
   &::before {
@@ -455,13 +491,31 @@ const DoubleLine = styled("div")`
 `;
 
 const DottedLine = styled("div")`
-  width: 68px;
+  width: ${borderLinePreviewWidth}px;
   border-top: 1px dotted ${theme.palette.grey["900"]};
 `;
 
 const MediumDashedLine = styled("div")`
-  width: 68px;
+  width: ${borderLinePreviewWidth}px;
   border-top: 2px dashed ${theme.palette.grey["900"]};
+`;
+
+const SlantDashDotLine = styled("div")`
+  width: ${borderLinePreviewWidth}px;
+  height: 1px;
+  background: ${dashDotGradient(borderLineColor)};
+`;
+
+const MediumDashDotLine = styled("div")`
+  width: ${borderLinePreviewWidth}px;
+  height: 2px;
+  background: ${dashDotGradient(borderLineColor)};
+`;
+
+const MediumDashDotDotLine = styled("div")`
+  width: ${borderLinePreviewWidth}px;
+  height: 2px;
+  background: ${dashDotDotGradient(borderLineColor)};
 `;
 
 const Divider = styled("div")`
