@@ -14,13 +14,19 @@ fn test_rank_basic() {
     model._set("B1", "=RANK(3, A1:A5)");
     model.evaluate();
 
-    assert_eq!(model.get_cell_value_by_ref("Sheet1!B1"), Ok(CellValue::Number(3.0)));
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!B1"),
+        Ok(CellValue::Number(3.0))
+    );
 
     // RANK(3, A1:A5, 1) - ascending order, 3 is 3rd from bottom
     model._set("B2", "=RANK(3, A1:A5, 1)");
     model.evaluate();
 
-    assert_eq!(model.get_cell_value_by_ref("Sheet1!B2"), Ok(CellValue::Number(3.0)));
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!B2"),
+        Ok(CellValue::Number(3.0))
+    );
 }
 
 #[test]
@@ -39,9 +45,18 @@ fn test_quartile_basic() {
     model._set("B3", "=QUARTILE(A1:A8, 4)");
     model.evaluate();
 
-    assert_eq!(model.get_cell_value_by_ref("Sheet1!B1"), Ok(CellValue::Number(1.0)));
-    assert_eq!(model.get_cell_value_by_ref("Sheet1!B2"), Ok(CellValue::Number(4.5)));
-    assert_eq!(model.get_cell_value_by_ref("Sheet1!B3"), Ok(CellValue::Number(8.0)));
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!B1"),
+        Ok(CellValue::Number(1.0))
+    );
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!B2"),
+        Ok(CellValue::Number(4.5))
+    );
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!B3"),
+        Ok(CellValue::Number(8.0))
+    );
 }
 
 #[test]
@@ -58,6 +73,12 @@ fn test_quartile_inc() {
     model._set("B2", "=QUARTILE.INC(A1:A5, 3)");
     model.evaluate();
 
-    assert_eq!(model.get_cell_value_by_ref("Sheet1!B1"), Ok(CellValue::Number(2.0)));
-    assert_eq!(model.get_cell_value_by_ref("Sheet1!B2"), Ok(CellValue::Number(4.0)));
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!B1"),
+        Ok(CellValue::Number(2.0))
+    );
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!B2"),
+        Ok(CellValue::Number(4.0))
+    );
 }

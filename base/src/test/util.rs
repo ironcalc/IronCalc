@@ -55,6 +55,7 @@ impl<'a> Model<'a> {
     }
 }
 
+#[allow(dead_code)]
 pub fn assert_approx_eq(actual: &str, expected: f64, tolerance: f64) {
     let actual_val: f64 = actual
         .parse()
