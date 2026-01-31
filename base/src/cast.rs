@@ -5,6 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    formatter::format::parse_formatted_number,
     model::Model,
 };
 
@@ -13,7 +14,25 @@ pub(crate) enum NumberOrArray {
     Array(Vec<Vec<ArrayNode>>),
 }
 
-impl Model {
+impl<'a> Model<'a> {
+    pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
+        match s.trim().parse::<f64>() {
+            Ok(f) => Some(f),
+            _ => {
+                let currency = &self.locale.currency.symbol;
+                let mut currencies = vec!["$", "€"];
+                if !currencies.iter().any(|e| *e == currency) {
+                    currencies.push(currency);
+                }
+                // Try to parse as a formatted number (e.g., dates, currencies, percentages)
+                if let Ok((v, _number_format)) = parse_formatted_number(s, &currencies, self.locale)
+                {
+                    return Some(v);
+                }
+                None
+            }
+        }
+    }
     pub(crate) fn get_number_or_array(
         &mut self,
         node: &Node,
@@ -21,9 +40,9 @@ impl Model {
     ) -> Result<NumberOrArray, CalcResult> {
         match self.evaluate_node_in_context(node, cell) {
             CalcResult::Number(f) => Ok(NumberOrArray::Number(f)),
-            CalcResult::String(s) => match s.parse::<f64>() {
-                Ok(f) => Ok(NumberOrArray::Number(f)),
-                _ => Err(CalcResult::new_error(
+            CalcResult::String(s) => match self.cast_number(&s) {
+                Some(f) => Ok(NumberOrArray::Number(f)),
+                None => Err(CalcResult::new_error(
                     Error::VALUE,
                     cell,
                     "Expecting number".to_string(),
@@ -89,16 +108,16 @@ impl Model {
         self.cast_to_number(result, cell)
     }
 
-    fn cast_to_number(
+    pub(crate) fn cast_to_number(
         &mut self,
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         match result {
             CalcResult::Number(f) => Ok(f),
-            CalcResult::String(s) => match s.parse::<f64>() {
-                Ok(f) => Ok(f),
-                _ => Err(CalcResult::new_error(
+            CalcResult::String(s) => match self.cast_number(&s) {
+                Some(f) => Ok(f),
+                None => Err(CalcResult::new_error(
                     Error::VALUE,
                     cell,
                     "Expecting number".to_string(),

@@ -16,8 +16,8 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | CHOOSE       | <Badge type="tip" text="Available" />          | –             |
 | CHOOSECOLS   | <Badge type="info" text="Not implemented yet" /> | –             |
 | CHOOSEROWS   | <Badge type="info" text="Not implemented yet" /> | –             |
-| COLUMN       | <Badge type="tip" text="Available" />          | –             |
-| COLUMNS      | <Badge type="tip" text="Available" />          | –             |
+| COLUMN       | <Badge type="tip" text="Available" />          | [COLUMN](lookup_and_reference/column)             |
+| COLUMNS      | <Badge type="tip" text="Available" />          | [COLUMNS](lookup_and_reference/columns)             |
 | DROP         | <Badge type="info" text="Not implemented yet" /> | –             |
 | EXPAND       | <Badge type="info" text="Not implemented yet" /> | –             |
 | FILTER       | <Badge type="info" text="Not implemented yet" /> | –             |

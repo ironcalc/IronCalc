@@ -52,3 +52,32 @@ fn non_reference() {
 
     assert_eq!(model._get_text("A1"), *"#ERROR!");
 }
+
+#[test]
+fn test_language_independence() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SUM(1, 2)");
+    model._set("B1", "=FORMULATEXT(A1)");
+
+    model.evaluate();
+    model.set_language("fr").unwrap();
+    model.evaluate();
+
+    assert_eq!(model._get_formula("A1"), *"=SOMME(1,2)");
+    assert_eq!(model._get_text("B1"), *"=SUM(1,2)");
+}
+
+#[test]
+fn test_locale() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=SUM(1.123, 2)");
+    model._set("B1", "=FORMULATEXT(A1)");
+    model.evaluate();
+    model.set_language("fr").unwrap();
+    model.set_locale("fr").unwrap();
+    model.evaluate();
+
+    assert_eq!(model._get_formula("A1"), *"=SOMME(1,123;2)");
+    assert_eq!(model._get_text("B1"), *"=SUM(1,123;2)");
+}

@@ -182,7 +182,7 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
     }
 }
 
-impl Model {
+impl<'a> Model<'a> {
     fn get_complex_number(
         &mut self,
         node: &Node,

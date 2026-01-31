@@ -1,0 +1,207 @@
+{
+  "toolbar": {
+    "redo": "Ripeti",
+    "undo": "Annulla",
+    "copy_styles": "Copia stili",
+    "clear_formatting": "Cancella formattazione",
+    "euro": "Formato Euro",
+    "percentage": "Formato percentuale",
+    "bold": "Grassetto",
+    "italic": "Corsivo",
+    "underline": "Sottolineato",
+    "strike_through": "Barrato",
+    "align_left": "Allinea a sinistra",
+    "align_right": "Allinea a destra",
+    "align_center": "Allinea al centro",
+    "format_number": "Formato numero",
+    "font_color": "Colore carattere",
+    "fill_color": "Colore riempimento",
+    "increase_font_size": "Aumenta dimensione carattere",
+    "decrease_font_size": "Riduci dimensione carattere",
+    "decimal_places_increase": "Aumenta decimali",
+    "decimal_places_decrease": "Riduci decimali",
+    "show_hide_grid_lines": "Mostra/nascondi griglia",
+    "named_ranges": "Intervalli denominati",
+    "vertical_align_bottom": "Allinea in basso",
+    "vertical_align_middle": "Allinea al centro",
+    "vertical_align_top": "Allinea in alto",
+    "selected_png": "Esporta area selezionata come PNG",
+    "wrap_text": "Testo a capo",
+    "scroll_left": "Scorri a sinistra",
+    "scroll_right": "Scorri a destra",
+    "format_menu": {
+      "auto": "Automatico",
+      "number": "Numero",
+      "percentage": "Percentuale",
+      "currency_eur": "Euro (EUR)",
+      "currency_usd": "Dollaro (USD)",
+      "currency_gbp": "Sterlina britannica (GBP)",
+      "date_short": "Data breve",
+      "date_long": "Data lunga",
+      "custom": "Personalizzato",
+      "number_example": "1.000,00",
+      "percentage_example": "10%",
+      "currency_eur_example": "€",
+      "currency_usd_example": "$",
+      "currency_gbp_example": "£"
+    },
+    "borders": {
+      "title": "Bordi",
+      "all": "Tutti i bordi",
+      "inner": "Bordi interni",
+      "outer": "Bordi esterni",
+      "top": "Bordi superiori",
+      "bottom": "Bordi inferiori",
+      "clear": "Rimuovi bordi",
+      "left": "Bordi sinistri",
+      "right": "Bordi destri",
+      "horizontal": "Bordi orizzontali",
+      "vertical": "Bordi verticali",
+      "color": "Colore bordo",
+      "style": "Stile bordo"
+    }
+  },
+  "num_fmt": {
+    "title": "Formato numero personalizzato",
+    "label": "Formato numero",
+    "close": "Chiudi finestra",
+    "save": "Salva"
+  },
+  "sheet_rename": {
+    "rename": "Salva",
+    "label": "Nuovo nome",
+    "title": "Rinomina foglio",
+    "close": "Chiudi finestra"
+  },
+  "sheet_delete": {
+    "title": "Sei sicuro?",
+    "message": "Il foglio '{{sheetName}}' verrà eliminato.",
+    "confirm": "Sì, elimina foglio",
+    "cancel": "Annulla"
+  },
+  "sheet_tab": {
+    "rename": "Rinomina",
+    "change_color": "Cambia colore",
+    "delete": "Elimina",
+    "hide_sheet": "Nascondi foglio"
+  },
+  "formula_input": {
+    "update": "Aggiorna",
+    "label": "Formula",
+    "title": "Aggiorna formula"
+  },
+  "formula_bar": {
+    "manage_named_ranges": "Gestisci intervalli denominati"
+  },
+  "navigation": {
+    "add_sheet": "Aggiungi foglio",
+    "sheet_list": "Elenco fogli"
+  },
+  "name_manager_dialog": {
+    "title": "Intervalli denominati",
+    "empty_message1": "Non sono ancora stati aggiunti intervalli denominati.",
+    "empty_message2": "Fai clic su \"Aggiungi nuovo\" per crearne uno.",
+    "name": "Nome",
+    "range": "Ambito",
+    "scope": "Intervallo",
+    "help": "Informazioni sugli intervalli denominati",
+    "new": "Aggiungi nuovo",
+    "workbook": "Cartella di lavoro",
+    "global": "(Globale)",
+    "close": "Chiudi finestra",
+    "delete": "Elimina intervallo",
+    "edit": "Modifica intervallo",
+    "back_to_list": "Torna alla lista",
+    "add_new_range": "Aggiungi nuovo intervallo",
+    "edit_range": "Modifica intervallo",
+    "new_named_range": "Nuovo intervallo denominato",
+    "range_name": "Nome intervallo",
+    "enter_range_name": "Inserisci nome intervallo",
+    "scope_label": "Ambito",
+    "scope_helper": "L'ambito dell'intervallo denominato determina dove è disponibile.",
+    "refers_to": "Fa riferimento a",
+    "enter_formula": "Inserisci formula",
+    "cancel": "Annulla",
+    "apply": "Applica modifiche",
+    "discard": "Annulla modifiche",
+    "default_range_prefix": "Intervallo",
+    "errors": {
+      "range_name_required": "Il nome dell'intervallo è obbligatorio",
+      "name_cannot_contain_spaces": "Il nome non può contenere spazi",
+      "name_cannot_start_with_number": "Il nome non può iniziare con un numero",
+      "name_invalid_characters": "Il nome contiene caratteri non validi. Usa solo lettere, numeri, underscore e punti. Deve iniziare con una lettera o underscore.",
+      "name_already_exists": "Questo nome esiste già nell'ambito selezionato"
+    }
+  },
+  "cell_context": {
+    "insert_row_above": "Inserisci 1 riga sopra",
+    "insert_row_below": "Inserisci 1 riga sotto",
+    "insert_column_before": "Inserisci 1 colonna a sinistra",
+    "insert_column_after": "Inserisci 1 colonna a destra",
+    "freeze_columns": "Blocca fino alla colonna '{{column}}'",
+    "freeze_rows": "Blocca fino alla riga '{{row}}'",
+    "unfreeze_rows": "Sblocca righe",
+    "unfreeze_columns": "Sblocca colonne",
+    "delete_row": "Elimina riga '{{row}}'",
+    "delete_column": "Elimina colonna '{{column}}'",
+    "freeze": "Blocca",
+    "insert_row": "Inserisci riga",
+    "insert_column": "Inserisci colonna",
+    "move_row": "Sposta riga",
+    "move_column": "Sposta colonna",
+    "move_row_up": "Sposta riga in alto",
+    "move_row_down": "Sposta riga in basso",
+    "move_column_left": "Sposta colonna a sinistra",
+    "move_column_right": "Sposta colonna a destra"
+  },
+  "color_picker": {
+    "apply": "Aggiungi colore",
+    "cancel": "Annulla",
+    "add": "Aggiungi nuovo colore",
+    "default": "Colore predefinito",
+    "no_fill": "Nessun riempimento",
+    "recent": "Recenti"
+  },
+  "right_drawer": {
+    "resize_drawer": "Ridimensiona pannello",
+    "close": "Chiudi"
+  },
+  "regional_settings": {
+    "open_regional_settings": "Apri impostazioni regionali",
+    "title": "Impostazioni regionali",
+    "close": "Chiudi finestra",
+    "locale": {
+      "title": "Impostazioni locali",
+      "locale_label": "Impostazioni locali",
+      "locale_example1": "Numero",
+      "locale_example2": "Data e ora",
+      "locale_example3": "Separatore formule",
+      "delimiter_comma": "Virgola",
+      "delimiter_semicolon": "Punto e virgola"
+    },
+    "language": {
+      "title": "Lingua",
+      "language_label": "Lingua del motore",
+      "language_helper": "Controlla la lingua usata nei nomi delle funzioni e nei messaggi di errore.",
+      "display_language": {
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "de": "Deutsch",
+        "it": "Italiano"
+      },
+      "display_language_current_lang": {
+        "en": "Inglese",
+        "es": "Spagnolo",
+        "fr": "Francese",
+        "de": "Tedesco",
+        "it": "Italiano"
+      }
+    },
+    "timezone": {
+      "title": "Fuso orario",
+      "timezone_label": "Fuso orario",
+      "timezone_helper": "La modifica di questa impostazione influirà sulle funzioni relative a data e ora, incluse ADESSO() e OGGI()."
+    }
+  }
+}

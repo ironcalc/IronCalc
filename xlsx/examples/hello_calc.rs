@@ -4,7 +4,7 @@ use ironcalc::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut model = Model::new_empty("hello-calc.xlsx", "en", "UTC")?;
+    let mut model = Model::new_empty("hello-calc.xlsx", "en", "UTC", "en")?;
     // Adds a square of numbers in the first sheet
     for row in 1..100 {
         for column in 1..100 {

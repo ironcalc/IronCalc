@@ -175,6 +175,14 @@ pub(crate) enum Diff {
         row: i32,
         delta: i32,
     },
+    SetLocale {
+        old_value: String,
+        new_value: String,
+    },
+    SetTimezone {
+        old_value: String,
+        new_value: String,
+    },
     // FIXME: we are missing SetViewDiffs
 }
 

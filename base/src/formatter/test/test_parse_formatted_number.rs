@@ -1,8 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::formatter::format::parse_formatted_number as parse;
+use crate::{formatter::format::parse_formatted_number, locale::get_default_locale};
 
 const PARSE_ERROR_MSG: &str = "Could not parse number";
+
+fn parse(input: &str, currencies: &[&str]) -> Result<(f64, Option<String>), String> {
+    let locale = get_default_locale();
+    parse_formatted_number(input, currencies, locale)
+}
 
 #[test]
 fn numbers() {
@@ -149,47 +154,47 @@ fn errors_wrong_currency() {
 }
 
 #[test]
-fn long_dates() {
+fn long_dates_en_us() {
     assert_eq!(
-        parse("02/03/2024", &["$"]),
-        Ok((45353.0, Some("dd/mm/yyyy".to_string())))
+        parse("03/02/2024", &["$"]),
+        Ok((45353.0, Some("mm/dd/yyyy".to_string())))
     );
     assert_eq!(
-        parse("02/3/2024", &["$"]),
-        Ok((45353.0, Some("dd/m/yyyy".to_string())))
+        parse("3/02/2024", &["$"]),
+        Ok((45353.0, Some("m/dd/yyyy".to_string())))
     );
     assert_eq!(
-        parse("02/Mar/2024", &["$"]),
-        Ok((45353.0, Some("dd/mmm/yyyy".to_string())))
+        parse("Mar/02/2024", &["$"]),
+        Ok((45353.0, Some("mmm/dd/yyyy".to_string())))
     );
     assert_eq!(
-        parse("02/March/2024", &["$"]),
-        Ok((45353.0, Some("dd/mmmm/yyyy".to_string())))
+        parse("March/02/2024", &["$"]),
+        Ok((45353.0, Some("mmmm/dd/yyyy".to_string())))
     );
     assert_eq!(
-        parse("2/3/24", &["$"]),
-        Ok((45353.0, Some("d/m/yy".to_string())))
+        parse("3/2/24", &["$"]),
+        Ok((45353.0, Some("m/d/yy".to_string())))
     );
 
     assert_eq!(
-        parse("10-02-1975", &["$"]),
-        Ok((27435.0, Some("dd-mm-yyyy".to_string())))
+        parse("02-10-1975", &["$"]),
+        Ok((27435.0, Some("mm-dd-yyyy".to_string())))
     );
     assert_eq!(
-        parse("10-2-1975", &["$"]),
-        Ok((27435.0, Some("dd-m-yyyy".to_string())))
+        parse("2-10-1975", &["$"]),
+        Ok((27435.0, Some("m-dd-yyyy".to_string())))
     );
     assert_eq!(
-        parse("10-Feb-1975", &["$"]),
-        Ok((27435.0, Some("dd-mmm-yyyy".to_string())))
+        parse("Feb-10-1975", &["$"]),
+        Ok((27435.0, Some("mmm-dd-yyyy".to_string())))
     );
     assert_eq!(
-        parse("10-February-1975", &["$"]),
-        Ok((27435.0, Some("dd-mmmm-yyyy".to_string())))
+        parse("February-10-1975", &["$"]),
+        Ok((27435.0, Some("mmmm-dd-yyyy".to_string())))
     );
     assert_eq!(
-        parse("10-2-75", &["$"]),
-        Ok((27435.0, Some("dd-m-yy".to_string())))
+        parse("2-10-75", &["$"]),
+        Ok((27435.0, Some("m-dd-yy".to_string())))
     );
 }
 
@@ -202,5 +207,13 @@ fn iso_dates() {
     assert_eq!(
         parse("2024/March/02", &["$"]),
         Err(PARSE_ERROR_MSG.to_string())
+    );
+}
+
+#[test]
+fn long_dates_with_dots() {
+    assert_eq!(
+        parse("03.02.2024", &["$"]),
+        Ok((45353.0, Some("mm.dd.yyyy".to_string())))
     );
 }

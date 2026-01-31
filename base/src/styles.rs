@@ -213,7 +213,7 @@ impl Styles {
 }
 
 // TODO: Try to find a better spot for styles setters
-impl Model {
+impl<'a> Model<'a> {
     pub fn set_cell_style(
         &mut self,
         sheet: u32,

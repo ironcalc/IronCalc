@@ -26,6 +26,7 @@ export function attachOutlineHandle(
     background: outlineColor,
     cursor: "crosshair",
     borderRadius: "1px",
+    border: `1px solid white`,
   });
 
   // cell handle events

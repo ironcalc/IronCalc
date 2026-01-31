@@ -133,6 +133,14 @@ pub(crate) fn value_needs_quoting(value: &str, language: &Language) -> bool {
         || get_error_by_name(&value.to_uppercase(), language).is_some()
 }
 
+/// Gets all timezones
+pub fn get_all_timezones() -> Vec<String> {
+    chrono_tz::TZ_VARIANTS
+        .iter()
+        .map(|tz| tz.name().to_string())
+        .collect()
+}
+
 /// Valid hex colors are #FFAABB
 /// #fff is not valid
 pub(crate) fn is_valid_hex_color(color: &str) -> bool {

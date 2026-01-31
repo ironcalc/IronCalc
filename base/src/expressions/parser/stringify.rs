@@ -2,7 +2,9 @@ use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
 use crate::expressions::parser::static_analysis::add_implicit_intersection;
-use crate::expressions::token::OpUnary;
+use crate::expressions::token::{OpSum, OpUnary};
+use crate::language::{get_language, Language};
+use crate::locale::{get_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 
 pub enum DisplaceData {
@@ -42,18 +44,47 @@ pub enum DisplaceData {
 }
 
 /// This is the internal mode in IronCalc
+/// Formulas internally are stored in R1C1 format, the locale and language are always "en"
 pub fn to_rc_format(node: &Node) -> String {
-    stringify(node, None, &DisplaceData::None, false)
+    #[allow(clippy::expect_used)]
+    let locale = get_locale("en").expect("");
+    #[allow(clippy::expect_used)]
+    let language = get_language("en").expect("");
+    stringify(node, None, &DisplaceData::None, false, locale, language)
 }
 
 /// This is the mode used to display the formula in the UI
-pub fn to_string(node: &Node, context: &CellReferenceRC) -> String {
-    stringify(node, Some(context), &DisplaceData::None, false)
+pub fn to_localized_string(
+    node: &Node,
+    context: &CellReferenceRC,
+    locale: &Locale,
+    language: &Language,
+) -> String {
+    stringify(
+        node,
+        Some(context),
+        &DisplaceData::None,
+        false,
+        locale,
+        language,
+    )
 }
 
 /// This is the mode used to export the formula to Excel
+/// Internally the locale and language are always "en"
 pub fn to_excel_string(node: &Node, context: &CellReferenceRC) -> String {
-    stringify(node, Some(context), &DisplaceData::None, true)
+    #[allow(clippy::expect_used)]
+    let locale = get_locale("en").expect("");
+    #[allow(clippy::expect_used)]
+    let language = get_language("en").expect("");
+    stringify(
+        node,
+        Some(context),
+        &DisplaceData::None,
+        true,
+        locale,
+        language,
+    )
 }
 
 pub fn to_string_displaced(
@@ -61,7 +92,11 @@ pub fn to_string_displaced(
     context: &CellReferenceRC,
     displace_data: &DisplaceData,
 ) -> String {
-    stringify(node, Some(context), displace_data, false)
+    #[allow(clippy::expect_used)]
+    let locale = get_locale("en").expect("");
+    #[allow(clippy::expect_used)]
+    let language = get_language("en").expect("");
+    stringify(node, Some(context), displace_data, false, locale, language)
 }
 
 /// Converts a local reference to a string applying some displacement if needed.
@@ -273,19 +308,41 @@ fn format_function(
     context: Option<&CellReferenceRC>,
     displace_data: &DisplaceData,
     export_to_excel: bool,
+    locale: &Locale,
+    language: &Language,
 ) -> String {
     let mut first = true;
     let mut arguments = "".to_string();
+    let arg_separator = if locale.numbers.symbols.decimal == "." {
+        ','
+    } else {
+        ';'
+    };
     for el in args {
         if !first {
             arguments = format!(
-                "{},{}",
+                "{}{}{}",
                 arguments,
-                stringify(el, context, displace_data, export_to_excel)
+                arg_separator,
+                stringify(
+                    el,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language
+                )
             );
         } else {
             first = false;
-            arguments = stringify(el, context, displace_data, export_to_excel);
+            arguments = stringify(
+                el,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            );
         }
     }
     format!("{name}({arguments})")
@@ -321,11 +378,26 @@ fn stringify(
     context: Option<&CellReferenceRC>,
     displace_data: &DisplaceData,
     export_to_excel: bool,
+    locale: &Locale,
+    language: &Language,
 ) -> String {
     use self::Node::*;
     match node {
-        BooleanKind(value) => format!("{value}").to_ascii_uppercase(),
-        NumberKind(number) => to_excel_precision_str(*number),
+        BooleanKind(value) => {
+            if *value {
+                language.booleans.r#true.to_string()
+            } else {
+                language.booleans.r#false.to_string()
+            }
+        }
+        NumberKind(number) => {
+            let s = to_excel_precision_str(*number);
+            if locale.numbers.symbols.decimal == "." {
+                s
+            } else {
+                s.replace(".", &locale.numbers.symbols.decimal)
+            }
+        }
         StringKind(value) => format!("\"{value}\""),
         WrongReferenceKind {
             sheet_name,
@@ -469,52 +541,141 @@ fn stringify(
         }
         OpRangeKind { left, right } => format!(
             "{}:{}",
-            stringify(left, context, displace_data, export_to_excel),
-            stringify(right, context, displace_data, export_to_excel)
+            stringify(
+                left,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language
+            ),
+            stringify(
+                right,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language
+            )
         ),
         OpConcatenateKind { left, right } => format!(
             "{}&{}",
-            stringify(left, context, displace_data, export_to_excel),
-            stringify(right, context, displace_data, export_to_excel)
+            stringify(
+                left,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language
+            ),
+            stringify(
+                right,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language
+            )
         ),
         CompareKind { kind, left, right } => format!(
             "{}{}{}",
-            stringify(left, context, displace_data, export_to_excel),
+            stringify(
+                left,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language
+            ),
             kind,
-            stringify(right, context, displace_data, export_to_excel)
+            stringify(
+                right,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language
+            )
         ),
-        OpSumKind { kind, left, right } => format!(
-            "{}{}{}",
-            stringify(left, context, displace_data, export_to_excel),
-            kind,
-            stringify(right, context, displace_data, export_to_excel)
-        ),
+        OpSumKind { kind, left, right } => {
+            let left_str = stringify(
+                left,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            );
+            // if kind is minus then we need parentheses in the right side if they are OpSumKind or CompareKind
+            let right_str = if (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }))
+                | matches!(**right, CompareKind { .. })
+            {
+                format!(
+                    "({})",
+                    stringify(
+                        right,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
+                )
+            } else {
+                stringify(
+                    right,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                )
+            };
+
+            format!("{left_str}{kind}{right_str}")
+        }
         OpProductKind { kind, left, right } => {
             let x = match **left {
-                OpSumKind { .. } => format!(
+                OpSumKind { .. } | CompareKind { .. } => format!(
                     "({})",
-                    stringify(left, context, displace_data, export_to_excel)
+                    stringify(
+                        left,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
                 ),
-                CompareKind { .. } => format!(
-                    "({})",
-                    stringify(left, context, displace_data, export_to_excel)
+                _ => stringify(
+                    left,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
                 ),
-                _ => stringify(left, context, displace_data, export_to_excel),
             };
             let y = match **right {
-                OpSumKind { .. } => format!(
+                OpSumKind { .. } | CompareKind { .. } | OpProductKind { .. } => format!(
                     "({})",
-                    stringify(right, context, displace_data, export_to_excel)
+                    stringify(
+                        right,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
                 ),
-                CompareKind { .. } => format!(
-                    "({})",
-                    stringify(right, context, displace_data, export_to_excel)
+                _ => stringify(
+                    right,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
                 ),
-                OpProductKind { .. } => format!(
-                    "({})",
-                    stringify(right, context, displace_data, export_to_excel)
-                ),
-                _ => stringify(right, context, displace_data, export_to_excel),
             };
             format!("{x}{kind}{y}")
         }
@@ -522,6 +683,7 @@ fn stringify(
             let x = match **left {
                 BooleanKind(_)
                 | NumberKind(_)
+                | UnaryKind { .. }
                 | StringKind(_)
                 | ReferenceKind { .. }
                 | RangeKind { .. }
@@ -529,7 +691,14 @@ fn stringify(
                 | DefinedNameKind(_)
                 | TableNameKind(_)
                 | WrongVariableKind(_)
-                | WrongRangeKind { .. } => stringify(left, context, displace_data, export_to_excel),
+                | WrongRangeKind { .. } => stringify(
+                    left,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                ),
                 OpRangeKind { .. }
                 | OpConcatenateKind { .. }
                 | OpProductKind { .. }
@@ -537,7 +706,6 @@ fn stringify(
                 | FunctionKind { .. }
                 | InvalidFunctionKind { .. }
                 | ArrayKind(_)
-                | UnaryKind { .. }
                 | ErrorKind(_)
                 | ParseErrorKind { .. }
                 | OpSumKind { .. }
@@ -545,7 +713,14 @@ fn stringify(
                 | ImplicitIntersection { .. }
                 | EmptyArgKind => format!(
                     "({})",
-                    stringify(left, context, displace_data, export_to_excel)
+                    stringify(
+                        left,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
                 ),
             };
             let y = match **right {
@@ -558,9 +733,14 @@ fn stringify(
                 | DefinedNameKind(_)
                 | TableNameKind(_)
                 | WrongVariableKind(_)
-                | WrongRangeKind { .. } => {
-                    stringify(right, context, displace_data, export_to_excel)
-                }
+                | WrongRangeKind { .. } => stringify(
+                    right,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                ),
                 OpRangeKind { .. }
                 | OpConcatenateKind { .. }
                 | OpProductKind { .. }
@@ -576,29 +756,56 @@ fn stringify(
                 | ImplicitIntersection { .. }
                 | EmptyArgKind => format!(
                     "({})",
-                    stringify(right, context, displace_data, export_to_excel)
+                    stringify(
+                        right,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
                 ),
             };
             format!("{x}^{y}")
         }
-        InvalidFunctionKind { name, args } => {
-            format_function(name, args, context, displace_data, export_to_excel)
-        }
+        InvalidFunctionKind { name, args } => format_function(
+            &name.to_lowercase(),
+            args,
+            context,
+            displace_data,
+            export_to_excel,
+            locale,
+            language,
+        ),
         FunctionKind { kind, args } => {
             let name = if export_to_excel {
                 kind.to_xlsx_string()
             } else {
-                kind.to_string()
+                kind.to_localized_name(language)
             };
-            format_function(&name, args, context, displace_data, export_to_excel)
+            format_function(
+                &name,
+                args,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            )
         }
         ArrayKind(args) => {
             let mut first_row = true;
             let mut matrix_string = String::new();
+            let row_separator = if locale.numbers.symbols.decimal == "." {
+                ';'
+            } else {
+                '/'
+            };
+            let col_separator = if row_separator == ';' { ',' } else { ';' };
 
             for row in args {
                 if !first_row {
-                    matrix_string.push(';');
+                    matrix_string.push(row_separator);
                 } else {
                     first_row = false;
                 }
@@ -606,11 +813,11 @@ fn stringify(
                 let mut row_string = String::new();
                 for el in row {
                     if !first_column {
-                        row_string.push(',');
+                        row_string.push(col_separator);
                     } else {
                         first_column = false;
                     }
-                    row_string.push_str(&to_string_array_node(el));
+                    row_string.push_str(&to_string_array_node(el, locale, language));
                 }
                 matrix_string.push_str(&row_string);
             }
@@ -621,15 +828,68 @@ fn stringify(
         WrongVariableKind(name) => name.to_string(),
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
-                format!(
-                    "-{}",
-                    stringify(right, context, displace_data, export_to_excel)
-                )
+                let needs_parentheses = match **right {
+                    BooleanKind(_)
+                    | NumberKind(_)
+                    | StringKind(_)
+                    | ReferenceKind { .. }
+                    | RangeKind { .. }
+                    | WrongReferenceKind { .. }
+                    | WrongRangeKind { .. }
+                    | OpRangeKind { .. }
+                    | OpConcatenateKind { .. }
+                    | OpProductKind { .. }
+                    | FunctionKind { .. }
+                    | InvalidFunctionKind { .. }
+                    | ArrayKind(_)
+                    | DefinedNameKind(_)
+                    | TableNameKind(_)
+                    | WrongVariableKind(_)
+                    | ImplicitIntersection { .. }
+                    | CompareKind { .. }
+                    | ErrorKind(_)
+                    | ParseErrorKind { .. }
+                    | EmptyArgKind => false,
+
+                    OpPowerKind { .. } | OpSumKind { .. } | UnaryKind { .. } => true,
+                };
+                if needs_parentheses {
+                    format!(
+                        "-({})",
+                        stringify(
+                            right,
+                            context,
+                            displace_data,
+                            export_to_excel,
+                            locale,
+                            language
+                        )
+                    )
+                } else {
+                    format!(
+                        "-{}",
+                        stringify(
+                            right,
+                            context,
+                            displace_data,
+                            export_to_excel,
+                            locale,
+                            language
+                        )
+                    )
+                }
             }
             OpUnary::Percentage => {
                 format!(
                     "{}%",
-                    stringify(right, context, displace_data, export_to_excel)
+                    stringify(
+                        right,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
                 )
             }
         },
@@ -650,17 +910,38 @@ fn stringify(
 
                 add_implicit_intersection(&mut new_node, true);
                 if matches!(&new_node, Node::ImplicitIntersection { .. }) {
-                    return stringify(child, context, displace_data, export_to_excel);
+                    return stringify(
+                        child,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language,
+                    );
                 }
 
                 return format!(
                     "_xlfn.SINGLE({})",
-                    stringify(child, context, displace_data, export_to_excel)
+                    stringify(
+                        child,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
                 );
             }
             format!(
                 "@{}",
-                stringify(child, context, displace_data, export_to_excel)
+                stringify(
+                    child,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language
+                )
             )
         }
     }

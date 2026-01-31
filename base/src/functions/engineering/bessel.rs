@@ -1,16 +1,18 @@
+use statrs::function::erf::{erf, erfc};
+
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
-use super::transcendental::{bessel_i, bessel_j, bessel_k, bessel_y, erf};
+use super::transcendental::{bessel_i, bessel_j, bessel_k, bessel_y};
 // https://root.cern/doc/v610/TMath_8cxx_source.html
 
 // Notice that the parameters for Bessel functions in Excel and here have inverted order
 // EXCEL_BESSEL(x, n) => bessel(n, x)
 
-impl Model {
+impl<'a> Model<'a> {
     pub(crate) fn fn_besseli(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -160,7 +162,7 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        CalcResult::Number(1.0 - erf(x))
+        CalcResult::Number(erfc(x))
     }
 
     pub(crate) fn fn_erfcprecise(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -171,6 +173,6 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        CalcResult::Number(1.0 - erf(x))
+        CalcResult::Number(erfc(x))
     }
 }

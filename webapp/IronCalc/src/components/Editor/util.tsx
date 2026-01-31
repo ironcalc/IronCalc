@@ -1,9 +1,9 @@
 import {
+  getTokens,
   type Model,
   type Range,
   type Reference,
   type TokenType,
-  getTokens,
 } from "@ironcalc/wasm";
 import type { JSX } from "react";
 import type { ActiveRange } from "../workbookState";
@@ -31,7 +31,7 @@ export function isInReferenceMode(text: string, cursor: number): boolean {
   // This is a gross oversimplification
   // Returns true if both are true:
   // 1. Cursor is at the end
-  // 2. Last char is one of [',', '(', '+', '*', '-', '/', '<', '>', '=', '&']
+  // 2. Last char is one of [',', '(', '+', '*', '-', '/', '<', '>', '=', '&', ';']
   // This has many false positives like '="1+' and also likely some false negatives
   // The right way of doing this is to have a partial parse of the formula tree
   // and check if the next token could be a reference
@@ -42,7 +42,7 @@ export function isInReferenceMode(text: string, cursor: number): boolean {
     return true;
   }
   const l = text.length;
-  const chars = [",", "(", "+", "*", "-", "/", "<", ">", "=", "&"];
+  const chars = [",", "(", "+", "*", "-", "/", "<", ">", "=", "&", ";"];
   if (cursor === l && chars.includes(text[l - 1])) {
     return true;
   }
@@ -194,7 +194,47 @@ function getFormulaHTML(
   } else {
     html = [<span key="single">{text}</span>];
   }
+  // Add a trailing character if text ends with newline to ensure selector's height grows
+  if (text.endsWith("\n")) {
+    html.push(<span key="trailing-newline">{"\n"}</span>);
+  }
   return { html, activeRanges };
+}
+
+// Given a formula (without the equals sign) returns (sheetIndex, rowStart, columnStart, rowEnd, columnEnd)
+// if it represent a reference or range like `Sheet1!A1` or `Sheet3!D3:D10` in an existing sheet
+// If it is not a reference or range it returns null
+export function parseRangeInSheet(
+  model: Model,
+  formula: string,
+): [number, number, number, number, number] | null {
+  // HACK: We are checking here the series of tokens in the range formula.
+  // This is enough for our purposes but probably a more specific ranges in formula method  would be better.
+  const worksheets = model.getWorksheetsProperties();
+  const tokens = getTokens(formula);
+  const { token } = tokens[0];
+  if (tokenIsRangeType(token)) {
+    const {
+      sheet: refSheet,
+      left: { row: rowStart, column: columnStart },
+      right: { row: rowEnd, column: columnEnd },
+    } = token.Range;
+    if (refSheet !== null) {
+      const sheetIndex = worksheets.findIndex((s) => s.name === refSheet);
+      if (sheetIndex >= 0) {
+        return [sheetIndex, rowStart, columnStart, rowEnd, columnEnd];
+      }
+    }
+  } else if (tokenIsReferenceType(token)) {
+    const { sheet: refSheet, row, column } = token.Reference;
+    if (refSheet !== null) {
+      const sheetIndex = worksheets.findIndex((s) => s.name === refSheet);
+      if (sheetIndex >= 0) {
+        return [sheetIndex, row, column, row, column];
+      }
+    }
+  }
+  return null;
 }
 
 export default getFormulaHTML;
