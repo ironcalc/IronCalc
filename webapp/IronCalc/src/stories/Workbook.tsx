@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { IronCalc, Model, init } from "../index";
+import { IronCalc, init, Model } from "../index";
 
 // export interface IronCalcProps {}
 
@@ -11,7 +11,7 @@ export const Workbook = () => {
   useEffect(() => {
     async function start() {
       await init();
-      setModel(new Model("Workbook1", "en", "UTC"));
+      setModel(new Model("Workbook1", "en", "UTC", "en"));
     }
     start();
   }, []);
@@ -28,7 +28,7 @@ export const Workbook = () => {
         right: "0px",
       }}
     >
-      <IronCalc model={model} />
+      <IronCalc model={model} ref={null} />
     </div>
   );
 };

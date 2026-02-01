@@ -1,0 +1,207 @@
+{
+  "toolbar": {
+    "redo": "Rehacer",
+    "undo": "Deshacer",
+    "copy_styles": "Copiar estilos",
+    "clear_formatting": "Borrar formato",
+    "euro": "Formato Euro",
+    "percentage": "Formato porcentaje",
+    "bold": "Negrita",
+    "italic": "Cursiva",
+    "underline": "Subrayado",
+    "strike_through": "Tachado",
+    "align_left": "Alinear a la izquierda",
+    "align_right": "Alinear a la derecha",
+    "align_center": "Alinear al centro",
+    "format_number": "Formato de número",
+    "font_color": "Color de fuente",
+    "fill_color": "Color de relleno",
+    "increase_font_size": "Aumentar tamaño de fuente",
+    "decrease_font_size": "Disminuir tamaño de fuente",
+    "decimal_places_increase": "Aumentar decimales",
+    "decimal_places_decrease": "Disminuir decimales",
+    "show_hide_grid_lines": "Mostrar/ocultar líneas de cuadrícula",
+    "named_ranges": "Rangos con nombre",
+    "vertical_align_bottom": "Alinear abajo",
+    "vertical_align_middle": "Alinear al medio",
+    "vertical_align_top": "Alinear arriba",
+    "selected_png": "Exportar área seleccionada como PNG",
+    "wrap_text": "Ajustar texto",
+    "scroll_left": "Desplazar a la izquierda",
+    "scroll_right": "Desplazar a la derecha",
+    "format_menu": {
+      "auto": "Automático",
+      "number": "Número",
+      "percentage": "Porcentaje",
+      "currency_eur": "Euro (EUR)",
+      "currency_usd": "Dólar (USD)",
+      "currency_gbp": "Libra esterlina (GBP)",
+      "date_short": "Fecha corta",
+      "date_long": "Fecha larga",
+      "custom": "Personalizado",
+      "number_example": "1.000,00",
+      "percentage_example": "10%",
+      "currency_eur_example": "€",
+      "currency_usd_example": "$",
+      "currency_gbp_example": "£"
+    },
+    "borders": {
+      "title": "Bordes",
+      "all": "Todos los bordes",
+      "inner": "Bordes internos",
+      "outer": "Bordes externos",
+      "top": "Bordes superiores",
+      "bottom": "Bordes inferiores",
+      "clear": "Quitar bordes",
+      "left": "Bordes izquierdos",
+      "right": "Bordes derechos",
+      "horizontal": "Bordes horizontales",
+      "vertical": "Bordes verticales",
+      "color": "Color del borde",
+      "style": "Estilo del borde"
+    }
+  },
+  "num_fmt": {
+    "title": "Formato de número personalizado",
+    "label": "Formato de número",
+    "close": "Cerrar diálogo",
+    "save": "Guardar"
+  },
+  "sheet_rename": {
+    "rename": "Guardar",
+    "label": "Nuevo nombre",
+    "title": "Renombrar hoja",
+    "close": "Cerrar diálogo"
+  },
+  "sheet_delete": {
+    "title": "¿Estás seguro?",
+    "message": "La hoja '{{sheetName}}' será eliminada.",
+    "confirm": "Sí, eliminar hoja",
+    "cancel": "Cancelar"
+  },
+  "sheet_tab": {
+    "rename": "Renombrar",
+    "change_color": "Cambiar color",
+    "delete": "Eliminar",
+    "hide_sheet": "Ocultar hoja"
+  },
+  "formula_input": {
+    "update": "Actualizar",
+    "label": "Fórmula",
+    "title": "Actualizar fórmula"
+  },
+  "formula_bar": {
+    "manage_named_ranges": "Gestionar rangos con nombre"
+  },
+  "navigation": {
+    "add_sheet": "Añadir hoja",
+    "sheet_list": "Lista de hojas"
+  },
+  "name_manager_dialog": {
+    "title": "Rangos con nombre",
+    "empty_message1": "Aún no se han añadido rangos con nombre.",
+    "empty_message2": "Haz clic en 'Añadir nuevo' para agregar uno.",
+    "name": "Nombre",
+    "range": "Ámbito",
+    "scope": "Rango",
+    "help": "Acerca de los rangos con nombre",
+    "new": "Añadir nuevo",
+    "workbook": "Libro",
+    "global": "(Global)",
+    "close": "Cerrar diálogo",
+    "delete": "Eliminar rango",
+    "edit": "Editar rango",
+    "back_to_list": "Volver a la lista",
+    "add_new_range": "Añadir un nuevo rango",
+    "edit_range": "Editar rango",
+    "new_named_range": "Nuevo rango con nombre",
+    "range_name": "Nombre del rango",
+    "enter_range_name": "Introduce el nombre del rango",
+    "scope_label": "Ámbito",
+    "scope_helper": "El ámbito del rango con nombre determina dónde está disponible.",
+    "refers_to": "Hace referencia a",
+    "enter_formula": "Introduce la fórmula",
+    "cancel": "Cancelar",
+    "apply": "Aplicar cambios",
+    "discard": "Descartar cambios",
+    "default_range_prefix": "Rango",
+    "errors": {
+      "range_name_required": "El nombre del rango es obligatorio",
+      "name_cannot_contain_spaces": "El nombre no puede contener espacios",
+      "name_cannot_start_with_number": "El nombre no puede empezar con un número",
+      "name_invalid_characters": "El nombre contiene caracteres no válidos. Usa solo letras, números, guiones bajos y puntos. Debe empezar con una letra o guion bajo.",
+      "name_already_exists": "Este nombre ya existe en el ámbito seleccionado"
+    }
+  },
+  "cell_context": {
+    "insert_row_above": "Insertar 1 fila arriba",
+    "insert_row_below": "Insertar 1 fila abajo",
+    "insert_column_before": "Insertar 1 columna a la izquierda",
+    "insert_column_after": "Insertar 1 columna a la derecha",
+    "freeze_columns": "Congelar hasta la columna '{{column}}'",
+    "freeze_rows": "Congelar hasta la fila '{{row}}'",
+    "unfreeze_rows": "Descongelar filas",
+    "unfreeze_columns": "Descongelar columnas",
+    "delete_row": "Eliminar fila '{{row}}'",
+    "delete_column": "Eliminar columna '{{column}}'",
+    "freeze": "Congelar",
+    "insert_row": "Insertar fila",
+    "insert_column": "Insertar columna",
+    "move_row": "Mover fila",
+    "move_column": "Mover columna",
+    "move_row_up": "Mover fila arriba",
+    "move_row_down": "Mover fila abajo",
+    "move_column_left": "Mover columna a la izquierda",
+    "move_column_right": "Mover columna a la derecha"
+  },
+  "color_picker": {
+    "apply": "Añadir color",
+    "cancel": "Cancelar",
+    "add": "Añadir nuevo color",
+    "default": "Color predeterminado",
+    "no_fill": "Sin relleno",
+    "recent": "Recientes"
+  },
+  "right_drawer": {
+    "resize_drawer": "Cambiar tamaño del panel",
+    "close": "Cerrar"
+  },
+  "regional_settings": {
+    "open_regional_settings": "Abrir configuración regional",
+    "title": "Configuración regional",
+    "close": "Cerrar diálogo",
+    "locale": {
+      "title": "Configuración regional",
+      "locale_label": "Configuración regional",
+      "locale_example1": "Número",
+      "locale_example2": "Fecha y hora",
+      "locale_example3": "Delimitador de fórmulas",
+      "delimiter_comma": "Coma",
+      "delimiter_semicolon": "Punto y coma"
+    },
+    "language": {
+      "title": "Idioma",
+      "language_label": "Idioma del motor",
+      "language_helper": "Controla el idioma usado en los nombres de funciones y los mensajes de error.",
+      "display_language": {
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "de": "Deutsch",
+        "it": "Italiano"
+      },
+      "display_language_current_lang": {
+        "en": "Inglés",
+        "es": "Español",
+        "fr": "Francés",
+        "de": "Alemán",
+        "it": "Italiano"
+      }
+    },
+    "timezone": {
+      "title": "Zona horaria",
+      "timezone_label": "Zona horaria",
+      "timezone_helper": "Modificar esta configuración afectará a las funciones relacionadas con fecha y hora, incluyendo HOY() y AHORA()."
+    }
+  }
+}

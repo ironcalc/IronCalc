@@ -31,8 +31,12 @@ f_args  => e (',' e)*
 use std::collections::HashMap;
 
 use crate::functions::Function;
+use crate::language::get_default_language;
 use crate::language::get_language;
+use crate::language::Language;
+use crate::locale::get_default_locale;
 use crate::locale::get_locale;
+use crate::locale::Locale;
 use crate::types::Table;
 
 use super::lexer;
@@ -202,28 +206,35 @@ pub enum Node {
 }
 
 #[derive(Clone)]
-pub struct Parser {
-    lexer: lexer::Lexer,
+pub struct Parser<'a> {
+    lexer: lexer::Lexer<'a>,
     worksheets: Vec<String>,
     defined_names: Vec<DefinedNameS>,
     context: CellReferenceRC,
     tables: HashMap<String, Table>,
+    locale: &'a Locale,
+    language: &'a Language,
 }
 
-impl Parser {
+pub fn new_parser_english<'a>(
+    worksheets: Vec<String>,
+    defined_names: Vec<DefinedNameS>,
+    tables: HashMap<String, Table>,
+) -> Parser<'a> {
+    let locale = get_default_locale();
+    let language = get_default_language();
+    Parser::new(worksheets, defined_names, tables, locale, language)
+}
+
+impl<'a> Parser<'a> {
     pub fn new(
         worksheets: Vec<String>,
         defined_names: Vec<DefinedNameS>,
         tables: HashMap<String, Table>,
-    ) -> Parser {
-        let lexer = lexer::Lexer::new(
-            "",
-            lexer::LexerMode::A1,
-            #[allow(clippy::expect_used)]
-            get_locale("en").expect(""),
-            #[allow(clippy::expect_used)]
-            get_language("en").expect(""),
-        );
+        locale: &'a Locale,
+        language: &'a Language,
+    ) -> Parser<'a> {
+        let lexer = lexer::Lexer::new("", lexer::LexerMode::A1, locale, language);
         let context = CellReferenceRC {
             sheet: worksheets.first().map_or("", |v| v).to_string(),
             column: 1,
@@ -235,10 +246,22 @@ impl Parser {
             defined_names,
             context,
             tables,
+            locale,
+            language,
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
         self.lexer.set_lexer_mode(mode)
+    }
+
+    pub fn set_locale(&mut self, locale: &'a Locale) {
+        self.locale = locale;
+        self.lexer.set_locale(locale);
+    }
+
+    pub fn set_language(&mut self, language: &'a Language) {
+        self.language = language;
+        self.lexer.set_language(language);
     }
 
     pub fn set_worksheets_and_names(
@@ -254,6 +277,27 @@ impl Parser {
         self.lexer.set_formula(formula);
         self.context = context.clone();
         self.parse_expr()
+    }
+
+    // Returns the token used to separate arguments in functions and arrays
+    // If the locale decimal separator is '.', then it is a comma ','
+    // Otherwise, it is a semicolon ';'
+    fn get_argument_separator_token(&self) -> TokenType {
+        if self.locale.numbers.symbols.decimal == "." {
+            TokenType::Comma
+        } else {
+            TokenType::Semicolon
+        }
+    }
+
+    // Returns the token used to separate columns in arrays
+    // If the locale decimal separator is '.', then it is a semicolon ';'
+    fn get_column_separator_token(&self) -> TokenType {
+        if self.locale.numbers.symbols.decimal == "." {
+            TokenType::Semicolon
+        } else {
+            TokenType::Backslash
+        }
     }
 
     fn get_sheet_index_by_name(&self, name: &str) -> Option<u32> {
@@ -464,6 +508,7 @@ impl Parser {
 
     fn parse_array_row(&mut self) -> Result<Vec<ArrayNode>, Node> {
         let mut row = Vec::new();
+        let column_separator_token = self.get_argument_separator_token();
         // and array can only have numbers, string or booleans
         // otherwise it is a syntax error
         let first_element = match self.parse_expr() {
@@ -471,6 +516,20 @@ impl Parser {
             Node::NumberKind(s) => ArrayNode::Number(s),
             Node::StringKind(s) => ArrayNode::String(s),
             Node::ErrorKind(kind) => ArrayNode::Error(kind),
+            Node::UnaryKind {
+                kind: OpUnary::Minus,
+                right,
+            } => {
+                if let Node::NumberKind(n) = *right {
+                    ArrayNode::Number(-n)
+                } else {
+                    return Err(Node::ParseErrorKind {
+                        formula: self.lexer.get_formula(),
+                        message: "Invalid value in array".to_string(),
+                        position: self.lexer.get_position() as usize,
+                    });
+                }
+            }
             error @ Node::ParseErrorKind { .. } => return Err(error),
             _ => {
                 return Err(Node::ParseErrorKind {
@@ -482,14 +541,27 @@ impl Parser {
         };
         row.push(first_element);
         let mut next_token = self.lexer.peek_token();
-        // FIXME: this is not respecting the locale
-        while next_token == TokenType::Comma {
+        while next_token == column_separator_token {
             self.lexer.advance_token();
             let value = match self.parse_expr() {
                 Node::BooleanKind(s) => ArrayNode::Boolean(s),
                 Node::NumberKind(s) => ArrayNode::Number(s),
                 Node::StringKind(s) => ArrayNode::String(s),
                 Node::ErrorKind(kind) => ArrayNode::Error(kind),
+                Node::UnaryKind {
+                    kind: OpUnary::Minus,
+                    right,
+                } => {
+                    if let Node::NumberKind(n) = *right {
+                        ArrayNode::Number(-n)
+                    } else {
+                        return Err(Node::ParseErrorKind {
+                            formula: self.lexer.get_formula(),
+                            message: "Invalid value in array".to_string(),
+                            position: self.lexer.get_position() as usize,
+                        });
+                    }
+                }
                 error @ Node::ParseErrorKind { .. } => return Err(error),
                 _ => {
                     return Err(Node::ParseErrorKind {
@@ -527,6 +599,7 @@ impl Parser {
             TokenType::String(s) => Node::StringKind(s),
             TokenType::LeftBrace => {
                 // It's an array. It's a collection of rows all of the same dimension
+                let column_separator_token = self.get_column_separator_token();
 
                 let first_row = match self.parse_array_row() {
                     Ok(s) => s,
@@ -536,9 +609,8 @@ impl Parser {
 
                 let mut matrix = Vec::new();
                 matrix.push(first_row);
-                // FIXME: this is not respecting the locale
                 let mut next_token = self.lexer.peek_token();
-                while next_token == TokenType::Semicolon {
+                while next_token == column_separator_token {
                     self.lexer.advance_token();
                     let row = match self.parse_array_row() {
                         Ok(s) => s,
@@ -621,13 +693,15 @@ impl Parser {
                 let mut absolute_row1 = left.absolute_row;
                 let mut absolute_row2 = right.absolute_row;
 
-                if row1 > row2 {
-                    (row2, row1) = (row1, row2);
-                    (absolute_row2, absolute_row1) = (absolute_row1, absolute_row2);
-                }
-                if column1 > column2 {
-                    (column2, column1) = (column1, column2);
-                    (absolute_column2, absolute_column1) = (absolute_column1, absolute_column2);
+                if self.lexer.is_a1_mode() {
+                    if row1 > row2 {
+                        (row2, row1) = (row1, row2);
+                        (absolute_row2, absolute_row1) = (absolute_row1, absolute_row2);
+                    }
+                    if column1 > column2 {
+                        (column2, column1) = (column1, column2);
+                        (absolute_column2, absolute_column1) = (absolute_column1, absolute_column2);
+                    }
                 }
 
                 if self.lexer.is_a1_mode() {
@@ -687,12 +761,7 @@ impl Parser {
                             message: err.message,
                         };
                     }
-                    if let Some(function_kind) = Function::get_function(&name) {
-                        return Node::FunctionKind {
-                            kind: function_kind,
-                            args,
-                        };
-                    }
+                    // We should do this *only* importing functions from xlsx
                     if &name == "_xlfn.SINGLE" {
                         if args.len() != 1 {
                             return Node::ParseErrorKind {
@@ -707,6 +776,17 @@ impl Parser {
                             child: Box::new(args[0].clone()),
                         };
                     }
+                    // We should do this *only* importing functions from xlsx
+                    if let Some(function_kind) = self
+                        .language
+                        .functions
+                        .lookup(name.trim_start_matches("_xlfn."))
+                    {
+                        return Node::FunctionKind {
+                            kind: function_kind,
+                            args,
+                        };
+                    }
                     return Node::InvalidFunctionKind { name, args };
                 }
                 let context = &self.context;
@@ -717,7 +797,7 @@ impl Parser {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
                             position: 0,
-                            message: "sheet not found".to_string(),
+                            message: format!("sheet not found: {}", context.sheet),
                         };
                     }
                 };
@@ -821,6 +901,7 @@ impl Parser {
             | TokenType::RightBracket
             | TokenType::Colon
             | TokenType::Semicolon
+            | TokenType::Backslash
             | TokenType::RightBrace
             | TokenType::Comma
             | TokenType::Bang
@@ -850,7 +931,7 @@ impl Parser {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
                             position: 0,
-                            message: "sheet not found".to_string(),
+                            message: format!("sheet not found: {}", context.sheet),
                         };
                     }
                 };
@@ -878,7 +959,7 @@ impl Parser {
                         return Node::ParseErrorKind {
                             formula: self.lexer.get_formula(),
                             position: 0,
-                            message: "sheet not found".to_string(),
+                            message: format!("table sheet not found: {}", table.sheet_name),
                         };
                     }
                 };
@@ -1020,12 +1101,13 @@ impl Parser {
     }
 
     fn parse_function_args(&mut self) -> Result<Vec<Node>, Node> {
+        let arg_separator_token = &self.get_argument_separator_token();
         let mut args: Vec<Node> = Vec::new();
         let mut next_token = self.lexer.peek_token();
         if next_token == TokenType::RightParenthesis {
             return Ok(args);
         }
-        if self.lexer.peek_token() == TokenType::Comma {
+        if &self.lexer.peek_token() == arg_separator_token {
             args.push(Node::EmptyArgKind);
         } else {
             let t = self.parse_expr();
@@ -1035,11 +1117,11 @@ impl Parser {
             args.push(t);
         }
         next_token = self.lexer.peek_token();
-        while next_token == TokenType::Comma {
+        while &next_token == arg_separator_token {
             self.lexer.advance_token();
-            if self.lexer.peek_token() == TokenType::Comma {
+            if &self.lexer.peek_token() == arg_separator_token {
                 args.push(Node::EmptyArgKind);
-                next_token = TokenType::Comma;
+                next_token = arg_separator_token.clone();
             } else if self.lexer.peek_token() == TokenType::RightParenthesis {
                 args.push(Node::EmptyArgKind);
                 return Ok(args);

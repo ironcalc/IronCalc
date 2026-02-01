@@ -11,7 +11,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 
 | Function   | Status                                         | Documentation |
 | ---------- | ---------------------------------------------- | ------------- |
-| CELL       | <Badge type="info" text="Not implemented yet" /> | –             |
+| CELL       | <Badge type="tip" text="Available" />          | –             |
 | ERROR.TYPE | <Badge type="tip" text="Available" />          | –             |
 | INFO       | <Badge type="info" text="Not implemented yet" /> | –             |
 | ISBLANK    | <Badge type="tip" text="Available" />          | –             |
@@ -20,15 +20,15 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ISEVEN     | <Badge type="tip" text="Available" />          | –             |
 | ISFORMULA  | <Badge type="tip" text="Available" />          | –             |
 | ISLOGICAL  | <Badge type="tip" text="Available" />          | –             |
-| ISNA       | <Badge type="info" text="Not implemented yet" /> | –             |
+| ISNA       | <Badge type="tip" text="Available" />          | –             |
 | ISNONTEXT  | <Badge type="tip" text="Available" />          | –             |
 | ISNUMBER   | <Badge type="tip" text="Available" />          | –             |
 | ISODD      | <Badge type="tip" text="Available" />          | –             |
 | ISOMITTED  | <Badge type="info" text="Not implemented yet" /> | –             |
 | ISREF      | <Badge type="tip" text="Available" />          | –             |
 | ISTEXT     | <Badge type="tip" text="Available" />          | –             |
-| N          | <Badge type="info" text="Not implemented yet" /> | –             |
+| N          | <Badge type="tip" text="Available" />          | –             |
 | NA         | <Badge type="tip" text="Available" />          | –             |
 | SHEET      | <Badge type="tip" text="Available" />          | –             |
-| SHEETS     | <Badge type="info" text="Not implemented yet" /> | –             |
+| SHEETS     | <Badge type="tip" text="Available" />          | –             |
 | TYPE       | <Badge type="tip" text="Available" />          | –             |

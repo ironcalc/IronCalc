@@ -932,13 +932,14 @@ fn compute_ppmt(
 // In these formulas the payment (pmt) is normally negative
 
 /// Enum to define different array processing behaviors
+#[allow(dead_code)]
 enum ArrayProcessingMode {
     Standard,               // Accept single numbers, ignore empty/non-number cells
     StrictWithError(Error), // Accept single numbers, error on empty/non-number with specified error type
     RangeOnlyWithZeros,     // Don't accept single numbers, treat empty as 0.0, error on non-number
 }
 
-impl Model {
+impl<'a> Model<'a> {
     fn get_array_of_numbers_generic(
         &mut self,
         arg: &Node,

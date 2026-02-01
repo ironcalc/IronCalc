@@ -72,10 +72,10 @@ export function WorkbookTitle(properties: {
 }
 
 const Container = styled("div")`
-  text-align: center;
-  padding: 8px;
+  text-align: left;
+  padding: 6px 4px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   font-family: Inter;
 `;
 
@@ -98,7 +98,7 @@ const TitleInput = styled("input")`
   text-align: center;
   height: 20px;
   line-height: 20px;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: inherit;
   outline: none;
   resize: none;
@@ -108,7 +108,7 @@ const TitleInput = styled("input")`
     background-color: #f2f2f2;
   }
   &:focus {
-    border: 1px solid grey;
+    outline: 1px solid grey;
   }
   font-weight: inherit;
   font-family: inherit;

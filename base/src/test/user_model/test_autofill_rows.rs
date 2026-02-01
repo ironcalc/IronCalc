@@ -9,8 +9,8 @@ use crate::UserModel;
 fn basic_tests() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    // This is cell A3
-    model.set_user_input(0, 3, 1, "alpha").unwrap();
+    model.set_user_input(0, 3, 1, "alpha").unwrap(); // A3
+
     // We autofill from A3 to A5
     model
         .auto_fill_rows(
@@ -139,7 +139,7 @@ fn alpha_beta_gamma() {
 fn styles() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    // cells A1:B3
+    // cells A1:A3
     model.set_user_input(0, 1, 1, "Alpher").unwrap();
     model.set_user_input(0, 2, 1, "Bethe").unwrap();
     model.set_user_input(0, 3, 1, "Gamow").unwrap();
@@ -165,6 +165,7 @@ fn styles() {
         .update_range_style(&a3, "fill.bg_color", "#334455")
         .unwrap();
 
+    // We autofill from A1:A3 to A9
     model
         .auto_fill_rows(
             &Area {
@@ -187,22 +188,26 @@ fn styles() {
 
     model.undo().unwrap();
 
+    // A4
     assert_eq!(model.get_cell_content(0, 4, 1), Ok("".to_string()));
-    // Check that cell A5 has A2 style
+    // Check that cell A5 does NOT have A2 style
     let style = model.get_cell_style(0, 5, 1).unwrap();
     assert!(!style.font.i);
-    // A6 would have the style of A3
+
+    // A6 would have NOT the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
     assert_eq!(style.fill.bg_color, None);
 
     model.redo().unwrap();
     assert_eq!(
-        model.get_formatted_cell_value(0, 4, 1),
+        model.get_formatted_cell_value(0, 4, 1), // A4
         Ok("Alpher".to_string())
     );
+
     // Check that cell A5 has A2 style
     let style = model.get_cell_style(0, 5, 1).unwrap();
     assert!(style.font.i);
+
     // A6 would have the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
     assert_eq!(style.fill.bg_color, Some("#334455".to_string()));
@@ -287,8 +292,7 @@ fn upwards_4() {
 fn errors() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    // cells A10:A13
-    model.set_user_input(0, 4, 1, "Margaret Burbidge").unwrap();
+    model.set_user_input(0, 4, 1, "Margaret Burbidge").unwrap(); // A4
 
     // Invalid sheet
     assert_eq!(

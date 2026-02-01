@@ -101,26 +101,6 @@ const ButtonGroup = styled.div`
   width: 100%;
 `;
 
-const StyledButton = styled.button`
-  cursor: pointer;
-  color: ${theme.palette.common.white};
-  background-color: ${theme.palette.primary.main};
-  padding: 0px 10px;
-  height: 36px;
-  border-radius: 4px;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  transition: background-color 150ms;
-  text-transform: none;
-  &:hover {
-    background-color: ${theme.palette.primary.dark};
-  }
-`;
-
 const DeleteButton = styled(Button)`
   background-color: ${theme.palette.error.main};
   color: ${theme.palette.common.white};

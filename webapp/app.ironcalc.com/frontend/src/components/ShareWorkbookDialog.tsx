@@ -1,8 +1,9 @@
 import type { Model } from "@ironcalc/workbook";
-import { Button, Dialog, TextField, styled } from "@mui/material";
+import { Button, Dialog, styled, TextField } from "@mui/material";
 import { Check, Copy, GlobeLock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { shareModel } from "./rpc";
 
 function ShareWorkbookDialog(properties: {
@@ -12,6 +13,7 @@ function ShareWorkbookDialog(properties: {
 }) {
   const [url, setUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const generateUrl = async () => {
@@ -56,6 +58,7 @@ function ShareWorkbookDialog(properties: {
       open={true}
       tabIndex={0}
       onClose={handleClose}
+      transitionDuration={0}
       onKeyDown={(event) => {
         if (event.code === "Escape") {
           handleClose();
@@ -64,7 +67,7 @@ function ShareWorkbookDialog(properties: {
     >
       <DialogContent>
         <QRCodeWrapper>
-          <QRCodeSVG value={url} size={80} />{" "}
+          <QRCodeSVG value={url} />
         </QRCodeWrapper>
         <URLWrapper>
           <StyledTextField
@@ -83,14 +86,16 @@ function ShareWorkbookDialog(properties: {
             onClick={handleCopy}
           >
             {copied ? <StyledCheck /> : <StyledCopy />}
-            {copied ? "Copied!" : "Copy URL"}
+            {copied
+              ? t("file_bar.share_popover.copied")
+              : t("file_bar.share_popover.copy_url")}
           </StyledButton>
         </URLWrapper>
       </DialogContent>
 
       <UploadFooter>
         <GlobeLock />
-        Anyone with the link will be able to access a copy of this workbook
+        {t("file_bar.share_popover.info_text")}
       </UploadFooter>
     </DialogWrapper>
   );
@@ -98,12 +103,14 @@ function ShareWorkbookDialog(properties: {
 
 const DialogWrapper = styled(Dialog)`
   .MuiDialog-paper {
-    width: 440px;
+    width: 340px;
     position: absolute;
     top: 44px;
     right: 0px;
     margin: 10px;
     max-width: calc(100% - 20px);
+    border-radius: 8px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
   }
   .MuiBackdrop-root {
     background-color: transparent;
@@ -111,17 +118,17 @@ const DialogWrapper = styled(Dialog)`
 `;
 
 const DialogContent = styled("div")`
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: row;
   gap: 12px;
-  height: 80px;
+  height: auto;
 `;
 
 const URLWrapper = styled("div")`
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 100%;
   width: 100%;
   justify-content: space-between;
 `;
@@ -147,7 +154,7 @@ const StyledButton = styled(Button)`
   height: 36px;
   color: #616161;
   box-shadow: none;
-  font-size: 14px;
+  font-size: 12px;
   text-transform: capitalize;
   gap: 10px;
   &:hover {
@@ -169,13 +176,16 @@ const StyledCheck = styled(Check)`
 `;
 
 const QRCodeWrapper = styled("div")`
-  min-height: 80px;
-  min-width: 80px;
-  background-color: grey;
+  height: auto;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
+
+  svg {
+    width: 80px;
+    height: auto;
+  }
 
   @media (max-width: 600px) {
     display: none;
@@ -195,6 +205,7 @@ const UploadFooter = styled("div")`
   padding: 0px 12px;
   svg {
     max-width: 16px;
+    min-width: 16px;
   }
 `;
 

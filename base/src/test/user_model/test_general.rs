@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::test::user_model::util::new_empty_user_model;
 use crate::test::util::new_empty_model;
 use crate::types::CellType;
 use crate::UserModel;
@@ -25,14 +26,14 @@ fn set_user_input_errors() {
 
 #[test]
 fn user_model_debug_message() {
-    let model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let model = new_empty_user_model();
     let s = &format!("{model:?}");
     assert_eq!(s, "UserModel");
 }
 
 #[test]
 fn cell_type() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "1").unwrap();
     model.set_user_input(0, 1, 2, "Wish you were here").unwrap();
     model.set_user_input(0, 1, 3, "true").unwrap();
@@ -124,14 +125,14 @@ fn insert_remove_columns() {
 
 #[test]
 fn delete_remove_cell() {
-    let mut model = UserModel::new_empty("model", "en", "UTC").unwrap();
+    let mut model = new_empty_user_model();
     let (sheet, row, column) = (0, 1, 1);
     model.set_user_input(sheet, row, column, "100$").unwrap();
 }
 
 #[test]
 fn get_and_set_name() {
-    let mut model = UserModel::new_empty("MyWorkbook123", "en", "UTC").unwrap();
+    let mut model = UserModel::new_empty("MyWorkbook123", "en", "UTC", "en").unwrap();
     assert_eq!(model.get_name(), "MyWorkbook123");
 
     model.set_name("Another name");
