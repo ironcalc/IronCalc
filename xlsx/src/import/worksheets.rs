@@ -158,6 +158,7 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
             let width = get_attribute(&col, "width")?;
             let width = width.parse::<f64>()?;
             let custom_width = matches!(col.attribute("customWidth"), Some("1"));
+            let hidden = matches!(col.attribute("hidden"), Some("1"));
             let style = col
                 .attribute("style")
                 .map(|s| s.parse::<i32>().unwrap_or(0));
@@ -167,6 +168,7 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
                 width,
                 custom_width,
                 style,
+                hidden,
             })
         }
     }

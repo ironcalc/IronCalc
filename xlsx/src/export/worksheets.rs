@@ -74,8 +74,9 @@ pub(crate) fn get_worksheet_xml(
             Some(s) => format!(" style=\"{s}\""),
             None => "".to_string(),
         };
+        let hidden = if col.hidden { " hidden=\"1\"" } else { "" };
         cols_str.push(format!(
-            "<col min=\"{min}\" max=\"{max}\" width=\"{width}\" customWidth=\"{custom_width}\"{column_style}/>"
+            "<col min=\"{min}\" max=\"{max}\" width=\"{width}\" customWidth=\"{custom_width}\"{column_style}{hidden}/>"
         ));
     }
 

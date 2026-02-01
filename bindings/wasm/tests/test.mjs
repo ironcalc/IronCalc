@@ -172,7 +172,7 @@ test('deleteColumns removes cells', () => {
     assert.strictEqual(model.getCellContent(0, 1, 2), '');
 });
 
-test("move row", () => {
+test("move rows", () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.setUserInput(0, 3, 5, "=G3");
     model.setUserInput(0, 4, 5, "=G4");
@@ -181,7 +181,7 @@ test("move row", () => {
     model.setUserInput(0, 7, 5, "=SUM(G4:G4)");
     model.evaluate();
 
-    model.moveRow(0, 3, 1);
+    model.moveRows(0, 3, 1, 1);
     model.evaluate();
 
     assert.strictEqual(model.getCellContent(0, 3, 5), "=G3");
@@ -191,7 +191,7 @@ test("move row", () => {
     assert.strictEqual(model.getCellContent(0, 7, 5), "=SUM(G3:G3)");
 });
 
-test("move column", () => {
+test("move columns", () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.setUserInput(0, 3, 5, "=G3");
     model.setUserInput(0, 4, 5, "=H3");
@@ -200,7 +200,7 @@ test("move column", () => {
     model.setUserInput(0, 7, 5, "=SUM(H3:H7)");
     model.evaluate();
 
-    model.moveColumn(0, 7, 1);
+    model.moveColumns(0, 7, 1, 1);
     model.evaluate();
 
     assert.strictEqual(model.getCellContent(0, 3, 5), "=H3");

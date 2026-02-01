@@ -133,26 +133,33 @@
       "name_already_exists": "Questo nome esiste già nell'ambito selezionato"
     }
   },
-  "cell_context": {
-    "insert_row_above": "Inserisci 1 riga sopra",
-    "insert_row_below": "Inserisci 1 riga sotto",
-    "insert_column_before": "Inserisci 1 colonna a sinistra",
-    "insert_column_after": "Inserisci 1 colonna a destra",
-    "freeze_columns": "Blocca fino alla colonna '{{column}}'",
-    "freeze_rows": "Blocca fino alla riga '{{row}}'",
-    "unfreeze_rows": "Sblocca righe",
-    "unfreeze_columns": "Sblocca colonne",
-    "delete_row": "Elimina riga '{{row}}'",
-    "delete_column": "Elimina colonna '{{column}}'",
-    "freeze": "Blocca",
-    "insert_row": "Inserisci riga",
-    "insert_column": "Inserisci colonna",
-    "move_row": "Sposta riga",
-    "move_column": "Sposta colonna",
-    "move_row_up": "Sposta riga in alto",
-    "move_row_down": "Sposta riga in basso",
-    "move_column_left": "Sposta colonna a sinistra",
-    "move_column_right": "Sposta colonna a destra"
+  "context_menu": {
+    "column_header": {
+      "delete_column": "Elimina la colonna '{{column}}'",
+      "delete_columns": "Elimina le colonne {{columnStart}} - {{columnEnd}}",
+      "freeze_columns": "Blocca fino alla colonna '{{column}}'",
+      "hide_column": "Nascondi la colonna '{{column}}'",
+      "hide_columns": "Nascondi le colonne {{columnStart}} - {{columnEnd}}",
+      "insert_columns_before": "Inserisci {{count}} colonna(e) a sinistra",
+      "insert_columns_after": "Inserisci {{count}} colonna(e) a destra",
+      "move_columns_left": "Sposta le colonne a sinistra",
+      "move_columns_right": "Sposta le colonne a destra",
+      "show_hidden_columns": "Mostra colonne nascoste",
+      "unfreeze_columns": "Rimuovi blocco delle colonne"
+    },
+    "row_header": {
+      "delete_row": "Elimina la riga '{{row}}'",
+      "delete_rows": "Elimina le righe {{rowStart}} - {{rowEnd}}",
+      "freeze_rows": "Blocca fino alla riga '{{row}}'",
+      "hide_row": "Nascondi la riga '{{row}}'",
+      "hide_rows": "Nascondi le righe {{rowStart}} - {{rowEnd}}",
+      "insert_rows_above": "Inserisci {{count}} riga(e) sopra",
+      "insert_rows_below": "Inserisci {{count}} riga(e) sotto",
+      "move_rows_up": "Sposta le righe verso l’alto",
+      "move_rows_down": "Sposta le righe verso il basso",
+      "show_hidden_rows": "Mostra righe nascoste",
+      "unfreeze_rows": "Rimuovi blocco delle righe"
+    }
   },
   "color_picker": {
     "apply": "Aggiungi colore",
