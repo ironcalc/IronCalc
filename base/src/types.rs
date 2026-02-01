@@ -145,6 +145,7 @@ pub struct Col {
     pub max: i32,
     pub width: f64,
     pub custom_width: bool,
+    pub hidden: bool,
     pub style: Option<i32>,
 }
 

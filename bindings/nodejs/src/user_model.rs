@@ -673,19 +673,25 @@ impl UserModel {
       .map_err(|e| to_js_error(e.to_string()))
   }
 
-  #[napi(js_name = "moveColumn")]
-  pub fn move_column(&mut self, sheet: u32, column: i32, delta: i32) -> Result<()> {
+  #[napi(js_name = "moveColumns")]
+  pub fn move_columns(
+    &mut self,
+    sheet: u32,
+    column: i32,
+    column_count: i32,
+    delta: i32,
+  ) -> Result<()> {
     self
       .model
-      .move_column_action(sheet, column, delta)
+      .move_columns_action(sheet, column, column_count, delta)
       .map_err(to_js_error)
   }
 
-  #[napi(js_name = "moveRow")]
-  pub fn move_row(&mut self, sheet: u32, row: i32, delta: i32) -> Result<()> {
+  #[napi(js_name = "moveRows")]
+  pub fn move_rows(&mut self, sheet: u32, row: i32, row_count: i32, delta: i32) -> Result<()> {
     self
       .model
-      .move_row_action(sheet, row, delta)
+      .move_rows_action(sheet, row, row_count, delta)
       .map_err(to_js_error)
   }
 }

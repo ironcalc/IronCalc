@@ -45,7 +45,7 @@ export function WorkbookTitle(properties: {
     >
       <TitleInput
         value={name}
-        onInput={handleChange}
+        onChange={handleChange}
         onBlur={(event) => {
           properties.onNameChange(event.target.value);
         }}

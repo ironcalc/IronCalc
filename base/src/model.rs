@@ -2152,6 +2152,39 @@ impl<'a> Model<'a> {
             .set_column_width(column, width)
     }
 
+    /// Sets whether a column is hidden
+    #[inline]
+    pub fn set_column_hidden(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_column_hidden(column, hidden)
+    }
+
+    /// Sets whether a row is hidden
+    #[inline]
+    pub fn set_row_hidden(&mut self, sheet: u32, row: i32, hidden: bool) -> Result<(), String> {
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_row_hidden(row, hidden)
+    }
+
+    /// Returns whether a column is hidden
+    #[inline]
+    pub fn is_column_hidden(&self, sheet: u32, column: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_column_hidden(column)
+    }
+
+    /// Returns whether a row is hidden
+    #[inline]
+    pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_row_hidden(row)
+    }
+
     /// Returns the height of a row
     #[inline]
     pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {

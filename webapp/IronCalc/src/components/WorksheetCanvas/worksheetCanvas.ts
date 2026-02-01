@@ -550,6 +550,9 @@ export default class WorksheetCanvas {
     width: number,
     height: number,
   ) {
+    if (width <= 0 || height <= 0) {
+      return;
+    }
     const selectedSheet = this.model.getSelectedSheet();
 
     const style = this.model.getCellStyle(selectedSheet, row, column);
@@ -643,18 +646,21 @@ export default class WorksheetCanvas {
     if (
       maxX > rightColumnX &&
       column < LAST_COLUMN &&
-      this.model.getFormattedCellValue(selectedSheet, row, column + 1) === ""
+      (this.model.getFormattedCellValue(selectedSheet, row, column + 1) ===
+        "" ||
+        this.getColumnWidth(selectedSheet, column + 1) === 0)
     ) {
       let spillColumn = column + 1;
       // Keep expanding the spill to the right until:
-      // 1. There is a non-empty cell
+      // 1. There is a non-empty cell (skipping hidden columns)
       // 2. Reaches the end of the row
       // 3. There is the end of frozen columns
       const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
       while (
         rightColumnX < maxX &&
-        this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
-          "" &&
+        (this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
+          "" ||
+          this.getColumnWidth(selectedSheet, spillColumn) === 0) &&
         spillColumn <= LAST_COLUMN &&
         ((column < frozenColumns && spillColumn <= frozenColumns) ||
           column > frozenColumns)
@@ -670,7 +676,9 @@ export default class WorksheetCanvas {
     if (
       minX < leftColumnX &&
       column > 1 &&
-      this.model.getFormattedCellValue(selectedSheet, row, column - 1) === ""
+      (this.model.getFormattedCellValue(selectedSheet, row, column - 1) ===
+        "" ||
+        this.getColumnWidth(selectedSheet, column - 1) === 0)
     ) {
       let spillColumn = column - 1;
       // Keep expanding the spill to the left until:
@@ -679,8 +687,9 @@ export default class WorksheetCanvas {
       // 3. There is the end of frozen columns
       while (
         leftColumnX > minX &&
-        this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
-          "" &&
+        (this.model.getFormattedCellValue(selectedSheet, row, spillColumn) ===
+          "" ||
+          this.getColumnWidth(selectedSheet, spillColumn) === 0) &&
         spillColumn >= 1 &&
         ((column <= frozenColumnsCount && spillColumn <= frozenColumnsCount) ||
           column > frozenColumnsCount)
@@ -804,6 +813,9 @@ export default class WorksheetCanvas {
     width: number,
     height: number,
   ): void {
+    if (width <= 0 || height <= 0) {
+      return;
+    }
     const selectedSheet = this.model.getSelectedSheet();
     const style = this.model.getCellStyle(selectedSheet, row, column);
 
@@ -1157,6 +1169,9 @@ export default class WorksheetCanvas {
 
     for (let row = firstRow; row <= bottomRightCell.row; row += 1) {
       const rowHeight = this.getRowHeight(selectedSheet, row);
+      if (rowHeight <= 0) {
+        continue;
+      }
       const selected = row >= rowStart && row <= rowEnd;
       context.fillStyle = headerBorderColor;
       context.fillRect(0.5, topLeftCornerY, headerColumnWidth, rowHeight);
@@ -1276,6 +1291,9 @@ export default class WorksheetCanvas {
       this.model.getSelectedSheet(),
       column,
     );
+    if (columnWidth <= 0) {
+      return 0;
+    }
     const div = document.createElement("div");
     div.className = "column-header";
     div.textContent = columnNameFromNumber(column);

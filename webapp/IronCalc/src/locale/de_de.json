@@ -133,26 +133,33 @@
       "name_already_exists": "Dieser Name existiert bereits im ausgewählten Geltungsbereich"
     }
   },
-  "cell_context": {
-    "insert_row_above": "1 Zeile oberhalb einfügen",
-    "insert_row_below": "1 Zeile unterhalb einfügen",
-    "insert_column_before": "1 Spalte links einfügen",
-    "insert_column_after": "1 Spalte rechts einfügen",
-    "freeze_columns": "Bis Spalte '{{column}}' fixieren",
-    "freeze_rows": "Bis Zeile '{{row}}' fixieren",
-    "unfreeze_rows": "Fixierung der Zeilen aufheben",
-    "unfreeze_columns": "Fixierung der Spalten aufheben",
-    "delete_row": "Zeile '{{row}}' löschen",
-    "delete_column": "Spalte '{{column}}' löschen",
-    "freeze": "Fixieren",
-    "insert_row": "Zeile einfügen",
-    "insert_column": "Spalte einfügen",
-    "move_row": "Zeile verschieben",
-    "move_column": "Spalte verschieben",
-    "move_row_up": "Zeile nach oben verschieben",
-    "move_row_down": "Zeile nach unten verschieben",
-    "move_column_left": "Spalte nach links verschieben",
-    "move_column_right": "Spalte nach rechts verschieben"
+  "context_menu": {
+    "column_header": {
+      "delete_column": "Spalte '{{column}}' löschen",
+      "delete_columns": "Spalten {{columnStart}} - {{columnEnd}} löschen",
+      "freeze_columns": "Bis Spalte '{{column}}' fixieren",
+      "hide_column": "Spalte '{{column}}' ausblenden",
+      "hide_columns": "Spalten {{columnStart}} - {{columnEnd}} ausblenden",
+      "insert_columns_before": "{{count}} Spalte(n) links einfügen",
+      "insert_columns_after": "{{count}} Spalte(n) rechts einfügen",
+      "move_columns_left": "Spalten nach links verschieben",
+      "move_columns_right": "Spalten nach rechts verschieben",
+      "show_hidden_columns": "Ausgeblendete Spalten einblenden",
+      "unfreeze_columns": "Fixierung der Spalten aufheben"
+    },
+    "row_header": {
+      "delete_row": "Zeile '{{row}}' löschen",
+      "delete_rows": "Zeilen {{rowStart}} - {{rowEnd}} löschen",
+      "freeze_rows": "Bis Zeile '{{row}}' fixieren",
+      "hide_row": "Zeile '{{row}}' ausblenden",
+      "hide_rows": "Zeilen {{rowStart}} - {{rowEnd}} ausblenden",
+      "insert_rows_above": "{{count}} Zeile(n) oberhalb einfügen",
+      "insert_rows_below": "{{count}} Zeile(n) unterhalb einfügen",
+      "move_rows_up": "Zeilen nach oben verschieben",
+      "move_rows_down": "Zeilen nach unten verschieben",
+      "show_hidden_rows": "Ausgeblendete Zeilen einblenden",
+      "unfreeze_rows": "Fixierung der Zeilen aufheben"
+    }
   },
   "color_picker": {
     "apply": "Farbe hinzufügen",

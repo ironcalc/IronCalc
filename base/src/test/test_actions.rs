@@ -236,6 +236,7 @@ fn test_delete_first_column_width() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 4);
     assert!(model.delete_columns(sheet, column, 1).is_ok());
@@ -248,7 +249,8 @@ fn test_delete_first_column_width() {
             max: 6,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -263,6 +265,7 @@ fn test_delete_last_column_width() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 7);
     assert!(model.delete_columns(sheet, column, 1).is_ok());
@@ -275,7 +278,8 @@ fn test_delete_last_column_width() {
             max: 6,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -290,6 +294,7 @@ fn test_delete_last_few_columns_width() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 13);
     assert!(model.delete_columns(sheet, column, 10).is_ok());
@@ -302,7 +307,8 @@ fn test_delete_last_few_columns_width() {
             max: 12,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -316,6 +322,7 @@ fn test_delete_columns_non_overlapping_left() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 3);
     assert!(model.delete_columns(sheet, column, 4).is_ok());
@@ -328,7 +335,8 @@ fn test_delete_columns_non_overlapping_left() {
             max: 13,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -342,6 +350,7 @@ fn test_delete_columns_overlapping_left() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 8);
     assert!(model.delete_columns(sheet, column, 4).is_ok());
@@ -354,7 +363,8 @@ fn test_delete_columns_overlapping_left() {
             max: 16,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -368,6 +378,7 @@ fn test_delete_columns_non_overlapping_right() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
     let (sheet, column) = (0, 23);
     assert!(model.delete_columns(sheet, column, 4).is_ok());
@@ -380,7 +391,8 @@ fn test_delete_columns_non_overlapping_right() {
             max: 17,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -396,6 +408,7 @@ fn test_delete_middle_column_width() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
 
     // deletes columns 10, 11, 12
@@ -410,7 +423,8 @@ fn test_delete_middle_column_width() {
             max: 14,
             width: 300.0,
             custom_width: true,
-            style: None
+            style: None,
+            hidden: false,
         }
     );
 }
@@ -426,6 +440,7 @@ fn delete_range_in_columns() {
         width: 300.0,
         custom_width: true,
         style: None,
+        hidden: false,
     }];
 
     // deletes columns [4, 17]

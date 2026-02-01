@@ -133,26 +133,33 @@
       "name_already_exists": "This name already exists in the selected scope"
     }
   },
-  "cell_context": {
-    "insert_row_above": "Insert 1 row above",
-    "insert_row_below": "Insert 1 row below",
-    "insert_column_before": "Insert 1 column left",
-    "insert_column_after": "Insert 1 column right",
-    "freeze_columns": "Freeze up to column '{{column}}'",
-    "freeze_rows": "Freeze up to row '{{row}}'",
-    "unfreeze_rows": "Unfreeze rows",
-    "unfreeze_columns": "Unfreeze columns",
-    "delete_row": "Delete row '{{row}}'",
-    "delete_column": "Delete column '{{column}}'",
-    "freeze": "Freeze",
-    "insert_row": "Insert row",
-    "insert_column": "Insert column",
-    "move_row": "Move row",
-    "move_column": "Move column",
-    "move_row_up": "Move row up",
-    "move_row_down": "Move row down",
-    "move_column_left": "Move column left",
-    "move_column_right": "Move column right"
+  "context_menu": {
+    "column_header": {
+      "delete_column": "Delete column '{{column}}'",
+      "delete_columns": "Delete columns {{columnStart}} - {{columnEnd}}",
+      "freeze_columns": "Freeze up to column '{{column}}'",
+      "hide_column": "Hide column '{{column}}'",
+      "hide_columns": "Hide columns {{columnStart}} - {{columnEnd}}",
+      "insert_columns_before": "Insert {{count}} column(s) left",
+      "insert_columns_after": "Insert {{count}} column(s) right",
+      "move_columns_left": "Move columns left",
+      "move_columns_right": "Move columns right",
+      "show_hidden_columns": "Show hidden columns",
+      "unfreeze_columns": "Unfreeze columns"
+    },
+    "row_header": {
+      "delete_row": "Delete row '{{row}}'",
+      "delete_rows": "Delete rows {{rowStart}} - {{rowEnd}}",
+      "freeze_rows": "Freeze up to row '{{row}}'",
+      "hide_row": "Hide row '{{row}}'",
+      "hide_rows": "Hide rows {{rowStart}} - {{rowEnd}}",
+      "insert_rows_above": "Insert {{count}} row(s) above",
+      "insert_rows_below": "Insert {{count}} row(s) below",
+      "move_rows_up": "Move rows up",
+      "move_rows_down": "Move rows down",
+      "show_hidden_rows": "Show hidden rows",
+      "unfreeze_rows": "Unfreeze rows"
+    }
   },
   "color_picker": {
     "apply": "Add color",
