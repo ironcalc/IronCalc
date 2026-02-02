@@ -132,3 +132,32 @@ fn fn_accrint_combined() {
         other => unreachable!("Expected number for B1, got {:?}", other),
     }
 }
+
+/// Test the exact Excel documentation example for ACCRINT
+/// https://support.microsoft.com/en-us/office/accrint-function-fe45d089-6722-4fb3-9379-e1f911d8dc74
+/// Issue: 39508 (March 1, 2008)
+/// First interest: 39691 (August 31, 2008)
+/// Settlement: 39569 (May 1, 2008)
+/// Rate: 0.1 (10%)
+/// Par: 1000
+/// Frequency: 2 (semiannual)
+/// Basis: 0
+/// Expected result: 16.666667
+#[test]
+fn fn_accrint_excel_docs_example() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ACCRINT(39508,39691,39569,0.1,1000,2,0)");
+    model.evaluate();
+
+    match model.get_cell_value_by_ref("Sheet1!A1") {
+        Ok(CellValue::Number(v)) => {
+            println!("ACCRINT Excel example result: {}", v);
+            assert!(
+                (v - 16.666666666666668).abs() < 1e-6,
+                "Expected ~16.666667, got {}",
+                v
+            );
+        }
+        other => unreachable!("Expected number for A1, got {:?}", other),
+    }
+}

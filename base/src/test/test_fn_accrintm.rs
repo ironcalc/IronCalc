@@ -120,3 +120,30 @@ fn fn_accrintm_combined() {
         other => unreachable!("Expected number for B2, got {:?}", other),
     }
 }
+
+/// Test the exact Excel documentation example for ACCRINTM
+/// https://support.microsoft.com/en-us/office/accrintm-function-f62f01f9-5754-4cc4-805b-0e70199328a7
+/// Issue: 39539 (April 1, 2008)
+/// Settlement: 39614 (June 15, 2008)
+/// Rate: 0.1 (10%)
+/// Par: 1000
+/// Basis: 3 (Actual/365)
+/// Expected result: 20.54794521
+#[test]
+fn fn_accrintm_excel_docs_example() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ACCRINTM(39539,39614,0.1,1000,3)");
+    model.evaluate();
+
+    match model.get_cell_value_by_ref("Sheet1!A1") {
+        Ok(CellValue::Number(v)) => {
+            println!("ACCRINTM Excel example result: {}", v);
+            assert!(
+                (v - 20.54794520547945).abs() < 1e-6,
+                "Expected ~20.54794521, got {}",
+                v
+            );
+        }
+        other => unreachable!("Expected number for A1, got {:?}", other),
+    }
+}

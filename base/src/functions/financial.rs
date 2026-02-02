@@ -147,11 +147,37 @@ macro_rules! financial_function_with_year_frac {
             return CalcResult::new_args_number_error($cell);
         }
 
-        let ($settlement, $maturity) =
-            match parse_and_validate_settlement_maturity($args, $self, $cell, true) {
-                Ok(sm) => sm,
-                Err(err) => return err,
-            };
+        // Parse required arguments using standard pattern
+        let $settlement = match $self.get_number_no_bools(&$args[0], $cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let $maturity = match $self.get_number_no_bools(&$args[1], $cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+
+        // Validate settlement < maturity
+        if $settlement >= $maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                $cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+
+        // Validate date ranges
+        if $settlement < MINIMUM_DATE_SERIAL_NUMBER as f64
+            || $settlement > MAXIMUM_DATE_SERIAL_NUMBER as f64
+        {
+            return CalcResult::new_error(Error::NUM, $cell, "Invalid number for date".to_string());
+        }
+        if $maturity < MINIMUM_DATE_SERIAL_NUMBER as f64
+            || $maturity > MAXIMUM_DATE_SERIAL_NUMBER as f64
+        {
+            return CalcResult::new_error(Error::NUM, $cell, "Invalid number for date".to_string());
+        }
+
         let $param1 = match $self.get_number_no_bools(&$args[2], $cell) {
             Ok(p) => p,
             Err(err) => return err,
@@ -160,9 +186,15 @@ macro_rules! financial_function_with_year_frac {
             Ok(p) => p,
             Err(err) => return err,
         };
-        let $basis = match parse_optional_basis($args, 4, arg_count, $self, $cell) {
-            Ok(b) => b,
-            Err(err) => return err,
+
+        // Parse optional basis using standard pattern
+        let $basis = if arg_count > 4 {
+            match $self.get_number_no_bools(&$args[4], $cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
 
         // Apply custom validation
@@ -199,104 +231,6 @@ fn convert_date_serial(
     }
 }
 
-/// Helper function to parse optional basis parameter (defaults to 0)
-fn parse_optional_basis(
-    args: &[Node],
-    basis_arg_index: usize,
-    arg_count: usize,
-    model: &mut Model,
-    cell: CellReferenceIndex,
-) -> Result<i32, CalcResult> {
-    if arg_count > basis_arg_index {
-        match model.get_number_no_bools(&args[basis_arg_index], cell) {
-            Ok(f) => Ok(f.trunc() as i32),
-            Err(s) => Err(s),
-        }
-    } else {
-        Ok(0)
-    }
-}
-
-/// Enhanced helper function to parse, validate settlement/maturity with optional date range validation
-fn parse_and_validate_settlement_maturity(
-    args: &[Node],
-    model: &mut Model,
-    cell: CellReferenceIndex,
-    check_date_range: bool,
-) -> Result<(f64, f64), CalcResult> {
-    // Parse settlement and maturity
-    let settlement = model.get_number_no_bools(&args[0], cell)?;
-    let maturity = model.get_number_no_bools(&args[1], cell)?;
-
-    // Validate settlement < maturity
-    if settlement >= maturity {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "settlement should be < maturity".to_string(),
-        ));
-    }
-
-    // Optionally validate date ranges
-    if check_date_range {
-        if settlement < MINIMUM_DATE_SERIAL_NUMBER as f64
-            || settlement > MAXIMUM_DATE_SERIAL_NUMBER as f64
-        {
-            return Err(CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid number for date".to_string(),
-            ));
-        }
-        if maturity < MINIMUM_DATE_SERIAL_NUMBER as f64
-            || maturity > MAXIMUM_DATE_SERIAL_NUMBER as f64
-        {
-            return Err(CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid number for date".to_string(),
-            ));
-        }
-    }
-
-    Ok((settlement, maturity))
-}
-
-/// Helper function to parse multiple required numeric parameters efficiently
-/// Returns a vector of parsed values in the same order as the indices
-fn parse_required_params(
-    args: &[Node],
-    indices: &[usize],
-    model: &mut Model,
-    cell: CellReferenceIndex,
-    use_no_bools: bool,
-) -> Result<Vec<f64>, CalcResult> {
-    let mut params = Vec::with_capacity(indices.len());
-    for &index in indices {
-        let value = if use_no_bools {
-            model.get_number_no_bools(&args[index], cell)?
-        } else {
-            model.get_number(&args[index], cell)?
-        };
-        params.push(value);
-    }
-    Ok(params)
-}
-
-/// Helper function to validate argument count and return early if invalid
-fn validate_arg_count_or_return(
-    arg_count: usize,
-    min: usize,
-    max: usize,
-    cell: CellReferenceIndex,
-) -> Option<CalcResult> {
-    if !(min..=max).contains(&arg_count) {
-        Some(CalcResult::new_args_number_error(cell))
-    } else {
-        None
-    }
-}
-
 /// Helper function to convert date to serial number with consistent error handling
 fn date_to_serial_with_validation(date: chrono::NaiveDate, cell: CellReferenceIndex) -> CalcResult {
     match crate::formatter::dates::date_to_serial_number(date.day(), date.month(), date.year()) {
@@ -311,51 +245,10 @@ fn date_to_serial_with_validation(date: chrono::NaiveDate, cell: CellReferenceIn
     }
 }
 
-/// Helper struct for common financial function optional parameters
-struct FinancialOptionalParams {
-    pub optional_value: f64,
-    pub period_start: bool,
-}
-
-/// Helper function to parse common optional financial parameters: [optional_value], [type]
-/// optional_value defaults to 0.0, type defaults to false (end of period)
-fn parse_financial_optional_params(
-    args: &[Node],
-    arg_count: usize,
-    optional_value_index: usize,
-    model: &mut Model,
-    cell: CellReferenceIndex,
-) -> Result<FinancialOptionalParams, CalcResult> {
-    let optional_value = if arg_count > optional_value_index {
-        model.get_number(&args[optional_value_index], cell)?
-    } else {
-        0.0
-    };
-
-    let period_start = if arg_count > optional_value_index + 1 {
-        model.get_number(&args[optional_value_index + 1], cell)? != 0.0
-    } else {
-        false // at the end of the period
-    };
-
-    Ok(FinancialOptionalParams {
-        optional_value,
-        period_start,
-    })
-}
-
-/// Helper struct for validated coupon function parameters
-struct ValidatedCouponParams {
-    pub settlement_date: chrono::NaiveDate,
-    pub maturity_date: chrono::NaiveDate,
-    pub frequency: i32,
-    pub basis: i32,
-}
-
 /// Helper function to validate T-Bill calculation results
 fn validate_tbill_result(result: f64, cell: CellReferenceIndex) -> CalcResult {
     if result.is_infinite() {
-        CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string())
+        CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string())
     } else if result.is_nan() {
         CalcResult::new_error(
             Error::NUM,
@@ -459,269 +352,6 @@ fn validate_values_dates_arrays(
     }
 
     Ok(normalized_dates)
-}
-
-/// Parse and validate T-Bill parameters, returning (days_to_maturity, param_value)
-fn parse_tbill_params(
-    args: &[Node],
-    model: &mut Model,
-    cell: CellReferenceIndex,
-) -> Result<(f64, f64), CalcResult> {
-    // Parse settlement, maturity, and third parameter
-    let settlement = model.get_number_no_bools(&args[0], cell)?;
-    let maturity = model.get_number_no_bools(&args[1], cell)?;
-    let param_value = model.get_number_no_bools(&args[2], cell)?;
-
-    // Validate settlement <= maturity
-    if settlement > maturity {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "settlement should be <= maturity".to_string(),
-        ));
-    }
-
-    // Validate less than one year
-    let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
-        Ok(f) => f,
-        Err(_) => {
-            return Err(CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid date".to_string(),
-            ))
-        }
-    };
-    if !less_than_one_year {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "maturity <= settlement + year".to_string(),
-        ));
-    }
-
-    // Validate parameter > 0
-    if param_value <= 0.0 {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "parameter should be >0".to_string(),
-        ));
-    }
-
-    let days_to_maturity = maturity - settlement;
-    Ok((days_to_maturity, param_value))
-}
-
-/// Helper struct for validated bond pricing function parameters  
-struct BondPricingParams {
-    pub third_param: f64, // yld for PRICE, price for YIELD
-    pub redemption: f64,
-    pub frequency: i32,
-    pub periods: f64,
-    pub coupon: f64,
-}
-
-/// Helper function to parse and validate common bond pricing function parameters
-/// Used by PRICE and YIELD functions
-fn parse_and_validate_bond_pricing_params(
-    args: &[Node],
-    model: &mut Model,
-    cell: CellReferenceIndex,
-) -> Result<BondPricingParams, CalcResult> {
-    if !(6..=7).contains(&args.len()) {
-        return Err(CalcResult::new_args_number_error(cell));
-    }
-
-    let settlement = model.get_number_no_bools(&args[0], cell)?;
-    let maturity = model.get_number_no_bools(&args[1], cell)?;
-    let rate = model.get_number_no_bools(&args[2], cell)?;
-    let third_param = model.get_number_no_bools(&args[3], cell)?;
-    let redemption = model.get_number_no_bools(&args[4], cell)?;
-
-    let frequency = match model.get_number_no_bools(&args[5], cell) {
-        Ok(f) => f.trunc() as i32,
-        Err(s) => return Err(s),
-    };
-
-    if frequency != 1 && frequency != 2 && frequency != 4 {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "frequency should be 1, 2 or 4".to_string(),
-        ));
-    }
-    if settlement >= maturity {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "settlement should be < maturity".to_string(),
-        ));
-    }
-
-    let basis = if args.len() == 7 {
-        match model.get_number_no_bools(&args[6], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return Err(s),
-        }
-    } else {
-        0
-    };
-
-    let days_in_year = days_in_year_simple(basis);
-    let days = maturity - settlement;
-    let periods = ((days * frequency as f64) / days_in_year).round();
-    if periods <= 0.0 {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "invalid dates".to_string(),
-        ));
-    }
-    let coupon = redemption * rate / frequency as f64;
-
-    Ok(BondPricingParams {
-        third_param,
-        redemption,
-        frequency,
-        periods,
-        coupon,
-    })
-}
-
-/// Helper struct for validated cumulative payment function parameters
-struct CumulativePaymentParams {
-    pub rate: f64,
-    pub nper: f64,
-    pub pv: f64,
-    pub start_period: i32,
-    pub end_period: i32,
-    pub period_type: bool,
-}
-
-/// Helper function to parse and validate cumulative payment function parameters
-fn parse_and_validate_cumulative_payment_params(
-    args: &[Node],
-    model: &mut Model,
-    cell: CellReferenceIndex,
-) -> Result<CumulativePaymentParams, CalcResult> {
-    // Check argument count
-    if args.len() != 6 {
-        return Err(CalcResult::new_args_number_error(cell));
-    }
-
-    // Parse rate, nper, pv
-    let rate = model.get_number_no_bools(&args[0], cell)?;
-    let nper = model.get_number_no_bools(&args[1], cell)?;
-    let pv = model.get_number_no_bools(&args[2], cell)?;
-
-    // Parse periods with appropriate rounding
-    let start_period = model.get_number_no_bools(&args[3], cell)?.ceil() as i32;
-    let end_period = model.get_number_no_bools(&args[4], cell)?.trunc() as i32;
-
-    // Parse and validate period type (0 = end of period, 1 = beginning of period)
-    let period_type = match model.get_number_no_bools(&args[5], cell)? {
-        0.0 => false,
-        1.0 => true,
-        _ => {
-            return Err(CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "invalid period type".to_string(),
-            ))
-        }
-    };
-
-    // Validate period order
-    if start_period > end_period {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "start period should come before end period".to_string(),
-        ));
-    }
-
-    // Validate positive parameters
-    if rate <= 0.0 || nper <= 0.0 || pv <= 0.0 || start_period < 1 {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "invalid parameters".to_string(),
-        ));
-    }
-
-    Ok(CumulativePaymentParams {
-        rate,
-        nper,
-        pv,
-        start_period,
-        end_period,
-        period_type,
-    })
-}
-
-/// Helper function to validate and parse common coupon function parameters
-fn parse_and_validate_coupon_params(
-    args: &[Node],
-    arg_count: usize,
-    model: &mut Model,
-    cell: CellReferenceIndex,
-) -> Result<ValidatedCouponParams, CalcResult> {
-    // Check argument count
-    if !(3..=4).contains(&arg_count) {
-        return Err(CalcResult::new_args_number_error(cell));
-    }
-
-    // Parse parameters
-    let settlement = match model.get_number_no_bools(&args[0], cell) {
-        Ok(f) => f.trunc() as i64,
-        Err(s) => return Err(s),
-    };
-    let maturity = match model.get_number_no_bools(&args[1], cell) {
-        Ok(f) => f.trunc() as i64,
-        Err(s) => return Err(s),
-    };
-    let frequency = match model.get_number_no_bools(&args[2], cell) {
-        Ok(f) => f.trunc() as i32,
-        Err(s) => return Err(s),
-    };
-    let basis = if arg_count > 3 {
-        match model.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return Err(s),
-        }
-    } else {
-        0
-    };
-
-    // Validate frequency and basis
-    if ![1, 2, 4].contains(&frequency) || !(0..=4).contains(&basis) {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "invalid arguments".to_string(),
-        ));
-    }
-
-    // Validate settlement < maturity
-    if settlement as f64 >= maturity as f64 {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "settlement should be < maturity".to_string(),
-        ));
-    }
-
-    // Convert to dates
-    let settlement_date = convert_date_serial(settlement as f64, cell)?;
-    let maturity_date = convert_date_serial(maturity as f64, cell)?;
-
-    Ok(ValidatedCouponParams {
-        settlement_date,
-        maturity_date,
-        frequency,
-        basis,
-    })
 }
 
 fn year_frac(start: i64, end: i64, basis: i32) -> Result<f64, String> {
@@ -931,14 +561,6 @@ fn compute_ppmt(
 // All, except for rate are easily solvable in terms of the others.
 // In these formulas the payment (pmt) is normally negative
 
-/// Enum to define different array processing behaviors
-#[allow(dead_code)]
-enum ArrayProcessingMode {
-    Standard,               // Accept single numbers, ignore empty/non-number cells
-    StrictWithError(Error), // Accept single numbers, error on empty/non-number with specified error type
-    RangeOnlyWithZeros,     // Don't accept single numbers, treat empty as 0.0, error on non-number
-}
-
 impl<'a> Model<'a> {
     fn get_array_of_numbers_generic(
         &mut self,
@@ -1027,115 +649,101 @@ impl<'a> Model<'a> {
         Ok(values)
     }
 
-    fn get_array_of_numbers_with_mode(
-        &mut self,
-        arg: &Node,
-        cell: &CellReferenceIndex,
-        mode: ArrayProcessingMode,
-    ) -> Result<Vec<f64>, CalcResult> {
-        match mode {
-            ArrayProcessingMode::Standard => {
-                self.get_array_of_numbers_generic(
-                    arg,
-                    cell,
-                    true,        // accept_number_node
-                    || Ok(None), // Ignore empty cells
-                    || Ok(None), // Ignore non-number cells
-                )
-            }
-            ArrayProcessingMode::StrictWithError(error_type) => {
-                self.get_array_of_numbers_generic(
-                    arg,
-                    cell,
-                    true, // accept_number_node
-                    || {
-                        Err(CalcResult::new_error(
-                            Error::NUM,
-                            *cell,
-                            "Expected number".to_string(),
-                        ))
-                    },
-                    || {
-                        Err(CalcResult::new_error(
-                            error_type.clone(),
-                            *cell,
-                            "Expected number".to_string(),
-                        ))
-                    },
-                )
-            }
-            ArrayProcessingMode::RangeOnlyWithZeros => {
-                self.get_array_of_numbers_generic(
-                    arg,
-                    cell,
-                    false,            // Do not accept a single number node
-                    || Ok(Some(0.0)), // Treat empty cells as zero
-                    || {
-                        Err(CalcResult::new_error(
-                            Error::VALUE,
-                            *cell,
-                            "Expected number".to_string(),
-                        ))
-                    },
-                )
-            }
-        }
-    }
-
+    /// Get array of numbers: accept single number or range, ignore empty/non-number (NPV, IRR, MIRR, FVSCHEDULE).
     fn get_array_of_numbers(
         &mut self,
         arg: &Node,
         cell: &CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        self.get_array_of_numbers_with_mode(arg, cell, ArrayProcessingMode::Standard)
+        self.get_array_of_numbers_generic(arg, cell, true, || Ok(None), || Ok(None))
     }
 
+    /// Get array for XNPV: accept single number or range, error on empty/non-number.
     fn get_array_of_numbers_xpnv(
         &mut self,
         arg: &Node,
         cell: &CellReferenceIndex,
-        error: Error,
+        error_type: Error,
     ) -> Result<Vec<f64>, CalcResult> {
-        self.get_array_of_numbers_with_mode(arg, cell, ArrayProcessingMode::StrictWithError(error))
+        self.get_array_of_numbers_generic(
+            arg,
+            cell,
+            true,
+            || {
+                Err(CalcResult::new_error(
+                    Error::NUM,
+                    *cell,
+                    "Expected number".to_string(),
+                ))
+            },
+            || {
+                Err(CalcResult::new_error(
+                    error_type.clone(),
+                    *cell,
+                    "Expected number".to_string(),
+                ))
+            },
+        )
     }
 
+    /// Get array for XIRR: range/array only (no single number), treat empty as 0, error on non-number.
     fn get_array_of_numbers_xirr(
         &mut self,
         arg: &Node,
         cell: &CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        self.get_array_of_numbers_with_mode(arg, cell, ArrayProcessingMode::RangeOnlyWithZeros)
+        self.get_array_of_numbers_generic(
+            arg,
+            cell,
+            false,
+            || Ok(Some(0.0)),
+            || {
+                Err(CalcResult::new_error(
+                    Error::VALUE,
+                    *cell,
+                    "Expected number".to_string(),
+                ))
+            },
+        )
     }
 
     /// PMT(rate, nper, pv, [fv], [type])
     pub(crate) fn fn_pmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 3, 5, cell) {
-            return err;
+        if !(3..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let rate = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (rate, nper, pv) = (params[0], params[1], params[2]);
-
-        let optional_params = match parse_financial_optional_params(args, arg_count, 3, self, cell)
-        {
-            Ok(params) => params,
-            Err(err) => return err,
+        let nper = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let pv = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let fv = if arg_count > 3 {
+            match self.get_number(&args[3], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        let period_start = if arg_count > 4 {
+            match self.get_number(&args[4], cell) {
+                Ok(f) => f != 0.0,
+                Err(s) => return s,
+            }
+        } else {
+            false
         };
 
-        match handle_compute_error(
-            compute_payment(
-                rate,
-                nper,
-                pv,
-                optional_params.optional_value,
-                optional_params.period_start,
-            ),
-            cell,
-        ) {
+        match handle_compute_error(compute_payment(rate, nper, pv, fv, period_start), cell) {
             Ok(p) => CalcResult::Number(p),
             Err(err) => err,
         }
@@ -1144,23 +752,41 @@ impl<'a> Model<'a> {
     // PV(rate, nper, pmt, [fv], [type])
     pub(crate) fn fn_pv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 3, 5, cell) {
-            return err;
+        if !(3..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let rate = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (rate, period_count, payment) = (params[0], params[1], params[2]);
+        let period_count = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let payment = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let fv = if arg_count > 3 {
+            match self.get_number(&args[3], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        let period_start = if arg_count > 4 {
+            match self.get_number(&args[4], cell) {
+                Ok(f) => f != 0.0,
+                Err(s) => return s,
+            }
+        } else {
+            false
+        };
 
-        let optional_params = match parse_financial_optional_params(args, arg_count, 3, self, cell)
-        {
-            Ok(params) => params,
-            Err(err) => return err,
-        };
         if rate == 0.0 {
-            return CalcResult::Number(-optional_params.optional_value - payment * period_count);
+            return CalcResult::Number(-fv - payment * period_count);
         }
         if rate == -1.0 {
             return CalcResult::Error {
@@ -1170,13 +796,11 @@ impl<'a> Model<'a> {
             };
         };
         let rate_nper = (1.0 + rate).powf(period_count);
-        let result = if optional_params.period_start {
+        let result = if period_start {
             // type = 1
-            -(optional_params.optional_value * rate + payment * (1.0 + rate) * (rate_nper - 1.0))
-                / (rate * rate_nper)
+            -(fv * rate + payment * (1.0 + rate) * (rate_nper - 1.0)) / (rate * rate_nper)
         } else {
-            (-optional_params.optional_value * rate - payment * (rate_nper - 1.0))
-                / (rate * rate_nper)
+            (-fv * rate - payment * (rate_nper - 1.0)) / (rate * rate_nper)
         };
         if result.is_nan() || result.is_infinite() {
             return CalcResult::Error {
@@ -1190,27 +814,47 @@ impl<'a> Model<'a> {
     }
 
     // ACCRINT(issue, first_interest, settlement, rate, par, freq, [basis], [calc])
+    // ACCRINT(issue, first_interest, settlement, rate, par, frequency, [basis], [calc_method])
     pub(crate) fn fn_accrint(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 6, 8, cell) {
-            return err;
+        if !(6..=8).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3, 4, 5], self, cell, true) {
-            Ok(p) => p,
-            Err(err) => return err,
+        // Parse required arguments
+        let issue = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (issue, first, settlement, rate, par, freq) = (
-            params[0],
-            params[1],
-            params[2],
-            params[3],
-            params[4],
-            params[5] as i32,
-        );
-        let basis = match parse_optional_basis(args, 6, arg_count, self, cell) {
-            Ok(b) => b,
-            Err(err) => return err,
+        let first = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let settlement = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let par = match self.get_number(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let freq = match self.get_number(&args[5], cell) {
+            Ok(f) => f as i32,
+            Err(s) => return s,
+        };
+
+        // Parse optional arguments
+        let basis = if arg_count > 6 {
+            match self.get_number(&args[6], cell) {
+                Ok(f) => f as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
         let calc = if arg_count > 7 {
             match self.get_number(&args[7], cell) {
@@ -1247,19 +891,17 @@ impl<'a> Model<'a> {
             Err(err) => return err,
         };
 
-        if settle_d < issue_d {
-            return CalcResult::new_error(Error::NUM, cell, "settlement < issue".to_string());
+        if settle_d <= issue_d {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement must be after issue".to_string(),
+            );
         }
         if first_d < issue_d {
             return CalcResult::new_error(Error::NUM, cell, "first_interest < issue".to_string());
         }
-        if settle_d < first_d {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement < first_interest".to_string(),
-            );
-        }
+        // Note: settlement CAN be before first_interest - this is valid (buying before first coupon)
 
         let months = 12 / freq;
         let mut prev = first_d;
@@ -1306,18 +948,36 @@ impl<'a> Model<'a> {
     // ACCRINTM(issue, settlement, rate, par, [basis])
     pub(crate) fn fn_accrintm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 4, 5, cell) {
-            return err;
+        if !(4..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3], self, cell, true) {
-            Ok(p) => p,
-            Err(err) => return err,
+        // Parse required arguments
+        let issue = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (issue, settlement, rate, par) = (params[0], params[1], params[2], params[3]);
-        let basis = match parse_optional_basis(args, 4, arg_count, self, cell) {
-            Ok(b) => b,
-            Err(err) => return err,
+        let settlement = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let par = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+
+        // Parse optional argument
+        let basis = if arg_count > 4 {
+            match self.get_number(&args[4], cell) {
+                Ok(f) => f as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
 
         if !(0..=4).contains(&basis) {
@@ -1352,18 +1012,26 @@ impl<'a> Model<'a> {
     }
 
     // RATE(nper, pmt, pv, [fv], [type], [guess])
+    // RATE(nper, pmt, pv, [fv], [type])
+    // Note: [guess] parameter is not supported in current implementation
     pub(crate) fn fn_rate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 3, 5, cell) {
-            return err;
+        if !(3..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let nper = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (nper, pmt, pv) = (params[0], params[1], params[2]);
-        // fv
+        let pmt = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let pv = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let fv = if arg_count > 3 {
             match self.get_number(&args[3], cell) {
                 Ok(f) => f,
@@ -1378,18 +1046,10 @@ impl<'a> Model<'a> {
                 Err(s) => return s,
             }
         } else {
-            // at the end of the period
             0
         };
-
-        let guess = if arg_count > 5 {
-            match self.get_number(&args[5], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            0.1
-        };
+        // Default guess for Newton's method
+        let guess = 0.1;
 
         match handle_compute_error(compute_rate(pv, fv, nper, pmt, annuity_type, guess), cell) {
             Ok(f) => CalcResult::Number(f),
@@ -1400,16 +1060,22 @@ impl<'a> Model<'a> {
     // NPER(rate,pmt,pv,[fv],[type])
     pub(crate) fn fn_nper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 3, 5, cell) {
-            return err;
+        if !(3..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let rate = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (rate, payment, present_value) = (params[0], params[1], params[2]);
-        // fv
+        let payment = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let present_value = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let future_value = if arg_count > 3 {
             match self.get_number(&args[3], cell) {
                 Ok(f) => f,
@@ -1424,7 +1090,6 @@ impl<'a> Model<'a> {
                 Err(s) => return s,
             }
         } else {
-            // at the end of the period
             false
         };
         if rate == 0.0 {
@@ -1475,30 +1140,41 @@ impl<'a> Model<'a> {
     // FV(rate, nper, pmt, [pv], [type])
     pub(crate) fn fn_fv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 3, 5, cell) {
-            return err;
+        if !(3..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let rate = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (rate, nper, pmt) = (params[0], params[1], params[2]);
-
-        let optional_params = match parse_financial_optional_params(args, arg_count, 3, self, cell)
-        {
-            Ok(params) => params,
-            Err(err) => return err,
+        let nper = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let pmt = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let pv = if arg_count > 3 {
+            match self.get_number(&args[3], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        let period_start = if arg_count > 4 {
+            match self.get_number(&args[4], cell) {
+                Ok(f) => f != 0.0,
+                Err(s) => return s,
+            }
+        } else {
+            false
         };
 
         match handle_compute_error(
-            compute_future_value(
-                rate,
-                nper,
-                pmt,
-                optional_params.optional_value,
-                optional_params.period_start,
-            ),
+            compute_future_value(rate, nper, pmt, pv, period_start),
             cell,
         ) {
             Ok(f) => CalcResult::Number(f),
@@ -1527,7 +1203,7 @@ impl<'a> Model<'a> {
             result *= 1.0 + rate;
         }
         if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
         if result.is_nan() {
             return CalcResult::new_error(Error::NUM, cell, "Invalid result".to_string());
@@ -1538,17 +1214,26 @@ impl<'a> Model<'a> {
     // IPMT(rate, per, nper, pv, [fv], [type])
     pub(crate) fn fn_ipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 4, 6, cell) {
-            return err;
+        if !(4..=6).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let rate = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (rate, period, period_count, present_value) =
-            (params[0], params[1], params[2], params[3]);
-        // fv
+        let period = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let period_count = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let present_value = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let future_value = if arg_count > 4 {
             match self.get_number(&args[4], cell) {
                 Ok(f) => f,
@@ -1563,9 +1248,9 @@ impl<'a> Model<'a> {
                 Err(s) => return s,
             }
         } else {
-            // at the end of the period
             false
         };
+
         let ipmt = match handle_compute_error(
             compute_ipmt(
                 rate,
@@ -1586,17 +1271,26 @@ impl<'a> Model<'a> {
     // PPMT(rate, per, nper, pv, [fv], [type])
     pub(crate) fn fn_ppmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 4, 6, cell) {
-            return err;
+        if !(4..=6).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let rate = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (rate, period, period_count, present_value) =
-            (params[0], params[1], params[2], params[3]);
-        // fv
+        let period = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let period_count = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let present_value = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let future_value = if arg_count > 4 {
             match self.get_number(&args[4], cell) {
                 Ok(f) => f,
@@ -1611,7 +1305,6 @@ impl<'a> Model<'a> {
                 Err(s) => return s,
             }
         } else {
-            // at the end of the period
             false
         };
 
@@ -1760,19 +1453,22 @@ impl<'a> Model<'a> {
     // $v_n$ the vector of negative values
     // and $y$ is dimension of $v$ - 1 (number of years)
     pub(crate) fn fn_mirr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 3, 3, cell) {
-            return err;
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
         }
 
         let values = match self.get_array_of_numbers(&args[0], &cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
-        let params = match parse_required_params(args, &[1, 2], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let finance_rate = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (finance_rate, reinvest_rate) = (params[0], params[1]);
+        let reinvest_rate = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let mut positive_values = Vec::new();
         let mut negative_values = Vec::new();
         let mut last_negative_index = -1;
@@ -1826,7 +1522,7 @@ impl<'a> Model<'a> {
 
         let result = (top / bottom).powf(1.0 / (years - 1.0)) - 1.0;
         if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
         if result.is_nan() {
             return CalcResult::new_error(Error::NUM, cell, "Invalid data for MIRR".to_string());
@@ -1838,17 +1534,29 @@ impl<'a> Model<'a> {
     // Formula is:
     // $$pv*rate*\left(\frac{per}{nper}-1\right)$$
     pub(crate) fn fn_ispmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 4, 4, cell) {
-            return err;
+        if args.len() != 4 {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let rate = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (rate, per, nper, pv) = (params[0], params[1], params[2], params[3]);
+        let per = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let nper = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let pv = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+
         if nper == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
         CalcResult::Number(pv * rate * (per / nper - 1.0))
     }
@@ -1857,25 +1565,32 @@ impl<'a> Model<'a> {
     // Formula is
     // $$ \left(\frac{fv}{pv}\right)^{\frac{1}{nper}}-1  $$
     pub(crate) fn fn_rri(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 3, 3, cell) {
-            return err;
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let nper = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (nper, pv, fv) = (params[0], params[1], params[2]);
+        let pv = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let fv = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         if nper <= 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "nper should be >0".to_string());
         }
         if pv == 0.0 {
             // Note error is NUM not DIV/0 also bellow
-            return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::NUM, cell, "Divide by 0".to_string());
         }
         let result = (fv / pv).powf(1.0 / nper) - 1.0;
         if result.is_infinite() {
-            return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::NUM, cell, "Divide by 0".to_string());
         }
         if result.is_nan() {
             return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
@@ -1888,17 +1603,25 @@ impl<'a> Model<'a> {
     // Formula is:
     // $$ \frac{cost-salvage}{life} $$
     pub(crate) fn fn_sln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 3, 3, cell) {
-            return err;
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let cost = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (cost, salvage, life) = (params[0], params[1], params[2]);
+        let salvage = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let life = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+
         if life == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
         let result = (cost - salvage) / life;
 
@@ -1909,17 +1632,29 @@ impl<'a> Model<'a> {
     // Formula is:
     // $$ \frac{(cost-salvage)*(life-per+1)*2}{life*(life+1)} $$
     pub(crate) fn fn_syd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 4, 4, cell) {
-            return err;
+        if args.len() != 4 {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let cost = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (cost, salvage, life, per) = (params[0], params[1], params[2], params[3]);
+        let salvage = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let life = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let per = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+
         if life == 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::NUM, cell, "Divide by 0".to_string());
         }
         if per > life || per <= 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "per should be <= life".to_string());
@@ -1936,24 +1671,28 @@ impl<'a> Model<'a> {
     //   $r$ is the effective interest rate
     //   $n$ is the number of periods per year
     pub(crate) fn fn_nominal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 2, 2, cell) {
-            return err;
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1], self, cell, true) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let effect_rate = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (effect_rate, npery) = (params[0], params[1].floor());
+        let npery = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor(),
+            Err(s) => return s,
+        };
+
         if effect_rate <= 0.0 || npery < 1.0 {
             return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
         }
         let result = ((1.0 + effect_rate).powf(1.0 / npery) - 1.0) * npery;
         if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
         if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
+            return CalcResult::new_error(Error::NUM, cell, "Invalid result".to_string());
         }
 
         CalcResult::Number(result)
@@ -1966,24 +1705,28 @@ impl<'a> Model<'a> {
     //   $r$ is the nominal interest rate
     //   $n$ is the number of periods per year
     pub(crate) fn fn_effect(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 2, 2, cell) {
-            return err;
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1], self, cell, true) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let nominal_rate = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (nominal_rate, npery) = (params[0], params[1].floor());
+        let npery = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor(),
+            Err(s) => return s,
+        };
+
         if nominal_rate <= 0.0 || npery < 1.0 {
             return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
         }
         let result = (1.0 + nominal_rate / npery).powf(npery) - 1.0;
         if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
         if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
+            return CalcResult::new_error(Error::NUM, cell, "Invalid result".to_string());
         }
 
         CalcResult::Number(result)
@@ -1997,24 +1740,32 @@ impl<'a> Model<'a> {
     //   * $pv$ is the present value of the investment
     //   * $fv$ is the desired future value of the investment
     pub(crate) fn fn_pduration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 3, 3, cell) {
-            return err;
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let rate = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (rate, pv, fv) = (params[0], params[1], params[2]);
+        let pv = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let fv = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+
         if fv <= 0.0 || pv <= 0.0 || rate <= 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
         }
         let result = (fv.ln() - pv.ln()) / ((1.0 + rate).ln());
         if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
         if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
+            return CalcResult::new_error(Error::NUM, cell, "Invalid result".to_string());
         }
 
         CalcResult::Number(result)
@@ -2023,24 +1774,37 @@ impl<'a> Model<'a> {
     // DURATION(settlement, maturity, coupon, yld, freq, [basis])
     pub(crate) fn fn_duration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 5, 6, cell) {
-            return err;
+        if !(5..=6).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3, 4], self, cell, true) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (settlement, maturity, coupon, yld, freq) = (
-            params[0],
-            params[1],
-            params[2],
-            params[3],
-            params[4].trunc() as i32,
-        );
-        let basis = match parse_optional_basis(args, 5, arg_count, self, cell) {
-            Ok(b) => b,
-            Err(err) => return err,
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let coupon = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let yld = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let freq = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 5 {
+            match self.get_number_no_bools(&args[5], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
         if settlement >= maturity || coupon < 0.0 || yld < 0.0 || !matches!(freq, 1 | 2 | 4) {
             return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
@@ -2076,7 +1840,7 @@ impl<'a> Model<'a> {
         price += (cf + 100.0) / y.powf(last_t);
 
         if price == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
 
         let result = (dur / price) / freq as f64;
@@ -2134,10 +1898,40 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let (days_to_maturity, discount) = match parse_tbill_params(args, self, cell) {
-            Ok(params) => params,
-            Err(err) => return err,
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let discount = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if settlement > maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be <= maturity".to_string(),
+            );
+        }
+        let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
+            Ok(f) => f,
+            Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
+        };
+        if !less_than_one_year {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "maturity <= settlement + year".to_string(),
+            );
+        }
+        if discount <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "parameter should be >0".to_string());
+        }
+        let days_to_maturity = maturity - settlement;
 
         let result = if days_to_maturity < TBILL_MATURITY_THRESHOLD {
             DAYS_ACTUAL as f64 * discount / (DAYS_IN_YEAR_360 as f64 - discount * days_to_maturity)
@@ -2168,16 +1962,50 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let (days_to_maturity, discount) = match parse_tbill_params(args, self, cell) {
-            Ok(params) => params,
-            Err(err) => return err,
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let discount = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if settlement > maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be <= maturity".to_string(),
+            );
+        }
+        let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
+            Ok(f) => f,
+            Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
+        };
+        if !less_than_one_year {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "maturity <= settlement + year".to_string(),
+            );
+        }
+        if discount <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "parameter should be >0".to_string());
+        }
+        let days_to_maturity = maturity - settlement;
 
         let result = 100.0 * (1.0 - discount * days_to_maturity / DAYS_IN_YEAR_360 as f64);
 
-        // TBILLPRICE specifically checks for negative results (prices can't be negative)
+        // TBILLPRICE: price cannot be negative
         if result < 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Invalid data for T-Bill calculation".to_string(),
+            );
         }
 
         validate_tbill_result(result, cell)
@@ -2189,28 +2017,113 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let (days, price) = match parse_tbill_params(args, self, cell) {
-            Ok(params) => params,
-            Err(err) => return err,
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let price = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        if settlement > maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be <= maturity".to_string(),
+            );
+        }
+        let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
+            Ok(f) => f,
+            Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
+        };
+        if !less_than_one_year {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "maturity <= settlement + year".to_string(),
+            );
+        }
+        if price <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "parameter should be >0".to_string());
+        }
+        let days = maturity - settlement;
 
         let result = (100.0 - price) * DAYS_IN_YEAR_360 as f64 / (price * days);
 
         validate_tbill_result(result, cell)
     }
 
+    // PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])
     pub(crate) fn fn_price(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_bond_pricing_params(args, self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
-        };
-
-        let r = params.third_param / params.frequency as f64; // yld / frequency
-        let mut price = 0.0;
-        for i in 1..=(params.periods as i32) {
-            price += params.coupon / (1.0 + r).powf(i as f64);
+        let arg_count = args.len();
+        if !(6..=7).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
-        price += params.redemption / (1.0 + r).powf(params.periods);
+
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let yld = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[5], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        if frequency != 1 && frequency != 2 && frequency != 4 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "frequency should be 1, 2 or 4".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+        let basis = if arg_count == 7 {
+            match self.get_number_no_bools(&args[6], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
+        };
+        let days_in_year = days_in_year_simple(basis);
+        let days = maturity - settlement;
+        let periods = ((days * frequency as f64) / days_in_year).round();
+        if periods <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "invalid dates".to_string());
+        }
+        let coupon = redemption * rate / frequency as f64;
+
+        let r = yld / frequency as f64;
+        let mut price = 0.0;
+        for i in 1..=(periods as i32) {
+            price += coupon / (1.0 + r).powf(i as f64);
+        }
+        price += redemption / (1.0 + r).powf(periods);
         if price.is_nan() || price.is_infinite() {
             return CalcResult::new_error(Error::NUM, cell, "Invalid data".to_string());
         }
@@ -2237,16 +2150,30 @@ impl<'a> Model<'a> {
 
     pub(crate) fn fn_pricemat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 5, 6, cell) {
-            return err;
+        if !(5..=6).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3, 4], self, cell, true) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (settlement, maturity, issue, rate, yld) =
-            (params[0], params[1], params[2], params[3], params[4]);
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let issue = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let yld = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let basis = if arg_count == 6 {
             match self.get_number_no_bools(&args[5], cell) {
                 Ok(f) => f,
@@ -2292,24 +2219,72 @@ impl<'a> Model<'a> {
         CalcResult::Number(result)
     }
 
+    // YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])
     pub(crate) fn fn_yield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_bond_pricing_params(args, self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let arg_count = args.len();
+        if !(6..=7).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let price = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[5], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        if frequency != 1 && frequency != 2 && frequency != 4 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "frequency should be 1, 2 or 4".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+        let basis = if arg_count == 7 {
+            match self.get_number_no_bools(&args[6], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
+        };
+        let days_in_year = days_in_year_simple(basis);
+        let days = maturity - settlement;
+        let periods = ((days * frequency as f64) / days_in_year).round();
+        if periods <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "invalid dates".to_string());
+        }
+        let coupon = redemption * rate / frequency as f64;
 
         match handle_compute_error(
-            compute_rate(
-                -params.third_param,
-                params.redemption,
-                params.periods,
-                params.coupon,
-                0,
-                0.1,
-            ),
+            compute_rate(-price, redemption, periods, coupon, 0, 0.1),
             cell,
         ) {
-            Ok(r) => CalcResult::Number(r * params.frequency as f64),
+            Ok(r) => CalcResult::Number(r * frequency as f64),
             Err(err) => err,
         }
     }
@@ -2334,16 +2309,30 @@ impl<'a> Model<'a> {
 
     pub(crate) fn fn_yieldmat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 5, 6, cell) {
-            return err;
+        if !(5..=6).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3, 4], self, cell, true) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (settlement, maturity, issue, rate, price) =
-            (params[0], params[1], params[2], params[3], params[4]);
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let issue = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let price = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let basis = if arg_count == 6 {
             match self.get_number_no_bools(&args[5], cell) {
                 Ok(f) => f,
@@ -2448,82 +2437,272 @@ impl<'a> Model<'a> {
 
     // COUPDAYBS(settlement, maturity, frequency, [basis])
     pub(crate) fn fn_coupdaybs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_coupon_params(args, args.len(), self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let arg_count = args.len();
+        if !(3..=4).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 3 {
+            match self.get_number_no_bools(&args[3], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
 
-        let (prev_coupon_date, _) = coupon_dates(
-            params.settlement_date,
-            params.maturity_date,
-            params.frequency,
-        );
-        let days = days_between_dates(prev_coupon_date, params.settlement_date, params.basis);
+        if ![1, 2, 4].contains(&frequency) || !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid arguments".to_string());
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+
+        let settlement_date = match convert_date_serial(settlement as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+        let maturity_date = match convert_date_serial(maturity as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+
+        let (prev_coupon_date, _) = coupon_dates(settlement_date, maturity_date, frequency);
+        let days = days_between_dates(prev_coupon_date, settlement_date, basis);
         CalcResult::Number(days as f64)
     }
 
     // COUPDAYS(settlement, maturity, frequency, [basis])
     pub(crate) fn fn_coupdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_coupon_params(args, args.len(), self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let arg_count = args.len();
+        if !(3..=4).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 3 {
+            match self.get_number_no_bools(&args[3], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
 
-        let (prev_coupon_date, next_coupon_date) = coupon_dates(
-            params.settlement_date,
-            params.maturity_date,
-            params.frequency,
-        );
-        let days = match params.basis {
-            0 | 4 => DAYS_IN_YEAR_360 / params.frequency, // 30/360 conventions
-            _ => days_between_dates(prev_coupon_date, next_coupon_date, params.basis), // Actual day counts
+        if ![1, 2, 4].contains(&frequency) || !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid arguments".to_string());
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+
+        let settlement_date = match convert_date_serial(settlement as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+        let maturity_date = match convert_date_serial(maturity as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+
+        let (prev_coupon_date, next_coupon_date) =
+            coupon_dates(settlement_date, maturity_date, frequency);
+        let days = match basis {
+            0 | 4 => DAYS_IN_YEAR_360 / frequency, // 30/360 conventions
+            _ => days_between_dates(prev_coupon_date, next_coupon_date, basis), // Actual day counts
         };
         CalcResult::Number(days as f64)
     }
 
     // COUPDAYSNC(settlement, maturity, frequency, [basis])
     pub(crate) fn fn_coupdaysnc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_coupon_params(args, args.len(), self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let arg_count = args.len();
+        if !(3..=4).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 3 {
+            match self.get_number_no_bools(&args[3], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
 
-        let (_, next_coupon_date) = coupon_dates(
-            params.settlement_date,
-            params.maturity_date,
-            params.frequency,
-        );
-        let days = days_between_dates(params.settlement_date, next_coupon_date, params.basis);
+        if ![1, 2, 4].contains(&frequency) || !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid arguments".to_string());
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+
+        let settlement_date = match convert_date_serial(settlement as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+        let maturity_date = match convert_date_serial(maturity as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+
+        let (_, next_coupon_date) = coupon_dates(settlement_date, maturity_date, frequency);
+        let days = days_between_dates(settlement_date, next_coupon_date, basis);
         CalcResult::Number(days as f64)
     }
 
     // COUPNCD(settlement, maturity, frequency, [basis])
     pub(crate) fn fn_coupncd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_coupon_params(args, args.len(), self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let arg_count = args.len();
+        if !(3..=4).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 3 {
+            match self.get_number_no_bools(&args[3], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
 
-        let (_, next_coupon_date) = coupon_dates(
-            params.settlement_date,
-            params.maturity_date,
-            params.frequency,
-        );
+        if ![1, 2, 4].contains(&frequency) || !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid arguments".to_string());
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+
+        let settlement_date = match convert_date_serial(settlement as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+        let maturity_date = match convert_date_serial(maturity as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+
+        let (_, next_coupon_date) = coupon_dates(settlement_date, maturity_date, frequency);
         date_to_serial_with_validation(next_coupon_date, cell)
     }
 
     // COUPNUM(settlement, maturity, frequency, [basis])
     pub(crate) fn fn_coupnum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_coupon_params(args, args.len(), self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let arg_count = args.len();
+        if !(3..=4).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 3 {
+            match self.get_number_no_bools(&args[3], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
 
-        let months = 12 / params.frequency;
+        if ![1, 2, 4].contains(&frequency) || !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid arguments".to_string());
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+
+        let settlement_date = match convert_date_serial(settlement as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+        let maturity_date = match convert_date_serial(maturity as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+
+        let months = 12 / frequency;
         let step = chrono::Months::new(months as u32);
-        let mut date = params.maturity_date;
+        let mut date = maturity_date;
         let mut count = 0;
-        while params.settlement_date < date {
+        while settlement_date < date {
             count += 1;
             date = match date.checked_sub_months(step) {
                 Some(new_date) => new_date,
@@ -2535,30 +2714,70 @@ impl<'a> Model<'a> {
 
     // COUPPCD(settlement, maturity, frequency, [basis])
     pub(crate) fn fn_couppcd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_coupon_params(args, args.len(), self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let arg_count = args.len();
+        if !(3..=4).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 3 {
+            match self.get_number_no_bools(&args[3], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
         };
 
-        let (prev_coupon_date, _) = coupon_dates(
-            params.settlement_date,
-            params.maturity_date,
-            params.frequency,
-        );
+        if ![1, 2, 4].contains(&frequency) || !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid arguments".to_string());
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            );
+        }
+
+        let settlement_date = match convert_date_serial(settlement as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+        let maturity_date = match convert_date_serial(maturity as f64, cell) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
+
+        let (prev_coupon_date, _) = coupon_dates(settlement_date, maturity_date, frequency);
         date_to_serial_with_validation(prev_coupon_date, cell)
     }
 
     // DOLLARDE(fractional_dollar, fraction)
     pub(crate) fn fn_dollarde(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 2, 2, cell) {
-            return err;
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1], self, cell, true) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let fractional_dollar = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (fractional_dollar, raw_fraction) = (params[0], params[1]);
+        let raw_fraction = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let fraction = match validate_and_normalize_fraction(raw_fraction, cell) {
             Ok(f) => f,
             Err(err) => return err,
@@ -2571,15 +2790,18 @@ impl<'a> Model<'a> {
 
     // DOLLARFR(decimal_dollar, fraction)
     pub(crate) fn fn_dollarfr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if let Some(err) = validate_arg_count_or_return(args.len(), 2, 2, cell) {
-            return err;
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1], self, cell, true) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let decimal_dollar = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (decimal_dollar, raw_fraction) = (params[0], params[1]);
+        let raw_fraction = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let fraction = match validate_and_normalize_fraction(raw_fraction, cell) {
             Ok(f) => f,
             Err(err) => return err,
@@ -2592,21 +2814,53 @@ impl<'a> Model<'a> {
 
     // CUMIPMT(rate, nper, pv, start_period, end_period, type)
     pub(crate) fn fn_cumipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_cumulative_payment_params(args, self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
+        if args.len() != 6 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let rate = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
+        let nper = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let pv = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let start_period = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f.ceil() as i32,
+            Err(s) => return s,
+        };
+        let end_period = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let period_type = match self.get_number_no_bools(&args[5], cell) {
+            Ok(0.0) => false,
+            Ok(1.0) => true,
+            Ok(_) => {
+                return CalcResult::new_error(Error::NUM, cell, "invalid period type".to_string())
+            }
+            Err(s) => return s,
+        };
+        if start_period > end_period {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "start period should come before end period".to_string(),
+            );
+        }
+        if rate <= 0.0 || nper <= 0.0 || pv <= 0.0 || start_period < 1 {
+            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
+        }
+
         let mut result = 0.0;
-        for period in params.start_period..=params.end_period {
+        for period in start_period..=end_period {
             result += match handle_compute_error(
-                compute_ipmt(
-                    params.rate,
-                    period as f64,
-                    params.nper,
-                    params.pv,
-                    0.0,
-                    params.period_type,
-                ),
+                compute_ipmt(rate, period as f64, nper, pv, 0.0, period_type),
                 cell,
             ) {
                 Ok(f) => f,
@@ -2618,21 +2872,53 @@ impl<'a> Model<'a> {
 
     // CUMPRINC(rate, nper, pv, start_period, end_period, type)
     pub(crate) fn fn_cumprinc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let params = match parse_and_validate_cumulative_payment_params(args, self, cell) {
-            Ok(p) => p,
-            Err(err) => return err,
+        if args.len() != 6 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let rate = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
+        let nper = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let pv = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let start_period = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f.ceil() as i32,
+            Err(s) => return s,
+        };
+        let end_period = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f.trunc() as i32,
+            Err(s) => return s,
+        };
+        let period_type = match self.get_number_no_bools(&args[5], cell) {
+            Ok(0.0) => false,
+            Ok(1.0) => true,
+            Ok(_) => {
+                return CalcResult::new_error(Error::NUM, cell, "invalid period type".to_string())
+            }
+            Err(s) => return s,
+        };
+        if start_period > end_period {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "start period should come before end period".to_string(),
+            );
+        }
+        if rate <= 0.0 || nper <= 0.0 || pv <= 0.0 || start_period < 1 {
+            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
+        }
+
         let mut result = 0.0;
-        for period in params.start_period..=params.end_period {
+        for period in start_period..=end_period {
             result += match handle_compute_error(
-                compute_ppmt(
-                    params.rate,
-                    period as f64,
-                    params.nper,
-                    params.pv,
-                    0.0,
-                    params.period_type,
-                ),
+                compute_ppmt(rate, period as f64, nper, pv, 0.0, period_type),
                 cell,
             ) {
                 Ok(f) => f,
@@ -2645,15 +2931,26 @@ impl<'a> Model<'a> {
     // DDB(cost, salvage, life, period, [factor])
     pub(crate) fn fn_ddb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 4, 5, cell) {
-            return err;
+        if !(4..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let cost = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (cost, salvage, life, period) = (params[0], params[1], params[2], params[3]);
+        let salvage = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let life = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let period = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         // The rate at which the balance declines.
         let factor = if arg_count > 4 {
             match self.get_number_no_bools(&args[4], cell) {
@@ -2689,15 +2986,26 @@ impl<'a> Model<'a> {
     // DB(cost, salvage, life, period, [month])
     pub(crate) fn fn_db(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if let Some(err) = validate_arg_count_or_return(arg_count, 4, 5, cell) {
-            return err;
+        if !(4..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
         }
 
-        let params = match parse_required_params(args, &[0, 1, 2, 3], self, cell, false) {
-            Ok(p) => p,
-            Err(err) => return err,
+        let cost = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
-        let (cost, salvage, life, period) = (params[0], params[1], params[2], params[3]);
+        let salvage = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let life = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let period = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
         let month = if arg_count > 4 {
             match self.get_number_no_bools(&args[4], cell) {
                 Ok(f) => f.trunc(),
