@@ -69,7 +69,9 @@ const BorderPicker = (properties: BorderPickerProps) => {
 
   const borderColorButton = useRef(null);
   const borderStyleButton = useRef(null);
-  const stylePickerCloseTimeout = useRef<NodeJS.Timeout | null>(null);
+  const stylePickerCloseTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const handleStylePickerOpen = () => {
     if (stylePickerCloseTimeout.current) {
@@ -104,7 +106,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
     <StyledPopper
       open={properties.open}
       anchorEl={properties.anchorEl.current}
-      placement={properties.placement || "bottom-start"}
+      placement={properties.placement}
       keepMounted={false}
       modifiers={[
         {
