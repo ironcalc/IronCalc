@@ -22,8 +22,10 @@ fn test_fn_chisq_dist_smoke() {
     // Domain errors
     // x < 0 -> #NUM!
     model._set("A6", "=CHISQ.DIST(-1, 4, TRUE)");
-    // deg_freedom < 1 -> #NUM!
+    // deg_freedom < 1 or > 10^10 -> #NUM!
     model._set("A7", "=CHISQ.DIST(0.5, 0, TRUE)");
+    model._set("A8", "=CHISQ.DIST(10, 10000000000, TRUE)");
+    model._set("A9", "=CHISQ.DIST(10, 10000000001, TRUE)");
 
     model.evaluate();
 
@@ -37,6 +39,8 @@ fn test_fn_chisq_dist_smoke() {
     assert_eq!(model._get_text("A5"), *"#ERROR!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
     assert_eq!(model._get_text("A7"), *"#NUM!");
+    assert_eq!(model._get_text("A8"), *"0");
+    assert_eq!(model._get_text("A9"), *"#NUM!");
 }
 
 #[test]
@@ -54,8 +58,10 @@ fn test_fn_chisq_dist_rt_smoke() {
     // Domain errors
     // x < 0 -> #NUM!
     model._set("A5", "=CHISQ.DIST.RT(-1, 4)");
-    // deg_freedom < 1 -> #NUM!
+    // deg_freedom < 1 or > 10^10 -> #NUM!
     model._set("A6", "=CHISQ.DIST.RT(0.5, 0)");
+    model._set("A7", "=CHISQ.DIST.RT(0, 10000000000)");
+    model._set("A8", "=CHISQ.DIST.RT(0, 10000000001)");
 
     model.evaluate();
 
@@ -69,6 +75,8 @@ fn test_fn_chisq_dist_rt_smoke() {
     assert_eq!(model._get_text("A4"), *"#ERROR!");
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_eq!(model._get_text("A7"), *"1");
+    assert_eq!(model._get_text("A8"), *"#NUM!");
 }
 
 #[test]
@@ -87,8 +95,10 @@ fn test_fn_chisq_inv_smoke() {
     // probability < 0 or > 1 -> #NUM!
     model._set("A5", "=CHISQ.INV(-0.1, 4)");
     model._set("A6", "=CHISQ.INV(1.1, 4)");
-    // deg_freedom < 1 -> #NUM!
+    // deg_freedom < 1 or > 10^10 -> #NUM!
     model._set("A7", "=CHISQ.INV(0.5, 0)");
+    model._set("A8", "=CHISQ.INV(0, 10000000000)");
+    model._set("A9", "=CHISQ.INV(0, 10000000001)");
 
     model.evaluate();
 
@@ -103,6 +113,8 @@ fn test_fn_chisq_inv_smoke() {
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
     assert_eq!(model._get_text("A7"), *"#NUM!");
+    assert_eq!(model._get_text("A8"), *"0");
+    assert_eq!(model._get_text("A9"), *"#NUM!");
 }
 
 #[test]
@@ -121,8 +133,10 @@ fn test_fn_chisq_inv_rt_smoke() {
     // probability < 0 or > 1 -> #NUM!
     model._set("A5", "=CHISQ.INV.RT(-0.1, 4)");
     model._set("A6", "=CHISQ.INV.RT(1.1, 4)");
-    // deg_freedom < 1 -> #NUM!
+    // deg_freedom < 1 or > 10^10 -> #NUM!
     model._set("A7", "=CHISQ.INV.RT(0.5, 0)");
+    model._set("A8", "=CHISQ.INV.RT(1, 10000000000)");
+    model._set("A9", "=CHISQ.INV.RT(1, 10000000001)");
 
     model.evaluate();
 
@@ -137,4 +151,23 @@ fn test_fn_chisq_inv_rt_smoke() {
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
     assert_eq!(model._get_text("A7"), *"#NUM!");
+    assert_eq!(model._get_text("A8"), *"0");
+    assert_eq!(model._get_text("A9"), *"#NUM!");
+}
+
+#[test]
+fn test_booleans() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=CHISQ.DIST(7, TRUE, TRUE)");
+    model._set("A2", "=CHISQ.INV(A1, TRUE)");
+    model._set("A3", "=CHISQ.DIST.RT(7, TRUE)");
+    model._set("A4", "=CHISQ.INV.RT(A3, TRUE)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "0.991849028");
+    assert_eq!(model._get_text("A2"), "7");
+    assert_eq!(model._get_text("A3"), "0.008150972");
+    assert_eq!(model._get_text("A4"), "7");
 }
