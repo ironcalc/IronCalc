@@ -13,12 +13,12 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
+        let x = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
 
-        let df = match self.get_number_no_bools(&args[1], cell) {
+        let df = match self.get_number(&args[1], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
@@ -35,11 +35,12 @@ impl<'a> Model<'a> {
                 "x must be >= 0 in CHISQ.DIST".to_string(),
             );
         }
-        if df < 1.0 {
+        // if degrees of freedom < 1 or > 10^10 → #NUM!
+        if !(1.0..=10000000000.0).contains(&df) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "degrees of freedom must be >= 1 in CHISQ.DIST".to_string(),
+                "degrees of freedom must be in [1, 10^10] in CHISQ.DIST".to_string(),
             );
         }
 
@@ -77,12 +78,12 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
+        let x = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
 
-        let df_raw = match self.get_number_no_bools(&args[1], cell) {
+        let df_raw = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -96,11 +97,13 @@ impl<'a> Model<'a> {
                 "x must be >= 0 in CHISQ.DIST.RT".to_string(),
             );
         }
-        if df < 1.0 {
+
+        // if degrees of freedom < 1 or > 10^10 → #NUM!
+        if !(1.0..=10000000000.0).contains(&df) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "degrees of freedom must be >= 1 in CHISQ.DIST.RT".to_string(),
+                "degrees of freedom must be in [1, 10^10] in CHISQ.DIST.RT".to_string(),
             );
         }
 
@@ -136,12 +139,12 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let p = match self.get_number_no_bools(&args[0], cell) {
+        let p = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
 
-        let df = match self.get_number_no_bools(&args[1], cell) {
+        let df = match self.get_number(&args[1], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
@@ -154,11 +157,13 @@ impl<'a> Model<'a> {
                 "probability must be in [0,1] in CHISQ.INV".to_string(),
             );
         }
-        if df < 1.0 {
+
+        // if degrees of freedom < 1 or > 10^10 → #NUM!
+        if !(1.0..=10000000000.0).contains(&df) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "degrees of freedom must be >= 1 in CHISQ.INV".to_string(),
+                "degrees of freedom must be in [1, 10^10] in CHISQ.INV".to_string(),
             );
         }
 
@@ -196,12 +201,12 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let p = match self.get_number_no_bools(&args[0], cell) {
+        let p = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
 
-        let df_raw = match self.get_number_no_bools(&args[1], cell) {
+        let df_raw = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -216,11 +221,12 @@ impl<'a> Model<'a> {
                 "probability must be in [0,1] in CHISQ.INV.RT".to_string(),
             );
         }
-        if df < 1.0 {
+        // if degrees of freedom < 1 or > 10^10 → #NUM!
+        if !(1.0..=10000000000.0).contains(&df) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "degrees of freedom must be >= 1 in CHISQ.INV.RT".to_string(),
+                "degrees of freedom must be in [1, 10^10] in CHISQ.INV.RT".to_string(),
             );
         }
 
