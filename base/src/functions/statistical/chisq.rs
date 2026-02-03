@@ -5,6 +5,7 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+const MAX_DEGREES_OF_FREEDOM: f64 = 10_000_000_000.0;
 
 impl<'a> Model<'a> {
     // CHISQ.DIST(x, deg_freedom, cumulative)
@@ -36,7 +37,7 @@ impl<'a> Model<'a> {
             );
         }
         // if degrees of freedom < 1 or > 10^10 → #NUM!
-        if !(1.0..=10000000000.0).contains(&df) {
+        if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -99,7 +100,7 @@ impl<'a> Model<'a> {
         }
 
         // if degrees of freedom < 1 or > 10^10 → #NUM!
-        if !(1.0..=10000000000.0).contains(&df) {
+        if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -159,7 +160,7 @@ impl<'a> Model<'a> {
         }
 
         // if degrees of freedom < 1 or > 10^10 → #NUM!
-        if !(1.0..=10000000000.0).contains(&df) {
+        if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -222,7 +223,7 @@ impl<'a> Model<'a> {
             );
         }
         // if degrees of freedom < 1 or > 10^10 → #NUM!
-        if !(1.0..=10000000000.0).contains(&df) {
+        if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
