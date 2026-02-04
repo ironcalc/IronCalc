@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
-use ironcalc_base::expressions::parser::{
-    new_parser_english, static_analysis::add_implicit_intersection,
+use ironcalc_base::{
+    expressions::parser::{new_parser_english, static_analysis::add_implicit_intersection},
+    types::ThreadedComment,
 };
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
@@ -20,7 +21,7 @@ use ironcalc_base::{
 use roxmltree::Node;
 use thiserror::Error;
 
-use crate::error::XlsxError;
+use crate::{error::XlsxError, import::threaded_comments::read_threaded_from_archive};
 
 use super::{
     tables::load_table,
@@ -511,10 +512,12 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
     path: &str,
     tables: &mut HashMap<String, Table>,
-    sheet_name: &str,
-) -> Result<Vec<Comment>, XlsxError> {
+    comments: &mut HashMap<String, Vec<Comment>>,
+    threaded: &mut HashMap<String, Vec<ThreadedComment>>,
+    sheet: &Sheet,
+) -> Result<(), XlsxError> {
     // ...xl/worksheets/sheet6.xml -> xl/worksheets/_rels/sheet6.xml.rels
-    let mut comments = Vec::new();
+    let mut sub_comments = Vec::new();
     let v: Vec<&str> = path.split("/worksheets/").collect();
     let mut path = v[0].to_string();
     path.push_str("/worksheets/_rels/");
@@ -522,7 +525,7 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     path.push_str(".rels");
     let file = archive.by_name(&path);
     if file.is_err() {
-        return Ok(comments);
+        return Ok(());
     }
     let mut text = String::new();
     file.unwrap().read_to_string(&mut text)?;
@@ -540,7 +543,7 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
             let mut target = get_attribute(&rel, "Target")?.to_string();
             // Target="../comments1.xlsx"
             target.replace_range(..2, v[0]);
-            comments = load_comments(archive, &target)?;
+            sub_comments.extend(load_comments(archive, &target)?);
         } else if t.ends_with("table") {
             let mut target = get_attribute(&rel, "Target")?.to_string();
 
@@ -552,11 +555,20 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
                 target
             };
 
-            let table = load_table(archive, &path, sheet_name)?;
+            let table = load_table(archive, &path, &sheet.name)?;
             tables.insert(table.name.clone(), table);
+        } else if t.ends_with("threadedComment") {
+            let mut target = get_attribute(&rel, "Target")?.to_string();
+            // Target="../threadedComments/threadedComment1.xml"
+            target.replace_range(..2, "/xl");
+            threaded.insert(
+                sheet.id.clone(),
+                read_threaded_from_archive(archive, &target)?,
+            );
         }
     }
-    Ok(comments)
+    comments.insert(sheet.id.clone(), sub_comments);
+    Ok(())
 }
 
 struct SheetView {
@@ -1059,7 +1071,8 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     shared_strings: &mut Vec<String>,
 ) -> Result<(Vec<Worksheet>, u32), XlsxError> {
     // load comments and tables
-    let mut comments = HashMap::new();
+    let mut comments: HashMap<String, Vec<Comment>> = HashMap::new();
+    let mut threaded: HashMap<String, Vec<ThreadedComment>> = HashMap::new();
     for sheet in &workbook.worksheets {
         let rel = &rels[&sheet.id];
         if rel.rel_type.ends_with("worksheet") {
@@ -1069,10 +1082,8 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
             } else {
                 format!("xl/{path}")
             };
-            comments.insert(
-                &sheet.id,
-                load_sheet_rels(archive, &path, tables, &sheet.name)?,
-            );
+
+            load_sheet_rels(archive, &path, tables, &mut comments, &mut threaded, &sheet)?;
         }
     }
 

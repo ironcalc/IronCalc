@@ -3,15 +3,16 @@ mod metadata;
 mod shared_strings;
 mod styles;
 mod tables;
+mod threaded_comments;
 mod util;
 mod workbook;
 mod worksheets;
-
 use std::{
     collections::HashMap,
     fs,
     io::{BufReader, Cursor, Read},
 };
+use threaded_comments::read_persons_from_archive;
 
 use roxmltree::Node;
 
@@ -66,6 +67,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     let workbook = load_workbook(&mut archive)?;
     let rels = load_relationships(&mut archive)?;
     let mut tables = HashMap::new();
+    let persons = read_persons_from_archive(&mut archive)?;
     let (worksheets, selected_sheet) = load_sheets(
         &mut archive,
         &rels,
@@ -110,6 +112,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         metadata,
         tables,
         views,
+        persons,
     })
 }
 
