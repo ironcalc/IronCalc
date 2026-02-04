@@ -718,25 +718,6 @@ impl Provider {
     }
 }
 
-impl TryFrom<&str> for Provider {
-    type Error = String;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        // Note that the provider_id is under specified. Both Active Directory and Office365 use "AD" but user_id for Office365
-        // "SHOULD be comprised of three individual values separated by a "::" character delimiter."
-        // In deanm0000's experience, the format for office365 is S::<email_address>::<lower case uuid> but the spec just says
-        // should be 3 individual values but doesn't say what each represent.
-        // Since that spec is vague, and since the user_id is going to be stored as a String anyway, I am not making a Struct
-        // for each provider to hold their format of user_id
-        match value {
-            "AD" => Ok(Provider::ActiveDirectory),
-            "Windows Live" => Ok(Provider::WindowsLiveID),
-            "PeoplePicker" => Ok(Provider::PeoplePicker),
-            "None" => Ok(Provider::NoProvider),
-            _ => Err("unknown provider".to_string()),
-        }
-    }
-}
-
 impl From<Provider> for &str {
     fn from(value: Provider) -> Self {
         match value {
