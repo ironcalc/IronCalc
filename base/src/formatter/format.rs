@@ -928,6 +928,11 @@ fn parse_number(
     } else {
         1.0
     };
+
+    if bytes[position] == group_separator {
+        return Err("Cannot parse number".to_string());
+    }
+
     // numbers before the decimal point
     while position < len {
         let x = bytes[position];
