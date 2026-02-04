@@ -12,19 +12,19 @@ impl<'a> Model<'a> {
         }
 
         // number_s
-        let number_s = match self.get_number_no_bools(&args[0], cell) {
+        let number_s = match self.get_number(&args[0], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
 
         // trials
-        let trials = match self.get_number_no_bools(&args[1], cell) {
+        let trials = match self.get_number(&args[1], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
 
         // probability_s
-        let p = match self.get_number_no_bools(&args[2], cell) {
+        let p = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -95,26 +95,26 @@ impl<'a> Model<'a> {
         }
 
         // trials
-        let trials = match self.get_number_no_bools(&args[0], cell) {
+        let trials = match self.get_number(&args[0], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
 
         // probability_s
-        let p = match self.get_number_no_bools(&args[1], cell) {
+        let p = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
 
         // number_s (lower)
-        let number_s = match self.get_number_no_bools(&args[2], cell) {
+        let number_s = match self.get_number(&args[2], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
 
         // number_s2 (upper, optional)
         let number_s2 = if args.len() == 4 {
-            match self.get_number_no_bools(&args[3], cell) {
+            match self.get_number(&args[3], cell) {
                 Ok(f) => f.trunc(),
                 Err(e) => return e,
             }
@@ -185,19 +185,19 @@ impl<'a> Model<'a> {
         }
 
         // trials
-        let trials = match self.get_number_no_bools(&args[0], cell) {
+        let trials = match self.get_number(&args[0], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
 
         // probability_s
-        let p = match self.get_number_no_bools(&args[1], cell) {
+        let p = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
 
         // alpha
-        let alpha = match self.get_number_no_bools(&args[2], cell) {
+        let alpha = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -207,7 +207,8 @@ impl<'a> Model<'a> {
             || p.is_nan()
             || !(0.0..=1.0).contains(&p)
             || alpha.is_nan()
-            || !(0.0..=1.0).contains(&alpha)
+            || alpha <= 0.0
+            || alpha >= 1.0
         {
             return CalcResult::new_error(
                 Error::NUM,
@@ -246,15 +247,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let number_f = match self.get_number_no_bools(&args[0], cell) {
+        let number_f = match self.get_number(&args[0], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
-        let number_s = match self.get_number_no_bools(&args[1], cell) {
+        let number_s = match self.get_number(&args[1], cell) {
             Ok(f) => f.trunc(),
             Err(e) => return e,
         };
-        let probability_s = match self.get_number_no_bools(&args[2], cell) {
+        let probability_s = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -263,7 +264,7 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        if number_f < 0.0 || number_s < 1.0 || !(0.0..=1.0).contains(&probability_s) {
+        if number_f < 0.0 || number_s < 1.0 || !(0.0..1.0).contains(&probability_s) {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
