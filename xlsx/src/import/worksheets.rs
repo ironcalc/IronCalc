@@ -714,6 +714,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     tables: &HashMap<String, Table>,
     shared_strings: &mut Vec<String>,
     defined_names: Vec<DefinedNameS>,
+    threaded_comments: Vec<ThreadedComment>,
 ) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
@@ -1058,6 +1059,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             frozen_columns: sheet_view.frozen_columns,
             show_grid_lines: sheet_view.show_grid_lines,
             views,
+            threaded_comments,
         },
         sheet_view.is_selected,
     ))
@@ -1100,6 +1102,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
         let rel_id = &sheet.id;
         let state = &sheet.state;
         let rel = &rels[rel_id];
+        let sheet_threaded = threaded.remove(&sheet.id).unwrap_or_default();
         if rel.rel_type.ends_with("worksheet") {
             let path = &rel.target;
             let path = if let Some(p) = path.strip_prefix('/') {
@@ -1124,6 +1127,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 tables,
                 shared_strings,
                 defined_names.clone(),
+                sheet_threaded,
             )?;
             if is_selected {
                 selected_sheet = sheet_index;

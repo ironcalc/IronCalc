@@ -1,41 +1,9 @@
-use std::io::Read;
-
-use chrono::NaiveDateTime;
 use ironcalc_base::types::{Mention, Person, Provider, ThreadedComment};
 use roxmltree::Node;
+use std::io::Read;
 use uuid::Uuid;
 
 use crate::error::XlsxError;
-
-// pub(crate) fn read_threaded_comments_and_people<R: Read + std::io::Seek>(
-//     archive: &mut zip::read::ZipArchive<R>,
-// ) -> Result<(Vec<Person>, Vec<ThreadedComment>), XlsxError> {
-//     let person_xml = "xl/persons/person.xml";
-//     let people = match archive.by_name(person_xml) {
-//         Ok(mut file) => {
-//             let mut text = String::new();
-//             file.read_to_string(&mut text)?;
-//             read_people_from_string(&text)?
-//         }
-//         Err(_e) => Vec::new(),
-//     };
-
-//     let threaded_prefix = "xl/threadedComments";
-
-//     let mut comments: Vec<ThreadedComment> = Vec::new();
-//     let mut references:
-//     for i in 0..archive.len() {
-//         let mut file = archive.by_index(i)?;
-//         if !file.name().starts_with(threaded_prefix) {
-//             continue;
-//         }
-//         let mut text = String::new();
-//         file.read_to_string(&mut text)?;
-//         let sheet_comments = read_comments_from_string(&text)?;
-//         comments.extend(sheet_comments);
-//     }
-//     Ok((people, comments))
-// }
 
 pub fn read_persons_from_archive<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
@@ -129,9 +97,7 @@ fn parse_comments_from_comment_list_node(
         .filter(|n| n.has_tag_name("threadedComment"))
     {
         let rref = comment_node.attribute("ref");
-        let dt = comment_node
-            .attribute("dT")
-            .and_then(|dt| NaiveDateTime::parse_from_str(dt, "%Y-%m-%dT%H:%M:%S%.f").ok());
+        let dt = comment_node.attribute("dT").map(|dt| dt.to_string());
         let person_id = comment_node
             .attribute("personId")
             .ok_or_else(|| XlsxError::Xml("Missing personId attribute".to_string()))

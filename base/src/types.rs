@@ -1,6 +1,5 @@
 use crate::expressions::token::Error;
 use bitcode::{Decode, Encode};
-use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 use uuid::Uuid;
@@ -118,6 +117,7 @@ pub struct Worksheet {
     pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
+    pub threaded_comments: Vec<ThreadedComment>,
 }
 
 /// Internal representation of Excel's sheet_data
@@ -750,13 +750,13 @@ impl From<Provider> for &str {
 }
 
 // https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/42f9b03d-9662-4204-9783-dbeb324a691c
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ThreadedComment {
     pub text: String, // Technically occurs between 0 and 1 time so maybe should use Option or Vec but in practice it's always there, if not use empty string.
     pub mentions: Vec<Mention>,
     pub ext_lst: Vec<String>,
     pub rref: Option<String>, // really named ref
-    pub dt: Option<NaiveDateTime>,
+    pub dt: Option<String>,
     pub person_id: Uuid, // this joins with the person_id in Person
     pub id: Uuid,
     pub parent_id: Option<Uuid>,
@@ -768,7 +768,7 @@ impl ThreadedComment {
         mentions: Vec<Mention>,
         ext_lst: Vec<String>,
         rref: Option<&str>,
-        dt: Option<NaiveDateTime>,
+        dt: Option<String>,
         person_id: Uuid,
         id: Uuid,
         parent_id: Option<Uuid>,
@@ -790,7 +790,7 @@ impl ThreadedComment {
 }
 
 // https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/b03ed619-e307-4d3e-9c67-b68612274128
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Mention {
     pub mention_person_id: Uuid,
     pub mention_id: Uuid,
