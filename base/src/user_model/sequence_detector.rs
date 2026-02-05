@@ -212,21 +212,15 @@ struct SuffixedNumberDetector<'a> {
 
 impl SuffixedNumberDetector<'_> {
     fn suffix_index(value: &str) -> usize {
-        let mut rev = String::new();
-
-        let potential_numeric_suffixes = value
+        let digits = value
             .chars()
             .rev()
-            .map_while(|x| {
-                rev.push(x);
-                rev.parse::<i64>().ok()
-            })
-            .collect::<Vec<_>>();
-
-        if value.len() == potential_numeric_suffixes.len() {
+            .take_while(|c| c.is_ascii_digit())
+            .count();
+        if digits == value.chars().count() {
             0
         } else {
-            potential_numeric_suffixes.len()
+            digits
         }
     }
 }
