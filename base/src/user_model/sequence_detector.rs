@@ -45,7 +45,7 @@ fn round_sig(value: f64) -> f64 {
         return 0.0;
     }
     let rounded = value.round();
-    if (value - rounded).abs() <= 1e-11 * value.abs().max(1.0) {
+    if (value - rounded).abs() <= 1e-14 * value.abs().max(1.0) {
         return rounded;
     }
     let sign = value.signum();
