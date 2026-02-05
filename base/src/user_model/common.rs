@@ -1465,8 +1465,8 @@ impl<'a> UserModel<'a> {
         let sheet = source_area.sheet;
         let row1 = source_area.row;
         let column1 = source_area.column;
-        let width1 = source_area.width;
-        let height1 = source_area.height;
+        let last_column = column1 + source_area.width - 1;
+        let last_row = row1 + source_area.height - 1;
 
         // Check first all parameters are valid
         if self.model.workbook.worksheet(sheet).is_err() {
@@ -1479,11 +1479,11 @@ impl<'a> UserModel<'a> {
         if !is_valid_row(row1) {
             return Err(format!("Invalid row: '{row1}'"));
         }
-        if !is_valid_column_number(column1 + width1 - 1) {
-            return Err(format!("Invalid column: '{}'", column1 + width1 - 1));
+        if !is_valid_column_number(last_column) {
+            return Err(format!("Invalid column: '{last_column}'"));
         }
-        if !is_valid_row(row1 + height1 - 1) {
-            return Err(format!("Invalid row: '{}'", row1 + height1 - 1));
+        if !is_valid_row(last_row) {
+            return Err(format!("Invalid row: '{last_row}'"));
         }
 
         if !is_valid_row(to_row) {
@@ -1496,24 +1496,24 @@ impl<'a> UserModel<'a> {
         // this is the range of rows we are going to fill
         let row_range: Vec<i32>;
 
-        if to_row >= row1 + height1 {
+        if to_row > last_row {
             // we go downwards, we start from `row1 + height1` to `to_row`,
             anchor_row = row1;
             sign = 1;
-            row_range = (row1 + height1..=to_row).collect();
+            row_range = (last_row + 1..=to_row).collect();
         } else if to_row < row1 {
             // we go upwards, starting from `row1 - 1` all the way to `to_row`
-            anchor_row = row1 + height1 - 1;
+            anchor_row = last_row;
             sign = -1;
             row_range = (to_row..row1).rev().collect();
         } else {
             return Err("Invalid parameters for autofill".to_string());
         }
 
-        for column in column1..column1 + width1 {
+        for column in column1..=last_column {
             let mut index = 0;
             let locale = &self.model.locale;
-            let values = (row1..height1 + row1)
+            let values = (row1..=last_row)
                 .map(|row| self.get_cell_content(sheet, row, column))
                 .collect::<Result<Vec<_>, _>>()?;
             let possible_progression = detect_progression(&values, locale);
@@ -1563,7 +1563,7 @@ impl<'a> UserModel<'a> {
                     old_value: Box::new(old_value),
                 });
 
-                index = (index + sign) % height1;
+                index = (index + sign) % source_area.height;
             }
         }
         self.push_diff_list(diff_list);
@@ -1576,21 +1576,21 @@ impl<'a> UserModel<'a> {
     pub fn auto_fill_columns(&mut self, source_area: &Area, to_column: i32) -> Result<(), String> {
         let mut diff_list = Vec::new();
         let sheet = source_area.sheet;
-        let first_row = source_area.row;
-        let first_column = source_area.column;
-        let last_column = first_column + source_area.width - 1;
-        let last_row = first_row + source_area.height - 1;
+        let row1 = source_area.row;
+        let column1 = source_area.column;
+        let last_column = column1 + source_area.width - 1;
+        let last_row = row1 + source_area.height - 1;
 
         // Check first all parameters are valid
         if self.model.workbook.worksheet(sheet).is_err() {
             return Err(format!("Invalid worksheet index: '{sheet}'"));
         }
 
-        if !is_valid_column_number(first_column) {
-            return Err(format!("Invalid column: '{first_column}'"));
+        if !is_valid_column_number(column1) {
+            return Err(format!("Invalid column: '{column1}'"));
         }
-        if !is_valid_row(first_row) {
-            return Err(format!("Invalid row: '{first_row}'"));
+        if !is_valid_row(row1) {
+            return Err(format!("Invalid row: '{row1}'"));
         }
         if !is_valid_column_number(last_column) {
             return Err(format!("Invalid column: '{last_column}'"));
@@ -1611,19 +1611,19 @@ impl<'a> UserModel<'a> {
 
         if to_column > last_column {
             // we go right, we start from `1 + width` to `to_column`,
-            anchor_column = first_column;
+            anchor_column = column1;
             sign = 1;
             column_range = (last_column + 1..to_column + 1).collect();
-        } else if to_column < first_column {
+        } else if to_column < column1 {
             // we go left, starting from `column1 - `` all the way to `to_column`
             anchor_column = last_column;
             sign = -1;
-            column_range = (to_column..first_column).rev().collect();
+            column_range = (to_column..column1).rev().collect();
         } else {
             return Err("Invalid parameters for autofill".to_string());
         }
 
-        for row in first_row..=last_row {
+        for row in row1..=last_row {
             let mut index = 0;
             for column_ref in &column_range {
                 let column = *column_ref;
