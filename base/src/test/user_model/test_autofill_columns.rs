@@ -718,6 +718,32 @@ fn left_4() {
 }
 
 #[test]
+fn left_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 2, "1").unwrap(); // B1
+    model.set_user_input(0, 1, 3, "2").unwrap(); // C1
+
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 2,
+                width: 2,
+                height: 1,
+            },
+            1,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 1), // A1
+        Ok("0".to_string())
+    );
+}
+
+#[test]
 fn errors() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);

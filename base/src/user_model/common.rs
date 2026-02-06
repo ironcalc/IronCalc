@@ -1513,9 +1513,16 @@ impl<'a> UserModel<'a> {
         for column in column1..=last_column {
             let mut index = 0;
             let locale = &self.model.locale;
-            let values = (row1..=last_row)
-                .map(|row| self.get_cell_content(sheet, row, column))
-                .collect::<Result<Vec<_>, _>>()?;
+            let values = if sign < 0 {
+                (row1..=last_row)
+                    .rev()
+                    .map(|row| self.get_cell_content(sheet, row, column))
+                    .collect::<Result<Vec<_>, _>>()?
+            } else {
+                (row1..=last_row)
+                    .map(|row| self.get_cell_content(sheet, row, column))
+                    .collect::<Result<Vec<_>, _>>()?
+            };
             let possible_progression = detect_progression(&values, locale);
             for (range_idx, row_ref) in row_range.iter().enumerate() {
                 // Save value and style first
@@ -1626,9 +1633,16 @@ impl<'a> UserModel<'a> {
         for row in row1..=last_row {
             let mut index = 0;
             let locale = &self.model.locale;
-            let values = (column1..=last_column)
-                .map(|column| self.get_cell_content(sheet, row, column))
-                .collect::<Result<Vec<_>, _>>()?;
+            let values = if sign < 0 {
+                (column1..=last_column)
+                    .rev()
+                    .map(|column| self.get_cell_content(sheet, row, column))
+                    .collect::<Result<Vec<_>, _>>()?
+            } else {
+                (column1..=last_column)
+                    .map(|column| self.get_cell_content(sheet, row, column))
+                    .collect::<Result<Vec<_>, _>>()?
+            };
             let possible_progression = detect_progression(&values, locale);
             for (range_idx, column_ref) in column_range.iter().enumerate() {
                 let column = *column_ref;
