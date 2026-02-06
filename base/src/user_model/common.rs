@@ -1599,8 +1599,8 @@ impl<'a> UserModel<'a> {
             return Err(format!("Invalid row: '{last_row}'"));
         }
 
-        if !is_valid_row(to_column) {
-            return Err(format!("Invalid row: '{to_column}'"));
+        if !is_valid_column_number(to_column) {
+            return Err(format!("Invalid column: '{to_column}'"));
         }
 
         // anchor_column is the first column that repeats in each case.
@@ -1610,12 +1610,12 @@ impl<'a> UserModel<'a> {
         let column_range: Vec<i32>;
 
         if to_column > last_column {
-            // we go right, we start from `1 + width` to `to_column`,
+            // we go right, we start from `last_column + 1` to `to_column`,
             anchor_column = column1;
             sign = 1;
             column_range = (last_column + 1..to_column + 1).collect();
         } else if to_column < column1 {
-            // we go left, starting from `column1 - `` all the way to `to_column`
+            // we go left, starting from `column1 - 1` all the way to `to_column`
             anchor_column = last_column;
             sign = -1;
             column_range = (to_column..column1).rev().collect();

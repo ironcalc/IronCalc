@@ -379,7 +379,7 @@ fn errors() {
             },
             -10,
         ),
-        Err("Invalid row: '-10'".to_string())
+        Err("Invalid column: '-10'".to_string())
     );
 }
 
