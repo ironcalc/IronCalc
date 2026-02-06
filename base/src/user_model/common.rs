@@ -1625,7 +1625,12 @@ impl<'a> UserModel<'a> {
 
         for row in row1..=last_row {
             let mut index = 0;
-            for column_ref in &column_range {
+            let locale = &self.model.locale;
+            let values = (column1..=last_column)
+                .map(|column| self.get_cell_content(sheet, row, column))
+                .collect::<Result<Vec<_>, _>>()?;
+            let possible_progression = detect_progression(&values, locale);
+            for (range_idx, column_ref) in column_range.iter().enumerate() {
                 let column = *column_ref;
                 // Save value and style first
                 let old_value = self
@@ -1636,11 +1641,18 @@ impl<'a> UserModel<'a> {
                     .cloned();
                 let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
 
-                // compute the new value and set it
                 let source_column = anchor_column + index;
-                let target_value = self
-                    .model
-                    .extend_to(sheet, row, source_column, row, column)?;
+                let target_value;
+
+                // compute the new value and set it
+                if let Some(ref detected_progression) = possible_progression {
+                    target_value = detected_progression.next(range_idx);
+                } else {
+                    target_value = self
+                        .model
+                        .extend_to(sheet, row, source_column, row, column)?;
+                }
+
                 self.model
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
