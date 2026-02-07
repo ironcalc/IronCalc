@@ -1,6 +1,10 @@
 #![deny(missing_docs)]
 
-use std::{collections::HashMap, fmt::Debug, io::Cursor};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Debug,
+    io::Cursor,
+};
 
 use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
@@ -1830,6 +1834,7 @@ impl<'a> UserModel<'a> {
             width: source_last_column - source_first_column + 1,
             height: source_last_row - source_first_row + 1,
         };
+        let mut seen_cells = HashSet::new();
         for (source_row, data_row) in clipboard {
             let delta_row = source_row - source_first_row;
             let target_row = selected_row + delta_row;
@@ -1893,11 +1898,15 @@ impl<'a> UserModel<'a> {
                     old_value: Box::new(old_style),
                     new_value: Box::new(value.style.clone()),
                 });
+                seen_cells.insert((target_row, target_column));
             }
         }
         if is_cut {
             for row in source_first_row..=source_last_row {
                 for column in source_first_column..=source_last_column {
+                    if (source_sheet == sheet) && seen_cells.contains(&(row, column)) {
+                        continue;
+                    }
                     let old_value = self
                         .model
                         .workbook
