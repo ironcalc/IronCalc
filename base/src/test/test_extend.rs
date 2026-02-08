@@ -108,17 +108,18 @@ fn move_cell_value_to_area_basic() {
 #[test]
 fn extend_to_formula_prefix() {
     let mut model = new_empty_model();
-    model._set("A1", "-B1*SUM(F5:H10)");
-
-    model.evaluate();
-
-    // A1
-    let (sheet, row, column) = (0, 1, 1);
-
-    // extend from A1 to A5
-    let (target_row, target_column) = (5, 1);
+    let source = CellReferenceIndex {
+        sheet: 0,
+        row: 1,
+        column: 1,
+    };
+    let target = CellReferenceIndex {
+        sheet: 0,
+        row: 30,
+        column: 1,
+    };
     let result = model
-        .extend_to(sheet, row, column, target_row, target_column)
+        .extend_copied_value("-B1*D4", &source, &target)
         .unwrap();
-    assert_eq!(&result, "=-B5*SUM(F9:H14)");
+    assert_eq!(&result, "=-B30*D33");
 }
