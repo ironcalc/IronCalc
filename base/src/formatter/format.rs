@@ -929,6 +929,10 @@ fn parse_number(
         1.0
     };
 
+    if position >= len {
+        return Err("Cannot parse number".to_string());
+    }
+
     if bytes[position] == group_separator {
         return Err("Cannot parse number".to_string());
     }
