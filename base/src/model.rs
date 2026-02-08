@@ -281,7 +281,10 @@ impl<'a> Model<'a> {
     }
 
     fn is_formula_with_prefix(&self, value: &str) -> bool {
-        if let Some(stripped) = value.strip_prefix(['=', '+', '-']) {
+        if let Some(stripped) = value.strip_prefix('=') {
+            return !stripped.is_empty();
+        }
+        if let Some(stripped) = value.strip_prefix(['+', '-']) {
             if stripped.is_empty() || self.cast_number(stripped).is_some() {
                 return false;
             }
@@ -1502,11 +1505,15 @@ impl<'a> Model<'a> {
                 .styles
                 .get_style_without_quote_prefix(style_index)?;
         }
+
         if self.is_formula_with_prefix(&formula) {
-            let formula = formula
-                .strip_prefix('=')
-                .ok_or_else(|| format!("\"{formula}\" is not a valid formula"))?;
-            self.set_cell_with_formula(sheet, row, column, formula, style_index)?;
+            let new_formula;
+            if let Some(eq_formula) = formula.strip_prefix('=') {
+                new_formula = eq_formula
+            } else {
+                new_formula = &formula;
+            }
+            self.set_cell_with_formula(sheet, row, column, new_formula, style_index)?;
             Ok(())
         } else {
             Err("\"{formula}\" is not a valid formula".to_string())
@@ -1572,21 +1579,25 @@ impl<'a> Model<'a> {
                     .get_style_without_quote_prefix(style_index)?;
             }
             if self.is_formula_with_prefix(&value) {
-                if let Some(formula) = value.strip_prefix('=') {
-                    let formula_index =
-                        self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
-                    // Update the style if needed
-                    let cell = CellReferenceIndex { sheet, row, column };
-                    let parsed_formula =
-                        &self.parsed_formulas[sheet as usize][formula_index as usize];
-                    if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
-                        let new_style_index = self
-                            .workbook
-                            .styles
-                            .get_style_with_format(new_style_index, &units.get_num_fmt())?;
-                        let style = self.workbook.styles.get_style(new_style_index)?;
-                        self.set_cell_style(sheet, row, column, &style)?
-                    }
+                let formula;
+                if let Some(eq_formula) = value.strip_prefix('=') {
+                    formula = eq_formula
+                } else {
+                    formula = &value;
+                }
+
+                let formula_index =
+                    self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
+                // Update the style if needed
+                let cell = CellReferenceIndex { sheet, row, column };
+                let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
+                if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
+                    let new_style_index = self
+                        .workbook
+                        .styles
+                        .get_style_with_format(new_style_index, &units.get_num_fmt())?;
+                    let style = self.workbook.styles.get_style(new_style_index)?;
+                    self.set_cell_style(sheet, row, column, &style)?
                 }
             } else {
                 // The list of currencies is '$', '€' and the local currency
