@@ -127,7 +127,7 @@ impl ParsedReference {
 ///  * a boolean
 ///  * an error (i.e "#VALUE!")
 pub(crate) fn value_needs_quoting(value: &str, language: &Language) -> bool {
-    value.starts_with('=')
+    value.starts_with(['=', '+', '-'])
         || value.parse::<f64>().is_ok()
         || value.to_lowercase().parse::<bool>().is_ok()
         || get_error_by_name(&value.to_uppercase(), language).is_some()

@@ -228,3 +228,42 @@ fn test_move_formula_rectangle() {
         )
         .is_err());
 }
+
+#[test]
+fn test_move_formula_prefixes() {
+    let mut model = new_empty_model();
+
+    let source = &CellReferenceIndex {
+        sheet: 0,
+        column: 1,
+        row: 1,
+    };
+    let value = "-A2+3";
+    let target = &CellReferenceIndex {
+        sheet: 0,
+        column: 10,
+        row: 10,
+    };
+
+    let area = &Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+    let t = model.move_cell_value_to_area(value, source, target, area);
+    assert!(t.is_ok());
+    assert_eq!(t.unwrap(), "=-A2+3");
+
+    let area = &Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 2,
+        height: 2,
+    };
+    let t = model.move_cell_value_to_area(value, source, target, area);
+    assert!(t.is_ok());
+    assert_eq!(t.unwrap(), "=-J11+3");
+}

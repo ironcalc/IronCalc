@@ -280,6 +280,16 @@ impl<'a> Model<'a> {
         }
     }
 
+    fn is_formula_with_prefix(&self, value: &str) -> bool {
+        if let Some(stripped) = value.strip_prefix(['=', '+', '-']) {
+            if stripped.is_empty() || self.cast_number(stripped).is_some() {
+                return false;
+            }
+            return true;
+        }
+        false
+    }
+
     pub(crate) fn evaluate_node_in_context(
         &mut self,
         node: &Node,
@@ -1076,7 +1086,14 @@ impl<'a> Model<'a> {
             .worksheet(target.sheet)
             .map_err(|e| format!("Could not find target worksheet: {e}"))?
             .get_name();
-        if let Some(formula) = value.strip_prefix('=') {
+        if self.is_formula_with_prefix(value) {
+            let formula;
+            if let Some(eq_formula) = value.strip_prefix('=') {
+                formula = eq_formula
+            } else {
+                formula = value;
+            }
+
             let cell_reference = CellReferenceRC {
                 sheet: source_sheet_name.to_owned(),
                 row: source.row,
@@ -1194,7 +1211,15 @@ impl<'a> Model<'a> {
                 return Err("Invalid worksheet index".to_owned());
             }
         };
-        if let Some(formula_str) = value.strip_prefix('=') {
+
+        if self.is_formula_with_prefix(value) {
+            let formula_str;
+            if let Some(eq_formula) = value.strip_prefix('=') {
+                formula_str = eq_formula
+            } else {
+                formula_str = value;
+            }
+
             let cell_reference = CellReferenceRC {
                 sheet: source_sheet_name.to_string(),
                 row: source.row,
@@ -1210,7 +1235,7 @@ impl<'a> Model<'a> {
                 "={}",
                 to_localized_string(formula, &cell_reference, self.locale, self.language)
             ));
-        };
+        }
         Ok(value.to_string())
     }
 
@@ -1477,11 +1502,15 @@ impl<'a> Model<'a> {
                 .styles
                 .get_style_without_quote_prefix(style_index)?;
         }
-        let formula = formula
-            .strip_prefix('=')
-            .ok_or_else(|| format!("\"{formula}\" is not a valid formula"))?;
-        self.set_cell_with_formula(sheet, row, column, formula, style_index)?;
-        Ok(())
+        if self.is_formula_with_prefix(&formula) {
+            let formula = formula
+                .strip_prefix('=')
+                .ok_or_else(|| format!("\"{formula}\" is not a valid formula"))?;
+            self.set_cell_with_formula(sheet, row, column, formula, style_index)?;
+            Ok(())
+        } else {
+            Err("\"{formula}\" is not a valid formula".to_string())
+        }
     }
 
     /// Sets a cell parametrized by (`sheet`, `row`, `column`) with `value`.
@@ -1542,19 +1571,22 @@ impl<'a> Model<'a> {
                     .styles
                     .get_style_without_quote_prefix(style_index)?;
             }
-            if let Some(formula) = value.strip_prefix('=') {
-                let formula_index =
-                    self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
-                // Update the style if needed
-                let cell = CellReferenceIndex { sheet, row, column };
-                let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
-                if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
-                    let new_style_index = self
-                        .workbook
-                        .styles
-                        .get_style_with_format(new_style_index, &units.get_num_fmt())?;
-                    let style = self.workbook.styles.get_style(new_style_index)?;
-                    self.set_cell_style(sheet, row, column, &style)?
+            if self.is_formula_with_prefix(&value) {
+                if let Some(formula) = value.strip_prefix('=') {
+                    let formula_index =
+                        self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
+                    // Update the style if needed
+                    let cell = CellReferenceIndex { sheet, row, column };
+                    let parsed_formula =
+                        &self.parsed_formulas[sheet as usize][formula_index as usize];
+                    if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
+                        let new_style_index = self
+                            .workbook
+                            .styles
+                            .get_style_with_format(new_style_index, &units.get_num_fmt())?;
+                        let style = self.workbook.styles.get_style(new_style_index)?;
+                        self.set_cell_style(sheet, row, column, &style)?
+                    }
                 }
             } else {
                 // The list of currencies is '$', '€' and the local currency
@@ -2546,5 +2578,15 @@ mod tests {
             model.workbook.worksheet(5),
             Err("Invalid sheet index".to_string()),
         )
+    }
+
+    #[test]
+    fn test_update_cell_with_prefixe_formula() {
+        let mut model = new_empty_model();
+
+        let update_result = model.update_cell_with_formula(0, 1, 1, "-A2*2".to_string());
+        model.evaluate();
+        assert_eq!(update_result, Ok(()));
+        assert_eq!(model._get_formula("A1"), *"=-A2*2");
     }
 }

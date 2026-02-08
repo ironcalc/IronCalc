@@ -81,3 +81,51 @@ fn test_locale() {
     assert_eq!(model._get_formula("A1"), *"=SOMME(1,123;2)");
     assert_eq!(model._get_text("B1"), *"=SUM(1,123;2)");
 }
+
+#[test]
+fn test_prefixes() {
+    let mut model = new_empty_model();
+
+    // model._set("A1", "+A1+A2");
+    // assert_eq!(model._get_formula("A1"), *"=+A1+A2");
+
+    model._set("A2", "-A1-A2");
+    assert_eq!(model._get_formula("A2"), *"=-A1-A2");
+
+    // model._set("A3", "+4+2");
+    // assert_eq!(model._get_formula("A3"), *"=4+2");
+
+    model._set("A4", "-4-2");
+    assert_eq!(model._get_formula("A4"), *"=-4-2");
+
+    model._set("A5", "-42");
+    assert_eq!(model._get_formula("A5"), *"");
+
+    model._set("A6", "+42");
+    assert_eq!(model._get_formula("A6"), *"");
+
+    model._set("A7", "-A");
+    assert_eq!(model._get_formula("A7"), *"=-A");
+
+    model._set("A8", "+A");
+    assert_eq!(model._get_formula("A8"), *"=+A");
+
+    model._set("A9", "-A1");
+    assert_eq!(model._get_formula("A9"), *"=-A1");
+
+    // model._set("A10", "+A1");
+    // assert_eq!(model._get_formula("A10"), *"=+A1");
+
+    model._set("A11", "+=2");
+    assert_eq!(model._get_formula("A11"), *"");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A3"), *"6");
+    assert_eq!(model._get_text("A4"), *"-6");
+    assert_eq!(model._get_text("A5"), *"-42");
+    assert_eq!(model._get_text("A6"), *"42");
+    assert_eq!(model._get_text("A7"), *"#NAME?");
+    assert_eq!(model._get_text("A8"), *"#NAME?");
+    assert_eq!(model._get_text("A11"), *"+=2");
+}
