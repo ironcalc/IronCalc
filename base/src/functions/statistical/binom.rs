@@ -205,7 +205,7 @@ impl<'a> Model<'a> {
         if trials < 0.0
             || trials > u64::MAX as f64
             || p.is_nan()
-            || !(0.0..=1.0).contains(&p)
+            || !(0.0..1.0).contains(&p)
             || alpha.is_nan()
             || alpha <= 0.0
             || alpha >= 1.0
@@ -264,7 +264,7 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        if number_f < 0.0 || number_s < 1.0 || !(0.0..1.0).contains(&probability_s) {
+        if number_f < 0.0 || number_s < 1.0 || probability_s <= 0.0 || probability_s >= 1.0 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
