@@ -2592,7 +2592,7 @@ mod tests {
     }
 
     #[test]
-    fn test_update_cell_with_prefixe_formula() {
+    fn test_update_cell_with_sign_prefixed_formulas() {
         let mut model = new_empty_model();
 
         let update_result = model.update_cell_with_formula(0, 1, 1, "-A2*2".to_string());

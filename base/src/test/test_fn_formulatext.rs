@@ -83,7 +83,7 @@ fn test_locale() {
 }
 
 #[test]
-fn test_prefixes() {
+fn test_sign_prefixed() {
     let mut model = new_empty_model();
 
     model._set("A2", "-B1-B2");

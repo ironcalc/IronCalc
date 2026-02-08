@@ -106,7 +106,7 @@ fn move_cell_value_to_area_basic() {
 }
 
 #[test]
-fn extend_to_formula_prefix() {
+fn extend_to_sign_prefixed_formulas() {
     let mut model = new_empty_model();
     let source = CellReferenceIndex {
         sheet: 0,

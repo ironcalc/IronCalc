@@ -230,7 +230,7 @@ fn test_move_formula_rectangle() {
 }
 
 #[test]
-fn test_move_formula_prefixes() {
+fn test_move_sign_prefixed_formulas() {
     let mut model = new_empty_model();
 
     let source = &CellReferenceIndex {
