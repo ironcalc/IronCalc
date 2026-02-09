@@ -92,6 +92,13 @@ fn test_update_cell_with_formula() {
     // Case3 : Invalid Column
     let update_result = model.update_cell_with_formula(0, 1, 1048579, "=A1*2".to_string());
     assert_eq!(update_result, Err("Incorrect row or column".to_string()));
+
+    // Case4 : Invalid formula
+    let update_result = model.update_cell_with_formula(0, 1, 2, "A1*42".to_string());
+    assert_eq!(
+        update_result,
+        Err("\"A1*42\" is not a valid formula".to_string())
+    );
 }
 
 #[test]

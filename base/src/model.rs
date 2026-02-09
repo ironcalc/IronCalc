@@ -1516,7 +1516,7 @@ impl<'a> Model<'a> {
             self.set_cell_with_formula(sheet, row, column, new_formula, style_index)?;
             Ok(())
         } else {
-            Err("\"{formula}\" is not a valid formula".to_string())
+            Err(format!("\"{formula}\" is not a valid formula"))
         }
     }
 
