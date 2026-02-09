@@ -4,7 +4,7 @@
     "undo": "Undo",
     "copy_styles": "Copy styles",
     "clear_formatting": "Clear formatting",
-    "euro": "Format as Euro",
+    "currency": "Format as currency",
     "percentage": "Format as percentage",
     "bold": "Bold",
     "italic": "Italic",
