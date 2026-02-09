@@ -3,7 +3,10 @@
 use crate::test::util::new_empty_model;
 
 fn create_formula_with_args(func_name: &str, count: usize) -> String {
-    let args = (0..count).map(|_| "1".to_string()).collect::<Vec<_>>().join(", ");
+    let args = (0..count)
+        .map(|_| "1".to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
     format!("={}({})", func_name, args)
 }
 
@@ -29,7 +32,6 @@ fn test_with_50_arguments() {
     let mut model = new_empty_model();
     model._set("A1", &create_formula_with_args("LCM", 50));
     model._set("A2", &create_formula_with_args("GCD", 50));
-
 
     model.evaluate();
 
