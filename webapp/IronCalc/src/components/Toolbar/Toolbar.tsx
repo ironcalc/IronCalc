@@ -222,7 +222,7 @@ function Toolbar(properties: ToolbarProperties) {
 
         {/* Number Format Group */}
         <ButtonGroup>
-          <Tooltip title={t("toolbar.euro")}>
+          <Tooltip title={t("toolbar.currency")}>
             <StyledButton
               type="button"
               $pressed={false}

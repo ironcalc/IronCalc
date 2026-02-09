@@ -4,7 +4,7 @@
     "undo": "Rückgängig",
     "copy_styles": "Formatierung kopieren",
     "clear_formatting": "Formatierung löschen",
-    "euro": "Als Euro formatieren",
+    "currency": "Als Währung formatieren",
     "percentage": "Als Prozent formatieren",
     "bold": "Fett",
     "italic": "Kursiv",
