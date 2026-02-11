@@ -77,7 +77,10 @@ test('Styles work', () => {
 
 test("Add sheets", (t) => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
-    model.newSheet();
+    
+    const result = model.newSheet();
+    assert.deepEqual(result, { name: 'Sheet2', index: 1 });
+
     model.renameSheet(1, "NewName");
     let props = model.getWorksheetsProperties();
     assert.deepEqual(props, [{
@@ -91,6 +94,31 @@ test("Add sheets", (t) => {
         state: 'visible'
     }
     ]);
+});
+
+test("newSheet returns sheet result", (t) => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    
+    // Test first new sheet - should be at index 1
+    const result1 = model.newSheet();
+    console.log(result1);
+    assert.strictEqual(result1.name, "Sheet2");
+    assert.strictEqual(result1.index, 1);  // This is the sheet index (position)
+    
+    // Test second new sheet - should be at index 2
+    const result2 = model.newSheet();
+    assert.strictEqual(result2.name, "Sheet3");
+    assert.strictEqual(result2.index, 2);  // This is the sheet index (position)
+    
+    // Verify we can use the returned index with other API methods
+    model.renameSheet(result1.index, "FirstNewSheet");
+    model.renameSheet(result2.index, "SecondNewSheet");
+    
+    // Verify the sheets actually exist and were renamed
+    const props = model.getWorksheetsProperties();
+    assert.strictEqual(props.length, 3);
+    assert.strictEqual(props[1].name, "FirstNewSheet");
+    assert.strictEqual(props[2].name, "SecondNewSheet");
 });
 
 test("invalid sheet index throws an exception", () => {

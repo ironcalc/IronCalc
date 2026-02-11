@@ -60,6 +60,12 @@ struct DefinedName {
 }
 
 #[derive(Serialize)]
+struct NewSheet {
+    name: String,
+    index: u32,
+}
+
+#[derive(Serialize)]
 struct FmtSettings {
     currency: String,
     currency_format: String,
@@ -168,9 +174,11 @@ impl Model {
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "newSheet")]
-    pub fn new_sheet(&mut self) -> Result<(), JsError> {
-        self.model.new_sheet().map_err(to_js_error)
+    #[wasm_bindgen(js_name = "newSheet", unchecked_return_type = "NewSheet")]
+    pub fn new_sheet(&mut self) -> Result<JsValue, JsError> {
+        let (name, index) = self.model.new_sheet().map_err(to_js_error)?;
+        let result = NewSheet { name, index };
+        serde_wasm_bindgen::to_value(&result).map_err(|e| to_js_error(e.to_string()))
     }
 
     #[wasm_bindgen(js_name = "deleteSheet")]
