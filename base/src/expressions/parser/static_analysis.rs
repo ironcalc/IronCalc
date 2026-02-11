@@ -550,6 +550,14 @@ fn args_signature_irr(arg_count: usize) -> Vec<Signature> {
     }
 }
 
+fn args_signature_fvschedule(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Scalar, Signature::Vector]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
 fn args_signature_xirr(arg_count: usize) -> Vec<Signature> {
     if arg_count == 2 {
         vec![Signature::Vector; arg_count]
@@ -753,6 +761,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Dollarfr => args_signature_scalars(arg_count, 2, 0),
         Function::Effect => args_signature_scalars(arg_count, 2, 0),
         Function::Fv => args_signature_scalars(arg_count, 3, 2),
+        Function::Fvschedule => args_signature_fvschedule(arg_count),
         Function::Ipmt => args_signature_scalars(arg_count, 4, 2),
         Function::Irr => args_signature_irr(arg_count),
         Function::Ispmt => args_signature_scalars(arg_count, 4, 0),
@@ -760,9 +769,20 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Nominal => args_signature_scalars(arg_count, 2, 0),
         Function::Nper => args_signature_scalars(arg_count, 3, 2),
         Function::Npv => args_signature_npv(arg_count),
+        Function::Duration => args_signature_scalars(arg_count, 5, 1),
+        Function::Mduration => args_signature_scalars(arg_count, 5, 1),
         Function::Pduration => args_signature_scalars(arg_count, 3, 0),
+        Function::Accrint => args_signature_scalars(arg_count, 6, 2),
+        Function::Accrintm => args_signature_scalars(arg_count, 4, 1),
+        Function::Coupdaybs => args_signature_scalars(arg_count, 3, 1),
+        Function::Coupdays => args_signature_scalars(arg_count, 3, 1),
+        Function::Coupdaysnc => args_signature_scalars(arg_count, 3, 1),
+        Function::Coupncd => args_signature_scalars(arg_count, 3, 1),
+        Function::Coupnum => args_signature_scalars(arg_count, 3, 1),
+        Function::Couppcd => args_signature_scalars(arg_count, 3, 1),
         Function::Pmt => args_signature_scalars(arg_count, 3, 2),
         Function::Ppmt => args_signature_scalars(arg_count, 4, 2),
+        Function::Price => args_signature_scalars(arg_count, 6, 1),
         Function::Pv => args_signature_scalars(arg_count, 3, 2),
         Function::Rate => args_signature_scalars(arg_count, 3, 3),
         Function::Rri => args_signature_scalars(arg_count, 3, 0),
@@ -771,6 +791,14 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Tbilleq => args_signature_scalars(arg_count, 3, 0),
         Function::Tbillprice => args_signature_scalars(arg_count, 3, 0),
         Function::Tbillyield => args_signature_scalars(arg_count, 3, 0),
+        Function::Yield => args_signature_scalars(arg_count, 6, 1),
+        Function::Pricedisc => args_signature_scalars(arg_count, 4, 1),
+        Function::Pricemat => args_signature_scalars(arg_count, 5, 1),
+        Function::Yielddisc => args_signature_scalars(arg_count, 4, 1),
+        Function::Yieldmat => args_signature_scalars(arg_count, 5, 1),
+        Function::Disc => args_signature_scalars(arg_count, 4, 1),
+        Function::Received => args_signature_scalars(arg_count, 4, 1),
+        Function::Intrate => args_signature_scalars(arg_count, 4, 1),
         Function::Xirr => args_signature_xirr(arg_count),
         Function::Xnpv => args_signature_xnpv(arg_count),
         Function::Besseli => args_signature_scalars(arg_count, 2, 0),
@@ -1147,6 +1175,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Dollarfr => not_implemented(args),
         Function::Effect => not_implemented(args),
         Function::Fv => not_implemented(args),
+        Function::Fvschedule => not_implemented(args),
         Function::Ipmt => not_implemented(args),
         Function::Irr => not_implemented(args),
         Function::Ispmt => not_implemented(args),
@@ -1154,9 +1183,20 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Nominal => not_implemented(args),
         Function::Nper => not_implemented(args),
         Function::Npv => not_implemented(args),
+        Function::Duration => not_implemented(args),
+        Function::Mduration => not_implemented(args),
         Function::Pduration => not_implemented(args),
+        Function::Accrint => not_implemented(args),
+        Function::Accrintm => not_implemented(args),
+        Function::Coupdaybs => not_implemented(args),
+        Function::Coupdays => not_implemented(args),
+        Function::Coupdaysnc => not_implemented(args),
+        Function::Coupncd => not_implemented(args),
+        Function::Coupnum => not_implemented(args),
+        Function::Couppcd => not_implemented(args),
         Function::Pmt => not_implemented(args),
         Function::Ppmt => not_implemented(args),
+        Function::Price => not_implemented(args),
         Function::Pv => not_implemented(args),
         Function::Rate => not_implemented(args),
         Function::Rri => not_implemented(args),
@@ -1165,6 +1205,14 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Tbilleq => not_implemented(args),
         Function::Tbillprice => not_implemented(args),
         Function::Tbillyield => not_implemented(args),
+        Function::Yield => not_implemented(args),
+        Function::Pricedisc => not_implemented(args),
+        Function::Pricemat => not_implemented(args),
+        Function::Yielddisc => not_implemented(args),
+        Function::Yieldmat => not_implemented(args),
+        Function::Disc => not_implemented(args),
+        Function::Received => not_implemented(args),
+        Function::Intrate => not_implemented(args),
         Function::Xirr => not_implemented(args),
         Function::Xnpv => not_implemented(args),
         Function::Besseli => scalar_arguments(args),
