@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+#![allow(clippy::panic)]
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
@@ -52,4 +53,15 @@ impl<'a> Model<'a> {
             .cell(cell_reference.row, cell_reference.column)
             .unwrap()
     }
+}
+
+#[allow(dead_code)]
+pub fn assert_approx_eq(actual: &str, expected: f64, tolerance: f64) {
+    let actual_val: f64 = actual
+        .parse()
+        .unwrap_or_else(|_| panic!("Failed to parse result as number: {actual}"));
+    assert!(
+        (actual_val - expected).abs() < tolerance,
+        "Expected ~{expected}, got {actual}"
+    );
 }
