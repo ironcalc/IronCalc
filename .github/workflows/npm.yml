@@ -1,4 +1,4 @@
-name: nodejs
+name: Publish npm packages
 env:
   DEBUG: napi:*
   APP_NAME: nodejs
@@ -17,7 +17,9 @@ defaults:
   run:
     working-directory: ./bindings/nodejs
 jobs:
-  build:
+  # --- NodeJS Native Bindings Jobs ---
+  build-nodejs:
+    name: build nodejs - ${{ matrix.settings.target }}
     strategy:
       fail-fast: false
       matrix:
@@ -137,7 +139,6 @@ jobs:
               sudo apt-get update
               sudo apt-get install gcc-riscv64-linux-gnu -y
             build: pnpm run build --target riscv64gc-unknown-linux-gnu
-    name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     defaults:
       run:
@@ -203,7 +204,7 @@ jobs:
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
     needs:
-      - build
+      - build-nodejs
     strategy:
       fail-fast: false
       matrix:
@@ -246,7 +247,7 @@ jobs:
   test-linux-x64-gnu-binding:
     name: Test bindings on Linux-x64-gnu - node@${{ matrix.node }}
     needs:
-      - build
+      - build-nodejs
     strategy:
       fail-fast: false
       matrix:
@@ -283,7 +284,7 @@ jobs:
   # test-linux-x64-musl-binding:
   #   name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
   #   needs:
-  #     - build
+  #     - build-nodejs
   #   strategy:
   #     fail-fast: false
   #     matrix:
@@ -322,7 +323,7 @@ jobs:
   test-linux-aarch64-gnu-binding:
     name: Test bindings on aarch64-unknown-linux-gnu - node@${{ matrix.node }}
     needs:
-      - build
+      - build-nodejs
     strategy:
       fail-fast: false
       matrix:
@@ -370,7 +371,7 @@ jobs:
   # test-linux-aarch64-musl-binding:
   #   name: Test bindings on aarch64-unknown-linux-musl - node@${{ matrix.node }}
   #   needs:
-  #     - build
+  #     - build-nodejs
   #   runs-on: ubuntu-latest
   #   defaults:
   #     run:
@@ -408,7 +409,7 @@ jobs:
   universal-macOS:
     name: Build universal macOS binary
     needs:
-      - build
+      - build-nodejs
     runs-on: macos-latest
     defaults:
       run:
@@ -452,8 +453,8 @@ jobs:
           name: bindings-universal-apple-darwin
           path: bindings/nodejs/${{ env.APP_NAME }}.*.node
           if-no-files-found: error
-  publish:
-    name: Publish
+  publish-nodejs:
+    name: Publish @ironcalc/nodejs
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -487,6 +488,7 @@ jobs:
       - name: Download all artifacts (flatten)
         uses: actions/download-artifact@v4
         with:
+          pattern: bindings-*
           path: ./bindings/nodejs
           merge-multiple: true
 
@@ -520,4 +522,142 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # --- WASM and Workbook Jobs ---
+  build-test-wasm:
+    name: Build and test @ironcalc/wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install wasm build tooling
+        run: npm install -g wasm-pack typescript
+      - name: Test wasm package (nodejs target)
+        working-directory: bindings/wasm
+        run: make tests
+      - name: Build wasm package (web target)
+        working-directory: bindings/wasm
+        run: make
+      - name: Upload wasm pkg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-pkg
+          path: bindings/wasm/pkg
+          if-no-files-found: error
+
+  build-test-workbook:
+    name: Build and test @ironcalc/workbook
+    runs-on: ubuntu-latest
+    needs:
+      - build-test-wasm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Download wasm pkg artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm-pkg
+          path: bindings/wasm/pkg
+      - name: Install workbook dependencies
+        working-directory: webapp/IronCalc
+        run: npm install
+      - name: Build workbook package
+        working-directory: webapp/IronCalc
+        run: npm run build
+      - name: Test workbook package
+        working-directory: webapp/IronCalc
+        run: npm run test
+
+  publish-wasm:
+    name: Publish @ironcalc/wasm
+    runs-on: ubuntu-latest
+    needs:
+      - build-test-wasm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Download wasm pkg artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm-pkg
+          path: bindings/wasm/pkg
+      - name: Read local version
+        id: wasm_version
+        run: echo "version=$(jq -r .version bindings/wasm/pkg/package.json)" >> "$GITHUB_OUTPUT"
+      - name: Check published version
+        id: wasm_check
+        run: |
+          REMOTE_VERSION="$(npm view @ironcalc/wasm version || true)"
+          if [ "$REMOTE_VERSION" = "${{ steps.wasm_version.outputs.version }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish
+        if: ${{ steps.wasm_check.outputs.skip != 'true' && github.event.inputs.publish == 'true' }}
+        working-directory: bindings/wasm/pkg
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+          npm publish --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-workbook:
+    name: Publish @ironcalc/workbook
+    runs-on: ubuntu-latest
+    needs:
+      - build-test-workbook
+      - publish-wasm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Download wasm pkg artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm-pkg
+          path: bindings/wasm/pkg
+      - name: Install workbook dependencies
+        working-directory: webapp/IronCalc
+        run: npm install
+      - name: Build workbook package
+        working-directory: webapp/IronCalc
+        run: npm run build
+      - name: Align wasm dependency version
+        working-directory: webapp/IronCalc
+        run: |
+          WASM_VERSION="$(jq -r .version ../../bindings/wasm/pkg/package.json)"
+          npm pkg set "dependencies.@ironcalc/wasm=^${WASM_VERSION}"
+      - name: Read local version
+        id: workbook_version
+        working-directory: webapp/IronCalc
+        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+      - name: Check published version
+        id: workbook_check
+        run: |
+          REMOTE_VERSION="$(npm view @ironcalc/workbook version || true)"
+          if [ "$REMOTE_VERSION" = "${{ steps.workbook_version.outputs.version }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish
+        if: ${{ steps.workbook_check.outputs.skip != 'true' && github.event.inputs.publish == 'true' }}
+        working-directory: webapp/IronCalc
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+          npm publish --access public
+        env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
