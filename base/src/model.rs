@@ -1828,6 +1828,8 @@ impl<'a> Model<'a> {
     /// If there is a formula returns the formula
     /// If the cell is empty returns the empty string
     /// Returns an error if there is no worksheet
+    /// If the cell has quote prefix style it adds a ' at the beginning of the value
+    /// If the cell is date formatted it tries to format it as date
     pub fn get_localized_cell_content(
         &self,
         sheet: u32,
@@ -1852,11 +1854,36 @@ impl<'a> Model<'a> {
                     to_localized_string(formula, &cell_ref, self.locale, self.language)
                 ))
             }
-            None => Ok(cell.get_localized_text(
-                &self.workbook.shared_strings,
-                self.locale,
-                self.language,
-            )),
+            None => {
+                let style_index = cell.get_style();
+                let style = self.workbook.styles.get_style(style_index)?;
+                if style.quote_prefix {
+                    Ok(format!(
+                        "'{}",
+                        cell.get_localized_text(
+                            &self.workbook.shared_strings,
+                            self.locale,
+                            self.language,
+                        )
+                    ))
+                } else {
+                    // If it is a date formatted cell we try to format it as date, if it fails we return the raw value
+                    if is_likely_date_number_format(&style.num_fmt) {
+                        let value = cell.value(&self.workbook.shared_strings, self.language);
+                        if let CellValue::Number(n) = value {
+                            let formatted = format_number(n, &style.num_fmt, self.locale);
+                            if formatted.error.is_none() {
+                                return Ok(formatted.text);
+                            }
+                        }
+                    }
+                    Ok(cell.get_localized_text(
+                        &self.workbook.shared_strings,
+                        self.locale,
+                        self.language,
+                    ))
+                }
+            }
         }
     }
 
