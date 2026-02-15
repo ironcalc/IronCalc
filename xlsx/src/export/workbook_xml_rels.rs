@@ -18,6 +18,10 @@ pub(crate) fn get_workbook_xml_rels(workbook: &Workbook) -> String {
     relationships_str.push(
         format!("<Relationship Id=\"rId{id}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings\" Target=\"sharedStrings.xml\"/>")
     );
+    id += 1;
+    relationships_str.push(
+        format!("<Relationship Id=\"rId{id}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata\" Target=\"metadata.xml\"/>")
+    );
     format!(
         "{XML_DECLARATION}\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">{}</Relationships>",
         relationships_str.join("")

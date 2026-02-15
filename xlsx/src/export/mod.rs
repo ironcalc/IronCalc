@@ -42,12 +42,13 @@ fn get_content_types_xml(workbook: &Workbook) -> String {
         );
         content.push(sheet);
     }
-    // we skip the theme and calcChain
+    // we skip the theme and calcChain for now
     // r#"<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>"#,
     // r#"<Override PartName="/xl/calcChain.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"/>"#,
     content.extend([
         r#"<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>"#.to_string(),
         r#"<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>"#.to_string(),
+        r#"<Override PartName="/xl/metadata.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml"/>"#.to_string(),
         r#"<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>"#.to_string(),
         r#"<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>"#.to_string(),
         r#"</Types>"#.to_string(),
@@ -101,6 +102,9 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.write_all(styles::get_styles_xml(workbook).as_bytes())?;
     zip.start_file("xl/workbook.xml", options)?;
     zip.write_all(workbook::get_workbook_xml(workbook, selected_sheet).as_bytes())?;
+    zip.start_file("xl/metadata.xml", options)?;
+    let metadata_xml = include_str!("metadata.xml");
+    zip.write_all(metadata_xml.as_bytes())?;
 
     zip.add_directory("xl/_rels", options)?;
     zip.start_file("xl/_rels/workbook.xml.rels", options)?;

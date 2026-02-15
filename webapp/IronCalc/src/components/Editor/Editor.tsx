@@ -44,6 +44,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
+import ErrorDialog from "../ErrorDialog/ErrorDialog";
 import type { WorkbookState } from "../workbookState";
 import useKeyDown from "./useKeyDown";
 import getFormulaHTML from "./util";
@@ -70,13 +72,23 @@ interface EditorOptions {
   model: Model;
   workbookState: WorkbookState;
   type: "cell" | "formula-bar";
+  canEdit: boolean;
 }
 
 const Editor = (options: EditorOptions) => {
-  const { model, onEditEnd, onTextUpdated, originalText, workbookState, type } =
-    options;
+  const {
+    canEdit,
+    model,
+    onEditEnd,
+    onTextUpdated,
+    originalText,
+    workbookState,
+    type,
+  } = options;
 
+  const { t } = useTranslation();
   const [text, setText] = useState(originalText);
+  const [formulaError, setFormulaError] = useState<string | null>(null);
 
   const formulaRef = useRef<HTMLDivElement>(null);
   const maskRef = useRef<HTMLDivElement>(null);
@@ -179,81 +191,106 @@ const Editor = (options: EditorOptions) => {
   const styledFormula = getFormulaHTML(model, mtext).html;
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        height: "100%",
-        overflow: "hidden",
-        display: showEditor,
-        background: "#FFF",
-        fontFamily: "var(--palette-sheet-default-cell-font-family)",
-        fontSize: "13px",
-      }}
-    >
+    <>
+      <ErrorDialog
+        open={formulaError !== null}
+        onClose={() => setFormulaError(null)}
+        title={t("error_dialog.error_editing_formula")}
+        message={formulaError ?? undefined}
+      />
       <div
-        ref={maskRef}
         style={{
-          ...commonCSS,
-          textAlign: "left",
-          pointerEvents: "none",
+          position: "relative",
+          width: "100%",
           height: "100%",
+          overflow: "hidden",
+          display: showEditor,
+          background: "#FFF",
+          fontFamily: "var(--palette-sheet-default-cell-font-family)",
+          fontSize: "13px",
         }}
       >
         <div
+          ref={maskRef}
           style={{
-            display: "inline-block",
+            ...commonCSS,
+            textAlign: "left",
+            pointerEvents: "none",
+            height: "100%",
           }}
-          ref={formulaRef}
         >
-          {styledFormula}
+          <div
+            style={{
+              display: "inline-block",
+            }}
+            ref={formulaRef}
+          >
+            {styledFormula}
+          </div>
         </div>
+        <textarea
+          ref={textareaRef}
+          rows={1}
+          style={{
+            ...commonCSS,
+            color: "transparent",
+            backgroundColor: "transparent",
+            caretColor,
+            outline: "none",
+            resize: "none",
+            border: "none",
+            height: "100%",
+            overflow: "hidden",
+            alignContent: "baseline",
+          }}
+          defaultValue={text}
+          spellCheck="false"
+          onKeyDown={(event) => {
+            try {
+              onKeyDown(event);
+            } catch (error) {
+              // quit editing without modifying the cell
+              const cell = workbookState.getEditingCell();
+              if (cell) {
+                model.setSelectedSheet(cell.sheet);
+              }
+              workbookState.clearEditingCell();
+              onEditEnd();
+              setFormulaError(String(error));
+            }
+          }}
+          disabled={!canEdit}
+          onChange={onChange}
+          onBlur={onBlur}
+          onPointerDown={(event) => {
+            if (!canEdit) {
+              return;
+            }
+            // We are either clicking in the same cell we are editing,
+            // in which case we just change the mode to edit, or we click
+            // in a different editor, in which case we switch the focus
+            const cell = workbookState.getEditingCell();
+            if (cell) {
+              // We make sure the mode is edit
+              cell.mode = "edit";
+              cell.focus = type;
+              workbookState.setEditingCell(cell);
+              event.stopPropagation();
+            }
+          }}
+          onScroll={() => {
+            if (maskRef.current && textareaRef.current) {
+              maskRef.current.style.left = `-${textareaRef.current.scrollLeft}px`;
+              maskRef.current.style.top = `-${textareaRef.current.scrollTop}px`;
+            }
+          }}
+          onPaste={(event) => event.stopPropagation()}
+          onCopy={(event) => event.stopPropagation()}
+          onDoubleClick={(event) => event.stopPropagation()}
+          onCut={(event) => event.stopPropagation()}
+        />
       </div>
-      <textarea
-        ref={textareaRef}
-        rows={1}
-        style={{
-          ...commonCSS,
-          color: "transparent",
-          backgroundColor: "transparent",
-          caretColor,
-          outline: "none",
-          resize: "none",
-          border: "none",
-          height: "100%",
-          overflow: "hidden",
-          alignContent: "baseline",
-        }}
-        defaultValue={text}
-        spellCheck="false"
-        onKeyDown={onKeyDown}
-        onChange={onChange}
-        onBlur={onBlur}
-        onPointerDown={(event) => {
-          // We are either clicking in the same cell we are editing,
-          // in which case we just change the mode to edit, or we click
-          // in a different editor, in which case we switch the focus
-          const cell = workbookState.getEditingCell();
-          if (cell) {
-            // We make sure the mode is edit
-            cell.mode = "edit";
-            cell.focus = type;
-            workbookState.setEditingCell(cell);
-            event.stopPropagation();
-          }
-        }}
-        onScroll={() => {
-          if (maskRef.current && textareaRef.current) {
-            maskRef.current.style.left = `-${textareaRef.current.scrollLeft}px`;
-            maskRef.current.style.top = `-${textareaRef.current.scrollTop}px`;
-          }
-        }}
-        onPaste={(event) => event.stopPropagation()}
-        onCopy={(event) => event.stopPropagation()}
-        onDoubleClick={(event) => event.stopPropagation()}
-        onCut={(event) => event.stopPropagation()}
-      />
-    </div>
+    </>
   );
 };
 export default Editor;

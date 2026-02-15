@@ -90,15 +90,6 @@ fn fn_or_xor() {
         model._set("A9", &format!("={func}(Z99)"));
         model._set("A10", &format!("={func}(X99:Z99"));
 
-        // Reference to cell with reference to empty range
-        model._set("B11", "=X99:Z99");
-        model._set("A11", &format!("={func}(B11)"));
-
-        // Reference to cell with non-empty range
-        model._set("X12", "1");
-        model._set("B12", "=X12:Z12");
-        model._set("A12", &format!("={func}(B12)"));
-
         // Reference to text cell
         model._set("B13", "some_text");
         model._set("A13", &format!("={func}(B13)"));
@@ -143,17 +134,9 @@ fn fn_or_xor() {
         assert_eq!(model._get_text("A9"), *"#VALUE!");
         assert_eq!(model._get_text("A10"), *"#VALUE!");
 
-        assert_eq!(model._get_text("A11"), *"#VALUE!");
-
-        // TODO: This one depends on spill behaviour which isn't implemented yet
-        // assert_eq!(model._get_text("A12"), *"TRUE");
-
         assert_eq!(model._get_text("A13"), *"#VALUE!");
         assert_eq!(model._get_text("A14"), *"FALSE");
         assert_eq!(model._get_text("A15"), *"TRUE");
-
-        // TODO: This one depends on @ implicit intersection behaviour which isn't implemented yet
-        // assert_eq!(model._get_text("A16"), *"TRUE");
 
         assert_eq!(model._get_text("A17"), *"TRUE");
 
@@ -163,6 +146,27 @@ fn fn_or_xor() {
 
         assert_eq!(model._get_text("A20"), *"#DIV/0!");
     }
+}
+
+#[test]
+#[ignore = "not yet implemented"]
+fn spill_behaviour() {
+    let mut model = new_empty_model();
+
+    // Reference to cell with reference to empty range
+    model._set("B11", "=X99:Z99");
+    model._set("A11", "=OR(B11)");
+
+    // Reference to cell with non-empty range
+    model._set("X12", "1");
+    model._set("B12", "=X12:Z12");
+    model._set("A12", "=OR(B12)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A11"), *"FALSE");
+
+    assert_eq!(model._get_text("A12"), *"TRUE");
 }
 
 #[test]

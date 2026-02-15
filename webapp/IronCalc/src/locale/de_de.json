@@ -169,6 +169,17 @@
       "unfreeze_rows": "Fixierung der Zeilen aufheben"
     }
   },
+  "error_dialog": {
+    "ok": "OK",
+    "error_editing_formula": "Fehler beim Bearbeiten der Formel",
+    "error_deleting_cells": "Zellen konnten nicht gelöscht werden",
+    "error_deleting_rows": "Zeilen konnten nicht gelöscht werden",
+    "error_inserting_rows": "Zeilen konnten nicht eingefügt werden",
+    "error_moving_rows": "Zeilen konnten nicht verschoben werden",
+    "error_deleting_columns": "Spalten konnten nicht gelöscht werden",
+    "error_inserting_columns": "Spalten konnten nicht eingefügt werden",
+    "error_moving_columns": "Spalten konnten nicht verschoben werden"
+  },
   "color_picker": {
     "apply": "Farbe hinzufügen",
     "cancel": "Abbrechen",

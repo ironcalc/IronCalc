@@ -5,6 +5,7 @@ use serde::Serialize;
 
 use ironcalc::{
   base::{
+    expressions::types::Area,
     types::{CellType, Style},
     Model as BaseModel,
   },
@@ -95,10 +96,14 @@ impl Model {
 
   #[napi]
   pub fn clear_cell_contents(&mut self, sheet: u32, row: i32, column: i32) -> Result<()> {
-    self
-      .model
-      .cell_clear_contents(sheet, row, column)
-      .map_err(to_js_error)
+    let area = Area {
+      sheet,
+      row,
+      column,
+      width: 1,
+      height: 1,
+    };
+    self.model.range_clear_contents(&area).map_err(to_js_error)
   }
 
   #[napi]
@@ -360,7 +365,7 @@ impl Model {
   pub fn move_column(&mut self, sheet: u32, column: i32, delta: i32) -> Result<()> {
     self
       .model
-      .move_column_action(sheet, column, delta)
+      .move_columns_action(sheet, column, 1, delta)
       .map_err(to_js_error)
   }
 
@@ -368,7 +373,7 @@ impl Model {
   pub fn move_row(&mut self, sheet: u32, row: i32, delta: i32) -> Result<()> {
     self
       .model
-      .move_row_action(sheet, row, delta)
+      .move_rows_action(sheet, row, 1, delta)
       .map_err(to_js_error)
   }
 }

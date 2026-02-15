@@ -5,7 +5,7 @@ use crate::test::util::new_empty_model;
 fn test_cell_clear_all_non_existing_sheet() {
     let mut model = new_empty_model();
     assert_eq!(
-        model.cell_clear_all(13, 1, 1),
+        model._cell_clear_all(13, 1, 1),
         Err("Invalid sheet index".to_string())
     );
 }
@@ -13,7 +13,7 @@ fn test_cell_clear_all_non_existing_sheet() {
 #[test]
 fn test_cell_clear_all_unset_cell() {
     let mut model = new_empty_model();
-    assert!(model.cell_clear_all(0, 1, 1).is_ok());
+    assert!(model._cell_clear_all(0, 1, 1).is_ok());
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn test_cell_clear_all_with_value() {
     assert_eq!(model._get_text_at(0, 1, 1), "hello");
     assert_eq!(model.is_empty_cell(0, 1, 1), Ok(false));
 
-    model.cell_clear_all(0, 1, 1).unwrap();
+    model._cell_clear_all(0, 1, 1).unwrap();
     model.evaluate();
 
     assert_eq!(model._get_text_at(0, 1, 1), "");
@@ -44,7 +44,7 @@ fn test_cell_clear_all_referenced_elsewhere() {
     assert_eq!(model.is_empty_cell(0, 1, 1), Ok(false));
     assert_eq!(model.is_empty_cell(0, 2, 1), Ok(false));
 
-    model.cell_clear_all(0, 1, 1).unwrap();
+    model._cell_clear_all(0, 1, 1).unwrap();
     model.evaluate();
 
     assert_eq!(model._get_text_at(0, 1, 1), "");

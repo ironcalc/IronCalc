@@ -34,7 +34,7 @@ function WorkbookWithInit() {
 }
 
 const meta = {
-  title: "Example/Workbook",
+  title: "Components/Workbook",
   component: WorkbookWithInit,
   parameters: {
     layout: "fullscreen",

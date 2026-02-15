@@ -1,0 +1,62 @@
+.ic-error-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 32%);
+}
+
+.ic-error-dialog {
+  width: 280px;
+  max-width: calc(100% - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--palette-common-white);
+  box-shadow: 0px 1px 3px 0px rgb(39 37 37 / 10%);
+  font-family: var(--typography-font-family);
+}
+
+.ic-error-dialog-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 12px auto 8px auto;
+  border-radius: 4px;
+  color: var(--palette-error-main);
+  background-color: rgb(235 87 87 / 10%);
+}
+
+.ic-error-dialog-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ic-error-dialog-title {
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--palette-grey-900);
+}
+
+.ic-error-dialog-body {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--palette-grey-900);
+}
+
+.ic-error-dialog-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}

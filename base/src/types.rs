@@ -160,17 +160,59 @@ pub enum CellType {
     CompoundData = 128,
 }
 
+/// The evaluated value stored in a formula cell.
+/// `Unevaluated` is a transient state that only exists during evaluation.
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub enum FormulaValue {
+    Unevaluated,
+    Boolean(bool),
+    Number(f64),
+    Text(String),
+    Error {
+        ei: Error,
+        // Origin cell reference, e.g. "Sheet3!C4"
+        o: String,
+        // Human-readable error message, e.g. "Not implemented function"
+        m: String,
+    },
+}
+
+/// The value stored in a spill cell (no formula, no origin tracking).
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub enum SpillValue {
+    Boolean(bool),
+    Number(f64),
+    Text(String),
+    Error(Error),
+}
+
+/// Whether an array formula is a CSE (Ctrl+Shift+Enter) formula or a dynamic formula.
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub enum ArrayKind {
+    /// Ctrl+Shift+Enter array formula: fills a fixed declared range.
+    Cse,
+    /// Dynamic array formula: spills into adjacent cells automatically.
+    Dynamic,
+}
+
+// A cell in a worksheet.
+// Every cell has a style index (s) pointing to cell_xfs in the workbook styles.
+// Other fields:
+// * `f`    — formula index into the sheet's shared_formulas list
+// * `si`   — shared string index (SharedString cells only)
+// * `v`    — evaluated value (formula/spill cells)
+// * `r`    — spill range (width, height) for array/dynamic formula anchors
+// * `kind` — Cse or Dynamic for array formula anchors
+// * `a`    — anchor cell (row, column) for spill cells
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
 pub enum Cell {
     EmptyCell {
         s: i32,
     },
-
     BooleanCell {
         v: bool,
         s: i32,
     },
-
     NumberCell {
         v: f64,
         s: i32,
@@ -185,40 +227,29 @@ pub enum Cell {
         si: i32,
         s: i32,
     },
-    // Non evaluated Formula
+    // A regular (non-array) formula cell.
+    // `v` is `Unevaluated` transiently during evaluation, then holds the result.
     CellFormula {
         f: i32,
         s: i32,
+        v: FormulaValue,
     },
-
-    CellFormulaBoolean {
+    // The anchor of an array or dynamic formula.
+    // `kind` distinguishes CSE from dynamic; `r` is the spill range (width, height).
+    // `v` is `Unevaluated` transiently during evaluation, then holds the anchor cell result.
+    ArrayFormula {
         f: i32,
-        v: bool,
         s: i32,
+        r: (i32, i32),
+        kind: ArrayKind,
+        v: FormulaValue,
     },
-
-    CellFormulaNumber {
-        f: i32,
-        v: f64,
+    // A spill cell: holds a value produced by an array/dynamic formula at `a` (row, column).
+    SpillCell {
         s: i32,
+        a: (i32, i32),
+        v: SpillValue,
     },
-    // always inline string
-    CellFormulaString {
-        f: i32,
-        v: String,
-        s: i32,
-    },
-
-    CellFormulaError {
-        f: i32,
-        ei: Error,
-        s: i32,
-        // Origin: Sheet3!C4
-        o: String,
-        // Error Message: "Not implemented function"
-        m: String,
-    },
-    // TODO: Array formulas
 }
 
 impl Default for Cell {

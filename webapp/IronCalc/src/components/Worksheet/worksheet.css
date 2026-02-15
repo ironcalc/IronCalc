@@ -1,3 +1,13 @@
+.ironcalc-cell-handle {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: var(--palette-sheet-outline-color);
+  cursor: crosshair;
+  border-radius: 1px;
+  border: 1px solid white;
+}
+
 /* Spacer */
 .ic-worksheet-spacer {
   position: absolute;
@@ -106,6 +116,12 @@
   border: 0px solid var(--palette-sheet-outline-color);
   border-radius: 1px;
   background-color: var(--palette-sheet-outline-background-color);
+}
+
+.ic-worksheet-cell-array-structure {
+  position: absolute;
+  outline: 3px dashed var(--palette-sheet-cell-array-structure-color);
+  border-radius: 3px;
 }
 
 /* Cell outline */
