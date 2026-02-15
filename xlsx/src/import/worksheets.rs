@@ -326,6 +326,12 @@ fn get_formula_index(formula: &str, shared_formulas: &[String]) -> Option<i32> {
     None
 }
 
+enum ArrayKind {
+    None,
+    DynamicArray(i32, i32),
+    ArrayFormula(i32, i32),
+}
+
 // FIXME
 #[allow(clippy::too_many_arguments)]
 fn get_cell_from_excel(
@@ -338,6 +344,8 @@ fn get_cell_from_excel(
     cell_ref: &str,
     shared_strings: &mut Vec<String>,
     rich_text_inline: Option<String>,
+    anchor_cell: Option<(i32, i32)>,
+    array_kind: ArrayKind,
 ) -> Cell {
     // Possible cell types:
     // 18.18.11 ST_CellType (Cell Type)
@@ -351,14 +359,34 @@ fn get_cell_from_excel(
 
     if formula_index == -1 {
         match cell_type {
-            "b" => Cell::BooleanCell {
-                v: cell_value == Some("1"),
-                s: cell_style,
-            },
-            "n" => Cell::NumberCell {
-                v: cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
-                s: cell_style,
-            },
+            "b" => {
+                if let Some(anchor) = anchor_cell {
+                    Cell::SpillBoolean {
+                        v: cell_value == Some("1"),
+                        s: cell_style,
+                        a: anchor,
+                    }
+                } else {
+                    Cell::BooleanCell {
+                        v: cell_value == Some("1"),
+                        s: cell_style,
+                    }
+                }
+            }
+            "n" => {
+                if let Some(anchor) = anchor_cell {
+                    Cell::SpillNumber {
+                        v: cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
+                        s: cell_style,
+                        a: anchor,
+                    }
+                } else {
+                    Cell::NumberCell {
+                        v: cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
+                        s: cell_style,
+                    }
+                }
+            }
             "e" => {
                 // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
                 // Older engines would just import #VALUE!
@@ -370,9 +398,17 @@ fn get_cell_from_excel(
                         _ => error_name,
                     }
                 }
-                Cell::ErrorCell {
-                    ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
-                    s: cell_style,
+                if let Some(anchor) = anchor_cell {
+                    Cell::SpillError {
+                        ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
+                        s: cell_style,
+                        a: anchor,
+                    }
+                } else {
+                    Cell::ErrorCell {
+                        ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
+                        s: cell_style,
+                    }
                 }
             }
             "s" => Cell::SharedString {
@@ -388,7 +424,15 @@ fn get_cell_from_excel(
                     shared_strings.len() - 1
                 } as i32;
 
-                Cell::SharedString { si, s: cell_style }
+                if let Some(anchor) = anchor_cell {
+                    Cell::SpillString {
+                        v: cell_value.unwrap_or("").to_string(),
+                        s: cell_style,
+                        a: anchor,
+                    }
+                } else {
+                    Cell::SharedString { si, s: cell_style }
+                }
             }
             "d" => {
                 // Not implemented
@@ -421,15 +465,43 @@ fn get_cell_from_excel(
         }
     } else {
         match cell_type {
-            "b" => Cell::CellFormulaBoolean {
-                f: formula_index,
-                v: cell_value == Some("1"),
-                s: cell_style,
+            "b" => match array_kind {
+                ArrayKind::None => Cell::CellFormulaBoolean {
+                    f: formula_index,
+                    v: cell_value == Some("1"),
+                    s: cell_style,
+                },
+                ArrayKind::DynamicArray(row, column) => Cell::DynamicFormulaBoolean {
+                    f: formula_index,
+                    v: cell_value == Some("1"),
+                    s: cell_style,
+                    r: (row, column),
+                },
+                ArrayKind::ArrayFormula(row, column) => Cell::ArrayFormulaBoolean {
+                    f: formula_index,
+                    v: cell_value == Some("1"),
+                    s: cell_style,
+                    r: (row, column),
+                },
             },
-            "n" => Cell::CellFormulaNumber {
-                f: formula_index,
-                v: cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
-                s: cell_style,
+            "n" => match array_kind {
+                ArrayKind::None => Cell::CellFormulaNumber {
+                    f: formula_index,
+                    v: cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
+                    s: cell_style,
+                },
+                ArrayKind::DynamicArray(row, column) => Cell::DynamicFormulaNumber {
+                    f: formula_index,
+                    v: cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
+                    s: cell_style,
+                    r: (row, column),
+                },
+                ArrayKind::ArrayFormula(row, column) => Cell::ArrayFormulaNumber {
+                    f: formula_index,
+                    v: cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
+                    s: cell_style,
+                    r: (row, column),
+                },
             },
             "e" => {
                 // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
@@ -442,12 +514,30 @@ fn get_cell_from_excel(
                         _ => error_name,
                     }
                 }
-                Cell::CellFormulaError {
-                    f: formula_index,
-                    ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
-                    s: cell_style,
-                    o: format!("{sheet_name}!{cell_ref}"),
-                    m: cell_value.unwrap_or("#ERROR!").to_string(),
+                match array_kind {
+                    ArrayKind::None => Cell::CellFormulaError {
+                        f: formula_index,
+                        ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
+                        s: cell_style,
+                        o: format!("{sheet_name}!{cell_ref}"),
+                        m: cell_value.unwrap_or("#ERROR!").to_string(),
+                    },
+                    ArrayKind::DynamicArray(row, column) => Cell::DynamicFormulaError {
+                        f: formula_index,
+                        ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
+                        s: cell_style,
+                        o: format!("{sheet_name}!{cell_ref}"),
+                        m: cell_value.unwrap_or("#ERROR!").to_string(),
+                        r: (row, column),
+                    },
+                    ArrayKind::ArrayFormula(row, column) => Cell::ArrayFormulaError {
+                        f: formula_index,
+                        ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
+                        s: cell_style,
+                        o: format!("{sheet_name}!{cell_ref}"),
+                        m: cell_value.unwrap_or("#ERROR!").to_string(),
+                        r: (row, column),
+                    },
                 }
             }
             "s" => {
@@ -465,10 +555,24 @@ fn get_cell_from_excel(
             }
             "str" => {
                 // In Excel and in IronCalc all strings in cells result of a formula are *not* shared strings.
-                Cell::CellFormulaString {
-                    f: formula_index,
-                    v: cell_value.unwrap_or("").to_string(),
-                    s: cell_style,
+                match array_kind {
+                    ArrayKind::None => Cell::CellFormulaString {
+                        f: formula_index,
+                        v: cell_value.unwrap_or("").to_string(),
+                        s: cell_style,
+                    },
+                    ArrayKind::DynamicArray(row, column) => Cell::DynamicFormulaString {
+                        f: formula_index,
+                        v: cell_value.unwrap_or("").to_string(),
+                        s: cell_style,
+                        r: (row, column),
+                    },
+                    ArrayKind::ArrayFormula(row, column) => Cell::ArrayFormulaString {
+                        f: formula_index,
+                        v: cell_value.unwrap_or("").to_string(),
+                        s: cell_style,
+                        r: (row, column),
+                    },
                 }
             }
             "d" => {
@@ -746,8 +850,12 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let default_row_height = 14.5;
 
-    // holds a map from the formula index in Excel to the index in IronCalc
+    // Map from the formula index in Excel to the index in IronCalc
     let mut index_map = HashMap::new();
+
+    // Cells part of an array formula
+    let mut array_cell = HashMap::new();
+
     for row in sheet_data_nodes.children() {
         // This is the row number 1-indexed
         let row_index = get_attribute(&row, "r")?.parse::<i32>()?;
@@ -808,7 +916,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         for cell in row.children() {
             let cell_ref = get_attribute(&cell, "r")?;
             let column_letter = get_column_from_ref(cell_ref);
-            let column = column_to_number(column_letter.as_str()).map_err(XlsxError::Xml)?;
+            let column_index = column_to_number(column_letter.as_str()).map_err(XlsxError::Xml)?;
 
             let value_metadata = cell.attribute("vm");
 
@@ -841,6 +949,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             };
 
             let cell_metadata = cell.attribute("cm");
+            let is_dynamic_array = cell_metadata == Some("1");
 
             // type, the default type being "n" for number
             // If the cell does not have a value is an empty cell
@@ -883,6 +992,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             //       We could solve that with a second transversal.
             let fs: Vec<Node> = cell.children().filter(|n| n.has_tag_name("f")).collect();
             let mut formula_index = -1;
+            let mut array_kind = ArrayKind::None;
             if fs.len() == 1 {
                 // formula types:
                 // 18.18.6 ST_CellFormulaType (Formula Type)
@@ -890,16 +1000,18 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                 // dataTable (Table Formula) Formula is a data table formula.
                 // normal (Normal) Formula is a regular cell formula. (Default)
                 // shared (Shared Formula) Formula is part of a shared formula.
-                let formula_type = fs[0].attribute("t").unwrap_or("normal");
+                let formula_node = fs[0];
+                let formula_type = formula_node.attribute("t").unwrap_or("normal");
+                let formula_ref = formula_node.attribute("ref");
                 match formula_type {
                     "shared" => {
                         // We have a shared formula
-                        let si = get_attribute(&fs[0], "si")?;
+                        let si = get_attribute(&formula_node, "si")?;
                         let si = si.parse::<i32>()?;
-                        match fs[0].attribute("ref") {
+                        match formula_ref {
                             Some(_) => {
                                 // It's the mother cell. We do not use the ref attribute in IronCalc
-                                let formula = fs[0].text().unwrap_or("").to_string();
+                                let formula = formula_node.text().unwrap_or("").to_string();
                                 let context = format!("{sheet_name}!{cell_ref}");
                                 let formula = from_a1_to_rc(
                                     formula,
@@ -954,15 +1066,61 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                     "dataTable" => {
                         return Err(XlsxError::NotImplemented("data table formulas".to_string()));
                     }
-                    "array" | "normal" => {
-                        let is_dynamic_array = cell_metadata == Some("1");
-                        if formula_type == "array" && !is_dynamic_array {
-                            // Dynamic formulas in Excel are formulas of type array with the cm=1, those we support.
-                            // On the other hand the old CSE formulas or array formulas are not supported in IronCalc for the time being
-                            return Err(XlsxError::NotImplemented("array formulas".to_string()));
+                    "array" => {
+                        let range = match formula_ref {
+                            Some(r) => r,
+                            None => {
+                                return Err(XlsxError::Xml(
+                                    "Array formulas must have a ref attribute".to_string(),
+                                ))
+                            }
+                        };
+                        // The reference is the set of cell it spills into.
+                        let (row1, column1, row2, column2) = parse_range(range)
+                            .map_err(|_| XlsxError::Xml(format!("Invalid range: {}", range)))?;
+                        // (row1, colum1) has to be this cell. We need to mark all the other ones as part of the array formula
+                        if row1 != row_index || column1 != column_index {
+                            return Err(XlsxError::Xml(
+                                "The first cell of the range of an array formula must be the mother cell".to_string(),
+                            ));
                         }
+                        for r in row1..=row2 {
+                            for c in column1..=column2 {
+                                if r == row1 && c == column1 {
+                                    // skip the anchor cell
+                                    continue;
+                                }
+                                array_cell.insert((r, c), (row_index, column_index));
+                            }
+                        }
+                        if is_dynamic_array {
+                            array_kind =
+                                ArrayKind::DynamicArray(row2 - row1 + 1, column2 - column1 + 1);
+                        } else {
+                            array_kind =
+                                ArrayKind::ArrayFormula(row2 - row1 + 1, column2 - column1 + 1);
+                        }
+                        let formula = formula_node.text().unwrap_or("").to_string();
+                        let context = format!("{sheet_name}!{cell_ref}");
+                        let formula = from_a1_to_rc(
+                            formula,
+                            worksheets,
+                            context,
+                            tables.clone(),
+                            defined_names.clone(),
+                        )?;
+
+                        match get_formula_index(&formula, &shared_formulas) {
+                            Some(index) => formula_index = index,
+                            None => {
+                                shared_formulas.push(formula);
+                                formula_index = shared_formulas.len() as i32 - 1;
+                            }
+                        }
+                    }
+                    "normal" => {
                         // Its a cell with a simple formula
-                        let formula = fs[0].text().unwrap_or("").to_string();
+                        let formula = formula_node.text().unwrap_or("").to_string();
                         let context = format!("{sheet_name}!{cell_ref}");
                         let formula = from_a1_to_rc(
                             formula,
@@ -987,6 +1145,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                     }
                 }
             }
+            let anchor_cell = array_cell.get(&(row_index, column_index)).cloned();
             let cell = get_cell_from_excel(
                 cell_value,
                 value_metadata,
@@ -997,8 +1156,10 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                 cell_ref,
                 shared_strings,
                 cell_rich_text,
+                anchor_cell,
+                array_kind,
             );
-            data_row.insert(column, cell);
+            data_row.insert(column_index, cell);
         }
         sheet_data.insert(row_index, data_row);
     }

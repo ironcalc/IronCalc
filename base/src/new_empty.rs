@@ -445,6 +445,7 @@ impl<'a> Model<'a> {
             },
             tables: HashMap::new(),
             views,
+            calc_chain: vec![],
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;

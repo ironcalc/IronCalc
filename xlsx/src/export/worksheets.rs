@@ -31,6 +31,13 @@ use ironcalc_base::{
 
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
 
+fn get_range_str(row: i32, column: i32, width: i32, height: i32) -> Option<String> {
+    let column1 = number_to_column(column)?;
+    let column2 = number_to_column(column + width - 1)?;
+    let row2 = row + height - 1;
+    Some(format!("{}{}:{}{}", column1, row, column2, row2))
+}
+
 fn get_cell_style_attribute(s: i32) -> String {
     if s == 0 {
         "".to_string()
@@ -105,7 +112,7 @@ pub(crate) fn get_worksheet_xml(
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!("<c r=\"{cell_name}\"{style}/>"));
                 }
-                Cell::BooleanCell { v, s } => {
+                Cell::BooleanCell { v, s } | Cell::SpillBoolean { v, s, a: _ } => {
                     // <c r="A8" t="b" s="1">
                     //     <v>1</v>
                     // </c>
@@ -115,7 +122,7 @@ pub(crate) fn get_worksheet_xml(
                         "<c r=\"{cell_name}\" t=\"b\"{style}><v>{b}</v></c>"
                     ));
                 }
-                Cell::NumberCell { v, s } => {
+                Cell::NumberCell { v, s } | Cell::SpillNumber { v, s, a: _ } => {
                     // Normally the type number is left out. Example:
                     // <c r="C6" s="1">
                     //     <v>3</v>
@@ -123,7 +130,7 @@ pub(crate) fn get_worksheet_xml(
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!("<c r=\"{cell_name}\"{style}><v>{v}</v></c>"));
                 }
-                Cell::ErrorCell { ei, s } => {
+                Cell::ErrorCell { ei, s } | Cell::SpillError { ei, s, a: _ } => {
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\" t=\"e\"{style}><v>{ei}</v></c>"
@@ -140,7 +147,11 @@ pub(crate) fn get_worksheet_xml(
                         "<c r=\"{cell_name}\" t=\"s\"{style}><v>{si}</v></c>"
                     ));
                 }
-                Cell::CellFormula { f: _, s: _ } => {
+                Cell::CellFormula { f: _, s: _ }
+                | Cell::ArrayFormula { .. }
+                | Cell::DynamicFormula { .. } => {
+                    // TODO: We should NOT panic here.
+                    // Is there like an "import error" we can set in Excel?
                     panic!("Model needs to be evaluated before saving!");
                 }
                 Cell::CellFormulaBoolean { f, v, s } => {
@@ -219,6 +230,211 @@ pub(crate) fn get_worksheet_xml(
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\" t=\"e\"{style}><f>{formula}</f><v>{ei}</v></c>"
+                    ));
+                }
+                Cell::SpillString { v, s, a: _ } => {
+                    // inline string
+                    // <c r="C6" t="str" s="5">
+                    //   <v>Hello world!</v>
+                    // </c>
+                    let style = get_cell_style_attribute(*s);
+                    let escaped_v = escape_xml(v);
+
+                    row_data_str.push(format!(
+                        "<c r=\"{cell_name}\" t=\"str\"{style}><v>{escaped_v}</v></c>"
+                    ));
+                }
+                // The difference between dynamic and array formulas is that dynamic formulas have cm="1"
+                Cell::DynamicFormulaBoolean { f, v, s, r } => {
+                    // <c r="D1" s="3" t="b" cm="1">
+                    //   <f t="array" ref="D1:D5">A1:A5</f>
+                    //   <v>TRUE</v>
+                    // </c>
+                    let node = match parsed_formulas.get(*f as usize) {
+                        Some(node) => node,
+                        None => continue,
+                    };
+                    let formula = get_formula_attribute(
+                        worksheet.get_name(),
+                        *row_index,
+                        *column_index,
+                        node,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    let range = match get_range_str(*row_index, *column_index, r.1, r.0) {
+                        Some(range) => range,
+                        None => continue,
+                    };
+                    row_data_str.push(format!(
+                            r#"<c r="{cell_name}"{style} t="b" cm="1"><f t="array" ref="{range}">{formula}</f><v>{v}</v></c>"#
+                    ));
+                }
+                Cell::DynamicFormulaNumber { f, v, s, r } => {
+                    // <c r="D1" s="3" cm="1">
+                    //   <f t="array" ref="D1:D5">A1:A5</f>
+                    //   <v>123</v>
+                    // </c>
+                    let node = match parsed_formulas.get(*f as usize) {
+                        Some(node) => node,
+                        None => continue,
+                    };
+                    let formula = get_formula_attribute(
+                        worksheet.get_name(),
+                        *row_index,
+                        *column_index,
+                        node,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    let range = match get_range_str(*row_index, *column_index, r.1, r.0) {
+                        Some(range) => range,
+                        None => continue,
+                    };
+                    row_data_str.push(format!(
+                            r#"<c r="{cell_name}"{style} cm="1"><f t="array" ref="{range}">{formula}</f><v>{v}</v></c>"#
+                    ));
+                }
+                Cell::DynamicFormulaString { f, v, s, r } => {
+                    // <c r="D1" s="3" t="str" cm="1">
+                    //   <f t="array" ref="D1:D5">A1:A5</f>
+                    //   <v>Hello world!</v>
+                    // </c>
+                    let node = match parsed_formulas.get(*f as usize) {
+                        Some(node) => node,
+                        None => continue,
+                    };
+                    let formula = get_formula_attribute(
+                        worksheet.get_name(),
+                        *row_index,
+                        *column_index,
+                        node,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    let range = match get_range_str(*row_index, *column_index, r.1, r.0) {
+                        Some(range) => range,
+                        None => continue,
+                    };
+                    row_data_str.push(format!(
+                        r#"<c r="{cell_name}"{style} t="str" cm="1"><f t="array" ref="{range}">{formula}</f><v>{v}</v></c>"#
+                    ));
+                }
+                Cell::DynamicFormulaError { f, ei, s, r, .. } => {
+                    // <c r="D1" s="3" t="e" cm="1">
+                    //   <f t="array" ref="D1:D5">A1:A5</f>
+                    //   <v>#N/A!</v>
+                    // </c>
+                    let node = match parsed_formulas.get(*f as usize) {
+                        Some(node) => node,
+                        None => continue,
+                    };
+                    let formula = get_formula_attribute(
+                        worksheet.get_name(),
+                        *row_index,
+                        *column_index,
+                        node,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    let range = match get_range_str(*row_index, *column_index, r.1, r.0) {
+                        Some(range) => range,
+                        None => continue,
+                    };
+                    row_data_str.push(format!(
+                        r#"<c r="{cell_name}"{style} t="e" cm="1"><f t="array" ref="{range}">{formula}</f><v>{ei}</v></c>"#
+                    ));
+                }
+                Cell::ArrayFormulaBoolean { f, v, s, r } => {
+                    // <c r="D1" s="3" t="b">
+                    //   <f t="array" ref="D1:D5">A1:A5</f>
+                    //   <v>TRUE</v>
+                    // </c>
+                    let node = match parsed_formulas.get(*f as usize) {
+                        Some(node) => node,
+                        None => continue,
+                    };
+                    let formula = get_formula_attribute(
+                        worksheet.get_name(),
+                        *row_index,
+                        *column_index,
+                        node,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    let range = match get_range_str(*row_index, *column_index, r.1, r.0) {
+                        Some(range) => range,
+                        None => continue,
+                    };
+                    row_data_str.push(format!(
+                            r#"<c r="{cell_name}"{style} t="b"><f t="array" ref="{range}">{formula}</f><v>{v}</v></c>"#
+                    ));
+                }
+                Cell::ArrayFormulaNumber { f, v, s, r } => {
+                    // <c r="D1" s="3">
+                    //   <f t="array" ref="D1:D5">A1:A5</f>
+                    //   <v>123</v>
+                    // </c>
+                    let node = match parsed_formulas.get(*f as usize) {
+                        Some(node) => node,
+                        None => continue,
+                    };
+                    let formula = get_formula_attribute(
+                        worksheet.get_name(),
+                        *row_index,
+                        *column_index,
+                        node,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    let range = match get_range_str(*row_index, *column_index, r.1, r.0) {
+                        Some(range) => range,
+                        None => continue,
+                    };
+                    row_data_str.push(format!(
+                            r#"<c r="{cell_name}"{style}><f t="array" ref="{range}">{formula}</f><v>{v}</v></c>"#
+                    ));
+                }
+                Cell::ArrayFormulaString { f, v, s, r } => {
+                    // <c r="D1" s="3" t="str">
+                    //   <f t="array" ref="D1:D5">A1:A5</f>
+                    //   <v>Hello world!</v>
+                    // </c>
+                    let node = match parsed_formulas.get(*f as usize) {
+                        Some(node) => node,
+                        None => continue,
+                    };
+                    let formula = get_formula_attribute(
+                        worksheet.get_name(),
+                        *row_index,
+                        *column_index,
+                        node,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    let range = match get_range_str(*row_index, *column_index, r.1, r.0) {
+                        Some(range) => range,
+                        None => continue,
+                    };
+                    row_data_str.push(format!(
+                        r#"<c r="{cell_name}"{style} t="str"><f t="array" ref="{range}">{formula}</f><v>{v}</v></c>"#
+                    ));
+                }
+                Cell::ArrayFormulaError { f, ei, s, r, .. } => {
+                    // <c r="D1" s="3" t="e">
+                    //   <f t="array" ref="D1:D5">A1:A5</f>
+                    //   <v>#N/A!</v>
+                    // </c>
+                    let node = match parsed_formulas.get(*f as usize) {
+                        Some(node) => node,
+                        None => continue,
+                    };
+                    let formula = get_formula_attribute(
+                        worksheet.get_name(),
+                        *row_index,
+                        *column_index,
+                        node,
+                    );
+                    let style = get_cell_style_attribute(*s);
+                    let range = match get_range_str(*row_index, *column_index, r.1, r.0) {
+                        Some(range) => range,
+                        None => continue,
+                    };
+                    row_data_str.push(format!(
+                        r#"<c r="{cell_name}"{style} t="e"><f t="array" ref="{range}">{formula}</f><v>{ei}</v></c>"#
                     ));
                 }
             }

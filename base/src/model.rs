@@ -764,7 +764,7 @@ impl<'a> Model<'a> {
             EmptyCell { .. } => CalcResult::EmptyCell,
             BooleanCell { v, .. } => CalcResult::Boolean(*v),
             NumberCell { v, .. } => CalcResult::Number(*v),
-            ErrorCell { ei, .. } => {
+            ErrorCell { ei, .. } | SpillError { ei, .. } => {
                 let message = ei.to_localized_error_string(self.language);
                 CalcResult::new_error(ei.clone(), cell_reference, message)
             }
@@ -776,7 +776,7 @@ impl<'a> Model<'a> {
                     CalcResult::new_error(Error::ERROR, cell_reference, message)
                 }
             }
-            CellFormula { .. } => CalcResult::Error {
+            CellFormula { .. } | DynamicFormula { .. } | ArrayFormula { .. } => CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell_reference,
                 message: "Unevaluated formula".to_string(),
@@ -784,7 +784,9 @@ impl<'a> Model<'a> {
             CellFormulaBoolean { v, .. } => CalcResult::Boolean(*v),
             CellFormulaNumber { v, .. } => CalcResult::Number(*v),
             CellFormulaString { v, .. } => CalcResult::String(v.clone()),
-            CellFormulaError { ei, o, m, .. } => {
+            CellFormulaError { ei, o, m, .. }
+            | DynamicFormulaError { ei, o, m, .. }
+            | ArrayFormulaError { ei, o, m, .. } => {
                 if let Some(cell_reference) = self.parse_reference(o) {
                     CalcResult::new_error(ei.clone(), cell_reference, m.clone())
                 } else {
@@ -795,6 +797,15 @@ impl<'a> Model<'a> {
                     }
                 }
             }
+            SpillNumber { v, .. } => CalcResult::Number(*v),
+            SpillBoolean { v, .. } => CalcResult::Boolean(*v),
+            SpillString { v, .. } => CalcResult::String(v.clone()),
+            DynamicFormulaBoolean { v, .. } => CalcResult::Boolean(*v),
+            DynamicFormulaNumber { v, .. } => CalcResult::Number(*v),
+            DynamicFormulaString { v, .. } => CalcResult::String(v.clone()),
+            ArrayFormulaBoolean { v, .. } => CalcResult::Boolean(*v),
+            ArrayFormulaNumber { v, .. } => CalcResult::Number(*v),
+            ArrayFormulaString { v, .. } => CalcResult::String(v.clone()),
         }
     }
 
@@ -1543,6 +1554,10 @@ impl<'a> Model<'a> {
         column: i32,
         value: String,
     ) -> Result<(), String> {
+        // we cannot write in cells that are part of an array formula
+        if self.cell_is_part_of_array_formula(sheet, row, column)? {
+            return Err("Cannot write in a cell that is part of an array formula".to_string());
+        }
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         if let Some(new_value) = value.strip_prefix('\'') {
@@ -1571,7 +1586,7 @@ impl<'a> Model<'a> {
                         .styles
                         .get_style_with_format(new_style_index, &units.get_num_fmt())?;
                     let style = self.workbook.styles.get_style(new_style_index)?;
-                    self.set_cell_style(sheet, row, column, &style)?
+                    self.set_cell_style(sheet, row, column, &style)?;
                 }
             } else {
                 // The list of currencies is '$', '€' and the local currency
@@ -1624,6 +1639,97 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
+    /// Sets an array formula in an area (CSE formula)
+    pub fn set_user_array_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+        value: String,
+    ) -> Result<(), String> {
+        if self.cell_is_part_of_array_formula(sheet, row, column)? {
+            return Err("Cannot write in a cell that is part of an array formula".to_string());
+        }
+        // If value starts with "'" then we force the style to be quote_prefix
+        let style_index = self.get_cell_style_index(sheet, row, column)?;
+        if value.strip_prefix('\'').is_none() {
+            let mut new_style_index = style_index;
+            if self.workbook.styles.style_is_quote_prefix(style_index) {
+                new_style_index = self
+                    .workbook
+                    .styles
+                    .get_style_without_quote_prefix(style_index)?;
+            }
+            if let Some(formula) = value.strip_prefix('=') {
+                // It is a formula, we mark it as an array formulas and fill the "spills" with placeholders
+                let formula_index = self.set_cell_with_array_formula(
+                    sheet,
+                    row,
+                    column,
+                    formula,
+                    new_style_index,
+                    width,
+                    height,
+                )?;
+
+                // Update the style if needed
+                let cell = CellReferenceIndex { sheet, row, column };
+                let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
+                if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
+                    let new_style_index = self
+                        .workbook
+                        .styles
+                        .get_style_with_format(new_style_index, &units.get_num_fmt())?;
+                    let style = self.workbook.styles.get_style(new_style_index)?;
+                    self.set_cell_style(sheet, row, column, &style)?;
+                }
+                // Update the "spill" area with placeholders
+                for r in row..row + height {
+                    for c in column..column + width {
+                        if r == row && c == column {
+                            continue;
+                        }
+                        let mut new_style_index_spill =
+                            self.get_cell_style_index(sheet, row, column)?;
+                        if self
+                            .workbook
+                            .styles
+                            .style_is_quote_prefix(new_style_index_spill)
+                        {
+                            new_style_index_spill = self
+                                .workbook
+                                .styles
+                                .get_style_without_quote_prefix(new_style_index_spill)?;
+                        }
+
+                        self.set_cell_with_string(sheet, r, c, "", new_style_index_spill)?;
+                    }
+                }
+                return Ok(());
+            }
+        }
+        // just use set user input on every cell
+        for r in row..row + height {
+            for c in column..column + width {
+                self.set_user_input(sheet, r, c, value.clone())?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn cell_is_part_of_array_formula(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<bool, String> {
+        let worksheet = self.workbook.worksheet(sheet)?;
+        worksheet.is_part_of_array_formula(row, column)
+    }
+
     fn set_cell_with_formula(
         &mut self,
         sheet: u32,
@@ -1661,6 +1767,50 @@ impl<'a> Model<'a> {
             formula_index = (shared_formulas.len() as i32) - 1;
         }
         worksheet.set_cell_with_formula(row, column, formula_index, style)?;
+        Ok(formula_index)
+    }
+
+    // FIXME
+    #[allow(clippy::too_many_arguments)]
+    fn set_cell_with_array_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+        style: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<i32, String> {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        let cell_reference = CellReferenceRC {
+            sheet: worksheet.get_name(),
+            row,
+            column,
+        };
+        let shared_formulas = &mut worksheet.shared_formulas;
+        let mut parsed_formula = self.parser.parse(formula, &cell_reference);
+        // If the formula fails to parse try adding a parenthesis
+        // SUM(A1:A3  => SUM(A1:A3)
+        if let Node::ParseErrorKind { .. } = parsed_formula {
+            let new_parsed_formula = self.parser.parse(&format!("{formula})"), &cell_reference);
+            match new_parsed_formula {
+                Node::ParseErrorKind { .. } => {}
+                _ => parsed_formula = new_parsed_formula,
+            }
+        }
+
+        let s = to_rc_format(&parsed_formula);
+        let mut formula_index: i32 = -1;
+        if let Some(index) = shared_formulas.iter().position(|x| x == &s) {
+            formula_index = index as i32;
+        }
+        if formula_index == -1 {
+            shared_formulas.push(s);
+            self.parsed_formulas[sheet as usize].push(parsed_formula);
+            formula_index = (shared_formulas.len() as i32) - 1;
+        }
+        worksheet.set_cell_with_array_formula(row, column, formula_index, style, width, height)?;
         Ok(formula_index)
     }
 
@@ -1963,6 +2113,9 @@ impl<'a> Model<'a> {
     /// # }
     /// ```
     pub fn cell_clear_contents(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        if self.cell_is_part_of_array_formula(sheet, row, column)? {
+            return Err("Cannot write in a cell that is part of an array formula".to_string());
+        }
         self.workbook
             .worksheet_mut(sheet)?
             .cell_clear_contents(row, column)?;
@@ -1989,6 +2142,9 @@ impl<'a> Model<'a> {
     /// # Ok(())
     /// # }
     pub fn cell_clear_all(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
+        if self.cell_is_part_of_array_formula(sheet, row, column)? {
+            return Err("Cannot write in a cell that is part of an array formula".to_string());
+        }
         let worksheet = self.workbook.worksheet_mut(sheet)?;
 
         let sheet_data = &mut worksheet.sheet_data;

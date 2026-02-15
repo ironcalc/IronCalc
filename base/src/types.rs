@@ -51,6 +51,9 @@ pub struct Workbook {
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
     pub views: HashMap<u32, WorkbookView>,
+    /// List of cells that might spill in the order that they should be evaluated.
+    /// (sheet_index, row, column).
+    pub calc_chain: Vec<(u32, i32, i32)>,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -160,17 +163,26 @@ pub enum CellType {
     CompoundData = 128,
 }
 
+// A struct representing a cell in the sheet.
+// Every cell has a style index (s) that points to the cell_xfs in the styles part of the workbook.
+// Other fields:
+// * `f` represents the formula index
+// * `v` represents the value of the cell, it can be a number, a boolean or a string depending on the cell type
+// * `ei` represents the error index in case of an error cell
+// * `si` represents the shared string index in case of a shared string cell
+// * `o` represents the origin of the error in case of a formula error cell (e.g. "Sheet3!C4")
+// * `m` represents the error message in case of a formula error cell (e.g. "Not implemented function")
+// * `a` represents the anchor cell (row, column) in case of a spill cell
+// * `r` represents the range of the formula (width, height) in case of a dynamic cell formula
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
 pub enum Cell {
     EmptyCell {
         s: i32,
     },
-
     BooleanCell {
         v: bool,
         s: i32,
     },
-
     NumberCell {
         v: f64,
         s: i32,
@@ -185,18 +197,16 @@ pub enum Cell {
         si: i32,
         s: i32,
     },
-    // Non evaluated Formula
+    // Non evaluated Formula. The cells can only exists during evaluation
     CellFormula {
         f: i32,
         s: i32,
     },
-
     CellFormulaBoolean {
         f: i32,
         v: bool,
         s: i32,
     },
-
     CellFormulaNumber {
         f: i32,
         v: f64,
@@ -208,7 +218,6 @@ pub enum Cell {
         v: String,
         s: i32,
     },
-
     CellFormulaError {
         f: i32,
         ei: Error,
@@ -218,7 +227,94 @@ pub enum Cell {
         // Error Message: "Not implemented function"
         m: String,
     },
-    // TODO: Array formulas
+    // Spill cells point to an anchor cell (row, column)
+    // The anchor cell can either contain an array formula or a dynamic array formula.
+    SpillNumber {
+        v: f64,
+        s: i32,
+        a: (i32, i32),
+    },
+    SpillBoolean {
+        v: bool,
+        s: i32,
+        a: (i32, i32),
+    },
+    SpillError {
+        ei: Error,
+        s: i32,
+        a: (i32, i32),
+    },
+    SpillString {
+        v: String,
+        s: i32,
+        a: (i32, i32),
+    },
+    // Dynamic formulas have a dynamic range (width, height)
+    DynamicFormula {
+        f: i32,
+        s: i32,
+        r: (i32, i32),
+    },
+    DynamicFormulaBoolean {
+        f: i32,
+        v: bool,
+        s: i32,
+        r: (i32, i32),
+    },
+    DynamicFormulaNumber {
+        f: i32,
+        v: f64,
+        s: i32,
+        r: (i32, i32),
+    },
+    DynamicFormulaString {
+        f: i32,
+        v: String,
+        s: i32,
+        r: (i32, i32),
+    },
+    DynamicFormulaError {
+        f: i32,
+        ei: Error,
+        s: i32,
+        // Cell origin of the error
+        o: String,
+        // Error message in text
+        m: String,
+        r: (i32, i32),
+    },
+    // Array formulas have a strict range (width, height)
+    ArrayFormula {
+        f: i32,
+        s: i32,
+        r: (i32, i32),
+    },
+    ArrayFormulaBoolean {
+        f: i32,
+        v: bool,
+        s: i32,
+        r: (i32, i32),
+    },
+    ArrayFormulaNumber {
+        f: i32,
+        v: f64,
+        s: i32,
+        r: (i32, i32),
+    },
+    ArrayFormulaString {
+        f: i32,
+        v: String,
+        s: i32,
+        r: (i32, i32),
+    },
+    ArrayFormulaError {
+        f: i32,
+        ei: Error,
+        s: i32,
+        o: String,
+        m: String,
+        r: (i32, i32),
+    },
 }
 
 impl Default for Cell {
