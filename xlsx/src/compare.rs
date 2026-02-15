@@ -75,14 +75,8 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
             .unwrap_or_default();
         match (cell1, cell2) {
             (Cell::EmptyCell { .. }, Cell::EmptyCell { .. }) => {}
-            (Cell::NumberCell { .. }, Cell::NumberCell { .. }) => {}
-            (Cell::BooleanCell { .. }, Cell::BooleanCell { .. }) => {}
-            (Cell::ErrorCell { .. }, Cell::ErrorCell { .. }) => {}
-            (Cell::SharedString { .. }, Cell::SharedString { .. }) => {}
-            (
-                Cell::CellFormulaNumber { v: value1, .. },
-                Cell::CellFormulaNumber { v: value2, .. },
-            ) => {
+
+            (Cell::NumberCell { v: value1, .. }, Cell::NumberCell { v: value2, .. }) => {
                 if !numbers_are_close(*value1, *value2, eps) {
                     diffs.push(Diff {
                         sheet_name: ws1[cell.index as usize].clone(),
@@ -94,27 +88,8 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                     });
                 }
             }
-            (
-                Cell::CellFormulaString { v: value1, .. },
-                Cell::CellFormulaString { v: value2, .. },
-            ) => {
-                // FIXME: We should compare the actual value, not just the index
-                if value1 != value2 {
-                    diffs.push(Diff {
-                        sheet_name: ws1[cell.index as usize].clone(),
-                        row,
-                        column,
-                        value1: cell1.clone(),
-                        value2: cell2.clone(),
-                        reason: "Strings are different".to_string(),
-                    });
-                }
-            }
-            (
-                Cell::CellFormulaBoolean { v: value1, .. },
-                Cell::CellFormulaBoolean { v: value2, .. },
-            ) => {
-                // FIXME: We should compare the actual value, not just the index
+
+            (Cell::BooleanCell { v: value1, .. }, Cell::BooleanCell { v: value2, .. }) => {
                 if value1 != value2 {
                     diffs.push(Diff {
                         sheet_name: ws1[cell.index as usize].clone(),
@@ -126,12 +101,9 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                     });
                 }
             }
-            (
-                Cell::CellFormulaError { ei: index1, .. },
-                Cell::CellFormulaError { ei: index2, .. },
-            ) => {
-                // FIXME: We should compare the actual value, not just the index
-                if index1 != index2 {
+
+            (Cell::ErrorCell { ei: value1, .. }, Cell::ErrorCell { ei: value2, .. }) => {
+                if value1 != value2 {
                     diffs.push(Diff {
                         sheet_name: ws1[cell.index as usize].clone(),
                         row,
@@ -142,6 +114,281 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                     });
                 }
             }
+
+            (Cell::SharedString { si: value1, .. }, Cell::SharedString { si: value2, .. }) => {
+                // FIXME: compare resolved shared-string contents, not indices,
+                // if the two workbooks can have different shared-string tables.
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Strings are different".to_string(),
+                    });
+                }
+            }
+
+            (Cell::CellFormula { .. }, Cell::CellFormula { .. }) => {
+                // No computed value stored here; ignore formula/style metadata.
+                panic!("CellFormula should not be compared directly, compare CellFormulaBoolean/Number/String/Error instead");
+            }
+
+            (
+                Cell::CellFormulaBoolean { v: value1, .. },
+                Cell::CellFormulaBoolean { v: value2, .. },
+            ) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Formula booleans are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::CellFormulaNumber { v: value1, .. },
+                Cell::CellFormulaNumber { v: value2, .. },
+            ) => {
+                if !numbers_are_close(*value1, *value2, eps) {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Formula numbers are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::CellFormulaString { v: value1, .. },
+                Cell::CellFormulaString { v: value2, .. },
+            ) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Formula strings are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::CellFormulaError { ei: value1, .. },
+                Cell::CellFormulaError { ei: value2, .. },
+            ) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Formula errors are different".to_string(),
+                    });
+                }
+            }
+
+            (Cell::SpillNumber { v: value1, .. }, Cell::SpillNumber { v: value2, .. }) => {
+                if !numbers_are_close(*value1, *value2, eps) {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Spill numbers are different".to_string(),
+                    });
+                }
+            }
+
+            (Cell::SpillBoolean { v: value1, .. }, Cell::SpillBoolean { v: value2, .. }) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Spill booleans are different".to_string(),
+                    });
+                }
+            }
+
+            (Cell::SpillError { ei: value1, .. }, Cell::SpillError { ei: value2, .. }) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Spill errors are different".to_string(),
+                    });
+                }
+            }
+
+            (Cell::SpillString { v: value1, .. }, Cell::SpillString { v: value2, .. }) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Spill strings are different".to_string(),
+                    });
+                }
+            }
+
+            (Cell::DynamicFormula { .. }, Cell::DynamicFormula { .. }) => {
+                // No computed value stored here; ignore formula/style/range metadata.
+                panic!("CellFormula should not be compared directly, compare CellFormulaBoolean/Number/String/Error instead");
+            }
+
+            (
+                Cell::DynamicFormulaBoolean { v: value1, .. },
+                Cell::DynamicFormulaBoolean { v: value2, .. },
+            ) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Dynamic formula booleans are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::DynamicFormulaNumber { v: value1, .. },
+                Cell::DynamicFormulaNumber { v: value2, .. },
+            ) => {
+                if !numbers_are_close(*value1, *value2, eps) {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Dynamic formula numbers are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::DynamicFormulaString { v: value1, .. },
+                Cell::DynamicFormulaString { v: value2, .. },
+            ) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Dynamic formula strings are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::DynamicFormulaError { ei: value1, .. },
+                Cell::DynamicFormulaError { ei: value2, .. },
+            ) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Dynamic formula errors are different".to_string(),
+                    });
+                }
+            }
+
+            (Cell::ArrayFormula { .. }, Cell::ArrayFormula { .. }) => {
+                // No computed value stored here; ignore formula/style/range metadata.
+                panic!("CellFormula should not be compared directly, compare CellFormulaBoolean/Number/String/Error instead");
+            }
+
+            (
+                Cell::ArrayFormulaBoolean { v: value1, .. },
+                Cell::ArrayFormulaBoolean { v: value2, .. },
+            ) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Array formula booleans are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::ArrayFormulaNumber { v: value1, .. },
+                Cell::ArrayFormulaNumber { v: value2, .. },
+            ) => {
+                if !numbers_are_close(*value1, *value2, eps) {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Array formula numbers are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::ArrayFormulaString { v: value1, .. },
+                Cell::ArrayFormulaString { v: value2, .. },
+            ) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Array formula strings are different".to_string(),
+                    });
+                }
+            }
+
+            (
+                Cell::ArrayFormulaError { ei: value1, .. },
+                Cell::ArrayFormulaError { ei: value2, .. },
+            ) => {
+                if value1 != value2 {
+                    diffs.push(Diff {
+                        sheet_name: ws1[cell.index as usize].clone(),
+                        row,
+                        column,
+                        value1: cell1.clone(),
+                        value2: cell2.clone(),
+                        reason: "Array formula errors are different".to_string(),
+                    });
+                }
+            }
+
             (_, _) => {
                 diffs.push(Diff {
                     sheet_name: ws1[cell.index as usize].clone(),

@@ -256,6 +256,23 @@ impl Worksheet {
         self.update_cell(row, column, cell)
     }
 
+    pub fn set_cell_with_array_formula(
+        &mut self,
+        row: i32,
+        column: i32,
+        index: i32,
+        style: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), String> {
+        let cell = Cell::ArrayFormula {
+            f: index,
+            s: style,
+            r: (width, height),
+        };
+        self.update_cell(row, column, cell)
+    }
+
     pub fn set_cell_with_number(
         &mut self,
         row: i32,
@@ -730,6 +747,37 @@ impl Worksheet {
         };
 
         Ok(is_empty)
+    }
+
+    /// Returns true if cell is part of an array formula. This includes both anchor and spill cells.
+    pub fn is_part_of_array_formula(&self, row: i32, column: i32) -> Result<bool, String> {
+        if !is_valid_column_number(column) || !is_valid_row(row) {
+            return Err("Row or column is outside valid range.".to_string());
+        }
+
+        let cell = match self.cell(row, column) {
+            Some(c) => c,
+            None => return Ok(false),
+        };
+        match cell {
+            Cell::SpillBoolean { a, .. }
+            | Cell::SpillError { a, .. }
+            | Cell::SpillNumber { a, .. }
+            | Cell::SpillString { a, .. } => {
+                let anchor_cell = match self.cell(a.0, a.1) {
+                    Some(c) => c,
+                    None => return Err("Invalid spill reference".to_string()),
+                };
+                match anchor_cell {
+                    Cell::ArrayFormula { .. } => Ok(true),
+                    Cell::ArrayFormulaBoolean { .. } => Ok(true),
+                    Cell::ArrayFormulaNumber { .. } => Ok(true),
+                    Cell::ArrayFormulaString { .. } => Ok(true),
+                    _ => Err("Spill cell does not reference an array formula".to_string()),
+                }
+            }
+            _ => Ok(false),
+        }
     }
 
     /// It provides convenient method for user navigation in the spreadsheet by jumping to edges.

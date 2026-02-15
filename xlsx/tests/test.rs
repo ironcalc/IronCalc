@@ -639,3 +639,23 @@ fn test_pyopenxl_example() {
     let b1 = model.get_formatted_cell_value(0, 1, 2).unwrap();
     assert_eq!(b1, "It is what it is");
 }
+
+fn assert_eq_ignoring_metadata_and_name(
+    workbook1: ironcalc_base::types::Workbook,
+    workbook2: ironcalc_base::types::Workbook,
+) {
+    let mut w2 = workbook2.clone();
+    w2.metadata = workbook1.metadata.clone();
+    w2.name = workbook1.name.clone();
+    assert_eq!(workbook1, w2);
+}
+
+#[test]
+fn test_dynamic_arrays() {
+    let model = load_from_xlsx("tests/dynamic_arrays.xlsx", "en", "UTC", "en").unwrap();
+    let temp_file_name = "temp_file_test_dynamic_arrays.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model2 = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    assert_eq_ignoring_metadata_and_name(model.workbook, model2.workbook);
+}

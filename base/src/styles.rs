@@ -162,12 +162,18 @@ impl Styles {
         self.add_named_cell_style(style_name, style_index)
     }
 
+    // Returns the style index of the style with `quote_prefix=true`
+    // If there is no such style it creates it
+    // TODO: It needs to be mutable, the name could reflect that
     pub(crate) fn get_style_with_quote_prefix(&mut self, index: i32) -> Result<i32, String> {
         let mut style = self.get_style(index)?;
         style.quote_prefix = true;
         Ok(self.get_style_index_or_create(&style))
     }
 
+    // Returns the index of the style with the provided format.
+    // If there is no style with that format, it creates a new one based on the style with the provided index.
+    // TODO: It needs to be mutable, the name could reflect that
     pub(crate) fn get_style_with_format(
         &mut self,
         index: i32,
@@ -178,6 +184,9 @@ impl Styles {
         Ok(self.get_style_index_or_create(&style))
     }
 
+    // Returns the style index of the style with `quote_prefix=false`
+    // If there is no such style it creates it
+    // TODO: It needs to be mutable, the name could reflect that
     pub(crate) fn get_style_without_quote_prefix(&mut self, index: i32) -> Result<i32, String> {
         let mut style = self.get_style(index)?;
         style.quote_prefix = false;

@@ -66,6 +66,7 @@ mod statistical;
 mod test_fn_offset;
 mod test_number_format;
 
+mod array_formulas;
 mod test_arrays;
 mod test_cell_info_n_sheets;
 mod test_combin_combina;
