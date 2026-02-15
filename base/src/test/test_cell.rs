@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::test::util::new_empty_model;
-use crate::types::CellType;
+use crate::types::{ArrayKind, Cell, CellType, FormulaValue};
 
 #[test]
 fn test_cell_get_type() {
@@ -32,4 +32,25 @@ fn test_cell_get_type() {
     assert_eq!(model._get_cell("A10").get_type(), CellType::Text);
     assert_eq!(model._get_cell("A11").get_type(), CellType::ErrorValue);
     assert_eq!(model._get_cell("A12").get_type(), CellType::LogicalValue);
+}
+
+#[test]
+fn cell_is_always_dynamic() {
+    let mut model = new_empty_model();
+    model._set("A1", "42");
+    model._set("B1", "=CELL(\"address\", A1)");
+    model._set("B2", "=CELL(\"contents\", A2)");
+    model.evaluate();
+
+    let b1_cell = model.workbook.worksheets[0].sheet_data[&1][&2].clone();
+    assert!(matches!(
+        b1_cell,
+        Cell::ArrayFormula { kind: ArrayKind::Dynamic, v: FormulaValue::Text(ref v), .. } if v == "$A$1"
+    ));
+
+    let b2_cell = model.workbook.worksheets[0].sheet_data[&2][&2].clone();
+    assert!(matches!(
+        b2_cell,
+        Cell::ArrayFormula { kind: ArrayKind::Dynamic, v: FormulaValue::Number(v), .. } if v == 0.0
+    ));
 }

@@ -53,7 +53,7 @@ fn is_range_reference(s: &str) -> bool {
  This formulas will not be compatible with old versions of the engine. The FG will stringify this as `=SUM(_xlfn.SIMPLE(A1:A7))`.
  */
 
-/// Transverses the formula tree adding the implicit intersection operator in all arguments of functions that
+/// Traverses the formula tree adding the implicit intersection operator in all arguments of functions that
 /// expect a scalar but get a range.
 ///  * A:A => @A:A
 ///  * SIN(A1:D1) => SIN(@A1:D1)
@@ -186,10 +186,15 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
     };
 }
 
-pub(crate) enum StaticResult {
+/// The result of the static analysis of a node
+pub enum StaticResult {
+    // The result of the evaluation is a single value (number, string, boolean, error)
     Scalar,
+    // The result of the evaluation is an array with dimensions (rows, columns)
     Array(i32, i32),
+    // The result of the evaluation is a range with dimensions (rows, columns)
     Range(i32, i32),
+    // The result of the evaluation is unknown, we cannot guaranty it is a scalar, an array or a range
     Unknown,
     // TODO: What if one of the dimensions is known?
     // what if the dimensions are unknown but bounded?
@@ -222,7 +227,7 @@ fn static_analysis_op_nodes(left: &Node, right: &Node) -> StaticResult {
 //  * Array(a, b) if we know it will be an a x b array.
 //  * Range(a, b) if we know it will be a a x b range.
 //  * Unknown if we cannot guaranty either
-fn run_static_analysis_on_node(node: &Node) -> StaticResult {
+pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
     match node {
         Node::BooleanKind(_)
         | Node::NumberKind(_)
@@ -248,8 +253,8 @@ fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         }
         Node::ArrayKind(array) => {
             let n = array.len() as i32;
-            // FIXME: This is a placeholder until we implement arrays
-            StaticResult::Array(n, 1)
+            let m = array.first().map(|row| row.len() as i32).unwrap_or(0);
+            StaticResult::Array(n, m)
         }
         Node::RangeKind {
             row1,
@@ -265,15 +270,18 @@ fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::ReferenceKind { .. } => StaticResult::Scalar,
 
         // binary operations
-        Node::OpConcatenateKind { left, right } => static_analysis_op_nodes(left, right),
-        Node::OpSumKind { left, right, .. } => static_analysis_op_nodes(left, right),
-        Node::OpProductKind { left, right, .. } => static_analysis_op_nodes(left, right),
-        Node::OpPowerKind { left, right, .. } => static_analysis_op_nodes(left, right),
-        Node::CompareKind { left, right, .. } => static_analysis_op_nodes(left, right),
+        Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right, .. }
+        | Node::CompareKind { left, right, .. } => static_analysis_op_nodes(left, right),
 
         // defined names
-        Node::DefinedNameKind(_) => StaticResult::Unknown,
-        Node::WrongVariableKind(_) => StaticResult::Unknown,
+        Node::DefinedNameKind(_) => {
+            // TODO: We could do better if we tracked the defined names
+            StaticResult::Unknown
+        }
+        Node::WrongVariableKind(_) => StaticResult::Scalar,
         Node::TableNameKind(_) => StaticResult::Unknown,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
@@ -1268,7 +1276,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sumsq => StaticResult::Scalar,
         Function::N => scalar_arguments(args),
         Function::Sheets => scalar_arguments(args),
-        Function::Cell => scalar_arguments(args),
+        Function::Cell => StaticResult::Unknown,
         Function::Info => scalar_arguments(args),
         Function::Dget => not_implemented(args),
         Function::Dmax => not_implemented(args),

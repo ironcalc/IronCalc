@@ -81,4 +81,5 @@
     "Inter", "Adjusted Arial Fallback", sans-serif;
   --palette-sheet-header-font:
     bold 12px "Inter", "Adjusted Arial Fallback", sans-serif;
+  --palette-sheet-cell-array-structure-color: #e4c286ad;
 }

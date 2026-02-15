@@ -5,10 +5,12 @@ import type {
   WorksheetProperties,
 } from "@ironcalc/wasm";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
 } from "../clipboard";
+import ErrorDialog from "../ErrorDialog/ErrorDialog";
 import FormulaBar from "../FormulaBar/FormulaBar";
 import RightDrawer, {
   DEFAULT_DRAWER_WIDTH,
@@ -36,6 +38,7 @@ import "./workbook.css";
 
 const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const { model, workbookState } = props;
+  const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const worksheetRef = useRef<{
     getCanvas: () => WorksheetCanvas | null;
@@ -45,6 +48,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
 
+  const [deleteCellsErrorOpen, setDeleteCellsErrorOpen] = useState(false);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
   const [drawerType, setDrawerType] = useState<DrawerType>("namedRanges");
@@ -191,7 +195,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const fmtSettings = model.getFmtSettings();
 
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
-  // the Rust end
+  // the Rust backend
   const { onKeyDown } = useKeyboardNavigation({
     onCellsDeleted: (): void => {
       const {
@@ -203,13 +207,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
 
       const width = Math.abs(columnEnd - columnStart);
       const height = Math.abs(rowEnd - rowStart);
-      model.rangeClearContents(
-        sheet,
-        row,
-        column,
-        row + height,
-        column + width,
-      );
+      try {
+        model.rangeClearContents(
+          sheet,
+          row,
+          column,
+          row + height,
+          column + width,
+        );
+      } catch (_e) {
+        setDeleteCellsErrorOpen(true);
+      }
       setRedrawId((id) => id + 1);
     },
     onExpandAreaSelectedKeyboard: (
@@ -388,14 +396,31 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     );
   }, [model]);
 
-  const formulaValue = () => {
+  // Returns the formula value to be shown in the formula bar
+  // and whether the it is part of an array formula that cannot be edited directly
+  const getFormulaValue = (): [string, boolean] => {
     const cell = workbookState.getEditingCell();
     if (cell) {
-      return workbookState.getEditingText();
+      return [workbookState.getEditingText(), true];
     }
     const { sheet, row, column } = model.getSelectedView();
-    return model.getCellContent(sheet, row, column);
+    const arrayStructure = model.getCellArrayStructure(sheet, row, column);
+    if (arrayStructure === "SingleCell") {
+      // single cell
+    } else if ("DynamicAnchor" in arrayStructure) {
+      // Anchor of a dynamic array
+    } else if ("DynamicChild" in arrayStructure) {
+      // Child of a dynamic array
+    } else if ("ArrayAnchor" in arrayStructure) {
+      return [`{${model.getCellContent(sheet, row, column)}}`, false];
+    } else if ("ArrayChild" in arrayStructure) {
+      const array = arrayStructure.ArrayChild;
+      return [`{${model.getCellContent(sheet, array[0], array[1])}}`, false];
+    }
+    return [model.getCellContent(sheet, row, column), true];
   };
+
+  const [formulaValue, isArrayFormula] = getFormulaValue();
 
   const getCellStyle = useCallback(() => {
     const { sheet, row, column } = model.getSelectedView();
@@ -460,13 +485,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             }
             data.set(Number.parseInt(row, 10), rowMap);
           }
-          model.pasteFromClipboard(
-            source.sheet,
-            source.area,
-            data,
-            source.type === "cut",
-          );
-          setRedrawId((id) => id + 1);
+          try {
+            model.pasteFromClipboard(
+              source.sheet,
+              source.area,
+              data,
+              source.type === "cut",
+            );
+            setRedrawId((id) => id + 1);
+          } catch (_) {
+            setDeleteCellsErrorOpen(true);
+          }
         } else if (mimeType === "text/plain") {
           const {
             sheet,
@@ -708,7 +737,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
       >
         <FormulaBar
           cellAddress={cellAddress()}
-          formulaValue={formulaValue()}
+          formulaValue={formulaValue}
           onChange={() => {
             setRedrawId((id) => id + 1);
             focusWorkbook();
@@ -721,7 +750,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           openDrawer={() => {
             openDrawer("namedRanges");
           }}
-          canEdit={true}
+          canEdit={isArrayFormula}
         />
         <Worksheet
           model={model}
@@ -730,6 +759,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             setRedrawId((id) => id + 1);
           }}
           ref={worksheetRef}
+          canEdit={isArrayFormula}
         />
 
         <SheetTabBar
@@ -807,6 +837,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setLanguage(language);
           setRedrawId((id) => id + 1);
         }}
+      />
+      <ErrorDialog
+        open={deleteCellsErrorOpen}
+        onClose={() => setDeleteCellsErrorOpen(false)}
+        title={t("error_dialog.error_deleting_cells")}
       />
     </div>
   );

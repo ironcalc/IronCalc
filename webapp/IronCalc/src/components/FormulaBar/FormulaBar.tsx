@@ -70,6 +70,9 @@ function FormulaBar(properties: FormulaBarProps) {
         <div
           className="ic-formula-bar-editor-wrapper"
           onClick={(event) => {
+            if (!properties.canEdit) {
+              return;
+            }
             const [sheet, row, column] = model.getSelectedCell();
             const editorWidth =
               model.getColumnWidth(sheet, column) * COLUMN_WIDTH_SCALE;
@@ -102,6 +105,7 @@ function FormulaBar(properties: FormulaBarProps) {
             }}
             onTextUpdated={onTextUpdated}
             type="formula-bar"
+            canEdit={properties.canEdit}
           />
         </div>
       </div>

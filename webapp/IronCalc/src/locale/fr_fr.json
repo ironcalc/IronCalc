@@ -169,6 +169,17 @@
       "unfreeze_rows": "Annuler le figeage des lignes"
     }
   },
+  "error_dialog": {
+    "ok": "OK",
+    "error_editing_formula": "Erreur lors de la modification de la formule",
+    "error_deleting_cells": "Échec de la suppression des cellules",
+    "error_deleting_rows": "Échec de la suppression des lignes",
+    "error_inserting_rows": "Échec de l'insertion des lignes",
+    "error_moving_rows": "Échec du déplacement des lignes",
+    "error_deleting_columns": "Échec de la suppression des colonnes",
+    "error_inserting_columns": "Échec de l'insertion des colonnes",
+    "error_moving_columns": "Échec du déplacement des colonnes"
+  },
   "color_picker": {
     "apply": "Ajouter la couleur",
     "cancel": "Annuler",

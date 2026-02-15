@@ -1,6 +1,7 @@
 use crate::constants::{self, LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::{is_valid_column_number, is_valid_row};
+use crate::model::CellStructure;
 use crate::{expressions::token::Error, types::*};
 
 use std::collections::HashMap;
@@ -253,6 +254,44 @@ impl Worksheet {
         style: i32,
     ) -> Result<(), String> {
         let cell = Cell::new_formula(index, style);
+        self.update_cell(row, column, cell)
+    }
+
+    pub fn set_cell_with_dynamic_formula(
+        &mut self,
+        row: i32,
+        column: i32,
+        index: i32,
+        style: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), String> {
+        let cell = Cell::ArrayFormula {
+            f: index,
+            s: style,
+            r: (width, height),
+            kind: ArrayKind::Dynamic,
+            v: FormulaValue::Unevaluated,
+        };
+        self.update_cell(row, column, cell)
+    }
+
+    pub fn set_cell_with_array_formula(
+        &mut self,
+        row: i32,
+        column: i32,
+        index: i32,
+        style: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), String> {
+        let cell = Cell::ArrayFormula {
+            f: index,
+            s: style,
+            r: (width, height),
+            kind: ArrayKind::Cse,
+            v: FormulaValue::Unevaluated,
+        };
         self.update_cell(row, column, cell)
     }
 
@@ -583,7 +622,10 @@ impl Worksheet {
     }
 
     // Returns non empty cells in a column
-    pub fn column_cell_references(&self, column: i32) -> Result<Vec<CellReferenceIndex>, String> {
+    pub(crate) fn column_cell_references(
+        &self,
+        column: i32,
+    ) -> Result<Vec<CellReferenceIndex>, String> {
         let mut column_cell_references: Vec<CellReferenceIndex> = Vec::new();
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
@@ -617,42 +659,6 @@ impl Worksheet {
             }
         }
         Ok(constants::DEFAULT_ROW_HEIGHT)
-    }
-
-    /// Returns non empty cells in a row
-    pub fn row_cell_references(&self, row: i32) -> Result<Vec<CellReferenceIndex>, String> {
-        let mut row_cell_references: Vec<CellReferenceIndex> = Vec::new();
-        if !is_valid_row(row) {
-            return Err(format!("Row number '{row}' is not valid."));
-        }
-
-        for (row_index, columns) in self.sheet_data.iter() {
-            if *row_index == row {
-                for column in columns.keys() {
-                    row_cell_references.push(CellReferenceIndex {
-                        sheet: self.sheet_id,
-                        row,
-                        column: *column,
-                    })
-                }
-            }
-        }
-        Ok(row_cell_references)
-    }
-
-    /// Returns non empty cells
-    pub fn cell_references(&self) -> Result<Vec<CellReferenceIndex>, String> {
-        let mut cell_references: Vec<CellReferenceIndex> = Vec::new();
-        for (row, columns) in self.sheet_data.iter() {
-            for column in columns.keys() {
-                cell_references.push(CellReferenceIndex {
-                    sheet: self.sheet_id,
-                    row: *row,
-                    column: *column,
-                })
-            }
-        }
-        Ok(cell_references)
     }
 
     /// Calculates dimension of the sheet. This function isn't cheap to calculate.
@@ -730,6 +736,60 @@ impl Worksheet {
         };
 
         Ok(is_empty)
+    }
+
+    /// Returns true if cell is part of an array formula. This includes both anchor and spill cells.
+    pub(crate) fn get_cell_structure(
+        &self,
+        row: i32,
+        column: i32,
+    ) -> Result<CellStructure, String> {
+        if !is_valid_column_number(column) || !is_valid_row(row) {
+            return Err("Row or column is outside valid range.".to_string());
+        }
+
+        let cell = match self.cell(row, column) {
+            Some(c) => c,
+            None => return Ok(CellStructure::SingleCell),
+        };
+        match cell {
+            Cell::ArrayFormula {
+                r,
+                kind: ArrayKind::Cse,
+                ..
+            } => Ok(CellStructure::ArrayFormula { range: *r }),
+            Cell::ArrayFormula {
+                r,
+                kind: ArrayKind::Dynamic,
+                ..
+            } => Ok(CellStructure::DynamicFormula { range: *r }),
+            Cell::SpillCell { a, .. } => {
+                let anchor_cell = match self.cell(a.0, a.1) {
+                    Some(c) => c,
+                    None => return Err("Invalid spill reference".to_string()),
+                };
+                match anchor_cell {
+                    Cell::ArrayFormula {
+                        r,
+                        kind: ArrayKind::Cse,
+                        ..
+                    } => Ok(CellStructure::SpillArray {
+                        anchor: (a.0, a.1),
+                        range: *r,
+                    }),
+                    Cell::ArrayFormula {
+                        r,
+                        kind: ArrayKind::Dynamic,
+                        ..
+                    } => Ok(CellStructure::SpillDynamic {
+                        anchor: (a.0, a.1),
+                        range: *r,
+                    }),
+                    _ => Err("Spill cell does not reference an array formula".to_string()),
+                }
+            }
+            _ => Ok(CellStructure::SingleCell),
+        }
     }
 
     /// It provides convenient method for user navigation in the spreadsheet by jumping to edges.

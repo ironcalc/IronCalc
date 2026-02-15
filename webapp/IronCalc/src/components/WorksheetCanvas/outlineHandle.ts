@@ -19,16 +19,6 @@ export function attachOutlineHandle(
   parent.appendChild(cellOutlineHandle);
   worksheet.cellOutlineHandle = cellOutlineHandle;
 
-  Object.assign(cellOutlineHandle.style, {
-    position: "absolute",
-    width: "5px",
-    height: "5px",
-    background: worksheet.theme.outlineColor,
-    cursor: "crosshair",
-    borderRadius: "1px",
-    border: `1px solid white`,
-  });
-
   // cell handle events
   const resizeHandleMove = (event: MouseEvent): void => {
     const canvasRect = worksheet.canvas.getBoundingClientRect();

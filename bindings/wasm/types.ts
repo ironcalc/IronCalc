@@ -109,6 +109,13 @@ export interface MarkedToken {
   end: number;
 }
 
+export type CellArrayStructure =
+  | "SingleCell"
+  | { DynamicChild: [number, number, number, number] }
+  | { DynamicAnchor: [number, number] }
+  | { ArrayAnchor: [number, number] }
+  | { ArrayChild: [number, number, number, number] };
+
 export interface WorksheetProperties {
   name: string;
   color: string;

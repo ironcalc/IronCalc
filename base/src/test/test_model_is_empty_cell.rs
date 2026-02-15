@@ -18,7 +18,7 @@ fn test_is_empty_cell() {
         .set_user_input(0, 3, 1, "Hello World".to_string())
         .unwrap();
     assert!(!model.is_empty_cell(0, 3, 1).unwrap());
-    model.cell_clear_contents(0, 3, 1).unwrap();
+    model._cell_clear_contents(0, 3, 1).unwrap();
     assert!(model.is_empty_cell(0, 3, 1).unwrap());
 }
 

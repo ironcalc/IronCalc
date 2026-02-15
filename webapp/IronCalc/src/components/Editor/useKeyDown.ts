@@ -38,7 +38,7 @@ export const useKeyDown = (
     options;
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      const { key, shiftKey, altKey } = event;
+      const { key, shiftKey, altKey, ctrlKey } = event;
       const textarea = textareaRef.current;
       const cell = workbookState.getEditingCell();
       if (!textarea || !cell) {
@@ -64,17 +64,33 @@ export const useKeyDown = (
           }
           event.stopPropagation();
           event.preventDefault();
-          // end edit and select cell bellow (or above if shiftKey)
-          model.setUserInput(
-            cell.sheet,
-            cell.row,
-            cell.column,
-            cell.text + (cell.referencedRange?.str || ""),
-          );
-          if (shiftKey) {
-            model.onArrowUp();
-          } else {
+          if (ctrlKey && shiftKey) {
+            const [rowStart, colStart, rowEnd, colEnd] =
+              model.getSelectedView().range;
+            const width = colEnd - colStart + 1;
+            const height = rowEnd - rowStart + 1;
+            model.setUserArrayFormula(
+              cell.sheet,
+              cell.row,
+              cell.column,
+              width,
+              height,
+              cell.text + (cell.referencedRange?.str || ""),
+            );
             model.onArrowDown();
+          } else {
+            // end edit and select cell bellow (or above if shiftKey)
+            model.setUserInput(
+              cell.sheet,
+              cell.row,
+              cell.column,
+              cell.text + (cell.referencedRange?.str || ""),
+            );
+            if (shiftKey) {
+              model.onArrowUp();
+            } else {
+              model.onArrowDown();
+            }
           }
           workbookState.clearEditingCell();
           onEditEnd();

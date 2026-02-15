@@ -26,18 +26,31 @@ pub(crate) enum Diff {
         new_value: String,
         old_value: Box<Option<Cell>>,
     },
-    CellClearContents {
+    SetArrayValue {
         sheet: u32,
         row: i32,
         column: i32,
+        width: i32,
+        height: i32,
+        new_value: String,
         old_value: Box<Option<Cell>>,
     },
-    CellClearAll {
+    RangeClearContents {
         sheet: u32,
         row: i32,
         column: i32,
-        old_value: Box<Option<Cell>>,
-        old_style: Box<Style>,
+        width: i32,
+        height: i32,
+        old_value: Vec<Vec<Option<Cell>>>,
+    },
+    RangeClearAll {
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+        old_value: Vec<Vec<Option<Cell>>>,
+        old_style: Vec<Vec<Style>>,
     },
     CellClearFormatting {
         sheet: u32,
@@ -177,14 +190,16 @@ pub(crate) enum Diff {
         new_scope: Option<u32>,
         new_formula: String,
     },
-    MoveColumn {
+    MoveColumns {
         sheet: u32,
         column: i32,
+        column_count: i32,
         delta: i32,
     },
-    MoveRow {
+    MoveRows {
         sheet: u32,
         row: i32,
+        row_count: i32,
         delta: i32,
     },
     SetLocale {

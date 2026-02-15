@@ -400,6 +400,21 @@ impl Model {
             .map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "setUserArrayFormula")]
+    pub fn set_user_array_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        width: i32,
+        height: i32,
+        formula: &str,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_user_array_formula(sheet, row, column, width, height, formula)
+            .map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "getFormattedCellValue")]
     pub fn get_formatted_cell_value(
         &self,
@@ -921,5 +936,22 @@ impl Model {
     pub fn get_fmt_settings(&self) -> Result<JsValue, JsError> {
         let settings: FmtSettings = self.model.get_fmt_settings().into();
         serde_wasm_bindgen::to_value(&settings).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(
+        js_name = "getCellArrayStructure",
+        unchecked_return_type = "CellArrayStructure"
+    )]
+    pub fn get_cell_array_structure(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<JsValue, JsError> {
+        let cell_structure = self
+            .model
+            .get_cell_array_structure(sheet, row, column)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        serde_wasm_bindgen::to_value(&cell_structure).map_err(JsError::from)
     }
 }

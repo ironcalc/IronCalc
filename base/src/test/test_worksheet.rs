@@ -2,6 +2,7 @@
 
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
+    expressions::types::Area,
     test::util::new_empty_model,
     worksheet::{NavigationDirection, WorksheetDimension},
 };
@@ -39,7 +40,7 @@ fn test_worksheet_dimension_single_cell() {
 fn test_worksheet_dimension_single_cell_set_empty() {
     let mut model = new_empty_model();
     model._set("W11", "1");
-    model.cell_clear_contents(0, 11, 23).unwrap();
+    model._cell_clear_contents(0, 11, 23).unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {
@@ -55,7 +56,14 @@ fn test_worksheet_dimension_single_cell_set_empty() {
 fn test_worksheet_dimension_single_cell_deleted() {
     let mut model = new_empty_model();
     model._set("W11", "1");
-    model.cell_clear_all(0, 11, 23).unwrap();
+    let area = Area {
+        sheet: 0,
+        row: 11,
+        column: 23,
+        width: 1,
+        height: 1,
+    };
+    model.range_clear_all(&area).unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {
@@ -75,7 +83,14 @@ fn test_worksheet_dimension_multiple_cells() {
     model._set("AA17", "1");
     model._set("G17", "1");
     model._set("B19", "1");
-    model.cell_clear_all(0, 11, 23).unwrap();
+    let area = Area {
+        sheet: 0,
+        row: 11,
+        column: 23,
+        width: 1,
+        height: 1,
+    };
+    model.range_clear_all(&area).unwrap();
     assert_eq!(
         model.workbook.worksheet(0).unwrap().dimension(),
         WorksheetDimension {

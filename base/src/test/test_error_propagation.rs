@@ -2,7 +2,7 @@
 #![allow(clippy::panic)]
 
 use crate::test::util::new_empty_model;
-use crate::types::Cell;
+use crate::types::{Cell, FormulaValue};
 
 #[test]
 fn test_simple_error_propagation() {
@@ -12,7 +12,10 @@ fn test_simple_error_propagation() {
     model._set("A3", "=C2+A2");
     model.evaluate();
     match model._get_cell("Sheet1!A3") {
-        Cell::CellFormulaError { o, .. } => {
+        Cell::CellFormula {
+            v: FormulaValue::Error { o, .. },
+            ..
+        } => {
             assert_eq!(o, "Sheet1!A1");
         }
         _ => panic!("Unreachable"),

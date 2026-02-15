@@ -169,6 +169,17 @@
       "unfreeze_rows": "Rimuovi blocco delle righe"
     }
   },
+  "error_dialog": {
+    "ok": "OK",
+    "error_editing_formula": "Errore durante la modifica della formula",
+    "error_deleting_cells": "Impossibile eliminare le celle",
+    "error_deleting_rows": "Impossibile eliminare le righe",
+    "error_inserting_rows": "Impossibile inserire le righe",
+    "error_moving_rows": "Impossibile spostare le righe",
+    "error_deleting_columns": "Impossibile eliminare le colonne",
+    "error_inserting_columns": "Impossibile inserire le colonne",
+    "error_moving_columns": "Impossibile spostare le colonne"
+  },
   "color_picker": {
     "apply": "Aggiungi colore",
     "cancel": "Annulla",

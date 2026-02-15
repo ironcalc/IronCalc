@@ -169,6 +169,17 @@
       "unfreeze_rows": "Quitar fijación de filas"
     }
   },
+  "error_dialog": {
+    "ok": "OK",
+    "error_editing_formula": "Error al editar la fórmula",
+    "error_deleting_cells": "Error al eliminar las celdas",
+    "error_deleting_rows": "Error al eliminar las filas",
+    "error_inserting_rows": "Error al insertar las filas",
+    "error_moving_rows": "Error al mover las filas",
+    "error_deleting_columns": "Error al eliminar las columnas",
+    "error_inserting_columns": "Error al insertar las columnas",
+    "error_moving_columns": "Error al mover las columnas"
+  },
   "color_picker": {
     "apply": "Añadir color",
     "cancel": "Cancelar",

@@ -18,19 +18,22 @@ fn simple_colum() {
 }
 
 #[test]
-fn return_of_array_is_n_impl() {
+fn return_of_array_spills() {
     let mut model = new_empty_model();
     // We populate cells A1 to A3
     model._set("A1", "1");
     model._set("A2", "2");
     model._set("A3", "3");
 
+    // With dynamic arrays, =A1:A3 spills downward from C2
     model._set("C2", "=A1:A3");
     model._set("D2", "=SUM(SIN(A:A)");
 
     model.evaluate();
 
-    assert_eq!(model._get_text("C2"), "#N/IMPL!".to_string());
+    assert_eq!(model._get_text("C2"), "1".to_string());
+    assert_eq!(model._get_text("C3"), "2".to_string());
+    assert_eq!(model._get_text("C4"), "3".to_string());
     assert_eq!(model._get_text("D2"), "1.89188842".to_string());
 }
 
