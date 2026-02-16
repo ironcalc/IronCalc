@@ -1525,14 +1525,10 @@ impl<'a> Model<'a> {
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         if let Some(new_value) = value.strip_prefix('\'') {
-            // First check if it needs quoting
-            let new_style = if common::value_needs_quoting(new_value, self.language) {
-                self.workbook
-                    .styles
-                    .get_style_with_quote_prefix(style_index)?
-            } else {
-                style_index
-            };
+            let new_style = self
+                .workbook
+                .styles
+                .get_style_with_quote_prefix(style_index)?;
             self.set_cell_with_string(sheet, row, column, new_value, new_style)?;
         } else {
             let mut new_style_index = style_index;
