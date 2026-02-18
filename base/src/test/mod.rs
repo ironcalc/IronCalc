@@ -57,6 +57,7 @@ mod test_true_false;
 mod test_weekday_return_types;
 mod test_weeknum_return_types;
 mod test_workbook;
+mod test_workday_workdayintl;
 mod test_worksheet;
 mod test_yearfrac_basis;
 pub(crate) mod util;
