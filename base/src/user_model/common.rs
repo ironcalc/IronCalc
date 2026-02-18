@@ -15,7 +15,7 @@ use crate::{
         types::{Area, CellReferenceIndex},
         utils::{is_valid_column_number, is_valid_row},
     },
-    model::{FmtSettings, Model},
+    model::{CellReference, FmtSettings, Model},
     types::{
         Alignment, BorderItem, Cell, CellType, Col, HorizontalAlignment, SheetProperties,
         SheetState, Style, VerticalAlignment,
@@ -2915,6 +2915,11 @@ impl<'a> UserModel<'a> {
             self.evaluate_if_not_paused();
         }
         Ok(())
+    }
+
+    /// Returns a list of all cells that have been changed or are being evaluated
+    pub fn get_changed_cells(&self) -> Vec<CellReference> {
+        self.model.get_changed_cells()
     }
 }
 

@@ -245,3 +245,9 @@ export interface FmtSettings {
   number_fmt: string;
   number_example: string;
 }
+
+export interface ChangedCell {
+  sheet: number;
+  row: number;
+  column: number;
+}
