@@ -45,7 +45,7 @@ fn round_sig(value: f64) -> f64 {
         return 0.0;
     }
     let rounded = value.round();
-    if (value - rounded).abs() <= 1e-11 * value.abs().max(1.0) {
+    if (value - rounded).abs() <= 1e-14 * value.abs().max(1.0) {
         return rounded;
     }
     let sign = value.signum();
@@ -212,21 +212,15 @@ struct SuffixedNumberDetector<'a> {
 
 impl SuffixedNumberDetector<'_> {
     fn suffix_index(value: &str) -> usize {
-        let mut rev = String::new();
-
-        let potential_numeric_suffixes = value
+        let digits = value
             .chars()
             .rev()
-            .map_while(|x| {
-                rev.push(x);
-                rev.parse::<i64>().ok()
-            })
-            .collect::<Vec<_>>();
-
-        if value.len() == potential_numeric_suffixes.len() {
+            .take_while(|c| c.is_ascii_digit())
+            .count();
+        if digits == value.chars().count() {
             0
         } else {
-            potential_numeric_suffixes.len()
+            digits
         }
     }
 }

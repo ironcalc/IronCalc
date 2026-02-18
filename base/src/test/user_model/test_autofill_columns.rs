@@ -2,6 +2,7 @@
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
+use crate::locale::get_locale;
 use crate::test::util::new_empty_model;
 use crate::UserModel;
 
@@ -40,7 +41,7 @@ fn basic_tests() {
 fn one_cell_right() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
-    model.set_user_input(0, 1, 1, "23").unwrap();
+    model.set_user_input(0, 1, 1, "23").unwrap(); // A1
     model
         .auto_fill_columns(
             &Area {
@@ -55,8 +56,436 @@ fn one_cell_right() {
         .unwrap();
     // B1
     assert_eq!(
-        model.get_formatted_cell_value(0, 1, 2),
+        model.get_formatted_cell_value(0, 1, 2), // B1
         Ok("23".to_string())
+    );
+}
+
+#[test]
+fn int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "40").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "41").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            5,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 3), // C1
+        Ok("42".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 4), // D1
+        Ok("43".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 5), // E1
+        Ok("44".to_string())
+    );
+}
+
+#[test]
+fn float_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "40.5").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "41.0").unwrap(); // B1
+    model.set_user_input(0, 1, 3, "41.5").unwrap(); // C1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 3,
+                height: 1,
+            },
+            6,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("42".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 5), // E1
+        Ok("42.5".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 6), // F1
+        Ok("43".to_string())
+    );
+}
+
+#[test]
+fn float_tolerance_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "40.000000000001").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "41.000000000001").unwrap(); // B1
+    model.set_user_input(0, 1, 3, "42.000000000001").unwrap(); // C1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 3,
+                height: 1,
+            },
+            6,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("43.000000000001".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 5), // E1
+        Ok("44.000000000001".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 6), // F1
+        Ok("45.000000000001".to_string())
+    );
+}
+
+#[test]
+fn float_progression_rounds() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "41.8").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "41.9").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("42".to_string())
+    );
+}
+
+#[test]
+fn constant_value_autofill() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "5").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "5").unwrap(); // B1
+    model.set_user_input(0, 1, 3, "5").unwrap(); // C1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 3,
+                height: 1,
+            },
+            6,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("5".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 5), // E1
+        Ok("5".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 6), // F1
+        Ok("5".to_string())
+    );
+}
+
+#[test]
+fn not_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "4").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "2").unwrap(); // B1
+    model.set_user_input(0, 1, 3, "4").unwrap(); // C1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 3,
+                height: 1,
+            },
+            6,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("4".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 5), // E1
+        Ok("2".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 6), // F1
+        Ok("4".to_string())
+    );
+}
+
+#[test]
+fn suffixed_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Project1").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "Project2").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("Project3".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("Project4".to_string())
+    );
+}
+
+#[test]
+fn suffixed_float_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Project1.8").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "Project1.9").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("Project1.10".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("Project1.11".to_string())
+    );
+}
+
+#[test]
+fn not_suffixed_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Project1").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "AProject2").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("Project1".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("AProject2".to_string())
+    );
+}
+
+#[test]
+fn suffixed_not_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Project1").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "Project1").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("Project1".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("Project1".to_string())
+    );
+}
+
+#[test]
+fn month_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "January").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "February").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("March".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("April".to_string())
+    );
+}
+
+#[test]
+fn rev_month_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "February").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "January").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("December".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("November".to_string())
+    );
+}
+
+#[test]
+fn de_locale_month_progression() {
+    let mut model = new_empty_model();
+    model.locale = get_locale("de").unwrap();
+    let mut model = UserModel::from_model(model);
+
+    model.set_user_input(0, 1, 1, "Januar").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "Februar").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("März".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("April".to_string())
+    );
+}
+
+#[test]
+fn short_month_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "Jan").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "Feb").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("Mar".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("Apr".to_string())
     );
 }
 
@@ -289,6 +718,32 @@ fn left_4() {
 }
 
 #[test]
+fn left_int_progression() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 2, "1").unwrap(); // B1
+    model.set_user_input(0, 1, 3, "2").unwrap(); // C1
+
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 2,
+                width: 2,
+                height: 1,
+            },
+            1,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 1), // A1
+        Ok("0".to_string())
+    );
+}
+
+#[test]
 fn errors() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
@@ -379,7 +834,7 @@ fn errors() {
             },
             -10,
         ),
-        Err("Invalid row: '-10'".to_string())
+        Err("Invalid column: '-10'".to_string())
     );
 }
 
