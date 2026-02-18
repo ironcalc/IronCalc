@@ -199,4 +199,10 @@ impl<'a> Model<'a> {
 
         CalcResult::Number(rank)
     }
+
+    /// RANK(number, ref, [order])
+    /// Compatibility function - same as RANK.EQ
+    pub(crate) fn fn_rank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.fn_rank_eq(args, cell)
+    }
 }
