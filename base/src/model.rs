@@ -280,6 +280,19 @@ impl<'a> Model<'a> {
         }
     }
 
+    fn is_formula_with_prefix(&self, value: &str) -> bool {
+        if let Some(stripped) = value.strip_prefix('=') {
+            return !stripped.is_empty();
+        }
+        if let Some(stripped) = value.strip_prefix(['+', '-']) {
+            if stripped.is_empty() || self.cast_number(stripped).is_some() {
+                return false;
+            }
+            return true;
+        }
+        false
+    }
+
     pub(crate) fn evaluate_node_in_context(
         &mut self,
         node: &Node,
@@ -1076,7 +1089,14 @@ impl<'a> Model<'a> {
             .worksheet(target.sheet)
             .map_err(|e| format!("Could not find target worksheet: {e}"))?
             .get_name();
-        if let Some(formula) = value.strip_prefix('=') {
+        if self.is_formula_with_prefix(value) {
+            let formula;
+            if let Some(eq_formula) = value.strip_prefix('=') {
+                formula = eq_formula
+            } else {
+                formula = value;
+            }
+
             let cell_reference = CellReferenceRC {
                 sheet: source_sheet_name.to_owned(),
                 row: source.row,
@@ -1194,7 +1214,15 @@ impl<'a> Model<'a> {
                 return Err("Invalid worksheet index".to_owned());
             }
         };
-        if let Some(formula_str) = value.strip_prefix('=') {
+
+        if self.is_formula_with_prefix(value) {
+            let formula_str;
+            if let Some(eq_formula) = value.strip_prefix('=') {
+                formula_str = eq_formula
+            } else {
+                formula_str = value;
+            }
+
             let cell_reference = CellReferenceRC {
                 sheet: source_sheet_name.to_string(),
                 row: source.row,
@@ -1210,7 +1238,7 @@ impl<'a> Model<'a> {
                 "={}",
                 to_localized_string(formula, &cell_reference, self.locale, self.language)
             ));
-        };
+        }
         Ok(value.to_string())
     }
 
@@ -1477,11 +1505,19 @@ impl<'a> Model<'a> {
                 .styles
                 .get_style_without_quote_prefix(style_index)?;
         }
-        let formula = formula
-            .strip_prefix('=')
-            .ok_or_else(|| format!("\"{formula}\" is not a valid formula"))?;
-        self.set_cell_with_formula(sheet, row, column, formula, style_index)?;
-        Ok(())
+
+        if self.is_formula_with_prefix(&formula) {
+            let new_formula;
+            if let Some(eq_formula) = formula.strip_prefix('=') {
+                new_formula = eq_formula
+            } else {
+                new_formula = &formula;
+            }
+            self.set_cell_with_formula(sheet, row, column, new_formula, style_index)?;
+            Ok(())
+        } else {
+            Err(format!("\"{formula}\" is not a valid formula"))
+        }
     }
 
     /// Sets a cell parametrized by (`sheet`, `row`, `column`) with `value`.
@@ -1538,7 +1574,14 @@ impl<'a> Model<'a> {
                     .styles
                     .get_style_without_quote_prefix(style_index)?;
             }
-            if let Some(formula) = value.strip_prefix('=') {
+            if self.is_formula_with_prefix(&value) {
+                let formula;
+                if let Some(eq_formula) = value.strip_prefix('=') {
+                    formula = eq_formula
+                } else {
+                    formula = &value;
+                }
+
                 let formula_index =
                     self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
                 // Update the style if needed
@@ -2602,5 +2645,15 @@ mod tests {
             model.workbook.worksheet(5),
             Err("Invalid sheet index".to_string()),
         )
+    }
+
+    #[test]
+    fn test_update_cell_with_sign_prefixed_formulas() {
+        let mut model = new_empty_model();
+
+        let update_result = model.update_cell_with_formula(0, 1, 1, "-A2*2".to_string());
+        model.evaluate();
+        assert_eq!(update_result, Ok(()));
+        assert_eq!(model._get_formula("A1"), *"=-A2*2");
     }
 }

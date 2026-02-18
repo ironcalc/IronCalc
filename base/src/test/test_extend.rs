@@ -104,3 +104,22 @@ fn move_cell_value_to_area_basic() {
         .unwrap();
     assert_eq!(&result, "=B48");
 }
+
+#[test]
+fn extend_to_sign_prefixed_formulas() {
+    let mut model = new_empty_model();
+    let source = CellReferenceIndex {
+        sheet: 0,
+        row: 1,
+        column: 1,
+    };
+    let target = CellReferenceIndex {
+        sheet: 0,
+        row: 30,
+        column: 1,
+    };
+    let result = model
+        .extend_copied_value("-B1*D4", &source, &target)
+        .unwrap();
+    assert_eq!(&result, "=-B30*D33");
+}
