@@ -158,3 +158,13 @@ pub fn load_from_icalc<'a>(file_name: &str, language_id: &'a str) -> Result<Mode
         .map_err(|e| XlsxError::IO(format!("Failed to decode file: {e}")))?;
     Model::from_workbook(workbook, language_id).map_err(XlsxError::Workbook)
 }
+
+/// Loads a [`Model`] from the bytes of an `ic` file.
+pub fn load_from_icalc_bytes<'a>(
+    bytes: &'a [u8],
+    language_id: &'a str,
+) -> Result<Model<'a>, XlsxError> {
+    let workbook: Workbook = bitcode::decode(bytes)
+        .map_err(|e| XlsxError::IO(format!("Failed to decode file: {}", e)))?;
+    Model::from_workbook(workbook, language_id).map_err(XlsxError::Workbook)
+}

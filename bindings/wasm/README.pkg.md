@@ -1,7 +1,6 @@
 # IronCalc Web bindings
 
-This package contains web bindings for IronCalc. Note that it does not contain the xlsx writer and reader, only the engine.
-
+This crate is used to build the web bindings for IronCalc.
 
 ## Usage
 
@@ -15,8 +14,11 @@ And then in your TypeScript
 
 ```TypeScript
 import init, { Model } from "@ironcalc/wasm";
+import initXLSX, { toXLSXBytes, fromXLSXBytes } from "@ironcalc/wasm/xlsx";
+
 
 await init();
+await initXLSX();
 
 function compute() {
     const model = new Model('en', 'UTC');
@@ -30,4 +32,15 @@ function compute() {
 }
 
 compute();
+
+// create a new workbook and export as XLSX bytes
+const model = new Model('Workbook1', 'en', 'UTC');
+model.setUserInput(0, 1, 1, '42');
+const xlsxBytes = toXLSXBytes(model.toBytes());
+
+// load from those bytes
+const roundTrippedBytes = fromXLSXBytes(xlsxBytes, 'Workbook1', 'en', 'UTC');
+const roundTripped = Model.fromBytes(roundTrippedBytes);
+
 ```
+
