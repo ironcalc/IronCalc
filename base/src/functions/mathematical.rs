@@ -9,6 +9,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 use std::f64::consts::PI;
+const MAX_LCM_GCD: i64 = 2_i64.pow(53);
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn random() -> f64 {
@@ -34,7 +35,7 @@ fn lcm_i64(a: i64, b: i64) -> Option<i64> {
     let g = gcd_i64(a, b);
     let a_div_g = (a / g) as i128;
     let prod = a_div_g * (b as i128);
-    if prod > i64::MAX as i128 {
+    if prod > MAX_LCM_GCD as i128 {
         None
     } else {
         Some(prod as i64)
@@ -283,9 +284,41 @@ impl<'a> Model<'a> {
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(value) => {
+                    if value > MAX_LCM_GCD as f64 {
+                        return CalcResult::Error {
+                            error: Error::NUM,
+                            origin: cell,
+                            message: "Argument too large".to_string(),
+                        };
+                    }
                     if let Some(res) = handle_number(value) {
                         return res;
                     }
+                }
+                CalcResult::String(s) => {
+                    if let Ok(value) = self.cast_to_number(CalcResult::String(s), cell) {
+                        handle_number(value);
+                    } else {
+                        return CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: "Non-numeric string".to_string(),
+                        };
+                    }
+                }
+                CalcResult::Boolean(_) => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Booleans not allowed in GCD".to_string(),
+                    };
+                }
+                CalcResult::EmptyArg => {
+                    return CalcResult::Error {
+                        error: Error::NA,
+                        origin: cell,
+                        message: "Empty argument".to_string(),
+                    };
                 }
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
@@ -334,13 +367,45 @@ impl<'a> Model<'a> {
                                 column,
                             }) {
                                 CalcResult::Number(value) => {
+                                    if value > MAX_LCM_GCD as f64 {
+                                        return CalcResult::Error {
+                                            error: Error::NUM,
+                                            origin: cell,
+                                            message: "Number too large".to_string(),
+                                        };
+                                    }
                                     if let Some(res) = handle_number(value) {
+                                        return res;
+                                    }
+                                }
+                                CalcResult::String(s) => {
+                                    if let Ok(value) =
+                                        self.cast_to_number(CalcResult::String(s), cell)
+                                    {
+                                        handle_number(value);
+                                    } else {
+                                        return CalcResult::Error {
+                                            error: Error::VALUE,
+                                            origin: cell,
+                                            message: "Non-numeric string".to_string(),
+                                        };
+                                    }
+                                }
+                                CalcResult::Boolean(_) => {
+                                    return CalcResult::Error {
+                                        error: Error::VALUE,
+                                        origin: cell,
+                                        message: "Booleans not allowed in GCD".to_string(),
+                                    };
+                                }
+                                CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                                    if let Some(res) = handle_number(0.0) {
                                         return res;
                                     }
                                 }
                                 error @ CalcResult::Error { .. } => return error,
                                 _ => {
-                                    // ignore strings / booleans
+                                    // accept strings / booleans
                                 }
                             }
                         }
@@ -351,9 +416,36 @@ impl<'a> Model<'a> {
                         for value in row {
                             match value {
                                 ArrayNode::Number(value) => {
+                                    if value > MAX_LCM_GCD as f64 {
+                                        return CalcResult::Error {
+                                            error: Error::NUM,
+                                            origin: cell,
+                                            message: "Number too large".to_string(),
+                                        };
+                                    }
                                     if let Some(res) = handle_number(value) {
                                         return res;
                                     }
+                                }
+                                ArrayNode::String(s) => {
+                                    if let Ok(value) =
+                                        self.cast_to_number(CalcResult::String(s), cell)
+                                    {
+                                        handle_number(value);
+                                    } else {
+                                        return CalcResult::Error {
+                                            error: Error::VALUE,
+                                            origin: cell,
+                                            message: "Non-numeric string".to_string(),
+                                        };
+                                    }
+                                }
+                                ArrayNode::Boolean(_) => {
+                                    return CalcResult::Error {
+                                        error: Error::VALUE,
+                                        origin: cell,
+                                        message: "Booleans not allowed in GCD".to_string(),
+                                    };
                                 }
                                 ArrayNode::Error(error) => {
                                     return CalcResult::Error {
@@ -361,9 +453,6 @@ impl<'a> Model<'a> {
                                         origin: cell,
                                         message: "Error in array".to_string(),
                                     }
-                                }
-                                _ => {
-                                    // ignore strings / booleans
                                 }
                             }
                         }
@@ -437,6 +526,31 @@ impl<'a> Model<'a> {
                         return res;
                     }
                 }
+                CalcResult::String(s) => {
+                    if let Ok(value) = self.cast_to_number(CalcResult::String(s), cell) {
+                        handle_number(value);
+                    } else {
+                        return CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: "Non-numeric string".to_string(),
+                        };
+                    }
+                }
+                CalcResult::Boolean(_) => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Booleans not allowed in LCM".to_string(),
+                    };
+                }
+                CalcResult::EmptyArg => {
+                    return CalcResult::Error {
+                        error: Error::NA,
+                        origin: cell,
+                        message: "Empty argument".to_string(),
+                    };
+                }
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -488,9 +602,34 @@ impl<'a> Model<'a> {
                                         return res;
                                     }
                                 }
+                                CalcResult::String(s) => {
+                                    if let Ok(value) =
+                                        self.cast_to_number(CalcResult::String(s), cell)
+                                    {
+                                        handle_number(value);
+                                    } else {
+                                        return CalcResult::Error {
+                                            error: Error::VALUE,
+                                            origin: cell,
+                                            message: "Non-numeric string".to_string(),
+                                        };
+                                    }
+                                }
+                                CalcResult::Boolean(_) => {
+                                    return CalcResult::Error {
+                                        error: Error::VALUE,
+                                        origin: cell,
+                                        message: "Booleans not allowed in GCD".to_string(),
+                                    };
+                                }
+                                CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                                    if let Some(res) = handle_number(0.0) {
+                                        return res;
+                                    }
+                                }
                                 error @ CalcResult::Error { .. } => return error,
                                 _ => {
-                                    // ignore strings / booleans
+                                    // accept strings / booleans
                                 }
                             }
                         }
@@ -501,9 +640,36 @@ impl<'a> Model<'a> {
                         for value in row {
                             match value {
                                 ArrayNode::Number(value) => {
+                                    if value > MAX_LCM_GCD as f64 {
+                                        return CalcResult::Error {
+                                            error: Error::NUM,
+                                            origin: cell,
+                                            message: "Number too large".to_string(),
+                                        };
+                                    }
                                     if let Some(res) = handle_number(value) {
                                         return res;
                                     }
+                                }
+                                ArrayNode::String(s) => {
+                                    if let Ok(value) =
+                                        self.cast_to_number(CalcResult::String(s), cell)
+                                    {
+                                        handle_number(value);
+                                    } else {
+                                        return CalcResult::Error {
+                                            error: Error::VALUE,
+                                            origin: cell,
+                                            message: "Non-numeric string".to_string(),
+                                        };
+                                    }
+                                }
+                                ArrayNode::Boolean(_) => {
+                                    return CalcResult::Error {
+                                        error: Error::VALUE,
+                                        origin: cell,
+                                        message: "Booleans not allowed in GCD".to_string(),
+                                    };
                                 }
                                 ArrayNode::Error(error) => {
                                     return CalcResult::Error {
@@ -511,9 +677,6 @@ impl<'a> Model<'a> {
                                         origin: cell,
                                         message: "Error in array".to_string(),
                                     }
-                                }
-                                _ => {
-                                    // ignore strings / booleans
                                 }
                             }
                         }
