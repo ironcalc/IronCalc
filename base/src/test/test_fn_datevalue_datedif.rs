@@ -102,9 +102,9 @@ fn test_datevalue_mmdd_with_day_gt_12() {
 #[test]
 fn test_datevalue_error_conditions() {
     let cases = [
-        "=DATEVALUE(\"31/04/2023\")",   // invalid day (Apr has 30 days)
-        "=DATEVALUE(\"13/13/2023\")",   // invalid month
-        "=DATEVALUE(\"not a date\")",   // non-date text
+        "=DATEVALUE(\"31/04/2023\")", // invalid day (Apr has 30 days)
+        "=DATEVALUE(\"13/13/2023\")", // invalid month
+        "=DATEVALUE(\"not a date\")", // non-date text
     ];
     for formula in cases {
         let result = eval_formula(formula);

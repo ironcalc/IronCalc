@@ -11,32 +11,32 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 
 | Function   | Status                                         | Documentation      |
 | ---------- | ---------------------------------------------- | ------------------ |
-| ACCRINT    | <Badge type="info" text="Not implemented yet" /> | –                  |
-| ACCRINTM   | <Badge type="info" text="Not implemented yet" /> | –                  |
+| ACCRINT    | <Badge type="tip" text="Available" />          | [ACCRINT](financial/accrint) |
+| ACCRINTM   | <Badge type="tip" text="Available" />          | [ACCRINTM](financial/accrintm) |
 | AMORDEGRC  | <Badge type="info" text="Not implemented yet" /> | –                  |
 | AMORLINC   | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPDAYBS  | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPDAYS   | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPDAYSNC | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPNCD    | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPNUM    | <Badge type="info" text="Not implemented yet" /> | –                  |
-| COUPPCD    | <Badge type="info" text="Not implemented yet" /> | –                  |
+| COUPDAYBS  | <Badge type="tip" text="Available" /> | –                  |
+| COUPDAYS   | <Badge type="tip" text="Available" /> | –                  |
+| COUPDAYSNC | <Badge type="tip" text="Available" /> | –                  |
+| COUPNCD    | <Badge type="tip" text="Available" /> | –                  |
+| COUPNUM    | <Badge type="tip" text="Available" /> | –                  |
+| COUPPCD    | <Badge type="tip" text="Available" /> | –                  |
 | CUMIPMT    | <Badge type="tip" text="Available" />          | –                  |
 | CUMPRINC   | <Badge type="tip" text="Available" />          | –                  |
 | DB         | <Badge type="tip" text="Available" />          | –                  |
 | DDB        | <Badge type="tip" text="Available" />          | –                  |
-| DISC       | <Badge type="info" text="Not implemented yet" /> | –                  |
+| DISC       | <Badge type="tip" text="Available" />          | –                  |
 | DOLLARDE   | <Badge type="tip" text="Available" />          | –                  |
 | DOLLARFR   | <Badge type="tip" text="Available" />          | –                  |
-| DURATION   | <Badge type="info" text="Not implemented yet" /> | –                  |
+| DURATION   | <Badge type="tip" text="Available" />          | –                  |
 | EFFECT     | <Badge type="tip" text="Available" />          | –                  |
 | FV         | <Badge type="tip" text="Available" />          | [FV](financial/fv) |
-| FVSCHEDULE | <Badge type="info" text="Not implemented yet" /> | –                  |
-| INTRATE    | <Badge type="info" text="Not implemented yet" /> | –                  |
+| FVSCHEDULE | <Badge type="tip" text="Available" /> | [FVSCHEDULE](financial/fvschedule) |
+| INTRATE    | <Badge type="tip" text="Available" />          | –                  |
 | IPMT       | <Badge type="tip" text="Available" />          | –                  |
 | IRR        | <Badge type="tip" text="Available" />          | –                  |
 | ISPMT      | <Badge type="tip" text="Available" />          | –                  |
-| MDURATION  | <Badge type="info" text="Not implemented yet" /> | –                  |
+| MDURATION  | <Badge type="tip" text="Available" />          | –                  |
 | MIRR       | <Badge type="tip" text="Available" />          | –                  |
 | NOMINAL    | <Badge type="tip" text="Available" />          | –                  |
 | NPER       | <Badge type="tip" text="Available" />          | –                  |
@@ -48,12 +48,12 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | PDURATION  | <Badge type="tip" text="Available" />          | –                  |
 | PMT        | <Badge type="tip" text="Available" />          | –                  |
 | PPMT       | <Badge type="tip" text="Available" />          | –                  |
-| PRICE      | <Badge type="info" text="Not implemented yet" /> | –                  |
-| PRICEDISC  | <Badge type="info" text="Not implemented yet" /> | –                  |
-| PRICEMAT   | <Badge type="info" text="Not implemented yet" /> | –                  |
+| PRICE      | <Badge type="tip" text="Available" />          | –                  |
+| PRICEDISC  | <Badge type="tip" text="Available" />          | –                  |
+| PRICEMAT   | <Badge type="tip" text="Available" />          | –                  |
 | PV         | <Badge type="tip" text="Available" />          | [PV](financial/pv) |
 | RATE       | <Badge type="tip" text="Available" />          | –                  |
-| RECEIVED   | <Badge type="info" text="Not implemented yet" /> | –                  |
+| RECEIVED   | <Badge type="tip" text="Available" />          | –                  |
 | RRI        | <Badge type="tip" text="Available" />          | -                  |
 | SLN        | <Badge type="tip" text="Available" />          | –                  |
 | SYD        | <Badge type="tip" text="Available" />          | –                  |
@@ -63,6 +63,9 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | VDB        | <Badge type="info" text="Not implemented yet" /> | –                  |
 | XIRR       | <Badge type="tip" text="Available" />          | –                  |
 | XNPV       | <Badge type="tip" text="Available" />          | –                  |
-| YIELD      | <Badge type="info" text="Not implemented yet" /> | –                  |
+| YIELD      | <Badge type="tip" text="Available" />          | –                  |
 | YIELDDISC  | <Badge type="info" text="Not implemented yet" /> | –                  |
 | YIELDMAT   | <Badge type="info" text="Not implemented yet" /> | –                  |
+| YIELD      | <Badge type="tip" text="Available" />          | –                  |
+| YIELDDISC  | <Badge type="tip" text="Available" />          | –                  |
+| YIELDMAT   | <Badge type="tip" text="Available" />          | –                  |
