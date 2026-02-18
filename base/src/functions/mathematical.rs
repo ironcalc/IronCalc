@@ -8,7 +8,73 @@ use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+use statrs::function::gamma::ln_gamma;
+use std::f64::consts::LN_2;
 use std::f64::consts::PI;
+
+const FACT_TABLE: [f64; 26] = [
+    1.0,                          // 0!
+    1.0,                          // 1!
+    2.0,                          // 2!
+    6.0,                          // 3!
+    24.0,                         // 4!
+    120.0,                        // 5!
+    720.0,                        // 6!
+    5040.0,                       // 7!
+    40320.0,                      // 8!
+    362880.0,                     // 9!
+    3628800.0,                    // 10!
+    39916800.0,                   // 11!
+    479001600.0,                  // 12!
+    6227020800.0,                 // 13!
+    87178291200.0,                // 14!
+    1307674368000.0,              // 15!
+    20922789888000.0,             // 16!
+    355687428096000.0,            // 17!
+    6402373705728000.0,           // 18!
+    121645100408832000.0,         // 19!
+    2432902008176640000.0,        // 20!
+    51090942171709440000.0,       // 21!
+    1124000727777607680000.0,     // 22!
+    25852016738884976640000.0,    // 23!
+    620448401733239439360000.0,   // 24!
+    15511210043330985984000000.0, // 25!
+];
+
+const FACTDOUBLE_TABLE: [f64; 32] = [
+    1.0,
+    1.0,
+    2.0,
+    3.0,
+    8.0,
+    15.0,
+    48.0,
+    105.0,
+    384.0,
+    945.0,
+    3840.0,
+    10395.0,
+    46080.0,
+    135135.0,
+    645120.0,
+    2027025.0,
+    10321920.0,
+    34459425.0,
+    185794560.0,
+    654729075.0,
+    3715891200.0,
+    13749310575.0,
+    81749606400.0,
+    316234143225.0,
+    1961990553600.0,
+    7905853580625.0,
+    51011754393600.0,
+    213458046676875.0,
+    1428329123020800.0,
+    6190283353629370.0,
+    42849873690624000.0,
+    191898783962511000.0,
+];
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn random() -> f64 {
@@ -1333,35 +1399,78 @@ impl<'a> Model<'a> {
     single_number_fn!(fn_sec, |f| Ok(1.0 / f64::cos(f)));
     single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));
     single_number_fn!(fn_exp, |f: f64| Ok(f64::exp(f)));
+
     single_number_fn!(fn_fact, |x: f64| {
         let x = x.floor();
+
         if x < 0.0 {
             return Err(Error::NUM);
         }
-        let mut acc = 1.0;
-        let mut k = 2.0;
-        while k <= x {
-            acc *= k;
-            k += 1.0;
-        }
-        Ok(acc)
-    });
-    single_number_fn!(fn_factdouble, |x: f64| {
-        let x = x.floor();
-        if x < -1.0 {
-            return Err(Error::NUM);
-        }
-        if x < 0.0 {
+
+        if x == 0.0 {
             return Ok(1.0);
         }
-        let mut acc = 1.0;
-        let mut k = if x % 2.0 == 0.0 { 2.0 } else { 1.0 };
-        while k <= x {
-            acc *= k;
-            k += 2.0;
+        if x < FACT_TABLE.len() as f64 {
+            return Ok(FACT_TABLE[x as usize]);
         }
-        Ok(acc)
+
+        // Use ln Γ(x+1) to avoid overflow while deciding.
+        let ln_val = ln_gamma(x + 1.0);
+
+        // If gamma overflows or is invalid, map to NUM
+        if !ln_val.is_finite() || ln_val > f64::MAX.ln() {
+            return Err(Error::NUM);
+        }
+
+        Ok(ln_val.exp())
     });
+
+    single_number_fn!(fn_factdouble, |x: f64| {
+        let x = x.floor();
+        if x <= -1.0 {
+            return Err(Error::NUM);
+        }
+
+        if x <= 1.0 {
+            return Ok(1.0);
+        }
+
+        // From here x > 1 and integer
+        let n = x as i64;
+
+        if n < FACTDOUBLE_TABLE.len() as i64 {
+            return Ok(FACTDOUBLE_TABLE[n as usize]);
+        }
+
+        // n!! grows very fast, so we compute it using gamma in log-space:
+        //
+        // If n is even, n = 2k:
+        //   n!! = 2^k * k!
+        // If n is odd, n = 2k + 1:
+        //   n!! = (2k+1)! / (2^k * k!)
+        //
+        // and we use ln_gamma for factorials.
+
+        let ln_val = if n % 2 == 0 {
+            // even n = 2k
+            let k = (n / 2) as f64;
+            // ln(n!!) = k * ln(2) + ln(k!)
+            k * LN_2 + ln_gamma(k + 1.0)
+        } else {
+            // odd n = 2k + 1
+            let k = ((n - 1) / 2) as f64;
+            let nn = n as f64;
+            // ln(n!!) = ln((2k+1)!) - (k * ln(2) + ln(k!))
+            ln_gamma(nn + 1.0) - (k * LN_2 + ln_gamma(k + 1.0))
+        };
+
+        if !ln_val.is_finite() || ln_val > f64::MAX.ln() {
+            return Err(Error::NUM);
+        }
+
+        Ok(ln_val.exp())
+    });
+
     single_number_fn!(fn_sign, |f| {
         if f == 0.0 {
             Ok(0.0)
