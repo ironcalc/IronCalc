@@ -38,6 +38,7 @@ mod test_frozen_rows_columns;
 mod test_general;
 mod test_inverted_ranges;
 mod test_issue_623;
+mod test_lcm_gcd;
 mod test_math;
 mod test_metadata;
 mod test_model_cell_clear_all;

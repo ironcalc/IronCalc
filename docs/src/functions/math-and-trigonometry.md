@@ -41,13 +41,13 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | EXP             | <Badge type="tip" text="Available" /> | –             |
 | FACT            | <Badge type="info" text="Not implemented yet" /> | –             |
 | FACTDOUBLE      | <Badge type="info" text="Not implemented yet" /> | –             |
-| FLOOR           | <Badge type="tip" text="Available" />          | –             |
-| FLOOR.MATH      | <Badge type="tip" text="Available" />          | –             |
-| FLOOR.PRECISE   | <Badge type="tip" text="Available" />          | –             |
-| GCD             | <Badge type="info" text="Not implemented yet" /> | –             |
+| FLOOR           | <Badge type="info" text="Not implemented yet" /> | –             |
+| FLOOR.MATH      | <Badge type="info" text="Not implemented yet" /> | –             |
+| FLOOR.PRECISE   | <Badge type="info" text="Not implemented yet" /> | –             |
 | INT             | <Badge type="tip" text="Available" />          | –             |
-| ISO.CEILING     | <Badge type="tip" text="Available" />          | –             |
-| LCM             | <Badge type="info" text="Not implemented yet" /> | –             |
+| GCD             | <Badge type="tip" text="Available" /> | –             |
+| ISO.CEILING     | <Badge type="info" text="Not implemented yet" /> | –             |
+| LCM              <Badge type="tip" text="Available" /> | –             |
 | LET             | <Badge type="info" text="Not implemented yet" /> | –             |
 | LN              | <Badge type="tip" text="Available" />           | –             |
 | LOG             | <Badge type="tip" text="Available" />           | –             |
