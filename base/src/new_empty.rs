@@ -69,6 +69,7 @@ impl<'a> Model<'a> {
             frozen_rows: 0,
             show_grid_lines: true,
             views,
+            threaded_comments: vec![],
         }
     }
 
@@ -445,6 +446,7 @@ impl<'a> Model<'a> {
             },
             tables: HashMap::new(),
             views,
+            persons: vec![],
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;

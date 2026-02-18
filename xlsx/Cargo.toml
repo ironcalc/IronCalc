@@ -24,9 +24,9 @@ ironcalc_base = { path = "../base", version = "0.7" }
 itertools = "0.12"
 chrono = "0.4"
 bitcode = "0.6.8"
-
-[dev-dependencies]
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
+[dev-dependencies]
+
 
 [lib]
 name = "ironcalc"
