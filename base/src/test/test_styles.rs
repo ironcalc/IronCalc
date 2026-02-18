@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::test::util::new_empty_model;
-use crate::types::Style;
 
 #[test]
 fn test_model_set_cells_with_values_styles() {
@@ -19,7 +18,7 @@ fn test_model_set_cells_with_values_styles() {
     let mut style = style_base;
     style.num_fmt = "#,##0.00".to_string();
     assert!(model.set_cell_style(0, 2, 1, &style).is_ok());
-    let style: Style = model.get_style_for_cell(0, 2, 1).unwrap();
+    let style = model.get_style_for_cell(0, 2, 1).unwrap();
     assert_eq!(style.num_fmt, "#,##0.00".to_string());
 }
 
@@ -75,4 +74,99 @@ fn empty_models_have_two_fills() {
         model.workbook.styles.fills[1].pattern_type,
         "gray125".to_string()
     );
+}
+
+#[test]
+fn test_set_style_on_boolean_cell() {
+    let mut model = new_empty_model();
+    // Inputs
+    model.set_user_input(0, 1, 1, "TRUE".to_string()).unwrap();
+
+    let initial_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    let mut new_style = initial_style.clone();
+    new_style.font.b = true;
+    assert!(model.set_cell_style(0, 1, 1, &new_style).is_ok());
+
+    let final_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(final_style.font.b);
+}
+
+#[test]
+fn test_set_style_on_error_cell() {
+    let mut model = new_empty_model();
+    // Inputs
+    model.set_user_input(0, 1, 1, "#CALC!".to_string()).unwrap();
+
+    let initial_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    let mut new_style = initial_style.clone();
+    new_style.font.b = true;
+    assert!(model.set_cell_style(0, 1, 1, &new_style).is_ok());
+
+    let final_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(final_style.font.b);
+}
+
+#[test]
+fn test_set_style_on_formula_boolean_cell() {
+    let mut model = new_empty_model();
+    // Inputs
+    model.set_user_input(0, 1, 1, "=TRUE".to_string()).unwrap();
+    model.evaluate();
+
+    let initial_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    let mut new_style = initial_style.clone();
+    new_style.font.b = true;
+    assert!(model.set_cell_style(0, 1, 1, &new_style).is_ok());
+
+    let final_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(final_style.font.b);
+}
+
+#[test]
+fn test_set_style_on_formula_number_cell() {
+    let mut model = new_empty_model();
+    // Inputs
+    model.set_user_input(0, 1, 1, "=42".to_string()).unwrap();
+    model.evaluate();
+
+    let initial_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    let mut new_style = initial_style.clone();
+    new_style.font.b = true;
+    assert!(model.set_cell_style(0, 1, 1, &new_style).is_ok());
+
+    let final_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(final_style.font.b);
+}
+
+#[test]
+fn test_set_style_on_formula_string_cell() {
+    let mut model = new_empty_model();
+    // Inputs
+    model.set_user_input(0, 1, 1, "foo".to_string()).unwrap(); // A1
+    model.set_user_input(0, 2, 1, "=A1".to_string()).unwrap(); // A2
+    model.evaluate();
+
+    let initial_style = model.get_style_for_cell(0, 2, 1).unwrap();
+    let mut new_style = initial_style.clone();
+    new_style.font.b = true;
+    assert!(model.set_cell_style(0, 2, 1, &new_style).is_ok());
+
+    let final_style = model.get_style_for_cell(0, 2, 1).unwrap();
+    assert!(final_style.font.b);
+}
+
+#[test]
+fn test_set_style_on_formula_error_cell() {
+    let mut model = new_empty_model();
+    // Inputs
+    model.set_user_input(0, 1, 1, "=foo".to_string()).unwrap();
+    model.evaluate();
+
+    let initial_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    let mut new_style = initial_style.clone();
+    new_style.font.b = true;
+    assert!(model.set_cell_style(0, 1, 1, &new_style).is_ok());
+
+    let final_style = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(final_style.font.b);
 }
