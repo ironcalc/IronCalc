@@ -185,9 +185,9 @@ In general methods in IronCalc use a 0-index base for the the sheet index and 1-
 
       :param sheet_name: The name to give the new sheet.
 
-.. method:: new_sheet()
+.. method:: new_sheet() -> tuple[str, int]
 
-      Creates a new sheet with an auto-generated name.
+      Creates a new sheet with an auto-generated name and returns the sheet name and index.
 
 .. method:: delete_sheet(sheet: int)
 

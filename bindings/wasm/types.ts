@@ -109,11 +109,21 @@ export interface MarkedToken {
   end: number;
 }
 
+export interface NewSheet {
+  name: string;
+  index: number;
+}
+
 export interface WorksheetProperties {
   name: string;
   color: string;
   sheet_id: number;
   state: string;
+}
+
+export interface NewSheet {
+  name: string;
+  sheet_index: number;
 }
 
 interface CellStyleFill {

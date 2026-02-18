@@ -252,3 +252,18 @@ fn delete_sheet_error() {
     assert!(model.delete_sheet(2).is_err());
     assert!(model.delete_sheet(1).is_ok());
 }
+
+#[test]
+fn new_sheet_returns_data() {
+    let mut model = new_empty_model();
+    let (name1, index1) = model.new_sheet();
+    assert_eq!(name1, "Sheet2");
+    assert_eq!(index1, 1);
+    let (name2, index2) = model.new_sheet();
+    assert_eq!(name2, "Sheet3");
+    assert_eq!(index2, 2);
+    assert_eq!(
+        model.workbook.get_worksheet_names(),
+        ["Sheet1", "Sheet2", "Sheet3"]
+    );
+}

@@ -17,6 +17,12 @@ struct DefinedName {
   formula: String,
 }
 
+#[napi(object)]
+pub struct NewSheet {
+  pub name: String,
+  pub index: u32,
+}
+
 fn to_js_error(error: String) -> Error {
   Error::new(Status::Unknown, error)
 }
@@ -100,8 +106,12 @@ impl UserModel {
   }
 
   #[napi(js_name = "newSheet")]
-  pub fn new_sheet(&mut self) -> Result<()> {
-    self.model.new_sheet().map_err(to_js_error)
+  pub fn new_sheet(&mut self) -> Result<NewSheet> {
+    self
+      .model
+      .new_sheet()
+      .map(|(name, index)| NewSheet { name, index })
+      .map_err(to_js_error)
   }
 
   #[napi(js_name = "deleteSheet")]
