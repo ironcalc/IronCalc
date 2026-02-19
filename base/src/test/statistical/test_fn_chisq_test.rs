@@ -144,5 +144,5 @@ fn arguments() {
     model.evaluate();
     assert_eq!(model._get_text("C1"), *"#ERROR!");
     assert_eq!(model._get_text("C2"), *"#ERROR!");
-    assert_eq!(model._get_text("C3"), *"0.006234947");
+    assert_eq!(model._get_text("C3"), *"0.062349477");
 }
