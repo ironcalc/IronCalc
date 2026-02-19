@@ -125,3 +125,24 @@ fn ranges_1d() {
     assert_eq!(model._get_text("G1"), *"0.062349477");
     assert_eq!(model._get_text("G2"), *"0.000261259");
 }
+
+#[test]
+fn arguments() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("B1", "4");
+    model._set("B2", "5");
+    model._set("B3", "6");
+
+    model._set("C1", "=CHISQ.TEST()");
+    model._set("C2", "=CHISQ.TEST(A1:B3)");
+    model._set("C3", "=CHISQ.TEST(A1:A3, B1:B3)");
+
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"#ERROR!");
+    assert_eq!(model._get_text("C2"), *"#ERROR!");
+    assert_eq!(model._get_text("C3"), *"0.006234947");
+}
