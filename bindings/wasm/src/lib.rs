@@ -387,6 +387,98 @@ impl Model {
             .map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = "setDefaultRowHeight")]
+    pub fn set_default_row_height(&mut self, height: f64) -> Result<(), JsError> {
+        self.model
+            .set_default_row_height(height)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setDefaultColumnWidth")]
+    pub fn set_default_column_width(&mut self, width: f64) -> Result<(), JsError> {
+        self.model
+            .set_default_column_width(width)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setDefaultSheetRowHeight")]
+    pub fn set_default_sheet_row_height(&mut self, sheet: u32, height: f64) -> Result<(), JsError> {
+        self.model
+            .set_default_sheet_row_height(sheet, height)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setDefaultSheetColumnWidth")]
+    pub fn set_default_sheet_column_width(
+        &mut self,
+        sheet: u32,
+        width: f64,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_default_sheet_column_width(sheet, width)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "getDefaultRowHeight")]
+    pub fn get_default_row_height(&mut self) -> f64 {
+        self.model.get_default_row_height()
+    }
+
+    #[wasm_bindgen(js_name = "getDefaultColumnWidth")]
+    pub fn get_default_column_width(&mut self) -> f64 {
+        self.model.get_default_column_width()
+    }
+
+    #[wasm_bindgen(js_name = "setDefaultCellStyle")]
+    pub fn set_default_cell_style(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "CellStyle")] style: JsValue,
+    ) -> Result<(), JsError> {
+        let style: Style =
+            serde_wasm_bindgen::from_value(style).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .set_default_cell_style(&style)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setDefaultSheetCellStyle")]
+    pub fn set_default_sheet_cell_style(
+        &mut self,
+        sheet: u32,
+        #[wasm_bindgen(unchecked_param_type = "CellStyle")] style: JsValue,
+    ) -> Result<(), JsError> {
+        let style: Style =
+            serde_wasm_bindgen::from_value(style).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .set_default_sheet_cell_style(sheet, &style)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "getDefaultCellStyle", unchecked_return_type = "CellStyle")]
+    pub fn get_default_cell_style(&self) -> Result<JsValue, JsError> {
+        let style = self.model.get_default_cell_style();
+        serde_wasm_bindgen::to_value(&style).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(
+        js_name = "getDefaultSheetSettings",
+        unchecked_return_type = "SheetSettings"
+    )]
+    pub fn get_default_sheet_settings(&mut self, sheet: u32) -> Result<JsValue, JsError> {
+        let style = self
+            .model
+            .get_default_sheet_settings(sheet)
+            .map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&style).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "clearDefaultSheetSettings")]
+    pub fn clear_default_sheet_settings(&mut self, sheet: u32) -> Result<(), JsError> {
+        self.model
+            .clear_default_sheet_settings(sheet)
+            .map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = "setUserInput")]
     pub fn set_user_input(
         &mut self,

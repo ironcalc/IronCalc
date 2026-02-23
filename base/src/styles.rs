@@ -255,36 +255,4 @@ impl<'a> Model<'a> {
             .worksheet_mut(sheet)?
             .set_cell_style(row, column, style_index)
     }
-
-    pub fn set_sheet_style(&mut self, sheet: u32, style_name: &str) -> Result<(), String> {
-        let style_index = self.workbook.styles.get_style_index_by_name(style_name)?;
-        self.workbook.worksheet_mut(sheet)?.set_style(style_index)?;
-        Ok(())
-    }
-
-    pub fn set_sheet_row_style(
-        &mut self,
-        sheet: u32,
-        row: i32,
-        style_name: &str,
-    ) -> Result<(), String> {
-        let style_index = self.workbook.styles.get_style_index_by_name(style_name)?;
-        self.workbook
-            .worksheet_mut(sheet)?
-            .set_row_style(row, style_index)?;
-        Ok(())
-    }
-
-    pub fn set_sheet_column_style(
-        &mut self,
-        sheet: u32,
-        column: i32,
-        style_name: &str,
-    ) -> Result<(), String> {
-        let style_index = self.workbook.styles.get_style_index_by_name(style_name)?;
-        self.workbook
-            .worksheet_mut(sheet)?
-            .set_column_style(column, style_index)?;
-        Ok(())
-    }
 }

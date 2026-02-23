@@ -17,8 +17,8 @@ use crate::{
     locale::{get_default_locale, get_locale},
     model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
     types::{
-        DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
-        WorksheetView,
+        Defaults, DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView,
+        Worksheet, WorksheetView,
     },
     utils::ParsedReference,
 };
@@ -69,6 +69,7 @@ impl<'a> Model<'a> {
             frozen_rows: 0,
             show_grid_lines: true,
             views,
+            defaults: None,
         }
     }
 
@@ -197,6 +198,7 @@ impl<'a> Model<'a> {
         let sheet_id = self.get_new_sheet_id();
         let view_ids: Vec<&u32> = self.workbook.views.keys().collect();
         let worksheet = Model::new_empty_worksheet(&sheet_name, sheet_id, &view_ids);
+
         self.workbook.worksheets.push(worksheet);
         self.reset_parsed_structures();
         (sheet_name, self.workbook.worksheets.len() as u32 - 1)
@@ -445,6 +447,7 @@ impl<'a> Model<'a> {
             },
             tables: HashMap::new(),
             views,
+            defaults: Defaults::default(),
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;

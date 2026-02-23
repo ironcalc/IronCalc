@@ -6,23 +6,44 @@ import {
   Box,
   Button,
   FormControl,
-  FormHelperText,
   MenuItem,
   Select,
   TextField,
 } from "@mui/material";
 import { Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
+import ColorPicker from "../../ColorPicker/ColorPicker";
+import {
+  Container,
+  Content,
+  FormSection,
+  Header,
+  HeaderTitle,
+  IconButtonWrapper,
+  StyledColorInput,
+  StyledHelperText,
+  StyledLabel,
+  StyledSectionTitle,
+  StyledTextField,
+} from "../Common";
 
-type RegionalSettingsProps = {
+export interface WorkbookSettings {
+  locale: string;
+  timezone: string;
+  language: string;
+  defaultColumnWidth: number;
+  defaultRowHeight: number;
+  defaultFontSize: number;
+  defaultTextColor: string;
+  defaultBackgroundColor: string;
+}
+interface WorkbookSettingsProps {
   onClose: () => void;
-  initialLocale: string;
-  initialTimezone: string;
-  initialLanguage: string;
-  onSave: (locale: string, timezone: string, language: string) => void;
-};
+  settings: WorkbookSettings;
+  onSave: (settings: WorkbookSettings) => void;
+}
 
 // Display mapping for locale codes (e.g., "en" -> "en-US")
 const localeDisplayNames: Record<string, string> = {
@@ -80,41 +101,78 @@ export const getLocaleDisplayName = (locale: string): string => {
   return localeDisplayNames[locale] ?? locale;
 };
 
-const RegionalSettings = (properties: RegionalSettingsProps) => {
+const WorkbookSettingsDrawer = (properties: WorkbookSettingsProps) => {
   const { t } = useTranslation();
   const locales = getSupportedLocales();
+  const settings = properties.settings;
 
   const timezones = getAllTimezones();
 
-  const [selectedLocale, setSelectedLocale] = useState(
-    properties.initialLocale,
+  const [selectedLocale, setSelectedLocale] = useState(settings.locale);
+  const [selectedTimezone, setSelectedTimezone] = useState(settings.timezone);
+  const [selectedLanguage, setSelectedLanguage] = useState(settings.language);
+
+  const [defaultColumnWidth, setDefaultColumnWidth] = useState(
+    settings.defaultColumnWidth,
   );
-  const [selectedTimezone, setSelectedTimezone] = useState(
-    properties.initialTimezone,
+  const [defaultRowHeight, setDefaultRowHeight] = useState(
+    settings.defaultRowHeight,
   );
-  const [selectedLanguage, setSelectedLanguage] = useState(
-    properties.initialLanguage,
+  const [defaultFontSize, setDefaultFontSize] = useState(
+    settings.defaultFontSize,
+  );
+  const [defaultTextColor, setDefaultTextColor] = useState(
+    settings.defaultTextColor,
+  );
+  const [defaultBackgroundColor, setDefaultBackgroundColor] = useState(
+    settings.defaultBackgroundColor,
   );
 
+  const [backgroundColorPickerOpen, setBackgroundColorPickerOpen] =
+    useState(false);
+  const backgroundColorButton = useRef(null);
+
+  const [textColorPickerOpen, setTextColorPickerOpen] = useState(false);
+  const textColorButton = useRef(null);
+
   useEffect(() => {
-    setSelectedLocale(properties.initialLocale);
-    setSelectedTimezone(properties.initialTimezone);
-    setSelectedLanguage(properties.initialLanguage);
+    setSelectedLocale(settings.locale);
+    setSelectedTimezone(settings.timezone);
+    setSelectedLanguage(settings.language);
+    setDefaultColumnWidth(settings.defaultColumnWidth);
+    setDefaultRowHeight(settings.defaultRowHeight);
+    setDefaultFontSize(settings.defaultFontSize);
+    setDefaultTextColor(settings.defaultTextColor);
+    setDefaultBackgroundColor(settings.defaultBackgroundColor);
   }, [
-    properties.initialLocale,
-    properties.initialTimezone,
-    properties.initialLanguage,
+    settings.locale,
+    settings.timezone,
+    settings.language,
+    settings.defaultColumnWidth,
+    settings.defaultRowHeight,
+    settings.defaultFontSize,
+    settings.defaultTextColor,
+    settings.defaultBackgroundColor,
   ]);
 
   const handleSave = () => {
-    properties.onSave(selectedLocale, selectedTimezone, selectedLanguage);
+    properties.onSave({
+      locale: selectedLocale,
+      timezone: selectedTimezone,
+      language: selectedLanguage,
+      defaultColumnWidth,
+      defaultRowHeight,
+      defaultFontSize,
+      defaultTextColor,
+      defaultBackgroundColor,
+    });
     properties.onClose();
   };
 
   return (
     <Container>
       <Header>
-        <HeaderTitle>{t("regional_settings.title")}</HeaderTitle>
+        <HeaderTitle>{t("workbook_settings.title")}</HeaderTitle>
         <IconButtonWrapper
           onClick={properties.onClose}
           onKeyDown={(e) => {
@@ -135,11 +193,11 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
       >
         <FormSection>
           <StyledSectionTitle>
-            {t("regional_settings.locale.title")}
+            {t("workbook_settings.locale.title")}
           </StyledSectionTitle>
           <FieldWrapper>
             <StyledLabel htmlFor="locale">
-              {t("regional_settings.locale.locale_label")}
+              {t("workbook_settings.locale.locale_label")}
             </StyledLabel>
             <FormControl fullWidth>
               <StyledSelect
@@ -175,20 +233,20 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
               </StyledSelect>
               <HelperBox>
                 <Row>
-                  {t("regional_settings.locale.locale_example1")}
+                  {t("workbook_settings.locale.locale_example1")}
                   <RowValue>
                     {localeFormatExamples[selectedLocale]?.number ?? "1,234.56"}
                   </RowValue>
                 </Row>
                 <Row>
-                  {t("regional_settings.locale.locale_example2")}
+                  {t("workbook_settings.locale.locale_example2")}
                   <RowValue>
                     {localeFormatExamples[selectedLocale]?.dateTime ??
                       "10/17/2026 09:21:06 PM"}
                   </RowValue>
                 </Row>
                 <Row>
-                  {t("regional_settings.locale.locale_example3")}
+                  {t("workbook_settings.locale.locale_example3")}
                   <RowValue>
                     {(() => {
                       const delimiterType =
@@ -198,7 +256,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                         localeFormatExamples[selectedLocale]?.delimiterChar ??
                         ",";
                       const delimiterLabel = t(
-                        `regional_settings.locale.delimiter_${delimiterType}`,
+                        `workbook_settings.locale.delimiter_${delimiterType}`,
                       );
                       return `${delimiterLabel} (${delimiterChar})`;
                     })()}
@@ -210,11 +268,11 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
         </FormSection>
         <FormSection>
           <StyledSectionTitle>
-            {t("regional_settings.timezone.title")}
+            {t("workbook_settings.timezone.title")}
           </StyledSectionTitle>
           <FieldWrapper>
             <StyledLabel htmlFor="timezone">
-              {t("regional_settings.timezone.timezone_label")}
+              {t("workbook_settings.timezone.timezone_label")}
             </StyledLabel>
             <FormControl fullWidth>
               <StyledAutocomplete
@@ -248,10 +306,91 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 }}
               />
               <StyledHelperText>
-                {t("regional_settings.timezone.timezone_helper")}
+                {t("workbook_settings.timezone.timezone_helper")}
               </StyledHelperText>
             </FormControl>
           </FieldWrapper>
+        </FormSection>
+        <FormSection>
+          <StyledSectionTitle>
+            {t("workbook_settings.defaults.title")}
+          </StyledSectionTitle>
+          <StyledLabel htmlFor="column-width">
+            {t("workbook_settings.defaults.column_width.column_width")}
+          </StyledLabel>
+          <FormControl fullWidth>
+            <StyledTextField
+              id="column-width"
+              type="number"
+              defaultValue={defaultColumnWidth}
+              onChange={(e) => {
+                setDefaultColumnWidth(parseInt(e.target.value, 10));
+              }}
+            />
+            <StyledHelperText>
+              {t("workbook_settings.defaults.column_width.column_width_helper")}
+            </StyledHelperText>
+          </FormControl>
+          <StyledLabel htmlFor="row-height">
+            {t("workbook_settings.defaults.row_height.row_height")}
+          </StyledLabel>
+          <FormControl fullWidth>
+            <StyledTextField
+              id="row-height"
+              type="number"
+              defaultValue={defaultRowHeight}
+              onChange={(e) => {
+                setDefaultRowHeight(parseInt(e.target.value, 10));
+              }}
+            />
+            <StyledHelperText>
+              {t("workbook_settings.defaults.row_height.row_height_helper")}
+            </StyledHelperText>
+          </FormControl>
+          <StyledLabel htmlFor="font-size">
+            {t("workbook_settings.defaults.font_size.font_size")}
+          </StyledLabel>
+          <FormControl fullWidth>
+            <StyledTextField
+              id="font-size"
+              type="number"
+              defaultValue={defaultFontSize}
+              onChange={(e) => {
+                setDefaultFontSize(parseInt(e.target.value, 10));
+              }}
+            />
+            <StyledHelperText>
+              {t("workbook_settings.defaults.font_size.font_size_helper")}
+            </StyledHelperText>
+          </FormControl>
+          <StyledLabel htmlFor="text-color">
+            {t("workbook_settings.defaults.text_color.text_color")}
+          </StyledLabel>
+          <FormControl fullWidth>
+            <StyledColorInput
+              onClick={() => setTextColorPickerOpen(true)}
+              ref={textColorButton}
+              style={{ background: defaultTextColor }}
+            />
+            <StyledHelperText>
+              {t("workbook_settings.defaults.text_color.text_color_helper")}
+            </StyledHelperText>
+          </FormControl>
+          <StyledLabel htmlFor="background-color">
+            {t("workbook_settings.defaults.background_color.background_color")}
+          </StyledLabel>
+          <FormControl fullWidth>
+            <StyledColorInput
+              onClick={() => setBackgroundColorPickerOpen(true)}
+              ref={backgroundColorButton}
+              style={{ background: defaultBackgroundColor }}
+            />
+            <StyledHelperText>
+              {t(
+                "workbook_settings.defaults.background_color.background_color_helper",
+              )}
+            </StyledHelperText>
+          </FormControl>
         </FormSection>
       </Content>
 
@@ -265,74 +404,53 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
           {t("num_fmt.save")}
         </SaveButton>
       </Footer>
+      <ColorPicker
+        color={defaultBackgroundColor}
+        defaultColor=""
+        title={t("color_picker.default")}
+        onChange={(color): void => {
+          setDefaultBackgroundColor(color);
+          setBackgroundColorPickerOpen(false);
+        }}
+        onClose={() => {
+          setBackgroundColorPickerOpen(false);
+        }}
+        anchorEl={backgroundColorButton}
+        open={backgroundColorPickerOpen}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+      />
+      <ColorPicker
+        color={defaultTextColor}
+        defaultColor="#000000"
+        title={t("color_picker.default")}
+        onChange={(color): void => {
+          setDefaultTextColor(color);
+          setTextColorPickerOpen(false);
+        }}
+        onClose={() => {
+          setTextColorPickerOpen(false);
+        }}
+        anchorEl={textColorButton}
+        open={textColorPickerOpen}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+      />
     </Container>
   );
 };
-
-const Container = styled("div")({
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-});
-
-const Header = styled("div")({
-  height: "40px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  padding: "0 8px",
-  borderBottom: `1px solid ${theme.palette.grey[300]}`,
-});
-
-const HeaderTitle = styled("div")({
-  width: "100%",
-  fontSize: "12px",
-});
-
-const IconButtonWrapper = styled("div")`
-  &:hover {
-    background-color: ${theme.palette.grey["50"]};
-  }
-  display: flex;
-  border-radius: 4px;
-  height: 24px;
-  width: 24px;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  svg {
-    width: 16px;
-    height: 16px;
-    stroke-width: 1.5;
-  }
-`;
-
-const Content = styled("div")({
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  fontSize: "12px",
-  overflow: "auto",
-});
-
-const FormSection = styled("div")`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 12px;
-  border-bottom: 1px solid ${theme.palette.grey[300]};
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const StyledSectionTitle = styled("h1")`
-  font-size: 14px;
-  font-weight: 600;
-  font-family: Inter;
-  margin: 0px;
-  color: ${theme.palette.text.primary};
-`;
 
 const StyledSelect = styled(Select)`
   font-size: 12px;
@@ -354,16 +472,6 @@ const StyledSelect = styled(Select)`
     right: 4px !important;
   }
 `;
-
-const StyledHelperText = styled(FormHelperText)(() => ({
-  fontSize: "12px",
-  fontFamily: "Inter",
-  color: theme.palette.grey[500],
-  margin: 0,
-  marginTop: "6px",
-  padding: 0,
-  lineHeight: 1.4,
-}));
 
 const HelperBox = styled("div")`
   display: flex;
@@ -491,14 +599,6 @@ const FieldWrapper = styled(Box)`
   gap: 6px;
 `;
 
-const StyledLabel = styled("label")`
-  font-size: 12px;
-  font-family: "Inter";
-  font-weight: 500;
-  color: ${theme.palette.text.primary};
-  display: block;
-`;
-
 const Footer = styled("div")`
   color: ${theme.palette.grey[700]};
   display: flex;
@@ -516,4 +616,4 @@ const SaveButton = styled(Button)`
   font-size: 12px;
 `;
 
-export default RegionalSettings;
+export default WorkbookSettingsDrawer;

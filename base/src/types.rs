@@ -2,7 +2,9 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
-use crate::expressions::token::Error;
+use crate::{
+    constants::DEFAULT_COLUMN_WIDTH, constants::DEFAULT_ROW_HEIGHT, expressions::token::Error,
+};
 
 fn default_as_false() -> bool {
     false
@@ -28,6 +30,27 @@ pub struct WorkbookSettings {
     pub locale: String,
 }
 
+/// Default settings for a worksheet/workbook
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub struct Defaults {
+    // The default row height
+    pub row_height: f64,
+    // The default column width
+    pub column_width: f64,
+    // The default style for cells in the workbook/worksheet
+    pub style_index: i32,
+}
+
+impl Default for Defaults {
+    fn default() -> Self {
+        Defaults {
+            row_height: DEFAULT_ROW_HEIGHT,
+            column_width: DEFAULT_COLUMN_WIDTH,
+            style_index: 0,
+        }
+    }
+}
+
 /// A Workbook View tracks of the selected sheet for each view
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct WorkbookView {
@@ -51,6 +74,7 @@ pub struct Workbook {
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
     pub views: HashMap<u32, WorkbookView>,
+    pub defaults: Defaults,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -117,6 +141,8 @@ pub struct Worksheet {
     pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
+    // A worksheet can have a default style
+    pub defaults: Option<Defaults>,
 }
 
 /// Internal representation of Excel's sheet_data

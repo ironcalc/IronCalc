@@ -173,9 +173,9 @@
     "resize_drawer": "Ridimensiona pannello",
     "close": "Chiudi"
   },
-  "regional_settings": {
-    "open_regional_settings": "Apri impostazioni regionali",
-    "title": "Impostazioni regionali",
+  "workbook_settings": {
+    "open_workbook_settings": "Apri impostazioni del foglio di calcolo",
+    "title": "Impostazioni del foglio di calcolo",
     "close": "Chiudi finestra",
     "locale": {
       "title": "Impostazioni locali",
@@ -209,6 +209,58 @@
       "title": "Fuso orario",
       "timezone_label": "Fuso orario",
       "timezone_helper": "La modifica di questa impostazione influirà sulle funzioni relative a data e ora, incluse ADESSO() e OGGI()."
+    },
+    "defaults": {
+      "title": "Predefiniti",
+      "column_width": {
+        "column_width": "Larghezza colonna predefinita",
+        "column_width_helper": "Imposta la larghezza predefinita per le nuove colonne. Questo non influisce sulle colonne esistenti."
+      },
+      "row_height": {
+        "row_height": "Altezza riga predefinita",
+        "row_height_helper": "Imposta l'altezza predefinita per le nuove righe. Questo non influisce sulle righe esistenti."
+      },
+      "font_size": {
+        "font_size": "Dimensione carattere predefinita",
+        "font_size_helper": "Imposta la dimensione del carattere predefinita per le celle. Questo non influisce sulle celle esistenti."
+      },
+      "text_color": {
+        "text_color": "Colore del testo predefinito",
+        "text_color_helper": "Imposta il colore del testo predefinito per le celle. Questo non influisce sulle celle esistenti."
+      },
+      "background_color": {
+        "background_color": "Colore di sfondo predefinito",
+        "background_color_helper": "Imposta il colore di sfondo predefinito per le celle. Questo non influisce sulle celle esistenti."
+      }
+    }
+  },
+  "worksheet_settings": {
+    "open_worksheet_settings": "Apri impostazioni del foglio di lavoro",
+    "title": "Impostazioni del foglio di lavoro",
+    "close": "Chiudi finestra",
+    "defaults": {
+      "title": "Predefiniti",
+      "use_workbook_defaults": "Usa predefiniti del foglio di calcolo",
+      "column_width": {
+        "column_width": "Larghezza colonna predefinita",
+        "column_width_helper": "Imposta la larghezza predefinita per le nuove colonne nel foglio di lavoro. Questo non influisce sulle colonne esistenti."
+      },
+      "row_height": {
+        "row_height": "Altezza riga predefinita",
+        "row_height_helper": "Imposta l'altezza predefinita per le nuove righe nel foglio di lavoro. Questo non influisce sulle righe esistenti."
+      },
+      "font_size": {
+        "font_size": "Dimensione carattere predefinita",
+        "font_size_helper": "Imposta la dimensione del carattere predefinita per le celle nel foglio di lavoro. Questo non influisce sulle celle esistenti."
+      },
+      "text_color": {
+        "text_color": "Colore del testo predefinito",
+        "text_color_helper": "Imposta il colore del testo predefinito per le celle nel foglio di lavoro. Questo non influisce sulle celle esistenti."
+      },
+      "background_color": {
+        "background_color": "Colore di sfondo predefinito",
+        "background_color_helper": "Imposta il colore di sfondo predefinito per le celle nel foglio di lavoro. Questo non influisce sulle celle esistenti."
+      }
     }
   }
 }

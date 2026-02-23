@@ -86,10 +86,7 @@ fn test_insert_rows() {
 fn test_insert_rows_styles() {
     let mut model = new_empty_model();
 
-    assert!(
-        (DEFAULT_ROW_HEIGHT - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs()
-            < f64::EPSILON
-    );
+    assert!((DEFAULT_ROW_HEIGHT - model.get_row_height(0, 10).unwrap()).abs() < f64::EPSILON);
     // sets height 42 in row 10
     model
         .workbook
@@ -97,34 +94,24 @@ fn test_insert_rows_styles() {
         .unwrap()
         .set_row_height(10, 42.0)
         .unwrap();
-    assert!(
-        (42.0 - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs() < f64::EPSILON
-    );
+    assert!((42.0 - model.get_row_height(0, 10).unwrap()).abs() < f64::EPSILON);
 
     // Let's insert 5 rows in row 3
     let r = model.insert_rows(0, 3, 5);
     assert!(r.is_ok());
 
     // Row 10 has the default height
-    assert!(
-        (DEFAULT_ROW_HEIGHT - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs()
-            < f64::EPSILON
-    );
+    assert!((DEFAULT_ROW_HEIGHT - model.get_row_height(0, 10).unwrap()).abs() < f64::EPSILON);
 
     // Row 10 is now row 15
-    assert!(
-        (42.0 - model.workbook.worksheet(0).unwrap().row_height(15).unwrap()).abs() < f64::EPSILON
-    );
+    assert!((42.0 - model.get_row_height(0, 15).unwrap()).abs() < f64::EPSILON);
 }
 
 #[test]
 fn test_delete_rows_styles() {
     let mut model = new_empty_model();
 
-    assert!(
-        (DEFAULT_ROW_HEIGHT - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs()
-            < f64::EPSILON
-    );
+    assert!((DEFAULT_ROW_HEIGHT - model.get_row_height(0, 10).unwrap()).abs() < f64::EPSILON);
     // sets height 42 in row 10
     model
         .workbook
@@ -132,24 +119,17 @@ fn test_delete_rows_styles() {
         .unwrap()
         .set_row_height(10, 42.0)
         .unwrap();
-    assert!(
-        (42.0 - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs() < f64::EPSILON
-    );
+    assert!((42.0 - model.get_row_height(0, 10).unwrap()).abs() < f64::EPSILON);
 
     // Let's delete 5 rows in row 3 (3-8)
     let r = model.delete_rows(0, 3, 5);
     assert!(r.is_ok());
 
     // Row 10 has the default height
-    assert!(
-        (DEFAULT_ROW_HEIGHT - model.workbook.worksheet(0).unwrap().row_height(10).unwrap()).abs()
-            < f64::EPSILON
-    );
+    assert!((DEFAULT_ROW_HEIGHT - model.get_row_height(0, 10).unwrap()).abs() < f64::EPSILON);
 
     // Row 10 is now row 5
-    assert!(
-        (42.0 - model.workbook.worksheet(0).unwrap().row_height(5).unwrap()).abs() < f64::EPSILON
-    );
+    assert!((42.0 - model.get_row_height(0, 5).unwrap()).abs() < f64::EPSILON);
 }
 
 #[test]

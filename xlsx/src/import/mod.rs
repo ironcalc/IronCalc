@@ -110,6 +110,8 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         metadata,
         tables,
         views,
+        // TODO: Properly import this
+        defaults: Default::default(),
     })
 }
 

@@ -3,16 +3,24 @@ import { styled } from "@mui/material/styles";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 import { TOOLBAR_HEIGHT } from "../constants";
 import NamedRanges from "./NamedRanges/NamedRanges";
-import RegionalSettings from "./RegionalSettings/RegionalSettings";
+import WorkbookSettingsDrawer, {
+  type WorkbookSettings,
+} from "./WorkbookSettings/WorkbookSettings";
+import WorksheetSettingsDrawer, {
+  type onSaveFunctions,
+  type WorksheetSettings,
+} from "./WorksheetSettings/WorksheetSettings";
 
 const DEFAULT_DRAWER_WIDTH = 360;
 const MIN_DRAWER_WIDTH = 300;
 const MAX_DRAWER_WIDTH = 500;
 
-export type DrawerType = "namedRanges" | "regionalSettings";
+export type DrawerType =
+  | "namedRanges"
+  | "workbookSettings"
+  | "worksheetSettings";
 
 interface RightDrawerProps {
   isOpen: boolean;
@@ -23,11 +31,10 @@ interface RightDrawerProps {
   onUpdate: () => void;
   getSelectedArea: () => string;
   drawerType: DrawerType;
-  // Regional settings props
-  initialLocale: string;
-  initialTimezone: string;
-  initialLanguage: string;
-  onSettingsSave: (locale: string, timezone: string, language: string) => void;
+  settings: WorkbookSettings;
+  worksheetSettings: WorksheetSettings;
+  onSettingsSave: (settings: WorkbookSettings) => void;
+  worksheetSettingsSave: onSaveFunctions;
 }
 
 const RightDrawer = ({
@@ -39,10 +46,10 @@ const RightDrawer = ({
   model,
   onUpdate,
   drawerType,
-  initialLocale,
-  initialTimezone,
-  initialLanguage,
+  settings,
+  worksheetSettings,
   onSettingsSave,
+  worksheetSettingsSave,
 }: RightDrawerProps) => {
   const { t } = useTranslation();
   const [drawerWidth, setDrawerWidth] = useState(width);
@@ -96,17 +103,23 @@ const RightDrawer = ({
 
   const renderDrawerContent = () => {
     switch (drawerType) {
-      case "regionalSettings":
+      case "workbookSettings":
         return (
-          <RegionalSettings
+          <WorkbookSettingsDrawer
             onClose={onClose}
-            initialLocale={initialLocale}
-            initialTimezone={initialTimezone}
-            initialLanguage={initialLanguage}
+            settings={settings}
             onSave={onSettingsSave}
           />
         );
-      default:
+      case "worksheetSettings":
+        return (
+          <WorksheetSettingsDrawer
+            onClose={onClose}
+            settings={worksheetSettings}
+            save={worksheetSettingsSave}
+          />
+        );
+      case "namedRanges":
         return (
           <NamedRanges
             onClose={onClose}
@@ -135,56 +148,57 @@ const RightDrawer = ({
 type DrawerContainerProps = {
   $drawerWidth: number;
 };
-const DrawerContainer = styled("div")<DrawerContainerProps>(
-  ({ $drawerWidth }) => ({
-    position: "absolute",
-    overflow: "hidden",
-    backgroundColor: theme.palette.common.white,
-    right: 0,
-    top: `${TOOLBAR_HEIGHT}px`,
-    bottom: 0,
-    borderLeft: `1px solid ${theme.palette.grey[300]}`,
-    width: `${$drawerWidth}px`,
-    display: "flex",
-    flexDirection: "column",
-    "@media (max-width: 600px)": {
-      width: "100%",
-      borderLeft: "none",
-      top: "0px",
-      zIndex: 1000,
-    },
-  }),
-);
 
-const Divider = styled("div")({
+const DrawerContainer = styled("div", {
+  shouldForwardProp: (prop) => prop !== "$drawerWidth",
+})<DrawerContainerProps>(({ theme, $drawerWidth }) => ({
+  position: "absolute",
+  overflow: "hidden",
+  backgroundColor: theme.palette.common.white,
+  right: 0,
+  top: `${TOOLBAR_HEIGHT}px`,
+  bottom: 0,
+  borderLeft: `1px solid ${theme.palette.grey[300]}`,
+  width: `${$drawerWidth}px`,
+  display: "flex",
+  flexDirection: "column",
+  "@media (max-width: 600px)": {
+    width: "100%",
+    borderLeft: "none",
+    top: "0px",
+    zIndex: 1000,
+  },
+}));
+
+const Divider = styled("div")(({ theme }) => ({
   height: "1px",
   width: "100%",
   backgroundColor: theme.palette.grey[300],
   margin: "0",
-});
+}));
 
 const DrawerContent = styled("div")({
   flex: 1,
   height: "100%",
 });
 
-const ResizeHandle = styled("div")<{ $isResizing: boolean }>(
-  ({ $isResizing }) => ({
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: "4px",
-    cursor: "col-resize",
-    backgroundColor: $isResizing ? theme.palette.primary.main : "transparent",
-    zIndex: 10,
-    "&:hover": {
-      backgroundColor: theme.palette.primary.main,
-      opacity: 0.5,
-    },
-    transition: $isResizing ? "none" : "background-color 0.2s ease",
-  }),
-);
+const ResizeHandle = styled("div", {
+  shouldForwardProp: (prop) => prop !== "$isResizing",
+})<{ $isResizing: boolean }>(({ theme, $isResizing }) => ({
+  position: "absolute",
+  left: 0,
+  top: 0,
+  bottom: 0,
+  width: "4px",
+  cursor: "col-resize",
+  backgroundColor: $isResizing ? theme.palette.primary.main : "transparent",
+  zIndex: 10,
+  "&:hover": {
+    backgroundColor: theme.palette.primary.main,
+    opacity: 0.5,
+  },
+  transition: $isResizing ? "none" : "background-color 0.2s ease",
+}));
 
 export default RightDrawer;
 export { DEFAULT_DRAWER_WIDTH, MIN_DRAWER_WIDTH, MAX_DRAWER_WIDTH };
