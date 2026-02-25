@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{test::util::new_empty_model, Model};
+use crate::Model;
 
 pub fn new_german_empty_model<'a>() -> Model<'a> {
     Model::new_empty("model", "en", "UTC", "de").unwrap()
@@ -18,7 +18,7 @@ fn issue_751() {
     model._set("A2", "=привет");
     // Mixed ASCII/non-ASCII
     model._set("A3", "=fórmula");
-    
+
     model._set("B1", "1");
     model._set("B2", "2");
     model._set("B3", "3");
