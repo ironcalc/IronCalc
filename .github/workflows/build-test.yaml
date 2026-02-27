@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v6
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+      - name: Install wasm target
+        run: rustup target add wasm32-unknown-unknown
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -44,6 +46,8 @@ jobs:
       - uses: actions/checkout@v6
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+      - name: Install wasm target
+        run: rustup target add wasm32-unknown-unknown
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -53,6 +57,8 @@ jobs:
             **/package-lock.json
       - name: Install node dependencies
         run: npm install -g wasm-pack typescript
+      - name: Install wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli
       - name: JS Tests
         run: make test-js
   test-python:
