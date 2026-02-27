@@ -289,8 +289,8 @@ impl PyModel {
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 
-    pub fn new_sheet(&mut self) {
-        self.model.new_sheet();
+    pub fn new_sheet(&mut self) -> (String, u32) {
+        self.model.new_sheet()
     }
 
     pub fn delete_sheet(&mut self, sheet: u32) -> PyResult<()> {
