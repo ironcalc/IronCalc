@@ -831,7 +831,7 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, Option<String>), Str
 ///
 /// Examples:
 /// - `"$ 123,345.678"` → `(123345.678, Some(Literal("$#,##0.00")))`
-/// - `"30.34%"`        → `(0.3034,     Some(Literal("0.00%")))`
+/// - `"30.34%"`        → `(0.3034,     Some(Literal(#,##0.00%")))`
 /// - `"11/1/2026"` (en)→ `(serial,     Some(LocaleDate))`
 /// - `"2026-11-01"`    → `(serial,     Some(Literal("yyyy-mm-dd")))`
 pub(crate) fn parse_formatted_number(

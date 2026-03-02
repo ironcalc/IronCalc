@@ -1877,7 +1877,7 @@ impl<'a> Model<'a> {
                 ))
             }
             None => {
-                let style_index = cell.get_style();
+                let style_index = self.get_cell_style_index(sheet, row, column)?;
                 let num_fmt_id = self.workbook.styles.get_num_fmt_id(style_index)?;
                 let style = self.workbook.styles.get_style(style_index)?;
                 if style.quote_prefix {

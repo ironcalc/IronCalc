@@ -11,7 +11,7 @@ use crate::{
 /// Code throughout the codebase (and every `.xlsx` file on disk) uses these
 /// IDs by their numeric value, not by position in this array. Any accidental
 /// reordering will cause silent mis-formatting for any ID after the change.
-/// 
+///
 /// The test `builtin_num_fmts_index_matches_spec_ids` guards the
 /// critical positions.
 const DEFAULT_NUM_FMTS: &[&str] = &[
@@ -63,7 +63,7 @@ const DEFAULT_NUM_FMTS: &[&str] = &[
 ];
 
 /// ECMA-376 numFmtId for the locale-derived short date.
-/// 
+///
 /// The value `14` is mandated by the Office Open XML specification.
 /// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oe376/0e59abdb-7f4e-48fc-9b89-67832fa11789
 pub const LOCALE_SHORT_DATE_FMT_ID: i32 = 14;
@@ -188,7 +188,6 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
     };
     formatter::format::format_number(value, format_code, locale)
 }
-
 
 #[cfg(test)]
 mod tests {

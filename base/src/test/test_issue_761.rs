@@ -13,9 +13,7 @@
 // the format from `locale.dates.date_formats.short` at runtime.
 
 use crate::{
-    cell::CellValue,
-    model::Model,
-    number_format::{LOCALE_SHORT_DATE_FMT_ID},
+    cell::CellValue, model::Model, number_format::LOCALE_SHORT_DATE_FMT_ID,
     test::util::new_empty_model,
 };
 
@@ -209,7 +207,6 @@ fn manual_date_format_preserved_on_entry() {
         Ok(CellValue::Number(45750.0))
     );
 }
-
 
 // ── Invalid date inputs ─────────────────────────────────────────
 
