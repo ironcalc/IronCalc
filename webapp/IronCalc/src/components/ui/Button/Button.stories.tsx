@@ -3,9 +3,13 @@ import {
   Bold,
   ChevronRight,
   Download,
+  Italic,
   MoreHorizontal,
+  Strikethrough,
   Trash2,
+  Underline,
 } from "lucide-react";
+import { useState } from "react";
 import { Button } from "./Button";
 
 const meta = {
@@ -34,6 +38,10 @@ const meta = {
       control: "boolean",
       description: "Square icon-only button (single icon, no label)",
     },
+    pressed: {
+      control: "boolean",
+      description: "Toggle state (e.g. Bold/Italic when formatting is on)",
+    },
   },
 } satisfies Meta<typeof Button>;
 
@@ -49,41 +57,27 @@ export const Default: Story = {
   },
 };
 
-export const Primary: Story = {
-  args: {
-    children: "Primary",
-    variant: "primary",
-  },
-};
-
-export const Secondary: Story = {
-  args: {
-    children: "Secondary",
-    variant: "secondary",
-  },
-};
-
-export const Outline: Story = {
-  args: {
-    children: "Outline",
-    variant: "outline",
-  },
-};
-
-export const Ghost: Story = {
-  args: {
-    children: "Ghost",
-    variant: "ghost",
-    endIcon: <ChevronRight />,
-  },
-};
-
-export const Destructive: Story = {
-  args: {
-    children: "Delete",
-    variant: "destructive",
-    startIcon: <Trash2 />,
-  },
+export const Variants: Story = {
+  render: () => (
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      <Button variant="primary">Primary</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="outline">Outline</Button>
+      <Button variant="ghost" endIcon={<ChevronRight />}>
+        Ghost
+      </Button>
+      <Button variant="destructive" startIcon={<Trash2 />}>
+        Delete
+      </Button>
+    </div>
+  ),
 };
 
 export const Sizes: Story = {
@@ -105,11 +99,64 @@ export const Disabled: Story = {
   },
 };
 
-export const DisabledDestructive: Story = {
+export const Pressed: Story = {
   args: {
-    children: "Delete",
-    variant: "destructive",
-    disabled: true,
+    children: "Bold",
+    variant: "ghost",
+    size: "sm",
+    iconOnly: true,
+    startIcon: <Bold />,
+    pressed: true,
+    "aria-label": "Bold",
+  },
+};
+
+export const FormatToolbar: Story = {
+  render: function FormatToolbarStory() {
+    const [bold, setBold] = useState(true);
+    const [italic, setItalic] = useState(false);
+    const [underline, setUnderline] = useState(false);
+    const [strike, setStrike] = useState(false);
+    return (
+      <div style={{ display: "flex", gap: 4 }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          startIcon={<Bold />}
+          pressed={bold}
+          onClick={() => setBold((b) => !b)}
+          aria-label="Bold"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          startIcon={<Italic />}
+          pressed={italic}
+          onClick={() => setItalic((i) => !i)}
+          aria-label="Italic"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          startIcon={<Underline />}
+          pressed={underline}
+          onClick={() => setUnderline((u) => !u)}
+          aria-label="Underline"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          startIcon={<Strikethrough />}
+          pressed={strike}
+          onClick={() => setStrike((s) => !s)}
+          aria-label="Strikethrough"
+        />
+      </div>
+    );
   },
 };
 
@@ -162,28 +209,28 @@ export const IconOnlySizes: Story = {
       <Button
         iconOnly
         size="xs"
-        variant="primary"
+        variant="outline"
         startIcon={<Download />}
         aria-label="Download"
       />
       <Button
         iconOnly
         size="sm"
-        variant="primary"
+        variant="outline"
         startIcon={<Download />}
         aria-label="Download"
       />
       <Button
         iconOnly
         size="md"
-        variant="primary"
+        variant="outline"
         startIcon={<Download />}
         aria-label="Download"
       />
       <Button
         iconOnly
         size="lg"
-        variant="primary"
+        variant="outline"
         startIcon={<Download />}
         aria-label="Download"
       />

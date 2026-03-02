@@ -17,6 +17,8 @@ export interface ButtonProps extends Omit<MuiButtonProps, "variant" | "size"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   iconOnly?: boolean;
+  /** Toggle state: keeps the button visually pressed (e.g. Bold/Italic when formatting is on). */
+  pressed?: boolean;
 }
 
 const variantToMui: Record<
@@ -155,6 +157,26 @@ const getDisabledSx = (theme: Theme): Record<string, unknown> => ({
   },
 });
 
+const getPressedSx = (
+  theme: Theme,
+  variant: ButtonVariant,
+): Record<string, unknown> => ({
+  "&[data-pressed='true']": {
+    boxShadow: "inset 0 1px 1px rgba(0, 0, 0, 0.12)",
+    ...(variant === "primary" && {
+      backgroundColor: theme.palette.primary.dark,
+    }),
+    ...(variant === "secondary" && {
+      backgroundColor: theme.palette.grey[300],
+    }),
+    ...(variant === "outline" && { backgroundColor: theme.palette.grey[100] }),
+    ...(variant === "ghost" && { backgroundColor: theme.palette.grey[200] }),
+    ...(variant === "destructive" && {
+      backgroundColor: theme.palette.error.dark,
+    }),
+  },
+});
+
 export function Button({
   variant = "primary",
   size = "md",
@@ -162,6 +184,7 @@ export function Button({
   startIcon,
   endIcon,
   iconOnly = false,
+  pressed = false,
   sx,
   ...rest
 }: ButtonProps) {
@@ -173,6 +196,7 @@ export function Button({
     ...getBaseSx(size),
     ...getVariantSx(theme, variant),
     ...getDisabledSx(theme),
+    ...getPressedSx(theme, variant),
     ...(iconOnly ? getIconOnlySx(size) : {}),
     ...(typeof resolvedSx === "object" &&
     resolvedSx !== null &&
@@ -188,6 +212,8 @@ export function Button({
       disableRipple
       startIcon={iconOnly ? iconOnlyIcon : startIcon}
       endIcon={iconOnly ? undefined : endIcon}
+      data-pressed={pressed}
+      aria-pressed={pressed ? true : undefined}
       sx={combinedSx}
       {...rest}
     >
