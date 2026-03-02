@@ -19,13 +19,14 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_identifier, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_formatted_number},
+        format::{format_number, parse_formatted_number, NumFmtSpec},
         lexer::is_likely_date_number_format,
     },
     functions::util::compare_values,
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_locale, Locale},
+    number_format::{is_locale_short_date_id, LOCALE_SHORT_DATE_FMT_ID},
     types::*,
     utils as common,
 };
@@ -1564,17 +1565,33 @@ impl<'a> Model<'a> {
                 if let Ok((v, number_format)) =
                     parse_formatted_number(&value, &currencies, self.locale)
                 {
-                    if let Some(num_fmt) = number_format {
-                        // Should not apply the format in the following cases:
-                        // - we assign a date to already date-formatted cell
+                    if let Some(num_fmt_spec) = number_format {
+                        // Don't overwrite an existing date format when a date is
+                        // re-entered into a cell already formatted as a date — the
+                        // user may have set a more specific format manually.
+                        let new_is_date = match &num_fmt_spec {
+                            NumFmtSpec::LocaleDate => true,
+                            NumFmtSpec::Literal(s) => is_likely_date_number_format(s),
+                        };
                         let should_apply_format = !(is_likely_date_number_format(
                             &self.workbook.styles.get_style(new_style_index)?.num_fmt,
-                        ) && is_likely_date_number_format(&num_fmt));
+                        ) && new_is_date);
                         if should_apply_format {
-                            new_style_index = self
-                                .workbook
-                                .styles
-                                .get_style_with_format(new_style_index, &num_fmt)?;
+                            new_style_index = match num_fmt_spec {
+                                // Locale date: store as numFmtId 14, render
+                                // functions can detect it via is_locale_short_date_id.
+                                NumFmtSpec::LocaleDate => {
+                                    self.workbook.styles.get_style_with_num_fmt_id(
+                                        new_style_index,
+                                        LOCALE_SHORT_DATE_FMT_ID,
+                                    )?
+                                }
+                                // Explicit format string (ISO dates, currency, …).
+                                NumFmtSpec::Literal(s) => self
+                                    .workbook
+                                    .styles
+                                    .get_style_with_format(new_style_index, &s)?,
+                            };
                         }
                     }
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
@@ -1801,7 +1818,16 @@ impl<'a> Model<'a> {
     ) -> Result<String, String> {
         match self.workbook.worksheet(sheet_index)?.cell(row, column) {
             Some(cell) => {
-                let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
+                let style_index = self.get_cell_style_index(sheet_index, row, column)?;
+                let num_fmt_id = self.workbook.styles.get_num_fmt_id(style_index)?;
+                // For locale-derived date formats (numFmtId 14) use the
+                // locale's own short-date pattern so the display updates
+                // automatically when the user switches locales.
+                let format = if is_locale_short_date_id(num_fmt_id) {
+                    self.locale.dates.date_formats.short.clone()
+                } else {
+                    self.workbook.styles.get_style(style_index)?.num_fmt
+                };
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
                         format_number(value, &format, self.locale).text
@@ -1852,6 +1878,7 @@ impl<'a> Model<'a> {
             }
             None => {
                 let style_index = cell.get_style();
+                let num_fmt_id = self.workbook.styles.get_num_fmt_id(style_index)?;
                 let style = self.workbook.styles.get_style(style_index)?;
                 if style.quote_prefix {
                     Ok(format!(
@@ -1863,11 +1890,21 @@ impl<'a> Model<'a> {
                         )
                     ))
                 } else {
-                    // If it is a date formatted cell we try to format it as date, if it fails we return the raw value
-                    if is_likely_date_number_format(&style.num_fmt) {
+                    // If it is a date formatted cell we try to format it as date,
+                    // if it fails we return the raw value.
+                    // For locale-derived dates (numFmtId 14) use the locale's own
+                    // short-date pattern so the edit bar stays in sync with locale.
+                    let is_locale_date = is_locale_short_date_id(num_fmt_id);
+                    let is_date = is_locale_date || is_likely_date_number_format(&style.num_fmt);
+                    if is_date {
                         let value = cell.value(&self.workbook.shared_strings, self.language);
                         if let CellValue::Number(n) = value {
-                            let formatted = format_number(n, &style.num_fmt, self.locale);
+                            let fmt_str = if is_locale_date {
+                                &self.locale.dates.date_formats.short
+                            } else {
+                                &style.num_fmt
+                            };
+                            let formatted = format_number(n, fmt_str, self.locale);
                             if formatted.error.is_none() {
                                 return Ok(formatted.text);
                             }

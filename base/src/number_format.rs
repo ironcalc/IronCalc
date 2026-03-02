@@ -4,6 +4,16 @@ use crate::{
     types::NumFmt,
 };
 
+/// Built-in number format strings indexed by their ECMA-376 numFmtId.
+///
+/// **ORDERING IS SPEC-MANDATED — do not insert, remove, or reorder entries.**
+/// The index in this array IS the numFmtId as defined in ECMA-376.
+/// Code throughout the codebase (and every `.xlsx` file on disk) uses these
+/// IDs by their numeric value, not by position in this array. Any accidental
+/// reordering will cause silent mis-formatting for any ID after the change.
+/// 
+/// The test `builtin_num_fmts_index_matches_spec_ids` guards the
+/// critical positions.
 const DEFAULT_NUM_FMTS: &[&str] = &[
     "general",
     "0",
@@ -51,6 +61,22 @@ const DEFAULT_NUM_FMTS: &[&str] = &[
     "t0.00 %",
     "t#?/?",
 ];
+
+/// ECMA-376 numFmtId for the locale-derived short date.
+/// 
+/// The value `14` is mandated by the Office Open XML specification.
+/// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oe376/0e59abdb-7f4e-48fc-9b89-67832fa11789
+pub const LOCALE_SHORT_DATE_FMT_ID: i32 = 14;
+
+/// Returns `true` for ECMA-376 numFmtIds whose rendering is locale-derived
+/// rather than tied to a literal format string.
+///
+/// Currently only ID 14 (short date, "m/d/yy" in en-US).  ID 22 ("m/d/yy
+/// h:mm", short date+time) follows the same pattern and can be added here
+/// when date-time locale rendering is implemented.
+pub fn is_locale_short_date_id(id: i32) -> bool {
+    id == LOCALE_SHORT_DATE_FMT_ID
+}
 
 pub fn get_default_num_fmt_id(num_fmt: &str) -> Option<i32> {
     for (index, default_num_fmt) in DEFAULT_NUM_FMTS.iter().enumerate() {
@@ -161,4 +187,30 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
         }
     };
     formatter::format::format_number(value, format_code, locale)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verify that critical ECMA-376 built-in numFmtIds are at the correct
+    /// positions in `DEFAULT_NUM_FMTS`.  The array index IS the numFmtId, so
+    /// inserting or removing any entry before these positions would silently
+    /// break format detection throughout the codebase.
+    #[test]
+    fn builtin_num_fmts_index_matches_spec_ids() {
+        assert_eq!(DEFAULT_NUM_FMTS[0], "general", "numFmtId 0 must be General");
+        assert_eq!(DEFAULT_NUM_FMTS[9], "0%", "numFmtId 9 must be 0%");
+        // ID 14 is the ECMA-376 locale short date — used throughout the
+        // render pipeline to detect locale-derived date cells.
+        assert_eq!(
+            DEFAULT_NUM_FMTS[LOCALE_SHORT_DATE_FMT_ID as usize], "mm-dd-yy",
+            "numFmtId 14 must be the ECMA-376 locale short date 'mm-dd-yy'"
+        );
+        assert_eq!(
+            DEFAULT_NUM_FMTS[22], "m / d / yy h:mm",
+            "numFmtId 22 must be the locale short date+time"
+        );
+    }
 }

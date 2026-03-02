@@ -86,6 +86,7 @@ mod test_implicit_intersection;
 mod test_issue_155;
 mod test_issue_483;
 mod test_issue_751;
+mod test_issue_761;
 mod test_language;
 mod test_ln;
 mod test_locale;

@@ -1,10 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{formatter::format::parse_formatted_number, locale::get_default_locale};
+use crate::{
+    formatter::format::{parse_formatted_number, NumFmtSpec},
+    locale::get_default_locale,
+};
 
 const PARSE_ERROR_MSG: &str = "Could not parse number";
 
-fn parse(input: &str, currencies: &[&str]) -> Result<(f64, Option<String>), String> {
+fn parse(input: &str, currencies: &[&str]) -> Result<(f64, Option<NumFmtSpec>), String> {
     let locale = get_default_locale();
     parse_formatted_number(input, currencies, locale)
 }
@@ -20,23 +23,26 @@ fn numbers() {
     // scientific notation
     assert_eq!(
         parse("23e-12", &["$"]),
-        Ok((2.3e-11, Some("0.00E+00".to_string())))
+        Ok((2.3e-11, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
     assert_eq!(
         parse("2.123456789e-11", &["$"]),
-        Ok((2.123456789e-11, Some("0.00E+00".to_string())))
+        Ok((
+            2.123456789e-11,
+            Some(NumFmtSpec::Literal("0.00E+00".to_string()))
+        ))
     );
     assert_eq!(
         parse("4.5E-9", &["$"]),
-        Ok((4.5e-9, Some("0.00E+00".to_string())))
+        Ok((4.5e-9, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
     assert_eq!(
         parse("23e+2", &["$"]),
-        Ok((2300.0, Some("0.00E+00".to_string())))
+        Ok((2300.0, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
     assert_eq!(
         parse("4.5E9", &["$"]),
-        Ok((4.5e9, Some("0.00E+00".to_string())))
+        Ok((4.5e9, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
 
     // negative numbers
@@ -44,7 +50,7 @@ fn numbers() {
     assert_eq!(parse("-4.456", &["$"]), Ok((-4.456, None)));
     assert_eq!(
         parse("-23e-12", &["$"]),
-        Ok((-2.3e-11, Some("0.00E+00".to_string())))
+        Ok((-2.3e-11, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
 
     // trims space
@@ -54,20 +60,26 @@ fn numbers() {
 #[test]
 fn percentage() {
     // whole numbers
-    assert_eq!(parse("400%", &["$"]), Ok((4.0, Some("#,##0%".to_string()))));
+    assert_eq!(
+        parse("400%", &["$"]),
+        Ok((4.0, Some(NumFmtSpec::Literal("#,##0%".to_string()))))
+    );
     // decimal numbers
     assert_eq!(
         parse("4.456$", &["$"]),
-        Ok((4.456, Some("#,##0.00$".to_string())))
+        Ok((4.456, Some(NumFmtSpec::Literal("#,##0.00$".to_string()))))
     );
     // Percentage in scientific notation will not be formatted as percentage
     assert_eq!(
         parse("23e-12%", &["$"]),
-        Ok((23e-12 / 100.0, Some("0.00E+00".to_string())))
+        Ok((
+            23e-12 / 100.0,
+            Some(NumFmtSpec::Literal("0.00E+00".to_string()))
+        ))
     );
     assert_eq!(
         parse("2.3E4%", &["$"]),
-        Ok((230.0, Some("0.00E+00".to_string())))
+        Ok((230.0, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
 }
 
@@ -76,47 +88,47 @@ fn currency() {
     // whole numbers
     assert_eq!(
         parse("400$", &["$"]),
-        Ok((400.0, Some("#,##0$".to_string())))
+        Ok((400.0, Some(NumFmtSpec::Literal("#,##0$".to_string()))))
     );
     // decimal numbers
     assert_eq!(
         parse("4.456$", &["$"]),
-        Ok((4.456, Some("#,##0.00$".to_string())))
+        Ok((4.456, Some(NumFmtSpec::Literal("#,##0.00$".to_string()))))
     );
     // Currencies in scientific notation will not be formatted as currencies
     assert_eq!(
         parse("23e-12$", &["$"]),
-        Ok((2.3e-11, Some("0.00E+00".to_string())))
+        Ok((2.3e-11, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
     assert_eq!(
         parse("2.3e-12$", &["$"]),
-        Ok((2.3e-12, Some("0.00E+00".to_string())))
+        Ok((2.3e-12, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
     assert_eq!(
         parse("€23e-12", &["€"]),
-        Ok((2.3e-11, Some("0.00E+00".to_string())))
+        Ok((2.3e-11, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
 
     // switch side of currencies
     assert_eq!(
         parse("$400", &["$"]),
-        Ok((400.0, Some("$#,##0".to_string())))
+        Ok((400.0, Some(NumFmtSpec::Literal("$#,##0".to_string()))))
     );
     assert_eq!(
         parse("$4.456", &["$"]),
-        Ok((4.456, Some("$#,##0.00".to_string())))
+        Ok((4.456, Some(NumFmtSpec::Literal("$#,##0.00".to_string()))))
     );
     assert_eq!(
         parse("$23e-12", &["$"]),
-        Ok((2.3e-11, Some("0.00E+00".to_string())))
+        Ok((2.3e-11, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
     assert_eq!(
         parse("$2.3e-12", &["$"]),
-        Ok((2.3e-12, Some("0.00E+00".to_string())))
+        Ok((2.3e-12, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
     assert_eq!(
         parse("23e-12€", &["€"]),
-        Ok((2.3e-11, Some("0.00E+00".to_string())))
+        Ok((2.3e-11, Some(NumFmtSpec::Literal("0.00E+00".to_string()))))
     );
 }
 
@@ -124,15 +136,15 @@ fn currency() {
 fn negative_currencies() {
     assert_eq!(
         parse("-400$", &["$"]),
-        Ok((-400.0, Some("#,##0$".to_string())))
+        Ok((-400.0, Some(NumFmtSpec::Literal("#,##0$".to_string()))))
     );
     assert_eq!(
         parse("-$400", &["$"]),
-        Ok((-400.0, Some("$#,##0".to_string())))
+        Ok((-400.0, Some(NumFmtSpec::Literal("$#,##0".to_string()))))
     );
     assert_eq!(
         parse("$-400", &["$"]),
-        Ok((-400.0, Some("$#,##0".to_string())))
+        Ok((-400.0, Some(NumFmtSpec::Literal("$#,##0".to_string()))))
     );
 }
 
@@ -154,55 +166,58 @@ fn errors_wrong_currency() {
 }
 
 #[test]
-fn long_dates_en_us() {
+fn locale_dates_en_us() {
+    // All non-ISO dates return LocaleDate — the serial number is what matters,
+    // the display format is derived from the locale at render time.
     assert_eq!(
         parse("03/02/2024", &["$"]),
-        Ok((45353.0, Some("mm/dd/yyyy".to_string())))
+        Ok((45353.0, Some(NumFmtSpec::LocaleDate)))
     );
     assert_eq!(
         parse("3/02/2024", &["$"]),
-        Ok((45353.0, Some("m/dd/yyyy".to_string())))
+        Ok((45353.0, Some(NumFmtSpec::LocaleDate)))
     );
     assert_eq!(
         parse("Mar/02/2024", &["$"]),
-        Ok((45353.0, Some("mmm/dd/yyyy".to_string())))
+        Ok((45353.0, Some(NumFmtSpec::LocaleDate)))
     );
     assert_eq!(
         parse("March/02/2024", &["$"]),
-        Ok((45353.0, Some("mmmm/dd/yyyy".to_string())))
+        Ok((45353.0, Some(NumFmtSpec::LocaleDate)))
     );
     assert_eq!(
         parse("3/2/24", &["$"]),
-        Ok((45353.0, Some("m/d/yy".to_string())))
+        Ok((45353.0, Some(NumFmtSpec::LocaleDate)))
     );
 
     assert_eq!(
         parse("02-10-1975", &["$"]),
-        Ok((27435.0, Some("mm-dd-yyyy".to_string())))
+        Ok((27435.0, Some(NumFmtSpec::LocaleDate)))
     );
     assert_eq!(
         parse("2-10-1975", &["$"]),
-        Ok((27435.0, Some("m-dd-yyyy".to_string())))
+        Ok((27435.0, Some(NumFmtSpec::LocaleDate)))
     );
     assert_eq!(
         parse("Feb-10-1975", &["$"]),
-        Ok((27435.0, Some("mmm-dd-yyyy".to_string())))
+        Ok((27435.0, Some(NumFmtSpec::LocaleDate)))
     );
     assert_eq!(
         parse("February-10-1975", &["$"]),
-        Ok((27435.0, Some("mmmm-dd-yyyy".to_string())))
+        Ok((27435.0, Some(NumFmtSpec::LocaleDate)))
     );
     assert_eq!(
         parse("2-10-75", &["$"]),
-        Ok((27435.0, Some("m-dd-yy".to_string())))
+        Ok((27435.0, Some(NumFmtSpec::LocaleDate)))
     );
 }
 
 #[test]
 fn iso_dates() {
+    // ISO dates retain their literal format string — they are locale-independent.
     assert_eq!(
         parse("2024/03/02", &["$"]),
-        Ok((45353.0, Some("yyyy/mm/dd".to_string())))
+        Ok((45353.0, Some(NumFmtSpec::Literal("yyyy/mm/dd".to_string()))))
     );
     assert_eq!(
         parse("2024/March/02", &["$"]),
@@ -211,9 +226,9 @@ fn iso_dates() {
 }
 
 #[test]
-fn long_dates_with_dots() {
+fn locale_dates_with_dots() {
     assert_eq!(
         parse("03.02.2024", &["$"]),
-        Ok((45353.0, Some("mm.dd.yyyy".to_string())))
+        Ok((45353.0, Some(NumFmtSpec::LocaleDate)))
     );
 }

@@ -529,16 +529,18 @@ fn input_dates() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), "4/3/2025");
+    // Locale short date (numFmtId 14) renders using locale's own pattern
+    // (en: "m/d/yy"), so 4-digit input is stored but displayed 2-digit.
+    assert_eq!(model._get_text("A1"), "4/3/25");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(45750.0))
     );
 
-    // further date assignments do not change the format
+    // Further date assignments do not change the format; still locale short.
     model
         .set_user_input(0, 1, 1, "08-08-2028".to_string())
         .unwrap();
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "8/8/2028");
+    assert_eq!(model._get_text("A1"), "8/8/28");
 }

@@ -177,6 +177,45 @@ impl Styles {
         style.num_fmt = num_fmt.to_string();
         Ok(self.get_style_index_or_create(&style))
     }
+    /// Returns the raw `num_fmt_id` stored in `CellXfs` for the given style
+    /// index, without converting through the format string.  Used by render
+    /// functions so they can call `is_locale_short_date_id` directly.
+    pub(crate) fn get_num_fmt_id(&self, index: i32) -> Result<i32, String> {
+        self.cell_xfs
+            .get(index as usize)
+            .map(|xf| xf.num_fmt_id)
+            .ok_or_else(|| format!("Invalid style index: {index}"))
+    }
+
+    /// Returns (or creates) a style that is identical to the one at `index`
+    /// but with `num_fmt_id` set to `new_id`.  Works at the `CellXfs` level so
+    /// that semantically-meaningful IDs like `LOCALE_SHORT_DATE_FMT_ID` (14)
+    /// are preserved exactly — the round-trip through format strings would
+    /// collapse them to the en-US literal `"mm-dd-yy"`.
+    pub(crate) fn get_style_with_num_fmt_id(
+        &mut self,
+        index: i32,
+        new_id: i32,
+    ) -> Result<i32, String> {
+        let base = self
+            .cell_xfs
+            .get(index as usize)
+            .ok_or_else(|| format!("Invalid style index: {index}"))?
+            .clone();
+        let target = CellXfs {
+            num_fmt_id: new_id,
+            ..base
+        };
+        // Reuse an existing CellXfs entry if it already matches, to avoid
+        // bloating the styles table.
+        for (i, existing) in self.cell_xfs.iter().enumerate() {
+            if *existing == target {
+                return Ok(i as i32);
+            }
+        }
+        self.cell_xfs.push(target);
+        Ok(self.cell_xfs.len() as i32 - 1)
+    }
 
     pub(crate) fn get_style_without_quote_prefix(&mut self, index: i32) -> Result<i32, String> {
         let mut style = self.get_style(index)?;
