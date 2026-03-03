@@ -68,15 +68,8 @@ const DEFAULT_NUM_FMTS: &[&str] = &[
 /// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oe376/0e59abdb-7f4e-48fc-9b89-67832fa11789
 pub const LOCALE_SHORT_DATE_FMT_ID: i32 = 14;
 
-/// Returns `true` for ECMA-376 numFmtIds whose rendering is locale-derived
-/// rather than tied to a literal format string.
-///
-/// Currently only ID 14 (short date, "m/d/yy" in en-US).  ID 22 ("m/d/yy
-/// h:mm", short date+time) follows the same pattern and can be added here
-/// when date-time locale rendering is implemented.
-pub fn is_locale_short_date_id(id: i32) -> bool {
-    id == LOCALE_SHORT_DATE_FMT_ID
-}
+/// ID 22 ("m/d/yy h:mm", short date+time)
+pub const LOCALE_SHORT_DATE_TIME_FMT_ID: i32 = 22;
 
 pub fn get_default_num_fmt_id(num_fmt: &str) -> Option<i32> {
     for (index, default_num_fmt) in DEFAULT_NUM_FMTS.iter().enumerate() {

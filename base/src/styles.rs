@@ -178,8 +178,7 @@ impl Styles {
         Ok(self.get_style_index_or_create(&style))
     }
     /// Returns the raw `num_fmt_id` stored in `CellXfs` for the given style
-    /// index, without converting through the format string.  Used by render
-    /// functions so they can call `is_locale_short_date_id` directly.
+    /// index, without converting through the format string.
     pub(crate) fn get_num_fmt_id(&self, index: i32) -> Result<i32, String> {
         self.cell_xfs
             .get(index as usize)

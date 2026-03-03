@@ -25,9 +25,8 @@ pub enum Units {
         precision: i32,
         num_fmt: String,
     },
-    /// Date-only functions (DATE, TODAY): store numFmtId 14 so the display
-    /// derives its pattern from the active locale at render time.
     LocaleDate,
+    LocaleDateTime,
     Date(String),
 }
 
@@ -37,7 +36,9 @@ impl Units {
             Units::Number { num_fmt, .. } => num_fmt.to_string(),
             Units::Currency { num_fmt, .. } => num_fmt.to_string(),
             Units::Percentage { num_fmt, .. } => num_fmt.to_string(),
-            Units::LocaleDate => String::new(), // never used; ID-14 path skips get_num_fmt
+            Units::LocaleDate | Units::LocaleDateTime => {
+                unreachable!("locale date IDs are handled before get_num_fmt() is ever called")
+            }
             Units::Date(num_fmt) => num_fmt.to_string(),
         }
     }
@@ -47,6 +48,7 @@ impl Units {
             Units::Currency { precision, .. } => *precision,
             Units::Percentage { precision, .. } => *precision,
             Units::LocaleDate => 0,
+            Units::LocaleDateTime => 0,
             Units::Date(_) => 0,
         }
     }
@@ -378,28 +380,13 @@ impl<'a> Model<'a> {
     }
 
     fn units_fn_dates(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
-        // Signal that the cell should use numFmtId 14 (LOCALE_SHORTself.compute_node_units(parsed_formula,_DATE_FMT_ID).
+        // Signal that the cell should use numFmtId 14 (LOCALE_SHORT_DATE_FMT_ID).
         // The display functions derive the actual pattern from the active locale
         // at render time, so locale switches take effect without a re-edit.
         Some(Units::LocaleDate)
     }
 
     fn units_fn_date_times(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
-        let mut date_short = self.locale.dates.date_formats.short.clone();
-        // We want always 4 digit year. So if it is not already the case, we replace yy by yyyy
-        if !date_short.contains("yyyy") {
-            date_short = date_short.replace("yy", "yyyy");
-        }
-        // NB: full and medium time formats might include timezone info (in the form of z or zzzz)
-        let time_short_template = &self.locale.dates.time_formats.short;
-        let time_short = time_short_template.replace('a', "AM/PM");
-        // This would be something like: "{1}, {0}"
-        let date_time_short_template = &self.locale.dates.date_time_formats.short;
-        let date_time_short = date_time_short_template
-            .replace("{0}", time_short.trim())
-            .replace("{1}", &date_short);
-
-        // FIXME: Remove weird spaces (we should do that in the locale loading phase)
-        Some(Units::Date(date_time_short.replace(' ', " ")))
+        Some(Units::LocaleDateTime)
     }
 }
