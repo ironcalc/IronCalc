@@ -14,7 +14,8 @@ fn today_basic() {
     model._set("A2", "=TEXT(A1, \"yyyy/m/d\")");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"11/8/2022");
+    // en-US locale "m/d/yy" via numFmtId 14 — 2-digit year.
+    assert_eq!(model._get_text("A1"), *"11/8/22");
     assert_eq!(model._get_text("A2"), *"2022/11/8");
 }
 
@@ -32,7 +33,7 @@ fn now_basic_utc() {
     model._set("A2", "=NOW()");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"3/20/2023");
+    assert_eq!(model._get_text("A1"), *"3/20/23");
     // 45005.572511574
     assert_eq!(model._get_text("A2"), *"3/20/2023, 1:44 PM");
 }
@@ -45,7 +46,7 @@ fn now_basic_europe_berlin() {
     model._set("A2", "=NOW()");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"3/20/2023");
+    assert_eq!(model._get_text("A1"), *"3/20/23");
     // This is UTC + 1 hour: 45005.572511574 + 1/24
     assert_eq!(model._get_text("A2"), *"3/20/2023, 2:44 PM");
 }

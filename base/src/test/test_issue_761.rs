@@ -395,6 +395,74 @@ fn date_functions_extract_correct_components() {
     );
 }
 
+/// Basic sanity check: =DATE(2025,10,11) in en-US must display October 11
+/// in month/day/year order.  This exercises the formula-cell display path
+/// and gives us a baseline before adding locale-sensitivity tests.
+#[test]
+fn date_functions_date_fn() {
+    let mut model = new_empty_model(); // en-US: month/day order
+    model._set("A1", "=DATE(2025,10,11)");
+    model.evaluate();
+
+    // en-US locale short date is "m/d/yy" — numFmtId 14 renders with 2-digit year.
+    assert_eq!(model._get_text("A1"), "10/11/25");
+}
+
+/// =DATE() must store numFmtId=14 (LOCALE_SHORT_DATE_FMT_ID) so that
+/// locale-aware rendering derives the display format at runtime rather than
+/// baking in the locale's literal string at evaluation time.
+///
+/// Bug: `units_fn_dates` currently stores a literal format string (e.g.
+/// "M/d/yyyy" for en-US) as a custom numFmtId ≥ 164.  When the file is
+/// opened in a different locale, the literal is used verbatim and the display
+/// is wrong until the cell is re-edited (which triggers re-evaluation and
+/// re-application of the then-current locale).
+///
+/// Fix: the formula-cell style assignment for date-returning functions must
+/// use numFmtId=14 instead of `get_style_with_format(…, literal)`.
+#[test]
+fn date_fn_stores_locale_fmt_id() {
+    let mut model = new_empty_model(); // en-US
+    model._set("A1", "=DATE(2025,10,11)");
+    model.evaluate();
+
+    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
+    let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
+    assert_eq!(
+        num_fmt_id, LOCALE_SHORT_DATE_FMT_ID,
+        "=DATE() result must store numFmtId={LOCALE_SHORT_DATE_FMT_ID} (locale-aware), got {num_fmt_id}"
+    );
+}
+
+/// Locale-switch bug: =DATE() entered in en-US bakes a literal "m/d/yyyy"
+/// format at evaluation time.  After switching to en-GB via `set_locale`,
+/// the model re-evaluates but the style is NOT updated, so the cell still
+/// shows month-first "10/11/2025" instead of en-GB day-first "11/10/2025".
+///
+/// The cell only corrects itself once it is re-edited (which triggers a fresh
+/// `set_user_input` → `compute_node_units` → new style assignment cycle in
+/// the now-active locale).
+///
+/// Fix: store numFmtId=14 so that `get_formatted_cell_value` derives the
+/// display pattern from the active locale at render time, making locale
+/// switches take effect immediately without requiring a re-edit.
+#[test]
+fn date_fn_locale_switch_updates_display() {
+    let mut model = new_empty_model(); // start in en-US
+    model._set("A1", "=DATE(2025,10,11)");
+    model.evaluate();
+
+    // Sanity: en-US shows month-first October 11 (locale "m/d/yy" → 2-digit year).
+    assert_eq!(model._get_text("A1"), "10/11/25");
+
+    // Switch locale — set_locale re-evaluates internally but does NOT
+    // re-run compute_node_units, so the "m/d/yyyy" literal stays in place.
+    model.set_locale("en-GB").unwrap();
+
+    // Must now show en-GB day-first "11/10/2025".
+    assert_eq!(model._get_text("A1"), "11/10/2025");
+}
+
 // ── Date arithmetic ───────────────────────────────────────────────────────
 
 /// Locale date cells must work as formula operands.  =A1+30 must add 30 days

@@ -28,6 +28,7 @@ use crate::{
     locale::{get_locale, Locale},
     number_format::{is_locale_short_date_id, LOCALE_SHORT_DATE_FMT_ID},
     types::*,
+    units::Units,
     utils as common,
 };
 
@@ -1546,10 +1547,20 @@ impl<'a> Model<'a> {
                 let cell = CellReferenceIndex { sheet, row, column };
                 let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
-                    let new_style_index = self
-                        .workbook
-                        .styles
-                        .get_style_with_format(new_style_index, &units.get_num_fmt())?;
+                    // Date-returning functions (DATE, TODAY, …) get numFmtId 14 so
+                    // that get_formatted_cell_value derives the display pattern from
+                    // the active locale at render time.  All other units (currency,
+                    // percentage, plain number) keep their literal format string.
+                    let new_style_index = match units {
+                        Units::LocaleDate => self
+                            .workbook
+                            .styles
+                            .get_style_with_num_fmt_id(new_style_index, LOCALE_SHORT_DATE_FMT_ID)?,
+                        _ => self
+                            .workbook
+                            .styles
+                            .get_style_with_format(new_style_index, &units.get_num_fmt())?,
+                    };
                     let style = self.workbook.styles.get_style(new_style_index)?;
                     self.set_cell_style(sheet, row, column, &style)?
                 }

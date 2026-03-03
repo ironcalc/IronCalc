@@ -42,13 +42,14 @@ fn test_fn_date_arguments() {
     assert_eq!(model._get_text("A3"), *"#ERROR!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");
 
-    assert_eq!(model._get_text("A5"), *"10/10/1974");
-    assert_eq!(model._get_text("A6"), *"1/21/1975");
-    assert_eq!(model._get_text("A7"), *"2/10/1976");
-    assert_eq!(model._get_text("A8"), *"3/2/1975");
+    // en-US locale short date is "m/d/yy" — numFmtId 14 renders with 2-digit year.
+    assert_eq!(model._get_text("A5"), *"10/10/74");
+    assert_eq!(model._get_text("A6"), *"1/21/75");
+    assert_eq!(model._get_text("A7"), *"2/10/76");
+    assert_eq!(model._get_text("A8"), *"3/2/75");
 
-    assert_eq!(model._get_text("A9"), *"3/1/1975");
-    assert_eq!(model._get_text("A10"), *"2/29/1976");
+    assert_eq!(model._get_text("A9"), *"3/1/75");
+    assert_eq!(model._get_text("A10"), *"2/29/76");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A10"),
         Ok(CellValue::Number(27819.0))
@@ -74,10 +75,11 @@ fn test_date_out_of_range() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"12/10/2021");
-    assert_eq!(model._get_text("A2"), *"1/10/2023");
-    assert_eq!(model._get_text("B1"), *"4/30/2042");
-    assert_eq!(model._get_text("B2"), *"6/1/2025");
+    // en-US locale short date is "m/d/yy" — numFmtId 14 renders with 2-digit year.
+    assert_eq!(model._get_text("A1"), *"12/10/21");
+    assert_eq!(model._get_text("A2"), *"1/10/23");
+    assert_eq!(model._get_text("B1"), *"4/30/42");
+    assert_eq!(model._get_text("B2"), *"6/1/25");
 
     assert_eq!(model._get_text("C1"), *"#NUM!");
     assert_eq!(model._get_text("C2"), *"#NUM!");
@@ -195,8 +197,9 @@ fn test_date_early_dates() {
 
     model.evaluate();
 
-    // This is 1 in Excel, we agree with Google Docs
-    assert_eq!(model._get_text("A1"), *"1/1/1900");
+    // This is 1 in Excel, we agree with Google Docs.
+    // en-US "m/d/yy" renders 1900 as 2-digit "00".
+    assert_eq!(model._get_text("A1"), *"1/1/00");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(2.0))
@@ -204,7 +207,7 @@ fn test_date_early_dates() {
 
     // 1900 was not a leap year, this is a bug in EXCEL
     // This would be 60 in Excel
-    assert_eq!(model._get_text("A2"), *"2/28/1900");
+    assert_eq!(model._get_text("A2"), *"2/28/00");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A2"),
         Ok(CellValue::Number(60.0))
@@ -212,10 +215,10 @@ fn test_date_early_dates() {
 
     // This does not agree with Excel, instead of mistakenly allowing
     // for Feb 29, it will auto-wrap to the next day after Feb 28.
-    assert_eq!(model._get_text("B2"), *"3/1/1900");
+    assert_eq!(model._get_text("B2"), *"3/1/00");
 
     // This agrees with Excel from he onward
-    assert_eq!(model._get_text("A3"), *"3/1/1900");
+    assert_eq!(model._get_text("A3"), *"3/1/00");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A3"),
         Ok(CellValue::Number(61.0))

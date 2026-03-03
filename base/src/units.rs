@@ -25,6 +25,9 @@ pub enum Units {
         precision: i32,
         num_fmt: String,
     },
+    /// Date-only functions (DATE, TODAY): store numFmtId 14 so the display
+    /// derives its pattern from the active locale at render time.
+    LocaleDate,
     Date(String),
 }
 
@@ -34,6 +37,7 @@ impl Units {
             Units::Number { num_fmt, .. } => num_fmt.to_string(),
             Units::Currency { num_fmt, .. } => num_fmt.to_string(),
             Units::Percentage { num_fmt, .. } => num_fmt.to_string(),
+            Units::LocaleDate => String::new(), // never used; ID-14 path skips get_num_fmt
             Units::Date(num_fmt) => num_fmt.to_string(),
         }
     }
@@ -42,6 +46,7 @@ impl Units {
             Units::Number { precision, .. } => *precision,
             Units::Currency { precision, .. } => *precision,
             Units::Percentage { precision, .. } => *precision,
+            Units::LocaleDate => 0,
             Units::Date(_) => 0,
         }
     }
@@ -373,12 +378,10 @@ impl<'a> Model<'a> {
     }
 
     fn units_fn_dates(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
-        let mut date_short = self.locale.dates.date_formats.short.clone();
-        // FIXME: We want always 4 digit year. So if it is not already the case, we replace yy by yyyy
-        if !date_short.contains("yyyy") {
-            date_short = date_short.replace("yy", "yyyy");
-        }
-        Some(Units::Date(date_short.replace(' ', " ")))
+        // Signal that the cell should use numFmtId 14 (LOCALE_SHORTself.compute_node_units(parsed_formula,_DATE_FMT_ID).
+        // The display functions derive the actual pattern from the active locale
+        // at render time, so locale switches take effect without a re-edit.
+        Some(Units::LocaleDate)
     }
 
     fn units_fn_date_times(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
