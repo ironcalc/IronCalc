@@ -3,6 +3,7 @@ use crate::{
     formatter::parser::{ParsePart, Parser},
     functions::Function,
     model::Model,
+    number_format::{LOCALE_SHORT_DATE_FMT_ID, LOCALE_SHORT_DATE_TIME_FMT_ID},
 };
 
 pub enum Units {
@@ -31,17 +32,6 @@ pub enum Units {
 }
 
 impl Units {
-    pub fn get_num_fmt(&self) -> String {
-        match self {
-            Units::Number { num_fmt, .. } => num_fmt.to_string(),
-            Units::Currency { num_fmt, .. } => num_fmt.to_string(),
-            Units::Percentage { num_fmt, .. } => num_fmt.to_string(),
-            Units::LocaleDate | Units::LocaleDateTime => {
-                unreachable!("locale date IDs are handled before get_num_fmt() is ever called")
-            }
-            Units::Date(num_fmt) => num_fmt.to_string(),
-        }
-    }
     pub fn get_precision(&self) -> i32 {
         match self {
             Units::Number { precision, .. } => *precision,
@@ -97,14 +87,21 @@ fn get_units_from_format_string(num_fmt: &str) -> Option<Units> {
 
 impl<'a> Model<'a> {
     fn compute_cell_units(&self, cell_reference: &CellReferenceIndex) -> Option<Units> {
-        let cell_style_res = &self.get_style_for_cell(
-            cell_reference.sheet,
-            cell_reference.row,
-            cell_reference.column,
-        );
-        match cell_style_res {
-            Ok(style) => get_units_from_format_string(&style.num_fmt),
-            Err(_) => None,
+        let style = self
+            .get_style_for_cell(
+                cell_reference.sheet,
+                cell_reference.row,
+                cell_reference.column,
+            )
+            .ok()?;
+        // Check the raw numFmtId before parsing the format string.  For locale
+        // dates (ID 14/22), get_style() resolves the ID to an en-US literal like
+        // "mm-dd-yy" — relying on that string reverse-mapping back to ID 14 is a
+        // fragile coincidence.  Checking the ID explicitly is exact and cheap.
+        match style.num_fmt.num_fmt_id {
+            LOCALE_SHORT_DATE_FMT_ID => Some(Units::LocaleDate),
+            LOCALE_SHORT_DATE_TIME_FMT_ID => Some(Units::LocaleDateTime),
+            _ => get_units_from_format_string(&style.num_fmt.format_code),
         }
     }
 

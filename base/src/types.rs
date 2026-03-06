@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 use crate::expressions::token::Error;
+use crate::number_format::DEFAULT_NUM_FMTS;
 
 fn default_as_false() -> bool {
     false
@@ -17,7 +18,8 @@ pub struct Metadata {
     pub application: String,
     pub app_version: String,
     pub creator: String,
-    pub last_modified_by: String,
+    pub last_modified_by: String, // Search custom formats first (by their stored ID, not position).
+
     pub created: String,       // "2020-08-06T21:20:53Z",
     pub last_modified: String, //"2020-11-20T16:24:35"
 }
@@ -320,31 +322,18 @@ impl Default for Styles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
-    pub num_fmt: String,
+    pub num_fmt: NumFmt,
     pub fill: Fill,
     pub font: Font,
     pub border: Border,
     pub quote_prefix: bool,
 }
 
-impl Default for Style {
-    fn default() -> Self {
-        Style {
-            alignment: None,
-            num_fmt: "general".to_string(),
-            fill: Fill::default(),
-            font: Font::default(),
-            border: Border::default(),
-            quote_prefix: false,
-        }
-    }
-}
-
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct NumFmt {
     pub num_fmt_id: i32,
     pub format_code: String,
@@ -356,6 +345,80 @@ impl Default for NumFmt {
             num_fmt_id: 0,
             format_code: "general".to_string(),
         }
+    }
+}
+
+impl NumFmt {
+    /// Return the ECMA-376 built-in `numFmtId` for `code`, or `None` if the
+    /// code is not in the built-in table.
+    pub(crate) fn builtin_id(code: &str) -> Option<i32> {
+        DEFAULT_NUM_FMTS
+            .iter()
+            .position(|&s| s == code)
+            .map(|i| i as i32)
+    }
+
+    /// Build a `NumFmt` from a known `num_fmt_id`.
+    ///
+    /// Looks up the format code from the workbook's custom list first,
+    /// then falls back to the ECMA-376 built-in table. Unknown IDs resolve
+    /// to General (ID 0).
+    pub fn from_id(id: i32, custom_fmts: &[NumFmt]) -> Self {
+        if let Some(fmt) = custom_fmts.iter().find(|f| f.num_fmt_id == id) {
+            return fmt.clone();
+        }
+        // Clamp out-of-range IDs to 0 (General); built-in IDs use their own value.
+        let resolved = if id >= 0 && (id as usize) < DEFAULT_NUM_FMTS.len() {
+            id
+        } else {
+            0
+        };
+        NumFmt {
+            num_fmt_id: resolved,
+            format_code: DEFAULT_NUM_FMTS[resolved as usize].to_string(),
+        }
+    }
+
+    /// Build a `NumFmt` from a format code string.
+    ///
+    /// For ECMA-376 built-in codes the canonical ID is resolved immediately.
+    /// For custom codes (not in the built-in table) `num_fmt_id` is `-1` — an
+    /// unambiguous sentinel distinct from all valid IDs (which are ≥ 0).
+    /// `Styles::get_style_index_or_create` re-derives the real ID from
+    /// `format_code` at persist time, and `Styles::get_style_index` compares
+    /// styles by `format_code`, so deduplication is correct regardless.
+    pub fn from_format_code(code: &str) -> Self {
+        let num_fmt_id = Self::builtin_id(code).unwrap_or(-1);
+        NumFmt {
+            num_fmt_id,
+            format_code: code.to_string(),
+        }
+    }
+
+    /// Returns a fully-resolved `NumFmt`, registering a new custom entry in
+    /// `num_fmts` if the code isn't already there.  Use this when you have
+    /// mutable access to the styles registry (e.g. inside `Styles` methods).
+    pub fn get_or_register(code: &str, num_fmts: &mut Vec<NumFmt>) -> Self {
+        if let Some(id) = Self::builtin_id(code) {
+            return NumFmt {
+                num_fmt_id: id,
+                format_code: code.to_string(),
+            };
+        }
+        if let Some(existing) = num_fmts.iter().find(|f| f.format_code == code) {
+            return existing.clone();
+        }
+        // Find the lowest custom ID (≥ built-in table length) not already in use.
+        let mut new_id = DEFAULT_NUM_FMTS.len() as i32;
+        while num_fmts.iter().any(|f| f.num_fmt_id == new_id) {
+            new_id += 1;
+        }
+        let fmt = NumFmt {
+            num_fmt_id: new_id,
+            format_code: code.to_string(),
+        };
+        num_fmts.push(fmt.clone());
+        fmt
     }
 }
 

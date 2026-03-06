@@ -17,7 +17,7 @@ use crate::{
     },
     model::{FmtSettings, Model},
     types::{
-        Alignment, BorderItem, Cell, CellType, Col, HorizontalAlignment, SheetProperties,
+        Alignment, BorderItem, Cell, CellType, Col, HorizontalAlignment, NumFmt, SheetProperties,
         SheetState, Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
@@ -152,7 +152,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
             style.fill.pattern_type = "solid".to_string();
         }
         "num_fmt" => {
-            value.clone_into(&mut style.num_fmt);
+            style.num_fmt = NumFmt::from_format_code(value);
         }
         "alignment" => {
             if !value.is_empty() {

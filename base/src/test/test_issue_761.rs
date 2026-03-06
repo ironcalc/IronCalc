@@ -2,19 +2,21 @@
 
 // Issue #761 — locale dates corrupt when double-click edited after a locale switch.
 //
-// Root cause: `get_localized_cell_content` (edit bar) and
-// `get_formatted_cell_value` (grid) both used the stored format *string*
-// (e.g. "m/d/yy" for en-US) rather than the locale's own short-date pattern.
-// In a day-first locale (e.g. en-GB) the edit bar would show a month-first
+// Root cause: `get_localized_cell_content` (edit bar) and `get_formatted_cell_value`
+// (grid) both used the stored format string rather than the locale's own short-date
+// pattern. In a day-first locale (e.g. en-GB) the edit bar would show a month-first
 // string; pressing Enter would then mis-parse the date and corrupt it.
 //
-// The fix: simple locale dates are stored with numFmtId 14
-// (LOCALE_SHORT_DATE_FMT_ID).  Both render functions detect ID 14 and derive
-// the format from `locale.dates.date_formats.short` at runtime.
+// Fix: simple locale dates are stored with numFmtId 14 (LOCALE_SHORT_DATE_FMT_ID).
+// Both render functions detect ID 14 and derive the format from
+// `locale.dates.date_formats.short` at runtime.
 
 use crate::{
-    cell::CellValue, model::Model, number_format::LOCALE_SHORT_DATE_FMT_ID,
+    cell::CellValue,
+    model::Model,
+    number_format::LOCALE_SHORT_DATE_FMT_ID,
     test::util::new_empty_model,
+    types::{NumFmt, Styles},
 };
 
 fn en_gb_model<'a>() -> Model<'a> {
@@ -25,63 +27,46 @@ fn de_model<'a>() -> Model<'a> {
     Model::new_empty("model", "de", "UTC", "en").unwrap()
 }
 
-// ── en-US ──────────────────────────────────────────────────────────────────
-
-/// Entering a locale date in en-US stores the correct serial and the edit bar
-/// shows the locale's short-date pattern ("m/d/yy").  Because the cell carries
-/// numFmtId 14, the edit bar is locale-derived; re-entering the shown string
-/// in en-US unambiguously reproduces the same date.
 #[test]
 fn en_us_round_trip_stable() {
-    let mut model = new_empty_model(); // en-US
-    model._set("A1", "4/3/2025"); // April 3, 2025 (month/day in en-US)
+    // April 3, 2025 in en-US (month/day). Edit bar shows locale "m/d/yy".
+    let mut model = new_empty_model();
+    model._set("A1", "4/3/2025");
     model.evaluate();
 
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(45750.0))
     );
-    // en-US short-date format is "m/d/yy" — edit bar shows 2-digit year.
     assert_eq!(model.get_localized_cell_content(0, 1, 1).unwrap(), "4/3/25");
 }
 
-// ── en-GB ──────────────────────────────────────────────────────────────────
-
-/// Same date (April 3, 2025) entered in en-GB (dd/mm/yyyy) must produce the
-/// same serial as in en-US and the edit bar must show the locale format.
 #[test]
 fn en_gb_round_trip_stable() {
+    // April 3, 2025 in en-GB (day/month). Edit bar shows locale "dd/mm/yyyy".
     let mut model = en_gb_model();
-    model._set("A1", "03/04/2025"); // April 3, 2025 (day/month in en-GB)
+    model._set("A1", "03/04/2025");
     model.evaluate();
 
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(45750.0))
     );
-    // en-GB short-date format is "dd/mm/yyyy" — same as the input string.
     assert_eq!(
         model.get_localized_cell_content(0, 1, 1).unwrap(),
         "03/04/2025"
     );
 }
 
-/// Grid display in en-GB must use the locale's "dd/mm/yyyy" pattern, not the
-/// en-US "m/d/yy" that is the stored format-string default for numFmtId 14.
 #[test]
 fn en_gb_display_uses_locale_format() {
     let mut model = en_gb_model();
-    model._set("A1", "03/04/2025"); // April 3
+    model._set("A1", "03/04/2025");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), "03/04/2025");
 }
 
-// ── numFmtId invariants ────────────────────────────────────────────────────
-
-/// After entering a locale date, the cell style must store numFmtId=14
-/// (LOCALE_SHORT_DATE_FMT_ID) — not a custom format string.  This is the
-/// structural guarantee that makes locale-derived rendering possible.
 #[test]
 fn locale_date_stored_as_num_fmt_id_14() {
     let mut model = new_empty_model();
@@ -96,12 +81,11 @@ fn locale_date_stored_as_num_fmt_id_14() {
     );
 }
 
-/// ISO dates (yyyy/mm/dd) must use a literal format string, NOT numFmtId=14,
-/// because ISO format is locale-independent and must be preserved as-is.
 #[test]
 fn iso_date_is_not_stored_as_id_14() {
+    // ISO dates (year first) are locale-independent and keep a literal format string.
     let mut model = new_empty_model();
-    model._set("A1", "2025/03/04"); // ISO: year first
+    model._set("A1", "2025/03/04");
     model.evaluate();
 
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
@@ -110,68 +94,53 @@ fn iso_date_is_not_stored_as_id_14() {
         num_fmt_id, LOCALE_SHORT_DATE_FMT_ID,
         "ISO date must NOT use numFmtId 14 — it has a specific format string"
     );
-    // The stored serial is still March 4, 2025 regardless of format.
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(45720.0))
     );
-    // Grid display uses the literal format, not the locale pattern.
     assert_eq!(model._get_text("A1"), "2025/03/04");
 }
 
-// ── Separator variants ─────────────────────────────────────────────────────
-
-/// Two-digit year input ("4/3/25") must parse as April 3, 2025 in en-US.
-/// The edit bar renders with the locale format "m/d/yy" — identical to the
-/// input — confirming the round-trip is stable.
 #[test]
 fn two_digit_year_input_en_us() {
     let mut model = new_empty_model();
-    model._set("A1", "4/3/25"); // en-US: month/day/2-digit-year
+    model._set("A1", "4/3/25");
     model.evaluate();
 
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(45750.0))
     );
-    // Edit bar uses "m/d/yy" — same as input, confirming round-trip stability.
     assert_eq!(model.get_localized_cell_content(0, 1, 1).unwrap(), "4/3/25");
 }
 
-/// Hyphen separator ("03-04-2025") must be accepted in en-GB (day-first).
-/// The edit bar normalises separators to the locale's own pattern (slashes).
 #[test]
 fn hyphen_separator_en_gb() {
+    // Hyphens are accepted; the edit bar normalises to the locale's own separator.
     let mut model = en_gb_model();
-    model._set("A1", "03-04-2025"); // April 3, 2025 with hyphens
+    model._set("A1", "03-04-2025");
     model.evaluate();
 
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(45750.0))
     );
-    // Edit bar uses locale format "dd/mm/yyyy" regardless of input separator.
     assert_eq!(
         model.get_localized_cell_content(0, 1, 1).unwrap(),
         "03/04/2025"
     );
 }
 
-// ── German locale ──────────────────────────────────────────────────────────
-
-/// German locale uses dots as separators and day-first order ("dd.mm.yy").
-/// Both grid display and edit-bar must use this pattern.
 #[test]
 fn german_locale_round_trip() {
     let mut model = de_model();
-    model._set("A1", "03.04.2025"); // April 3, 2025 in German dd.mm.yyyy
+    model._set("A1", "03.04.2025");
     model.evaluate();
 
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(45750.0))
     );
-    // German short-date format is "dd.mm.yy" (2-digit year).
     assert_eq!(model._get_text("A1"), "03.04.25");
     assert_eq!(
         model.get_localized_cell_content(0, 1, 1).unwrap(),
@@ -179,27 +148,20 @@ fn german_locale_round_trip() {
     );
 }
 
-// ── Manual format preservation ─────────────────────────────────────────────
-
-/// When a cell is pre-formatted with an explicit date format (e.g. "dd mmmm
-/// yyyy"), entering a new date must NOT overwrite that format with numFmtId 14.
-/// The `should_apply_format` guard protects date→date reassignments.
 #[test]
 fn manual_date_format_preserved_on_entry() {
+    // A cell with an explicit date format must not have it overwritten with numFmtId 14.
     let mut model = new_empty_model();
-
-    // Pre-format A1 with an explicit long date format.
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = "dd mmmm yyyy".to_string();
+    style.num_fmt = NumFmt::from_format_code("dd mmmm yyyy");
     model.set_cell_style(0, 1, 1, &style).unwrap();
 
-    // Enter a locale date — must keep the explicit format, not switch to ID 14.
     model._set("A1", "4/3/2025");
     model.evaluate();
 
     let style_after = model.get_style_for_cell(0, 1, 1).unwrap();
     assert_eq!(
-        style_after.num_fmt, "dd mmmm yyyy",
+        style_after.num_fmt.format_code, "dd mmmm yyyy",
         "manual date format must be preserved when a date is re-entered"
     );
     assert_eq!(
@@ -208,29 +170,21 @@ fn manual_date_format_preserved_on_entry() {
     );
 }
 
-// ── Invalid date inputs ─────────────────────────────────────────
-
-/// Month 13 is not a valid month.  `parse_date` must reject it and the input
-/// must be stored as a text string — not as a date cell with numFmtId=14.
 #[test]
 fn invalid_month_stored_as_text() {
     let mut model = new_empty_model();
     model._set("A1", "13/01/2025");
     model.evaluate();
 
-    // Stored as a raw string, not as a number.
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::String("13/01/2025".to_string()))
     );
-    // Must NOT have acquired ID-14 style.
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_ne!(num_fmt_id, LOCALE_SHORT_DATE_FMT_ID);
 }
 
-/// February 29 does not exist in 2025 (not a leap year).  The input must be
-/// rejected by `date_to_serial_number` and stored as text.
 #[test]
 fn feb_29_non_leap_year_stored_as_text() {
     let mut model = new_empty_model();
@@ -243,7 +197,6 @@ fn feb_29_non_leap_year_stored_as_text() {
     );
 }
 
-/// April has 30 days; day 31 is out of range.  Must be stored as text.
 #[test]
 fn day_overflow_stored_as_text() {
     let mut model = new_empty_model();
@@ -256,11 +209,6 @@ fn day_overflow_stored_as_text() {
     );
 }
 
-// ── Format-side boundaries ─────────────────────────────────────
-
-/// Entering a plain number must not create a locale-date cell.
-/// `parse_formatted_number` returns `None` for the format spec, so no style
-/// change is applied and the cell retains its default (non-date) format.
 #[test]
 fn plain_number_does_not_create_date_cell() {
     let mut model = new_empty_model();
@@ -273,25 +221,17 @@ fn plain_number_does_not_create_date_cell() {
     );
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
-    assert_ne!(
-        num_fmt_id, LOCALE_SHORT_DATE_FMT_ID,
-        "a plain number must not acquire numFmtId 14"
-    );
+    assert_ne!(num_fmt_id, LOCALE_SHORT_DATE_FMT_ID);
 }
 
-/// Entering a non-date value (e.g. a percentage) into a cell already carrying
-/// numFmtId=14 must REPLACE the date format.  The `should_apply_format` guard
-/// only skips the assignment when BOTH the old AND new values are dates.
 #[test]
 fn non_date_entry_into_date_cell_replaces_format() {
+    // The should_apply_format guard only preserves date format when BOTH old and new are dates.
     let mut model = new_empty_model();
-
-    // Pre-format A1 as a locale-date cell.
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = "mm-dd-yy".to_string(); // → numFmtId=14
+    style.num_fmt = NumFmt::from_format_code("mm-dd-yy"); // → numFmtId=14
     model.set_cell_style(0, 1, 1, &style).unwrap();
 
-    // "30%" is not a date — should_apply_format is true so the format changes.
     model._set("A1", "30%");
     model.evaluate();
 
@@ -301,33 +241,23 @@ fn non_date_entry_into_date_cell_replaces_format() {
     );
     let style_after = model.get_style_for_cell(0, 1, 1).unwrap();
     assert_eq!(
-        style_after.num_fmt, "#,##0%",
+        style_after.num_fmt.format_code, "#,##0%",
         "percent entry must replace the locale-date format"
     );
 }
 
-// ── Cross-locale rendering ────────────────────────────────────────────────
-
-/// The core issue 761 scenario: a date serial stored with numFmtId=14
-/// (as produced by en-US entry) must render with the *current* model's locale
-/// format — not with the en-US literal "m/d/yy" embedded in DEFAULT_NUM_FMTS.
-///
-/// Simulates: date entered in en-US → serialised → loaded in an en-GB model.
-/// "mm-dd-yy" is DEFAULT_NUM_FMTS[14], so `set_cell_style` stores numFmtId=14
-/// exactly as en-US entry would have done.
 #[test]
 fn cross_locale_serial_displays_as_locale_format() {
+    // Core issue 761: a serial stored with numFmtId=14 in en-US must render
+    // with the en-GB pattern when the model locale is en-GB.
     let serial = 45750.0; // April 3, 2025
-
     let mut model = en_gb_model();
-
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = "mm-dd-yy".to_string(); // maps to numFmtId=14 in DEFAULT_NUM_FMTS
+    style.num_fmt = NumFmt::from_format_code("mm-dd-yy"); // → numFmtId=14
     model.set_cell_style(0, 1, 1, &style).unwrap();
     model.update_cell_with_number(0, 1, 1, serial).unwrap();
     model.evaluate();
 
-    // Must show en-GB day-first format, NOT the en-US "4/3/25".
     assert_eq!(model._get_text("A1"), "03/04/2025");
     assert_eq!(
         model.get_localized_cell_content(0, 1, 1).unwrap(),
@@ -335,22 +265,13 @@ fn cross_locale_serial_displays_as_locale_format() {
     );
 }
 
-// ── Formula cell rendering ────────────────────────────────────────────────
-
-/// =DATE(2025,4,3) in a cell pre-formatted as numFmtId=14 must display with
-/// the locale's short-date pattern.  This exercises the formula-cell branch of
-/// `get_formatted_cell_value`, which applies the same ID-14 check as the
-/// raw-value path.
 #[test]
 fn formula_date_result_respects_locale_format() {
     let mut model = en_gb_model();
-
-    // Pre-format B1 with ID 14 ("mm-dd-yy" → numFmtId=14).
     let mut style = model.get_style_for_cell(0, 1, 2).unwrap();
-    style.num_fmt = "mm-dd-yy".to_string();
+    style.num_fmt = NumFmt::from_format_code("mm-dd-yy"); // → numFmtId=14
     model.set_cell_style(0, 1, 2, &style).unwrap();
 
-    // `update_cell_with_formula` reads the current style index and preserves it.
     model
         .update_cell_with_formula(0, 1, 2, "=DATE(2025,4,3)".to_string())
         .unwrap();
@@ -360,21 +281,13 @@ fn formula_date_result_respects_locale_format() {
         model.get_cell_value_by_ref("Sheet1!B1"),
         Ok(CellValue::Number(45750.0))
     );
-    // Grid display uses en-GB locale format for the ID-14 formula cell.
     assert_eq!(model._get_text("B1"), "03/04/2025");
 }
 
-// ── Excel date functions ──────────────────────────────────────────────────
-
-/// YEAR(), MONTH(), DAY() on a locale-date cell must return the correct
-/// calendar components — proving the stored serial is semantically correct,
-/// not just that the display looks right.
-///
-/// This catches silent mis-parses (e.g. month and day swapped) that would
-/// produce the same display text but a wrong serial.
 #[test]
 fn date_functions_extract_correct_components() {
-    let mut model = new_empty_model(); // en-US: month/day order
+    // YEAR/MONTH/DAY on a locale-date cell prove the serial is semantically correct.
+    let mut model = new_empty_model();
     model._set("A1", "4/3/2025"); // April 3, 2025
     model._set("B1", "=YEAR(A1)");
     model._set("C1", "=MONTH(A1)");
@@ -395,34 +308,19 @@ fn date_functions_extract_correct_components() {
     );
 }
 
-/// Basic sanity check: =DATE(2025,10,11) in en-US must display October 11
-/// in month/day/year order.  This exercises the formula-cell display path
-/// and gives us a baseline before adding locale-sensitivity tests.
 #[test]
 fn date_functions_date_fn() {
-    let mut model = new_empty_model(); // en-US: month/day order
+    let mut model = new_empty_model();
     model._set("A1", "=DATE(2025,10,11)");
     model.evaluate();
 
-    // en-US locale short date is "m/d/yy" — numFmtId 14 renders with 2-digit year.
+    // en-US "m/d/yy" — numFmtId 14 renders with 2-digit year.
     assert_eq!(model._get_text("A1"), "10/11/25");
 }
 
-/// =DATE() must store numFmtId=14 (LOCALE_SHORT_DATE_FMT_ID) so that
-/// locale-aware rendering derives the display format at runtime rather than
-/// baking in the locale's literal string at evaluation time.
-///
-/// Bug: `units_fn_dates` currently stores a literal format string (e.g.
-/// "M/d/yyyy" for en-US) as a custom numFmtId ≥ 164.  When the file is
-/// opened in a different locale, the literal is used verbatim and the display
-/// is wrong until the cell is re-edited (which triggers re-evaluation and
-/// re-application of the then-current locale).
-///
-/// Fix: the formula-cell style assignment for date-returning functions must
-/// use numFmtId=14 instead of `get_style_with_format(…, literal)`.
 #[test]
 fn date_fn_stores_locale_fmt_id() {
-    let mut model = new_empty_model(); // en-US
+    let mut model = new_empty_model();
     model._set("A1", "=DATE(2025,10,11)");
     model.evaluate();
 
@@ -430,50 +328,159 @@ fn date_fn_stores_locale_fmt_id() {
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_eq!(
         num_fmt_id, LOCALE_SHORT_DATE_FMT_ID,
-        "=DATE() result must store numFmtId={LOCALE_SHORT_DATE_FMT_ID} (locale-aware), got {num_fmt_id}"
+        "=DATE() result must store numFmtId={LOCALE_SHORT_DATE_FMT_ID}, got {num_fmt_id}"
     );
 }
 
-/// Locale-switch bug: =DATE() entered in en-US bakes a literal "m/d/yyyy"
-/// format at evaluation time.  After switching to en-GB via `set_locale`,
-/// the model re-evaluates but the style is NOT updated, so the cell still
-/// shows month-first "10/11/2025" instead of en-GB day-first "11/10/2025".
-///
-/// The cell only corrects itself once it is re-edited (which triggers a fresh
-/// `set_user_input` → `compute_node_units` → new style assignment cycle in
-/// the now-active locale).
-///
-/// Fix: store numFmtId=14 so that `get_formatted_cell_value` derives the
-/// display pattern from the active locale at render time, making locale
-/// switches take effect immediately without requiring a re-edit.
 #[test]
 fn date_fn_locale_switch_updates_display() {
-    let mut model = new_empty_model(); // start in en-US
+    let mut model = new_empty_model();
     model._set("A1", "=DATE(2025,10,11)");
     model.evaluate();
 
-    // Sanity: en-US shows month-first October 11 (locale "m/d/yy" → 2-digit year).
-    assert_eq!(model._get_text("A1"), "10/11/25");
+    assert_eq!(model._get_text("A1"), "10/11/25"); // en-US month-first
 
-    // Switch locale — set_locale re-evaluates internally but does NOT
-    // re-run compute_node_units, so the "m/d/yyyy" literal stays in place.
     model.set_locale("en-GB").unwrap();
 
-    // Must now show en-GB day-first "11/10/2025".
-    assert_eq!(model._get_text("A1"), "11/10/2025");
+    assert_eq!(model._get_text("A1"), "11/10/2025"); // en-GB day-first
 }
 
-// ── Date arithmetic ───────────────────────────────────────────────────────
+#[test]
+fn num_fmt_builtin_format_code_resolves_canonical_id() {
+    let general = NumFmt::from_format_code("general");
+    assert_eq!(general.num_fmt_id, 0, "\"general\" must map to numFmtId 0");
 
-/// Locale date cells must work as formula operands.  =A1+30 must add 30 days
-/// to the stored serial, proving ID-14 cells are plain numbers internally.
-/// =B1-A1 must recover the exact day count (no rounding or format interference).
+    let locale_date = NumFmt::from_format_code("mm-dd-yy");
+    assert_eq!(
+        locale_date.num_fmt_id, LOCALE_SHORT_DATE_FMT_ID,
+        "\"mm-dd-yy\" must map to LOCALE_SHORT_DATE_FMT_ID ({})",
+        LOCALE_SHORT_DATE_FMT_ID,
+    );
+}
+
+#[test]
+fn num_fmt_custom_format_code_has_placeholder_id() {
+    // Custom codes not in the built-in table use -1 as a sentinel until registered.
+    let custom = NumFmt::from_format_code("dd/mm/yyyy hh:mm:ss");
+    assert_eq!(custom.format_code, "dd/mm/yyyy hh:mm:ss");
+    assert_eq!(custom.num_fmt_id, -1);
+}
+
+#[test]
+fn set_cell_style_reuses_cell_xfs_for_same_custom_format() {
+    let mut model = new_empty_model();
+    let code = "dd/mm/yyyy hh:mm:ss";
+
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.num_fmt = NumFmt::from_format_code(code);
+    model.set_cell_style(0, 1, 1, &style).unwrap();
+    let xfs_len_after_first = model.workbook.styles.cell_xfs.len();
+
+    let mut style2 = model.get_style_for_cell(0, 2, 1).unwrap();
+    style2.num_fmt = NumFmt::from_format_code(code);
+    model.set_cell_style(0, 2, 1, &style2).unwrap();
+
+    assert_eq!(
+        model.workbook.styles.cell_xfs.len(),
+        xfs_len_after_first,
+        "second apply of the same custom format must reuse the existing CellXfs entry"
+    );
+}
+
+#[test]
+fn get_style_with_format_no_duplicate_cell_xfs() {
+    // Applying the same custom format twice via get_style_with_format must not duplicate CellXfs.
+    let mut model = new_empty_model();
+    let code = "dd/mm/yyyy hh:mm:ss";
+    let styles = &mut model.workbook.styles;
+
+    let idx1 = styles.get_style_with_format(0, code).unwrap();
+    let xfs_len_after_first = styles.cell_xfs.len();
+
+    let idx2 = styles.get_style_with_format(0, code).unwrap();
+
+    assert_eq!(styles.cell_xfs.len(), xfs_len_after_first);
+    assert_eq!(idx1, idx2);
+}
+
+#[test]
+fn format_code_for_id_returns_correct_code() {
+    let styles = Styles {
+        num_fmts: vec![NumFmt {
+            num_fmt_id: 164,
+            format_code: "dd/mm/yyyy hh:mm:ss".to_string(),
+        }],
+        ..Styles::default()
+    };
+
+    assert_eq!(styles.format_code_for_id(0), "general");
+    assert_eq!(styles.format_code_for_id(9), "0%");
+    assert_eq!(styles.format_code_for_id(LOCALE_SHORT_DATE_FMT_ID), "mm-dd-yy");
+    assert_eq!(styles.format_code_for_id(164), "dd/mm/yyyy hh:mm:ss");
+    assert_eq!(styles.format_code_for_id(999), "general"); // unknown → fallback
+}
+
+#[test]
+fn get_style_with_num_fmt_id_rejects_orphan_id() {
+    let mut model = new_empty_model();
+    let styles = &mut model.workbook.styles;
+
+    assert!(styles.get_style_with_num_fmt_id(0, 999).is_err());
+}
+
+#[test]
+fn get_style_with_num_fmt_id_accepts_builtin_id() {
+    let mut model = new_empty_model();
+    let styles = &mut model.workbook.styles;
+
+    assert!(styles
+        .get_style_with_num_fmt_id(0, LOCALE_SHORT_DATE_FMT_ID)
+        .is_ok());
+}
+
+#[test]
+fn get_style_with_num_fmt_id_accepts_registered_custom_id() {
+    let mut model = new_empty_model();
+    let styles = &mut model.workbook.styles;
+
+    let registered = NumFmt::get_or_register("dd/mm/yyyy hh:mm:ss", &mut styles.num_fmts);
+    assert!(registered.num_fmt_id >= 0);
+
+    assert!(styles
+        .get_style_with_num_fmt_id(0, registered.num_fmt_id)
+        .is_ok());
+}
+
+#[test]
+fn custom_format_sentinel_never_stored_in_cell_xfs() {
+    // from_format_code uses -1 as a sentinel; set_cell_style must resolve it before writing.
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.num_fmt = NumFmt::from_format_code("dd/mm/yyyy hh:mm:ss");
+    assert_eq!(style.num_fmt.num_fmt_id, -1, "sentinel must be -1 before registration");
+
+    model.set_cell_style(0, 1, 1, &style).unwrap();
+
+    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
+    let stored_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
+    assert!(stored_id >= 0, "CellXfs must not store the -1 sentinel; got {stored_id}");
+
+    let entry = model
+        .workbook
+        .styles
+        .num_fmts
+        .iter()
+        .find(|f| f.num_fmt_id == stored_id);
+    assert!(entry.is_some(), "custom format must be registered in num_fmts");
+    assert_eq!(entry.unwrap().format_code, "dd/mm/yyyy hh:mm:ss");
+}
+
 #[test]
 fn date_arithmetic_composes_correctly() {
-    let mut model = new_empty_model(); // en-US
+    let mut model = new_empty_model();
     model._set("A1", "4/3/2025"); // April 3, 2025 = serial 45750
     model._set("B1", "=A1+30"); // May 3, 2025 = serial 45780
-    model._set("C1", "=B1-A1"); // difference must be exactly 30
+    model._set("C1", "=B1-A1"); // difference = 30
     model.evaluate();
 
     assert_eq!(

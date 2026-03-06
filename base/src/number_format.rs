@@ -1,7 +1,6 @@
 use crate::{
     formatter::{self, format::Formatted},
     locale::get_locale,
-    types::NumFmt,
 };
 
 /// Built-in number format strings indexed by their ECMA-376 numFmtId.
@@ -14,7 +13,7 @@ use crate::{
 ///
 /// The test `builtin_num_fmts_index_matches_spec_ids` guards the
 /// critical positions.
-const DEFAULT_NUM_FMTS: &[&str] = &[
+pub(crate) const DEFAULT_NUM_FMTS: &[&str] = &[
     "general",
     "0",
     "0.00",
@@ -70,46 +69,6 @@ pub const LOCALE_SHORT_DATE_FMT_ID: i32 = 14;
 
 /// ID 22 ("m/d/yy h:mm", short date+time)
 pub const LOCALE_SHORT_DATE_TIME_FMT_ID: i32 = 22;
-
-pub fn get_default_num_fmt_id(num_fmt: &str) -> Option<i32> {
-    for (index, default_num_fmt) in DEFAULT_NUM_FMTS.iter().enumerate() {
-        if default_num_fmt == &num_fmt {
-            return Some(index as i32);
-        };
-    }
-    None
-}
-
-pub fn get_num_fmt(num_fmt_id: i32, num_fmts: &[NumFmt]) -> String {
-    // Check if it defined
-    for num_fmt in num_fmts {
-        if num_fmt.num_fmt_id == num_fmt_id {
-            return num_fmt.format_code.clone();
-        }
-    }
-    // Return one of the default ones
-    if num_fmt_id < DEFAULT_NUM_FMTS.len() as i32 {
-        return DEFAULT_NUM_FMTS[num_fmt_id as usize].to_string();
-    }
-    // Return general
-    DEFAULT_NUM_FMTS[0].to_string()
-}
-
-pub fn get_new_num_fmt_index(num_fmts: &[NumFmt]) -> i32 {
-    let mut index = DEFAULT_NUM_FMTS.len() as i32;
-    let mut found = true;
-    while found {
-        found = false;
-        for num_fmt in num_fmts {
-            if num_fmt.num_fmt_id == index {
-                found = true;
-                index += 1;
-                break;
-            }
-        }
-    }
-    index
-}
 
 pub fn to_precision(value: f64, precision: usize) -> f64 {
     if value.is_infinite() || value.is_nan() {

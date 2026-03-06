@@ -1,6 +1,6 @@
 use crate::{
     model::Model,
-    number_format::{get_default_num_fmt_id, get_new_num_fmt_index, get_num_fmt},
+    number_format::DEFAULT_NUM_FMTS,
     types::{Border, CellStyles, CellXfs, Fill, Font, NumFmt, Style, Styles},
 };
 
@@ -29,17 +29,6 @@ impl Styles {
         }
         None
     }
-    fn get_num_fmt_index(&self, format_code: &str) -> Option<i32> {
-        if let Some(index) = get_default_num_fmt_id(format_code) {
-            return Some(index);
-        }
-        for item in self.num_fmts.iter() {
-            if item.format_code == format_code {
-                return Some(item.num_fmt_id);
-            }
-        }
-        None
-    }
 
     pub fn create_new_style(&mut self, style: &Style) -> i32 {
         let font = &style.font;
@@ -63,17 +52,8 @@ impl Styles {
             self.borders.push(border.clone());
             self.borders.len() as i32 - 1
         };
-        let num_fmt = &style.num_fmt;
-        let num_fmt_id;
-        if let Some(index) = self.get_num_fmt_index(num_fmt) {
-            num_fmt_id = index;
-        } else {
-            num_fmt_id = get_new_num_fmt_index(&self.num_fmts);
-            self.num_fmts.push(NumFmt {
-                format_code: num_fmt.to_string(),
-                num_fmt_id,
-            });
-        }
+        let num_fmt_id =
+            NumFmt::get_or_register(&style.num_fmt.format_code, &mut self.num_fmts).num_fmt_id;
         self.cell_xfs.push(CellXfs {
             xf_id: 0,
             num_fmt_id,
@@ -92,27 +72,39 @@ impl Styles {
         self.cell_xfs.len() as i32 - 1
     }
 
-    pub fn get_style_index(&self, style: &Style) -> Option<i32> {
-        for (index, cell_xf) in self.cell_xfs.iter().enumerate() {
-            let border_id = cell_xf.border_id as usize;
-            let fill_id = cell_xf.fill_id as usize;
-            let font_id = cell_xf.font_id as usize;
-            let num_fmt_id = cell_xf.num_fmt_id;
-            let quote_prefix = cell_xf.quote_prefix;
-            if style
-                == &(Style {
-                    alignment: cell_xf.alignment.clone(),
-                    num_fmt: get_num_fmt(num_fmt_id, &self.num_fmts),
-                    fill: self.fills[fill_id].clone(),
-                    font: self.fonts[font_id].clone(),
-                    border: self.borders[border_id].clone(),
-                    quote_prefix,
-                })
-            {
-                return Some(index as i32);
-            }
+    /// Look up the format code for `id` without allocating — borrowed from
+    /// `self.num_fmts` for custom IDs or from the static built-in table.
+    pub(crate) fn format_code_for_id(&self, id: i32) -> &str {
+        if let Some(fmt) = self.num_fmts.iter().find(|f| f.num_fmt_id == id) {
+            return &fmt.format_code;
         }
-        None
+        if id >= 0 && (id as usize) < DEFAULT_NUM_FMTS.len() {
+            return DEFAULT_NUM_FMTS[id as usize];
+        }
+        DEFAULT_NUM_FMTS[0] // "general" fallback
+    }
+
+    pub fn get_style_index(&self, style: &Style) -> Option<i32> {
+        // Resolve sub-table indices once.  If any component isn't registered yet,
+        // no CellXfs can reference it — return None without scanning cell_xfs.
+        let font_id = self.get_font_index(&style.font)?;
+        let fill_id = self.get_fill_index(&style.fill)?;
+        let border_id = self.get_border_index(&style.border)?;
+        let fmt_code = style.num_fmt.format_code.as_str();
+
+        // Compare by integer ID for font/fill/border (cheap); format_code stays
+        // string-based because the incoming num_fmt_id may be the -1 sentinel.
+        self.cell_xfs
+            .iter()
+            .position(|xf| {
+                xf.font_id == font_id
+                    && xf.fill_id == fill_id
+                    && xf.border_id == border_id
+                    && self.format_code_for_id(xf.num_fmt_id) == fmt_code
+                    && xf.alignment == style.alignment
+                    && xf.quote_prefix == style.quote_prefix
+            })
+            .map(|i| i as i32)
     }
 
     pub(crate) fn get_style_index_or_create(&mut self, style: &Style) -> i32 {
@@ -171,10 +163,12 @@ impl Styles {
     pub(crate) fn get_style_with_format(
         &mut self,
         index: i32,
-        num_fmt: &str,
+        format_code: &str,
     ) -> Result<i32, String> {
         let mut style = self.get_style(index)?;
-        style.num_fmt = num_fmt.to_string();
+        // Resolve the canonical ID directly from Styles so the returned Style
+        // is fully resolved — no sentinel needed here since we own num_fmts.
+        style.num_fmt = NumFmt::get_or_register(format_code, &mut self.num_fmts);
         Ok(self.get_style_index_or_create(&style))
     }
     /// Returns the raw `num_fmt_id` stored in `CellXfs` for the given style
@@ -196,6 +190,14 @@ impl Styles {
         index: i32,
         new_id: i32,
     ) -> Result<i32, String> {
+        // Fail fast if the ID would produce a silent fallback to General format.
+        let is_builtin = new_id >= 0 && (new_id as usize) < DEFAULT_NUM_FMTS.len();
+        let is_registered = self.num_fmts.iter().any(|f| f.num_fmt_id == new_id);
+        if !is_builtin && !is_registered {
+            return Err(format!(
+                "num_fmt_id {new_id} is neither a built-in ECMA-376 ID nor registered in num_fmts"
+            ));
+        }
         let base = self
             .cell_xfs
             .get(index as usize)
@@ -231,7 +233,7 @@ impl Styles {
         let cell_xf = &self
             .cell_xfs
             .get(index as usize)
-            .ok_or("Invalid index provided".to_string())?;
+            .ok_or_else(|| format!("Invalid style index: {index}"))?;
         let border_id = cell_xf.border_id as usize;
         let fill_id = cell_xf.fill_id as usize;
         let font_id = cell_xf.font_id as usize;
@@ -241,10 +243,22 @@ impl Styles {
 
         Ok(Style {
             alignment,
-            num_fmt: get_num_fmt(num_fmt_id, &self.num_fmts),
-            fill: self.fills[fill_id].clone(),
-            font: self.fonts[font_id].clone(),
-            border: self.borders[border_id].clone(),
+            num_fmt: NumFmt::from_id(num_fmt_id, &self.num_fmts),
+            fill: self
+                .fills
+                .get(fill_id)
+                .ok_or_else(|| format!("Invalid fill_id {fill_id} in style index {index}"))?
+                .clone(),
+            font: self
+                .fonts
+                .get(font_id)
+                .ok_or_else(|| format!("Invalid font_id {font_id} in style index {index}"))?
+                .clone(),
+            border: self
+                .borders
+                .get(border_id)
+                .ok_or_else(|| format!("Invalid border_id {border_id} in style index {index}"))?
+                .clone(),
             quote_prefix,
         })
     }

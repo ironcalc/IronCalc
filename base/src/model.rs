@@ -72,8 +72,19 @@ pub fn get_milliseconds_since_epoch() -> i64 {
 /// locale switches update the display without requiring a re-edit.
 fn locale_short_datetime_fmt(locale: &Locale) -> String {
     let date_short = &locale.dates.date_formats.short;
-    // Replace the CLDR meridiem indicator 'a' with the Excel "AM/PM" token.
-    let time_short = locale.dates.time_formats.short.replace('a', "AM/PM");
+    // Normalise narrow no-break space (U+202F) used by many CLDR locales
+    // (e.g. "h:mm\u{202f}a"), then map the trailing CLDR meridiem token to
+    // the IronCalc DSL token "AM/PM".
+    // TODO: CLDR also allows leading-'a' placement (e.g. "ah:mm" in some
+    // locales) and no-space trailing (e.g. "h:mma").  A proper tokenised
+    // replacement would cover all cases; the simple string replace below
+    // suffices for the locales currently supported by IronCalc.
+    let time_short = locale
+        .dates
+        .time_formats
+        .short
+        .replace('\u{202f}', " ")
+        .replace(" a", " AM/PM");
     // Template is typically "{1}, {0}" — date first, then time.
     let fmt = locale
         .dates
@@ -1580,10 +1591,16 @@ impl<'a> Model<'a> {
                             new_style_index,
                             LOCALE_SHORT_DATE_TIME_FMT_ID,
                         )?,
-                        _ => self
+                        Units::Number { num_fmt, .. }
+                        | Units::Currency { num_fmt, .. }
+                        | Units::Percentage { num_fmt, .. } => self
                             .workbook
                             .styles
-                            .get_style_with_format(new_style_index, &units.get_num_fmt())?,
+                            .get_style_with_format(new_style_index, &num_fmt)?,
+                        Units::Date(fmt) => self
+                            .workbook
+                            .styles
+                            .get_style_with_format(new_style_index, &fmt)?,
                     };
                     let style = self.workbook.styles.get_style(new_style_index)?;
                     self.set_cell_style(sheet, row, column, &style)?
@@ -1608,9 +1625,16 @@ impl<'a> Model<'a> {
                             NumFmtSpec::LocaleDate => true,
                             NumFmtSpec::Literal(s) => is_likely_date_number_format(s),
                         };
-                        let should_apply_format = !(is_likely_date_number_format(
-                            &self.workbook.styles.get_style(new_style_index)?.num_fmt,
-                        ) && new_is_date);
+                        // Prefer checking the numFmtId directly for locale-date
+                        // cells (ID 14/22): get_style() resolves those IDs to an
+                        // en-US literal like "mm-dd-yy", so the string heuristic
+                        // works only by coincidence.  The ID check is exact.
+                        let existing_style = self.workbook.styles.get_style(new_style_index)?;
+                        let existing_id = existing_style.num_fmt.num_fmt_id;
+                        let existing_is_date = existing_id == LOCALE_SHORT_DATE_FMT_ID
+                            || existing_id == LOCALE_SHORT_DATE_TIME_FMT_ID
+                            || is_likely_date_number_format(&existing_style.num_fmt.format_code);
+                        let should_apply_format = !(existing_is_date && new_is_date);
                         if should_apply_format {
                             new_style_index = match num_fmt_spec {
                                 // Locale date: store as numFmtId 14, render
@@ -1860,7 +1884,13 @@ impl<'a> Model<'a> {
                 let format = match num_fmt_id {
                     LOCALE_SHORT_DATE_FMT_ID => self.locale.dates.date_formats.short.clone(),
                     LOCALE_SHORT_DATE_TIME_FMT_ID => locale_short_datetime_fmt(self.locale),
-                    _ => self.workbook.styles.get_style(style_index)?.num_fmt,
+                    _ => {
+                        self.workbook
+                            .styles
+                            .get_style(style_index)?
+                            .num_fmt
+                            .format_code
+                    }
                 };
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
@@ -1912,8 +1942,8 @@ impl<'a> Model<'a> {
             }
             None => {
                 let style_index = self.get_cell_style_index(sheet, row, column)?;
-                let num_fmt_id = self.workbook.styles.get_num_fmt_id(style_index)?;
                 let style = self.workbook.styles.get_style(style_index)?;
+                let num_fmt_id = style.num_fmt.num_fmt_id;
                 if style.quote_prefix {
                     Ok(format!(
                         "'{}",
@@ -1935,8 +1965,8 @@ impl<'a> Model<'a> {
                         LOCALE_SHORT_DATE_TIME_FMT_ID => {
                             Some(locale_short_datetime_fmt(self.locale))
                         }
-                        _ if is_likely_date_number_format(&style.num_fmt) => {
-                            Some(style.num_fmt.clone())
+                        _ if is_likely_date_number_format(&style.num_fmt.format_code) => {
+                            Some(style.num_fmt.format_code.clone())
                         }
                         _ => None,
                     };

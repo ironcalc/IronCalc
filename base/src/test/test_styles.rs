@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::test::util::new_empty_model;
-use crate::types::Style;
+use crate::types::{NumFmt, Style};
 
 #[test]
 fn test_model_set_cells_with_values_styles() {
@@ -13,14 +13,14 @@ fn test_model_set_cells_with_values_styles() {
     let style_base = model.get_style_for_cell(0, 1, 1).unwrap();
     let mut style = style_base.clone();
     style.font.b = true;
-    style.num_fmt = "#,##0.00".to_string();
+    style.num_fmt = NumFmt::from_format_code("#,##0.00");
     assert!(model.set_cell_style(0, 1, 1, &style).is_ok());
 
     let mut style = style_base;
-    style.num_fmt = "#,##0.00".to_string();
+    style.num_fmt = NumFmt::from_format_code("#,##0.00");
     assert!(model.set_cell_style(0, 2, 1, &style).is_ok());
     let style: Style = model.get_style_for_cell(0, 2, 1).unwrap();
-    assert_eq!(style.num_fmt, "#,##0.00".to_string());
+    assert_eq!(style.num_fmt.format_code, "#,##0.00");
 }
 
 #[test]
