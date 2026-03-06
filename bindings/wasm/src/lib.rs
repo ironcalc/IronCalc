@@ -420,12 +420,12 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "getDefaultRowHeight")]
-    pub fn get_default_row_height(&mut self) -> f64 {
+    pub fn get_default_row_height(&self) -> f64 {
         self.model.get_default_row_height()
     }
 
     #[wasm_bindgen(js_name = "getDefaultColumnWidth")]
-    pub fn get_default_column_width(&mut self) -> f64 {
+    pub fn get_default_column_width(&self) -> f64 {
         self.model.get_default_column_width()
     }
 
@@ -464,7 +464,7 @@ impl Model {
         js_name = "getDefaultSheetSettings",
         unchecked_return_type = "SheetSettings"
     )]
-    pub fn get_default_sheet_settings(&mut self, sheet: u32) -> Result<JsValue, JsError> {
+    pub fn get_default_sheet_settings(&self, sheet: u32) -> Result<JsValue, JsError> {
         let style = self
             .model
             .get_default_sheet_settings(sheet)

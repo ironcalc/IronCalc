@@ -232,34 +232,34 @@
         "background_color": "Standardhintergrundfarbe",
         "background_color_helper": "Legt die Standardhintergrundfarbe für Zellen fest. Dies wirkt sich nicht auf vorhandene Zellen aus."
       }
-    },
-    "worksheet_settings": {
-      "open_worksheet_settings": "Tabelleneinstellungen öffnen",
-      "title": "Tabelleneinstellungen",
-      "close": "Schließen",
-      "defaults": {
-        "title": "Standardeinstellungen",
-        "use_workbook_defaults": "Arbeitsmappenvorgaben verwenden",
-        "column_width": {
-          "column_width": "Standardspaltenbreite",
-          "column_width_helper": "Legt die Standardbreite für neue Spalten fest. Dies wirkt sich nicht auf vorhandene Spalten aus."
-        },
-        "row_height": {
-          "row_height": "Standardzeilenhöhe",
-          "row_height_helper": "Legt die Standardhöhe für neue Zeilen fest. Dies wirkt sich nicht auf vorhandene Zeilen aus."
-        },
-        "font_size": {
-          "font_size": "Standardschriftgröße",
-          "font_size_helper": "Legt die Standardschriftgröße für Zellen fest. Dies wirkt sich nicht auf vorhandene Zellen aus."
-        },
-        "text_color": {
-          "text_color": "Standardtextfarbe",
-          "text_color_helper": "Legt die Standardtextfarbe für Zellen fest. Dies wirkt sich nicht auf vorhandene Zellen aus."
-        },
-        "background_color": {
-          "background_color": "Standardhintergrundfarbe",
-          "background_color_helper": "Legt die Standardhintergrundfarbe für Zellen fest. Dies wirkt sich nicht auf vorhandene Zellen aus."
-        }
+    }
+  },
+  "worksheet_settings": {
+    "open_worksheet_settings": "Tabelleneinstellungen öffnen",
+    "title": "Tabelleneinstellungen",
+    "close": "Schließen",
+    "defaults": {
+      "title": "Standardeinstellungen",
+      "use_workbook_defaults": "Arbeitsmappenvorgaben verwenden",
+      "column_width": {
+        "column_width": "Standardspaltenbreite",
+        "column_width_helper": "Legt die Standardbreite für neue Spalten fest. Dies wirkt sich nicht auf vorhandene Spalten aus."
+      },
+      "row_height": {
+        "row_height": "Standardzeilenhöhe",
+        "row_height_helper": "Legt die Standardhöhe für neue Zeilen fest. Dies wirkt sich nicht auf vorhandene Zeilen aus."
+      },
+      "font_size": {
+        "font_size": "Standardschriftgröße",
+        "font_size_helper": "Legt die Standardschriftgröße für Zellen fest. Dies wirkt sich nicht auf vorhandene Zellen aus."
+      },
+      "text_color": {
+        "text_color": "Standardtextfarbe",
+        "text_color_helper": "Legt die Standardtextfarbe für Zellen fest. Dies wirkt sich nicht auf vorhandene Zellen aus."
+      },
+      "background_color": {
+        "background_color": "Standardhintergrundfarbe",
+        "background_color_helper": "Legt die Standardhintergrundfarbe für Zellen fest. Dies wirkt sich nicht auf vorhandene Zellen aus."
       }
     }
   }

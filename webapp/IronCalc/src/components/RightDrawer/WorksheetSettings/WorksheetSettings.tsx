@@ -109,60 +109,6 @@ const WorksheetSettingsDrawer = (properties: WorksheetSettingsDrawerProps) => {
     settings.defaultRowHeight,
     settings.defaultTextColor,
   ]);
-  console.log(
-    "rendering worksheet settings drawer with useWorkbook:",
-    useWorkbook,
-    settings.defaultColumnWidth,
-  );
-
-  if (useWorkbook) {
-    return (
-      <Container>
-        <Header>
-          <HeaderTitle>{t("worksheet_settings.title")}</HeaderTitle>
-          <IconButtonWrapper
-            onClick={properties.onClose}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                properties.onClose();
-              }
-            }}
-            aria-label={t("right_drawer.close")}
-            tabIndex={0}
-          >
-            <X />
-          </IconButtonWrapper>
-        </Header>
-        <Content>
-          <FormSection>
-            <StyledSectionTitle>
-              {t("worksheet_settings.defaults.title")}
-            </StyledSectionTitle>
-            <ToggleBox>
-              <ToggleText>
-                {t("worksheet_settings.defaults.use_workbook_defaults")}
-              </ToggleText>
-
-              <Switch
-                checked={useWorkbook}
-                onChange={(_e, checked) => {
-                  setUseWorkbook(checked);
-                  properties.save.onUseWorkbookChange(checked);
-                }}
-                slotProps={{
-                  input: {
-                    "aria-label": t(
-                      "worksheet_settings.defaults.use_workbook_defaults",
-                    ),
-                  },
-                }}
-              />
-            </ToggleBox>
-          </FormSection>
-        </Content>
-      </Container>
-    );
-  }
 
   return (
     <Container>
@@ -181,11 +127,7 @@ const WorksheetSettingsDrawer = (properties: WorksheetSettingsDrawerProps) => {
           <X />
         </IconButtonWrapper>
       </Header>
-
-      <Content
-        onClick={(event) => event.stopPropagation()}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
+      <Content>
         <FormSection>
           <StyledSectionTitle>
             {t("worksheet_settings.defaults.title")}
@@ -210,131 +152,139 @@ const WorksheetSettingsDrawer = (properties: WorksheetSettingsDrawerProps) => {
               }}
             />
           </ToggleBox>
+          {!useWorkbook && (
+            <>
+              <StyledLabel>
+                {t("worksheet_settings.defaults.column_width.column_width")}
+              </StyledLabel>
+              <FormControl fullWidth>
+                <StyledTextField
+                  type="number"
+                  value={localColumnWidth}
+                  onBlur={(e) => {
+                    const value = parseInt(e.currentTarget.value, 10);
+                    if (!Number.isNaN(value)) {
+                      properties.save.onColumnWidthChange(value);
+                    }
+                  }}
+                  onChange={(e) => {
+                    const value = parseInt(e.currentTarget.value, 10);
+                    if (Number.isNaN(value)) {
+                      return;
+                    }
+                    setLocalColumnWidth(value);
+                    if (!isEditValue(e)) {
+                      return;
+                    }
+                    properties.save.onColumnWidthChange(value);
+                  }}
+                />
+                <StyledHelperText>
+                  {t(
+                    "worksheet_settings.defaults.column_width.column_width_helper",
+                  )}
+                </StyledHelperText>
+              </FormControl>
 
-          <StyledLabel>
-            {t("worksheet_settings.defaults.column_width.column_width")}
-          </StyledLabel>
-          <FormControl fullWidth>
-            <StyledTextField
-              type="number"
-              value={localColumnWidth}
-              onBlur={(e) => {
-                const value = parseInt(e.currentTarget.value, 10);
-                if (!Number.isNaN(value)) {
-                  properties.save.onColumnWidthChange(value);
-                }
-              }}
-              onChange={(e) => {
-                const value = parseInt(e.currentTarget.value, 10);
-                if (Number.isNaN(value)) {
-                  return;
-                }
-                setLocalColumnWidth(value);
-                if (!isEditValue(e)) {
-                  return;
-                }
-                properties.save.onColumnWidthChange(value);
-              }}
-            />
-            <StyledHelperText>
-              {t(
-                "worksheet_settings.defaults.column_width.column_width_helper",
-              )}
-            </StyledHelperText>
-          </FormControl>
+              <StyledLabel>
+                {t("worksheet_settings.defaults.row_height.row_height")}
+              </StyledLabel>
+              <FormControl fullWidth>
+                <StyledTextField
+                  type="number"
+                  value={localRowHeight}
+                  onBlur={(e) => {
+                    const value = parseInt(e.currentTarget.value, 10);
+                    if (!Number.isNaN(value)) {
+                      properties.save.onRowHeightChange(value);
+                    }
+                  }}
+                  onChange={(e) => {
+                    const value = parseInt(e.currentTarget.value, 10);
+                    if (Number.isNaN(value)) {
+                      return;
+                    }
+                    setLocalRowHeight(value);
+                    if (!isEditValue(e)) {
+                      return;
+                    }
+                    properties.save.onRowHeightChange(value);
+                  }}
+                />
+                <StyledHelperText>
+                  {t(
+                    "worksheet_settings.defaults.row_height.row_height_helper",
+                  )}
+                </StyledHelperText>
+              </FormControl>
 
-          <StyledLabel>
-            {t("worksheet_settings.defaults.row_height.row_height")}
-          </StyledLabel>
-          <FormControl fullWidth>
-            <StyledTextField
-              type="number"
-              value={localRowHeight}
-              onBlur={(e) => {
-                const value = parseInt(e.currentTarget.value, 10);
-                if (!Number.isNaN(value)) {
-                  properties.save.onRowHeightChange(value);
-                }
-              }}
-              onChange={(e) => {
-                const value = parseInt(e.currentTarget.value, 10);
-                if (Number.isNaN(value)) {
-                  return;
-                }
-                setLocalRowHeight(value);
-                if (!isEditValue(e)) {
-                  return;
-                }
-                properties.save.onRowHeightChange(value);
-              }}
-            />
-            <StyledHelperText>
-              {t("worksheet_settings.defaults.row_height.row_height_helper")}
-            </StyledHelperText>
-          </FormControl>
+              <StyledLabel>
+                {t("worksheet_settings.defaults.font_size.font_size")}
+              </StyledLabel>
+              <FormControl fullWidth>
+                <StyledTextField
+                  type="number"
+                  value={localFontSize}
+                  onBlur={(e) => {
+                    const value = parseInt(e.currentTarget.value, 10);
+                    if (!Number.isNaN(value)) {
+                      properties.save.onFontSizeChange(value);
+                    }
+                  }}
+                  onChange={(e) => {
+                    const value = parseInt(e.currentTarget.value, 10);
+                    if (Number.isNaN(value)) {
+                      return;
+                    }
+                    setLocalFontSize(value);
+                    if (!isEditValue(e)) {
+                      return;
+                    }
+                    properties.save.onFontSizeChange(value);
+                  }}
+                />
+                <StyledHelperText>
+                  {t("worksheet_settings.defaults.font_size.font_size_helper")}
+                </StyledHelperText>
+              </FormControl>
 
-          <StyledLabel>
-            {t("worksheet_settings.defaults.font_size.font_size")}
-          </StyledLabel>
-          <FormControl fullWidth>
-            <StyledTextField
-              type="number"
-              value={localFontSize}
-              onBlur={(e) => {
-                const value = parseInt(e.currentTarget.value, 10);
-                if (!Number.isNaN(value)) {
-                  properties.save.onFontSizeChange(value);
-                }
-              }}
-              onChange={(e) => {
-                const value = parseInt(e.currentTarget.value, 10);
-                if (Number.isNaN(value)) {
-                  return;
-                }
-                setLocalFontSize(value);
-                if (!isEditValue(e)) {
-                  return;
-                }
-                properties.save.onFontSizeChange(value);
-              }}
-            />
-            <StyledHelperText>
-              {t("worksheet_settings.defaults.font_size.font_size_helper")}
-            </StyledHelperText>
-          </FormControl>
+              <StyledLabel>
+                {t("worksheet_settings.defaults.text_color.text_color")}
+              </StyledLabel>
+              <FormControl fullWidth>
+                <StyledColorInput
+                  onClick={() => setTextColorPickerOpen(true)}
+                  ref={textColorButton}
+                  style={{ background: localTextColor }}
+                />
+                <StyledHelperText>
+                  {t(
+                    "worksheet_settings.defaults.text_color.text_color_helper",
+                  )}
+                </StyledHelperText>
+              </FormControl>
 
-          <StyledLabel>
-            {t("worksheet_settings.defaults.text_color.text_color")}
-          </StyledLabel>
-          <FormControl fullWidth>
-            <StyledColorInput
-              onClick={() => setTextColorPickerOpen(true)}
-              ref={textColorButton}
-              style={{ background: localTextColor }}
-            />
-            <StyledHelperText>
-              {t("worksheet_settings.defaults.text_color.text_color_helper")}
-            </StyledHelperText>
-          </FormControl>
-
-          <StyledLabel>
-            {t("worksheet_settings.defaults.background_color.background_color")}
-          </StyledLabel>
-          <FormControl fullWidth>
-            <StyledColorInput
-              onClick={() => setBackgroundColorPickerOpen(true)}
-              ref={backgroundColorButton}
-              style={{ background: localBackgroundColor }}
-            />
-            <StyledHelperText>
-              {t(
-                "worksheet_settings.defaults.background_color.background_color_helper",
-              )}
-            </StyledHelperText>
-          </FormControl>
+              <StyledLabel>
+                {t(
+                  "worksheet_settings.defaults.background_color.background_color",
+                )}
+              </StyledLabel>
+              <FormControl fullWidth>
+                <StyledColorInput
+                  onClick={() => setBackgroundColorPickerOpen(true)}
+                  ref={backgroundColorButton}
+                  style={{ background: localBackgroundColor }}
+                />
+                <StyledHelperText>
+                  {t(
+                    "worksheet_settings.defaults.background_color.background_color_helper",
+                  )}
+                </StyledHelperText>
+              </FormControl>
+            </>
+          )}
         </FormSection>
       </Content>
-
       <ColorPicker
         color={localBackgroundColor}
         defaultColor=""
