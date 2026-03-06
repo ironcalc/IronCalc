@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use xlsx::base::types::{
     Alignment, Border, BorderItem, BorderStyle, CellType, Fill, Font, FontScheme,
-    HorizontalAlignment, Style, VerticalAlignment,
+    HorizontalAlignment, NumFmt, Style, VerticalAlignment,
 };
 
 #[derive(Clone)]
@@ -294,7 +294,7 @@ impl From<&PyStyle> for Style {
     fn from(py_style: &PyStyle) -> Self {
         Style {
             alignment: py_style.alignment.as_ref().map(|a| a.into()),
-            num_fmt: py_style.num_fmt.clone(),
+            num_fmt: NumFmt::from_format_code(&py_style.num_fmt),
             fill: (&py_style.fill).into(),
             font: (&py_style.font).into(),
             border: (&py_style.border).into(),
@@ -429,7 +429,7 @@ impl From<Style> for PyStyle {
     fn from(style: Style) -> Self {
         PyStyle {
             alignment: style.alignment.map(|a| a.into()),
-            num_fmt: style.num_fmt,
+            num_fmt: style.num_fmt.format_code,
             fill: style.fill.into(),
             font: style.font.into(),
             border: style.border.into(),
