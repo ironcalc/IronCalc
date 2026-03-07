@@ -18,8 +18,7 @@ pub struct Metadata {
     pub application: String,
     pub app_version: String,
     pub creator: String,
-    pub last_modified_by: String, // Search custom formats first (by their stored ID, not position).
-
+    pub last_modified_by: String,
     pub created: String,       // "2020-08-06T21:20:53Z",
     pub last_modified: String, //"2020-11-20T16:24:35"
 }

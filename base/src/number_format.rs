@@ -67,7 +67,7 @@ pub(crate) const DEFAULT_NUM_FMTS: &[&str] = &[
 /// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oe376/0e59abdb-7f4e-48fc-9b89-67832fa11789
 pub const LOCALE_SHORT_DATE_FMT_ID: i32 = 14;
 
-/// ID 22 ("m/d/yy h:mm", short date+time)
+/// ECMA-376 numFmtId for the locale-derived short date+time ("m / d / yy h:mm").
 pub const LOCALE_SHORT_DATE_TIME_FMT_ID: i32 = 22;
 
 pub fn to_precision(value: f64, precision: usize) -> f64 {

@@ -404,7 +404,7 @@ fn parse_year_simple(year_str: &str) -> Result<i32, String> {
     }
 }
 
-fn parse_datevalue_text(value: &str) -> Result<i32, String> {
+fn parse_datevalue_text(value: &str, day_first: bool) -> Result<i32, String> {
     // Trim whitespace and discard any time component (e.g., "2024-02-29 06:00" -> "2024-02-29")
     let mut date_str = value.trim();
     if let Some(idx) = date_str.find('T') {
@@ -459,7 +459,14 @@ fn parse_datevalue_text(value: &str) -> Result<i32, String> {
         match (v1 > 12, v2 > 12) {
             (true, false) => (part2, part1), // first cannot be month
             (false, true) => (part1, part2), // second cannot be month
-            _ => (part1, part2),             // ambiguous -> assume MM/DD
+            // Ambiguous: use locale order (DD/MM for day-first locales, MM/DD otherwise).
+            _ => {
+                if day_first {
+                    (part2, part1)
+                } else {
+                    (part1, part2)
+                }
+            }
         }
     };
 
@@ -487,14 +494,17 @@ impl<'a> Model<'a> {
         let result = self.evaluate_node_in_context(node, cell);
         match result {
             CalcResult::Number(f) => Ok(f.floor() as i64),
-            CalcResult::String(s) => match parse_datevalue_text(&s) {
-                Ok(n) => Ok(n as i64),
-                Err(_) => Err(CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid date".to_string(),
-                }),
-            },
+            CalcResult::String(s) => {
+                let day_first = self.locale.day_first();
+                match parse_datevalue_text(&s, day_first) {
+                    Ok(n) => Ok(n as i64),
+                    Err(_) => Err(CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Invalid date".to_string(),
+                    }),
+                }
+            }
             CalcResult::Boolean(b) => {
                 if b {
                     Ok(1)
@@ -1101,14 +1111,17 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::String(s) => match parse_datevalue_text(&s) {
-                Ok(n) => CalcResult::Number(n as f64),
-                Err(_) => CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid date".to_string(),
-                },
-            },
+            CalcResult::String(s) => {
+                let day_first = self.locale.day_first();
+                match parse_datevalue_text(&s, day_first) {
+                    Ok(n) => CalcResult::Number(n as f64),
+                    Err(_) => CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Invalid date".to_string(),
+                    },
+                }
+            }
             CalcResult::Number(f) => CalcResult::Number(f.floor()),
             CalcResult::Boolean(b) => {
                 if b {

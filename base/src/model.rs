@@ -92,7 +92,7 @@ fn locale_short_datetime_fmt(locale: &Locale) -> String {
         .short
         .replace("{0}", time_short.trim())
         .replace("{1}", date_short);
-    // Normalize narrow no-break space (U+202F) used by some CLDR locales.
+    // Normalise narrow no-break space (U+202F) in the assembled template.
     fmt.replace('\u{202f}', " ")
 }
 

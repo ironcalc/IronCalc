@@ -788,8 +788,7 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, Option<String>), Str
             (parts[2], parts[1], parts[0])
         } else {
             //  localized date dd-mm-yyyy or mm-dd-yyyy
-            // TODO: A bit hacky, but works for now
-            if locale.dates.date_formats.short.starts_with('d') {
+            if locale.day_first() {
                 (parts[0], parts[1], parts[2])
             } else {
                 (parts[1], parts[0], parts[2])

@@ -331,8 +331,13 @@ impl<'a> Model<'a> {
             Function::Tbilleq => self.units_fn_percentage_2(args, cell),
             Function::Tbillprice => self.units_fn_currency(args, cell),
             Function::Tbillyield => self.units_fn_percentage_2(args, cell),
-            Function::Date => self.units_fn_dates(args, cell),
-            Function::Today => self.units_fn_dates(args, cell),
+            Function::Date
+            | Function::Edate
+            | Function::Eomonth
+            | Function::Workday
+            | Function::WorkdayIntl
+            | Function::Datevalue
+            | Function::Today => self.units_fn_dates(args, cell),
             Function::Now => self.units_fn_date_times(args, cell),
             _ => None,
         }

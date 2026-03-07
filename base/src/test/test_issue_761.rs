@@ -415,7 +415,10 @@ fn format_code_for_id_returns_correct_code() {
 
     assert_eq!(styles.format_code_for_id(0), "general");
     assert_eq!(styles.format_code_for_id(9), "0%");
-    assert_eq!(styles.format_code_for_id(LOCALE_SHORT_DATE_FMT_ID), "mm-dd-yy");
+    assert_eq!(
+        styles.format_code_for_id(LOCALE_SHORT_DATE_FMT_ID),
+        "mm-dd-yy"
+    );
     assert_eq!(styles.format_code_for_id(164), "dd/mm/yyyy hh:mm:ss");
     assert_eq!(styles.format_code_for_id(999), "general"); // unknown → fallback
 }
@@ -457,13 +460,19 @@ fn custom_format_sentinel_never_stored_in_cell_xfs() {
     let mut model = new_empty_model();
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
     style.num_fmt = NumFmt::from_format_code("dd/mm/yyyy hh:mm:ss");
-    assert_eq!(style.num_fmt.num_fmt_id, -1, "sentinel must be -1 before registration");
+    assert_eq!(
+        style.num_fmt.num_fmt_id, -1,
+        "sentinel must be -1 before registration"
+    );
 
     model.set_cell_style(0, 1, 1, &style).unwrap();
 
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let stored_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
-    assert!(stored_id >= 0, "CellXfs must not store the -1 sentinel; got {stored_id}");
+    assert!(
+        stored_id >= 0,
+        "CellXfs must not store the -1 sentinel; got {stored_id}"
+    );
 
     let entry = model
         .workbook
@@ -471,7 +480,10 @@ fn custom_format_sentinel_never_stored_in_cell_xfs() {
         .num_fmts
         .iter()
         .find(|f| f.num_fmt_id == stored_id);
-    assert!(entry.is_some(), "custom format must be registered in num_fmts");
+    assert!(
+        entry.is_some(),
+        "custom format must be registered in num_fmts"
+    );
     assert_eq!(entry.unwrap().format_code, "dd/mm/yyyy hh:mm:ss");
 }
 
