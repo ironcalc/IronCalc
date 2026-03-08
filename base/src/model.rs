@@ -280,17 +280,22 @@ impl<'a> Model<'a> {
         }
     }
 
-    fn is_formula_with_prefix(&self, value: &str) -> bool {
+    fn formula_without_prefix<'b>(&self, value: &'b str) -> Option<&'b str> {
         if let Some(stripped) = value.strip_prefix('=') {
-            return !stripped.is_empty();
-        }
-        if let Some(stripped) = value.strip_prefix(['+', '-']) {
-            if stripped.is_empty() || self.cast_number(stripped).is_some() {
-                return false;
+            if stripped.is_empty() {
+                None
+            } else {
+                Some(stripped)
             }
-            return true;
+        } else if let Some(stripped) = value.strip_prefix(['+', '-']) {
+            if stripped.is_empty() || self.cast_number(stripped).is_some() {
+                None
+            } else {
+                Some(value)
+            }
+        } else {
+            None
         }
-        false
     }
 
     pub(crate) fn evaluate_node_in_context(
@@ -1089,14 +1094,7 @@ impl<'a> Model<'a> {
             .worksheet(target.sheet)
             .map_err(|e| format!("Could not find target worksheet: {e}"))?
             .get_name();
-        if self.is_formula_with_prefix(value) {
-            let formula;
-            if let Some(eq_formula) = value.strip_prefix('=') {
-                formula = eq_formula
-            } else {
-                formula = value;
-            }
-
+        if let Some(formula) = self.formula_without_prefix(value) {
             let cell_reference = CellReferenceRC {
                 sheet: source_sheet_name.to_owned(),
                 row: source.row,
@@ -1215,14 +1213,7 @@ impl<'a> Model<'a> {
             }
         };
 
-        if self.is_formula_with_prefix(value) {
-            let formula_str;
-            if let Some(eq_formula) = value.strip_prefix('=') {
-                formula_str = eq_formula
-            } else {
-                formula_str = value;
-            }
-
+        if let Some(formula_str) = self.formula_without_prefix(value) {
             let cell_reference = CellReferenceRC {
                 sheet: source_sheet_name.to_string(),
                 row: source.row,
@@ -1506,13 +1497,7 @@ impl<'a> Model<'a> {
                 .get_style_without_quote_prefix(style_index)?;
         }
 
-        if self.is_formula_with_prefix(&formula) {
-            let new_formula;
-            if let Some(eq_formula) = formula.strip_prefix('=') {
-                new_formula = eq_formula
-            } else {
-                new_formula = &formula;
-            }
+        if let Some(new_formula) = self.formula_without_prefix(&formula) {
             self.set_cell_with_formula(sheet, row, column, new_formula, style_index)?;
             Ok(())
         } else {
@@ -1578,14 +1563,7 @@ impl<'a> Model<'a> {
                     .styles
                     .get_style_without_quote_prefix(style_index)?;
             }
-            if self.is_formula_with_prefix(&value) {
-                let formula;
-                if let Some(eq_formula) = value.strip_prefix('=') {
-                    formula = eq_formula
-                } else {
-                    formula = &value;
-                }
-
+            if let Some(formula) = self.formula_without_prefix(&value) {
                 let formula_index =
                     self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
                 // Update the style if needed
