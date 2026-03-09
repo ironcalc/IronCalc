@@ -61,6 +61,7 @@ mod test_worksheet;
 mod test_yearfrac_basis;
 pub(crate) mod util;
 
+mod datetime;
 mod engineering;
 mod statistical;
 mod test_fn_offset;
