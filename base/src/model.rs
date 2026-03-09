@@ -75,10 +75,16 @@ fn locale_short_datetime_fmt(locale: &Locale) -> String {
     // Normalise narrow no-break space (U+202F) used by many CLDR locales
     // (e.g. "h:mm\u{202f}a"), then map the trailing CLDR meridiem token to
     // the IronCalc DSL token "AM/PM".
-    // TODO: CLDR also allows leading-'a' placement (e.g. "ah:mm" in some
-    // locales) and no-space trailing (e.g. "h:mma").  A proper tokenised
-    // replacement would cover all cases; the simple string replace below
-    // suffices for the locales currently supported by IronCalc.
+    //
+    // KNOWN LIMITATION: this replace covers only the common Western pattern
+    // "h:mm a" (trailing space + 'a').  CLDR also defines:
+    //   • Leading 'a': "ah:mm" (Chinese, Japanese) — left as-is, 'a' renders raw
+    //   • No-space trailing: "h:mma" — left as-is, 'a' renders raw
+    //
+    // Fix: replace the two `.replace()` calls with a proper CLDR token scanner
+    // that strips 'a'/'a*'/'aaa*' tokens regardless of position and injects
+    // "AM/PM" at the correct place.  Until then, only locales whose
+    // `time_formats.short` matches the "…space-a" pattern work correctly.
     let time_short = locale
         .dates
         .time_formats

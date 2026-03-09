@@ -14,7 +14,7 @@
 use crate::{
     cell::CellValue,
     model::Model,
-    number_format::LOCALE_SHORT_DATE_FMT_ID,
+    number_format::{LOCALE_SHORT_DATE_FMT_ID, LOCALE_SHORT_DATE_TIME_FMT_ID},
     test::util::new_empty_model,
     types::{NumFmt, Styles},
 };
@@ -485,6 +485,52 @@ fn custom_format_sentinel_never_stored_in_cell_xfs() {
         "custom format must be registered in num_fmts"
     );
     assert_eq!(entry.unwrap().format_code, "dd/mm/yyyy hh:mm:ss");
+}
+
+#[test]
+fn now_fn_stores_locale_datetime_fmt_id() {
+    // =NOW() must store numFmtId=22 (LOCALE_SHORT_DATE_TIME_FMT_ID) so that
+    // locale switches can re-derive the datetime pattern at render time.
+    let mut model = new_empty_model();
+    model._set("A1", "=NOW()");
+    model.evaluate();
+
+    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
+    let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
+    assert_eq!(
+        num_fmt_id, LOCALE_SHORT_DATE_TIME_FMT_ID,
+        "=NOW() result must store numFmtId={LOCALE_SHORT_DATE_TIME_FMT_ID}, got {num_fmt_id}"
+    );
+}
+
+#[test]
+fn now_fn_locale_switch_updates_display() {
+    // numFmtId 22 (LOCALE_SHORT_DATE_TIME_FMT_ID) must derive its format from
+    // the active locale, not the literal built-in format string — the same
+    // guarantee that date (numFmtId 14) provides.
+    //
+    // The meridiem token (AM/PM vs 24-hour) distinguishes the two locales
+    // reliably regardless of the current date/time value:
+    //   en-US time_formats.short = "h:mm a"  → rendered as "h:mm AM/PM"
+    //   en-GB time_formats.short = "HH:mm"   → 24-hour, no meridiem token
+    let mut model_us = new_empty_model(); // en-US
+    model_us._set("A1", "=NOW()");
+    model_us.evaluate();
+    let us_display = model_us._get_text("A1");
+
+    let mut model_gb = en_gb_model();
+    model_gb._set("A1", "=NOW()");
+    model_gb.evaluate();
+    let gb_display = model_gb._get_text("A1");
+
+    assert!(
+        us_display.contains("AM") || us_display.contains("PM"),
+        "en-US datetime must contain AM/PM meridiem token; got: {us_display}"
+    );
+    assert!(
+        !gb_display.contains("AM") && !gb_display.contains("PM"),
+        "en-GB datetime must use 24-hour format (no AM/PM); got: {gb_display}"
+    );
 }
 
 #[test]
