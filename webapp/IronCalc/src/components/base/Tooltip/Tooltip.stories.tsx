@@ -60,6 +60,7 @@ export const Default: Story = {
   args: {
     title: "Tooltip text",
     children: <button type="button">Hover me</button>,
+    shortcut: null,
   },
 };
 
@@ -67,10 +68,18 @@ export const WithButton: Story = {
   args: {
     title: "Download",
     children: (
-      <Button variant="primary" startIcon={<Download />}>
+      <Button
+        variant="primary"
+        size="md"
+        iconOnly={false}
+        pressed={false}
+        startIcon={<Download />}
+        endIcon={undefined}
+      >
         Download
       </Button>
     ),
+    shortcut: null,
   },
 };
 
@@ -78,8 +87,17 @@ export const WithIconButton: Story = {
   args: {
     title: "Bold",
     children: (
-      <Button iconOnly variant="ghost" startIcon={<Bold />} aria-label="Bold" />
+      <Button
+        variant="ghost"
+        size="md"
+        iconOnly={true}
+        pressed={false}
+        startIcon={<Bold />}
+        endIcon={undefined}
+        aria-label="Bold"
+      />
     ),
+    shortcut: null,
   },
 };
 
@@ -88,7 +106,15 @@ export const WithShortcut: Story = {
     title: "Bold",
     shortcut: "⌘B",
     children: (
-      <Button iconOnly variant="ghost" startIcon={<Bold />} aria-label="Bold" />
+      <Button
+        variant="ghost"
+        size="md"
+        iconOnly={true}
+        pressed={false}
+        startIcon={<Bold />}
+        endIcon={undefined}
+        aria-label="Bold"
+      />
     ),
   },
 };
@@ -96,6 +122,7 @@ export const WithShortcut: Story = {
 export const Placements: Story = {
   args: {
     title: "",
+    shortcut: null,
     children: <span />,
   },
   render: () => (
@@ -109,17 +136,53 @@ export const Placements: Story = {
         padding: 48,
       }}
     >
-      <Tooltip title="Top" placement="top">
-        <Button variant="outline">Top</Button>
+      <Tooltip title="Top" placement="top" shortcut={null}>
+        <Button
+          variant="outline"
+          size="md"
+          iconOnly={false}
+          pressed={false}
+          startIcon={undefined}
+          endIcon={undefined}
+        >
+          Top
+        </Button>
       </Tooltip>
-      <Tooltip title="Bottom" placement="bottom">
-        <Button variant="outline">Bottom</Button>
+      <Tooltip title="Bottom" placement="bottom" shortcut={null}>
+        <Button
+          variant="outline"
+          size="md"
+          iconOnly={false}
+          pressed={false}
+          startIcon={undefined}
+          endIcon={undefined}
+        >
+          Bottom
+        </Button>
       </Tooltip>
-      <Tooltip title="Left" placement="left">
-        <Button variant="outline">Left</Button>
+      <Tooltip title="Left" placement="left" shortcut={null}>
+        <Button
+          variant="outline"
+          size="md"
+          iconOnly={false}
+          pressed={false}
+          startIcon={undefined}
+          endIcon={undefined}
+        >
+          Left
+        </Button>
       </Tooltip>
-      <Tooltip title="Right" placement="right">
-        <Button variant="outline">Right</Button>
+      <Tooltip title="Right" placement="right" shortcut={null}>
+        <Button
+          variant="outline"
+          size="md"
+          iconOnly={false}
+          pressed={false}
+          startIcon={undefined}
+          endIcon={undefined}
+        >
+          Right
+        </Button>
       </Tooltip>
     </div>
   ),
@@ -129,50 +192,71 @@ export const LongContent: Story = {
   args: {
     title:
       "This is a longer tooltip that might wrap onto multiple lines when the content exceeds a reasonable width.",
-    children: <Button variant="ghost">Hover for long tooltip</Button>,
+    shortcut: null,
+    children: (
+      <Button
+        variant="ghost"
+        size="md"
+        iconOnly={false}
+        pressed={false}
+        startIcon={undefined}
+        endIcon={undefined}
+      >
+        Hover for long tooltip
+      </Button>
+    ),
   },
 };
 
 export const TextFormatIcons: Story = {
   args: {
     title: "",
+    shortcut: null,
     children: <span />,
   },
   render: () => (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
       <Tooltip title="Bold" shortcut="⌘B">
         <Button
-          iconOnly
-          size="xs"
           variant="ghost"
+          size="xs"
+          iconOnly={true}
+          pressed={false}
           startIcon={<Bold />}
+          endIcon={undefined}
           aria-label="Bold"
         />
       </Tooltip>
       <Tooltip title="Italic" shortcut="⌘I">
         <Button
-          iconOnly
-          size="xs"
           variant="ghost"
+          size="xs"
+          iconOnly={true}
+          pressed={false}
           startIcon={<Italic />}
+          endIcon={undefined}
           aria-label="Italic"
         />
       </Tooltip>
       <Tooltip title="Underline" shortcut="⌘U">
         <Button
-          iconOnly
-          size="xs"
           variant="ghost"
+          size="xs"
+          iconOnly={true}
+          pressed={false}
           startIcon={<Underline />}
+          endIcon={undefined}
           aria-label="Underline"
         />
       </Tooltip>
       <Tooltip title="Strikethrough" shortcut="⌘⇧X">
         <Button
-          iconOnly
-          size="xs"
           variant="ghost"
+          size="xs"
+          iconOnly={true}
+          pressed={false}
           startIcon={<Strikethrough />}
+          endIcon={undefined}
           aria-label="Strikethrough"
         />
       </Tooltip>

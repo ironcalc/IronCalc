@@ -5,7 +5,7 @@ import {
 import { alpha } from "@mui/material/styles";
 
 export interface TooltipProps extends MuiTooltipProps {
-  shortcut?: string;
+  shortcut: string | null;
 }
 
 const defaultSlotProps: TooltipProps["slotProps"] = {
