@@ -1,35 +1,42 @@
-import {
-  IconButton,
-  InputAdornment,
-  type InputBaseProps,
-  type StandardTextFieldProps,
-  TextField,
-} from "@mui/material";
-import type { SxProps, Theme } from "@mui/material/styles";
-import { styled } from "@mui/material/styles";
+import { useTheme } from "@mui/material";
+import type { Theme } from "@mui/material/styles";
 import { X } from "lucide-react";
-import { useId } from "react";
+import {
+  type ChangeEvent,
+  type FocusEvent,
+  useCallback,
+  useId,
+  useState,
+} from "react";
 
 export type InputSize = "xs" | "sm" | "md" | "lg";
 
 export interface InputProps
-  extends Omit<StandardTextFieldProps, "size" | "variant"> {
-  size?: InputSize;
-  variant?: "outlined" | "filled" | "standard" | "ghost";
-  label?: React.ReactNode;
-  clearable?: boolean;
-  startIcon?: React.ReactNode;
-  onSubmit?: () => void;
-  onCancel?: () => void;
-  required?: boolean;
+  extends Omit<
+    React.InputHTMLAttributes<HTMLInputElement | HTMLTextAreaElement>,
+    "size"
+  > {
+  size: InputSize | undefined;
+  variant: "outlined" | "filled" | "standard" | "ghost" | undefined;
+  label: React.ReactNode | undefined;
+  clearable: boolean | undefined;
+  startIcon: React.ReactNode | undefined;
+  required: boolean | undefined;
+  margin: "none" | "dense" | "normal" | undefined;
+  multiline: boolean | undefined;
+  rows: number | undefined;
+  error: boolean | undefined;
+  helperText: React.ReactNode | undefined;
+  slotProps:
+    | {
+        input?: {
+          startAdornment: React.ReactNode | undefined;
+          endAdornment: React.ReactNode | undefined;
+        };
+      }
+    | undefined;
+  sx: React.CSSProperties | undefined;
 }
-
-const sizeToMui: Record<InputSize, InputBaseProps["size"]> = {
-  xs: "small",
-  sm: "small",
-  md: "medium",
-  lg: "medium",
-};
 
 /** Fixed heights + padding for single-line (aligned with Button sizeSx) */
 const sizeRootStyles: Record<InputSize, { height: number; padding: string }> = {
@@ -47,13 +54,28 @@ const textareaMinHeights: Record<InputSize, number> = {
   lg: 80,
 };
 
-const StyledTextField = styled(TextField, {
-  shouldForwardProp: (prop) => prop !== "$ghost",
-})<{ $ghost?: boolean }>(({ theme, $ghost }) => ({
-  minWidth: 0,
-  maxWidth: "100%",
+const wrapperStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
   width: "100%",
-  "& .MuiInputBase-root": {
+  gap: 6,
+};
+
+function getInputWrapperStyle(
+  theme: Theme,
+  opts: {
+    focused: boolean;
+    hovered: boolean;
+    error: boolean;
+    disabled: boolean;
+    ghost: boolean;
+    size: InputSize;
+  },
+): React.CSSProperties {
+  const { focused, hovered, error, disabled, ghost, size } = opts;
+  const { height, padding } = sizeRootStyles[size];
+
+  const base: React.CSSProperties = {
     width: "100%",
     minWidth: 0,
     maxWidth: "100%",
@@ -65,102 +87,51 @@ const StyledTextField = styled(TextField, {
     overflow: "hidden",
     outline: "none",
     display: "flex",
-  },
-  "& .MuiInputBase-root > *": {
-    minWidth: 0,
-  },
-  "& .MuiInputBase-root:focus-within": {
-    outline: "none",
-  },
-  "& .MuiInputBase-input": {
-    padding: "0px",
-    minWidth: 0,
-    width: "100%",
-    flex: "1 1 0%",
-    boxSizing: "border-box",
-  },
-  "& .MuiOutlinedInput-notchedOutline": {
-    borderRadius: 6,
-    ...($ghost ? { border: "none" } : { borderColor: theme.palette.grey[400] }),
-  },
-  ...(!$ghost && {
-    "& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline": {
-      borderColor: theme.palette.grey[500],
-    },
-    "& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-      borderColor: theme.palette.primary.main,
-      borderWidth: "1px",
-    },
-    "& .MuiInputBase-root.Mui-focused:hover .MuiOutlinedInput-notchedOutline": {
-      borderColor: theme.palette.primary.main,
-      borderWidth: "1px",
-    },
-    "& .MuiInputBase-root.Mui-error:hover .MuiOutlinedInput-notchedOutline": {
-      borderColor: theme.palette.error.dark,
-    },
-    "& .MuiInputBase-root.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline":
-      {
-        borderColor: theme.palette.error.main,
-        borderWidth: "1px",
-      },
-    "& .MuiInputBase-root.Mui-error.Mui-focused:hover .MuiOutlinedInput-notchedOutline":
-      {
-        borderColor: theme.palette.error.main,
-        borderWidth: "1px",
-      },
-    "& .MuiInputBase-root.Mui-disabled .MuiOutlinedInput-notchedOutline": {
-      borderColor: theme.palette.grey[400],
-    },
-  }),
-  "& .MuiInputBase-root.Mui-disabled": {
-    backgroundColor: theme.palette.grey[100],
-    color: theme.palette.grey[500],
-    cursor: "not-allowed",
-  },
-  "& .MuiInputBase-root.Mui-disabled .MuiInputBase-input": {
-    color: theme.palette.grey[500],
-    WebkitTextFillColor: theme.palette.grey[500],
-    cursor: "not-allowed",
-  },
-  "& .MuiFormHelperText-root": {
-    marginLeft: 0,
-    marginRight: 0,
-    color: theme.palette.grey[500],
-  },
-  "& .MuiFormHelperText-root.Mui-error": {
-    color: theme.palette.error.main,
-  },
-}));
+    alignItems: "center",
+    height,
+    padding,
+  };
 
-const Label = styled("label")(({ theme }) => ({
-  fontSize: "12px",
-  fontFamily: "Inter",
-  fontWeight: 500,
-  color: theme.palette.text.primary,
-  display: "block",
-}));
+  if (disabled) {
+    return {
+      ...base,
+      backgroundColor: theme.palette.grey[100],
+      color: theme.palette.grey[500],
+      cursor: "not-allowed",
+      ...(ghost ? {} : { border: `1px solid ${theme.palette.grey[400]}` }),
+    };
+  }
 
-const RequiredAsterisk = styled("span")(({ theme }) => ({
-  marginLeft: 2,
-  color: theme.palette.primary.main,
-}));
+  if (ghost) {
+    return { ...base, border: "none" };
+  }
 
-const Wrapper = styled("div")({
-  display: "flex",
-  flexDirection: "column",
-  width: "100%",
-  gap: 6,
-});
+  let borderColor = theme.palette.grey[400];
+  if (error) {
+    borderColor =
+      focused || hovered ? theme.palette.error.main : theme.palette.error.dark;
+  } else if (focused) {
+    borderColor = theme.palette.primary.main;
+  } else if (hovered) {
+    borderColor = theme.palette.grey[500];
+  }
 
-/** Border colors aligned with StyledTextField (MuiOutlinedInput-notchedOutline) */
-const StyledTextarea = styled("textarea")<{
-  $size: InputSize;
-  $error?: boolean;
-  $ghost?: boolean;
-}>(({ theme, $size, $error, $ghost }) => {
-  const padding = sizeRootStyles[$size].padding;
-  const minHeight = textareaMinHeights[$size];
   return {
+    ...base,
+    border: `1px solid ${borderColor}`,
+    borderWidth: focused ? 1 : 1,
+  };
+}
+
+function getTextareaStyle(
+  theme: Theme,
+  opts: { size: InputSize; error: boolean; ghost: boolean; disabled: boolean },
+): React.CSSProperties {
+  const { size, error, ghost, disabled } = opts;
+  const { padding } = sizeRootStyles[size];
+  const minHeight = textareaMinHeights[size];
+
+  const base: React.CSSProperties = {
     width: "100%",
     minHeight,
     padding,
@@ -171,60 +142,36 @@ const StyledTextarea = styled("textarea")<{
     boxSizing: "border-box",
     resize: "vertical",
     outline: "none",
-    ...($ghost
+  };
+
+  if (disabled) {
+    return {
+      ...base,
+      backgroundColor: theme.palette.grey[100],
+      color: theme.palette.grey[500],
+      cursor: "not-allowed",
+      ...(ghost ? {} : { border: `1px solid ${theme.palette.grey[400]}` }),
+    };
+  }
+
+  return {
+    ...base,
+    ...(ghost
       ? { border: "none" }
       : {
           borderWidth: 1,
           borderStyle: "solid",
-          borderColor: $error
+          borderColor: error
             ? theme.palette.error.main
             : theme.palette.grey[400],
         }),
-    "&::placeholder": {
-      color: theme.palette.text.disabled,
-    },
-    ...(!$ghost && {
-      "&:hover": {
-        borderColor: $error
-          ? theme.palette.error.dark
-          : theme.palette.grey[500],
-      },
-      "&:focus": {
-        borderColor: $error
-          ? theme.palette.error.main
-          : theme.palette.primary.main,
-        borderWidth: 1,
-      },
-      "&:focus:hover": {
-        borderColor: $error
-          ? theme.palette.error.main
-          : theme.palette.primary.main,
-        borderWidth: 1,
-      },
-    }),
-    "&:disabled": {
-      backgroundColor: theme.palette.grey[100],
-      color: theme.palette.grey[500],
-      WebkitTextFillColor: theme.palette.grey[500],
-      cursor: "not-allowed",
-      ...(!$ghost && { borderColor: theme.palette.grey[400] }),
-    },
   };
-});
-
-const HelperText = styled("div")<{ $error?: boolean }>(({ theme, $error }) => ({
-  fontSize: "12px",
-  fontFamily: "Inter",
-  marginLeft: 0,
-  marginRight: 0,
-  color: $error ? theme.palette.error.main : theme.palette.grey[500],
-}));
+}
 
 export function Input({
   variant = "outlined",
   size = "md",
   margin = "none",
-  fullWidth = true,
   label,
   id: idProp,
   multiline = false,
@@ -242,49 +189,85 @@ export function Input({
   name,
   clearable = false,
   startIcon,
-  onSubmit,
-  onCancel,
-  onKeyDown: onKeyDownProp,
   required = false,
+  slotProps = {},
   ...rest
 }: InputProps) {
+  const theme = useTheme();
   const generatedId = useId();
   const id = idProp ?? generatedId;
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !multiline) {
-      onSubmit?.();
-      e.preventDefault();
-    } else if (e.key === "Escape") {
-      onCancel?.();
-      (document.activeElement as HTMLElement)?.blur();
-    }
-    onKeyDownProp?.(e as React.KeyboardEvent<HTMLInputElement>);
-  };
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   const hasValue = typeof valueProp === "string" && valueProp.length > 0;
   const showClearButton = clearable && !multiline && !disabled && hasValue;
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     onChange?.({
       target: { value: "" },
-    } as React.ChangeEvent<HTMLInputElement>);
-  };
+    } as ChangeEvent<HTMLInputElement>);
+  }, [onChange]);
+
+  const handleFocus = useCallback(
+    (e: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setFocused(true);
+      onFocus?.(e as FocusEvent<HTMLInputElement>);
+    },
+    [onFocus],
+  );
+
+  const handleBlur = useCallback(
+    (e: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setFocused(false);
+      onBlur?.(e as FocusEvent<HTMLInputElement>);
+    },
+    [onBlur],
+  );
+
+  const ghost = variant === "ghost";
+  const restSlot = slotProps.input;
+  const startAdornment =
+    (restSlot as { startAdornment?: React.ReactNode } | undefined)
+      ?.startAdornment ?? (startIcon != null ? startIcon : undefined);
+  const endAdornmentFromSlot = (
+    restSlot as { endAdornment?: React.ReactNode } | undefined
+  )?.endAdornment;
 
   if (multiline) {
     const content = (
       <>
         {label != null && (
-          <Label htmlFor={id}>
+          <label
+            htmlFor={id}
+            style={{
+              fontSize: "12px",
+              fontFamily: "Inter",
+              fontWeight: 500,
+              color: theme.palette.text.primary,
+              display: "block",
+              ...(disabled ? { cursor: "not-allowed" } : {}),
+            }}
+          >
             {label}
-            {required && <RequiredAsterisk aria-hidden>*</RequiredAsterisk>}
-          </Label>
+            {required && (
+              <span
+                aria-hidden
+                style={{ marginLeft: 2, color: theme.palette.primary.main }}
+              >
+                *
+              </span>
+            )}
+          </label>
         )}
-        <StyledTextarea
+        <textarea
           id={id}
-          $size={size}
-          $error={error}
-          $ghost={variant === "ghost"}
+          style={getTextareaStyle(theme, {
+            size,
+            error,
+            ghost,
+            disabled: !!disabled,
+          })}
           disabled={disabled}
           required={required}
           aria-required={required}
@@ -292,105 +275,211 @@ export function Input({
           value={valueProp as string | undefined}
           defaultValue={defaultValue as string | undefined}
           onChange={onChange as React.ChangeEventHandler<HTMLTextAreaElement>}
-          onBlur={onBlur as React.FocusEventHandler<HTMLTextAreaElement>}
-          onFocus={onFocus as React.FocusEventHandler<HTMLTextAreaElement>}
-          onKeyDown={handleKeyDown}
+          onBlur={handleBlur as React.FocusEventHandler<HTMLTextAreaElement>}
+          onFocus={handleFocus as React.FocusEventHandler<HTMLTextAreaElement>}
           rows={typeof rows === "number" ? rows : 3}
           name={name}
           aria-invalid={error}
           aria-describedby={helperText ? `${id}-helper` : undefined}
         />
         {helperText != null && (
-          <HelperText id={`${id}-helper`} $error={error}>
+          <div
+            id={`${id}-helper`}
+            style={{
+              fontSize: "12px",
+              fontFamily: "Inter",
+              marginLeft: 0,
+              marginRight: 0,
+              color: error ? theme.palette.error.main : theme.palette.grey[500],
+            }}
+          >
             {helperText}
-          </HelperText>
+          </div>
         )}
       </>
     );
     return (
-      <Wrapper style={fullWidth ? undefined : { width: "auto" }}>
+      <div
+        style={{
+          ...wrapperStyle,
+          ...(disabled ? { cursor: "not-allowed" } : {}),
+        }}
+      >
         {content}
-      </Wrapper>
+      </div>
     );
   }
 
-  const rootSizeStyles = {
-    "& .MuiInputBase-root": sizeRootStyles[size],
-  };
-  const resolvedSx: SxProps<Theme> = sx
-    ? ([rootSizeStyles, sx] as SxProps<Theme>)
-    : rootSizeStyles;
+  const inputWrapperStyle = getInputWrapperStyle(theme, {
+    focused,
+    hovered,
+    error: !!error,
+    disabled: !!disabled,
+    ghost,
+    size,
+  });
 
-  const { slotProps: restSlotProps, ...restWithoutSlotProps } = rest;
-  const restInputSlot =
-    restSlotProps?.input && typeof restSlotProps.input === "object"
-      ? restSlotProps.input
-      : {};
-  const inputSlotProps = {
-    ...restInputSlot,
-    startAdornment:
-      (restInputSlot as { startAdornment?: React.ReactNode }).startAdornment ??
-      (startIcon != null ? (
-        <InputAdornment
-          position="start"
-          sx={{ "& svg": { width: 16, height: 16 } }}
-        >
-          {startIcon}
-        </InputAdornment>
-      ) : undefined),
-    endAdornment: showClearButton ? (
-      <InputAdornment position="end" disablePointerEvents={false}>
-        <IconButton
-          size="small"
-          onClick={handleClear}
-          onMouseDown={(e) => e.preventDefault()}
-          aria-label="Clear"
-          sx={{ padding: "4px" }}
-        >
-          <X size={14} />
-        </IconButton>
-      </InputAdornment>
-    ) : (
-      (("endAdornment" in restInputSlot
-        ? restInputSlot.endAdornment
-        : undefined) as React.ReactNode)
-    ),
+  const nativeInputStyle: React.CSSProperties = {
+    flex: "1 1 0%",
+    minWidth: 0,
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    fontFamily: "Inter",
+    fontSize: "12px",
+    padding: 0,
+    color: "inherit",
+    boxSizing: "border-box",
   };
+
+  const endAdornment = showClearButton ? (
+    <button
+      type="button"
+      onClick={handleClear}
+      onMouseDown={(e) => e.preventDefault()}
+      aria-label="Clear"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "4px",
+        border: "none",
+        background: "transparent",
+        cursor: "pointer",
+        color: "inherit",
+      }}
+    >
+      <X size={14} />
+    </button>
+  ) : (
+    endAdornmentFromSlot
+  );
+
   const textField = (
-    <StyledTextField
-      variant={variant === "ghost" ? "outlined" : variant}
-      $ghost={variant === "ghost"}
-      size={sizeToMui[size]}
-      required={required}
-      margin={margin}
-      fullWidth={fullWidth}
-      id={id}
-      error={error}
-      helperText={helperText}
-      disabled={disabled}
-      placeholder={placeholder}
-      value={valueProp}
-      defaultValue={defaultValue}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      onKeyDown={handleKeyDown}
-      name={name}
-      slotProps={{ input: inputSlotProps }}
-      sx={resolvedSx}
-      {...restWithoutSlotProps}
-    />
+    <fieldset
+      style={{
+        ...inputWrapperStyle,
+        ...sx,
+        margin: 0,
+        minWidth: 0,
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {startAdornment != null && (
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+            marginRight: 8,
+            maxWidth: 16,
+          }}
+        >
+          {startAdornment}
+        </span>
+      )}
+      <input
+        {...rest}
+        id={id}
+        required={required}
+        value={valueProp}
+        defaultValue={defaultValue}
+        onChange={onChange}
+        onBlur={handleBlur}
+        onFocus={handleFocus}
+        name={name}
+        placeholder={placeholder}
+        disabled={disabled}
+        aria-invalid={error}
+        aria-describedby={helperText ? `${id}-helper` : undefined}
+        style={{ ...nativeInputStyle, ...rest.style }}
+      />
+      {endAdornment != null && (
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+            marginLeft: 4,
+          }}
+        >
+          {endAdornment}
+        </span>
+      )}
+    </fieldset>
   );
 
   if (label != null) {
     return (
-      <Wrapper style={fullWidth ? undefined : { width: "auto" }}>
-        <Label htmlFor={id}>
+      <div
+        style={{
+          ...wrapperStyle,
+          ...(disabled ? { cursor: "not-allowed" } : {}),
+        }}
+      >
+        <label
+          htmlFor={id}
+          style={{
+            fontSize: "12px",
+            fontFamily: "Inter",
+            fontWeight: 500,
+            color: theme.palette.text.primary,
+            display: "block",
+            ...(disabled ? { cursor: "not-allowed" } : {}),
+          }}
+        >
           {label}
-          {required && <RequiredAsterisk aria-hidden>*</RequiredAsterisk>}
-        </Label>
+          {required && (
+            <span
+              aria-hidden
+              style={{ marginLeft: 2, color: theme.palette.primary.main }}
+            >
+              *
+            </span>
+          )}
+        </label>
         {textField}
-      </Wrapper>
+        {helperText != null && (
+          <div
+            id={`${id}-helper`}
+            style={{
+              fontSize: "12px",
+              fontFamily: "Inter",
+              marginLeft: 0,
+              marginRight: 0,
+              color: error ? theme.palette.error.main : theme.palette.grey[500],
+            }}
+          >
+            {helperText}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (helperText != null) {
+    return (
+      <div
+        style={{
+          ...wrapperStyle,
+          ...(disabled ? { cursor: "not-allowed" } : {}),
+        }}
+      >
+        {textField}
+        <div
+          id={`${id}-helper`}
+          style={{
+            fontSize: "12px",
+            fontFamily: "Inter",
+            marginLeft: 0,
+            marginRight: 0,
+            color: error ? theme.palette.error.main : theme.palette.grey[500],
+          }}
+        >
+          {helperText}
+        </div>
+      </div>
     );
   }
 

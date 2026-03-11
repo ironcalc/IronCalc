@@ -2,7 +2,24 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Mail, MapPin, Search } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../Button/Button";
+import type { InputProps } from "./Input";
 import { Input } from "./Input";
+
+const defaultInputArgs: Partial<InputProps> = {
+  variant: "outlined",
+  size: "md",
+  margin: "none",
+  label: undefined,
+  clearable: false,
+  startIcon: undefined,
+  required: false,
+  multiline: false,
+  rows: undefined,
+  error: false,
+  helperText: undefined,
+  slotProps: undefined,
+  sx: undefined,
+};
 
 const meta = {
   title: "UI/Input",
@@ -11,6 +28,7 @@ const meta = {
     layout: "centered",
   },
   tags: ["autodocs"],
+  args: defaultInputArgs,
   argTypes: {
     size: {
       control: "select",
@@ -29,10 +47,6 @@ const meta = {
     error: {
       control: "boolean",
       description: "Error state",
-    },
-    fullWidth: {
-      control: "boolean",
-      description: "Full width",
     },
     multiline: {
       control: "boolean",
@@ -67,25 +81,22 @@ const meta = {
       description: "Shows orange asterisk after label (mandatory field)",
     },
   },
-} satisfies Meta<typeof Input>;
+} as Meta<typeof Input>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: {
-    placeholder: "Enter text...",
-    size: "md",
-    fullWidth: false,
-  },
+  args: { ...defaultInputArgs, placeholder: "Your Name" },
 };
 
 export const Ghost: Story = {
   args: {
-    placeholder: "Ghost input...",
+    ...defaultInputArgs,
     variant: "ghost",
-    fullWidth: false,
+    placeholder: "Search...",
+    startIcon: <Search />,
   },
   render: (args) => (
     <div
@@ -97,82 +108,76 @@ export const Ghost: Story = {
 };
 
 export const Required: Story = {
-  render: () => (
+  args: {
+    ...defaultInputArgs,
+    required: true,
+    label: "Email",
+    placeholder: "Enter email",
+  },
+  render: (args) => (
     <div
       style={{ display: "flex", flexDirection: "column", gap: 24, width: 320 }}
     >
-      <Input
-        label="Email"
-        placeholder="Enter email"
-        required
-        fullWidth={false}
-      />
-      <Input
-        label="Comments"
-        placeholder="Enter your comments"
-        multiline
-        rows={3}
-        required
-        fullWidth={false}
-      />
+      <Input {...args} />
     </div>
   ),
 };
 
 export const WithLabel: Story = {
-  render: () => (
+  args: {
+    ...defaultInputArgs,
+    label: "Name",
+    placeholder: "Enter name",
+  },
+  render: (args) => (
     <div
       style={{ display: "flex", flexDirection: "column", gap: 24, width: 320 }}
     >
-      <Input label="Name" placeholder="Enter name" fullWidth={false} />
-      <Input
-        label="Notes"
-        placeholder="Enter notes"
-        multiline
-        rows={3}
-        fullWidth={false}
-      />
+      <Input {...args} />
+      <Input {...args} multiline={true} placeholder="Enter your comments" />
     </div>
   ),
 };
 
 export const WithHelperText: Story = {
-  render: () => (
+  args: {
+    ...defaultInputArgs,
+    label: "Description",
+    placeholder: "Enter description",
+    helperText: "Optional. Add any extra details here.",
+    rows: 3,
+  },
+  render: (args) => (
     <div
       style={{ display: "flex", flexDirection: "column", gap: 24, width: 320 }}
     >
+      <Input {...args} />
       <Input
-        label="Description"
-        placeholder="Enter description"
-        helperText="Optional. Add any extra details here."
-        fullWidth={false}
-      />
-      <Input
+        {...args}
         label="Comments"
+        multiline={true}
         placeholder="Enter your comments"
-        helperText="Optional. Add any extra details here."
-        multiline
-        rows={3}
-        fullWidth={false}
       />
     </div>
   ),
 };
 
 export const ErrorState: Story = {
-  render: () => (
+  args: defaultInputArgs,
+  render: (args) => (
     <div
       style={{ display: "flex", flexDirection: "column", gap: 24, width: 320 }}
     >
       <Input
+        {...args}
         label="Email"
         placeholder="Enter email"
         error
         helperText="This email is already in use."
         defaultValue="user@example.com"
-        fullWidth={false}
       />
       <Input
+        {...args}
         label="Comments"
         placeholder="Enter your comments"
         multiline
@@ -180,80 +185,67 @@ export const ErrorState: Story = {
         error
         helperText="This field is required."
         defaultValue="Some invalid content..."
-        fullWidth={false}
       />
     </div>
   ),
 };
 
 export const Disabled: Story = {
-  render: () => (
+  args: {
+    ...defaultInputArgs,
+    label: "Disabled",
+    placeholder: "Cannot edit",
+    helperText: "Read-only value",
+    disabled: true,
+  },
+  render: (args) => (
     <div
       style={{ display: "flex", flexDirection: "column", gap: 24, width: 320 }}
     >
-      <Input
-        label="Disabled"
-        placeholder="Cannot edit"
-        disabled
-        defaultValue="Read-only value"
-        fullWidth={false}
-      />
-      <Input
-        label="Disabled comments"
-        placeholder="Cannot edit"
-        multiline
-        rows={3}
-        disabled
-        defaultValue="Read-only multiline content..."
-        fullWidth={false}
-      />
+      <Input {...args} />
     </div>
   ),
 };
 
 export const Sizes: Story = {
-  render: () => (
+  args: {
+    ...defaultInputArgs,
+  },
+  render: (args) => (
     <div
       style={{ display: "flex", flexDirection: "column", gap: 16, width: 280 }}
     >
-      <Input placeholder="Extra small (xs)" size="xs" fullWidth />
-      <Input placeholder="Small (sm)" size="sm" fullWidth />
-      <Input placeholder="Medium (md)" size="md" fullWidth />
-      <Input placeholder="Large (lg)" size="lg" fullWidth />
+      <Input {...args} placeholder="Extra small (xs)" size="xs" />
+      <Input {...args} placeholder="Small (sm)" size="sm" />
+      <Input {...args} placeholder="Medium (md)" size="md" />
+      <Input {...args} placeholder="Large (lg)" size="lg" />
     </div>
   ),
 };
 
-export const FullWidth: Story = {
-  args: {
-    label: "Full width input",
-    placeholder: "Stretches to container",
-    fullWidth: true,
-  },
-  decorators: [
-    (Story) => (
-      <div style={{ width: 400 }}>
-        <Story />
-      </div>
-    ),
-  ],
-};
-
 export const WithButton: Story = {
-  render: function WithButtonStory() {
+  args: defaultInputArgs,
+  render: function WithButtonStory(args) {
     const [value, setValue] = useState("");
     return (
       <div
         style={{ display: "flex", gap: 8, alignItems: "center", width: 360 }}
       >
         <Input
+          {...args}
           placeholder="Enter value..."
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          fullWidth
           size="md"
         />
-        <Button variant="primary" size="md">
+        <Button
+          variant="primary"
+          size="md"
+          iconOnly={false}
+          pressed={false}
+          startIcon={undefined}
+          endIcon={undefined}
+        >
           Submit
         </Button>
       </div>
@@ -263,9 +255,9 @@ export const WithButton: Story = {
 
 export const Clearable: Story = {
   args: {
+    ...defaultInputArgs,
     placeholder: "Search...",
     clearable: true,
-    fullWidth: false,
   },
   render: function ClearableStory(args) {
     const [value, setValue] = useState("");
@@ -282,10 +274,17 @@ export const Clearable: Story = {
   },
 };
 
-export const InlineSearchExample: Story = {
-  render: function InlineSearchExampleStory() {
+export const GhostSearchExample: Story = {
+  args: {
+    ...defaultInputArgs,
+    size: "md",
+    variant: "ghost",
+    clearable: true,
+    startIcon: <Search />,
+    placeholder: "Search...",
+  },
+  render: function GhostSearchExampleStory(args) {
     const [query, setQuery] = useState("");
-    const [submitted, setSubmitted] = useState<string | null>(null);
     return (
       <div
         style={{
@@ -296,31 +295,18 @@ export const InlineSearchExample: Story = {
         }}
       >
         <Input
-          variant="ghost"
-          placeholder="Search..."
+          {...args}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          clearable
-          startIcon={<Search />}
-          onSubmit={() => setSubmitted(query)}
-          onCancel={() => {
-            setQuery("");
-            setSubmitted(null);
-          }}
-          fullWidth
         />
-        {submitted !== null && (
-          <span style={{ fontSize: 12, color: "#666" }}>
-            Last search: &quot;{submitted}&quot;
-          </span>
-        )}
       </div>
     );
   },
 };
 
 export const FormExample: Story = {
-  render: function FormExampleStory() {
+  args: defaultInputArgs,
+  render: function FormExampleStory(args) {
     const [name, setName] = useState("");
     const [notes, setNotes] = useState("");
     const [nameError, setNameError] = useState("");
@@ -343,6 +329,7 @@ export const FormExample: Story = {
         }}
       >
         <Input
+          {...args}
           label="Email"
           placeholder="Enter email"
           value={name}
@@ -355,6 +342,7 @@ export const FormExample: Story = {
           startIcon={<Mail />}
         />
         <Input
+          {...args}
           label="City"
           placeholder="Optional"
           disabled
@@ -362,6 +350,7 @@ export const FormExample: Story = {
           startIcon={<MapPin size={16} />}
         />
         <Input
+          {...args}
           label="Notes"
           placeholder="Enter notes"
           multiline
