@@ -33,21 +33,9 @@ const meta = {
       ],
       description: "Tooltip placement relative to the child",
     },
-    enterDelay: {
-      control: { type: "number", min: 0, max: 2000, step: 100 },
-      description: "Delay in ms before showing tooltip",
-    },
-    leaveDelay: {
-      control: { type: "number", min: 0, max: 2000, step: 100 },
-      description: "Delay in ms before hiding tooltip",
-    },
     disableHoverListener: {
       control: "boolean",
       description: "Disable hover trigger",
-    },
-    shortcut: {
-      control: "text",
-      description: "Keyboard shortcut shown after the title, e.g. ⌘B",
     },
   },
 } satisfies Meta<typeof Tooltip>;
@@ -59,14 +47,17 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     title: "Tooltip text",
+    placement: "bottom",
+    disableHoverListener: false,
     children: <button type="button">Hover me</button>,
-    shortcut: null,
   },
 };
 
 export const WithButton: Story = {
   args: {
     title: "Download",
+    placement: "bottom",
+    disableHoverListener: false,
     children: (
       <Button
         variant="primary"
@@ -79,32 +70,14 @@ export const WithButton: Story = {
         Download
       </Button>
     ),
-    shortcut: null,
   },
 };
 
 export const WithIconButton: Story = {
   args: {
     title: "Bold",
-    children: (
-      <Button
-        variant="ghost"
-        size="md"
-        iconOnly={true}
-        pressed={false}
-        startIcon={<Bold />}
-        endIcon={undefined}
-        aria-label="Bold"
-      />
-    ),
-    shortcut: null,
-  },
-};
-
-export const WithShortcut: Story = {
-  args: {
-    title: "Bold",
-    shortcut: "⌘B",
+    placement: "bottom",
+    disableHoverListener: false,
     children: (
       <Button
         variant="ghost"
@@ -122,7 +95,8 @@ export const WithShortcut: Story = {
 export const Placements: Story = {
   args: {
     title: "",
-    shortcut: null,
+    placement: "bottom",
+    disableHoverListener: false,
     children: <span />,
   },
   render: () => (
@@ -136,7 +110,7 @@ export const Placements: Story = {
         padding: 48,
       }}
     >
-      <Tooltip title="Top" placement="top" shortcut={null}>
+      <Tooltip title="Top" placement="top" disableHoverListener={false}>
         <Button
           variant="outline"
           size="md"
@@ -148,7 +122,7 @@ export const Placements: Story = {
           Top
         </Button>
       </Tooltip>
-      <Tooltip title="Bottom" placement="bottom" shortcut={null}>
+      <Tooltip title="Bottom" placement="bottom" disableHoverListener={false}>
         <Button
           variant="outline"
           size="md"
@@ -160,7 +134,7 @@ export const Placements: Story = {
           Bottom
         </Button>
       </Tooltip>
-      <Tooltip title="Left" placement="left" shortcut={null}>
+      <Tooltip title="Left" placement="left" disableHoverListener={false}>
         <Button
           variant="outline"
           size="md"
@@ -172,7 +146,7 @@ export const Placements: Story = {
           Left
         </Button>
       </Tooltip>
-      <Tooltip title="Right" placement="right" shortcut={null}>
+      <Tooltip title="Right" placement="right" disableHoverListener={false}>
         <Button
           variant="outline"
           size="md"
@@ -192,7 +166,8 @@ export const LongContent: Story = {
   args: {
     title:
       "This is a longer tooltip that might wrap onto multiple lines when the content exceeds a reasonable width.",
-    shortcut: null,
+    placement: "bottom",
+    disableHoverListener: false,
     children: (
       <Button
         variant="ghost"
@@ -211,12 +186,13 @@ export const LongContent: Story = {
 export const TextFormatIcons: Story = {
   args: {
     title: "",
-    shortcut: null,
+    placement: "bottom",
+    disableHoverListener: false,
     children: <span />,
   },
   render: () => (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <Tooltip title="Bold" shortcut="⌘B">
+      <Tooltip title="Bold" placement="bottom" disableHoverListener={false}>
         <Button
           variant="ghost"
           size="xs"
@@ -227,7 +203,7 @@ export const TextFormatIcons: Story = {
           aria-label="Bold"
         />
       </Tooltip>
-      <Tooltip title="Italic" shortcut="⌘I">
+      <Tooltip title="Italic" placement="bottom" disableHoverListener={false}>
         <Button
           variant="ghost"
           size="xs"
@@ -238,7 +214,11 @@ export const TextFormatIcons: Story = {
           aria-label="Italic"
         />
       </Tooltip>
-      <Tooltip title="Underline" shortcut="⌘U">
+      <Tooltip
+        title="Underline"
+        placement="bottom"
+        disableHoverListener={false}
+      >
         <Button
           variant="ghost"
           size="xs"
@@ -249,7 +229,11 @@ export const TextFormatIcons: Story = {
           aria-label="Underline"
         />
       </Tooltip>
-      <Tooltip title="Strikethrough" shortcut="⌘⇧X">
+      <Tooltip
+        title="Strikethrough"
+        placement="bottom"
+        disableHoverListener={false}
+      >
         <Button
           variant="ghost"
           size="xs"
