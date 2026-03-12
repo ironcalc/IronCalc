@@ -334,7 +334,7 @@ pub struct Style {
     pub quote_prefix: bool,
 }
 
-#[derive(Serialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct NumFmt {
     pub num_fmt_id: i32,
@@ -383,6 +383,16 @@ impl<'de> Deserialize<'de> for NumFmt {
         }
 
         deserializer.deserialize_any(NumFmtVisitor)
+    }
+}
+
+// Emit only the format_code string.  The Deserialize impl handles both this
+// string form and the legacy struct form, so round-trips are lossless for
+// built-in IDs (re-derived by from_format_code) and for custom IDs (sentinel
+// -1, re-resolved at persist time by get_or_register).
+impl Serialize for NumFmt {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.format_code)
     }
 }
 

@@ -58,7 +58,6 @@ fn deser_struct_extra_fields_ignored() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "fails until Task 2 implements custom Serialize"]
 fn ser_emits_format_code_string() {
     let fmt = NumFmt { num_fmt_id: 14, format_code: "mm-dd-yy".to_string() };
     let json = serde_json::to_string(&fmt).unwrap();
