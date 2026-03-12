@@ -16,7 +16,7 @@ use crate::{
     model::Model,
     number_format::{LOCALE_SHORT_DATE_FMT_ID, LOCALE_SHORT_DATE_TIME_FMT_ID},
     test::util::new_empty_model,
-    types::{NumFmt, Styles},
+    types::NumFmt,
 };
 
 fn en_gb_model<'a>() -> Model<'a> {
@@ -404,23 +404,17 @@ fn get_style_with_format_no_duplicate_cell_xfs() {
 }
 
 #[test]
-fn format_code_for_id_returns_correct_code() {
-    let styles = Styles {
-        num_fmts: vec![NumFmt {
-            num_fmt_id: 164,
-            format_code: "dd/mm/yyyy hh:mm:ss".to_string(),
-        }],
-        ..Styles::default()
-    };
+fn resolve_code_returns_correct_code() {
+    let num_fmts = vec![NumFmt {
+        num_fmt_id: 164,
+        format_code: "dd/mm/yyyy hh:mm:ss".to_string(),
+    }];
 
-    assert_eq!(styles.format_code_for_id(0), "general");
-    assert_eq!(styles.format_code_for_id(9), "0%");
-    assert_eq!(
-        styles.format_code_for_id(LOCALE_SHORT_DATE_FMT_ID),
-        "mm-dd-yy"
-    );
-    assert_eq!(styles.format_code_for_id(164), "dd/mm/yyyy hh:mm:ss");
-    assert_eq!(styles.format_code_for_id(999), "general"); // unknown → fallback
+    assert_eq!(NumFmt::resolve_code(0, &num_fmts), "general");
+    assert_eq!(NumFmt::resolve_code(9, &num_fmts), "0%");
+    assert_eq!(NumFmt::resolve_code(LOCALE_SHORT_DATE_FMT_ID, &num_fmts), "mm-dd-yy");
+    assert_eq!(NumFmt::resolve_code(164, &num_fmts), "dd/mm/yyyy hh:mm:ss");
+    assert_eq!(NumFmt::resolve_code(999, &num_fmts), "general"); // unknown → fallback
 }
 
 #[test]

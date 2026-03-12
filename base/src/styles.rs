@@ -1,6 +1,5 @@
 use crate::{
     model::Model,
-    number_format::DEFAULT_NUM_FMTS,
     types::{Border, CellStyles, CellXfs, Fill, Font, NumFmt, Style, Styles},
 };
 
@@ -75,17 +74,6 @@ impl Styles {
         self.cell_xfs.len() as i32 - 1
     }
 
-    /// Look up the format code for `id` without allocating — borrowed from
-    /// `self.num_fmts` for custom IDs or from the static built-in table.
-    pub(crate) fn format_code_for_id(&self, id: i32) -> &str {
-        if let Some(fmt) = self.num_fmts.iter().find(|f| f.num_fmt_id == id) {
-            return &fmt.format_code;
-        }
-        if id >= 0 && (id as usize) < DEFAULT_NUM_FMTS.len() {
-            return DEFAULT_NUM_FMTS[id as usize];
-        }
-        DEFAULT_NUM_FMTS[0] // "general" fallback
-    }
 
     pub fn get_style_index(&self, style: &Style) -> Option<i32> {
         // DISCLOSURE: This code change was suggested by Claude.
@@ -103,7 +91,7 @@ impl Styles {
             .iter()
             .position(|xf| {
                 xf.alignment == style.alignment
-                && self.format_code_for_id(xf.num_fmt_id) == fmt_code
+                && NumFmt::resolve_code(xf.num_fmt_id, &self.num_fmts) == fmt_code
                 && xf.fill_id == fill_id
                 && xf.border_id == border_id
                 && xf.font_id == font_id
@@ -198,9 +186,7 @@ impl Styles {
         new_id: i32,
     ) -> Result<i32, String> {
         // Fail fast if the ID would produce a silent fallback to General format.
-        let is_builtin = new_id >= 0 && (new_id as usize) < DEFAULT_NUM_FMTS.len();
-        let is_registered = self.num_fmts.iter().any(|f| f.num_fmt_id == new_id);
-        if !is_builtin && !is_registered {
+        if !NumFmt::is_known_id(new_id, &self.num_fmts) {
             return Err(format!(
                 "num_fmt_id {new_id} is neither a built-in ECMA-376 ID nor registered in num_fmts"
             ));

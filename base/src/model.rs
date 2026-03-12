@@ -26,7 +26,6 @@ use crate::{
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_locale, Locale},
-    number_format::{LOCALE_SHORT_DATE_FMT_ID, LOCALE_SHORT_DATE_TIME_FMT_ID},
     types::*,
     units::Units,
     utils as common,
@@ -1592,10 +1591,10 @@ impl<'a> Model<'a> {
                         Units::LocaleDate => self
                             .workbook
                             .styles
-                            .get_style_with_num_fmt_id(new_style_index, LOCALE_SHORT_DATE_FMT_ID)?,
+                            .get_style_with_num_fmt_id(new_style_index, NumFmt::LOCALE_DATE_ID)?,
                         Units::LocaleDateTime => self.workbook.styles.get_style_with_num_fmt_id(
                             new_style_index,
-                            LOCALE_SHORT_DATE_TIME_FMT_ID,
+                            NumFmt::LOCALE_DATETIME_ID,
                         )?,
                         Units::Number { num_fmt, .. }
                         | Units::Currency { num_fmt, .. }
@@ -1637,8 +1636,7 @@ impl<'a> Model<'a> {
                         // works only by coincidence.  The ID check is exact.
                         let existing_style = self.workbook.styles.get_style(new_style_index)?;
                         let existing_id = existing_style.num_fmt.num_fmt_id;
-                        let existing_is_date = existing_id == LOCALE_SHORT_DATE_FMT_ID
-                            || existing_id == LOCALE_SHORT_DATE_TIME_FMT_ID
+                        let existing_is_date = NumFmt::is_locale_date_id(existing_id)
                             || is_likely_date_number_format(&existing_style.num_fmt.format_code);
                         let should_apply_format = !(existing_is_date && new_is_date);
                         if should_apply_format {
@@ -1647,7 +1645,7 @@ impl<'a> Model<'a> {
                                 NumFmtSpec::LocaleDate => {
                                     self.workbook.styles.get_style_with_num_fmt_id(
                                         new_style_index,
-                                        LOCALE_SHORT_DATE_FMT_ID,
+                                        NumFmt::LOCALE_DATE_ID,
                                     )?
                                 }
                                 // Explicit format string (ISO dates, currency, …).
@@ -1888,8 +1886,8 @@ impl<'a> Model<'a> {
                 // locale at render time so locale switches take effect without
                 // requiring a re-edit.
                 let format = match num_fmt_id {
-                    LOCALE_SHORT_DATE_FMT_ID => self.locale.dates.date_formats.short.clone(),
-                    LOCALE_SHORT_DATE_TIME_FMT_ID => locale_short_datetime_fmt(self.locale),
+                    NumFmt::LOCALE_DATE_ID => self.locale.dates.date_formats.short.clone(),
+                    NumFmt::LOCALE_DATETIME_ID => locale_short_datetime_fmt(self.locale),
                     _ => {
                         self.workbook
                             .styles
@@ -1965,10 +1963,10 @@ impl<'a> Model<'a> {
                     // pattern from the active locale so the edit bar stays in sync
                     // after a locale switch; literal formats use the stored string.
                     let date_fmt = match num_fmt_id {
-                        LOCALE_SHORT_DATE_FMT_ID => {
+                        NumFmt::LOCALE_DATE_ID => {
                             Some(self.locale.dates.date_formats.short.clone())
                         }
-                        LOCALE_SHORT_DATE_TIME_FMT_ID => {
+                        NumFmt::LOCALE_DATETIME_ID => {
                             Some(locale_short_datetime_fmt(self.locale))
                         }
                         _ if is_likely_date_number_format(&style.num_fmt.format_code) => {

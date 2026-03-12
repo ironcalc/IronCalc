@@ -3,7 +3,7 @@ use crate::{
     formatter::parser::{ParsePart, Parser},
     functions::Function,
     model::Model,
-    number_format::{LOCALE_SHORT_DATE_FMT_ID, LOCALE_SHORT_DATE_TIME_FMT_ID},
+    types::NumFmt,
 };
 
 pub enum Units {
@@ -99,8 +99,8 @@ impl<'a> Model<'a> {
         // "mm-dd-yy" — relying on that string reverse-mapping back to ID 14 is a
         // fragile coincidence.  Checking the ID explicitly is exact and cheap.
         match style.num_fmt.num_fmt_id {
-            LOCALE_SHORT_DATE_FMT_ID => Some(Units::LocaleDate),
-            LOCALE_SHORT_DATE_TIME_FMT_ID => Some(Units::LocaleDateTime),
+            NumFmt::LOCALE_DATE_ID => Some(Units::LocaleDate),
+            NumFmt::LOCALE_DATETIME_ID => Some(Units::LocaleDateTime),
             _ => get_units_from_format_string(&style.num_fmt.format_code),
         }
     }
