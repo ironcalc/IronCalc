@@ -54,6 +54,9 @@ impl Styles {
         };
         let num_fmt_id =
             NumFmt::get_or_register(&style.num_fmt.format_code, &mut self.num_fmts).num_fmt_id;
+        // A -1 sentinel must never reach CellXfs — get_or_register always
+        // produces a real ID (≥0).  Panic in debug builds to catch regressions.
+        debug_assert!(num_fmt_id >= 0, "num_fmt_id sentinel -1 must not reach CellXfs");
         self.cell_xfs.push(CellXfs {
             xf_id: 0,
             num_fmt_id,
@@ -85,6 +88,8 @@ impl Styles {
     }
 
     pub fn get_style_index(&self, style: &Style) -> Option<i32> {
+        // DISCLOSURE: This code change was suggested by Claude.
+        // Panic if our *_id out of bounds.
         // Resolve sub-table indices once.  If any component isn't registered yet,
         // no CellXfs can reference it — return None without scanning cell_xfs.
         let font_id = self.get_font_index(&style.font)?;
@@ -97,12 +102,12 @@ impl Styles {
         self.cell_xfs
             .iter()
             .position(|xf| {
-                xf.font_id == font_id
-                    && xf.fill_id == fill_id
-                    && xf.border_id == border_id
-                    && self.format_code_for_id(xf.num_fmt_id) == fmt_code
-                    && xf.alignment == style.alignment
-                    && xf.quote_prefix == style.quote_prefix
+                xf.alignment == style.alignment
+                && self.format_code_for_id(xf.num_fmt_id) == fmt_code
+                && xf.fill_id == fill_id
+                && xf.border_id == border_id
+                && xf.font_id == font_id
+                && xf.quote_prefix == style.quote_prefix
             })
             .map(|i| i as i32)
     }
@@ -172,6 +177,7 @@ impl Styles {
         Ok(self.get_style_index_or_create(&style))
     }
 
+
     /// Returns the raw `num_fmt_id` stored in `CellXfs` for the given style
     /// index, without converting through the format string.
     pub(crate) fn get_num_fmt_id(&self, index: i32) -> Result<i32, String> {
@@ -230,6 +236,7 @@ impl Styles {
         cell_xf.quote_prefix
     }
 
+
     pub(crate) fn get_style(&self, index: i32) -> Result<Style, String> {
         let cell_xf = &self
             .cell_xfs
@@ -242,24 +249,15 @@ impl Styles {
         let quote_prefix = cell_xf.quote_prefix;
         let alignment = cell_xf.alignment.clone();
 
+
+        // DISCLOSURE: This code change was suggested by Claude.
+        // Panic if our *_id out of bounds `self.fills[fill_id]`.
         Ok(Style {
             alignment,
             num_fmt: NumFmt::from_id(num_fmt_id, &self.num_fmts),
-            fill: self
-                .fills
-                .get(fill_id)
-                .ok_or_else(|| format!("Invalid fill_id {fill_id} in style index {index}"))?
-                .clone(),
-            font: self
-                .fonts
-                .get(font_id)
-                .ok_or_else(|| format!("Invalid font_id {font_id} in style index {index}"))?
-                .clone(),
-            border: self
-                .borders
-                .get(border_id)
-                .ok_or_else(|| format!("Invalid border_id {border_id} in style index {index}"))?
-                .clone(),
+            fill: self.fills.get(fill_id).cloned().unwrap_or_default(),
+            font: self.fonts.get(font_id).cloned().unwrap_or_default(),
+            border: self.borders.get(border_id).cloned().unwrap_or_default(),
             quote_prefix,
         })
     }

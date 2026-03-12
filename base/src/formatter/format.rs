@@ -750,6 +750,12 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 /// `LocaleDate` means "store as `LOCALE_SHORT_DATE_FMT_ID` (14)": the cell
 /// renders with the *current locale's* short date format rather than any
 /// literal format string.  All other formats are stored as literal strings.
+///
+/// Note: there is intentionally no `LocaleDateTime` variant here.  numFmtId 22
+/// (locale short date+time) is only ever assigned by formula evaluation (NOW,
+/// EDATE, WORKDAY, …) via `Units::LocaleDateTime` → `get_style_with_num_fmt_id`.
+/// User input never produces a bare date+time token that would resolve to ID 22,
+/// so the parse path only needs `LocaleDate`.
 #[derive(Debug, PartialEq)]
 pub(crate) enum NumFmtSpec {
     /// Simple locale date — store as numFmtId 14 (`LOCALE_SHORT_DATE_FMT_ID`).

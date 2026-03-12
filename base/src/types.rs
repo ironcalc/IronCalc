@@ -387,6 +387,7 @@ impl NumFmt {
     /// `format_code` at persist time, and `Styles::get_style_index` compares
     /// styles by `format_code`, so deduplication is correct regardless.
     pub fn from_format_code(code: &str) -> Self {
+        // Only 
         let num_fmt_id = Self::builtin_id(code).unwrap_or(-1);
         NumFmt {
             num_fmt_id,
@@ -394,9 +395,9 @@ impl NumFmt {
         }
     }
 
-    /// Returns a fully-resolved `NumFmt`, registering a new custom entry in
-    /// `num_fmts` if the code isn't already there.  Use this when you have
-    /// mutable access to the styles registry (e.g. inside `Styles` methods).
+
+    /// Covers functions `get_num_fmt()` and `get_new_num_fmt_index()` previously in file number_format.rs 
+    /// `Styles` methods .
     pub fn get_or_register(code: &str, num_fmts: &mut Vec<NumFmt>) -> Self {
         if let Some(id) = Self::builtin_id(code) {
             return NumFmt {

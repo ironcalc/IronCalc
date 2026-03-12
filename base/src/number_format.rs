@@ -151,10 +151,9 @@ mod tests {
     /// break format detection throughout the codebase.
     #[test]
     fn builtin_num_fmts_index_matches_spec_ids() {
+        assert_eq!(DEFAULT_NUM_FMTS.len(), 45, "DEFAULT_NUM_FMTS length changed — update this assertion and verify all numFmtIds");
         assert_eq!(DEFAULT_NUM_FMTS[0], "general", "numFmtId 0 must be General");
         assert_eq!(DEFAULT_NUM_FMTS[9], "0%", "numFmtId 9 must be 0%");
-        // ID 14 is the ECMA-376 locale short date — used throughout the
-        // render pipeline to detect locale-derived date cells.
         assert_eq!(
             DEFAULT_NUM_FMTS[LOCALE_SHORT_DATE_FMT_ID as usize], "mm-dd-yy",
             "numFmtId 14 must be the ECMA-376 locale short date 'mm-dd-yy'"
