@@ -1591,10 +1591,10 @@ impl<'a> Model<'a> {
                         Units::LocaleDate => self
                             .workbook
                             .styles
-                            .get_style_with_num_fmt_id(new_style_index, NumFmt::LOCALE_DATE_ID)?,
+                            .get_style_with_num_fmt_id(new_style_index, NumFmt::SHORT_DATE_ID)?,
                         Units::LocaleDateTime => self.workbook.styles.get_style_with_num_fmt_id(
                             new_style_index,
-                            NumFmt::LOCALE_DATETIME_ID,
+                            NumFmt::SHORT_DATETIME_ID,
                         )?,
                         Units::Number { num_fmt, .. }
                         | Units::Currency { num_fmt, .. }
@@ -1645,7 +1645,7 @@ impl<'a> Model<'a> {
                                 NumFmtSpec::LocaleDate => {
                                     self.workbook.styles.get_style_with_num_fmt_id(
                                         new_style_index,
-                                        NumFmt::LOCALE_DATE_ID,
+                                        NumFmt::SHORT_DATE_ID,
                                     )?
                                 }
                                 // Explicit format string (ISO dates, currency, …).
@@ -1886,8 +1886,8 @@ impl<'a> Model<'a> {
                 // locale at render time so locale switches take effect without
                 // requiring a re-edit.
                 let format = match num_fmt_id {
-                    NumFmt::LOCALE_DATE_ID => self.locale.dates.date_formats.short.clone(),
-                    NumFmt::LOCALE_DATETIME_ID => locale_short_datetime_fmt(self.locale),
+                    NumFmt::SHORT_DATE_ID => self.locale.dates.date_formats.short.clone(),
+                    NumFmt::SHORT_DATETIME_ID => locale_short_datetime_fmt(self.locale),
                     _ => {
                         self.workbook
                             .styles
@@ -1963,10 +1963,10 @@ impl<'a> Model<'a> {
                     // pattern from the active locale so the edit bar stays in sync
                     // after a locale switch; literal formats use the stored string.
                     let date_fmt = match num_fmt_id {
-                        NumFmt::LOCALE_DATE_ID => {
+                        NumFmt::SHORT_DATE_ID => {
                             Some(self.locale.dates.date_formats.short.clone())
                         }
-                        NumFmt::LOCALE_DATETIME_ID => {
+                        NumFmt::SHORT_DATETIME_ID => {
                             Some(locale_short_datetime_fmt(self.locale))
                         }
                         _ if is_likely_date_number_format(&style.num_fmt.format_code) => {

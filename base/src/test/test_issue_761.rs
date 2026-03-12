@@ -7,14 +7,13 @@
 // pattern. In a day-first locale (e.g. en-GB) the edit bar would show a month-first
 // string; pressing Enter would then mis-parse the date and corrupt it.
 //
-// Fix: simple locale dates are stored with numFmtId 14 (LOCALE_SHORT_DATE_FMT_ID).
+// Fix: simple locale dates are stored with numFmtId 14 (`NumFmt::LOCALE_DATE_ID`).
 // Both render functions detect ID 14 and derive the format from
 // `locale.dates.date_formats.short` at runtime.
 
 use crate::{
     cell::CellValue,
     model::Model,
-    number_format::{LOCALE_SHORT_DATE_FMT_ID, LOCALE_SHORT_DATE_TIME_FMT_ID},
     test::util::new_empty_model,
     types::NumFmt,
 };
@@ -76,8 +75,8 @@ fn locale_date_stored_as_num_fmt_id_14() {
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_eq!(
-        num_fmt_id, LOCALE_SHORT_DATE_FMT_ID,
-        "locale date must be stored as numFmtId {LOCALE_SHORT_DATE_FMT_ID}, got {num_fmt_id}"
+        num_fmt_id, NumFmt::SHORT_DATE_ID,
+        "locale date must be stored as numFmtId {}, got {num_fmt_id}", NumFmt::SHORT_DATE_ID
     );
 }
 
@@ -91,7 +90,7 @@ fn iso_date_is_not_stored_as_id_14() {
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_ne!(
-        num_fmt_id, LOCALE_SHORT_DATE_FMT_ID,
+        num_fmt_id, NumFmt::SHORT_DATE_ID,
         "ISO date must NOT use numFmtId 14 — it has a specific format string"
     );
     assert_eq!(
@@ -182,7 +181,7 @@ fn invalid_month_stored_as_text() {
     );
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
-    assert_ne!(num_fmt_id, LOCALE_SHORT_DATE_FMT_ID);
+    assert_ne!(num_fmt_id, NumFmt::SHORT_DATE_ID);
 }
 
 #[test]
@@ -221,7 +220,7 @@ fn plain_number_does_not_create_date_cell() {
     );
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
-    assert_ne!(num_fmt_id, LOCALE_SHORT_DATE_FMT_ID);
+    assert_ne!(num_fmt_id, NumFmt::SHORT_DATE_ID);
 }
 
 #[test]
@@ -327,8 +326,8 @@ fn date_fn_stores_locale_fmt_id() {
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_eq!(
-        num_fmt_id, LOCALE_SHORT_DATE_FMT_ID,
-        "=DATE() result must store numFmtId={LOCALE_SHORT_DATE_FMT_ID}, got {num_fmt_id}"
+        num_fmt_id, NumFmt::SHORT_DATE_ID,
+        "=DATE() result must store numFmtId={}, got {num_fmt_id}", NumFmt::SHORT_DATE_ID
     );
 }
 
@@ -352,9 +351,9 @@ fn num_fmt_builtin_format_code_resolves_canonical_id() {
 
     let locale_date = NumFmt::from_format_code("mm-dd-yy");
     assert_eq!(
-        locale_date.num_fmt_id, LOCALE_SHORT_DATE_FMT_ID,
-        "\"mm-dd-yy\" must map to LOCALE_SHORT_DATE_FMT_ID ({})",
-        LOCALE_SHORT_DATE_FMT_ID,
+        locale_date.num_fmt_id, NumFmt::SHORT_DATE_ID,
+        "\"mm-dd-yy\" must map to NumFmt::LOCALE_DATE_ID ({})",
+        NumFmt::SHORT_DATE_ID,
     );
 }
 
@@ -410,11 +409,11 @@ fn resolve_code_returns_correct_code() {
         format_code: "dd/mm/yyyy hh:mm:ss".to_string(),
     }];
 
-    assert_eq!(NumFmt::resolve_code(0, &num_fmts), "general");
-    assert_eq!(NumFmt::resolve_code(9, &num_fmts), "0%");
-    assert_eq!(NumFmt::resolve_code(LOCALE_SHORT_DATE_FMT_ID, &num_fmts), "mm-dd-yy");
-    assert_eq!(NumFmt::resolve_code(164, &num_fmts), "dd/mm/yyyy hh:mm:ss");
-    assert_eq!(NumFmt::resolve_code(999, &num_fmts), "general"); // unknown → fallback
+    assert_eq!(NumFmt::format_code_for_id(0, &num_fmts), "general");
+    assert_eq!(NumFmt::format_code_for_id(9, &num_fmts), "0%");
+    assert_eq!(NumFmt::format_code_for_id(NumFmt::SHORT_DATE_ID, &num_fmts), "mm-dd-yy");
+    assert_eq!(NumFmt::format_code_for_id(164, &num_fmts), "dd/mm/yyyy hh:mm:ss");
+    assert_eq!(NumFmt::format_code_for_id(999, &num_fmts), "general"); // unknown → fallback
 }
 
 #[test]
@@ -431,7 +430,7 @@ fn get_style_with_num_fmt_id_accepts_builtin_id() {
     let styles = &mut model.workbook.styles;
 
     assert!(styles
-        .get_style_with_num_fmt_id(0, LOCALE_SHORT_DATE_FMT_ID)
+        .get_style_with_num_fmt_id(0, NumFmt::SHORT_DATE_ID)
         .is_ok());
 }
 
@@ -483,7 +482,7 @@ fn custom_format_sentinel_never_stored_in_cell_xfs() {
 
 #[test]
 fn now_fn_stores_locale_datetime_fmt_id() {
-    // =NOW() must store numFmtId=22 (LOCALE_SHORT_DATE_TIME_FMT_ID) so that
+    // =NOW() must store numFmtId=22 (NumFmt::LOCALE_DATETIME_ID) so that
     // locale switches can re-derive the datetime pattern at render time.
     let mut model = new_empty_model();
     model._set("A1", "=NOW()");
@@ -492,14 +491,14 @@ fn now_fn_stores_locale_datetime_fmt_id() {
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_eq!(
-        num_fmt_id, LOCALE_SHORT_DATE_TIME_FMT_ID,
-        "=NOW() result must store numFmtId={LOCALE_SHORT_DATE_TIME_FMT_ID}, got {num_fmt_id}"
+        num_fmt_id, NumFmt::SHORT_DATETIME_ID,
+        "=NOW() result must store numFmtId={}, got {num_fmt_id}", NumFmt::SHORT_DATETIME_ID
     );
 }
 
 #[test]
 fn now_fn_locale_switch_updates_display() {
-    // numFmtId 22 (LOCALE_SHORT_DATE_TIME_FMT_ID) must derive its format from
+    // numFmtId 22 (NumFmt::LOCALE_DATETIME_ID) must derive its format from
     // the active locale, not the literal built-in format string — the same
     // guarantee that date (numFmtId 14) provides.
     //
@@ -542,5 +541,29 @@ fn date_arithmetic_composes_correctly() {
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!C1"),
         Ok(CellValue::Number(30.0))
+    );
+}
+
+#[test]
+fn non_date_format_preserved_when_date_formula_entered() {
+    // A cell with an explicit non-date format (#,##0) must keep that format
+    // when a =DATE(...) formula is entered.  units_fn_dates must not overwrite
+    // an explicit numeric format with the locale-date ID.
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.num_fmt = NumFmt::from_format_code("#,##0");
+    model.set_cell_style(0, 1, 1, &style).unwrap();
+
+    model._set("A1", "=DATE(2025,4,3)");
+    model.evaluate();
+
+    let style_after = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert_eq!(
+        style_after.num_fmt.format_code, "#,##0",
+        "explicit non-date format must be preserved when a DATE formula is entered"
+    );
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A1"),
+        Ok(CellValue::Number(45750.0))
     );
 }

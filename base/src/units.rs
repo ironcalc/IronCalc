@@ -99,8 +99,8 @@ impl<'a> Model<'a> {
         // "mm-dd-yy" — relying on that string reverse-mapping back to ID 14 is a
         // fragile coincidence.  Checking the ID explicitly is exact and cheap.
         match style.num_fmt.num_fmt_id {
-            NumFmt::LOCALE_DATE_ID => Some(Units::LocaleDate),
-            NumFmt::LOCALE_DATETIME_ID => Some(Units::LocaleDateTime),
+            NumFmt::SHORT_DATE_ID => Some(Units::LocaleDate),
+            NumFmt::SHORT_DATETIME_ID => Some(Units::LocaleDateTime),
             _ => get_units_from_format_string(&style.num_fmt.format_code),
         }
     }
@@ -381,14 +381,38 @@ impl<'a> Model<'a> {
         })
     }
 
-    fn units_fn_dates(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
-        // Signal that the cell should use numFmtId 14 (LOCALE_SHORT_DATE_FMT_ID).
-        // The display functions derive the actual pattern from the active locale
-        // at render time, so locale switches take effect without a re-edit.
+    fn units_fn_dates(&self, _args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
+        // Signal that the cell should use numFmtId 14 (locale short date).
+        // Exception: if the cell already has an explicit non-date format (e.g.
+        // "#,##0"), preserve it rather than overwriting with the locale date.
+        if let Ok(style) = self.get_style_for_cell(cell.sheet, cell.row, cell.column) {
+            let id = style.num_fmt.num_fmt_id;
+            if id != 0 && !NumFmt::is_locale_date_id(id) {
+                // Explicit format — only overwrite if it is already date-like.
+                if !matches!(
+                    get_units_from_format_string(&style.num_fmt.format_code),
+                    Some(Units::Date(_))
+                ) {
+                    return None;
+                }
+            }
+        }
         Some(Units::LocaleDate)
     }
 
-    fn units_fn_date_times(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
+    fn units_fn_date_times(&self, _args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
+        // Same logic as units_fn_dates: preserve any explicit non-datetime format.
+        if let Ok(style) = self.get_style_for_cell(cell.sheet, cell.row, cell.column) {
+            let id = style.num_fmt.num_fmt_id;
+            if id != 0 && !NumFmt::is_locale_date_id(id) {
+                if !matches!(
+                    get_units_from_format_string(&style.num_fmt.format_code),
+                    Some(Units::Date(_))
+                ) {
+                    return None;
+                }
+            }
+        }
         Some(Units::LocaleDateTime)
     }
 }

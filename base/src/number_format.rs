@@ -65,10 +65,10 @@ pub(crate) const DEFAULT_NUM_FMTS: &[&str] = &[
 ///
 /// The value `14` is mandated by the Office Open XML specification.
 /// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oe376/0e59abdb-7f4e-48fc-9b89-67832fa11789
-pub const LOCALE_SHORT_DATE_FMT_ID: i32 = 14;
+pub const SHORT_DATE_FMT_ID: i32 = 14;
 
 /// ECMA-376 numFmtId for the locale-derived short date+time ("m / d / yy h:mm").
-pub const LOCALE_SHORT_DATE_TIME_FMT_ID: i32 = 22;
+pub const SHORT_DATE_TIME_FMT_ID: i32 = 22;
 
 pub fn to_precision(value: f64, precision: usize) -> f64 {
     if value.is_infinite() || value.is_nan() {
@@ -155,7 +155,7 @@ mod tests {
         assert_eq!(DEFAULT_NUM_FMTS[0], "general", "numFmtId 0 must be General");
         assert_eq!(DEFAULT_NUM_FMTS[9], "0%", "numFmtId 9 must be 0%");
         assert_eq!(
-            DEFAULT_NUM_FMTS[LOCALE_SHORT_DATE_FMT_ID as usize], "mm-dd-yy",
+            DEFAULT_NUM_FMTS[SHORT_DATE_FMT_ID as usize], "mm-dd-yy",
             "numFmtId 14 must be the ECMA-376 locale short date 'mm-dd-yy'"
         );
         assert_eq!(

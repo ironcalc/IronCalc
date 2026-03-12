@@ -4,7 +4,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use crate::expressions::token::Error;
 use crate::number_format::{
-    DEFAULT_NUM_FMTS, LOCALE_SHORT_DATE_FMT_ID, LOCALE_SHORT_DATE_TIME_FMT_ID,
+    DEFAULT_NUM_FMTS, SHORT_DATE_FMT_ID, SHORT_DATE_TIME_FMT_ID,
 };
 
 fn default_as_false() -> bool {
@@ -334,10 +334,56 @@ pub struct Style {
     pub quote_prefix: bool,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[non_exhaustive]
 pub struct NumFmt {
     pub num_fmt_id: i32,
     pub format_code: String,
+}
+
+// Custom deserializer so that workbooks serialized before the `String` →
+// `NumFmt` migration can still be loaded.  Old JSON has `"num_fmt": "mm/dd/yy"`;
+// new JSON has `"num_fmt": {"num_fmt_id": 14, "format_code": "mm/dd/yy"}`.
+impl<'de> Deserialize<'de> for NumFmt {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{self, MapAccess, Visitor};
+
+        struct NumFmtVisitor;
+
+        impl<'de> Visitor<'de> for NumFmtVisitor {
+            type Value = NumFmt;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a format-code string (legacy) or a NumFmt object")
+            }
+
+            // Legacy path: `num_fmt` was serialized as a plain format-code string.
+            fn visit_str<E: de::Error>(self, value: &str) -> Result<NumFmt, E> {
+                Ok(NumFmt::from_format_code(value))
+            }
+
+            fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> Result<NumFmt, M::Error> {
+                let mut num_fmt_id: Option<i32> = None;
+                let mut format_code: Option<String> = None;
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "num_fmt_id" => num_fmt_id = Some(map.next_value()?),
+                        "format_code" => format_code = Some(map.next_value()?),
+                        _ => { let _: serde::de::IgnoredAny = map.next_value()?; }
+                    }
+                }
+                Ok(NumFmt {
+                    num_fmt_id: num_fmt_id.ok_or_else(|| de::Error::missing_field("num_fmt_id"))?,
+                    format_code: format_code.ok_or_else(|| de::Error::missing_field("format_code"))?,
+                })
+            }
+        }
+
+        deserializer.deserialize_any(NumFmtVisitor)
+    }
 }
 
 impl Default for NumFmt {
@@ -350,28 +396,51 @@ impl Default for NumFmt {
 }
 
 impl NumFmt {
-    /// ECMA-376 numFmtId for the locale-derived short date (e.g. "m/d/yy" in en-US).
-    pub(crate) const LOCALE_DATE_ID: i32 = LOCALE_SHORT_DATE_FMT_ID;
-    /// ECMA-376 numFmtId for the locale-derived short date+time (e.g. "m/d/yy h:mm").
-    pub(crate) const LOCALE_DATETIME_ID: i32 = LOCALE_SHORT_DATE_TIME_FMT_ID;
-
-    /// Return `true` if `id` is one of the two locale-derived format IDs (14 or 22).
-    pub(crate) fn is_locale_date_id(id: i32) -> bool {
-        id == Self::LOCALE_DATE_ID || id == Self::LOCALE_DATETIME_ID
+    /// Construct a `NumFmt` from a known `num_fmt_id` and `format_code`.
+    ///
+    /// Prefer [`NumFmt::from_id`], [`NumFmt::from_format_code`], or
+    /// [`NumFmt::get_or_register`] when working within the engine.  This
+    /// constructor exists for callers (e.g. XLSX import) that already hold a
+    /// validated id/code pair from an external source and need to build the
+    /// struct directly.
+    pub fn new(num_fmt_id: i32, format_code: String) -> Self {
+        NumFmt {
+            num_fmt_id,
+            format_code,
+        }
     }
 
+    /// ECMA-376 numFmtId for the locale-derived short date (e.g. "m/d/yy" in en-US).
+    pub(crate) const SHORT_DATE_ID: i32 = SHORT_DATE_FMT_ID;
+    /// ECMA-376 numFmtId for the locale-derived short date+time (e.g. "m/d/yy h:mm").
+    pub(crate) const SHORT_DATETIME_ID: i32 = SHORT_DATE_TIME_FMT_ID;
+    
     /// The ECMA-376 built-in format strings, indexed by numFmtId.
     ///
     /// Prefer this accessor over importing `DEFAULT_NUM_FMTS` directly —
     /// callers get `.iter()`, `.len()`, and `.get(i)` without depending on
     /// the private constant.
-    pub(crate) fn builtins() -> &'static [&'static str] {
+    fn builtins() -> &'static [&'static str] {
         DEFAULT_NUM_FMTS
     }
 
+    /// Return the ECMA-376 built-in `numFmtId` for `code`, or `None` if the
+    /// code is not in the built-in table.
+    fn builtin_id(code: &str) -> Option<i32> {
+        Self::builtins()
+            .iter()
+            .position(|&s| s == code)
+            .map(|i| i as i32)
+    }
+
     /// Return `true` if `id` is a valid ECMA-376 built-in numFmtId.
-    pub(crate) fn is_builtin_id(id: i32) -> bool {
+    fn is_builtin_id(id: i32) -> bool {
         usize::try_from(id).is_ok_and(|i| i < Self::builtins().len())
+    }
+    
+    /// Return `true` if `id` is one of the two locale-derived format IDs (14 or 22).
+    pub(crate) fn is_locale_date_id(id: i32) -> bool {
+        id == Self::SHORT_DATE_ID || id == Self::SHORT_DATETIME_ID
     }
 
     /// Return `true` if `id` is either a built-in ECMA-376 ID or registered
@@ -379,15 +448,6 @@ impl NumFmt {
     /// `CellXfs` entry.
     pub(crate) fn is_known_id(id: i32, custom_fmts: &[NumFmt]) -> bool {
         Self::is_builtin_id(id) || custom_fmts.iter().any(|f| f.num_fmt_id == id)
-    }
-
-    /// Return the ECMA-376 built-in `numFmtId` for `code`, or `None` if the
-    /// code is not in the built-in table.
-    pub(crate) fn builtin_id(code: &str) -> Option<i32> {
-        Self::builtins()
-            .iter()
-            .position(|&s| s == code)
-            .map(|i| i as i32)
     }
 
     /// Build a `NumFmt` from a known `num_fmt_id`.
@@ -405,9 +465,17 @@ impl NumFmt {
             .filter(|&i| i < Self::builtins().len())
             .map(|i| i as i32)
             .unwrap_or(0);
+        // IDs in the ECMA-376 gap (49–163) or any positive ID not registered in
+        // custom_fmts will silently fall back to General.  Flag this in debug
+        // builds — it most likely indicates a misconfigured xlsx import.
+        debug_assert!(
+            id < 0 || resolved == id,
+            "num_fmt_id {id} is unknown (not a built-in ECMA-376 ID and not in custom_fmts); \
+             silently falling back to General (0)"
+        );
         NumFmt {
             num_fmt_id: resolved,
-            format_code: Self::resolve_code(resolved, &[]).to_string(),
+            format_code: Self::format_code_for_id(resolved, &[]).to_string(),
         }
     }
 
@@ -420,7 +488,6 @@ impl NumFmt {
     /// `format_code` at persist time, and `Styles::get_style_index` compares
     /// styles by `format_code`, so deduplication is correct regardless.
     pub fn from_format_code(code: &str) -> Self {
-        // Only 
         let num_fmt_id = Self::builtin_id(code).unwrap_or(-1);
         NumFmt {
             num_fmt_id,
@@ -428,20 +495,22 @@ impl NumFmt {
         }
     }
 
-
     /// Resolve a `num_fmt_id` to its format code string.
     ///
-    /// Checks `custom_fmts` first (workbook-specific entries), then falls back
-    /// to the ECMA-376 built-in table.  Unknown or negative IDs return `"general"`.
-    pub(crate) fn resolve_code(id: i32, custom_fmts: &[NumFmt]) -> &str {
+    /// Checks the ECMA-376 built-in table first (O(1) bounds check), then
+    /// falls back to a linear scan of `custom_fmts` (workbook-specific entries).
+    /// Unknown or negative IDs — including the `-1` sentinel used by
+    /// `from_format_code` — return `"general"` (ID 0).
+    pub(crate) fn format_code_for_id<'a>(id: i32, custom_fmts: &'a [NumFmt]) -> &'a str {
+        // Fast path: most IDs are ECMA-376 builtins.  A single bounds check
+        // avoids the custom_fmts scan for the common case.
+        if let Some(i) = usize::try_from(id).ok().filter(|&i| i < Self::builtins().len()) {
+            return Self::builtins()[i];
+        }
         custom_fmts
             .iter()
             .find(|f| f.num_fmt_id == id)
             .map(|f| f.format_code.as_str())
-            .or_else(|| {
-                let i: usize = id.try_into().ok()?;
-                Self::builtins().get(i).copied()
-            })
             .unwrap_or(Self::builtins()[0])
     }
 

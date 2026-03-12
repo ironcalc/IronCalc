@@ -76,22 +76,28 @@ impl Styles {
 
 
     pub fn get_style_index(&self, style: &Style) -> Option<i32> {
-        // DISCLOSURE: This code change was suggested by Claude.
-        // Panic if our *_id out of bounds.
         // Resolve sub-table indices once.  If any component isn't registered yet,
         // no CellXfs can reference it — return None without scanning cell_xfs.
         let font_id = self.get_font_index(&style.font)?;
         let fill_id = self.get_fill_index(&style.fill)?;
         let border_id = self.get_border_index(&style.border)?;
+        let incoming_id = style.num_fmt.num_fmt_id;
         let fmt_code = style.num_fmt.format_code.as_str();
 
-        // Compare by integer ID for font/fill/border (cheap); format_code stays
-        // string-based because the incoming num_fmt_id may be the -1 sentinel.
         self.cell_xfs
             .iter()
             .position(|xf| {
                 xf.alignment == style.alignment
-                && NumFmt::resolve_code(xf.num_fmt_id, &self.num_fmts) == fmt_code
+                // Compare by integer ID when available.  String comparison would
+                // collapse locale-date IDs (14/22) into any custom format that
+                // happens to use the same code string (e.g. a custom "mm-dd-yy").
+                // Fall back to string only for the -1 sentinel, which means
+                // "custom format not yet registered in num_fmts".
+                && if incoming_id >= 0 {
+                    xf.num_fmt_id == incoming_id
+                } else {
+                    NumFmt::format_code_for_id(xf.num_fmt_id, &self.num_fmts) == fmt_code
+                }
                 && xf.fill_id == fill_id
                 && xf.border_id == border_id
                 && xf.font_id == font_id
