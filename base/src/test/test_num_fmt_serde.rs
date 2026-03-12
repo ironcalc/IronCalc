@@ -86,3 +86,27 @@ fn round_trip_general() {
     let restored: NumFmt = serde_json::from_str(&json).unwrap();
     assert_eq!(restored.num_fmt_id, original.num_fmt_id);
 }
+
+// ---------------------------------------------------------------------------
+// Validation — struct form with inconsistent id/code
+// ---------------------------------------------------------------------------
+
+#[test]
+fn deser_struct_inconsistent_id_falls_back_to_code() {
+    // num_fmt_id 14 maps to "mm-dd-yy", not "0.00%".
+    // When the two disagree, format_code wins (it is the source of truth).
+    let json = r#"{"num_fmt_id":14,"format_code":"0.00%"}"#;
+    let fmt: NumFmt = serde_json::from_str(json).unwrap();
+    // format_code is preserved as-is; num_fmt_id is re-derived from it.
+    assert_eq!(fmt.format_code, "0.00%");
+    // "0.00%" is ECMA-376 built-in ID 10.
+    assert_eq!(fmt.num_fmt_id, 10);
+}
+
+#[test]
+fn deser_struct_missing_format_code_is_error() {
+    // format_code is required; a struct with only num_fmt_id must fail.
+    let json = r#"{"num_fmt_id":14}"#;
+    let result: Result<NumFmt, _> = serde_json::from_str(json);
+    assert!(result.is_err());
+}

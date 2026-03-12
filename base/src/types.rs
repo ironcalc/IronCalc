@@ -375,10 +375,22 @@ impl<'de> Deserialize<'de> for NumFmt {
                         _ => { let _: serde::de::IgnoredAny = map.next_value()?; }
                     }
                 }
-                Ok(NumFmt {
-                    num_fmt_id: num_fmt_id.ok_or_else(|| de::Error::missing_field("num_fmt_id"))?,
-                    format_code: format_code.ok_or_else(|| de::Error::missing_field("format_code"))?,
-                })
+                let format_code = format_code
+                    .ok_or_else(|| de::Error::missing_field("format_code"))?;
+                // Re-derive num_fmt_id from format_code so the two fields are always
+                // consistent.  If the incoming id disagrees (e.g. a hand-edited file),
+                // format_code is treated as the source of truth.
+                let derived = NumFmt::from_format_code(&format_code);
+                // Accept the stored id only if it matches what we'd derive — this lets
+                // custom IDs (≥ 164) round-trip correctly when both fields are present.
+                let stored_id = num_fmt_id.unwrap_or(derived.num_fmt_id);
+                let fmt = if stored_id == derived.num_fmt_id || derived.num_fmt_id == -1 {
+                    NumFmt { num_fmt_id: stored_id, format_code }
+                } else {
+                    // Mismatch — trust format_code, discard stale id.
+                    derived
+                };
+                Ok(fmt)
             }
         }
 
