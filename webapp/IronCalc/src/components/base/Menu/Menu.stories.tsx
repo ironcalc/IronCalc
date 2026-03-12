@@ -40,6 +40,8 @@ type Story = Omit<StoryObj<typeof meta>, "args"> & {
   args?: Partial<MenuProps>;
 };
 
+const defaultOffset: [number, number] = [-4, 4];
+
 function FormatMenuLikeContent({
   onSelectFormat,
   selectedFormat = "auto",
@@ -135,13 +137,13 @@ function FormatMenuLikeContent({
 }
 
 function MenuWithAnchor({
-  placement = "bottom-start",
+  placement,
   offset,
   formatMenuStyle = false,
 }: {
-  placement?: MenuProps["placement"];
-  offset?: [number, number];
-  formatMenuStyle?: boolean;
+  placement: MenuProps["placement"];
+  offset: [number, number];
+  formatMenuStyle: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState("auto");
@@ -157,6 +159,11 @@ function MenuWithAnchor({
       <Button
         ref={anchorRef}
         variant="outline"
+        size="md"
+        iconOnly={false}
+        pressed={open}
+        startIcon={undefined}
+        endIcon={undefined}
         onClick={() => setOpen((o) => !o)}
       >
         {formatMenuStyle ? "123" : "Open menu"}
@@ -186,12 +193,22 @@ function MenuWithAnchor({
 }
 
 export const Default: Story = {
-  render: () => <MenuWithAnchor />,
+  render: () => (
+    <MenuWithAnchor
+      placement="bottom-start"
+      offset={defaultOffset}
+      formatMenuStyle={false}
+    />
+  ),
 };
 
 export const Format: Story = {
   render: (args) => (
-    <MenuWithAnchor placement={args.placement} formatMenuStyle />
+    <MenuWithAnchor
+      placement={args.placement}
+      offset={args.offset ?? defaultOffset}
+      formatMenuStyle
+    />
   ),
   args: {
     placement: "bottom-start",
@@ -209,11 +226,22 @@ export const WithSelectedItem: Story = {
         <Button
           ref={anchorRef}
           variant="outline"
+          size="md"
+          iconOnly={false}
+          pressed={open}
+          startIcon={undefined}
+          endIcon={undefined}
           onClick={() => setOpen((o) => !o)}
         >
           Format: {selected}
         </Button>
-        <Menu open={open} onClose={() => setOpen(false)} anchorEl={anchorRef}>
+        <Menu
+          open={open}
+          onClose={() => setOpen(false)}
+          anchorEl={anchorRef}
+          placement="bottom-start"
+          offset={defaultOffset}
+        >
           <MenuItem
             onClick={() => {
               setSelected("auto");
@@ -260,11 +288,22 @@ export const WithDisabledItem: Story = {
         <Button
           ref={anchorRef}
           variant="outline"
+          size="md"
+          iconOnly={false}
+          pressed={open}
+          startIcon={undefined}
+          endIcon={undefined}
           onClick={() => setOpen((o) => !o)}
         >
           Actions
         </Button>
-        <Menu open={open} onClose={() => setOpen(false)} anchorEl={anchorRef}>
+        <Menu
+          open={open}
+          onClose={() => setOpen(false)}
+          anchorEl={anchorRef}
+          placement="bottom-start"
+          offset={defaultOffset}
+        >
           <MenuItem onClick={() => setOpen(false)} startAdornment={<Copy />}>
             Copy
           </MenuItem>
@@ -291,7 +330,13 @@ export const WithDisabledItem: Story = {
 };
 
 export const RightAligned: Story = {
-  render: () => <MenuWithAnchor placement="bottom-end" />,
+  render: () => (
+    <MenuWithAnchor
+      placement="bottom-end"
+      offset={defaultOffset}
+      formatMenuStyle={false}
+    />
+  ),
 };
 
 export const WithSubmenu: Story = {
@@ -304,11 +349,22 @@ export const WithSubmenu: Story = {
         <Button
           ref={anchorRef}
           variant="outline"
+          size="md"
+          iconOnly={false}
+          pressed={open}
+          startIcon={undefined}
+          endIcon={undefined}
           onClick={() => setOpen((o) => !o)}
         >
           Open menu
         </Button>
-        <Menu open={open} onClose={() => setOpen(false)} anchorEl={anchorRef}>
+        <Menu
+          open={open}
+          onClose={() => setOpen(false)}
+          anchorEl={anchorRef}
+          placement="bottom-start"
+          offset={defaultOffset}
+        >
           <MenuItem onClick={() => setOpen(false)}>Plain item</MenuItem>
           <MenuDivider />
           <MenuItem
@@ -352,6 +408,11 @@ export const TwoMenus: Story = {
         <Button
           ref={anchorARef}
           variant="outline"
+          size="md"
+          iconOnly={false}
+          pressed={menuAOpen}
+          startIcon={undefined}
+          endIcon={undefined}
           onClick={() => setMenuAOpen((o) => !o)}
         >
           Menu A
@@ -360,6 +421,8 @@ export const TwoMenus: Story = {
           open={menuAOpen}
           onClose={() => setMenuAOpen(false)}
           anchorEl={anchorARef}
+          placement="bottom-start"
+          offset={defaultOffset}
         >
           <MenuItem onClick={() => setMenuAOpen(false)}>Option 1</MenuItem>
           <MenuItem onClick={() => setMenuAOpen(false)}>Option 2</MenuItem>
@@ -370,6 +433,11 @@ export const TwoMenus: Story = {
         <Button
           ref={anchorBRef}
           variant="outline"
+          size="md"
+          iconOnly={false}
+          pressed={menuBOpen}
+          startIcon={undefined}
+          endIcon={undefined}
           onClick={() => setMenuBOpen((o) => !o)}
         >
           Menu B
@@ -378,6 +446,8 @@ export const TwoMenus: Story = {
           open={menuBOpen}
           onClose={() => setMenuBOpen(false)}
           anchorEl={anchorBRef}
+          placement="bottom-start"
+          offset={defaultOffset}
         >
           <MenuItem onClick={() => setMenuBOpen(false)}>Action X</MenuItem>
           <MenuItem onClick={() => setMenuBOpen(false)}>Action Y</MenuItem>
@@ -440,7 +510,13 @@ export const ContextMenu: Story = {
             }}
           />
         )}
-        <Menu open={open} onClose={handleClose} anchorEl={anchorRef}>
+        <Menu
+          open={open}
+          onClose={handleClose}
+          anchorEl={anchorRef}
+          placement="bottom-start"
+          offset={defaultOffset}
+        >
           <MenuItem onClick={handleClose} startAdornment={<Copy />}>
             Copy
           </MenuItem>
