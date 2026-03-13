@@ -3,7 +3,7 @@ use crate::{
     formatter::parser::{ParsePart, Parser},
     functions::Function,
     model::Model,
-    types::NumFmt,
+    number_format::BuiltinFmts,
 };
 
 pub enum Units {
@@ -96,8 +96,8 @@ impl<'a> Model<'a> {
             .ok()?;
         // Check numFmtId directly: locale IDs 14/22 may not reverse-map reliably from their string.
         match style.num_fmt.num_fmt_id {
-            NumFmt::SHORT_DATE_ID => Some(Units::LocaleDate),
-            NumFmt::SHORT_DATETIME_ID => Some(Units::LocaleDateTime),
+            BuiltinFmts::SHORT_DATE_ID => Some(Units::LocaleDate),
+            BuiltinFmts::SHORT_DATETIME_ID => Some(Units::LocaleDateTime),
             _ => get_units_from_format_string(&style.num_fmt.format_code),
         }
     }
@@ -378,37 +378,27 @@ impl<'a> Model<'a> {
         })
     }
 
+    /// Returns `true` when a locale date/datetime format should be applied to the cell.
+    /// Returns `false` if the cell already has an explicit non-date, non-locale format
+    /// that should be preserved.
+    fn should_override_with_locale_date(&self, cell: &CellReferenceIndex) -> bool {
+        let Ok(style) = self.get_style_for_cell(cell.sheet, cell.row, cell.column) else {
+            return true;
+        };
+        let id = style.num_fmt.num_fmt_id;
+        id == 0
+            || BuiltinFmts::is_locale_date(id)
+            || matches!(
+                get_units_from_format_string(&style.num_fmt.format_code),
+                Some(Units::Date(_))
+            )
+    }
+
     fn units_fn_dates(&self, _args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
-        // Preserve explicit non-date formats; only apply locale date if appropriate.
-        if let Ok(style) = self.get_style_for_cell(cell.sheet, cell.row, cell.column) {
-            let id = style.num_fmt.num_fmt_id;
-            if id != 0 && !NumFmt::is_locale_date_id(id) {
-                // Only overwrite if already date-like.
-                if !matches!(
-                    get_units_from_format_string(&style.num_fmt.format_code),
-                    Some(Units::Date(_))
-                ) {
-                    return None;
-                }
-            }
-        }
-        Some(Units::LocaleDate)
+        self.should_override_with_locale_date(cell).then_some(Units::LocaleDate)
     }
 
     fn units_fn_date_times(&self, _args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
-        // Same logic as units_fn_dates: preserve any explicit non-datetime format.
-        if let Ok(style) = self.get_style_for_cell(cell.sheet, cell.row, cell.column) {
-            let id = style.num_fmt.num_fmt_id;
-            if id != 0
-                && !NumFmt::is_locale_date_id(id)
-                && !matches!(
-                    get_units_from_format_string(&style.num_fmt.format_code),
-                    Some(Units::Date(_))
-                )
-            {
-                return None;
-            }
-        }
-        Some(Units::LocaleDateTime)
+        self.should_override_with_locale_date(cell).then_some(Units::LocaleDateTime)
     }
 }
