@@ -3,9 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 use crate::expressions::token::Error;
-use crate::number_format::{
-    DEFAULT_NUM_FMTS,
-};
+use crate::number_format::BuiltinFmts;
 
 fn default_as_false() -> bool {
     false
@@ -419,30 +417,8 @@ impl NumFmt {
         }
     }
 
-    /// ECMA-376 numFmtId 14: locale short date.
-    pub(crate) const SHORT_DATE_ID: i32 = 14;
-    /// ECMA-376 numFmtId 22: locale short date+time.
-    pub(crate) const SHORT_DATETIME_ID: i32 = 22;
-    
-    fn builtins() -> &'static [&'static str] {
-        DEFAULT_NUM_FMTS
-    }
-
-    fn builtin_id(code: &str) -> Option<i32> {
-        Self::builtins()
-            .iter()
-            .position(|&s| s == code)
-            .map(|i| i as i32)
-    }
-
-    fn is_builtin_id(id: i32) -> bool {
-        usize::try_from(id).is_ok_and(|i| i < Self::builtins().len())
-    }
-    
-    /// True if `id` is a locale date format (14 or 22).
-    pub(crate) fn is_locale_date_id(id: i32) -> bool {
-        id == Self::SHORT_DATE_ID || id == Self::SHORT_DATETIME_ID
-    }
+    fn builtin_id(code: &str) -> Option<i32>  { BuiltinFmts::by_code(code) }
+    fn is_builtin_id(id: i32) -> bool         { BuiltinFmts::contains_id(id) }
 
     /// True if `id` is a built-in or registered custom format ID.
     pub(crate) fn is_known_id(id: i32, custom_fmts: &[NumFmt]) -> bool {
@@ -454,12 +430,8 @@ impl NumFmt {
         if let Some(fmt) = custom_fmts.iter().find(|f| f.num_fmt_id == id) {
             return fmt.clone();
         }
-        // Clamp out-of-range / negative IDs to 0 (General).
-        let resolved = usize::try_from(id)
-            .ok()
-            .filter(|&i| i < Self::builtins().len())
-            .map(|i| i as i32)
-            .unwrap_or(0);
+        // Clamp unknown / negative IDs to 0 (General).
+        let resolved = if Self::is_builtin_id(id) { id } else { 0 };
         // Gap IDs (49–163) not in custom_fmts silently fall back to General.
         debug_assert!(
             id < 0 || resolved == id,
@@ -484,18 +456,24 @@ impl NumFmt {
 
     /// Resolve a `num_fmt_id` to its format code; unknown/negative IDs return `"general"`.
     pub(crate) fn format_code_for_id(id: i32, custom_fmts: &[NumFmt]) -> &str {
-        if let Some(i) = usize::try_from(id).ok().filter(|&i| i < Self::builtins().len()) {
-            return Self::builtins()[i];
+        if let Some(code) = BuiltinFmts::by_id(id) {
+            return code;
         }
         custom_fmts
             .iter()
             .find(|f| f.num_fmt_id == id)
             .map(|f| f.format_code.as_str())
-            .unwrap_or(Self::builtins()[0])
+            .unwrap_or("general")
     }
 
-    /// Covers functions `get_num_fmt()` and `get_new_num_fmt_index()` previously in file number_format.rs
-    /// `Styles` methods .
+    /// ECMA-376 §18.8.30: custom numFmtIds must be ≥ 164.
+    /// IDs 0–163 are reserved for built-in formats; assigning lower IDs corrupts XLSX readers.
+    const ECMA_CUSTOM_FMT_MIN_ID: i32 = 164;
+
+    /// Returns the `NumFmt` for `code`, registering it in `num_fmts` if it is not yet present.
+    ///
+    /// Built-in codes resolve immediately with their ECMA-376 ID.
+    /// Custom codes are assigned an ID ≥ 164 on first registration and re-used thereafter.
     pub fn get_or_register(code: &str, num_fmts: &mut Vec<NumFmt>) -> Self {
         if let Some(id) = Self::builtin_id(code) {
             return NumFmt {
@@ -506,8 +484,8 @@ impl NumFmt {
         if let Some(existing) = num_fmts.iter().find(|f| f.format_code == code) {
             return existing.clone();
         }
-        // Find the lowest custom ID (≥ built-in table length) not already in use.
-        let mut new_id = Self::builtins().len() as i32;
+        // ECMA-376 custom IDs must be ≥ 164; find the lowest unused one.
+        let mut new_id = Self::ECMA_CUSTOM_FMT_MIN_ID;
         while num_fmts.iter().any(|f| f.num_fmt_id == new_id) {
             new_id += 1;
         }
