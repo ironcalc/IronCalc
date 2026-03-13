@@ -424,12 +424,9 @@ impl NumFmt {
         }
     }
 
-    fn builtin_id(code: &str) -> Option<i32>  { BuiltinFmts::by_code(code) }
-    fn is_builtin_id(id: i32) -> bool         { BuiltinFmts::contains_id(id) }
-
     /// True if `id` is a built-in or registered custom format ID.
     pub(crate) fn is_known_id(id: i32, custom_fmts: &[NumFmt]) -> bool {
-        Self::is_builtin_id(id) || custom_fmts.iter().any(|f| f.num_fmt_id == id)
+        BuiltinFmts::contains_id(id) || custom_fmts.iter().any(|f| f.num_fmt_id == id)
     }
 
     /// Build a `NumFmt` from a `num_fmt_id`; unknown IDs fall back to General (0).
@@ -438,8 +435,8 @@ impl NumFmt {
             return fmt.clone();
         }
         // Clamp unknown / negative IDs to 0 (General).
-        let resolved = if Self::is_builtin_id(id) { id } else { 0 };
-        // Gap IDs (49–163) not in custom_fmts silently fall back to General.
+        let resolved = if BuiltinFmts::contains_id(id) { id } else { 0 };
+        // Gap IDs (49–163) not in custom_fmts silently fall back to General (debug builds only).
         debug_assert!(
             id < 0 || resolved == id,
             "num_fmt_id {id} is unknown (not a built-in ECMA-376 ID and not in custom_fmts); \
@@ -447,14 +444,14 @@ impl NumFmt {
         );
         NumFmt {
             num_fmt_id: resolved,
-            format_code: Self::format_code_for_id(resolved, &[]).to_string(),
+            format_code: BuiltinFmts::by_id(resolved).unwrap_or("general").to_string(),
         }
     }
 
     /// Build a `NumFmt` from a format code; resolves to the built-in ID, or
     /// `-1` as a sentinel for custom codes (real ID assigned at persist time).
     pub fn from_format_code(code: &str) -> Self {
-        let num_fmt_id = Self::builtin_id(code).unwrap_or(-1);
+        let num_fmt_id = BuiltinFmts::by_code(code).unwrap_or(-1);
         NumFmt {
             num_fmt_id,
             format_code: code.to_string(),
@@ -482,7 +479,7 @@ impl NumFmt {
     /// Built-in codes resolve immediately with their ECMA-376 ID.
     /// Custom codes are assigned an ID ≥ 164 on first registration and re-used thereafter.
     pub fn get_or_register(code: &str, num_fmts: &mut Vec<NumFmt>) -> Self {
-        if let Some(id) = Self::builtin_id(code) {
+        if let Some(id) = BuiltinFmts::by_code(code) {
             return NumFmt {
                 num_fmt_id: id,
                 format_code: code.to_string(),
