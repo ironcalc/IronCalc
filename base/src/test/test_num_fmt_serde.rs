@@ -110,3 +110,27 @@ fn deser_struct_missing_format_code_is_error() {
     let result: Result<NumFmt, _> = serde_json::from_str(json);
     assert!(result.is_err());
 }
+
+// ---------------------------------------------------------------------------
+// Validation — custom format codes with stored_id in/out of ECMA custom range
+// ---------------------------------------------------------------------------
+
+#[test]
+fn deser_rejects_builtin_range_id_for_custom_format_code() {
+    // stored_id=5 is a built-in range ID; format_code "0.000##" is not a built-in.
+    // Accepting a built-in-range ID for a custom code would create an inconsistent
+    // NumFmt where the id and code disagree — corrupt on XLSX export.
+    let json = r#"{"num_fmt_id": 5, "format_code": "0.000##"}"#;
+    let fmt: NumFmt = serde_json::from_str(json).unwrap();
+    assert_eq!(fmt.format_code, "0.000##");
+    assert_eq!(fmt.num_fmt_id, -1, "built-in-range stored_id must be discarded for a custom code");
+}
+
+#[test]
+fn deser_accepts_custom_range_id_for_custom_format_code() {
+    // stored_id=180 is in the ECMA-376 custom range (≥ 164) — round-trip must preserve it.
+    let json = r#"{"num_fmt_id": 180, "format_code": "0.000##"}"#;
+    let fmt: NumFmt = serde_json::from_str(json).unwrap();
+    assert_eq!(fmt.num_fmt_id, 180);
+    assert_eq!(fmt.format_code, "0.000##");
+}

@@ -376,15 +376,22 @@ impl<'de> Deserialize<'de> for NumFmt {
                     .ok_or_else(|| de::Error::missing_field("format_code"))?;
                 // format_code is the source of truth; re-derive id for consistency.
                 let derived = NumFmt::from_format_code(&format_code);
-                // Accept stored id only if consistent — lets custom IDs (≥ 164) round-trip.
                 let stored_id = num_fmt_id.unwrap_or(derived.num_fmt_id);
-                let fmt = if stored_id == derived.num_fmt_id || derived.num_fmt_id == -1 {
-                    NumFmt { num_fmt_id: stored_id, format_code }
+                // Accept stored_id only when it is provably consistent with format_code:
+                //  • exact match: both agree on the ID
+                //  • custom round-trip: code is not a built-in (derived == -1) and the
+                //    stored ID is in the ECMA-376 custom range (≥ 164); this lets a
+                //    registered custom ID survive a serialize→deserialize round-trip.
+                // Anything else (e.g. a built-in-range ID paired with a custom code)
+                // is suspect — discard the stored ID and keep the derived value.
+                let num_fmt_id = if stored_id == derived.num_fmt_id {
+                    stored_id
+                } else if derived.num_fmt_id == -1 && stored_id >= NumFmt::ECMA_CUSTOM_FMT_MIN_ID {
+                    stored_id
                 } else {
-                    // Mismatch — trust format_code, discard stale id.
-                    derived
+                    derived.num_fmt_id
                 };
-                Ok(fmt)
+                Ok(NumFmt { num_fmt_id, format_code })
             }
         }
 
