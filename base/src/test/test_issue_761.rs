@@ -567,3 +567,55 @@ fn non_date_format_preserved_when_date_formula_entered() {
         Ok(CellValue::Number(45750.0))
     );
 }
+
+#[test]
+fn legacy_custom_num_fmt_renders_literal_not_locale() {
+    // Backward-compat: old workbooks may contain custom numFmtIds (≥ 164)
+    // with literal locale-like format codes saved from a different locale
+    // (e.g., en-US "m/d/yyyy" embedded in a workbook now opened in en-GB).
+    //
+    // Only sentinel IDs 14 and 22 derive their display pattern from the active
+    // locale at render time.  Any other ID — including user-defined custom IDs
+    // ≥ 164 — must render its frozen literal format code as-is, regardless of
+    // the model's current locale.
+    let serial = 45750.0; // April 3, 2025
+    let mut model = en_gb_model();
+
+    // Apply a US-style literal format.  set_cell_style will register it as a
+    // custom format (ID ≥ 164) because "m/d/yyyy" is not an ECMA-376 built-in.
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.num_fmt = NumFmt::from_format_code("m/d/yyyy");
+    model.set_cell_style(0, 1, 1, &style).unwrap();
+    model.update_cell_with_number(0, 1, 1, serial).unwrap();
+    model.evaluate();
+
+    // Verify the stored ID is not one of the locale sentinel IDs (14 or 22).
+    // IronCalc assigns user-defined IDs starting at builtins().len() (= 45).
+    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
+    let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
+    assert_ne!(
+        num_fmt_id,
+        NumFmt::SHORT_DATE_ID,
+        "custom format 'm/d/yyyy' must not be stored as the locale-date sentinel {}",
+        NumFmt::SHORT_DATE_ID
+    );
+    assert_ne!(
+        num_fmt_id,
+        NumFmt::SHORT_DATETIME_ID,
+        "custom format 'm/d/yyyy' must not be stored as the locale-datetime sentinel {}",
+        NumFmt::SHORT_DATETIME_ID
+    );
+
+    // Must render the frozen literal "m/d/yyyy" (US-style → "4/3/2025"),
+    // NOT the en-GB locale pattern which would produce "03/04/2025".
+    assert_eq!(
+        model._get_text("A1"),
+        "4/3/2025",
+        "custom numFmt with 'm/d/yyyy' must render its literal code, not the en-GB locale pattern"
+    );
+    assert_eq!(
+        model.get_localized_cell_content(0, 1, 1).unwrap(),
+        "4/3/2025",
+        "edit-bar content must reflect the literal format code, not re-derive from locale"
+    );
+}

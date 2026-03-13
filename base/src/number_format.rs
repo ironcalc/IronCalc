@@ -3,16 +3,10 @@ use crate::{
     locale::get_locale,
 };
 
-/// Built-in number format strings indexed by their ECMA-376 numFmtId.
+/// ECMA-376 built-in number format strings; index == numFmtId.
 ///
-/// **ORDERING IS SPEC-MANDATED — do not insert, remove, or reorder entries.**
-/// The index in this array IS the numFmtId as defined in ECMA-376.
-/// Code throughout the codebase (and every `.xlsx` file on disk) uses these
-/// IDs by their numeric value, not by position in this array. Any accidental
-/// reordering will cause silent mis-formatting for any ID after the change.
-///
-/// The test `builtin_num_fmts_index_matches_spec_ids` guards the
-/// critical positions.
+/// **Do not insert, remove, or reorder** — the index IS the numFmtId.
+/// See `builtin_num_fmts_index_matches_spec_ids` for guards on critical positions.
 pub(crate) const DEFAULT_NUM_FMTS: &[&str] = &[
     "general",
     "0",
@@ -60,15 +54,6 @@ pub(crate) const DEFAULT_NUM_FMTS: &[&str] = &[
     "t0.00 %",
     "t#?/?",
 ];
-
-/// ECMA-376 numFmtId for the locale-derived short date.
-///
-/// The value `14` is mandated by the Office Open XML specification.
-/// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oe376/0e59abdb-7f4e-48fc-9b89-67832fa11789
-pub const SHORT_DATE_FMT_ID: i32 = 14;
-
-/// ECMA-376 numFmtId for the locale-derived short date+time ("m / d / yy h:mm").
-pub const SHORT_DATE_TIME_FMT_ID: i32 = 22;
 
 pub fn to_precision(value: f64, precision: usize) -> f64 {
     if value.is_infinite() || value.is_nan() {
@@ -145,17 +130,13 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
 mod tests {
     use super::*;
 
-    /// Verify that critical ECMA-376 built-in numFmtIds are at the correct
-    /// positions in `DEFAULT_NUM_FMTS`.  The array index IS the numFmtId, so
-    /// inserting or removing any entry before these positions would silently
-    /// break format detection throughout the codebase.
     #[test]
     fn builtin_num_fmts_index_matches_spec_ids() {
         assert_eq!(DEFAULT_NUM_FMTS.len(), 45, "DEFAULT_NUM_FMTS length changed — update this assertion and verify all numFmtIds");
         assert_eq!(DEFAULT_NUM_FMTS[0], "general", "numFmtId 0 must be General");
         assert_eq!(DEFAULT_NUM_FMTS[9], "0%", "numFmtId 9 must be 0%");
         assert_eq!(
-            DEFAULT_NUM_FMTS[SHORT_DATE_FMT_ID as usize], "mm-dd-yy",
+            DEFAULT_NUM_FMTS[14], "mm-dd-yy",
             "numFmtId 14 must be the ECMA-376 locale short date 'mm-dd-yy'"
         );
         assert_eq!(

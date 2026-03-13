@@ -84,12 +84,7 @@ pub struct TimeFormats {
 }
 
 impl Locale {
-    /// Returns `true` if this locale places the day before the month in its
-    /// short date pattern (e.g. `"dd/MM/yyyy"` for en-GB) and `false` for
-    /// month-first locales (e.g. `"M/d/yy"` for en-US).
-    ///
-    /// Used for disambiguation when parsing numeric date strings like
-    /// `"01/02/2025"` where both components are ≤ 12.
+    /// True if the locale's short date pattern starts with day (e.g. en-GB `"dd/MM/yyyy"`).
     pub fn day_first(&self) -> bool {
         self.dates.date_formats.short.starts_with('d')
     }

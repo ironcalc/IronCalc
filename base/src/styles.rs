@@ -53,8 +53,6 @@ impl Styles {
         };
         let num_fmt_id =
             NumFmt::get_or_register(&style.num_fmt.format_code, &mut self.num_fmts).num_fmt_id;
-        // A -1 sentinel must never reach CellXfs — get_or_register always
-        // produces a real ID (≥0).  Panic in debug builds to catch regressions.
         debug_assert!(num_fmt_id >= 0, "num_fmt_id sentinel -1 must not reach CellXfs");
         self.cell_xfs.push(CellXfs {
             xf_id: 0,
@@ -76,8 +74,6 @@ impl Styles {
 
 
     pub fn get_style_index(&self, style: &Style) -> Option<i32> {
-        // Resolve sub-table indices once.  If any component isn't registered yet,
-        // no CellXfs can reference it — return None without scanning cell_xfs.
         let font_id = self.get_font_index(&style.font)?;
         let fill_id = self.get_fill_index(&style.fill)?;
         let border_id = self.get_border_index(&style.border)?;
@@ -88,11 +84,8 @@ impl Styles {
             .iter()
             .position(|xf| {
                 xf.alignment == style.alignment
-                // Compare by integer ID when available.  String comparison would
-                // collapse locale-date IDs (14/22) into any custom format that
-                // happens to use the same code string (e.g. a custom "mm-dd-yy").
-                // Fall back to string only for the -1 sentinel, which means
-                // "custom format not yet registered in num_fmts".
+                // Compare by ID when available; string comparison collapses locale IDs 14/22
+                // with custom formats sharing the same code. Fall back for -1 sentinel only.
                 && if incoming_id >= 0 {
                     xf.num_fmt_id == incoming_id
                 } else {
@@ -165,15 +158,12 @@ impl Styles {
         format_code: &str,
     ) -> Result<i32, String> {
         let mut style = self.get_style(index)?;
-        // Resolve the canonical ID directly from Styles so the returned Style
-        // is fully resolved — no sentinel needed here since we own num_fmts.
         style.num_fmt = NumFmt::get_or_register(format_code, &mut self.num_fmts);
         Ok(self.get_style_index_or_create(&style))
     }
 
 
-    /// Returns the raw `num_fmt_id` stored in `CellXfs` for the given style
-    /// index, without converting through the format string.
+    /// Raw `num_fmt_id` from `CellXfs` at `index`.
     pub(crate) fn get_num_fmt_id(&self, index: i32) -> Result<i32, String> {
         self.cell_xfs
             .get(index as usize)
@@ -181,17 +171,13 @@ impl Styles {
             .ok_or_else(|| format!("Invalid style index: {index}"))
     }
 
-    /// Returns (or creates) a style that is identical to the one at `index`
-    /// but with `num_fmt_id` set to `new_id`.  Works at the `CellXfs` level so
-    /// that semantically-meaningful IDs like `LOCALE_SHORT_DATE_FMT_ID` (14)
-    /// are preserved exactly — the round-trip through format strings would
-    /// collapse them to the en-US literal `"mm-dd-yy"`.
+    /// Returns (or creates) a style like `index` but with `num_fmt_id` set to `new_id`.
+    /// Operates at the `CellXfs` level so IDs 14/22 are preserved without string round-trip.
     pub(crate) fn get_style_with_num_fmt_id(
         &mut self,
         index: i32,
         new_id: i32,
     ) -> Result<i32, String> {
-        // Fail fast if the ID would produce a silent fallback to General format.
         if !NumFmt::is_known_id(new_id, &self.num_fmts) {
             return Err(format!(
                 "num_fmt_id {new_id} is neither a built-in ECMA-376 ID nor registered in num_fmts"
@@ -206,8 +192,7 @@ impl Styles {
             num_fmt_id: new_id,
             ..base
         };
-        // Reuse an existing CellXfs entry if it already matches, to avoid
-        // bloating the styles table.
+        // Reuse an existing entry if possible.
         for (i, existing) in self.cell_xfs.iter().enumerate() {
             if *existing == target {
                 return Ok(i as i32);
@@ -242,8 +227,6 @@ impl Styles {
         let alignment = cell_xf.alignment.clone();
 
 
-        // DISCLOSURE: This code change was suggested by Claude.
-        // Panic if our *_id out of bounds `self.fills[fill_id]`.
         Ok(Style {
             alignment,
             num_fmt: NumFmt::from_id(num_fmt_id, &self.num_fmts),

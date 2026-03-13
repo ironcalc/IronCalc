@@ -64,40 +64,22 @@ pub fn get_milliseconds_since_epoch() -> i64 {
     Date::now() as i64
 }
 
-/// Build the locale's short date+time format string at render time.
-///
-/// Mirrors the logic that was previously baked into `units_fn_date_times` at
-/// formula-entry time.  Called whenever a cell carries numFmtId 22 so that
-/// locale switches update the display without requiring a re-edit.
 fn locale_short_datetime_fmt(locale: &Locale) -> String {
     let date_short = &locale.dates.date_formats.short;
-    // Normalise narrow no-break space (U+202F) used by many CLDR locales
-    // (e.g. "h:mm\u{202f}a"), then map the trailing CLDR meridiem token to
-    // the IronCalc DSL token "AM/PM".
-    //
-    // KNOWN LIMITATION: this replace covers only the common Western pattern
-    // "h:mm a" (trailing space + 'a').  CLDR also defines:
-    //   • Leading 'a': "ah:mm" (Chinese, Japanese) — left as-is, 'a' renders raw
-    //   • No-space trailing: "h:mma" — left as-is, 'a' renders raw
-    //
-    // Fix: replace the two `.replace()` calls with a proper CLDR token scanner
-    // that strips 'a'/'a*'/'aaa*' tokens regardless of position and injects
-    // "AM/PM" at the correct place.  Until then, only locales whose
-    // `time_formats.short` matches the "…space-a" pattern work correctly.
+    // Normalise CLDR narrow no-break space (U+202F) and meridiem token 'a' → "AM/PM".
+    // TODO: only "…space-a" CLDR pattern handled; leading/no-space 'a' renders raw.
     let time_short = locale
         .dates
         .time_formats
         .short
         .replace('\u{202f}', " ")
         .replace(" a", " AM/PM");
-    // Template is typically "{1}, {0}" — date first, then time.
     let fmt = locale
         .dates
         .date_time_formats
         .short
         .replace("{0}", time_short.trim())
         .replace("{1}", date_short);
-    // Normalise narrow no-break space (U+202F) in the assembled template.
     fmt.replace('\u{202f}', " ")
 }
 
@@ -1583,10 +1565,6 @@ impl<'a> Model<'a> {
                 let cell = CellReferenceIndex { sheet, row, column };
                 let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
-                    // Date-returning functions (DATE, TODAY, …) get numFmtId 14 so
-                    // that get_formatted_cell_value derives the display pattern from
-                    // the active locale at render time.  All other units (currency,
-                    // percentage, plain number) keep their literal format string.
                     let new_style_index = match units {
                         Units::LocaleDate => self
                             .workbook
@@ -1623,17 +1601,11 @@ impl<'a> Model<'a> {
                     parse_formatted_number(&value, &currencies, self.locale)
                 {
                     if let Some(num_fmt_spec) = number_format {
-                        // Don't overwrite an existing date format when a date is
-                        // re-entered into a cell already formatted as a date — the
-                        // user may have set a more specific format manually.
+                        // Don't overwrite a user-set date format when a date is re-entered.
                         let new_is_date = match &num_fmt_spec {
                             NumFmtSpec::LocaleDate => true,
                             NumFmtSpec::Literal(s) => is_likely_date_number_format(s),
                         };
-                        // Prefer checking the numFmtId directly for locale-date
-                        // cells (ID 14/22): get_style() resolves those IDs to an
-                        // en-US literal like "mm-dd-yy", so the string heuristic
-                        // works only by coincidence.  The ID check is exact.
                         let existing_style = self.workbook.styles.get_style(new_style_index)?;
                         let existing_id = existing_style.num_fmt.num_fmt_id;
                         let existing_is_date = NumFmt::is_locale_date_id(existing_id)
@@ -1641,14 +1613,12 @@ impl<'a> Model<'a> {
                         let should_apply_format = !(existing_is_date && new_is_date);
                         if should_apply_format {
                             new_style_index = match num_fmt_spec {
-                                // Locale date: store as numFmtId 14, render
                                 NumFmtSpec::LocaleDate => {
                                     self.workbook.styles.get_style_with_num_fmt_id(
                                         new_style_index,
                                         NumFmt::SHORT_DATE_ID,
                                     )?
                                 }
-                                // Explicit format string (ISO dates, currency, …).
                                 NumFmtSpec::Literal(s) => self
                                     .workbook
                                     .styles
@@ -1882,9 +1852,7 @@ impl<'a> Model<'a> {
             Some(cell) => {
                 let style_index = self.get_cell_style_index(sheet_index, row, column)?;
                 let num_fmt_id = self.workbook.styles.get_num_fmt_id(style_index)?;
-                // For locale-derived formats derive the pattern from the active
-                // locale at render time so locale switches take effect without
-                // requiring a re-edit.
+                // Locale IDs 14/22 derive the pattern from the active locale; others use stored string.
                 let format = match num_fmt_id {
                     NumFmt::SHORT_DATE_ID => self.locale.dates.date_formats.short.clone(),
                     NumFmt::SHORT_DATETIME_ID => locale_short_datetime_fmt(self.locale),
@@ -1958,10 +1926,7 @@ impl<'a> Model<'a> {
                         )
                     ))
                 } else {
-                    // Resolve the date format string, or None if the cell is not
-                    // date-formatted.  Locale-derived IDs (14, 22) build their
-                    // pattern from the active locale so the edit bar stays in sync
-                    // after a locale switch; literal formats use the stored string.
+                    // Locale IDs 14/22 derive the pattern from the active locale; others use stored string.
                     let date_fmt = match num_fmt_id {
                         NumFmt::SHORT_DATE_ID => {
                             Some(self.locale.dates.date_formats.short.clone())

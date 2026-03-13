@@ -745,29 +745,16 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // NOTE 1: The separator has to be the same
 // NOTE 2: In some engines "2/3" is implemented ad "2/March of the present year"
 // NOTE 3: I did not implement the "short date"
-/// Describes the number format that should be applied to a parsed value.
-///
-/// `LocaleDate` means "store as `LOCALE_SHORT_DATE_FMT_ID` (14)": the cell
-/// renders with the *current locale's* short date format rather than any
-/// literal format string.  All other formats are stored as literal strings.
-///
-/// Note: there is intentionally no `LocaleDateTime` variant here.  numFmtId 22
-/// (locale short date+time) is only ever assigned by formula evaluation (NOW,
-/// EDATE, WORKDAY, …) via `Units::LocaleDateTime` → `get_style_with_num_fmt_id`.
-/// User input never produces a bare date+time token that would resolve to ID 22,
-/// so the parse path only needs `LocaleDate`.
+/// Number format to apply when storing a parsed cell value.
+/// No `LocaleDateTime` variant: numFmtId 22 is set only by formula evaluation, not user input.
 #[derive(Debug, PartialEq)]
 pub(crate) enum NumFmtSpec {
-    /// Simple locale date — store as numFmtId 14 (`LOCALE_SHORT_DATE_FMT_ID`).
+    /// Locale short date (numFmtId 14).
     LocaleDate,
-    /// A specific literal format string (ISO dates, currency, percent, …).
+    /// A literal format string (ISO dates, currency, percent, …).
     Literal(String),
 }
 
-/// Returns the serial number for a date string together with the format hint.
-///
-/// - ISO dates (`yyyy-…`) → `Some(literal_format)` — locale-independent.
-/// - All other recognised dates → `None` — caller stores as `LOCALE_SHORT_DATE_FMT_ID`.
 fn parse_date(value: &str, locale: &Locale) -> Result<(i32, Option<String>), String> {
     let separator = if value.contains('/') {
         '/'
@@ -811,7 +798,7 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, Option<String>), Str
         Err(_) => return Err("Not a valid date".to_string()),
     };
     if is_iso_date {
-        // ISO dates are locale-independent — preserve the exact format string.
+        // ISO date — locale-independent; preserve the literal format string.
         Ok((
             serial_number,
             Some(format!(
@@ -819,26 +806,12 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, Option<String>), Str
             )),
         ))
     } else {
-        // Simple locale date: signal to the caller to store as LOCALE_SHORT_DATE_FMT_ID.
-        // The day_first / day_format values were used only for serial-number parsing;
-        // the display format is entirely locale-derived at render time.
+        // Simple locale date: caller stores as numFmtId 14.
         Ok((serial_number, None))
     }
 }
 
-/// Parses a formatted number, returning the numeric value together with a
-/// [`NumFmtSpec`] that describes how the value should be stored.
-///
-/// - `None`  → plain number, leave the cell's existing format unchanged.
-/// - `Some(NumFmtSpec::LocaleDate)`  → simple date; store as numFmtId 14.
-/// - `Some(NumFmtSpec::Literal(s))` → explicit format string (ISO dates,
-///   currency, percentage, …).
-///
-/// Examples:
-/// - `"$ 123,345.678"` → `(123345.678, Some(Literal("$#,##0.00")))`
-/// - `"30.34%"`        → `(0.3034,     Some(Literal(#,##0.00%")))`
-/// - `"11/1/2026"` (en)→ `(serial,     Some(LocaleDate))`
-/// - `"2026-11-01"`    → `(serial,     Some(Literal("yyyy-mm-dd")))`
+/// Parses a formatted number; returns the value and [`NumFmtSpec`] to apply, or `Err`.
 pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
@@ -911,9 +884,7 @@ pub(crate) fn parse_formatted_number(
     // check if it is a date. NOTE: we don't trim the original here
     if let Ok((serial_number, fmt_opt)) = parse_date(original, locale) {
         let spec = match fmt_opt {
-            // ISO date — preserve the literal format string (e.g. "yyyy-mm-dd").
             Some(fmt) => NumFmtSpec::Literal(fmt),
-            // Simple locale date — caller stores as LOCALE_SHORT_DATE_FMT_ID (14).
             None => NumFmtSpec::LocaleDate,
         };
         return Ok((serial_number as f64, Some(spec)));

@@ -94,10 +94,7 @@ impl<'a> Model<'a> {
                 cell_reference.column,
             )
             .ok()?;
-        // Check the raw numFmtId before parsing the format string.  For locale
-        // dates (ID 14/22), get_style() resolves the ID to an en-US literal like
-        // "mm-dd-yy" — relying on that string reverse-mapping back to ID 14 is a
-        // fragile coincidence.  Checking the ID explicitly is exact and cheap.
+        // Check numFmtId directly: locale IDs 14/22 may not reverse-map reliably from their string.
         match style.num_fmt.num_fmt_id {
             NumFmt::SHORT_DATE_ID => Some(Units::LocaleDate),
             NumFmt::SHORT_DATETIME_ID => Some(Units::LocaleDateTime),
@@ -382,13 +379,11 @@ impl<'a> Model<'a> {
     }
 
     fn units_fn_dates(&self, _args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
-        // Signal that the cell should use numFmtId 14 (locale short date).
-        // Exception: if the cell already has an explicit non-date format (e.g.
-        // "#,##0"), preserve it rather than overwriting with the locale date.
+        // Preserve explicit non-date formats; only apply locale date if appropriate.
         if let Ok(style) = self.get_style_for_cell(cell.sheet, cell.row, cell.column) {
             let id = style.num_fmt.num_fmt_id;
             if id != 0 && !NumFmt::is_locale_date_id(id) {
-                // Explicit format — only overwrite if it is already date-like.
+                // Only overwrite if already date-like.
                 if !matches!(
                     get_units_from_format_string(&style.num_fmt.format_code),
                     Some(Units::Date(_))
@@ -404,13 +399,14 @@ impl<'a> Model<'a> {
         // Same logic as units_fn_dates: preserve any explicit non-datetime format.
         if let Ok(style) = self.get_style_for_cell(cell.sheet, cell.row, cell.column) {
             let id = style.num_fmt.num_fmt_id;
-            if id != 0 && !NumFmt::is_locale_date_id(id) {
-                if !matches!(
+            if id != 0
+                && !NumFmt::is_locale_date_id(id)
+                && !matches!(
                     get_units_from_format_string(&style.num_fmt.format_code),
                     Some(Units::Date(_))
-                ) {
-                    return None;
-                }
+                )
+            {
+                return None;
             }
         }
         Some(Units::LocaleDateTime)
