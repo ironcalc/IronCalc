@@ -103,47 +103,6 @@ impl Worksheet {
         }
     }
 
-    pub fn set_style(&mut self, style_index: i32) -> Result<(), String> {
-        self.cols = vec![Col {
-            min: 1,
-            max: constants::LAST_COLUMN,
-            width: constants::DEFAULT_COLUMN_WIDTH,
-            custom_width: false,
-            style: Some(style_index),
-            hidden: false,
-        }];
-        Ok(())
-    }
-
-    pub fn set_column_style(&mut self, column: i32, style_index: i32) -> Result<(), String> {
-        let width = self
-            .get_column_width(column)
-            .unwrap_or(constants::DEFAULT_COLUMN_WIDTH);
-        let hidden = self.is_column_hidden(column)?;
-        self.set_column_width_and_style(column, width, hidden, Some(style_index))
-    }
-
-    pub fn set_row_style(&mut self, row: i32, style_index: i32) -> Result<(), String> {
-        // FIXME: This is a HACK
-        let custom_format = style_index != 0;
-        for r in self.rows.iter_mut() {
-            if r.r == row {
-                r.s = style_index;
-                r.custom_format = custom_format;
-                return Ok(());
-            }
-        }
-        self.rows.push(Row {
-            height: constants::DEFAULT_ROW_HEIGHT / constants::ROW_HEIGHT_FACTOR,
-            r: row,
-            custom_format,
-            custom_height: false,
-            s: style_index,
-            hidden: false,
-        });
-        Ok(())
-    }
-
     pub fn delete_row_style(&mut self, row: i32) -> Result<(), String> {
         let mut index = None;
         for (i, r) in self.rows.iter().enumerate() {
@@ -338,30 +297,6 @@ impl Worksheet {
         Ok(())
     }
 
-    /// Changes the hidden status of a row.
-    pub fn set_row_hidden(&mut self, row: i32, hidden: bool) -> Result<(), String> {
-        if !is_valid_row(row) {
-            return Err(format!("Row number '{row}' is not valid."));
-        }
-
-        let rows = &mut self.rows;
-        for r in rows.iter_mut() {
-            if r.r == row {
-                r.hidden = hidden;
-                return Ok(());
-            }
-        }
-        rows.push(Row {
-            height: constants::DEFAULT_ROW_HEIGHT / constants::ROW_HEIGHT_FACTOR,
-            r: row,
-            custom_format: false,
-            custom_height: false,
-            s: 0,
-            hidden,
-        });
-        Ok(())
-    }
-
     /// Changes the height of a row.
     ///   * If the row does not a have a style we add it.
     ///   * If it has we modify the height and make sure it is applied.
@@ -392,146 +327,6 @@ impl Worksheet {
             hidden,
         });
         Ok(())
-    }
-
-    /// Changes the width of a column.
-    ///   * If the column does not a have a width we simply add it
-    ///   * If it has, it might be part of a range and we need to split the range.
-    ///
-    /// Fails if column index is outside allowed range or width is negative.
-    pub fn set_column_width(&mut self, column: i32, width: f64) -> Result<(), String> {
-        let style = self.get_column_style(column)?;
-        let hidden = self.is_column_hidden(column)?;
-        self.set_column_width_and_style(column, width, hidden, style)
-    }
-
-    pub fn set_column_hidden(&mut self, column: i32, hidden: bool) -> Result<(), String> {
-        let width = self
-            .get_actual_column_width(column)
-            .unwrap_or(constants::DEFAULT_COLUMN_WIDTH);
-        let style = self.get_column_style(column)?;
-        self.set_column_width_and_style(column, width, hidden, style)
-    }
-
-    pub(crate) fn set_column_width_and_style(
-        &mut self,
-        column: i32,
-        width: f64,
-        hidden: bool,
-        style: Option<i32>,
-    ) -> Result<(), String> {
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
-        }
-        if width < 0.0 {
-            return Err(format!("Can not set a negative width: {width}"));
-        }
-        let cols = &mut self.cols;
-        let mut col = Col {
-            min: column,
-            max: column,
-            width: width / constants::COLUMN_WIDTH_FACTOR,
-            custom_width: width != constants::DEFAULT_COLUMN_WIDTH,
-            style,
-            hidden,
-        };
-        let mut index = 0;
-        let mut split = false;
-        for c in cols.iter_mut() {
-            let min = c.min;
-            let max = c.max;
-            if min <= column && column <= max {
-                if min == column && max == column {
-                    c.style = style;
-                    c.width = width / constants::COLUMN_WIDTH_FACTOR;
-                    c.custom_width = width != constants::DEFAULT_COLUMN_WIDTH;
-                    c.hidden = hidden;
-                    return Ok(());
-                }
-                split = true;
-                break;
-            }
-            if column < min {
-                // We passed, we should insert at index
-                break;
-            }
-            index += 1;
-        }
-        if split {
-            let min = cols[index].min;
-            let max = cols[index].max;
-            let pre = Col {
-                min,
-                max: column - 1,
-                width: cols[index].width,
-                custom_width: cols[index].custom_width,
-                style: cols[index].style,
-                hidden: cols[index].hidden,
-            };
-            let post = Col {
-                min: column + 1,
-                max,
-                width: cols[index].width,
-                custom_width: cols[index].custom_width,
-                style: cols[index].style,
-                hidden: cols[index].hidden,
-            };
-            col.style = cols[index].style;
-            cols.remove(index);
-            if column != max {
-                cols.insert(index, post);
-            }
-            cols.insert(index, col);
-            if column != min {
-                cols.insert(index, pre);
-            }
-        } else {
-            cols.insert(index, col);
-        }
-        Ok(())
-    }
-
-    /// Return the width of a column in pixels
-    pub fn get_column_width(&self, column: i32) -> Result<f64, String> {
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
-        }
-
-        let cols = &self.cols;
-        for col in cols {
-            let min = col.min;
-            let max = col.max;
-            if column >= min && column <= max {
-                if col.hidden {
-                    return Ok(0.0);
-                }
-                if col.custom_width {
-                    return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
-                }
-                break;
-            }
-        }
-        Ok(constants::DEFAULT_COLUMN_WIDTH)
-    }
-
-    /// Return the actual width of a column in pixels, ignoring hidden status
-    pub fn get_actual_column_width(&self, column: i32) -> Result<f64, String> {
-        if !is_valid_column_number(column) {
-            return Err(format!("Column number '{column}' is not valid."));
-        }
-
-        let cols = &self.cols;
-        for col in cols {
-            let min = col.min;
-            let max = col.max;
-            if column >= min && column <= max {
-                if col.custom_width {
-                    return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
-                }
-                break;
-            }
-        }
-        Ok(constants::DEFAULT_COLUMN_WIDTH)
     }
 
     /// Returns true if the column is hidden
@@ -599,24 +394,6 @@ impl Worksheet {
             }
         }
         Ok(column_cell_references)
-    }
-
-    /// Returns the height of a row in pixels
-    pub fn row_height(&self, row: i32) -> Result<f64, String> {
-        if !is_valid_row(row) {
-            return Err(format!("Row number '{row}' is not valid."));
-        }
-
-        let rows = &self.rows;
-        for r in rows {
-            if r.r == row {
-                if r.hidden {
-                    return Ok(0.0);
-                }
-                return Ok(r.height * constants::ROW_HEIGHT_FACTOR);
-            }
-        }
-        Ok(constants::DEFAULT_ROW_HEIGHT)
     }
 
     /// Returns non empty cells in a row

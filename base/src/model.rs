@@ -2002,13 +2002,14 @@ impl<'a> Model<'a> {
     /// Returns the style index for cell (`sheet`, `row`, `column`)
     pub fn get_cell_style_index(&self, sheet: u32, row: i32, column: i32) -> Result<i32, String> {
         // First check the cell, then row, the column
-        let cell = self.workbook.worksheet(sheet)?.cell(row, column);
+        let worksheet = self.workbook.worksheet(sheet)?;
+        let cell = worksheet.cell(row, column);
 
         match cell {
             Some(cell) => Ok(cell.get_style()),
             None => {
-                let rows = &self.workbook.worksheet(sheet)?.rows;
-                for r in rows {
+                // First check if the row has a style
+                for r in &worksheet.rows {
                     if r.r == row {
                         if r.custom_format {
                             return Ok(r.s);
@@ -2016,15 +2017,21 @@ impl<'a> Model<'a> {
                         break;
                     }
                 }
-                let cols = &self.workbook.worksheet(sheet)?.cols;
-                for c in cols.iter() {
+                // Then check if the column has a style
+                for c in &worksheet.cols {
                     let min = c.min;
                     let max = c.max;
                     if column >= min && column <= max {
                         return Ok(c.style.unwrap_or(0));
                     }
                 }
-                Ok(0)
+                // Then the worksheet default
+                if let Some(defaults) = &worksheet.defaults {
+                    let style_index = defaults.style_index;
+                    return Ok(style_index);
+                }
+                // Finally the workbook default style
+                Ok(self.workbook.defaults.style_index)
             }
         }
     }
@@ -2158,15 +2165,73 @@ impl<'a> Model<'a> {
     /// Returns the width of a column
     #[inline]
     pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
-        self.workbook.worksheet(sheet)?.get_column_width(column)
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        let worksheet = self.workbook.worksheet(sheet)?;
+
+        let cols = &worksheet.cols;
+        for col in cols {
+            let min = col.min;
+            let max = col.max;
+            if column >= min && column <= max {
+                if col.hidden {
+                    return Ok(0.0);
+                }
+                if col.custom_width {
+                    return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
+                }
+                break;
+            }
+        }
+        // try the default width for the worksheet if there is one
+        if let Some(defaults) = &worksheet.defaults {
+            return Ok(defaults.column_width);
+        }
+        Ok(self.workbook.defaults.column_width)
     }
 
-    /// Sets the width of a column
-    #[inline]
+    /// Return the actual width of a column in pixels, ignoring hidden status
+    pub fn get_actual_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        let worksheet = self.workbook.worksheet(sheet)?;
+
+        let cols = &worksheet.cols;
+        for col in cols {
+            let min = col.min;
+            let max = col.max;
+            if column >= min && column <= max {
+                if col.custom_width {
+                    return Ok(col.width * constants::COLUMN_WIDTH_FACTOR);
+                }
+                break;
+            }
+        }
+        // try the default width for the worksheet if there is one
+        if let Some(defaults) = &worksheet.defaults {
+            return Ok(defaults.column_width);
+        }
+        Ok(self.workbook.defaults.column_width)
+    }
+
+    /// Changes the width of a column.
+    ///   * If the column does not a have a width we simply add it
+    ///   * If it has, it might be part of a range and we need to split the range.
+    ///
+    /// Fails if column index is outside allowed range or width is negative.
     pub fn set_column_width(&mut self, sheet: u32, column: i32, width: f64) -> Result<(), String> {
-        self.workbook
-            .worksheet_mut(sheet)?
-            .set_column_width(column, width)
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        if width < 0.0 {
+            return Err(format!("Can not set a negative width: {width}"));
+        }
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        let style = worksheet.get_column_style(column)?;
+        let hidden = worksheet.is_column_hidden(column)?;
+        self.set_column_width_and_style(sheet, column, width, hidden, style)
     }
 
     /// Sets whether a column is hidden
@@ -2177,17 +2242,127 @@ impl<'a> Model<'a> {
         column: i32,
         hidden: bool,
     ) -> Result<(), String> {
-        self.workbook
-            .worksheet_mut(sheet)?
-            .set_column_hidden(column, hidden)
+        let width = self.get_actual_column_width(sheet, column)?;
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        let style_index = worksheet.get_column_style(column)?;
+        self.set_column_width_and_style(sheet, column, width, hidden, style_index)
+    }
+
+    pub(crate) fn set_column_width_and_style(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        width: f64,
+        hidden: bool,
+        style: Option<i32>,
+    ) -> Result<(), String> {
+        if !is_valid_column_number(column) {
+            return Err(format!("Column number '{column}' is not valid."));
+        }
+        if width < 0.0 {
+            return Err(format!("Can not set a negative width: {width}"));
+        }
+        let default_workbook_width = self.workbook.defaults.column_width;
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        let cols = &mut worksheet.cols;
+        let custom_width = if let Some(defaults) = &worksheet.defaults {
+            width != defaults.column_width
+        } else {
+            width != default_workbook_width
+        };
+        let mut col = Col {
+            min: column,
+            max: column,
+            width: width / constants::COLUMN_WIDTH_FACTOR,
+            custom_width,
+            style,
+            hidden,
+        };
+        let mut index = 0;
+        let mut split = false;
+        for c in cols.iter_mut() {
+            let min = c.min;
+            let max = c.max;
+            if min <= column && column <= max {
+                if min == column && max == column {
+                    c.style = style;
+                    c.width = width / constants::COLUMN_WIDTH_FACTOR;
+                    c.custom_width = custom_width;
+                    c.hidden = hidden;
+                    return Ok(());
+                }
+                split = true;
+                break;
+            }
+            if column < min {
+                // We passed, we should insert at index
+                break;
+            }
+            index += 1;
+        }
+        if split {
+            let min = cols[index].min;
+            let max = cols[index].max;
+            let pre = Col {
+                min,
+                max: column - 1,
+                width: cols[index].width,
+                custom_width: cols[index].custom_width,
+                style: cols[index].style,
+                hidden: cols[index].hidden,
+            };
+            let post = Col {
+                min: column + 1,
+                max,
+                width: cols[index].width,
+                custom_width: cols[index].custom_width,
+                style: cols[index].style,
+                hidden: cols[index].hidden,
+            };
+            col.style = cols[index].style;
+            cols.remove(index);
+            if column != max {
+                cols.insert(index, post);
+            }
+            cols.insert(index, col);
+            if column != min {
+                cols.insert(index, pre);
+            }
+        } else {
+            cols.insert(index, col);
+        }
+        Ok(())
     }
 
     /// Sets whether a row is hidden
-    #[inline]
     pub fn set_row_hidden(&mut self, sheet: u32, row: i32, hidden: bool) -> Result<(), String> {
-        self.workbook
-            .worksheet_mut(sheet)?
-            .set_row_hidden(row, hidden)
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+        let default_height = self.workbook.defaults.row_height / constants::ROW_HEIGHT_FACTOR;
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+
+        let rows = &mut worksheet.rows;
+        for r in rows.iter_mut() {
+            if r.r == row {
+                r.hidden = hidden;
+                return Ok(());
+            }
+        }
+        let height = if let Some(defaults) = &worksheet.defaults {
+            defaults.row_height / constants::ROW_HEIGHT_FACTOR
+        } else {
+            default_height
+        };
+        rows.push(Row {
+            height,
+            r: row,
+            custom_format: false,
+            custom_height: false,
+            s: 0,
+            hidden,
+        });
+        Ok(())
     }
 
     /// Returns whether a column is hidden
@@ -2205,15 +2380,81 @@ impl<'a> Model<'a> {
     /// Returns the height of a row
     #[inline]
     pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
-        self.workbook.worksheet(sheet)?.row_height(row)
+        let worksheet = self.workbook.worksheet(sheet)?;
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
+
+        let rows = &worksheet.rows;
+        for r in rows {
+            if r.r == row {
+                if r.hidden {
+                    return Ok(0.0);
+                }
+                return Ok(r.height * constants::ROW_HEIGHT_FACTOR);
+            }
+        }
+        if let Some(defaults) = &worksheet.defaults {
+            return Ok(defaults.row_height);
+        }
+        Ok(self.workbook.defaults.row_height)
     }
 
     /// Sets the height of a row
     #[inline]
-    pub fn set_row_height(&mut self, sheet: u32, column: i32, height: f64) -> Result<(), String> {
+    pub fn set_row_height(&mut self, sheet: u32, row: i32, height: f64) -> Result<(), String> {
         self.workbook
             .worksheet_mut(sheet)?
-            .set_row_height(column, height)
+            .set_row_height(row, height)
+    }
+
+    /// Sets the default height of rows in the workbook
+    #[inline]
+    pub fn set_default_row_height(&mut self, height: f64) -> Result<(), String> {
+        if height <= 0.0 {
+            return Err("Row height must be positive".to_string());
+        }
+        self.workbook.defaults.row_height = height;
+        Ok(())
+    }
+
+    /// Sets the default width of columns in the workbook
+    #[inline]
+    pub fn set_default_column_width(&mut self, width: f64) -> Result<(), String> {
+        if width <= 0.0 {
+            return Err("Column width must be positive".to_string());
+        }
+        self.workbook.defaults.column_width = width;
+        Ok(())
+    }
+
+    /// Sets the default style of cells in the workbook
+    #[inline]
+    pub fn set_default_cell_style(&mut self, style: &Style) {
+        let style_index = self.workbook.styles.get_style_index_or_create(style);
+        self.workbook.defaults.style_index = style_index;
+    }
+
+    /// Sets the default settings of a sheet
+    pub fn set_default_sheet_settings(
+        &mut self,
+        sheet: u32,
+        defaults: &Defaults,
+    ) -> Result<(), String> {
+        if defaults.column_width <= 0.0 {
+            return Err("Column width must be positive".to_string());
+        }
+        if defaults.row_height <= 0.0 {
+            return Err("Row height must be positive".to_string());
+        }
+        self.workbook.worksheet_mut(sheet)?.defaults = Some(defaults.clone());
+        Ok(())
+    }
+
+    /// Clears the default settings of a sheet
+    pub fn clear_default_sheet_settings(&mut self, sheet: u32) -> Result<(), String> {
+        self.workbook.worksheet_mut(sheet)?.defaults = None;
+        Ok(())
     }
 
     /// Adds a new defined name
@@ -2424,17 +2665,59 @@ impl<'a> Model<'a> {
         style: &Style,
     ) -> Result<(), String> {
         let style_index = self.workbook.styles.get_style_index_or_create(style);
-        self.workbook
-            .worksheet_mut(sheet)?
-            .set_column_style(column, style_index)
+        self.set_column_style_by_index(sheet, column, style_index)
     }
 
     /// Sets a row with style
     pub fn set_row_style(&mut self, sheet: u32, row: i32, style: &Style) -> Result<(), String> {
         let style_index = self.workbook.styles.get_style_index_or_create(style);
-        self.workbook
-            .worksheet_mut(sheet)?
-            .set_row_style(row, style_index)
+        self.set_row_style_by_index(sheet, row, style_index)
+    }
+
+    fn set_column_style_by_index(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        style_index: i32,
+    ) -> Result<(), String> {
+        let width = self.get_column_width(sheet, column)?;
+        let hidden = self.is_column_hidden(sheet, column)?;
+        self.set_column_width_and_style(sheet, column, width, hidden, Some(style_index))
+    }
+
+    /// Sets a row with style index
+    pub fn set_row_style_by_index(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        style_index: i32,
+    ) -> Result<(), String> {
+        // FIXME: This is a HACK
+        let custom_format = style_index != 0;
+        let workbook_default_row_height =
+            self.workbook.defaults.row_height / constants::ROW_HEIGHT_FACTOR;
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        for r in worksheet.rows.iter_mut() {
+            if r.r == row {
+                r.s = style_index;
+                r.custom_format = custom_format;
+                return Ok(());
+            }
+        }
+        let height = if let Some(defaults) = &worksheet.defaults {
+            defaults.row_height / constants::ROW_HEIGHT_FACTOR
+        } else {
+            workbook_default_row_height
+        };
+        worksheet.rows.push(Row {
+            height,
+            r: row,
+            custom_format,
+            custom_height: false,
+            s: style_index,
+            hidden: false,
+        });
+        Ok(())
     }
 
     /// Deletes the style of a column if the is any

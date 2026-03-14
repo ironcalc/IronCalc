@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { IronCalcLogo } from "../../icons";
 import { theme } from "../../theme";
 import { NAVIGATION_HEIGHT } from "../constants";
-import { getLocaleDisplayName } from "../RightDrawer/RegionalSettings/RegionalSettings";
+import { getLocaleDisplayName } from "../RightDrawer/WorkbookSettings/WorkbookSettings";
 import { StyledButton } from "../Toolbar/Toolbar";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
@@ -92,7 +92,7 @@ function SheetTabBar(props: SheetTabBarProps) {
         </SheetInner>
       </Sheets>
       <RightContainer>
-        <Tooltip title={t("regional_settings.open_regional_settings")}>
+        <Tooltip title={t("workbook_settings.open_workbook_settings")}>
           <RegionalSettingsButton
             $pressed={false}
             onClick={() => {
@@ -102,7 +102,7 @@ function SheetTabBar(props: SheetTabBarProps) {
             {getLocaleDisplayName(props.model.getLocale())}
             <TextDivider />
             {t(
-              `regional_settings.language.display_language.${props.model.getLanguage()}`,
+              `workbook_settings.language.display_language.${props.model.getLanguage()}`,
             )}
           </RegionalSettingsButton>
         </Tooltip>

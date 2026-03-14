@@ -173,9 +173,9 @@
     "resize_drawer": "Cambiar tamaño del panel",
     "close": "Cerrar"
   },
-  "regional_settings": {
-    "open_regional_settings": "Abrir configuración regional",
-    "title": "Configuración regional",
+  "workbook_settings": {
+    "open_workbook_settings": "Abrir configuración de la hoja de cálculo",
+    "title": "Configuración de la hoja de cálculo",
     "close": "Cerrar diálogo",
     "locale": {
       "title": "Configuración regional",
@@ -209,6 +209,58 @@
       "title": "Zona horaria",
       "timezone_label": "Zona horaria",
       "timezone_helper": "Modificar esta configuración afectará a las funciones relacionadas con fecha y hora, incluyendo HOY() y AHORA()."
+    },
+    "defaults": {
+      "title": "Valores predeterminados",
+      "column_width": {
+        "column_width": "Ancho de columna predeterminado",
+        "column_width_helper": "Establece el ancho predeterminado para las nuevas columnas. Esto no afecta a las columnas existentes."
+      },
+      "row_height": {
+        "row_height": "Altura de fila predeterminada",
+        "row_height_helper": "Establece la altura predeterminada para las nuevas filas. Esto no afecta a las filas existentes."
+      },
+      "font_size": {
+        "font_size": "Tamaño de fuente predeterminado",
+        "font_size_helper": "Establece el tamaño de fuente predeterminado para las celdas. Esto no afecta a las celdas existentes."
+      },
+      "text_color": {
+        "text_color": "Color de texto predeterminado",
+        "text_color_helper": "Establece el color de texto predeterminado para las celdas. Esto no afecta a las celdas existentes."
+      },
+      "background_color": {
+        "background_color": "Color de fondo predeterminado",
+        "background_color_helper": "Establece el color de fondo predeterminado para las celdas. Esto no afecta a las celdas existentes."
+      }
+    }
+  },
+  "worksheet_settings": {
+    "open_worksheet_settings": "Abrir configuración de la hoja de cálculo",
+    "title": "Configuración de la hoja de cálculo",
+    "close": "Cerrar diálogo",
+    "defaults": {
+      "title": "Valores predeterminados",
+      "use_workbook_defaults": "Usar valores predeterminados de la hoja de cálculo",
+      "column_width": {
+        "column_width": "Ancho de columna predeterminado",
+        "column_width_helper": "Establece el ancho predeterminado para las nuevas columnas en la hoja de cálculo. Esto no afecta a las columnas existentes."
+      },
+      "row_height": {
+        "row_height": "Altura de fila predeterminada",
+        "row_height_helper": "Establece la altura predeterminada para las nuevas filas en la hoja de cálculo. Esto no afecta a las filas existentes."
+      },
+      "font_size": {
+        "font_size": "Tamaño de fuente predeterminado",
+        "font_size_helper": "Establece el tamaño de fuente predeterminado para las celdas en la hoja de cálculo. Esto no afecta a las celdas existentes."
+      },
+      "text_color": {
+        "text_color": "Color de texto predeterminado",
+        "text_color_helper": "Establece el color de texto predeterminado para las celdas en la hoja de cálculo. Esto no afecta a las celdas existentes."
+      },
+      "background_color": {
+        "background_color": "Color de fondo predeterminado",
+        "background_color_helper": "Establece el color de fondo predeterminado para las celdas en la hoja de cálculo. Esto no afecta a las celdas existentes."
+      }
     }
   }
 }

@@ -5,13 +5,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Cell C5
     let (sheet, row, column) = (0, 5, 3);
     // Make the first column 4 times as width
-    let worksheet = model.workbook.worksheet_mut(sheet)?;
-    let column_width = worksheet.get_column_width(column)? * 4.0;
-    worksheet.set_column_width(column, column_width)?;
+    let column_width = model.get_column_width(sheet, column)? * 4.0;
+    model.set_column_width(sheet, column, column_width)?;
 
     // and the first row twice as high.
-    let row_height = worksheet.row_height(row)? * 2.0;
-    worksheet.set_row_height(row, row_height)?;
+    let row_height = model.get_row_height(sheet, row)? * 2.0;
+    model.set_row_height(sheet, row, row_height)?;
 
     // saves to disk
     save_to_xlsx(&model, "widths-and-heights.xlsx")?;

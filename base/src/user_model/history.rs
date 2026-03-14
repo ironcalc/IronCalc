@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
 
-use crate::types::{Cell, Col, Row, SheetState, Style, Worksheet};
+use crate::types::{Cell, Col, Defaults, Row, SheetState, Style, Worksheet};
 
 #[derive(Clone, Encode, Decode)]
 pub(crate) struct RowData {
@@ -70,6 +70,27 @@ pub(crate) enum Diff {
         row: i32,
         new_value: f64,
         old_value: f64,
+    },
+    SetDefaultRowHeight {
+        new_value: f64,
+        old_value: f64,
+    },
+    SetDefaultColumnWidth {
+        new_value: f64,
+        old_value: f64,
+    },
+    SetDefaultCellStyle {
+        new_value: Box<Style>,
+        old_value: Box<Style>,
+    },
+    SetSheetDefaults {
+        sheet: u32,
+        old_value: Box<Option<Defaults>>,
+        new_value: Box<Defaults>,
+    },
+    ClearSheetDefaults {
+        sheet: u32,
+        old_value: Box<Option<Defaults>>,
     },
     SetRowHidden {
         sheet: u32,

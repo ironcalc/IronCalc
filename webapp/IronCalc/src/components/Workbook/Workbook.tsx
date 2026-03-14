@@ -177,6 +177,31 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   };
 
   const fmtSettings = model.getFmtSettings();
+  const worksheetSettings = (() => {
+    const selectedSheet = model.getSelectedSheet();
+    const worksheetSettings = model.getDefaultSheetSettings(selectedSheet);
+    if (worksheetSettings) {
+      const style = worksheetSettings.style;
+      return {
+        useWorkbook: false,
+        defaultColumnWidth: worksheetSettings.column_width,
+        defaultRowHeight: worksheetSettings.row_height,
+        defaultFontSize: style.font.sz,
+        defaultTextColor: style.font.color,
+        defaultBackgroundColor: style.fill.fg_color ?? "",
+      };
+    } else {
+      const style = model.getDefaultCellStyle();
+      return {
+        useWorkbook: true,
+        defaultColumnWidth: model.getDefaultColumnWidth(),
+        defaultRowHeight: model.getDefaultRowHeight(),
+        defaultFontSize: style.font.sz,
+        defaultTextColor: style.font.color,
+        defaultBackgroundColor: style.fill.fg_color ?? "",
+      };
+    }
+  })();
 
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
   // the Rust end
@@ -708,6 +733,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             setRedrawId((id) => id + 1);
           }}
           ref={worksheetRef}
+          onAllSheetSelected={() => {
+            openDrawer("worksheetSettings");
+          }}
         />
 
         <SheetTabBar
@@ -754,7 +782,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             setRedrawId((value) => value + 1);
           }}
           onOpenRegionalSettings={() => {
-            openDrawer("regionalSettings");
+            openDrawer("workbookSettings");
           }}
           model={model}
         />
@@ -776,14 +804,83 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           return getFullRangeToString(selectedView, worksheetNames);
         }}
         drawerType={drawerType}
-        initialLocale={model.getLocale()}
-        initialTimezone={model.getTimezone()}
-        initialLanguage={model.getLanguage()}
-        onSettingsSave={(locale, timezone, language) => {
-          model.setLocale(locale);
-          model.setTimezone(timezone);
-          model.setLanguage(language);
+        settings={(() => {
+          const style = model.getDefaultCellStyle();
+          return {
+            locale: model.getLocale(),
+            timezone: model.getTimezone(),
+            language: model.getLanguage(),
+            defaultColumnWidth: model.getDefaultColumnWidth(),
+            defaultRowHeight: model.getDefaultRowHeight(),
+            defaultFontSize: style.font.sz,
+            defaultTextColor: style.font.color,
+            defaultBackgroundColor: style.fill.fg_color ?? "",
+          };
+        })()}
+        onSettingsSave={(settings) => {
+          model.setLocale(settings.locale);
+          model.setTimezone(settings.timezone);
+          model.setLanguage(settings.language);
+          model.setDefaultColumnWidth(settings.defaultColumnWidth);
+          model.setDefaultRowHeight(settings.defaultRowHeight);
+
+          const style = model.getDefaultCellStyle();
+          style.font.sz = settings.defaultFontSize;
+          style.font.color = settings.defaultTextColor;
+          style.fill.fg_color = settings.defaultBackgroundColor;
+          model.setDefaultCellStyle(style);
+
           setRedrawId((id) => id + 1);
+        }}
+        worksheetSettings={worksheetSettings}
+        worksheetSettingsSave={{
+          onColumnWidthChange: (width) => {
+            const selectedSheet = model.getSelectedSheet();
+            model.setDefaultSheetColumnWidth(selectedSheet, width);
+            setRedrawId((id) => id + 1);
+          },
+          onRowHeightChange: (height) => {
+            const selectedSheet = model.getSelectedSheet();
+            model.setDefaultSheetRowHeight(selectedSheet, height);
+            setRedrawId((id) => id + 1);
+          },
+          onFontSizeChange: (fontSize) => {
+            const selectedSheet = model.getSelectedSheet();
+            const settings = model.getDefaultSheetSettings(selectedSheet);
+            const style = settings
+              ? settings.style
+              : model.getDefaultCellStyle();
+            style.font.sz = fontSize;
+            model.setDefaultSheetCellStyle(selectedSheet, style);
+            setRedrawId((id) => id + 1);
+          },
+          onTextColorChange: (color) => {
+            const selectedSheet = model.getSelectedSheet();
+            const settings = model.getDefaultSheetSettings(selectedSheet);
+            const style = settings
+              ? settings.style
+              : model.getDefaultCellStyle();
+            style.font.color = color;
+            model.setDefaultSheetCellStyle(selectedSheet, style);
+            setRedrawId((id) => id + 1);
+          },
+          onBackgroundColorChange: (color) => {
+            const selectedSheet = model.getSelectedSheet();
+            const settings = model.getDefaultSheetSettings(selectedSheet);
+            const style = settings
+              ? settings.style
+              : model.getDefaultCellStyle();
+            style.fill.fg_color = color;
+            model.setDefaultSheetCellStyle(selectedSheet, style);
+            setRedrawId((id) => id + 1);
+          },
+          onUseWorkbookChange: (useWorkbook) => {
+            const selectedSheet = model.getSelectedSheet();
+            if (useWorkbook) {
+              model.clearDefaultSheetSettings(selectedSheet);
+            }
+            setRedrawId((id) => id + 1);
+          },
         }}
       />
     </Container>

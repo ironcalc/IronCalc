@@ -35,6 +35,13 @@ pub type ClipboardData = HashMap<i32, HashMap<i32, ClipboardCell>>;
 pub type ClipboardTuple = (i32, i32, i32, i32);
 
 #[derive(Serialize, Deserialize)]
+pub struct DefaultWorksheetSettings {
+    pub row_height: f64,
+    pub column_width: f64,
+    pub style: Style,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct ClipboardCell {
     text: String,
     style: Style,
@@ -1334,6 +1341,151 @@ impl<'a> UserModel<'a> {
         self.model.get_column_width(sheet, column)
     }
 
+    /// Sets the default height of rows in the workbook
+    pub fn set_default_row_height(&mut self, height: f64) -> Result<(), String> {
+        let old_value = self.model.workbook.defaults.row_height;
+        self.model.set_default_row_height(height)?;
+        self.push_diff_list(vec![Diff::SetDefaultRowHeight {
+            new_value: height,
+            old_value,
+        }]);
+        Ok(())
+    }
+
+    /// Sets the default width of columns in the workbook
+    pub fn set_default_column_width(&mut self, width: f64) -> Result<(), String> {
+        let old_value = self.model.workbook.defaults.column_width;
+        self.model.set_default_column_width(width)?;
+        self.push_diff_list(vec![Diff::SetDefaultColumnWidth {
+            new_value: width,
+            old_value,
+        }]);
+        Ok(())
+    }
+
+    /// Gets the default height of rows in the workbook
+    pub fn get_default_row_height(&self) -> f64 {
+        self.model.workbook.defaults.row_height
+    }
+
+    /// Gets the default width of columns in the workbook
+    pub fn get_default_column_width(&self) -> f64 {
+        self.model.workbook.defaults.column_width
+    }
+
+    /// Sets the default style of cells in the workbook
+    pub fn set_default_cell_style(&mut self, style: &Style) -> Result<(), String> {
+        let old_style_index = self.model.workbook.defaults.style_index;
+        let old_value = self.model.workbook.styles.get_style(old_style_index)?;
+        self.model.set_default_cell_style(style);
+        self.push_diff_list(vec![Diff::SetDefaultCellStyle {
+            new_value: Box::new(style.clone()),
+            old_value: Box::new(old_value),
+        }]);
+        Ok(())
+    }
+
+    /// Gets the default style of cells in the workbook
+    pub fn get_default_cell_style(&self) -> Style {
+        let style_index = self.model.workbook.defaults.style_index;
+        self.model
+            .workbook
+            .styles
+            .get_style(style_index)
+            .unwrap_or_default()
+    }
+
+    /// Sets the default height of rows in a sheet
+    pub fn set_default_sheet_row_height(&mut self, sheet: u32, height: f64) -> Result<(), String> {
+        let old_value = self.model.workbook.worksheet(sheet)?.defaults.clone();
+        let mut new_value = match old_value {
+            Some(ref d) => d.clone(),
+            None => self.model.workbook.defaults.clone(),
+        };
+        new_value.row_height = height;
+        self.model.set_default_sheet_settings(sheet, &new_value)?;
+        self.push_diff_list(vec![Diff::SetSheetDefaults {
+            sheet,
+            old_value: Box::new(old_value),
+            new_value: Box::new(new_value),
+        }]);
+        Ok(())
+    }
+
+    /// Sets the default width of columns in a sheet
+    pub fn set_default_sheet_column_width(&mut self, sheet: u32, width: f64) -> Result<(), String> {
+        let old_value = self.model.workbook.worksheet(sheet)?.defaults.clone();
+        let mut new_value = match old_value {
+            Some(ref d) => d.clone(),
+            None => self.model.workbook.defaults.clone(),
+        };
+        new_value.column_width = width;
+        self.model.set_default_sheet_settings(sheet, &new_value)?;
+        self.push_diff_list(vec![Diff::SetSheetDefaults {
+            sheet,
+            old_value: Box::new(old_value),
+            new_value: Box::new(new_value),
+        }]);
+        Ok(())
+    }
+
+    /// Sets the default style of cells in a sheet
+    pub fn set_default_sheet_cell_style(
+        &mut self,
+        sheet: u32,
+        style: &Style,
+    ) -> Result<(), String> {
+        let old_value = self.model.workbook.worksheet(sheet)?.defaults.clone();
+        let mut new_value = match old_value {
+            Some(ref d) => d.clone(),
+            None => self.model.workbook.defaults.clone(),
+        };
+        let style_index = self.model.workbook.styles.get_style_index_or_create(style);
+        new_value.style_index = style_index;
+
+        self.model.set_default_sheet_settings(sheet, &new_value)?;
+        self.push_diff_list(vec![Diff::SetSheetDefaults {
+            sheet,
+            new_value: Box::new(new_value),
+            old_value: Box::new(old_value),
+        }]);
+        Ok(())
+    }
+
+    /// Clears the default settings of a sheet
+    pub fn clear_default_sheet_settings(&mut self, sheet: u32) -> Result<(), String> {
+        let old_value = self.model.workbook.worksheet(sheet)?.defaults.clone();
+        self.model.clear_default_sheet_settings(sheet)?;
+        self.push_diff_list(vec![Diff::ClearSheetDefaults {
+            sheet,
+            old_value: Box::new(old_value),
+        }]);
+        Ok(())
+    }
+
+    /// Gets the default settings of a sheet
+    pub fn get_default_sheet_settings(
+        &self,
+        sheet: u32,
+    ) -> Result<Option<DefaultWorksheetSettings>, String> {
+        if let Some(d) = &self.model.workbook.worksheet(sheet)?.defaults {
+            let default_style = self
+                .model
+                .workbook
+                .styles
+                .get_style(d.style_index)
+                .unwrap_or_default();
+            let defaults_with_style = DefaultWorksheetSettings {
+                row_height: d.row_height,
+                column_width: d.column_width,
+                style: default_style,
+            };
+            Ok(Some(defaults_with_style))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Returns the number of frozen rows in the sheet
     ///
     /// See also:
@@ -2467,17 +2619,18 @@ impl<'a> UserModel<'a> {
                     needs_evaluation = true;
                     self.model
                         .insert_columns(*sheet, *column, old_data.len() as i32)?;
-                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     for (i, col_data) in old_data.iter().enumerate() {
                         let c = *column + i as i32;
                         for (row, cell) in &col_data.data {
+                            let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                             worksheet.update_cell(*row, c, cell.clone())?;
                         }
                         if let Some(col) = &col_data.column {
                             let width = col.width * constants::COLUMN_WIDTH_FACTOR;
                             let style = col.style;
                             let hidden = col.hidden;
-                            worksheet.set_column_width_and_style(c, width, hidden, style)?;
+                            self.model
+                                .set_column_width_and_style(*sheet, c, width, hidden, style)?;
                         }
                     }
                 }
@@ -2660,6 +2813,44 @@ impl<'a> UserModel<'a> {
                     new_value: _,
                 } => {
                     self.model.set_timezone(old_value)?;
+                }
+                Diff::SetDefaultRowHeight {
+                    new_value: _,
+                    old_value,
+                } => {
+                    self.model.set_default_row_height(*old_value)?;
+                }
+                Diff::SetDefaultColumnWidth {
+                    new_value: _,
+                    old_value,
+                } => {
+                    self.model.set_default_column_width(*old_value)?;
+                }
+                Diff::SetDefaultCellStyle {
+                    new_value: _,
+                    old_value,
+                } => {
+                    self.model.set_default_cell_style(old_value);
+                }
+                Diff::ClearSheetDefaults { sheet, old_value } => {
+                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
+                    if let Some(old_value) = old_value.as_ref() {
+                        worksheet.defaults = Some(old_value.clone());
+                    } else {
+                        worksheet.defaults = None;
+                    }
+                }
+                Diff::SetSheetDefaults {
+                    sheet,
+                    new_value: _,
+                    old_value,
+                } => {
+                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
+                    if let Some(old_value) = old_value.as_ref() {
+                        worksheet.defaults = Some(old_value.clone());
+                    } else {
+                        worksheet.defaults = None;
+                    }
                 }
             }
         }
@@ -2907,6 +3098,38 @@ impl<'a> UserModel<'a> {
                     new_value,
                 } => {
                     self.model.set_timezone(new_value)?;
+                }
+                Diff::SetDefaultRowHeight {
+                    new_value,
+                    old_value: _,
+                } => {
+                    self.model.set_default_row_height(*new_value)?;
+                }
+                Diff::SetDefaultColumnWidth {
+                    new_value,
+                    old_value: _,
+                } => {
+                    self.model.set_default_column_width(*new_value)?;
+                }
+                Diff::SetDefaultCellStyle {
+                    new_value,
+                    old_value: _,
+                } => {
+                    self.model.set_default_cell_style(new_value);
+                }
+                Diff::SetSheetDefaults {
+                    sheet,
+                    new_value,
+                    old_value: _,
+                } => {
+                    self.model.set_default_sheet_settings(*sheet, new_value)?;
+                }
+                Diff::ClearSheetDefaults {
+                    sheet,
+                    old_value: _,
+                } => {
+                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
+                    worksheet.defaults = None;
                 }
             }
         }

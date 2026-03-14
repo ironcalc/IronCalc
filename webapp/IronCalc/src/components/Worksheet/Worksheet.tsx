@@ -48,6 +48,7 @@ const Worksheet = forwardRef(
       model: Model;
       workbookState: WorkbookState;
       refresh: () => void;
+      onAllSheetSelected: () => void;
     },
     ref,
   ) => {
@@ -136,6 +137,11 @@ const Worksheet = forwardRef(
           let columnEnd = column;
           const fullColumn = range[0] === 1 && range[2] === LAST_ROW;
           const fullRow = range[1] === 1 && range[3] === LAST_COLUMN;
+          if (fullColumn && fullRow) {
+            model.setDefaultSheetColumnWidth(sheet, width);
+            worksheetCanvas.current?.renderSheet();
+            return;
+          }
           if (
             fullColumn &&
             column >= range[1] &&
@@ -157,6 +163,11 @@ const Worksheet = forwardRef(
           let rowEnd = row;
           const fullColumn = range[0] === 1 && range[2] === LAST_ROW;
           const fullRow = range[1] === 1 && range[3] === LAST_COLUMN;
+          if (fullRow && fullColumn) {
+            model.setDefaultSheetRowHeight(sheet, height);
+            worksheetCanvas.current?.renderSheet();
+            return;
+          }
           if (fullRow && row >= range[0] && row <= range[2] && !fullColumn) {
             rowStart = Math.min(range[0], row, range[2]);
             rowEnd = Math.max(range[0], row, range[2]);
@@ -224,9 +235,7 @@ const Worksheet = forwardRef(
         refresh();
       },
       onAllSheetSelected: () => {
-        model.setSelectedCell(1, 1);
-        model.setSelectedRange(1, 1, LAST_ROW, LAST_COLUMN);
-        refresh();
+        props.onAllSheetSelected();
       },
       onCellSelected: (cell: Cell, event: React.MouseEvent) => {
         event.preventDefault();

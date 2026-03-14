@@ -190,6 +190,12 @@ interface Alignment {
   wrap_text: boolean;
 }
 
+export interface SheetSettings {
+  style: CellStyle;
+  column_width: number;
+  row_height: number;
+}
+
 export interface CellStyle {
   read_only: boolean;
   quote_prefix: boolean;

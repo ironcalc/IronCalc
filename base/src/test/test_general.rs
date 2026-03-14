@@ -106,24 +106,26 @@ fn test_get_sheet_index_by_sheet_id() {
 #[test]
 fn test_set_row_height() {
     let mut model = new_empty_model();
+    {
+        let worksheet = model.workbook.worksheet_mut(0).unwrap();
+        worksheet.set_row_height(5, 25.0).unwrap();
+        assert!((25.0 - model.get_row_height(0, 5).unwrap()).abs() < f64::EPSILON);
+    }
+    {
+        let worksheet = model.workbook.worksheet_mut(0).unwrap();
+        worksheet.set_row_height(5, 5.0).unwrap();
+        assert!((5.0 - model.get_row_height(0, 5).unwrap()).abs() < f64::EPSILON);
+    }
+    {
+        let worksheet = model.workbook.worksheet_mut(0).unwrap();
+        let result = worksheet.set_row_height(6, -1.0);
+        assert_eq!(result, Err("Can not set a negative height: -1".to_string()));
+    }
+
+    assert_eq!(model.get_row_height(0, 6).unwrap(), DEFAULT_ROW_HEIGHT);
     let worksheet = model.workbook.worksheet_mut(0).unwrap();
-    worksheet.set_row_height(5, 25.0).unwrap();
-    let worksheet = model.workbook.worksheet(0).unwrap();
-    assert!((25.0 - worksheet.row_height(5).unwrap()).abs() < f64::EPSILON);
-
-    let worksheet = model.workbook.worksheet_mut(0).unwrap();
-    worksheet.set_row_height(5, 5.0).unwrap();
-    let worksheet = model.workbook.worksheet(0).unwrap();
-    assert!((5.0 - worksheet.row_height(5).unwrap()).abs() < f64::EPSILON);
-
-    let worksheet = model.workbook.worksheet_mut(0).unwrap();
-    let result = worksheet.set_row_height(6, -1.0);
-    assert_eq!(result, Err("Can not set a negative height: -1".to_string()));
-
-    assert_eq!(worksheet.row_height(6).unwrap(), DEFAULT_ROW_HEIGHT);
-
     worksheet.set_row_height(6, 0.0).unwrap();
-    assert_eq!(worksheet.row_height(6).unwrap(), 0.0);
+    assert_eq!(model.get_row_height(0, 6).unwrap(), 0.0);
 }
 
 #[test]

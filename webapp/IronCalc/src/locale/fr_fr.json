@@ -173,9 +173,9 @@
     "resize_drawer": "Redimensionner le panneau",
     "close": "Fermer"
   },
-  "regional_settings": {
-    "open_regional_settings": "Ouvrir les paramètres régionaux",
-    "title": "Paramètres régionaux",
+  "workbook_settings": {
+    "open_workbook_settings": "Ouvrir les paramètres de la feuille de calcul",
+    "title": "Paramètres de la feuille de calcul",
     "close": "Fermer la boîte de dialogue",
     "locale": {
       "title": "Paramètres régionaux",
@@ -209,6 +209,58 @@
       "title": "Fuseau horaire",
       "timezone_label": "Fuseau horaire",
       "timezone_helper": "Modifier ce paramètre aura un impact sur les fonctions liées à la date et à l’heure, y compris AUJOURDHUI() et MAINTENANT()."
+    },
+    "defaults": {
+      "title": "Paramètres par défaut",
+      "column_width": {
+        "column_width": "Largeur de colonne par défaut",
+        "column_width_helper": "Définir la largeur par défaut pour les nouvelles colonnes. Cela n'affecte pas les colonnes existantes."
+      },
+      "row_height": {
+        "row_height": "Hauteur de ligne par défaut",
+        "row_height_helper": "Définir la hauteur par défaut pour les nouvelles lignes. Cela n'affecte pas les lignes existantes."
+      },
+      "font_size": {
+        "font_size": "Taille de police par défaut",
+        "font_size_helper": "Définir la taille de police par défaut pour les cellules. Cela n'affecte pas les cellules existantes."
+      },
+      "text_color": {
+        "text_color": "Couleur de texte par défaut",
+        "text_color_helper": "Définir la couleur de texte par défaut pour les cellules. Cela n'affecte pas les cellules existantes."
+      },
+      "background_color": {
+        "background_color": "Couleur de fond par défaut",
+        "background_color_helper": "Définir la couleur de fond par défaut pour les cellules. Cela n'affecte pas les cellules existantes."
+      }
+    }
+  },
+  "worksheet_settings": {
+    "open_worksheet_settings": "Ouvrir les paramètres de la feuille de calcul",
+    "title": "Paramètres de la feuille de calcul",
+    "close": "Fermer la boîte de dialogue",
+    "defaults": {
+      "title": "Paramètres par défaut",
+      "use_workbook_defaults": "Utiliser les paramètres par défaut du classeur",
+      "column_width": {
+        "column_width": "Largeur de colonne par défaut",
+        "column_width_helper": "Définir la largeur par défaut pour les nouvelles colonnes dans la feuille de calcul. Cela n'affecte pas les colonnes existantes."
+      },
+      "row_height": {
+        "row_height": "Hauteur de ligne par défaut",
+        "row_height_helper": "Définir la hauteur par défaut pour les nouvelles lignes dans la feuille de calcul. Cela n'affecte pas les lignes existantes."
+      },
+      "font_size": {
+        "font_size": "Taille de police par défaut",
+        "font_size_helper": "Définir la taille de police par défaut pour les cellules dans la feuille de calcul. Cela n'affecte pas les cellules existantes."
+      },
+      "text_color": {
+        "text_color": "Couleur de texte par défaut",
+        "text_color_helper": "Définir la couleur de texte par défaut pour les cellules dans la feuille de calcul. Cela n'affecte pas les cellules existantes."
+      },
+      "background_color": {
+        "background_color": "Couleur de fond par défaut",
+        "background_color_helper": "Définir la couleur de fond par défaut pour les cellules dans la feuille de calcul. Cela n'affecte pas les cellules existantes."
+      }
     }
   }
 }
