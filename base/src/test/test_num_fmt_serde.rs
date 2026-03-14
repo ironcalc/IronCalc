@@ -2,10 +2,6 @@
 
 use crate::types::NumFmt;
 
-// ---------------------------------------------------------------------------
-// Deserialization — legacy string form (pre-NumFmt-struct era)
-// ---------------------------------------------------------------------------
-
 #[test]
 fn deser_legacy_string_builtin() {
     // "mm-dd-yy" is ECMA-376 built-in ID 14 — must round-trip to the canonical ID.
@@ -26,15 +22,11 @@ fn deser_legacy_string_custom() {
 
 #[test]
 fn deser_legacy_string_general() {
-    let json = r#""general""#;
+    let json = r#""General""#;
     let fmt: NumFmt = serde_json::from_str(json).unwrap();
     assert_eq!(fmt.num_fmt_id, 0);
-    assert_eq!(fmt.format_code, "general");
+    assert_eq!(fmt.format_code, "General");
 }
-
-// ---------------------------------------------------------------------------
-// Deserialization — current struct form
-// ---------------------------------------------------------------------------
 
 #[test]
 fn deser_struct_form() {
@@ -47,15 +39,11 @@ fn deser_struct_form() {
 #[test]
 fn deser_struct_extra_fields_ignored() {
     // Forward-compat: unknown fields must not cause an error.
-    let json = r#"{"num_fmt_id":0,"format_code":"general","future_field":true}"#;
+    let json = r#"{"num_fmt_id":0,"format_code":"General","future_field":true}"#;
     let fmt: NumFmt = serde_json::from_str(json).unwrap();
     assert_eq!(fmt.num_fmt_id, 0);
-    assert_eq!(fmt.format_code, "general");
+    assert_eq!(fmt.format_code, "General");
 }
-
-// ---------------------------------------------------------------------------
-// Serialization — target: emit format_code string only (fails until Task 2)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn ser_emits_format_code_string() {
@@ -64,12 +52,8 @@ fn ser_emits_format_code_string() {
     assert_eq!(json, r#""mm-dd-yy""#);
 }
 
-// ---------------------------------------------------------------------------
-// Round-trip: serialize → deserialize → same value
-// ---------------------------------------------------------------------------
 // NOTE: This test passes with both the old struct-emit serializer and the new
 // string-emit serializer (Task 2), since the deserializer accepts both forms.
-
 #[test]
 fn round_trip_builtin() {
     let original = NumFmt::new(14, "mm-dd-yy".to_string());
@@ -86,10 +70,6 @@ fn round_trip_general() {
     let restored: NumFmt = serde_json::from_str(&json).unwrap();
     assert_eq!(restored.num_fmt_id, original.num_fmt_id);
 }
-
-// ---------------------------------------------------------------------------
-// Validation — struct form with inconsistent id/code
-// ---------------------------------------------------------------------------
 
 #[test]
 fn deser_struct_inconsistent_id_falls_back_to_code() {
@@ -110,10 +90,6 @@ fn deser_struct_missing_format_code_is_error() {
     let result: Result<NumFmt, _> = serde_json::from_str(json);
     assert!(result.is_err());
 }
-
-// ---------------------------------------------------------------------------
-// Validation — custom format codes with stored_id in/out of ECMA custom range
-// ---------------------------------------------------------------------------
 
 #[test]
 fn deser_rejects_builtin_range_id_for_custom_format_code() {

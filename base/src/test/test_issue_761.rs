@@ -5,11 +5,7 @@
 // Root cause: `get_localized_cell_content` (edit bar) and `get_formatted_cell_value`
 // (grid) both used the stored format string rather than the locale's own short-date
 // pattern. In a day-first locale (e.g. en-GB) the edit bar would show a month-first
-// string; pressing Enter would then mis-parse the date and corrupt it.
-//
-// Fix: simple locale dates are stored with numFmtId 14 (`NumFmt::LOCALE_DATE_ID`).
-// Both render functions detect ID 14 and derive the format from
-// `locale.dates.date_formats.short` at runtime.
+// string.
 
 use crate::{
     cell::CellValue, model::Model, number_format::DefaultFmts, test::util::new_empty_model,
@@ -349,7 +345,7 @@ fn date_fn_locale_switch_updates_display() {
 
 #[test]
 fn num_fmt_builtin_format_code_resolves_canonical_id() {
-    let general = NumFmt::from_format_code("general");
+    let general = NumFmt::from_format_code("General");
     assert_eq!(general.num_fmt_id, 0, "\"general\" must map to numFmtId 0");
 
     let locale_date = NumFmt::from_format_code("mm-dd-yy");
@@ -410,7 +406,7 @@ fn get_style_with_format_no_duplicate_cell_xfs() {
 fn resolve_code_returns_correct_code() {
     let num_fmts = vec![NumFmt::new(164, "dd/mm/yyyy hh:mm:ss".to_string())];
 
-    assert_eq!(NumFmt::format_code_for_id(0, &num_fmts), "general");
+    assert_eq!(NumFmt::format_code_for_id(0, &num_fmts), "General");
     assert_eq!(NumFmt::format_code_for_id(9, &num_fmts), "0%");
     assert_eq!(
         NumFmt::format_code_for_id(DefaultFmts::SHORT_DATE_ID, &num_fmts),
@@ -420,12 +416,12 @@ fn resolve_code_returns_correct_code() {
         NumFmt::format_code_for_id(164, &num_fmts),
         "dd/mm/yyyy hh:mm:ss"
     );
-    assert_eq!(NumFmt::format_code_for_id(999, &num_fmts), "general"); // unknown → fallback
+    assert_eq!(NumFmt::format_code_for_id(999, &num_fmts), "General"); // unknown → fallback
 }
 
 #[test]
 fn from_id_unknown_falls_back_to_general_not_empty() {
-    // from_id must return format_code = "general" for unknown IDs, not "" (empty string).
+    // from_id must return format_code = "General" for unknown IDs, not "" (empty string).
     //
     // Use id=-1 (negative unknown): the debug_assert in from_id guards only non-negative
     // unknown IDs, so negative IDs exercise the fallback path without triggering it.
@@ -435,7 +431,7 @@ fn from_id_unknown_falls_back_to_general_not_empty() {
         "negative unknown ID must clamp to 0 (General)"
     );
     assert_eq!(
-        fmt.format_code, "general",
+        fmt.format_code, "General",
         "unknown ID must produce format_code \"general\", not \"{}\"",
         fmt.format_code
     );
@@ -649,17 +645,17 @@ fn legacy_custom_num_fmt_renders_literal_not_locale() {
 
 #[test]
 fn format_code_for_id_unknown_returns_general() {
-    // format_code_for_id must return "general" for IDs that are neither built-in
+    // format_code_for_id must return "General" for IDs that are neither built-in
     // nor in the custom list — not "" (the Default for &str).
     assert_eq!(
         NumFmt::format_code_for_id(999, &[]),
-        "general",
-        "unknown numFmtId must fall back to \"general\", not \"\""
+        "General",
+        "unknown numFmtId must fall back to \"General\", not \"\""
     );
     assert_eq!(
         NumFmt::format_code_for_id(-1, &[]),
-        "general",
-        "negative sentinel must fall back to \"general\""
+        "General",
+        "negative sentinel must fall back to \"General\""
     );
 }
 
