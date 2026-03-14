@@ -202,7 +202,7 @@ fn basic_format() {
     };
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.num_fmt.format_code, "general");
+    assert_eq!(style.num_fmt.format_code, "General");
 
     model
         .update_range_style(&range, "num_fmt", "$#,##0.0000")
@@ -213,7 +213,7 @@ fn basic_format() {
     model.undo().unwrap();
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.num_fmt.format_code, "general");
+    assert_eq!(style.num_fmt.format_code, "General");
 
     model.redo().unwrap();
 

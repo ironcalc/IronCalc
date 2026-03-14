@@ -195,7 +195,7 @@ impl<'a> Model<'a> {
                             Some(Units::Percentage {
                                 group_separator: false,
                                 precision: 2,
-                                num_fmt: "0.00%".to_string(),
+                                num_fmt: DefaultFmts::percent_dec(), // "0.00%"
                             })
                         }
                     }
@@ -219,7 +219,7 @@ impl<'a> Model<'a> {
                                     currency: currency.to_string(),
                                     group_separator: true,
                                     precision: 2,
-                                    num_fmt: format!("{currency}#,##0.00"),
+                                    num_fmt: format!("{currency}{}", DefaultFmts::comma_dec()),
                                 })
                             }
                         }
@@ -244,7 +244,7 @@ impl<'a> Model<'a> {
                                     currency: currency.to_string(),
                                     group_separator: true,
                                     precision: 2,
-                                    num_fmt: format!("{currency}#,##0.00"),
+                                    num_fmt: format!("{currency}{}", DefaultFmts::comma_dec()),
                                 })
                             }
                         }
@@ -366,7 +366,7 @@ impl<'a> Model<'a> {
         Some(Units::Percentage {
             group_separator: false,
             precision: 0,
-            num_fmt: "0%".to_string(),
+            num_fmt: DefaultFmts::percent_int(), // "0%"
         })
     }
 
@@ -374,7 +374,7 @@ impl<'a> Model<'a> {
         Some(Units::Percentage {
             group_separator: false,
             precision: 2,
-            num_fmt: "0.00%".to_string(),
+            num_fmt: DefaultFmts::percent_dec(), // "0.00%"
         })
     }
 

@@ -62,7 +62,7 @@ fn percentage() {
     // whole numbers
     assert_eq!(
         parse("400%", &["$"]),
-        Ok((4.0, Some(NumFmtSpec::Literal("#,##0%".to_string()))))
+        Ok((4.0, Some(NumFmtSpec::Literal("0%".to_string()))))
     );
     // decimal numbers
     assert_eq!(

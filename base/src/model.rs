@@ -2575,7 +2575,7 @@ impl<'a> Model<'a> {
             .replace("¤", &format!("\"{}\"", currency_symbol))
             .replace(" ", " ");
 
-        let number_fmt = "#,##0.00".to_string();
+        let number_fmt = DefaultFmts::comma_dec(); //"#,##0.00"
         let number_example = format_number(1234.567, &number_fmt, self.locale).text;
         FmtSettings {
             currency,

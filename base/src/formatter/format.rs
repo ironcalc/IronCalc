@@ -1,6 +1,9 @@
 use chrono::Datelike;
 
-use crate::{locale::Locale, number_format::to_precision};
+use crate::{
+    locale::Locale,
+    number_format::{to_precision, DefaultFmts},
+};
 
 use super::{
     dates::{date_to_serial_number, from_excel_date},
@@ -812,13 +815,13 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, Option<String>), Str
 }
 
 /// Parses a formatted number; returns the value and [`NumFmtSpec`] to apply, or `Err`.
+/// TODO: Add DefaultFmts
 pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
     locale: &Locale,
 ) -> Result<(f64, Option<NumFmtSpec>), String> {
     let value = original.trim();
-    let scientific_format = "0.00E+00";
 
     let (decimal_separator, group_separator) = if locale.numbers.symbols.decimal == "," {
         (b',', b'.')
@@ -832,7 +835,7 @@ pub(crate) fn parse_formatted_number(
         if options.is_scientific {
             return Ok((
                 f / 100.0,
-                Some(NumFmtSpec::Literal(scientific_format.to_string())),
+                Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
             ));
         }
         // We ignore the separator
@@ -840,11 +843,14 @@ pub(crate) fn parse_formatted_number(
             // Percentage format with decimals
             return Ok((
                 f / 100.0,
-                Some(NumFmtSpec::Literal("#,##0.00%".to_string())),
+                Some(NumFmtSpec::Literal(DefaultFmts::percent_dec())),
             ));
         }
         // Percentage format standard
-        return Ok((f / 100.0, Some(NumFmtSpec::Literal("#,##0%".to_string()))));
+        return Ok((
+            f / 100.0,
+            Some(NumFmtSpec::Literal(DefaultFmts::percent_int())),
+        ));
     }
 
     // check if it is a currency in currencies
@@ -852,31 +858,64 @@ pub(crate) fn parse_formatted_number(
         if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
-                return Ok((f, Some(NumFmtSpec::Literal(scientific_format.to_string()))));
+                return Ok((
+                    f,
+                    Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
+                ));
             }
             if options.decimal_digits > 0 {
-                return Ok((-f, Some(NumFmtSpec::Literal(format!("{currency}#,##0.00")))));
+                return Ok((
+                    -f,
+                    Some(NumFmtSpec::Literal(format!(
+                        "{currency}{}",
+                        DefaultFmts::comma_dec()
+                    ))),
+                ));
             }
-            return Ok((-f, Some(NumFmtSpec::Literal(format!("{currency}#,##0")))));
+            return Ok((
+                -f,
+                Some(NumFmtSpec::Literal(format!(
+                    "{currency}{}",
+                    DefaultFmts::comma_int()
+                ))),
+            ));
         } else if let Some(p) = value.strip_prefix(currency) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
-                return Ok((f, Some(NumFmtSpec::Literal(scientific_format.to_string()))));
+                return Ok((
+                    f,
+                    Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
+                ));
             }
             if options.decimal_digits > 0 {
-                return Ok((f, Some(NumFmtSpec::Literal(format!("{currency}#,##0.00")))));
+                return Ok((
+                    f,
+                    Some(NumFmtSpec::Literal(format!(
+                        "{currency}{}",
+                        DefaultFmts::comma_dec()
+                    ))),
+                ));
             }
-            return Ok((f, Some(NumFmtSpec::Literal(format!("{currency}#,##0")))));
+            return Ok((
+                f,
+                Some(NumFmtSpec::Literal(format!(
+                    "{currency}{}",
+                    DefaultFmts::comma_int()
+                ))),
+            ));
         } else if let Some(p) = value.strip_suffix(currency) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
-                return Ok((f, Some(NumFmtSpec::Literal(scientific_format.to_string()))));
+                return Ok((
+                    f,
+                    Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
+                ));
             }
             if options.decimal_digits > 0 {
-                let currency_format = format!("#,##0.00{currency}");
+                let currency_format = format!("{}{currency}", DefaultFmts::comma_dec());
                 return Ok((f, Some(NumFmtSpec::Literal(currency_format))));
             }
-            let currency_format = format!("#,##0{currency}");
+            let currency_format = format!("{}{currency}", DefaultFmts::comma_int());
             return Ok((f, Some(NumFmtSpec::Literal(currency_format))));
         }
     }
@@ -893,15 +932,18 @@ pub(crate) fn parse_formatted_number(
     // Lastly we check if it is a number
     let (f, options) = parse_number(value, decimal_separator, group_separator)?;
     if options.is_scientific {
-        return Ok((f, Some(NumFmtSpec::Literal(scientific_format.to_string()))));
+        return Ok((
+            f,
+            Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
+        ));
     }
     if options.has_commas {
         if options.decimal_digits > 0 {
             // group separator and two decimal points
-            return Ok((f, Some(NumFmtSpec::Literal("#,##0.00".to_string()))));
+            return Ok((f, Some(NumFmtSpec::Literal(DefaultFmts::comma_dec()))));
         }
         // Group separator and no decimal points
-        return Ok((f, Some(NumFmtSpec::Literal("#,##0".to_string()))));
+        return Ok((f, Some(NumFmtSpec::Literal(DefaultFmts::comma_int()))));
     }
     Ok((f, None))
 }

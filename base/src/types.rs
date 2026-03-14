@@ -404,7 +404,7 @@ impl<'de> Deserialize<'de> for NumFmt {
     }
 }
 
-// Serialize as format_code string; Deserialize handles both this and the legacy struct form.
+// Serialize as format_code string.
 impl Serialize for NumFmt {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.format_code)
@@ -418,7 +418,6 @@ impl Default for NumFmt {
 }
 
 impl NumFmt {
-    /// Construct a `NumFmt` directly from a known id/code pair (e.g. XLSX import).
     pub fn new(num_fmt_id: i32, format_code: String) -> Self {
         NumFmt {
             num_fmt_id,
@@ -431,7 +430,7 @@ impl NumFmt {
         DefaultFmts::contains_id(id) || custom_fmts.iter().any(|f| f.num_fmt_id == id)
     }
 
-    /// Build a `NumFmt` from a `num_fmt_id`; unknown IDs fall back to General (0).
+    /// Build a `NumFmt` from a `num_fmt_id`; unknown IDs fall back to General.
     pub fn from_id(id: i32, custom_fmts: &[NumFmt]) -> Self {
         if let Some(fmt) = custom_fmts.iter().find(|f| f.num_fmt_id == id) {
             return fmt.clone();
@@ -446,7 +445,7 @@ impl NumFmt {
                     "num_fmt_id {id} is unknown (not a built-in ECMA-376 ID and not in custom_fmts); \
                      silently falling back to General (0)"
                 );
-                (0, "general")
+                (0, DefaultFmts::by_id(0).unwrap())
             }
         };
         NumFmt {
@@ -455,7 +454,7 @@ impl NumFmt {
         }
     }
 
-    /// Build a `NumFmt` from a format code; resolves to the built-in ID, or
+    /// format code resolves to the built-in ID, or
     /// `-1` as a sentinel for custom codes (real ID assigned at persist time).
     pub fn from_format_code(code: &str) -> Self {
         let num_fmt_id = DefaultFmts::by_code(code).unwrap_or(-1);
@@ -465,7 +464,7 @@ impl NumFmt {
         }
     }
 
-    /// Resolve a `num_fmt_id` to its format code; unknown/negative IDs return `"general"`.
+    /// Resolve format code; unknown/negative IDs return `"General"`.
     pub(crate) fn format_code_for_id(id: i32, custom_fmts: &[NumFmt]) -> &str {
         if let Some(code) = DefaultFmts::by_id(id) {
             return code;
@@ -474,7 +473,7 @@ impl NumFmt {
             .iter()
             .find(|f| f.num_fmt_id == id)
             .map(|f| f.format_code.as_str())
-            .unwrap_or("general")
+            .unwrap_or(DefaultFmts::by_id(0).unwrap())
     }
 
     /// ECMA-376 §18.8.30: custom numFmtIds must be ≥ 164.
@@ -483,7 +482,7 @@ impl NumFmt {
 
     /// Returns the `NumFmt` for `code`, registering it in `num_fmts` if it is not yet present.
     ///
-    /// Built-in codes resolve immediately with their ECMA-376 ID.
+    /// Built-in codes resolve immediately with their ID.
     /// Custom codes are assigned an ID ≥ 164 on first registration and re-used thereafter.
     pub fn get_or_register(code: &str, num_fmts: &mut Vec<NumFmt>) -> Self {
         if let Some(id) = DefaultFmts::by_code(code) {
