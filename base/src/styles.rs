@@ -53,7 +53,10 @@ impl Styles {
         };
         let num_fmt_id =
             NumFmt::get_or_register(&style.num_fmt.format_code, &mut self.num_fmts).num_fmt_id;
-        debug_assert!(num_fmt_id >= 0, "num_fmt_id sentinel -1 must not reach CellXfs");
+        debug_assert!(
+            num_fmt_id >= 0,
+            "num_fmt_id sentinel -1 must not reach CellXfs"
+        );
         self.cell_xfs.push(CellXfs {
             xf_id: 0,
             num_fmt_id,
@@ -71,7 +74,6 @@ impl Styles {
         });
         self.cell_xfs.len() as i32 - 1
     }
-
 
     pub fn get_style_index(&self, style: &Style) -> Option<i32> {
         let font_id = self.get_font_index(&style.font)?;
@@ -162,7 +164,6 @@ impl Styles {
         Ok(self.get_style_index_or_create(&style))
     }
 
-
     /// Raw `num_fmt_id` from `CellXfs` at `index`.
     pub(crate) fn get_num_fmt_id(&self, index: i32) -> Result<i32, String> {
         self.cell_xfs
@@ -213,7 +214,6 @@ impl Styles {
         cell_xf.quote_prefix
     }
 
-
     pub(crate) fn get_style(&self, index: i32) -> Result<Style, String> {
         let cell_xf = &self
             .cell_xfs
@@ -225,7 +225,6 @@ impl Styles {
         let num_fmt_id = cell_xf.num_fmt_id;
         let quote_prefix = cell_xf.quote_prefix;
         let alignment = cell_xf.alignment.clone();
-
 
         Ok(Style {
             alignment,

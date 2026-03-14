@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 use crate::expressions::token::Error;
-use crate::number_format::BuiltinFmts;
+use crate::number_format::DefaultFmts;
 
 fn default_as_false() -> bool {
     false
@@ -369,11 +369,13 @@ impl<'de> Deserialize<'de> for NumFmt {
                     match key.as_str() {
                         "num_fmt_id" => num_fmt_id = Some(map.next_value()?),
                         "format_code" => format_code = Some(map.next_value()?),
-                        _ => { let _: serde::de::IgnoredAny = map.next_value()?; }
+                        _ => {
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
                     }
                 }
-                let format_code = format_code
-                    .ok_or_else(|| de::Error::missing_field("format_code"))?;
+                let format_code =
+                    format_code.ok_or_else(|| de::Error::missing_field("format_code"))?;
                 // format_code is the source of truth; re-derive id for consistency.
                 let derived = NumFmt::from_format_code(&format_code);
                 let stored_id = num_fmt_id.unwrap_or(derived.num_fmt_id);
@@ -384,14 +386,17 @@ impl<'de> Deserialize<'de> for NumFmt {
                 //    registered custom ID survive a serialize→deserialize round-trip.
                 // Anything else (e.g. a built-in-range ID paired with a custom code)
                 // is suspect — discard the stored ID and keep the derived value.
-                let num_fmt_id = if stored_id == derived.num_fmt_id {
-                    stored_id
-                } else if derived.num_fmt_id == -1 && stored_id >= NumFmt::ECMA_CUSTOM_FMT_MIN_ID {
+                let num_fmt_id = if stored_id == derived.num_fmt_id
+                    || (derived.num_fmt_id == -1 && stored_id >= NumFmt::ECMA_CUSTOM_FMT_MIN_ID)
+                {
                     stored_id
                 } else {
                     derived.num_fmt_id
                 };
-                Ok(NumFmt { num_fmt_id, format_code })
+                Ok(NumFmt {
+                    num_fmt_id,
+                    format_code,
+                })
             }
         }
 
@@ -408,10 +413,7 @@ impl Serialize for NumFmt {
 
 impl Default for NumFmt {
     fn default() -> Self {
-        NumFmt {
-            num_fmt_id: 0,
-            format_code: "general".to_string(),
-        }
+        Self::from_id(0, &[])
     }
 }
 
@@ -426,7 +428,7 @@ impl NumFmt {
 
     /// True if `id` is a built-in or registered custom format ID.
     pub(crate) fn is_known_id(id: i32, custom_fmts: &[NumFmt]) -> bool {
-        BuiltinFmts::contains_id(id) || custom_fmts.iter().any(|f| f.num_fmt_id == id)
+        DefaultFmts::contains_id(id) || custom_fmts.iter().any(|f| f.num_fmt_id == id)
     }
 
     /// Build a `NumFmt` from a `num_fmt_id`; unknown IDs fall back to General (0).
@@ -434,24 +436,29 @@ impl NumFmt {
         if let Some(fmt) = custom_fmts.iter().find(|f| f.num_fmt_id == id) {
             return fmt.clone();
         }
-        // Clamp unknown / negative IDs to 0 (General).
-        let resolved = if BuiltinFmts::contains_id(id) { id } else { 0 };
-        // Gap IDs (49–163) not in custom_fmts silently fall back to General (debug builds only).
-        debug_assert!(
-            id < 0 || resolved == id,
-            "num_fmt_id {id} is unknown (not a built-in ECMA-376 ID and not in custom_fmts); \
-             silently falling back to General (0)"
-        );
+        // Single lookup: built-in ID -> use it; unknown/negative -> fall back to General (0).
+        let (num_fmt_id, format_code) = match DefaultFmts::by_id(id) {
+            Some(code) => (id, code),
+            None => {
+                // Gap IDs (49–163) not in custom_fmts silently fall back (debug builds only).
+                debug_assert!(
+                    id < 0,
+                    "num_fmt_id {id} is unknown (not a built-in ECMA-376 ID and not in custom_fmts); \
+                     silently falling back to General (0)"
+                );
+                (0, "general")
+            }
+        };
         NumFmt {
-            num_fmt_id: resolved,
-            format_code: BuiltinFmts::by_id(resolved).unwrap_or("general").to_string(),
+            num_fmt_id,
+            format_code: format_code.to_string(),
         }
     }
 
     /// Build a `NumFmt` from a format code; resolves to the built-in ID, or
     /// `-1` as a sentinel for custom codes (real ID assigned at persist time).
     pub fn from_format_code(code: &str) -> Self {
-        let num_fmt_id = BuiltinFmts::by_code(code).unwrap_or(-1);
+        let num_fmt_id = DefaultFmts::by_code(code).unwrap_or(-1);
         NumFmt {
             num_fmt_id,
             format_code: code.to_string(),
@@ -460,7 +467,7 @@ impl NumFmt {
 
     /// Resolve a `num_fmt_id` to its format code; unknown/negative IDs return `"general"`.
     pub(crate) fn format_code_for_id(id: i32, custom_fmts: &[NumFmt]) -> &str {
-        if let Some(code) = BuiltinFmts::by_id(id) {
+        if let Some(code) = DefaultFmts::by_id(id) {
             return code;
         }
         custom_fmts
@@ -479,7 +486,7 @@ impl NumFmt {
     /// Built-in codes resolve immediately with their ECMA-376 ID.
     /// Custom codes are assigned an ID ≥ 164 on first registration and re-used thereafter.
     pub fn get_or_register(code: &str, num_fmts: &mut Vec<NumFmt>) -> Self {
-        if let Some(id) = BuiltinFmts::by_code(code) {
+        if let Some(id) = DefaultFmts::by_code(code) {
             return NumFmt {
                 num_fmt_id: id,
                 format_code: code.to_string(),

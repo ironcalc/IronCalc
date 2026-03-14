@@ -12,10 +12,7 @@
 // `locale.dates.date_formats.short` at runtime.
 
 use crate::{
-    cell::CellValue,
-    model::Model,
-    number_format::BuiltinFmts,
-    test::util::new_empty_model,
+    cell::CellValue, model::Model, number_format::DefaultFmts, test::util::new_empty_model,
     types::NumFmt,
 };
 
@@ -76,8 +73,10 @@ fn locale_date_stored_as_num_fmt_id_14() {
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_eq!(
-        num_fmt_id, BuiltinFmts::SHORT_DATE_ID,
-        "locale date must be stored as numFmtId {}, got {num_fmt_id}", BuiltinFmts::SHORT_DATE_ID
+        num_fmt_id,
+        DefaultFmts::SHORT_DATE_ID,
+        "locale date must be stored as numFmtId {}, got {num_fmt_id}",
+        DefaultFmts::SHORT_DATE_ID
     );
 }
 
@@ -91,7 +90,8 @@ fn iso_date_is_not_stored_as_id_14() {
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_ne!(
-        num_fmt_id, BuiltinFmts::SHORT_DATE_ID,
+        num_fmt_id,
+        DefaultFmts::SHORT_DATE_ID,
         "ISO date must NOT use numFmtId 14 — it has a specific format string"
     );
     assert_eq!(
@@ -182,7 +182,7 @@ fn invalid_month_stored_as_text() {
     );
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
-    assert_ne!(num_fmt_id, BuiltinFmts::SHORT_DATE_ID);
+    assert_ne!(num_fmt_id, DefaultFmts::SHORT_DATE_ID);
 }
 
 #[test]
@@ -221,7 +221,7 @@ fn plain_number_does_not_create_date_cell() {
     );
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
-    assert_ne!(num_fmt_id, BuiltinFmts::SHORT_DATE_ID);
+    assert_ne!(num_fmt_id, DefaultFmts::SHORT_DATE_ID);
 }
 
 #[test]
@@ -327,8 +327,10 @@ fn date_fn_stores_locale_fmt_id() {
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_eq!(
-        num_fmt_id, BuiltinFmts::SHORT_DATE_ID,
-        "=DATE() result must store numFmtId={}, got {num_fmt_id}", BuiltinFmts::SHORT_DATE_ID
+        num_fmt_id,
+        DefaultFmts::SHORT_DATE_ID,
+        "=DATE() result must store numFmtId={}, got {num_fmt_id}",
+        DefaultFmts::SHORT_DATE_ID
     );
 }
 
@@ -352,9 +354,10 @@ fn num_fmt_builtin_format_code_resolves_canonical_id() {
 
     let locale_date = NumFmt::from_format_code("mm-dd-yy");
     assert_eq!(
-        locale_date.num_fmt_id, BuiltinFmts::SHORT_DATE_ID,
+        locale_date.num_fmt_id,
+        DefaultFmts::SHORT_DATE_ID,
         "\"mm-dd-yy\" must map to NumFmt::LOCALE_DATE_ID ({})",
-        BuiltinFmts::SHORT_DATE_ID,
+        DefaultFmts::SHORT_DATE_ID,
     );
 }
 
@@ -405,16 +408,37 @@ fn get_style_with_format_no_duplicate_cell_xfs() {
 
 #[test]
 fn resolve_code_returns_correct_code() {
-    let num_fmts = vec![NumFmt {
-        num_fmt_id: 164,
-        format_code: "dd/mm/yyyy hh:mm:ss".to_string(),
-    }];
+    let num_fmts = vec![NumFmt::new(164, "dd/mm/yyyy hh:mm:ss".to_string())];
 
     assert_eq!(NumFmt::format_code_for_id(0, &num_fmts), "general");
     assert_eq!(NumFmt::format_code_for_id(9, &num_fmts), "0%");
-    assert_eq!(NumFmt::format_code_for_id(BuiltinFmts::SHORT_DATE_ID, &num_fmts), "mm-dd-yy");
-    assert_eq!(NumFmt::format_code_for_id(164, &num_fmts), "dd/mm/yyyy hh:mm:ss");
+    assert_eq!(
+        NumFmt::format_code_for_id(DefaultFmts::SHORT_DATE_ID, &num_fmts),
+        "mm-dd-yy"
+    );
+    assert_eq!(
+        NumFmt::format_code_for_id(164, &num_fmts),
+        "dd/mm/yyyy hh:mm:ss"
+    );
     assert_eq!(NumFmt::format_code_for_id(999, &num_fmts), "general"); // unknown → fallback
+}
+
+#[test]
+fn from_id_unknown_falls_back_to_general_not_empty() {
+    // from_id must return format_code = "general" for unknown IDs, not "" (empty string).
+    //
+    // Use id=-1 (negative unknown): the debug_assert in from_id guards only non-negative
+    // unknown IDs, so negative IDs exercise the fallback path without triggering it.
+    let fmt = NumFmt::from_id(-1, &[]);
+    assert_eq!(
+        fmt.num_fmt_id, 0,
+        "negative unknown ID must clamp to 0 (General)"
+    );
+    assert_eq!(
+        fmt.format_code, "general",
+        "unknown ID must produce format_code \"general\", not \"{}\"",
+        fmt.format_code
+    );
 }
 
 #[test]
@@ -431,7 +455,7 @@ fn get_style_with_num_fmt_id_accepts_builtin_id() {
     let styles = &mut model.workbook.styles;
 
     assert!(styles
-        .get_style_with_num_fmt_id(0, BuiltinFmts::SHORT_DATE_ID)
+        .get_style_with_num_fmt_id(0, DefaultFmts::SHORT_DATE_ID)
         .is_ok());
 }
 
@@ -492,8 +516,10 @@ fn now_fn_stores_locale_datetime_fmt_id() {
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_eq!(
-        num_fmt_id, BuiltinFmts::SHORT_DATETIME_ID,
-        "=NOW() result must store numFmtId={}, got {num_fmt_id}", BuiltinFmts::SHORT_DATETIME_ID
+        num_fmt_id,
+        DefaultFmts::SHORT_DATETIME_ID,
+        "=NOW() result must store numFmtId={}, got {num_fmt_id}",
+        DefaultFmts::SHORT_DATETIME_ID
     );
 }
 
@@ -596,15 +622,15 @@ fn legacy_custom_num_fmt_renders_literal_not_locale() {
     let num_fmt_id = model.workbook.styles.cell_xfs[style_index as usize].num_fmt_id;
     assert_ne!(
         num_fmt_id,
-        BuiltinFmts::SHORT_DATE_ID,
+        DefaultFmts::SHORT_DATE_ID,
         "custom format 'm/d/yyyy' must not be stored as the locale-date sentinel {}",
-        BuiltinFmts::SHORT_DATE_ID
+        DefaultFmts::SHORT_DATE_ID
     );
     assert_ne!(
         num_fmt_id,
-        BuiltinFmts::SHORT_DATETIME_ID,
+        DefaultFmts::SHORT_DATETIME_ID,
         "custom format 'm/d/yyyy' must not be stored as the locale-datetime sentinel {}",
-        BuiltinFmts::SHORT_DATETIME_ID
+        DefaultFmts::SHORT_DATETIME_ID
     );
 
     // Must render the frozen literal "m/d/yyyy" (US-style → "4/3/2025"),
@@ -618,6 +644,22 @@ fn legacy_custom_num_fmt_renders_literal_not_locale() {
         model.get_localized_cell_content(0, 1, 1).unwrap(),
         "4/3/2025",
         "edit-bar content must reflect the literal format code, not re-derive from locale"
+    );
+}
+
+#[test]
+fn format_code_for_id_unknown_returns_general() {
+    // format_code_for_id must return "general" for IDs that are neither built-in
+    // nor in the custom list — not "" (the Default for &str).
+    assert_eq!(
+        NumFmt::format_code_for_id(999, &[]),
+        "general",
+        "unknown numFmtId must fall back to \"general\", not \"\""
+    );
+    assert_eq!(
+        NumFmt::format_code_for_id(-1, &[]),
+        "general",
+        "negative sentinel must fall back to \"general\""
     );
 }
 

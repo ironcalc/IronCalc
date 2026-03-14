@@ -26,6 +26,7 @@ use crate::{
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_locale, Locale},
+    number_format::DefaultFmts,
     types::*,
     units::Units,
     utils as common,
@@ -1566,13 +1567,13 @@ impl<'a> Model<'a> {
                 let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
                     let new_style_index = match units {
-                        Units::LocaleDate => self
-                            .workbook
-                            .styles
-                            .get_style_with_num_fmt_id(new_style_index, NumFmt::SHORT_DATE_ID)?,
+                        Units::LocaleDate => self.workbook.styles.get_style_with_num_fmt_id(
+                            new_style_index,
+                            DefaultFmts::SHORT_DATE_ID,
+                        )?,
                         Units::LocaleDateTime => self.workbook.styles.get_style_with_num_fmt_id(
                             new_style_index,
-                            NumFmt::SHORT_DATETIME_ID,
+                            DefaultFmts::SHORT_DATETIME_ID,
                         )?,
                         Units::Number { num_fmt, .. }
                         | Units::Currency { num_fmt, .. }
@@ -1608,7 +1609,7 @@ impl<'a> Model<'a> {
                         };
                         let existing_style = self.workbook.styles.get_style(new_style_index)?;
                         let existing_id = existing_style.num_fmt.num_fmt_id;
-                        let existing_is_date = NumFmt::is_locale_date_id(existing_id)
+                        let existing_is_date = DefaultFmts::is_locale_date(existing_id)
                             || is_likely_date_number_format(&existing_style.num_fmt.format_code);
                         let should_apply_format = !(existing_is_date && new_is_date);
                         if should_apply_format {
@@ -1616,7 +1617,7 @@ impl<'a> Model<'a> {
                                 NumFmtSpec::LocaleDate => {
                                     self.workbook.styles.get_style_with_num_fmt_id(
                                         new_style_index,
-                                        NumFmt::SHORT_DATE_ID,
+                                        DefaultFmts::SHORT_DATE_ID,
                                     )?
                                 }
                                 NumFmtSpec::Literal(s) => self
@@ -1854,8 +1855,8 @@ impl<'a> Model<'a> {
                 let num_fmt_id = self.workbook.styles.get_num_fmt_id(style_index)?;
                 // Locale IDs 14/22 derive the pattern from the active locale; others use stored string.
                 let format = match num_fmt_id {
-                    NumFmt::SHORT_DATE_ID => self.locale.dates.date_formats.short.clone(),
-                    NumFmt::SHORT_DATETIME_ID => locale_short_datetime_fmt(self.locale),
+                    DefaultFmts::SHORT_DATE_ID => self.locale.dates.date_formats.short.clone(),
+                    DefaultFmts::SHORT_DATETIME_ID => locale_short_datetime_fmt(self.locale),
                     _ => {
                         self.workbook
                             .styles
@@ -1928,10 +1929,10 @@ impl<'a> Model<'a> {
                 } else {
                     // Locale IDs 14/22 derive the pattern from the active locale; others use stored string.
                     let date_fmt = match num_fmt_id {
-                        NumFmt::SHORT_DATE_ID => {
+                        DefaultFmts::SHORT_DATE_ID => {
                             Some(self.locale.dates.date_formats.short.clone())
                         }
-                        NumFmt::SHORT_DATETIME_ID => {
+                        DefaultFmts::SHORT_DATETIME_ID => {
                             Some(locale_short_datetime_fmt(self.locale))
                         }
                         _ if is_likely_date_number_format(&style.num_fmt.format_code) => {

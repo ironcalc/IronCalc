@@ -3,7 +3,7 @@ use crate::{
     formatter::parser::{ParsePart, Parser},
     functions::Function,
     model::Model,
-    number_format::BuiltinFmts,
+    number_format::DefaultFmts,
 };
 
 pub enum Units {
@@ -96,8 +96,8 @@ impl<'a> Model<'a> {
             .ok()?;
         // Check numFmtId directly: locale IDs 14/22 may not reverse-map reliably from their string.
         match style.num_fmt.num_fmt_id {
-            BuiltinFmts::SHORT_DATE_ID => Some(Units::LocaleDate),
-            BuiltinFmts::SHORT_DATETIME_ID => Some(Units::LocaleDateTime),
+            DefaultFmts::SHORT_DATE_ID => Some(Units::LocaleDate),
+            DefaultFmts::SHORT_DATETIME_ID => Some(Units::LocaleDateTime),
             _ => get_units_from_format_string(&style.num_fmt.format_code),
         }
     }
@@ -387,7 +387,7 @@ impl<'a> Model<'a> {
         };
         let id = style.num_fmt.num_fmt_id;
         id == 0
-            || BuiltinFmts::is_locale_date(id)
+            || DefaultFmts::is_locale_date(id)
             || matches!(
                 get_units_from_format_string(&style.num_fmt.format_code),
                 Some(Units::Date(_))
@@ -395,10 +395,12 @@ impl<'a> Model<'a> {
     }
 
     fn units_fn_dates(&self, _args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
-        self.should_override_with_locale_date(cell).then_some(Units::LocaleDate)
+        self.should_override_with_locale_date(cell)
+            .then_some(Units::LocaleDate)
     }
 
     fn units_fn_date_times(&self, _args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
-        self.should_override_with_locale_date(cell).then_some(Units::LocaleDateTime)
+        self.should_override_with_locale_date(cell)
+            .then_some(Units::LocaleDateTime)
     }
 }

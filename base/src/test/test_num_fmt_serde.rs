@@ -59,7 +59,7 @@ fn deser_struct_extra_fields_ignored() {
 
 #[test]
 fn ser_emits_format_code_string() {
-    let fmt = NumFmt { num_fmt_id: 14, format_code: "mm-dd-yy".to_string() };
+    let fmt = NumFmt::new(14, "mm-dd-yy".to_string());
     let json = serde_json::to_string(&fmt).unwrap();
     assert_eq!(json, r#""mm-dd-yy""#);
 }
@@ -72,7 +72,7 @@ fn ser_emits_format_code_string() {
 
 #[test]
 fn round_trip_builtin() {
-    let original = NumFmt { num_fmt_id: 14, format_code: "mm-dd-yy".to_string() };
+    let original = NumFmt::new(14, "mm-dd-yy".to_string());
     let json = serde_json::to_string(&original).unwrap();
     let restored: NumFmt = serde_json::from_str(&json).unwrap();
     assert_eq!(restored.num_fmt_id, original.num_fmt_id);
@@ -123,7 +123,10 @@ fn deser_rejects_builtin_range_id_for_custom_format_code() {
     let json = r#"{"num_fmt_id": 5, "format_code": "0.000##"}"#;
     let fmt: NumFmt = serde_json::from_str(json).unwrap();
     assert_eq!(fmt.format_code, "0.000##");
-    assert_eq!(fmt.num_fmt_id, -1, "built-in-range stored_id must be discarded for a custom code");
+    assert_eq!(
+        fmt.num_fmt_id, -1,
+        "built-in-range stored_id must be discarded for a custom code"
+    );
 }
 
 #[test]
