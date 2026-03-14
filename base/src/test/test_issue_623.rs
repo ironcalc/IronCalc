@@ -10,6 +10,6 @@ fn issue_623() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"46007");
+    assert_eq!(model._get_text("A1"), *"12/16/25"); // Dec 16 2025 = serial 46007, formatted as locale date
     assert_eq!(model._get_text("A2"), *"#VALUE!");
 }

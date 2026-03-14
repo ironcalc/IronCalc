@@ -3,6 +3,7 @@ use crate::{
     formatter::parser::{ParsePart, Parser},
     functions::Function,
     model::Model,
+    number_format::DefaultFmts,
 };
 
 pub enum Units {
@@ -25,23 +26,19 @@ pub enum Units {
         precision: i32,
         num_fmt: String,
     },
+    LocaleDate,
+    LocaleDateTime,
     Date(String),
 }
 
 impl Units {
-    pub fn get_num_fmt(&self) -> String {
-        match self {
-            Units::Number { num_fmt, .. } => num_fmt.to_string(),
-            Units::Currency { num_fmt, .. } => num_fmt.to_string(),
-            Units::Percentage { num_fmt, .. } => num_fmt.to_string(),
-            Units::Date(num_fmt) => num_fmt.to_string(),
-        }
-    }
     pub fn get_precision(&self) -> i32 {
         match self {
             Units::Number { precision, .. } => *precision,
             Units::Currency { precision, .. } => *precision,
             Units::Percentage { precision, .. } => *precision,
+            Units::LocaleDate => 0,
+            Units::LocaleDateTime => 0,
             Units::Date(_) => 0,
         }
     }
@@ -90,14 +87,18 @@ fn get_units_from_format_string(num_fmt: &str) -> Option<Units> {
 
 impl<'a> Model<'a> {
     fn compute_cell_units(&self, cell_reference: &CellReferenceIndex) -> Option<Units> {
-        let cell_style_res = &self.get_style_for_cell(
-            cell_reference.sheet,
-            cell_reference.row,
-            cell_reference.column,
-        );
-        match cell_style_res {
-            Ok(style) => get_units_from_format_string(&style.num_fmt),
-            Err(_) => None,
+        let style = self
+            .get_style_for_cell(
+                cell_reference.sheet,
+                cell_reference.row,
+                cell_reference.column,
+            )
+            .ok()?;
+        // Check numFmtId directly: locale IDs 14/22 may not reverse-map reliably from their string.
+        match style.num_fmt.num_fmt_id {
+            DefaultFmts::SHORT_DATE_ID => Some(Units::LocaleDate),
+            DefaultFmts::SHORT_DATETIME_ID => Some(Units::LocaleDateTime),
+            _ => get_units_from_format_string(&style.num_fmt.format_code),
         }
     }
 
@@ -327,8 +328,13 @@ impl<'a> Model<'a> {
             Function::Tbilleq => self.units_fn_percentage_2(args, cell),
             Function::Tbillprice => self.units_fn_currency(args, cell),
             Function::Tbillyield => self.units_fn_percentage_2(args, cell),
-            Function::Date => self.units_fn_dates(args, cell),
-            Function::Today => self.units_fn_dates(args, cell),
+            Function::Date
+            | Function::Edate
+            | Function::Eomonth
+            | Function::Workday
+            | Function::WorkdayIntl
+            | Function::Datevalue
+            | Function::Today => self.units_fn_dates(args, cell),
             Function::Now => self.units_fn_date_times(args, cell),
             _ => None,
         }
@@ -372,31 +378,29 @@ impl<'a> Model<'a> {
         })
     }
 
-    fn units_fn_dates(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
-        let mut date_short = self.locale.dates.date_formats.short.clone();
-        // FIXME: We want always 4 digit year. So if it is not already the case, we replace yy by yyyy
-        if !date_short.contains("yyyy") {
-            date_short = date_short.replace("yy", "yyyy");
-        }
-        Some(Units::Date(date_short.replace(' ', " ")))
+    /// Returns `true` when a locale date/datetime format should be applied to the cell.
+    /// Returns `false` if the cell already has an explicit non-date, non-locale format
+    /// that should be preserved.
+    fn should_override_with_locale_date(&self, cell: &CellReferenceIndex) -> bool {
+        let Ok(style) = self.get_style_for_cell(cell.sheet, cell.row, cell.column) else {
+            return true;
+        };
+        let id = style.num_fmt.num_fmt_id;
+        id == 0
+            || DefaultFmts::is_locale_date(id)
+            || matches!(
+                get_units_from_format_string(&style.num_fmt.format_code),
+                Some(Units::Date(_))
+            )
     }
 
-    fn units_fn_date_times(&self, _args: &[Node], _cell: &CellReferenceIndex) -> Option<Units> {
-        let mut date_short = self.locale.dates.date_formats.short.clone();
-        // We want always 4 digit year. So if it is not already the case, we replace yy by yyyy
-        if !date_short.contains("yyyy") {
-            date_short = date_short.replace("yy", "yyyy");
-        }
-        // NB: full and medium time formats might include timezone info (in the form of z or zzzz)
-        let time_short_template = &self.locale.dates.time_formats.short;
-        let time_short = time_short_template.replace('a', "AM/PM");
-        // This would be something like: "{1}, {0}"
-        let date_time_short_template = &self.locale.dates.date_time_formats.short;
-        let date_time_short = date_time_short_template
-            .replace("{0}", time_short.trim())
-            .replace("{1}", &date_short);
+    fn units_fn_dates(&self, _args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
+        self.should_override_with_locale_date(cell)
+            .then_some(Units::LocaleDate)
+    }
 
-        // FIXME: Remove weird spaces (we should do that in the locale loading phase)
-        Some(Units::Date(date_time_short.replace(' ', " ")))
+    fn units_fn_date_times(&self, _args: &[Node], cell: &CellReferenceIndex) -> Option<Units> {
+        self.should_override_with_locale_date(cell)
+            .then_some(Units::LocaleDateTime)
     }
 }

@@ -83,6 +83,13 @@ pub struct TimeFormats {
     pub short: String,
 }
 
+impl Locale {
+    /// True if the locale's short date pattern starts with day (e.g. en-GB `"dd/MM/yyyy"`).
+    pub fn day_first(&self) -> bool {
+        self.dates.date_formats.short.starts_with('d')
+    }
+}
+
 pub fn get_default_locale() -> &'static Locale {
     #[allow(clippy::unwrap_used)]
     get_locale("en").unwrap()

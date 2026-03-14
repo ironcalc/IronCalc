@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::test::util::new_empty_model;
-use crate::types::Cell;
+use crate::{model::Model, test::util::new_empty_model, types::Cell};
 
 // Helper to evaluate a formula and return the formatted text
 fn eval_formula(formula: &str) -> String {
@@ -59,11 +58,26 @@ fn test_datevalue_month_name() {
 
 #[test]
 fn test_datevalue_ambiguous_ddmm() {
-    // 01/02/2023 interpreted as MM/DD -> 2-Jan-2023
+    // 01/02/2023 in en-US (month-first locale): MM=01, DD=02 -> January 2, 2023
     assert_eq!(
         eval_formula_raw_number("=DATEVALUE(\"01/02/2023\")").unwrap(),
         44929.0
     );
+}
+
+#[test]
+fn test_datevalue_ambiguous_locale_day_first() {
+    // In en-GB (day-first locale), "01/02/2023" is DD/MM -> February 1, 2023
+    let mut model = Model::new_empty("model", "en-GB", "UTC", "en").unwrap();
+    model._set("A1", "=DATEVALUE(\"01/02/2023\")");
+    model.evaluate();
+    // February 1, 2023 = serial 44958
+    match model._get_cell("A1") {
+        crate::types::Cell::NumberCell { v, .. } => {
+            assert_eq!(*v, 44958.0, "en-GB must parse 01/02/2023 as February 1 (day-first)");
+        }
+        other => panic!("expected NumberCell, got {:?}", other),
+    }
 }
 
 #[test]

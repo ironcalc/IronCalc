@@ -1,95 +1,78 @@
 use crate::{
     formatter::{self, format::Formatted},
     locale::get_locale,
-    types::NumFmt,
 };
 
-const DEFAULT_NUM_FMTS: &[&str] = &[
-    "general",
-    "0",
-    "0.00",
-    "#,##0",
-    "#,##0.00",
-    "$#,##0; \\ - $#,##0",
-    "$#,##0; [Red] \\ - $#,##0",
-    "$#,##0.00; \\ - $#,##0.00",
-    "$#,##0.00; [Red] \\ - $#,##0.00",
-    "0%",
-    "0.00%",
-    "0.00E + 00",
-    "#?/?",
-    "#?? / ??",
-    "mm-dd-yy",
-    "d-mmm-yy",
-    "d-mmm",
-    "mmm-yy",
-    "h:mm AM / PM",
-    "h:mm:ss AM / PM",
-    "h:mm",
-    "h:mm:ss",
-    "m / d / yy h:mm",
-    "#,##0;()#,##0)",
-    "#,##0; [Red]()#,##0)",
-    "#,##0.00;()#,##0.00)",
-    "#,##0.00; [Red]()#,##0.00)",
-    "_()$”*#,##0.00 _); _()$”* \\()#,##0.00\\); _()$”* - ?? _); _()@_)",
-    "mm:ss",
-    "[h]:mm:ss",
-    "mmss .0",
-    "##0.0E + 0",
-    "@",
-    "[$ -404] e / m / d ",
-    "m / d / yy",
-    "[$ -404] e / m / d",
-    "[$ -404] e / / d",
-    "[$ -404] e / m / d",
-    "t0",
-    "t0.00",
-    "t#,##0",
-    "t#,##0.00",
-    "t0%",
-    "t0.00 %",
-    "t#?/?",
+/// ECMA-376 built-in number format strings as `(numFmtId, format_code)` pairs.
+/// https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.spreadsheet.numberingformat?view=openxml-3.0.1
+/// **Do not change IDs** — the numFmtId values are part of the ECMA-376 spec.
+pub(crate) const DEFAULT_NUM_FMTS: &[(i32, &str)] = &[
+    (0, "General"),
+    (1, "0"),
+    (2, "0.00"),
+    (3, "#,##0"),
+    (4, "#,##0.00"),
+    // specification excludes IDs 5, 6, 7, and 8
+    (9, "0%"),
+    (10, "0.00%"),
+    (11, "0.00E+00"),
+    (12, "# ?/?"),
+    (13, "# ??/??"),
+    (14, "mm-dd-yy"),
+    (15, "d-mmm-yy"),
+    (16, "d-mmm"),
+    (17, "mmm-yy"),
+    (18, "h:mm AM/PM"),
+    (19, "h:mm:ss AM/PM"),
+    (20, "h:mm"),
+    (21, "h:mm:ss"),
+    (22, "m/d/yy h:mm"),
+    // 23 - 31 Japanese (ja-JP) specialized date and time formats
+    // 32 - 35 Chinese (zh-CN/zh-TW) and Korean (ko-KR) specialized number/date formats.
+    // 36 specific localized currency formats
+    (37, "#,##0 ;(#,##0)"),
+    (38, "#,##0 ;[Red](#,##0)"),
+    (39, "#,##0.00;(#,##0.00)"),
+    (40, "#,##0.00;[Red](#,##0.00)"),
+    // Accounting formats
+    // 41 - 44
+    (45, "mm:ss"),
+    (46, "[h]:mm:ss"),
+    (47, "mmss.0"),
+    (48, "##0.0E+0"),
+    (49, "@"),
 ];
 
-pub fn get_default_num_fmt_id(num_fmt: &str) -> Option<i32> {
-    for (index, default_num_fmt) in DEFAULT_NUM_FMTS.iter().enumerate() {
-        if default_num_fmt == &num_fmt {
-            return Some(index as i32);
-        };
-    }
-    None
-}
+pub(crate) struct DefaultFmts;
 
-pub fn get_num_fmt(num_fmt_id: i32, num_fmts: &[NumFmt]) -> String {
-    // Check if it defined
-    for num_fmt in num_fmts {
-        if num_fmt.num_fmt_id == num_fmt_id {
-            return num_fmt.format_code.clone();
-        }
+impl DefaultFmts {
+    pub(crate) fn by_id(id: i32) -> Option<&'static str> {
+        DEFAULT_NUM_FMTS
+            .iter()
+            .find(|&&(fid, _)| fid == id)
+            .map(|&(_, s)| s)
     }
-    // Return one of the default ones
-    if num_fmt_id < DEFAULT_NUM_FMTS.len() as i32 {
-        return DEFAULT_NUM_FMTS[num_fmt_id as usize].to_string();
-    }
-    // Return general
-    DEFAULT_NUM_FMTS[0].to_string()
-}
 
-pub fn get_new_num_fmt_index(num_fmts: &[NumFmt]) -> i32 {
-    let mut index = DEFAULT_NUM_FMTS.len() as i32;
-    let mut found = true;
-    while found {
-        found = false;
-        for num_fmt in num_fmts {
-            if num_fmt.num_fmt_id == index {
-                found = true;
-                index += 1;
-                break;
-            }
-        }
+    pub(crate) fn by_code(code: &str) -> Option<i32> {
+        DEFAULT_NUM_FMTS
+            .iter()
+            .find(|&&(_, s)| s == code)
+            .map(|&(id, _)| id)
     }
-    index
+
+    /// True if `id` belongs to the built-in table.
+    pub(crate) fn contains_id(id: i32) -> bool {
+        Self::by_id(id).is_some()
+    }
+
+    /// ECMA-376 numFmtId 14: locale short date.
+    pub(crate) const SHORT_DATE_ID: i32 = 14;
+    /// ECMA-376 numFmtId 22: locale short date+time.
+    pub(crate) const SHORT_DATETIME_ID: i32 = 22;
+
+    pub(crate) fn is_locale_date(id: i32) -> bool {
+        id == Self::SHORT_DATE_ID || id == Self::SHORT_DATETIME_ID
+    }
 }
 
 pub fn to_precision(value: f64, precision: usize) -> f64 {
@@ -161,4 +144,169 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
         }
     };
     formatter::format::format_number(value, format_code, locale)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builtin_num_fmts_spec_ids_are_correct() {
+        assert_eq!(
+            DefaultFmts::by_id(0),
+            Some("General"),
+            "numFmtId 0 must be General"
+        );
+        assert_eq!(DefaultFmts::by_id(9), Some("0%"), "numFmtId 9 must be 0%");
+        assert_eq!(
+            DefaultFmts::by_id(14),
+            Some("mm-dd-yy"),
+            "numFmtId 14 must be the ECMA-376 locale short date"
+        );
+        assert_eq!(
+            DefaultFmts::by_id(22),
+            Some("m/d/yy h:mm"),
+            "numFmtId 22 must be the locale short date+time"
+        );
+    }
+
+    /// ECMA-376 §18.8.30 — canonical built-in format codes for the US (default) locale.
+    ///
+    /// Format codes data from:
+    /// https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.spreadsheet.numberingformat?view=openxml-3.0.1
+
+    #[test]
+    fn test_supported_num_fmt() {
+        let plain = "
+        0
+
+        General
+
+        1
+
+        0
+
+        2
+
+        0.00
+
+        3
+
+        #,##0
+
+        4
+
+        #,##0.00
+
+        9
+
+        0%
+
+        10
+
+        0.00%
+
+        11
+
+        0.00E+00
+
+        12
+
+        # ?/?
+
+        13
+
+        # ??/??
+
+        14
+
+        mm-dd-yy
+
+        15
+
+        d-mmm-yy
+
+        16
+
+        d-mmm
+
+        17
+
+        mmm-yy
+
+        18
+
+        h:mm AM/PM
+
+        19
+
+        h:mm:ss AM/PM
+
+        20
+
+        h:mm
+
+        21
+
+        h:mm:ss
+
+        22
+
+        m/d/yy h:mm
+
+        37
+
+        #,##0 ;(#,##0)
+
+        38
+
+        #,##0 ;[Red](#,##0)
+
+        39
+
+        #,##0.00;(#,##0.00)
+
+        40
+
+        #,##0.00;[Red](#,##0.00)
+
+        45
+
+        mm:ss
+
+        46
+
+        [h]:mm:ss
+
+        47
+
+        mmss.0
+
+        48
+
+        ##0.0E+0
+
+        49
+
+        @";
+
+        let lines: Vec<&str> = plain
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .collect();
+        let pairs: Vec<(i32, &str)> = lines
+            .chunks(2)
+            .filter_map(|p| match p {
+                [id, fmt] => id.parse::<i32>().ok().map(|n| (n, *fmt)),
+                _ => None,
+            })
+            .collect();
+
+        assert_eq!(DEFAULT_NUM_FMTS.len(), pairs.len());
+
+        for &(id, expected) in pairs.iter() {
+            assert_eq!(DefaultFmts::by_id(id), Some(expected), "numFmtId {id}");
+        }
+    }
 }

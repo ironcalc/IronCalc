@@ -15,7 +15,7 @@ fn datevalue_timevalue_arguments() {
 
     assert_eq!(model._get_text("A1"), *"#ERROR!");
     assert_eq!(model._get_text("A2"), *"#ERROR!");
-    assert_eq!(model._get_text("A3"), *"36526");
+    assert_eq!(model._get_text("A3"), *"1/1/00"); // Jan 1 2000, formatted as locale date
     assert_eq!(model._get_text("A4"), *"0.5");
     assert_eq!(model._get_text("A5"), *"#ERROR!");
     assert_eq!(model._get_text("A6"), *"#ERROR!");
