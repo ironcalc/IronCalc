@@ -3,7 +3,19 @@ import { Check, ClipboardPaste, Copy, Scissors, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../Button/Button";
 import { Menu, MenuDivider, type MenuProps } from "./Menu";
-import { MenuItem } from "./MenuItem";
+import { MenuItem, type MenuItemProps } from "./MenuItem";
+
+const noop = () => {};
+
+const defaultItemProps: Omit<MenuItemProps, "children"> = {
+  onClick: noop,
+  selected: false,
+  disabled: false,
+  destructive: false,
+  startAdornment: null,
+  endAdornment: null,
+  submenu: null,
+};
 
 const meta = {
   title: "UI/Menu",
@@ -59,6 +71,7 @@ function FormatMenuLikeContent({
   return (
     <>
       <MenuItem
+        {...defaultItemProps}
         onClick={() => onSelectFormat("auto")}
         selected={selectedFormat === "auto"}
         startAdornment={checkOrSpace("auto")}
@@ -67,6 +80,7 @@ function FormatMenuLikeContent({
       </MenuItem>
       <MenuDivider />
       <MenuItem
+        {...defaultItemProps}
         onClick={() => onSelectFormat("number")}
         selected={selectedFormat === "number"}
         startAdornment={checkOrSpace("number")}
@@ -75,6 +89,7 @@ function FormatMenuLikeContent({
         Number
       </MenuItem>
       <MenuItem
+        {...defaultItemProps}
         onClick={() => onSelectFormat("percentage")}
         selected={selectedFormat === "percentage"}
         startAdornment={checkOrSpace("percentage")}
@@ -84,6 +99,7 @@ function FormatMenuLikeContent({
       </MenuItem>
       <MenuDivider />
       <MenuItem
+        {...defaultItemProps}
         onClick={() => onSelectFormat("currency_eur")}
         selected={selectedFormat === "currency_eur"}
         startAdornment={checkOrSpace("currency_eur")}
@@ -92,6 +108,7 @@ function FormatMenuLikeContent({
         Euro (EUR)
       </MenuItem>
       <MenuItem
+        {...defaultItemProps}
         onClick={() => onSelectFormat("currency_usd")}
         selected={selectedFormat === "currency_usd"}
         startAdornment={checkOrSpace("currency_usd")}
@@ -100,6 +117,7 @@ function FormatMenuLikeContent({
         Dollar (USD)
       </MenuItem>
       <MenuItem
+        {...defaultItemProps}
         onClick={() => onSelectFormat("currency_gbp")}
         selected={selectedFormat === "currency_gbp"}
         startAdornment={checkOrSpace("currency_gbp")}
@@ -109,6 +127,7 @@ function FormatMenuLikeContent({
       </MenuItem>
       <MenuDivider />
       <MenuItem
+        {...defaultItemProps}
         onClick={() => onSelectFormat("date_short")}
         selected={selectedFormat === "date_short"}
         startAdornment={checkOrSpace("date_short")}
@@ -117,6 +136,7 @@ function FormatMenuLikeContent({
         Short date
       </MenuItem>
       <MenuItem
+        {...defaultItemProps}
         onClick={() => onSelectFormat("date_long")}
         selected={selectedFormat === "date_long"}
         startAdornment={checkOrSpace("date_long")}
@@ -126,6 +146,7 @@ function FormatMenuLikeContent({
       </MenuItem>
       <MenuDivider />
       <MenuItem
+        {...defaultItemProps}
         onClick={() => onSelectFormat("custom")}
         selected={selectedFormat === "custom"}
         startAdornment={checkOrSpace("custom")}
@@ -182,9 +203,15 @@ function MenuWithAnchor({
           />
         ) : (
           <>
-            <MenuItem onClick={() => setOpen(false)}>Auto</MenuItem>
-            <MenuItem onClick={() => setOpen(false)}>Number</MenuItem>
-            <MenuItem onClick={() => setOpen(false)}>Percentage</MenuItem>
+            <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+              Auto
+            </MenuItem>
+            <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+              Number
+            </MenuItem>
+            <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+              Percentage
+            </MenuItem>
           </>
         )}
       </Menu>
@@ -243,6 +270,7 @@ export const WithSelectedItem: Story = {
           offset={defaultOffset}
         >
           <MenuItem
+            {...defaultItemProps}
             onClick={() => {
               setSelected("auto");
               setOpen(false);
@@ -253,6 +281,7 @@ export const WithSelectedItem: Story = {
             Auto
           </MenuItem>
           <MenuItem
+            {...defaultItemProps}
             onClick={() => {
               setSelected("number");
               setOpen(false);
@@ -263,6 +292,7 @@ export const WithSelectedItem: Story = {
             Number
           </MenuItem>
           <MenuItem
+            {...defaultItemProps}
             onClick={() => {
               setSelected("percentage");
               setOpen(false);
@@ -304,23 +334,34 @@ export const WithDisabledItem: Story = {
           placement="bottom-start"
           offset={defaultOffset}
         >
-          <MenuItem onClick={() => setOpen(false)} startAdornment={<Copy />}>
+          <MenuItem
+            {...defaultItemProps}
+            onClick={() => setOpen(false)}
+            startAdornment={<Copy />}
+          >
             Copy
           </MenuItem>
           <MenuItem
+            {...defaultItemProps}
             onClick={() => setOpen(false)}
             startAdornment={<Scissors />}
           >
             Cut
           </MenuItem>
           <MenuItem
+            {...defaultItemProps}
             onClick={() => setOpen(false)}
             startAdornment={<ClipboardPaste />}
           >
             Paste
           </MenuItem>
           <MenuDivider />
-          <MenuItem disabled destructive startAdornment={<Trash2 />}>
+          <MenuItem
+            {...defaultItemProps}
+            disabled
+            destructive
+            startAdornment={<Trash2 />}
+          >
             Delete (disabled)
           </MenuItem>
         </Menu>
@@ -365,26 +406,42 @@ export const WithSubmenu: Story = {
           placement="bottom-start"
           offset={defaultOffset}
         >
-          <MenuItem onClick={() => setOpen(false)}>Plain item</MenuItem>
+          <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+            Plain item
+          </MenuItem>
           <MenuDivider />
           <MenuItem
+            {...defaultItemProps}
             submenu={
               <>
-                <MenuItem onClick={() => setOpen(false)}>Sub item A</MenuItem>
-                <MenuItem onClick={() => setOpen(false)}>Sub item B</MenuItem>
+                <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+                  Sub item A
+                </MenuItem>
+                <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+                  Sub item B
+                </MenuItem>
                 <MenuDivider />
-                <MenuItem onClick={() => setOpen(false)}>Sub item C</MenuItem>
+                <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+                  Sub item C
+                </MenuItem>
               </>
             }
           >
             Hover for submenu
           </MenuItem>
           <MenuItem
+            {...defaultItemProps}
             submenu={
               <>
-                <MenuItem onClick={() => setOpen(false)}>Number</MenuItem>
-                <MenuItem onClick={() => setOpen(false)}>Percentage</MenuItem>
-                <MenuItem onClick={() => setOpen(false)}>Currency</MenuItem>
+                <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+                  Number
+                </MenuItem>
+                <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+                  Percentage
+                </MenuItem>
+                <MenuItem {...defaultItemProps} onClick={() => setOpen(false)}>
+                  Currency
+                </MenuItem>
               </>
             }
           >
@@ -424,10 +481,16 @@ export const TwoMenus: Story = {
           placement="bottom-start"
           offset={defaultOffset}
         >
-          <MenuItem onClick={() => setMenuAOpen(false)}>Option 1</MenuItem>
-          <MenuItem onClick={() => setMenuAOpen(false)}>Option 2</MenuItem>
+          <MenuItem {...defaultItemProps} onClick={() => setMenuAOpen(false)}>
+            Option 1
+          </MenuItem>
+          <MenuItem {...defaultItemProps} onClick={() => setMenuAOpen(false)}>
+            Option 2
+          </MenuItem>
           <MenuDivider />
-          <MenuItem onClick={() => setMenuAOpen(false)}>Option 3</MenuItem>
+          <MenuItem {...defaultItemProps} onClick={() => setMenuAOpen(false)}>
+            Option 3
+          </MenuItem>
         </Menu>
 
         <Button
@@ -449,8 +512,12 @@ export const TwoMenus: Story = {
           placement="bottom-start"
           offset={defaultOffset}
         >
-          <MenuItem onClick={() => setMenuBOpen(false)}>Action X</MenuItem>
-          <MenuItem onClick={() => setMenuBOpen(false)}>Action Y</MenuItem>
+          <MenuItem {...defaultItemProps} onClick={() => setMenuBOpen(false)}>
+            Action X
+          </MenuItem>
+          <MenuItem {...defaultItemProps} onClick={() => setMenuBOpen(false)}>
+            Action Y
+          </MenuItem>
         </Menu>
       </div>
     );
@@ -517,17 +584,30 @@ export const ContextMenu: Story = {
           placement="bottom-start"
           offset={defaultOffset}
         >
-          <MenuItem onClick={handleClose} startAdornment={<Copy />}>
+          <MenuItem
+            {...defaultItemProps}
+            onClick={handleClose}
+            startAdornment={<Copy />}
+          >
             Copy
           </MenuItem>
-          <MenuItem onClick={handleClose} startAdornment={<Scissors />}>
+          <MenuItem
+            {...defaultItemProps}
+            onClick={handleClose}
+            startAdornment={<Scissors />}
+          >
             Cut
           </MenuItem>
-          <MenuItem onClick={handleClose} startAdornment={<ClipboardPaste />}>
+          <MenuItem
+            {...defaultItemProps}
+            onClick={handleClose}
+            startAdornment={<ClipboardPaste />}
+          >
             Paste
           </MenuItem>
           <MenuDivider />
           <MenuItem
+            {...defaultItemProps}
             onClick={handleClose}
             startAdornment={<Trash2 />}
             destructive

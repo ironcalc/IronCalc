@@ -1,39 +1,48 @@
-import Popper from "@mui/material/Popper";
 import { alpha, styled } from "@mui/material/styles";
 import { ChevronRight } from "lucide-react";
 import type React from "react";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { MENU_PANEL_DATA_ATTR, MenuPanel, SubmenuContext } from "./Menu";
 
 export type MenuItemProps = {
   children: React.ReactNode;
-  onClick?: () => void;
-  selected?: boolean;
-  disabled?: boolean;
-  destructive?: boolean;
-  startAdornment?: React.ReactNode;
-  endAdornment?: React.ReactNode;
-  submenu?: React.ReactNode;
-  component?: React.ElementType;
+  onClick: () => void;
+  selected: boolean;
+  disabled: boolean;
+  destructive: boolean;
+  startAdornment: React.ReactNode | null;
+  endAdornment: React.ReactNode | null;
+  submenu: React.ReactNode | null;
 };
 
 const SUBMENU_CLOSE_DELAY_MS = 150;
+const SUBMENU_OFFSET: [number, number] = [-4, 0];
 
-export function MenuItem({
-  children,
-  onClick,
-  selected,
-  disabled,
-  destructive,
-  startAdornment,
-  endAdornment,
-  submenu,
-  component = "button",
-}: MenuItemProps) {
+export function MenuItem(props: MenuItemProps) {
+  const {
+    children,
+    onClick,
+    selected,
+    disabled,
+    destructive,
+    startAdornment,
+    endAdornment,
+    submenu,
+  } = props;
+
   const { openSubmenuAnchor, setOpenSubmenuAnchor } =
     useContext(SubmenuContext);
-  const [submenuOpen, setSubmenuOpen] = useState(false);
+  // ✂️ Merged submenuOpen + submenuAnchor into one nullable state
   const [submenuAnchor, setSubmenuAnchor] = useState<HTMLElement | null>(null);
+  const [submenuPosition, setSubmenuPosition] = useState({ top: 0, left: 0 });
   const anchorRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -44,105 +53,105 @@ export function MenuItem({
     }
   }, []);
 
-  const handleSubmenuOpen = () => {
+  const openSubmenu = () => {
     if (disabled || !submenu) return;
     clearCloseTimeout();
     const el = anchorRef.current;
     setSubmenuAnchor(el);
-    setSubmenuOpen(true);
     setOpenSubmenuAnchor(el);
   };
 
-  const handleSubmenuClose = () => {
+  const closeSubmenu = () => {
     clearCloseTimeout();
     closeTimeoutRef.current = setTimeout(() => {
-      setSubmenuOpen(false);
       setSubmenuAnchor(null);
       setOpenSubmenuAnchor(null);
       closeTimeoutRef.current = null;
     }, SUBMENU_CLOSE_DELAY_MS);
   };
 
+  const updateSubmenuPosition = useCallback(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const [skidding, distance] = SUBMENU_OFFSET;
+    setSubmenuPosition({
+      left: rect.right + distance,
+      top: rect.top + skidding,
+    });
+  }, []);
+
+  // Close this submenu if another item opened its own
   useEffect(() => {
-    if (
-      submenuOpen &&
-      openSubmenuAnchor != null &&
-      openSubmenuAnchor !== anchorRef.current
-    ) {
+    if (submenuAnchor && openSubmenuAnchor !== anchorRef.current) {
       clearCloseTimeout();
-      setSubmenuOpen(false);
       setSubmenuAnchor(null);
     }
-  }, [submenuOpen, openSubmenuAnchor, clearCloseTimeout]);
+  }, [submenuAnchor, openSubmenuAnchor, clearCloseTimeout]);
 
-  useEffect(
-    () => () => {
-      clearCloseTimeout();
-    },
-    [clearCloseTimeout],
-  );
+  useLayoutEffect(() => {
+    if (!submenuAnchor) return;
+    updateSubmenuPosition();
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const resizeObserver = new ResizeObserver(updateSubmenuPosition);
+    resizeObserver.observe(anchor);
+    window.addEventListener("scroll", updateSubmenuPosition, true);
+    window.addEventListener("resize", updateSubmenuPosition);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("scroll", updateSubmenuPosition, true);
+      window.removeEventListener("resize", updateSubmenuPosition);
+    };
+  }, [submenuAnchor, updateSubmenuPosition]);
 
-  const effectiveEndAdornment =
-    submenu != null ? (
-      <>
-        {endAdornment}
-        <ChevronRight style={{ width: 16, height: 16, marginLeft: 4 }} />
-      </>
-    ) : (
-      endAdornment
-    );
+  useEffect(() => () => clearCloseTimeout(), [clearCloseTimeout]);
 
   const item = (
     <MenuItemWrapper
-      as={component}
-      type={component === "button" ? "button" : undefined}
+      type="button"
       onClick={disabled ? undefined : onClick}
       data-selected={selected ? "" : undefined}
       disabled={disabled}
       $destructive={destructive}
+      onMouseEnter={submenu ? openSubmenu : undefined}
+      onMouseLeave={submenu ? closeSubmenu : undefined}
     >
-      {startAdornment != null && (
+      {startAdornment && (
         <MenuItemStartAdornment>{startAdornment}</MenuItemStartAdornment>
       )}
       <MenuItemText>{children}</MenuItemText>
-      {effectiveEndAdornment != null && (
-        <MenuItemEndAdornment>{effectiveEndAdornment}</MenuItemEndAdornment>
+      {(endAdornment || submenu) && (
+        <MenuItemEndAdornment>
+          {endAdornment}
+          {submenu && (
+            <ChevronRight style={{ width: 16, height: 16, marginLeft: 4 }} />
+          )}
+        </MenuItemEndAdornment>
       )}
     </MenuItemWrapper>
   );
 
-  if (submenu != null) {
-    return (
-      <>
-        <SubMenuAnchor
-          ref={anchorRef}
-          onMouseEnter={handleSubmenuOpen}
-          onMouseLeave={handleSubmenuClose}
-        >
-          {item}
-        </SubMenuAnchor>
-        {submenuAnchor && (
-          <SubmenuPopper
-            open={submenuOpen}
-            anchorEl={submenuAnchor}
-            placement="right-start"
-            keepMounted={false}
-            modifiers={[{ name: "offset", options: { offset: [-4, 0] } }]}
-          >
+  if (!submenu) return item;
+
+  return (
+    <div ref={anchorRef}>
+      {item}
+      {submenuAnchor &&
+        createPortal(
+          <SubmenuPositionedWrapper style={submenuPosition}>
             <MenuPanel
               {...{ [MENU_PANEL_DATA_ATTR]: "" }}
-              onMouseEnter={handleSubmenuOpen}
-              onMouseLeave={handleSubmenuClose}
+              onMouseEnter={openSubmenu}
+              onMouseLeave={closeSubmenu}
             >
               {submenu}
             </MenuPanel>
-          </SubmenuPopper>
+          </SubmenuPositionedWrapper>,
+          document.body,
         )}
-      </>
-    );
-  }
-
-  return item;
+    </div>
+  );
 }
 
 const MenuItemWrapper = styled("button", {
@@ -223,11 +232,8 @@ const MenuItemEndAdornment = styled("span")`
   align-items: center;
 `;
 
-const SubMenuAnchor = styled("div")``;
-
-const SubmenuPopper = styled(Popper)`
+const SubmenuPositionedWrapper = styled("div")`
+  position: fixed;
   z-index: 1300;
-  &[data-popper-placement] {
-    pointer-events: auto;
-  }
+  pointer-events: auto;
 `;

@@ -43,28 +43,7 @@ export type MenuProps = {
 };
 
 const DEFAULT_OFFSET: [number, number] = [-4, 4];
-
-/** Right-aligned placements (menu anchored to end/right); flip skid so offset looks correct. */
-function isRightAlignedPlacement(placement: PopperPlacementType): boolean {
-  return placement.includes("-end") || placement.startsWith("right");
-}
-
-/** Used by onClickAway to ignore clicks inside this menu or any submenu (submenus render in separate Poppers/portals). */
 export const MENU_PANEL_DATA_ATTR = "data-menu-panel";
-
-function getPlacementParts(placement: PopperPlacementType): {
-  base: "top" | "bottom" | "left" | "right";
-  align: "start" | "end" | "center";
-} {
-  const [base, align] = placement.split("-");
-  return {
-    base: (base ?? "bottom") as "top" | "bottom" | "left" | "right",
-    align: (align === "start" ? "start" : align === "end" ? "end" : "center") as
-      | "start"
-      | "end"
-      | "center",
-  };
-}
 
 function computePosition(
   anchorRect: DOMRect,
@@ -73,51 +52,40 @@ function computePosition(
   placement: PopperPlacementType,
   [skidding, distance]: [number, number],
 ): { top: number; left: number } {
-  const { base, align } = getPlacementParts(placement);
-  let top = 0;
-  let left = 0;
+  // ✂️ Inlined getPlacementParts
+  const [basePart, alignPart] = placement.split("-");
+  const base = (basePart ?? "bottom") as "top" | "bottom" | "left" | "right";
+  const align =
+    alignPart === "start" ? "start" : alignPart === "end" ? "end" : "center";
 
-  const startX = anchorRect.left;
-  const endX = anchorRect.right;
-  const centerX = anchorRect.left + anchorRect.width / 2;
-  const startY = anchorRect.top;
-  const endY = anchorRect.bottom;
-  const centerY = anchorRect.top + anchorRect.height / 2;
+  const {
+    left: aL,
+    right: aR,
+    top: aT,
+    bottom: aB,
+    width: aW,
+    height: aH,
+  } = anchorRect;
 
-  if (base === "bottom") {
-    top = endY + distance;
-    left =
+  if (base === "bottom" || base === "top") {
+    const top = base === "bottom" ? aB + distance : aT - panelHeight - distance;
+    const left =
       align === "start"
-        ? startX + skidding
+        ? aL + skidding
         : align === "end"
-          ? endX - panelWidth + skidding
-          : centerX - panelWidth / 2 + skidding;
-  } else if (base === "top") {
-    top = startY - panelHeight - distance;
-    left =
-      align === "start"
-        ? startX + skidding
-        : align === "end"
-          ? endX - panelWidth + skidding
-          : centerX - panelWidth / 2 + skidding;
-  } else if (base === "right") {
-    left = endX + distance;
-    top =
-      align === "start"
-        ? startY + skidding
-        : align === "end"
-          ? endY - panelHeight + skidding
-          : centerY - panelHeight / 2 + skidding;
+          ? aR - panelWidth + skidding
+          : aL + aW / 2 - panelWidth / 2 + skidding;
+    return { top, left };
   } else {
-    left = startX - panelWidth - distance;
-    top =
+    const left = base === "right" ? aR + distance : aL - panelWidth - distance;
+    const top =
       align === "start"
-        ? startY + skidding
+        ? aT + skidding
         : align === "end"
-          ? endY - panelHeight + skidding
-          : centerY - panelHeight / 2 + skidding;
+          ? aB - panelHeight + skidding
+          : aT + aH / 2 - panelHeight / 2 + skidding;
+    return { top, left };
   }
-  return { top, left };
 }
 
 export function Menu({
@@ -135,8 +103,10 @@ export function Menu({
 
   const effectiveOffset: [number, number] = useMemo(
     () =>
-      isRightAlignedPlacement(placement) ? [-offset[0], offset[1]] : offset,
-    [placement, offset],
+      placement.includes("-end") || placement.startsWith("right")
+        ? [-offset[0], offset[1]]
+        : offset,
+    [placement, offset[0], offset[1]],
   );
 
   const updatePosition = useCallback(() => {
@@ -144,15 +114,9 @@ export function Menu({
     const panel = panelRef.current;
     if (!anchor || !panel) return;
     const anchorRect = anchor.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
+    const { width, height } = panel.getBoundingClientRect();
     setPosition(
-      computePosition(
-        anchorRect,
-        panelRect.width,
-        panelRect.height,
-        placement,
-        effectiveOffset,
-      ),
+      computePosition(anchorRect, width, height, placement, effectiveOffset),
     );
   }, [anchorEl, placement, effectiveOffset]);
 
@@ -167,13 +131,13 @@ export function Menu({
     if (!anchor) return;
     const resizeObserver = new ResizeObserver(updatePosition);
     resizeObserver.observe(anchor);
-    const onScrollOrResize = () => updatePosition();
-    window.addEventListener("scroll", onScrollOrResize, true);
-    window.addEventListener("resize", onScrollOrResize);
+    // ✂️ Pass updatePosition directly, no wrapper needed
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
     return () => {
       resizeObserver.disconnect();
-      window.removeEventListener("scroll", onScrollOrResize, true);
-      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
     };
   }, [open, updatePosition, anchorEl]);
 
@@ -184,9 +148,8 @@ export function Menu({
       if (
         target instanceof Element &&
         target.closest(`[${MENU_PANEL_DATA_ATTR}]`)
-      ) {
+      )
         return;
-      }
       if (anchorEl.current?.contains(target)) return;
       onClose();
     };
@@ -198,34 +161,25 @@ export function Menu({
     };
   }, [open, onClose, anchorEl]);
 
-  if (!open) {
-    return (
-      <SubmenuContext.Provider
-        value={{ openSubmenuAnchor, setOpenSubmenuAnchor }}
-      >
-        {null}
-      </SubmenuContext.Provider>
-    );
-  }
-
-  const panel = (
-    <StyledPositionedWrapper
-      ref={panelRef}
-      style={{ top: position.top, left: position.left }}
-    >
-      <MenuPanel {...{ [MENU_PANEL_DATA_ATTR]: "" }}>{children}</MenuPanel>
-    </StyledPositionedWrapper>
-  );
-
+  // ✂️ Single return — context always wraps, portal only rendered when open
   return (
     <SubmenuContext.Provider
       value={{ openSubmenuAnchor, setOpenSubmenuAnchor }}
     >
-      {createPortal(panel, document.body)}
+      {open &&
+        createPortal(
+          <StyledPositionedWrapper ref={panelRef} style={position}>
+            <MenuPanel {...{ [MENU_PANEL_DATA_ATTR]: "" }}>
+              {children}
+            </MenuPanel>
+          </StyledPositionedWrapper>,
+          document.body,
+        )}
     </SubmenuContext.Provider>
   );
 }
 
+// Styled components unchanged
 const StyledPositionedWrapper = styled("div")`
   position: fixed;
   z-index: 1300;

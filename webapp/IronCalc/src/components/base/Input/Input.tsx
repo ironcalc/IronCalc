@@ -38,7 +38,6 @@ export interface InputProps
   sx: React.CSSProperties | undefined;
 }
 
-/** Fixed heights + padding for single-line (aligned with Button sizeSx) */
 const sizeRootStyles: Record<InputSize, { height: number; padding: string }> = {
   xs: { height: 24, padding: "4px 8px" },
   sm: { height: 28, padding: "6px 8px" },
@@ -46,7 +45,6 @@ const sizeRootStyles: Record<InputSize, { height: number; padding: string }> = {
   lg: { height: 38, padding: "11px 8px" },
 };
 
-/** Min heights for textarea (no fixed height so it can grow) */
 const textareaMinHeights: Record<InputSize, number> = {
   xs: 60,
   sm: 64,
