@@ -121,7 +121,10 @@ export function Menu({
   }, [anchorEl, placement, effectiveOffset]);
 
   useEffect(() => {
-    if (!open) setPosition({ top: -10000, left: -10000 });
+    if (!open) {
+      setPosition({ top: -10000, left: -10000 });
+      setOpenSubmenuAnchor(null);
+    }
   }, [open]);
 
   useLayoutEffect(() => {
@@ -145,12 +148,9 @@ export function Menu({
     if (!open) return;
     const handleClickAway = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node;
-      if (
-        target instanceof Element &&
-        target.closest(`[${MENU_PANEL_DATA_ATTR}]`)
-      )
-        return;
-      if (anchorEl.current?.contains(target)) return;
+      const el = target instanceof Element ? target : target.parentElement;
+      if (el?.closest(`[${MENU_PANEL_DATA_ATTR}]`)) return;
+      if (el && anchorEl.current?.contains(el)) return;
       onClose();
     };
     document.addEventListener("mousedown", handleClickAway);

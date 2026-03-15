@@ -17,7 +17,7 @@ const GAP = 4;
 const TRANSITION_MS = 150;
 const ENTER_DELAY_MS = 700;
 const LEAVE_DELAY_MS = 0;
-/** If a tooltip was visible within this window (ms), the next one shows immediately. */
+// If a tooltip was visible within this window (ms), the next one shows immediately.
 const RECENT_TOOLTIP_MS = 500;
 
 let lastTooltipVisibleAt = 0;
@@ -79,6 +79,8 @@ export function Tooltip({
     }
   }, []);
 
+  useEffect(() => () => clearTimers(), [clearTimers]);
+
   const handleEnter = useCallback(
     (_e: React.MouseEvent | React.FocusEvent) => {
       if (disableHoverListener) return;
@@ -100,15 +102,16 @@ export function Tooltip({
 
   const handleLeave = useCallback(
     (_e: React.MouseEvent | React.FocusEvent) => {
-      lastTooltipVisibleAt = Date.now();
       clearTimers();
       enterTimerRef.current = null;
+      if (!open) return;
+      lastTooltipVisibleAt = Date.now();
       leaveTimerRef.current = setTimeout(() => {
         setOpen(false);
         setExiting(true);
       }, LEAVE_DELAY_MS);
     },
-    [clearTimers],
+    [clearTimers, open],
   );
 
   useLayoutEffect(() => {

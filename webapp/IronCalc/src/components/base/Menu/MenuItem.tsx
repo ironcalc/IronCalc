@@ -14,6 +14,7 @@ import { MENU_PANEL_DATA_ATTR, MenuPanel, SubmenuContext } from "./Menu";
 
 export type MenuItemProps = {
   children: React.ReactNode;
+  component?: React.ElementType;
   onClick: () => void;
   selected: boolean;
   disabled: boolean;
@@ -29,6 +30,7 @@ const SUBMENU_OFFSET: [number, number] = [-4, 0];
 export function MenuItem(props: MenuItemProps) {
   const {
     children,
+    component: componentProp = "button",
     onClick,
     selected,
     disabled,
@@ -37,6 +39,30 @@ export function MenuItem(props: MenuItemProps) {
     endAdornment,
     submenu,
   } = props;
+
+  const isButton = componentProp === "button";
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (disabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      onClick();
+    },
+    [disabled, onClick],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (disabled && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    [disabled],
+  );
 
   const { openSubmenuAnchor, setOpenSubmenuAnchor } =
     useContext(SubmenuContext);
@@ -109,10 +135,14 @@ export function MenuItem(props: MenuItemProps) {
 
   const item = (
     <MenuItemWrapper
-      type="button"
-      onClick={disabled ? undefined : onClick}
+      component={componentProp}
+      type={isButton ? "button" : undefined}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
       data-selected={selected ? "" : undefined}
-      disabled={disabled}
+      aria-disabled={disabled ? true : undefined}
+      tabIndex={!isButton && disabled ? -1 : undefined}
+      {...(isButton ? { disabled } : {})}
       $destructive={destructive}
       onMouseEnter={submenu ? openSubmenu : undefined}
       onMouseLeave={submenu ? closeSubmenu : undefined}
@@ -156,7 +186,7 @@ export function MenuItem(props: MenuItemProps) {
 
 const MenuItemWrapper = styled("button", {
   shouldForwardProp: (prop) => prop !== "$destructive",
-})<{ $destructive?: boolean }>`
+})<{ $destructive?: boolean; component?: React.ElementType }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -180,13 +210,14 @@ const MenuItemWrapper = styled("button", {
       $destructive ? theme.palette.error.main : "inherit"};
   }
 
-  &:hover:not(:disabled) {
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
     background-color: ${({ theme, $destructive }) =>
       $destructive
         ? alpha(theme.palette.error.main, 0.1)
         : theme.palette.action.hover};
   }
-  &:disabled {
+  &:disabled,
+  &[aria-disabled="true"] {
     cursor: default;
     opacity: 0.6;
   }

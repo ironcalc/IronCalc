@@ -116,8 +116,9 @@ function getInputWrapperStyle(
 
   return {
     ...base,
-    border: `1px solid ${borderColor}`,
-    borderWidth: focused ? 1 : 1,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor,
   };
 }
 
@@ -169,7 +170,6 @@ function getTextareaStyle(
 export function Input({
   variant = "outlined",
   size = "md",
-  margin = "none",
   label,
   id: idProp,
   multiline = false,
@@ -198,7 +198,9 @@ export function Input({
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  const hasValue = typeof valueProp === "string" && valueProp.length > 0;
+  const hasValue =
+    valueProp != null &&
+    (typeof valueProp !== "string" || valueProp.length > 0);
   const showClearButton = clearable && !multiline && !disabled && hasValue;
 
   const handleClear = useCallback(() => {
