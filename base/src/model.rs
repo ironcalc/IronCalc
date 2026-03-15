@@ -6,7 +6,7 @@ use std::vec::Vec;
 use crate::{
     calc_result::{CalcResult, Range},
     cell::CellValue,
-    constants::{self, LAST_COLUMN, LAST_ROW},
+    constants::{self, LAST_COLUMN, LAST_ROW, SHORT_DATETIME_ID, SHORT_DATE_ID},
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -1567,14 +1567,14 @@ impl<'a> Model<'a> {
                 let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
                     let new_style_index = match units {
-                        Units::LocaleDate => self.workbook.styles.get_style_with_num_fmt_id(
-                            new_style_index,
-                            DefaultFmts::SHORT_DATE_ID,
-                        )?,
-                        Units::LocaleDateTime => self.workbook.styles.get_style_with_num_fmt_id(
-                            new_style_index,
-                            DefaultFmts::SHORT_DATETIME_ID,
-                        )?,
+                        Units::LocaleDate => self
+                            .workbook
+                            .styles
+                            .get_style_with_num_fmt_id(new_style_index, SHORT_DATE_ID)?,
+                        Units::LocaleDateTime => self
+                            .workbook
+                            .styles
+                            .get_style_with_num_fmt_id(new_style_index, SHORT_DATETIME_ID)?,
                         Units::Number { num_fmt, .. }
                         | Units::Currency { num_fmt, .. }
                         | Units::Percentage { num_fmt, .. } => self
@@ -1614,12 +1614,10 @@ impl<'a> Model<'a> {
                         let should_apply_format = !(existing_is_date && new_is_date);
                         if should_apply_format {
                             new_style_index = match num_fmt_spec {
-                                NumFmtSpec::LocaleDate => {
-                                    self.workbook.styles.get_style_with_num_fmt_id(
-                                        new_style_index,
-                                        DefaultFmts::SHORT_DATE_ID,
-                                    )?
-                                }
+                                NumFmtSpec::LocaleDate => self
+                                    .workbook
+                                    .styles
+                                    .get_style_with_num_fmt_id(new_style_index, SHORT_DATE_ID)?,
                                 NumFmtSpec::Literal(s) => self
                                     .workbook
                                     .styles
@@ -1855,8 +1853,8 @@ impl<'a> Model<'a> {
                 let num_fmt_id = self.workbook.styles.get_num_fmt_id(style_index)?;
                 // Locale IDs 14/22 derive the pattern from the active locale; others use stored string.
                 let format = match num_fmt_id {
-                    DefaultFmts::SHORT_DATE_ID => self.locale.dates.date_formats.short.clone(),
-                    DefaultFmts::SHORT_DATETIME_ID => locale_short_datetime_fmt(self.locale),
+                    SHORT_DATE_ID => self.locale.dates.date_formats.short.clone(),
+                    SHORT_DATETIME_ID => locale_short_datetime_fmt(self.locale),
                     _ => {
                         self.workbook
                             .styles
@@ -1929,12 +1927,8 @@ impl<'a> Model<'a> {
                 } else {
                     // Locale IDs 14/22 derive the pattern from the active locale; others use stored string.
                     let date_fmt = match num_fmt_id {
-                        DefaultFmts::SHORT_DATE_ID => {
-                            Some(self.locale.dates.date_formats.short.clone())
-                        }
-                        DefaultFmts::SHORT_DATETIME_ID => {
-                            Some(locale_short_datetime_fmt(self.locale))
-                        }
+                        SHORT_DATE_ID => Some(self.locale.dates.date_formats.short.clone()),
+                        SHORT_DATETIME_ID => Some(locale_short_datetime_fmt(self.locale)),
                         _ if is_likely_date_number_format(&style.num_fmt.format_code) => {
                             Some(style.num_fmt.format_code.clone())
                         }

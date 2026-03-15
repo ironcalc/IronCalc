@@ -26,3 +26,13 @@ pub(crate) const MINIMUM_DATE_SERIAL_NUMBER: i32 = 1;
 // Excel can handle dates until the year 9999-12-31
 // 2958465 is the number of days from 1900-01-01 to 9999-12-31
 pub(crate) const MAXIMUM_DATE_SERIAL_NUMBER: i32 = 2_958_465;
+
+// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oe376/0e59abdb-7f4e-48fc-9b89-67832fa11789
+/// Locale short date numFmtId: 14
+pub(crate) const SHORT_DATE_ID: i32 = 14;
+/// Locale short date+time numFmt id: 22
+pub(crate) const SHORT_DATETIME_ID: i32 = 22;
+
+/// ECMA-376 §18.8.30: custom numFmtIds must be ≥ 164.
+/// IDs 0–163 are reserved for built-in formats; assigning lower IDs corrupts XLSX readers.
+pub(crate) const ECMA_CUSTOM_FMT_MIN_ID: i32 = 164;

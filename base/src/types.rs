@@ -2,6 +2,7 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
+use crate::constants::ECMA_CUSTOM_FMT_MIN_ID;
 use crate::expressions::token::Error;
 use crate::number_format::DefaultFmts;
 
@@ -387,7 +388,7 @@ impl<'de> Deserialize<'de> for NumFmt {
                 // Anything else (e.g. a built-in-range ID paired with a custom code)
                 // is suspect — discard the stored ID and keep the derived value.
                 let num_fmt_id = if stored_id == derived.num_fmt_id
-                    || (derived.num_fmt_id == -1 && stored_id >= NumFmt::ECMA_CUSTOM_FMT_MIN_ID)
+                    || (derived.num_fmt_id == -1 && stored_id >= ECMA_CUSTOM_FMT_MIN_ID)
                 {
                     stored_id
                 } else {
@@ -445,7 +446,7 @@ impl NumFmt {
                     "num_fmt_id {id} is unknown (not a built-in ECMA-376 ID and not in custom_fmts); \
                      silently falling back to General (0)"
                 );
-                (0, DefaultFmts::by_id(0).unwrap())
+                (0, DefaultFmts::by_id(0).unwrap_or("General"))
             }
         };
         NumFmt {
@@ -473,12 +474,8 @@ impl NumFmt {
             .iter()
             .find(|f| f.num_fmt_id == id)
             .map(|f| f.format_code.as_str())
-            .unwrap_or(DefaultFmts::by_id(0).unwrap())
+            .unwrap_or(DefaultFmts::by_id(0).unwrap_or("General"))
     }
-
-    /// ECMA-376 §18.8.30: custom numFmtIds must be ≥ 164.
-    /// IDs 0–163 are reserved for built-in formats; assigning lower IDs corrupts XLSX readers.
-    const ECMA_CUSTOM_FMT_MIN_ID: i32 = 164;
 
     /// Returns the `NumFmt` for `code`, registering it in `num_fmts` if it is not yet present.
     ///
@@ -495,7 +492,7 @@ impl NumFmt {
             return existing.clone();
         }
         // ECMA-376 custom IDs must be ≥ 164; find the lowest unused one.
-        let mut new_id = Self::ECMA_CUSTOM_FMT_MIN_ID;
+        let mut new_id = ECMA_CUSTOM_FMT_MIN_ID;
         while num_fmts.iter().any(|f| f.num_fmt_id == new_id) {
             new_id += 1;
         }

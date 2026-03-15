@@ -1,4 +1,5 @@
 use crate::{
+    constants::{SHORT_DATETIME_ID, SHORT_DATE_ID},
     formatter::{self, format::Formatted},
     locale::get_locale,
 };
@@ -65,38 +66,44 @@ impl DefaultFmts {
         Self::by_id(id).is_some()
     }
 
-    ///
     /// 3: `#,##0`
     pub(crate) fn comma_int() -> String {
-        DefaultFmts::by_id(3).unwrap().to_string()
+        DefaultFmts::id_fmt_or_general(3) //.unwrap_or("#,##0").to_string()
     }
 
     ///  4: `#,##0.00`
     pub(crate) fn comma_dec() -> String {
-        DefaultFmts::by_id(4).unwrap().to_string()
+        DefaultFmts::id_fmt_or_general(4) //.unwrap_or("#,##0.00").to_string()
     }
     /// 9: `0%`
     pub(crate) fn percent_int() -> String {
-        DefaultFmts::by_id(9).unwrap().to_string()
+        DefaultFmts::id_fmt_or_general(9) //.unwrap_or("0%").to_string()
     }
 
     ///  10: `0.00%`
     pub(crate) fn percent_dec() -> String {
-        DefaultFmts::by_id(10).unwrap().to_string()
+        DefaultFmts::id_fmt_or_general(10) //.unwrap_or("0.00%").to_string()
     }
 
     /// 11: `0.00E+00`
     pub(crate) fn scientific_format() -> String {
-        DefaultFmts::by_id(11).unwrap().to_string()
+        DefaultFmts::id_fmt_or_general(11)
     }
 
-    /// 14: locale short date.
-    pub(crate) const SHORT_DATE_ID: i32 = 14;
-    /// 22: locale short date+time.
-    pub(crate) const SHORT_DATETIME_ID: i32 = 22;
+    // Formatter helper, otherwise we would need to do for each
+    // function above to satisfy clippy.
+    // DefaultFmts::by_id().unwrap_or("#,##0.00").to_string()
+    fn id_fmt_or_general(id: i32) -> String {
+        DEFAULT_NUM_FMTS
+            .iter()
+            .find(|&&(fid, _)| fid == id)
+            .map(|&(_, s)| s)
+            .unwrap_or("General")
+            .to_string()
+    }
 
     pub(crate) fn is_locale_date(id: i32) -> bool {
-        id == Self::SHORT_DATE_ID || id == Self::SHORT_DATETIME_ID
+        id == SHORT_DATE_ID || id == SHORT_DATETIME_ID
     }
 }
 

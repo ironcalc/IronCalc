@@ -1,4 +1,5 @@
 use crate::{
+    constants::{SHORT_DATETIME_ID, SHORT_DATE_ID},
     expressions::{parser::Node, token::OpProduct, types::CellReferenceIndex},
     formatter::parser::{ParsePart, Parser},
     functions::Function,
@@ -96,8 +97,8 @@ impl<'a> Model<'a> {
             .ok()?;
         // Check numFmtId directly: locale IDs 14/22 may not reverse-map reliably from their string.
         match style.num_fmt.num_fmt_id {
-            DefaultFmts::SHORT_DATE_ID => Some(Units::LocaleDate),
-            DefaultFmts::SHORT_DATETIME_ID => Some(Units::LocaleDateTime),
+            SHORT_DATE_ID => Some(Units::LocaleDate),
+            SHORT_DATETIME_ID => Some(Units::LocaleDateTime),
             _ => get_units_from_format_string(&style.num_fmt.format_code),
         }
     }
