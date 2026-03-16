@@ -9,6 +9,7 @@ import {
   Trash2,
   Underline,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import type { ButtonProps } from "./Button";
 import { Button } from "./Button";
@@ -23,8 +24,8 @@ const defaultArgs = {
   size: "md" as const,
   iconOnly: false,
   pressed: false,
-  startIcon: undefined as React.ReactNode,
-  endIcon: undefined as React.ReactNode,
+  startIcon: undefined as ReactNode,
+  endIcon: undefined as ReactNode,
 };
 
 const meta = {
