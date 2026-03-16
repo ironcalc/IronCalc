@@ -333,6 +333,16 @@ pub struct Style {
     pub quote_prefix: bool,
 }
 
+/// Number format to apply when storing a parsed cell value.
+/// No `LocaleDateTime` variant: numFmtId 22 is set only by formula evaluation, not user input.
+#[derive(Debug, PartialEq)]
+pub(crate) enum NumFmtSpec {
+    /// Locale short date (numFmtId 14).
+    LocaleDate,
+    /// A literal format string (ISO dates, currency, percent, …).
+    Literal(String),
+}
+
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct NumFmt {
@@ -463,18 +473,6 @@ impl NumFmt {
             num_fmt_id,
             format_code: code.to_string(),
         }
-    }
-
-    /// Resolve format code; unknown/negative IDs return `"General"`.
-    pub(crate) fn format_code_for_id(id: i32, custom_fmts: &[NumFmt]) -> &str {
-        if let Some(code) = DefaultFmts::by_id(id) {
-            return code;
-        }
-        custom_fmts
-            .iter()
-            .find(|f| f.num_fmt_id == id)
-            .map(|f| f.format_code.as_str())
-            .unwrap_or(DefaultFmts::by_id(0).unwrap_or("General"))
     }
 
     /// Returns the `NumFmt` for `code`, registering it in `num_fmts` if it is not yet present.

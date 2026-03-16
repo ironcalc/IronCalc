@@ -91,7 +91,7 @@ impl Styles {
                 && if incoming_id >= 0 {
                     xf.num_fmt_id == incoming_id
                 } else {
-                    NumFmt::format_code_for_id(xf.num_fmt_id, &self.num_fmts) == fmt_code
+                    NumFmt::from_id(xf.num_fmt_id, &self.num_fmts).format_code.as_str() == fmt_code
                 }
                 && xf.fill_id == fill_id
                 && xf.border_id == border_id

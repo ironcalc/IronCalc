@@ -402,23 +402,6 @@ fn get_style_with_format_no_duplicate_cell_xfs() {
 }
 
 #[test]
-fn resolve_code_returns_correct_code() {
-    let num_fmts = vec![NumFmt::new(164, "dd/mm/yyyy hh:mm:ss".to_string())];
-
-    assert_eq!(NumFmt::format_code_for_id(0, &num_fmts), "General");
-    assert_eq!(NumFmt::format_code_for_id(9, &num_fmts), "0%");
-    assert_eq!(
-        NumFmt::format_code_for_id(SHORT_DATE_ID, &num_fmts),
-        "mm-dd-yy"
-    );
-    assert_eq!(
-        NumFmt::format_code_for_id(164, &num_fmts),
-        "dd/mm/yyyy hh:mm:ss"
-    );
-    assert_eq!(NumFmt::format_code_for_id(999, &num_fmts), "General"); // unknown → fallback
-}
-
-#[test]
 fn from_id_unknown_falls_back_to_general_not_empty() {
     // from_id must return format_code = "General" for unknown IDs, not "" (empty string).
     //
@@ -634,22 +617,6 @@ fn legacy_custom_num_fmt_renders_literal_not_locale() {
         model.get_localized_cell_content(0, 1, 1).unwrap(),
         "4/3/2025",
         "edit-bar content must reflect the literal format code, not re-derive from locale"
-    );
-}
-
-#[test]
-fn format_code_for_id_unknown_returns_general() {
-    // format_code_for_id must return "General" for IDs that are neither built-in
-    // nor in the custom list — not "" (the Default for &str).
-    assert_eq!(
-        NumFmt::format_code_for_id(999, &[]),
-        "General",
-        "unknown numFmtId must fall back to \"General\", not \"\""
-    );
-    assert_eq!(
-        NumFmt::format_code_for_id(-1, &[]),
-        "General",
-        "negative sentinel must fall back to \"General\""
     );
 }
 

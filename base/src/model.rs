@@ -19,7 +19,7 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_identifier, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_formatted_number, NumFmtSpec},
+        format::{format_number, parse_formatted_number},
         lexer::is_likely_date_number_format,
     },
     functions::util::compare_values,

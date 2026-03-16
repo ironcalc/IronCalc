@@ -208,7 +208,7 @@ mod tests {
     /// https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.spreadsheet.numberingformat?view=openxml-3.0.1
 
     #[test]
-    fn test_supported_num_fmt() {
+    fn test_full_numbering_format_class() {
         let plain = "
         0
 

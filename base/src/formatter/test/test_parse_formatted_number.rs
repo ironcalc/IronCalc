@@ -1,8 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
-    formatter::format::{parse_formatted_number, NumFmtSpec},
-    locale::get_default_locale,
+    formatter::format::parse_formatted_number, locale::get_default_locale, types::NumFmtSpec,
 };
 
 const PARSE_ERROR_MSG: &str = "Could not parse number";

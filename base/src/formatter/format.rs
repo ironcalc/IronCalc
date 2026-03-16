@@ -3,6 +3,7 @@ use chrono::Datelike;
 use crate::{
     locale::Locale,
     number_format::{to_precision, DefaultFmts},
+    types::NumFmtSpec,
 };
 
 use super::{
@@ -747,16 +748,7 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 //
 // NOTE 1: The separator has to be the same
 // NOTE 2: In some engines "2/3" is implemented ad "2/March of the present year"
-// NOTE 3: I did not implement the "short date"
-/// Number format to apply when storing a parsed cell value.
-/// No `LocaleDateTime` variant: numFmtId 22 is set only by formula evaluation, not user input.
-#[derive(Debug, PartialEq)]
-pub(crate) enum NumFmtSpec {
-    /// Locale short date (numFmtId 14).
-    LocaleDate,
-    /// A literal format string (ISO dates, currency, percent, …).
-    Literal(String),
-}
+// [x] NOTE 3: I did not implement the "short date"
 
 fn parse_date(value: &str, locale: &Locale) -> Result<(i32, Option<String>), String> {
     let separator = if value.contains('/') {
@@ -815,7 +807,6 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, Option<String>), Str
 }
 
 /// Parses a formatted number; returns the value and [`NumFmtSpec`] to apply, or `Err`.
-/// TODO: Add DefaultFmts
 pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
