@@ -4,6 +4,7 @@ import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
+import { Button } from "../Button/Button";
 
 type FormatPickerProps = {
   className?: string;
@@ -36,18 +37,17 @@ const FormatPicker = (properties: FormatPickerProps) => {
     >
       <StyledDialogTitle>
         {t("num_fmt.title")}
-        <Cross
+        <Button
+          variant="ghost"
+          size="xs"
+          iconOnly
+          pressed={false}
+          startIcon={<X />}
+          endIcon={undefined}
           onClick={handleClose}
           title={t("num_fmt.close")}
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              properties.onClose();
-            }
-          }}
-        >
-          <X />
-        </Cross>
+          aria-label={t("num_fmt.close")}
+        />
       </StyledDialogTitle>
 
       <StyledDialogContent>
@@ -72,21 +72,17 @@ const FormatPicker = (properties: FormatPickerProps) => {
         />
       </StyledDialogContent>
       <DialogFooter>
-        <StyledButton
+        <Button
+          variant="primary"
+          size="md"
+          iconOnly={false}
+          pressed={false}
+          startIcon={<Check />}
+          endIcon={undefined}
           onClick={() => onSubmit(formatCode)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              onSubmit(formatCode);
-              properties.onClose();
-            }
-          }}
-          tabIndex={0}
         >
-          <Check
-            style={{ width: "16px", height: "16px", marginRight: "8px" }}
-          />
           {t("num_fmt.save")}
-        </StyledButton>
+        </Button>
       </DialogFooter>
     </Dialog>
   );
@@ -102,24 +98,6 @@ const StyledDialogTitle = styled("div")`
   padding: 0px 12px;
   justify-content: space-between;
   border-bottom: 1px solid ${theme.palette.grey["300"]};
-`;
-
-const Cross = styled("div")`
-  &:hover {
-    background-color: ${theme.palette.grey["50"]};
-  }
-  display: flex;
-  border-radius: 4px;
-  height: 24px;
-  width: 24px;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  svg {
-    width: 16px;
-    height: 16px;
-    stroke-width: 1.5;
-  }
 `;
 
 const StyledDialogContent = styled("div")`
@@ -152,23 +130,6 @@ const DialogFooter = styled("div")`
   font-family: Inter;
   justify-content: flex-end;
   padding: 12px;
-`;
-
-const StyledButton = styled("div")`
-  cursor: pointer;
-  color: #ffffff;
-  background: #f2994a;
-  padding: 0px 10px;
-  height: 36px;
-  line-height: 36px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  font-family: "Inter";
-  font-size: 14px;
-  &:hover {
-    background: #d68742;
-  }
 `;
 
 export default FormatPicker;

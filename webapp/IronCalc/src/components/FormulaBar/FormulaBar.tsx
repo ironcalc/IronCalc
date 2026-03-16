@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Fx } from "../../icons";
 import { theme } from "../../theme";
+import { Button } from "../Button/Button";
 import { FORMULA_BAR_HEIGHT } from "../constants";
 import Editor from "../Editor/Editor";
 import {
@@ -49,10 +50,18 @@ function FormulaBar(properties: FormulaBarProps) {
           model={model}
           onUpdate={onChange}
         >
-          <CellBarAddress>{cellAddress}</CellBarAddress>
-          <StyledIcon>
-            <ChevronDown size={16} />
-          </StyledIcon>
+          <Button
+            variant="ghost"
+            size="xs"
+            iconOnly={false}
+            pressed={isMenuOpen}
+            startIcon={undefined}
+            endIcon={<ChevronDown />}
+            type="button"
+            style={{ flex: 1 }}
+          >
+            {cellAddress}
+          </Button>
         </FormulaBarMenu>
       </AddressContainer>
       <Divider />
@@ -163,26 +172,6 @@ const AddressContainer = styled("div")<{ $active?: boolean }>`
    background-color: ${(props) =>
      props.$active ? theme.palette.action.selected : theme.palette.grey["100"]};
   }
-`;
-
-const CellBarAddress = styled("div")`
-  width: 100%;
-  box-sizing: border-box;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding-left: 8px;
-  background-color: transparent;
-`;
-
-const StyledIcon = styled("div")`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 2px;
-  background-color: transparent;
 `;
 
 const EditorWrapper = styled("div")`

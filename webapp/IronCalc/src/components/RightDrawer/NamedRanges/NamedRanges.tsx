@@ -1,8 +1,7 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
-import { Button, styled, Tooltip } from "@mui/material";
+import { styled, Tooltip } from "@mui/material";
 import {
   ArrowLeft,
-  BookOpen,
   PackageOpen,
   PencilLine,
   Plus,
@@ -12,6 +11,7 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
+import { Button } from "../../Button/Button";
 import { parseRangeInSheet } from "../../Editor/util";
 import EditNamedRange, {
   formatOnSaveError,
@@ -133,32 +133,30 @@ const NamedRanges = ({
       <Container>
         <EditHeader>
           <Tooltip title={t("name_manager_dialog.back_to_list")}>
-            <IconButtonWrapper
+            <Button
+              variant="ghost"
+              size="xs"
+              iconOnly
+              pressed={false}
+              startIcon={<ArrowLeft style={{ width: 16, height: 16 }} />}
+              endIcon={undefined}
               onClick={handleCancel}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  handleCancel();
-                }
-              }}
               aria-label={t("name_manager_dialog.back_to_list")}
-              tabIndex={0}
-            >
-              <ArrowLeft />
-            </IconButtonWrapper>
+            />
           </Tooltip>
           <EditHeaderTitle>{headerTitle}</EditHeaderTitle>
-          <IconButtonWrapper
-            onClick={onClose}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                onClose();
-              }
-            }}
-            aria-label={t("right_drawer.close")}
-            tabIndex={0}
-          >
-            <X />
-          </IconButtonWrapper>
+          <Tooltip title={t("right_drawer.close")}>
+            <Button
+              variant="ghost"
+              size="xs"
+              iconOnly
+              pressed={false}
+              startIcon={<X />}
+              endIcon={undefined}
+              onClick={onClose}
+              aria-label={t("right_drawer.close")}
+            />
+          </Tooltip>
         </EditHeader>
         <Content>
           <EditNamedRange
@@ -192,18 +190,18 @@ const NamedRanges = ({
     <Container>
       <Header>
         <HeaderTitle>{t("name_manager_dialog.title")}</HeaderTitle>
-        <IconButtonWrapper
-          onClick={onClose}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              onClose();
-            }
-          }}
-          aria-label={t("right_drawer.close")}
-          tabIndex={0}
-        >
-          <X />
-        </IconButtonWrapper>
+        <Tooltip title={t("right_drawer.close")}>
+          <Button
+            variant="ghost"
+            size="xs"
+            iconOnly
+            pressed={false}
+            startIcon={<X />}
+            endIcon={undefined}
+            onClick={onClose}
+            aria-label={t("right_drawer.close")}
+          />
+        </Tooltip>
       </Header>
       <Content>
         {definedNameList.length === 0 ? (
@@ -270,26 +268,28 @@ const NamedRanges = ({
 
                   <IconsWrapper>
                     <Tooltip title={t("name_manager_dialog.edit")}>
-                      <IconButton
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        iconOnly
+                        pressed={false}
+                        startIcon={<PencilLine />}
+                        endIcon={undefined}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleListItemClick(definedName);
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleListItemClick(definedName);
-                          }
-                        }}
                         aria-label={t("name_manager_dialog.edit")}
-                        tabIndex={0}
-                      >
-                        <PencilLine size={16} />
-                      </IconButton>
+                      />
                     </Tooltip>
                     <Tooltip title={t("name_manager_dialog.delete")}>
-                      <IconButton
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        iconOnly
+                        pressed={false}
+                        startIcon={<Trash2 />}
+                        endIcon={undefined}
                         onClick={(e) => {
                           e.stopPropagation();
                           model.deleteDefinedName(
@@ -298,22 +298,8 @@ const NamedRanges = ({
                           );
                           onUpdate();
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            model.deleteDefinedName(
-                              definedName.name,
-                              definedName.scope ?? null,
-                            );
-                            onUpdate();
-                          }
-                        }}
                         aria-label={t("name_manager_dialog.delete")}
-                        tabIndex={0}
-                      >
-                        <Trash2 size={16} />
-                      </IconButton>
+                      />
                     </Tooltip>
                   </IconsWrapper>
                 </ListItem>
@@ -323,22 +309,17 @@ const NamedRanges = ({
         )}
       </Content>
       <Footer>
-        <HelpLink
-          href="https://docs.ironcalc.com/web-application/name-manager.html"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <BookOpen />
-          {t("name_manager_dialog.help")}
-        </HelpLink>
-        <NewButton
-          variant="contained"
-          disableElevation
-          startIcon={<Plus size={16} />}
+        <Button
+          variant="primary"
+          size="md"
+          iconOnly={false}
+          pressed={false}
+          startIcon={<Plus />}
+          endIcon={undefined}
           onClick={handleNewClick}
         >
           {t("name_manager_dialog.new")}
-        </NewButton>
+        </Button>
       </Footer>
     </Container>
   );
@@ -418,60 +399,15 @@ const IconsWrapper = styled("div")({
   gap: "2px",
 });
 
-const IconButton = styled("div")({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: "24px",
-  height: "24px",
-  borderRadius: "4px",
-  backgroundColor: "transparent",
-  cursor: "pointer",
-  "&:hover": {
-    backgroundColor: theme.palette.grey[200],
-  },
-});
-
 export const Footer = styled("div")`
   padding: 8px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   font-size: 12px;
   color: ${theme.palette.grey["600"]};
   border-top: 1px solid ${theme.palette.grey["300"]};
   gap: 8px;
-`;
-
-const HelpLink = styled("a")`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 400;
-  font-family: "Inter";
-  color: ${theme.palette.grey["600"]};
-  text-decoration: none;
-  &:hover {
-    text-decoration: underline;
-  }
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-export const NewButton = styled(Button)`
-  text-transform: none;
-  min-width: fit-content;
-  font-size: 12px;
-  &.MuiButton-colorSecondary {
-    background-color: ${theme.palette.grey[200]};
-    color: ${theme.palette.grey[700]};
-    &:hover {
-      background-color: ${theme.palette.grey[300]};
-    }
-  }
 `;
 
 const Header = styled("div")({
@@ -503,24 +439,6 @@ const EditHeaderTitle = styled("div")({
   fontSize: "12px",
   fontWeight: 500,
 });
-
-const IconButtonWrapper = styled("div")`
-  &:hover {
-    background-color: ${theme.palette.grey["50"]};
-  }
-  display: flex;
-  border-radius: 4px;
-  height: 24px;
-  width: 24px;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  svg {
-    width: 16px;
-    height: 16px;
-    stroke-width: 1.5;
-  }
-`;
 
 const EmptyStateMessage = styled("div")`
   display: flex;
