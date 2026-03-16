@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
+import { Button } from "../Button/Button";
 
 type AdvancedColorPickerProps = {
   color: string;
@@ -78,20 +79,33 @@ const AdvancedColorPicker = ({
           <Swatch $color={selectedColor} />
         </ColorPickerInput>
         <HorizontalDivider />
-        <Buttons>
-          <CancelButton onClick={onCancel}>
+        <ButtonsWrapper>
+          <Button
+            variant="secondary"
+            size="sm"
+            iconOnly={false}
+            pressed={false}
+            startIcon={undefined}
+            endIcon={undefined}
+            onClick={onCancel}
+          >
             {t("color_picker.cancel")}
-          </CancelButton>
-          <StyledButton
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            iconOnly={false}
+            pressed={false}
+            startIcon={<Check />}
+            endIcon={undefined}
             onClick={(): void => {
               handleColorSelect(selectedColor);
               onCancel();
             }}
           >
-            <Check />
             {t("color_picker.apply")}
-          </StyledButton>
-        </Buttons>
+          </Button>
+        </ButtonsWrapper>
       </ColorPickerDialog>
     </StylePopover>
   );
@@ -145,57 +159,11 @@ const ColorPickerDialog = styled.div`
   }
 `;
 
-const Buttons = styled.div`
+const ButtonsWrapper = styled.div`
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin: 8px;
   gap: 8px;
-`;
-
-const StyledButton = styled("div")`
-  cursor: pointer;
-  width: 100%;
-  color: ${theme.palette.primary.contrastText};
-  background: ${theme.palette.primary.main};
-  padding: 0px 10px;
-  height: 28px;
-  border-radius: 4px;
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  justify-content: center;
-  font-family: "Inter";
-  font-size: 12px;
-  &:hover {
-    background: #d68742;
-  }
-  svg {
-    max-width: 12px;
-    max-height: 12px;
-  }
-`;
-
-const CancelButton = styled("div")`
-  cursor: pointer;
-  width: 100%;
-  color: ${theme.palette.grey[700]};
-  background: ${theme.palette.grey[200]};
-  padding: 0px 10px;
-  height: 28px;
-  border-radius: 4px;
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  justify-content: center;
-  font-family: "Inter";
-  font-size: 12px;
-  &:hover {
-    background: ${theme.palette.grey[300]};
-  }
-  svg {
-    max-width: 12px;
-    max-height: 12px;
-  }
 `;
 
 const HashLabel = styled.div`

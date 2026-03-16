@@ -13,8 +13,8 @@ import { Check, MousePointerClick, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
+import { Button } from "../../Button/Button";
 import { getFullRangeToString } from "../../util";
-import { Footer, NewButton } from "./NamedRanges";
 
 export interface SaveError {
   nameError: string;
@@ -258,20 +258,26 @@ const EditNamedRange = ({
           </FieldWrapper>
         </StyledBox>
       </ContentArea>
-      <Footer>
-        <NewButton
-          variant="contained"
-          color="secondary"
-          disableElevation
+      <StyledFooter>
+        <Button
+          variant="secondary"
+          size="md"
+          iconOnly={false}
+          pressed={false}
+          startIcon={undefined}
+          endIcon={undefined}
           onClick={onCancel}
         >
           {t("name_manager_dialog.cancel")}
-        </NewButton>
-        <NewButton
-          variant="contained"
-          disableElevation
+        </Button>
+        <Button
+          variant="primary"
+          size="md"
+          iconOnly={false}
+          pressed={false}
+          startIcon={<Check />}
+          endIcon={undefined}
           disabled={hasAnyError}
-          startIcon={<Check size={16} />}
           onClick={() => {
             const error = onSave(name.trim(), scope, formula);
             if (error.nameError) {
@@ -283,8 +289,8 @@ const EditNamedRange = ({
           }}
         >
           {t("name_manager_dialog.apply")}
-        </NewButton>
-      </Footer>
+        </Button>
+      </StyledFooter>
     </Container>
   );
 };
@@ -461,5 +467,13 @@ const StyledHelperText = styled(FormHelperText)(() => ({
 const StyledErrorText = styled(StyledHelperText)(() => ({
   color: theme.palette.error.main,
 }));
+const StyledFooter = styled("div")`
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid ${theme.palette.grey["300"]};
+  gap: 8px;
+`;
 
 export default EditNamedRange;

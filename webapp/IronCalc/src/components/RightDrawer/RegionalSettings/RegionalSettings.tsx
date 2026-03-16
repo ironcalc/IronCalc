@@ -4,7 +4,6 @@ import {
   Autocomplete,
   type AutocompleteProps,
   Box,
-  Button,
   FormControl,
   FormHelperText,
   MenuItem,
@@ -15,6 +14,7 @@ import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
+import { Button } from "../../Button/Button";
 
 type RegionalSettingsProps = {
   onClose: () => void;
@@ -115,18 +115,16 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
     <Container>
       <Header>
         <HeaderTitle>{t("regional_settings.title")}</HeaderTitle>
-        <IconButtonWrapper
+        <Button
+          variant="ghost"
+          size="xs"
+          iconOnly
+          pressed={false}
+          startIcon={<X />}
+          endIcon={undefined}
           onClick={properties.onClose}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              properties.onClose();
-            }
-          }}
           aria-label={t("right_drawer.close")}
-          tabIndex={0}
-        >
-          <X />
-        </IconButtonWrapper>
+        />
       </Header>
 
       <Content
@@ -256,14 +254,17 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
       </Content>
 
       <Footer>
-        <SaveButton
-          variant="contained"
-          disableElevation
-          startIcon={<Check size={16} />}
+        <Button
+          variant="primary"
+          size="sm"
+          iconOnly={false}
+          pressed={false}
+          startIcon={<Check />}
+          endIcon={undefined}
           onClick={handleSave}
         >
           {t("num_fmt.save")}
-        </SaveButton>
+        </Button>
       </Footer>
     </Container>
   );
@@ -288,24 +289,6 @@ const HeaderTitle = styled("div")({
   width: "100%",
   fontSize: "12px",
 });
-
-const IconButtonWrapper = styled("div")`
-  &:hover {
-    background-color: ${theme.palette.grey["50"]};
-  }
-  display: flex;
-  border-radius: 4px;
-  height: 24px;
-  width: 24px;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  svg {
-    width: 16px;
-    height: 16px;
-    stroke-width: 1.5;
-  }
-`;
 
 const Content = styled("div")({
   flex: 1,
@@ -508,12 +491,6 @@ const Footer = styled("div")`
   justify-content: flex-end;
   padding: 8px;
   gap: 8px;
-`;
-
-const SaveButton = styled(Button)`
-  text-transform: none;
-  min-width: fit-content;
-  font-size: 12px;
 `;
 
 export default RegionalSettings;
