@@ -2,6 +2,7 @@ import { useTheme } from "@mui/material";
 import { alpha, type Theme } from "@mui/material/styles";
 import {
   type ButtonHTMLAttributes,
+  type CSSProperties,
   forwardRef,
   type ReactNode,
   useState,
@@ -24,7 +25,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   endIcon: ReactNode;
 }
 
-const sizeStyles: Record<ButtonSize, React.CSSProperties> = {
+const sizeStyles: Record<ButtonSize, CSSProperties> = {
   xs: { height: 24, lineHeight: "24px" },
   sm: { height: 28, lineHeight: "28px" },
   md: { height: 32, lineHeight: "32px" },
@@ -39,10 +40,10 @@ const getStyles = (
   pressed: boolean,
   disabled: boolean,
   hovered: boolean,
-): React.CSSProperties => {
+): CSSProperties => {
   const { height, lineHeight } = sizeStyles[size];
 
-  const base: React.CSSProperties = {
+  const base: CSSProperties = {
     cursor: disabled ? "not-allowed" : "pointer",
     position: "relative",
     overflow: "hidden",
@@ -56,7 +57,7 @@ const getStyles = (
     fontSize: theme.typography.fontSize,
     fontWeight: 500,
     textDecoration: "none",
-    boxSizing: "content-box",
+    boxSizing: "border-box",
     border: `1px solid ${alpha(theme.palette.common.black, 0.04)}`,
     boxShadow: pressed
       ? `inset 0 1px 1px ${alpha(theme.palette.common.black, 0.12)}`
@@ -78,7 +79,7 @@ const getStyles = (
 
   const showHover = hovered && !disabled;
 
-  const variantStyles: Record<ButtonVariant, React.CSSProperties> = {
+  const variantStyles: Record<ButtonVariant, CSSProperties> = {
     primary: {
       backgroundColor: showHover
         ? theme.palette.primary.dark
