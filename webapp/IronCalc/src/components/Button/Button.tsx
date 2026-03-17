@@ -8,31 +8,27 @@ import {
   useState,
 } from "react";
 
+/**
+ * This is a reusable text Button with optional start/end icons.
+ * Variants: primary, secondary, outline, ghost (no border), destructive.
+ * Sizes: xs, sm, md. Styled with MUI theme.
+ */
+
 export type ButtonVariant =
   | "primary"
   | "secondary"
   | "outline"
   | "ghost"
   | "destructive";
-export type ButtonSize = "xs" | "sm" | "md" | "lg";
-
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant: ButtonVariant;
-  size: ButtonSize;
-  iconOnly: boolean;
-  pressed: boolean;
-  startIcon: ReactNode;
-  endIcon: ReactNode;
-}
+export type ButtonSize = "xs" | "sm" | "md";
 
 const sizeStyles: Record<ButtonSize, CSSProperties> = {
   xs: { height: 24, lineHeight: "24px" },
   sm: { height: 28, lineHeight: "28px" },
   md: { height: 32, lineHeight: "32px" },
-  lg: { height: 38, lineHeight: "38px" },
 };
 
-const getStyles = (
+export function getButtonStyles(
   theme: Theme,
   variant: ButtonVariant,
   size: ButtonSize,
@@ -40,7 +36,7 @@ const getStyles = (
   pressed: boolean,
   disabled: boolean,
   hovered: boolean,
-): CSSProperties => {
+): CSSProperties {
   const { height, lineHeight } = sizeStyles[size];
 
   const base: CSSProperties = {
@@ -127,18 +123,34 @@ const getStyles = (
   };
 
   return { ...base, ...variantStyles[variant] };
+}
+
+export const iconWrapperStyle: CSSProperties = {
+  width: 16,
+  height: 16,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+export interface ButtonProperties
+  extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  pressed?: boolean;
+  startIcon?: ReactNode;
+  endIcon?: ReactNode;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
   function Button(
     {
-      variant,
-      size,
+      variant = "primary",
+      size = "md",
+      pressed = false,
       children,
       startIcon,
       endIcon,
-      iconOnly,
-      pressed,
       style,
       disabled = false,
       onMouseEnter,
@@ -149,22 +161,21 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) {
     const theme = useTheme();
     const [hovered, setHovered] = useState(false);
-    const computedStyles = getStyles(
+    const computedStyles = getButtonStyles(
       theme,
       variant,
       size,
-      iconOnly,
+      false, // text button, never icon-only
       pressed,
       disabled,
       hovered,
     );
-    const iconOnlyIcon = startIcon ?? endIcon;
 
     return (
       <button
         ref={ref}
         disabled={disabled}
-        aria-pressed={pressed || undefined}
+        aria-pressed={pressed}
         style={{ ...computedStyles, ...style }}
         onMouseEnter={(e) => {
           setHovered(true);
@@ -176,48 +187,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         }}
         {...rest}
       >
-        {iconOnly ? (
-          <span
-            style={{
-              width: 16,
-              height: 16,
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            {iconOnlyIcon}
-          </span>
-        ) : (
-          <>
-            {startIcon && (
-              <span
-                style={{
-                  width: 16,
-                  height: 16,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                {startIcon}
-              </span>
-            )}
-            {children}
-            {endIcon && (
-              <span
-                style={{
-                  width: 16,
-                  height: 16,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                {endIcon}
-              </span>
-            )}
-          </>
-        )}
+        {startIcon && <span style={iconWrapperStyle}>{startIcon}</span>}
+        {children}
+        {endIcon && <span style={iconWrapperStyle}>{endIcon}</span>}
       </button>
     );
   },
 );
+
 Button.displayName = "Button";
