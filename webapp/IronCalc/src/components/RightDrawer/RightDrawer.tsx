@@ -187,4 +187,4 @@ const ResizeHandle = styled("div")<{ $isResizing: boolean }>(
 );
 
 export default RightDrawer;
-export { DEFAULT_DRAWER_WIDTH, MIN_DRAWER_WIDTH, MAX_DRAWER_WIDTH };
+export { DEFAULT_DRAWER_WIDTH, MAX_DRAWER_WIDTH, MIN_DRAWER_WIDTH };
