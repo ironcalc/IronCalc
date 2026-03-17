@@ -217,7 +217,7 @@ impl SuffixedNumberDetector<'_> {
             .rev()
             .take_while(|c| c.is_ascii_digit())
             .count();
-        if digits == value.chars().count() {
+        if digits == value.len() {
             0
         } else {
             digits
