@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import { Button } from "../Button/Button";
+import { IconButton } from "../Button/IconButton";
 
 type FormatPickerProps = {
   className?: string;
@@ -37,13 +38,10 @@ const FormatPicker = (properties: FormatPickerProps) => {
     >
       <StyledDialogTitle>
         {t("num_fmt.title")}
-        <Button
+        <IconButton
           variant="ghost"
           size="xs"
-          iconOnly
-          pressed={false}
-          startIcon={<X />}
-          endIcon={undefined}
+          icon={<X />}
           onClick={handleClose}
           title={t("num_fmt.close")}
           aria-label={t("num_fmt.close")}
@@ -72,15 +70,7 @@ const FormatPicker = (properties: FormatPickerProps) => {
         />
       </StyledDialogContent>
       <DialogFooter>
-        <Button
-          variant="primary"
-          size="md"
-          iconOnly={false}
-          pressed={false}
-          startIcon={<Check />}
-          endIcon={undefined}
-          onClick={() => onSubmit(formatCode)}
-        >
+        <Button startIcon={<Check />} onClick={() => onSubmit(formatCode)}>
           {t("num_fmt.save")}
         </Button>
       </DialogFooter>
