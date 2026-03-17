@@ -1465,8 +1465,8 @@ impl<'a> UserModel<'a> {
         let sheet = source_area.sheet;
         let row1 = source_area.row;
         let column1 = source_area.column;
-        let last_column = column1 + source_area.width - 1;
-        let last_row = row1 + source_area.height - 1;
+        let width = source_area.width;
+        let height = source_area.height;
 
         // Check first all parameters are valid
         if self.model.workbook.worksheet(sheet).is_err() {
@@ -1479,6 +1479,13 @@ impl<'a> UserModel<'a> {
         if !is_valid_row(row1) {
             return Err(format!("Invalid row: '{row1}'"));
         }
+        if width <= 0 || height <= 0 {
+            return Err(format!("Invalid width='{}' or height='{}'", width, height));
+        }
+
+        let last_column = column1 + width - 1;
+        let last_row = row1 + height - 1;
+
         if !is_valid_column_number(last_column) {
             return Err(format!("Invalid column: '{last_column}'"));
         }
@@ -1585,8 +1592,8 @@ impl<'a> UserModel<'a> {
         let sheet = source_area.sheet;
         let row1 = source_area.row;
         let column1 = source_area.column;
-        let last_column = column1 + source_area.width - 1;
-        let last_row = row1 + source_area.height - 1;
+        let width = source_area.width;
+        let height = source_area.height;
 
         // Check first all parameters are valid
         if self.model.workbook.worksheet(sheet).is_err() {
@@ -1599,6 +1606,13 @@ impl<'a> UserModel<'a> {
         if !is_valid_row(row1) {
             return Err(format!("Invalid row: '{row1}'"));
         }
+        if width <= 0 || height <= 0 {
+            return Err(format!("Invalid width='{}' or height='{}'", width, height));
+        }
+
+        let last_column = column1 + width - 1;
+        let last_row = row1 + height - 1;
+
         if !is_valid_column_number(last_column) {
             return Err(format!("Invalid column: '{last_column}'"));
         }
