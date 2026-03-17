@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { Button } from "../../Button/Button";
+import { IconButton } from "../../Button/IconButton";
 import { parseRangeInSheet } from "../../Editor/util";
 import EditNamedRange, {
   formatOnSaveError,
@@ -133,26 +134,20 @@ const NamedRanges = ({
       <Container>
         <EditHeader>
           <Tooltip title={t("name_manager_dialog.back_to_list")}>
-            <Button
+            <IconButton
               variant="ghost"
               size="xs"
-              iconOnly
-              pressed={false}
-              startIcon={<ArrowLeft style={{ width: 16, height: 16 }} />}
-              endIcon={undefined}
+              icon={<ArrowLeft />}
               onClick={handleCancel}
               aria-label={t("name_manager_dialog.back_to_list")}
             />
           </Tooltip>
           <EditHeaderTitle>{headerTitle}</EditHeaderTitle>
           <Tooltip title={t("right_drawer.close")}>
-            <Button
+            <IconButton
               variant="ghost"
               size="xs"
-              iconOnly
-              pressed={false}
-              startIcon={<X />}
-              endIcon={undefined}
+              icon={<X />}
               onClick={onClose}
               aria-label={t("right_drawer.close")}
             />
@@ -191,13 +186,10 @@ const NamedRanges = ({
       <Header>
         <HeaderTitle>{t("name_manager_dialog.title")}</HeaderTitle>
         <Tooltip title={t("right_drawer.close")}>
-          <Button
+          <IconButton
             variant="ghost"
             size="xs"
-            iconOnly
-            pressed={false}
-            startIcon={<X />}
-            endIcon={undefined}
+            icon={<X />}
             onClick={onClose}
             aria-label={t("right_drawer.close")}
           />
@@ -268,13 +260,10 @@ const NamedRanges = ({
 
                   <IconsWrapper>
                     <Tooltip title={t("name_manager_dialog.edit")}>
-                      <Button
+                      <IconButton
                         variant="ghost"
                         size="xs"
-                        iconOnly
-                        pressed={false}
-                        startIcon={<PencilLine />}
-                        endIcon={undefined}
+                        icon={<PencilLine />}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleListItemClick(definedName);
@@ -283,13 +272,10 @@ const NamedRanges = ({
                       />
                     </Tooltip>
                     <Tooltip title={t("name_manager_dialog.delete")}>
-                      <Button
+                      <IconButton
                         variant="ghost"
                         size="xs"
-                        iconOnly
-                        pressed={false}
-                        startIcon={<Trash2 />}
-                        endIcon={undefined}
+                        icon={<Trash2 />}
                         onClick={(e) => {
                           e.stopPropagation();
                           model.deleteDefinedName(
@@ -309,15 +295,7 @@ const NamedRanges = ({
         )}
       </Content>
       <Footer>
-        <Button
-          variant="primary"
-          size="md"
-          iconOnly={false}
-          pressed={false}
-          startIcon={<Plus />}
-          endIcon={undefined}
-          onClick={handleNewClick}
-        >
+        <Button startIcon={<Plus />} onClick={handleNewClick}>
           {t("name_manager_dialog.new")}
         </Button>
       </Footer>

@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { Button } from "../../Button/Button";
+import { IconButton } from "../../Button/IconButton";
 
 type RegionalSettingsProps = {
   onClose: () => void;
@@ -115,13 +116,10 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
     <Container>
       <Header>
         <HeaderTitle>{t("regional_settings.title")}</HeaderTitle>
-        <Button
+        <IconButton
           variant="ghost"
           size="xs"
-          iconOnly
-          pressed={false}
-          startIcon={<X />}
-          endIcon={undefined}
+          icon={<X />}
           onClick={properties.onClose}
           aria-label={t("right_drawer.close")}
         />
@@ -254,15 +252,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
       </Content>
 
       <Footer>
-        <Button
-          variant="primary"
-          size="sm"
-          iconOnly={false}
-          pressed={false}
-          startIcon={<Check />}
-          endIcon={undefined}
-          onClick={handleSave}
-        >
+        <Button startIcon={<Check />} onClick={handleSave}>
           {t("num_fmt.save")}
         </Button>
       </Footer>

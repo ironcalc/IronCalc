@@ -259,24 +259,11 @@ const EditNamedRange = ({
         </StyledBox>
       </ContentArea>
       <StyledFooter>
-        <Button
-          variant="secondary"
-          size="md"
-          iconOnly={false}
-          pressed={false}
-          startIcon={undefined}
-          endIcon={undefined}
-          onClick={onCancel}
-        >
+        <Button variant="secondary" onClick={onCancel}>
           {t("name_manager_dialog.cancel")}
         </Button>
         <Button
-          variant="primary"
-          size="md"
-          iconOnly={false}
-          pressed={false}
           startIcon={<Check />}
-          endIcon={undefined}
           disabled={hasAnyError}
           onClick={() => {
             const error = onSave(name.trim(), scope, formula);
