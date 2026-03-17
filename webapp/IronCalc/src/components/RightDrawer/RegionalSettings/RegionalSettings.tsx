@@ -119,9 +119,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
           variant="ghost"
           size="xs"
           iconOnly
-          pressed={false}
           startIcon={<X />}
-          endIcon={undefined}
           onClick={properties.onClose}
           aria-label={t("right_drawer.close")}
         />
@@ -254,15 +252,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
       </Content>
 
       <Footer>
-        <Button
-          variant="primary"
-          size="sm"
-          iconOnly={false}
-          pressed={false}
-          startIcon={<Check />}
-          endIcon={undefined}
-          onClick={handleSave}
-        >
+        <Button size="sm" startIcon={<Check />} onClick={handleSave}>
           {t("num_fmt.save")}
         </Button>
       </Footer>

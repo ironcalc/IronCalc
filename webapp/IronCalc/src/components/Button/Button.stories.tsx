@@ -9,23 +9,51 @@ import {
   Trash2,
   Underline,
 } from "lucide-react";
-import type { ReactNode } from "react";
 import { useState } from "react";
-import type { ButtonProps } from "./Button";
+import type { ButtonProperties } from "./Button";
 import { Button } from "./Button";
 
-// Wrapper so Storybook receives a function component (forwardRef components are objects)
-function ButtonStory(props: ButtonProps) {
-  return <Button {...props} />;
+const icons = {
+  none: undefined,
+  bold: <Bold />,
+  italic: <Italic />,
+  underline: <Underline />,
+  strikethrough: <Strikethrough />,
+  download: <Download />,
+  chevronRight: <ChevronRight />,
+  moreHorizontal: <MoreHorizontal />,
+  trash: <Trash2 />,
+} as const;
+
+type IconName = keyof typeof icons;
+
+type ButtonStoryProps = Omit<ButtonProperties, "startIcon" | "endIcon"> & {
+  startIconName?: IconName;
+  endIconName?: IconName;
+};
+
+// Wrapper so Storybook gets a plain function component and nice icon controls.
+function ButtonStory({
+  startIconName = "none",
+  endIconName = "none",
+  ...props
+}: ButtonStoryProps) {
+  return (
+    <Button
+      {...props}
+      startIcon={icons[startIconName]}
+      endIcon={icons[endIconName]}
+    />
+  );
 }
 
-const defaultArgs = {
-  variant: "primary" as const,
-  size: "md" as const,
+const defaultArgs: ButtonStoryProps = {
+  variant: "primary",
+  size: "md",
   iconOnly: false,
   pressed: false,
-  startIcon: undefined as ReactNode,
-  endIcon: undefined as ReactNode,
+  startIconName: "none",
+  endIconName: "none",
 };
 
 const meta = {
@@ -59,8 +87,18 @@ const meta = {
       control: "boolean",
       description: "Toggle state (e.g. Bold/Italic when formatting is on)",
     },
+    startIconName: {
+      control: "select",
+      options: Object.keys(icons),
+      description: "Icon shown on the left",
+    },
+    endIconName: {
+      control: "select",
+      options: Object.keys(icons),
+      description: "Icon shown on the right",
+    },
   },
-} satisfies Meta<typeof Button>;
+} satisfies Meta<typeof ButtonStory>;
 
 export default meta;
 
@@ -86,54 +124,13 @@ export const Variants: Story = {
         flexWrap: "wrap",
       }}
     >
-      <Button
-        variant="primary"
-        size="md"
-        iconOnly={false}
-        pressed={false}
-        startIcon={undefined}
-        endIcon={undefined}
-      >
-        Primary
-      </Button>
-      <Button
-        variant="secondary"
-        size="md"
-        iconOnly={false}
-        pressed={false}
-        startIcon={undefined}
-        endIcon={undefined}
-      >
-        Secondary
-      </Button>
-      <Button
-        variant="outline"
-        size="md"
-        iconOnly={false}
-        pressed={false}
-        startIcon={undefined}
-        endIcon={undefined}
-      >
-        Outline
-      </Button>
-      <Button
-        variant="ghost"
-        size="md"
-        iconOnly={false}
-        pressed={false}
-        startIcon={undefined}
-        endIcon={<ChevronRight />}
-      >
+      <Button>Primary</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="outline">Outline</Button>
+      <Button variant="ghost" endIcon={<ChevronRight />}>
         Ghost
       </Button>
-      <Button
-        variant="destructive"
-        size="md"
-        iconOnly={false}
-        pressed={false}
-        startIcon={<Trash2 />}
-        endIcon={undefined}
-      >
+      <Button variant="destructive" startIcon={<Trash2 />}>
         Delete
       </Button>
     </div>
@@ -144,44 +141,14 @@ export const Sizes: Story = {
   args: defaultArgs,
   render: () => (
     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-      <Button
-        variant="primary"
-        size="xs"
-        iconOnly={false}
-        pressed={false}
-        startIcon={undefined}
-        endIcon={undefined}
-      >
+      <Button variant="primary" size="xs">
         Extra small
       </Button>
-      <Button
-        variant="primary"
-        size="sm"
-        iconOnly={false}
-        pressed={false}
-        startIcon={undefined}
-        endIcon={undefined}
-      >
+      <Button variant="primary" size="sm">
         Small
       </Button>
-      <Button
-        variant="primary"
-        size="md"
-        iconOnly={false}
-        pressed={false}
-        startIcon={undefined}
-        endIcon={undefined}
-      >
-        Medium
-      </Button>
-      <Button
-        variant="primary"
-        size="lg"
-        iconOnly={false}
-        pressed={false}
-        startIcon={undefined}
-        endIcon={undefined}
-      >
+      <Button variant="primary">Medium</Button>
+      <Button variant="primary" size="lg">
         Large
       </Button>
     </div>
@@ -200,12 +167,10 @@ export const Disabled: Story = {
 export const Pressed: Story = {
   args: {
     ...defaultArgs,
-    children: "Bold",
     variant: "ghost",
     size: "sm",
     iconOnly: true,
-    startIcon: <Bold />,
-    endIcon: undefined,
+    startIconName: "bold",
     pressed: true,
     "aria-label": "Bold",
   },
@@ -218,14 +183,14 @@ export const FormatToolbar: Story = {
     const [italic, setItalic] = useState(false);
     const [underline, setUnderline] = useState(false);
     const [strike, setStrike] = useState(false);
+
     return (
       <div style={{ display: "flex", gap: 4 }}>
         <Button
           variant="ghost"
           size="sm"
-          iconOnly={true}
+          iconOnly
           startIcon={<Bold />}
-          endIcon={undefined}
           pressed={bold}
           onClick={() => setBold((b) => !b)}
           aria-label="Bold"
@@ -233,9 +198,8 @@ export const FormatToolbar: Story = {
         <Button
           variant="ghost"
           size="sm"
-          iconOnly={true}
+          iconOnly
           startIcon={<Italic />}
-          endIcon={undefined}
           pressed={italic}
           onClick={() => setItalic((i) => !i)}
           aria-label="Italic"
@@ -243,9 +207,8 @@ export const FormatToolbar: Story = {
         <Button
           variant="ghost"
           size="sm"
-          iconOnly={true}
+          iconOnly
           startIcon={<Underline />}
-          endIcon={undefined}
           pressed={underline}
           onClick={() => setUnderline((u) => !u)}
           aria-label="Underline"
@@ -253,9 +216,8 @@ export const FormatToolbar: Story = {
         <Button
           variant="ghost"
           size="sm"
-          iconOnly={true}
+          iconOnly
           startIcon={<Strikethrough />}
-          endIcon={undefined}
           pressed={strike}
           onClick={() => setStrike((s) => !s)}
           aria-label="Strikethrough"
@@ -270,8 +232,8 @@ export const WithIconLeft: Story = {
     ...defaultArgs,
     children: "Download",
     variant: "primary",
-    startIcon: <Download />,
-    endIcon: undefined,
+    startIconName: "download",
+    endIconName: "none",
   },
 };
 
@@ -280,8 +242,8 @@ export const WithIconsBoth: Story = {
     ...defaultArgs,
     children: "Delete",
     variant: "destructive",
-    startIcon: <Trash2 />,
-    endIcon: <ChevronRight />,
+    startIconName: "trash",
+    endIconName: "chevronRight",
   },
 };
 
@@ -291,38 +253,21 @@ export const IconOnly: Story = {
     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
       <Button
         variant="primary"
-        size="md"
-        iconOnly={true}
-        pressed={false}
+        iconOnly
         startIcon={<Download />}
-        endIcon={undefined}
         aria-label="Download"
       />
       <Button
         variant="secondary"
-        size="md"
-        iconOnly={true}
-        pressed={false}
+        iconOnly
         startIcon={<MoreHorizontal />}
-        endIcon={undefined}
         aria-label="More"
       />
-      <Button
-        variant="ghost"
-        size="md"
-        iconOnly={true}
-        pressed={false}
-        startIcon={<Bold />}
-        endIcon={undefined}
-        aria-label="Bold"
-      />
+      <Button variant="ghost" iconOnly startIcon={<Bold />} aria-label="Bold" />
       <Button
         variant="destructive"
-        size="md"
-        iconOnly={true}
-        pressed={false}
+        iconOnly
         startIcon={<Trash2 />}
-        endIcon={undefined}
         aria-label="Delete"
       />
     </div>
@@ -336,37 +281,28 @@ export const IconOnlySizes: Story = {
       <Button
         variant="outline"
         size="xs"
-        iconOnly={true}
-        pressed={false}
+        iconOnly
         startIcon={<Download />}
-        endIcon={undefined}
         aria-label="Download"
       />
       <Button
         variant="outline"
         size="sm"
-        iconOnly={true}
-        pressed={false}
+        iconOnly
         startIcon={<Download />}
-        endIcon={undefined}
         aria-label="Download"
       />
       <Button
         variant="outline"
-        size="md"
-        iconOnly={true}
-        pressed={false}
+        iconOnly
         startIcon={<Download />}
-        endIcon={undefined}
         aria-label="Download"
       />
       <Button
         variant="outline"
         size="lg"
-        iconOnly={true}
-        pressed={false}
+        iconOnly
         startIcon={<Download />}
-        endIcon={undefined}
         aria-label="Download"
       />
     </div>

@@ -53,11 +53,8 @@ function FormulaBar(properties: FormulaBarProps) {
           <Button
             variant="ghost"
             size="xs"
-            iconOnly={false}
             pressed={isMenuOpen}
-            startIcon={undefined}
             endIcon={<ChevronDown />}
-            type="button"
             style={{ flex: 1 }}
           >
             {cellAddress}

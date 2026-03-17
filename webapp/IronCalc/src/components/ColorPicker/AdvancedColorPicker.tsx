@@ -80,24 +80,12 @@ const AdvancedColorPicker = ({
         </ColorPickerInput>
         <HorizontalDivider />
         <ButtonsWrapper>
-          <Button
-            variant="secondary"
-            size="sm"
-            iconOnly={false}
-            pressed={false}
-            startIcon={undefined}
-            endIcon={undefined}
-            onClick={onCancel}
-          >
+          <Button variant="secondary" size="sm" onClick={onCancel}>
             {t("color_picker.cancel")}
           </Button>
           <Button
-            variant="primary"
             size="sm"
-            iconOnly={false}
-            pressed={false}
             startIcon={<Check />}
-            endIcon={undefined}
             onClick={(): void => {
               handleColorSelect(selectedColor);
               onCancel();

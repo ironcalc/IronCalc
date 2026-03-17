@@ -41,9 +41,7 @@ const FormatPicker = (properties: FormatPickerProps) => {
           variant="ghost"
           size="xs"
           iconOnly
-          pressed={false}
           startIcon={<X />}
-          endIcon={undefined}
           onClick={handleClose}
           title={t("num_fmt.close")}
           aria-label={t("num_fmt.close")}
@@ -72,15 +70,7 @@ const FormatPicker = (properties: FormatPickerProps) => {
         />
       </StyledDialogContent>
       <DialogFooter>
-        <Button
-          variant="primary"
-          size="md"
-          iconOnly={false}
-          pressed={false}
-          startIcon={<Check />}
-          endIcon={undefined}
-          onClick={() => onSubmit(formatCode)}
-        >
+        <Button startIcon={<Check />} onClick={() => onSubmit(formatCode)}>
           {t("num_fmt.save")}
         </Button>
       </DialogFooter>

@@ -8,21 +8,30 @@ import {
   useState,
 } from "react";
 
+const iconStyle: CSSProperties = {
+  width: 16,
+  height: 16,
+  display: "flex",
+  alignItems: "center",
+};
+
 export type ButtonVariant =
   | "primary"
   | "secondary"
   | "outline"
   | "ghost"
   | "destructive";
+
 export type ButtonSize = "xs" | "sm" | "md" | "lg";
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant: ButtonVariant;
-  size: ButtonSize;
-  iconOnly: boolean;
-  pressed: boolean;
-  startIcon: ReactNode;
-  endIcon: ReactNode;
+export interface ButtonProperties
+  extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  iconOnly?: boolean;
+  pressed?: boolean;
+  startIcon?: ReactNode;
+  endIcon?: ReactNode;
 }
 
 const sizeStyles: Record<ButtonSize, CSSProperties> = {
@@ -129,18 +138,18 @@ const getStyles = (
   return { ...base, ...variantStyles[variant] };
 };
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
   function Button(
     {
-      variant,
-      size,
+      variant = "primary",
+      size = "md",
+      iconOnly = false,
+      pressed = false,
+      disabled = false,
       children,
       startIcon,
       endIcon,
-      iconOnly,
-      pressed,
       style,
-      disabled = false,
       onMouseEnter,
       onMouseLeave,
       ...rest
@@ -164,7 +173,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled}
-        aria-pressed={pressed || undefined}
+        aria-pressed={pressed}
         style={{ ...computedStyles, ...style }}
         onMouseEnter={(e) => {
           setHovered(true);
@@ -177,47 +186,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...rest}
       >
         {iconOnly ? (
-          <span
-            style={{
-              width: 16,
-              height: 16,
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            {iconOnlyIcon}
-          </span>
+          <span style={iconStyle}>{iconOnlyIcon}</span>
         ) : (
           <>
-            {startIcon && (
-              <span
-                style={{
-                  width: 16,
-                  height: 16,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                {startIcon}
-              </span>
-            )}
+            {startIcon && <span style={iconStyle}>{startIcon}</span>}
             {children}
-            {endIcon && (
-              <span
-                style={{
-                  width: 16,
-                  height: 16,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                {endIcon}
-              </span>
-            )}
+            {endIcon && <span style={iconStyle}>{endIcon}</span>}
           </>
         )}
       </button>
     );
   },
 );
+
 Button.displayName = "Button";

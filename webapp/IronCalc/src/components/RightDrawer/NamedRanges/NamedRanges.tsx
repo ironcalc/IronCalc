@@ -137,9 +137,7 @@ const NamedRanges = ({
               variant="ghost"
               size="xs"
               iconOnly
-              pressed={false}
               startIcon={<ArrowLeft style={{ width: 16, height: 16 }} />}
-              endIcon={undefined}
               onClick={handleCancel}
               aria-label={t("name_manager_dialog.back_to_list")}
             />
@@ -150,9 +148,7 @@ const NamedRanges = ({
               variant="ghost"
               size="xs"
               iconOnly
-              pressed={false}
               startIcon={<X />}
-              endIcon={undefined}
               onClick={onClose}
               aria-label={t("right_drawer.close")}
             />
@@ -195,9 +191,7 @@ const NamedRanges = ({
             variant="ghost"
             size="xs"
             iconOnly
-            pressed={false}
             startIcon={<X />}
-            endIcon={undefined}
             onClick={onClose}
             aria-label={t("right_drawer.close")}
           />
@@ -272,9 +266,7 @@ const NamedRanges = ({
                         variant="ghost"
                         size="xs"
                         iconOnly
-                        pressed={false}
                         startIcon={<PencilLine />}
-                        endIcon={undefined}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleListItemClick(definedName);
@@ -287,9 +279,7 @@ const NamedRanges = ({
                         variant="ghost"
                         size="xs"
                         iconOnly
-                        pressed={false}
                         startIcon={<Trash2 />}
-                        endIcon={undefined}
                         onClick={(e) => {
                           e.stopPropagation();
                           model.deleteDefinedName(
@@ -309,15 +299,7 @@ const NamedRanges = ({
         )}
       </Content>
       <Footer>
-        <Button
-          variant="primary"
-          size="md"
-          iconOnly={false}
-          pressed={false}
-          startIcon={<Plus />}
-          endIcon={undefined}
-          onClick={handleNewClick}
-        >
+        <Button startIcon={<Plus />} onClick={handleNewClick}>
           {t("name_manager_dialog.new")}
         </Button>
       </Footer>
