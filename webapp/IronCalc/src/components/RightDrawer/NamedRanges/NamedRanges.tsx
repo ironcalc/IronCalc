@@ -135,8 +135,6 @@ const NamedRanges = ({
         <EditHeader>
           <Tooltip title={t("name_manager_dialog.back_to_list")}>
             <IconButton
-              variant="ghost"
-              size="xs"
               icon={<ArrowLeft />}
               onClick={handleCancel}
               aria-label={t("name_manager_dialog.back_to_list")}
@@ -145,8 +143,6 @@ const NamedRanges = ({
           <EditHeaderTitle>{headerTitle}</EditHeaderTitle>
           <Tooltip title={t("right_drawer.close")}>
             <IconButton
-              variant="ghost"
-              size="xs"
               icon={<X />}
               onClick={onClose}
               aria-label={t("right_drawer.close")}
@@ -187,8 +183,6 @@ const NamedRanges = ({
         <HeaderTitle>{t("name_manager_dialog.title")}</HeaderTitle>
         <Tooltip title={t("right_drawer.close")}>
           <IconButton
-            variant="ghost"
-            size="xs"
             icon={<X />}
             onClick={onClose}
             aria-label={t("right_drawer.close")}
@@ -261,8 +255,6 @@ const NamedRanges = ({
                   <IconsWrapper>
                     <Tooltip title={t("name_manager_dialog.edit")}>
                       <IconButton
-                        variant="ghost"
-                        size="xs"
                         icon={<PencilLine />}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -273,8 +265,6 @@ const NamedRanges = ({
                     </Tooltip>
                     <Tooltip title={t("name_manager_dialog.delete")}>
                       <IconButton
-                        variant="ghost"
-                        size="xs"
                         icon={<Trash2 />}
                         onClick={(e) => {
                           e.stopPropagation();

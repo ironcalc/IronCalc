@@ -46,13 +46,7 @@ function ButtonStory({
   );
 }
 
-const defaultArgs: ButtonStoryProps = {
-  variant: "primary",
-  size: "md",
-  pressed: false,
-  startIconName: "none",
-  endIconName: "none",
-};
+const defaultArgs: ButtonStoryProps = {};
 
 const meta = {
   title: "Components/Button",
@@ -74,7 +68,7 @@ const meta = {
     },
     size: {
       control: "select",
-      options: ["xs", "sm", "md", "lg"],
+      options: ["xs", "sm", "md"],
       description: "Button size",
     },
     pressed: {
@@ -134,10 +128,10 @@ export const Sizes: Story = {
       <Button variant="primary" size="xs">
         Extra small
       </Button>
-      <Button variant="primary" size="sm">
-        Small
+      <Button variant="primary">Small</Button>
+      <Button variant="primary" size="md">
+        Medium
       </Button>
-      <Button variant="primary">Medium</Button>
     </div>
   ),
 };

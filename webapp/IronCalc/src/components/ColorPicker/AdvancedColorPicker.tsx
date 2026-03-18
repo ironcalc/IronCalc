@@ -80,7 +80,7 @@ const AdvancedColorPicker = ({
         </ColorPickerInput>
         <HorizontalDivider />
         <ButtonsWrapper>
-          <Button variant="secondary" size="sm" onClick={onCancel}>
+          <Button size="sm" variant="secondary" onClick={onCancel}>
             {t("color_picker.cancel")}
           </Button>
           <Button
