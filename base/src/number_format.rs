@@ -93,7 +93,7 @@ impl DefaultFmts {
     // Formatter helper, otherwise we would need to do for each
     // function above to satisfy clippy.
     // DefaultFmts::by_id().unwrap_or("#,##0.00").to_string()
-    fn id_fmt_or_general(id: i32) -> String {
+    pub fn id_fmt_or_general(id: i32) -> String {
         DEFAULT_NUM_FMTS
             .iter()
             .find(|&&(fid, _)| fid == id)
@@ -362,7 +362,6 @@ mod tests {
             .collect();
 
         for id in gaps {
-            dbg!(&id);
             let fmt = NumFmt::from_id(id, &[]);
             assert_eq!(
                 fmt.num_fmt_id, 0,

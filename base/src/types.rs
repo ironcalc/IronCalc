@@ -370,7 +370,7 @@ impl<'de> Deserialize<'de> for NumFmt {
 
             // Legacy path: `num_fmt` was serialized as a plain format-code string.
             fn visit_str<E: de::Error>(self, value: &str) -> Result<NumFmt, E> {
-                Ok(NumFmt::from_format_code(value))
+                Ok(NumFmt::from_format_code(value, None))
             }
 
             fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> Result<NumFmt, M::Error> {
@@ -388,7 +388,7 @@ impl<'de> Deserialize<'de> for NumFmt {
                 let format_code =
                     format_code.ok_or_else(|| de::Error::missing_field("format_code"))?;
                 // format_code is the source of truth; re-derive id for consistency.
-                let derived = NumFmt::from_format_code(&format_code);
+                let derived = NumFmt::from_format_code(&format_code, None);
                 let stored_id = num_fmt_id.unwrap_or(derived.num_fmt_id);
                 // Accept stored_id only when it is provably consistent with format_code:
                 //  • exact match: both agree on the ID
@@ -472,33 +472,65 @@ impl NumFmt {
 
     /// format code resolves to the built-in ID, or
     /// `-1` as a sentinel for custom codes (real ID assigned at persist time).
-    pub fn from_format_code(code: &str) -> Self {
-        let num_fmt_id = DefaultFmts::by_code(code).unwrap_or(-1);
+    pub fn from_format_code(code: &str, num_fmts: Option<&mut Vec<NumFmt>>) -> Self {
+        // let num_fmt_id = DefaultFmts::by_code(code).unwrap_or(-1);
+
+        if let Some(num_fmt_id) = DefaultFmts::by_code(code) {
+            return NumFmt {
+                num_fmt_id,
+                format_code: code.to_string(),
+            };
+        }
+
+        if code.eq_ignore_ascii_case("general") {
+            return NumFmt {
+                num_fmt_id: 0,
+                format_code: DefaultFmts::id_fmt_or_general(0),
+            };
+        }
+
+        if let Some(fmts) = num_fmts {
+            if let Some(fmt) = fmts.iter().find(|f| f.format_code == code) {
+                return fmt.clone();
+            } else {
+                return NumFmt::get_or_register(code, fmts);
+            }
+        }
+
         NumFmt {
-            num_fmt_id,
+            num_fmt_id: -1,
             format_code: code.to_string(),
         }
     }
 
     /// Returns the `NumFmt` for `code`, registering it in `num_fmts` if it is not yet present.
-    ///
-    /// Built-in codes resolve immediately with their ID.
     /// Custom codes are assigned an ID ≥ 164 on first registration and re-used thereafter.
     pub fn get_or_register(code: &str, num_fmts: &mut Vec<NumFmt>) -> Self {
+        // Built-in codes resolve immediately with their ID.
         if let Some(id) = DefaultFmts::by_code(code) {
             return NumFmt {
                 num_fmt_id: id,
                 format_code: code.to_string(),
             };
         }
+
+        if code.eq_ignore_ascii_case("general") {
+            return NumFmt {
+                num_fmt_id: 0,
+                format_code: DefaultFmts::id_fmt_or_general(0),
+            };
+        }
+
         if let Some(existing) = num_fmts.iter().find(|f| f.format_code == code) {
             return existing.clone();
         }
+
         // ECMA-376 custom IDs must be ≥ 164; find the lowest unused one.
         let mut new_id = ECMA_CUSTOM_FMT_MIN_ID;
         while num_fmts.iter().any(|f| f.num_fmt_id == new_id) {
             new_id += 1;
         }
+
         let fmt = NumFmt {
             num_fmt_id: new_id,
             format_code: code.to_string(),

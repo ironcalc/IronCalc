@@ -315,13 +315,13 @@ fn test_style_fmt_id() {
     let mut model = new_empty_model();
 
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code("#.##");
+    style.num_fmt = NumFmt::from_format_code("#.##", None);
     assert!(model.set_cell_style(0, 1, 1, &style).is_ok());
     let style = model.get_style_for_cell(0, 1, 1).unwrap();
     assert_eq!(style.num_fmt.format_code, "#.##");
 
     let mut style = model.get_style_for_cell(0, 10, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code("$$#,##0.0000");
+    style.num_fmt = NumFmt::from_format_code("$$#,##0.0000", None);
     assert!(model.set_cell_style(0, 10, 1, &style).is_ok());
     let style = model.get_style_for_cell(0, 10, 1).unwrap();
     assert_eq!(style.num_fmt.format_code, "$$#,##0.0000");
@@ -444,7 +444,8 @@ fn test_get_formatted_cell_value() {
 
     // change A5 format
     let mut style = model.get_style_for_cell(0, 5, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code("$#,##0.00");
+    let styles = &mut model.workbook.styles;
+    style.num_fmt = NumFmt::from_format_code("$#,##0.00", Some(&mut styles.num_fmts));
     model.set_cell_style(0, 5, 1, &style).unwrap();
 
     model.evaluate();

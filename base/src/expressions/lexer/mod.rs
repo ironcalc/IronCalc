@@ -387,7 +387,7 @@ impl<'a> Lexer<'a> {
                                         ));
                                     }
                                     return TokenType::Ident(name);
-                                } else if !utils::non_latin(&name) {
+                                } else if !name.is_ascii() {
                                     // Same handling added for R1C1 below
                                     return TokenType::Ident(name);
                                 } else {
@@ -404,9 +404,7 @@ impl<'a> Lexer<'a> {
                                     Ok(ParsedRange { left, right }) => {
                                         if pos > self.position {
                                             self.position = pos;
-                                            if utils::is_valid_identifier(&name)
-                                                || utils::non_latin(&name)
-                                            {
+                                            if utils::is_valid_non_latin(&name) {
                                                 return TokenType::Ident(name);
                                             } else {
                                                 self.position = self.len;
@@ -449,9 +447,7 @@ impl<'a> Lexer<'a> {
                                         }
                                         self.position = pos;
 
-                                        if utils::is_valid_identifier(&name)
-                                            || utils::non_latin(&name)
-                                        {
+                                        if utils::is_valid_non_latin(&name) {
                                             return TokenType::Ident(name);
                                         } else {
                                             return TokenType::Illegal(self.set_error(

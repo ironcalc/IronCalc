@@ -294,7 +294,7 @@ impl From<&PyStyle> for Style {
     fn from(py_style: &PyStyle) -> Self {
         Style {
             alignment: py_style.alignment.as_ref().map(|a| a.into()),
-            num_fmt: NumFmt::from_format_code(&py_style.num_fmt),
+            num_fmt: NumFmt::from_format_code(&py_style.num_fmt, None),
             fill: (&py_style.fill).into(),
             font: (&py_style.font).into(),
             border: (&py_style.border).into(),

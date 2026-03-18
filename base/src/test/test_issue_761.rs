@@ -150,7 +150,7 @@ fn manual_date_format_preserved_on_entry() {
     // A cell with an explicit date format must not have it overwritten with numFmtId 14.
     let mut model = new_empty_model();
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code("dd mmmm yyyy");
+    style.num_fmt = NumFmt::from_format_code("dd mmmm yyyy", None);
     model.set_cell_style(0, 1, 1, &style).unwrap();
 
     model._set("A1", "4/3/2025");
@@ -226,7 +226,7 @@ fn non_date_entry_into_date_cell_replaces_format() {
     // The should_apply_format guard only preserves date format when BOTH old and new are dates.
     let mut model = new_empty_model();
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code("mm-dd-yy"); // → numFmtId=14
+    style.num_fmt = NumFmt::from_format_code("mm-dd-yy", None); // → numFmtId=14
     model.set_cell_style(0, 1, 1, &style).unwrap();
 
     model._set("A1", "30%");
@@ -250,7 +250,7 @@ fn cross_locale_serial_displays_as_locale_format() {
     let serial = 45750.0; // April 3, 2025
     let mut model = en_gb_model();
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code("mm-dd-yy"); // → numFmtId=14
+    style.num_fmt = NumFmt::from_format_code("mm-dd-yy", None); // → numFmtId=14
     model.set_cell_style(0, 1, 1, &style).unwrap();
     model.update_cell_with_number(0, 1, 1, serial).unwrap();
     model.evaluate();
@@ -266,7 +266,7 @@ fn cross_locale_serial_displays_as_locale_format() {
 fn formula_date_result_respects_locale_format() {
     let mut model = en_gb_model();
     let mut style = model.get_style_for_cell(0, 1, 2).unwrap();
-    style.num_fmt = NumFmt::from_format_code("mm-dd-yy"); // → numFmtId=14
+    style.num_fmt = NumFmt::from_format_code("mm-dd-yy", None); // → numFmtId=14
     model.set_cell_style(0, 1, 2, &style).unwrap();
 
     model
@@ -345,10 +345,10 @@ fn date_fn_locale_switch_updates_display() {
 
 #[test]
 fn num_fmt_builtin_format_code_resolves_canonical_id() {
-    let general = NumFmt::from_format_code("General");
+    let general = NumFmt::from_format_code("General", None);
     assert_eq!(general.num_fmt_id, 0, "\"general\" must map to numFmtId 0");
 
-    let locale_date = NumFmt::from_format_code("mm-dd-yy");
+    let locale_date = NumFmt::from_format_code("mm-dd-yy", None);
     assert_eq!(
         locale_date.num_fmt_id, SHORT_DATE_ID,
         "\"mm-dd-yy\" must map to NumFmt::LOCALE_DATE_ID ({})",
@@ -359,7 +359,7 @@ fn num_fmt_builtin_format_code_resolves_canonical_id() {
 #[test]
 fn num_fmt_custom_format_code_has_placeholder_id() {
     // Custom codes not in the built-in table use -1 as a sentinel until registered.
-    let custom = NumFmt::from_format_code("dd/mm/yyyy hh:mm:ss");
+    let custom = NumFmt::from_format_code("dd/mm/yyyy hh:mm:ss", None);
     assert_eq!(custom.format_code, "dd/mm/yyyy hh:mm:ss");
     assert_eq!(custom.num_fmt_id, -1);
 }
@@ -370,12 +370,12 @@ fn set_cell_style_reuses_cell_xfs_for_same_custom_format() {
     let code = "dd/mm/yyyy hh:mm:ss";
 
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code(code);
+    style.num_fmt = NumFmt::from_format_code(code, None);
     model.set_cell_style(0, 1, 1, &style).unwrap();
     let xfs_len_after_first = model.workbook.styles.cell_xfs.len();
 
     let mut style2 = model.get_style_for_cell(0, 2, 1).unwrap();
-    style2.num_fmt = NumFmt::from_format_code(code);
+    style2.num_fmt = NumFmt::from_format_code(code, None);
     model.set_cell_style(0, 2, 1, &style2).unwrap();
 
     assert_eq!(
@@ -453,7 +453,7 @@ fn custom_format_sentinel_never_stored_in_cell_xfs() {
     // from_format_code uses -1 as a sentinel; set_cell_style must resolve it before writing.
     let mut model = new_empty_model();
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code("dd/mm/yyyy hh:mm:ss");
+    style.num_fmt = NumFmt::from_format_code("dd/mm/yyyy hh:mm:ss", None);
     assert_eq!(
         style.num_fmt.num_fmt_id, -1,
         "sentinel must be -1 before registration"
@@ -553,7 +553,7 @@ fn non_date_format_preserved_when_date_formula_entered() {
     // an explicit numeric format with the locale-date ID.
     let mut model = new_empty_model();
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code("#,##0");
+    style.num_fmt = NumFmt::from_format_code("#,##0", None);
     model.set_cell_style(0, 1, 1, &style).unwrap();
 
     model._set("A1", "=DATE(2025,4,3)");
@@ -586,7 +586,7 @@ fn legacy_custom_num_fmt_renders_literal_not_locale() {
     // Apply a US-style literal format.  set_cell_style will register it as a
     // custom format (ID ≥ 164) because "m/d/yyyy" is not an ECMA-376 built-in.
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    style.num_fmt = NumFmt::from_format_code("m/d/yyyy");
+    style.num_fmt = NumFmt::from_format_code("m/d/yyyy", None);
     model.set_cell_style(0, 1, 1, &style).unwrap();
     model.update_cell_with_number(0, 1, 1, serial).unwrap();
     model.evaluate();

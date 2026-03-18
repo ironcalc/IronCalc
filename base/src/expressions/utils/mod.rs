@@ -253,8 +253,8 @@ pub fn is_valid_identifier(name: &str) -> bool {
 // Non-ASCII identifier (e.g. =ä, =ы): pass through as Ident so the
 // evaluator produces #NAME? instead of #ERROR! — matching Excel.
 /// Returns `true` for non-Latin characters (e.g., =ä or =ы)
-pub fn non_latin(name: &str) -> bool {
-    name.is_ascii()
+pub fn is_valid_non_latin(name: &str) -> bool {
+    !name.is_ascii() || is_valid_identifier(name)
 }
 
 fn name_needs_quoting(name: &str) -> bool {

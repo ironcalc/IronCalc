@@ -152,7 +152,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
             style.fill.pattern_type = "solid".to_string();
         }
         "num_fmt" => {
-            style.num_fmt = NumFmt::from_format_code(value);
+            style.num_fmt = NumFmt::from_format_code(value, None);
         }
         "alignment" => {
             if !value.is_empty() {
