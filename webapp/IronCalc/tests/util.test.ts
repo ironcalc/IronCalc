@@ -4,8 +4,8 @@ import { expect, test } from "vitest";
 import {
   decreaseDecimalPlaces,
   increaseDecimalPlaces,
-} from "../FormatMenu/formatUtil";
-import { getFullRangeToString, isNavigationKey } from "../util";
+} from "../src/components/FormatMenu/formatUtil";
+import { getFullRangeToString, isNavigationKey } from "../src/components/util";
 
 test("checks arrow left is a navigation key", () => {
   expect(isNavigationKey("ArrowLeft")).toBe(true);
@@ -32,7 +32,7 @@ test("decrease decimals", () => {
 
 test("format range to get the full formula", async () => {
   const buffer = await readFile("node_modules/@ironcalc/wasm/wasm_bg.wasm");
-  initSync(buffer);
+  initSync({module: buffer});
 
   const selectedView: SelectedView = {
     sheet: 0,
