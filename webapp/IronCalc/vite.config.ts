@@ -14,7 +14,7 @@ export default defineConfig({
       fileName: 'ironcalc',
       formats: ['es']
     },
-    rollupOptions: {
+    rolldownOptions: {
       // make sure to externalize deps that shouldn't be bundled
       // into your library
       external: [
