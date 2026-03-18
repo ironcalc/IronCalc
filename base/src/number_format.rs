@@ -341,4 +341,44 @@ mod tests {
             assert_eq!(DefaultFmts::by_id(id), Some(expected), "numFmtId {id}");
         }
     }
+
+    // Derive gap IDs from DEFAULT_NUM_FMTS — IDs in 0..ECMA_CUSTOM_FMT_MIN_ID
+    // that are absent from the table — and verify the boundary.
+    //     #[cfg(not(debug_assertions))]
+
+    #[test]
+    #[should_panic(expected = "is unknown")]
+    fn test_no_builtin_in_gap_ranges() {
+        use crate::constants::ECMA_CUSTOM_FMT_MIN_ID;
+        use crate::types::NumFmt;
+        use std::collections::HashSet;
+
+        let known: HashSet<i32> = DEFAULT_NUM_FMTS.iter().map(|&(id, _)| id).collect();
+
+        // Gap IDs are those absent from DEFAULT_NUM_FMTS within the built-in range.
+        // The highest gap must be ECMA_CUSTOM_FMT_MIN_ID - 1 = 163.
+        let gaps: Vec<i32> = (0..ECMA_CUSTOM_FMT_MIN_ID)
+            .filter(|id| !known.contains(id))
+            .collect();
+
+        for id in gaps {
+            dbg!(&id);
+            let fmt = NumFmt::from_id(id, &[]);
+            assert_eq!(
+                fmt.num_fmt_id, 0,
+                "gap numFmtId {id} must fall back to General (id 0)"
+            );
+            assert_eq!(
+                fmt.format_code, "General",
+                "gap numFmtId {id} must fall back to General format code"
+            );
+        }
+    }
+    #[test]
+    #[should_panic(expected = "is unknown")]
+    fn test_gap_id_panics_in_debug() {
+        use crate::types::NumFmt;
+
+        let _ = NumFmt::from_id(23, &[]); // one representative gap ID
+    }
 }

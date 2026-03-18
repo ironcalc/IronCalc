@@ -450,9 +450,14 @@ impl NumFmt {
         let (num_fmt_id, format_code) = match DefaultFmts::by_id(id) {
             Some(code) => (id, code),
             None => {
-                // Gap IDs (49–163) not in custom_fmts silently fall back (debug builds only).
+                // Unknown IDs fall back to General. See number_format.rs for gap ID ranges.notes.
+                // Panic in debug if the ID is not a known ECMA-376 gap (bug guard).
                 debug_assert!(
-                    id < 0,
+                    id < 0
+                        || !((5..=8).contains(&id)
+                        || (23..=36).contains(&id)
+                        || (41..=44).contains(&id)
+                        || (50..ECMA_CUSTOM_FMT_MIN_ID).contains(&id)),
                     "num_fmt_id {id} is unknown (not a built-in ECMA-376 ID and not in custom_fmts); \
                      silently falling back to General (0)"
                 );
