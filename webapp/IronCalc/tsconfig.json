@@ -13,7 +13,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "emitDeclarationOnly": true,
-    // "noEmit": true,
     "jsx": "react-jsx",
 
     /* Linting */
@@ -22,8 +21,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
-    "outDir": "dist",
+    "outDir": "dist"
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "tests"],
+  "references": [{ "path": "./tsconfig.node.json" }],
 }
