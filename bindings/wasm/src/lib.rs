@@ -113,6 +113,7 @@ impl Model {
         Ok(Model { model })
     }
 
+    #[wasm_bindgen(js_name = "fromBytes")]
     pub fn from_bytes(bytes: &[u8], language_id: &str) -> Result<Model, JsError> {
         let language_id = leak_str(language_id);
         let model = BaseModel::from_bytes(bytes, language_id).map_err(to_js_error)?;

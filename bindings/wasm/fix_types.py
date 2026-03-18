@@ -21,19 +21,20 @@ def fix_types(text: str):
     return text
 
 if __name__ == "__main__":
-    types_file = "pkg/wasm.d.ts"
-    with open(types_file) as f:
-        text = f.read()
-    text = fix_types(text)
-    with open(types_file, "wb") as f:
-        f.write(bytes(text, "utf8"))
+    dts_files = ["pkg/ironcalc.d.ts", "pkg/xlsx.d.ts"]
+    for types_file in dts_files:
+        with open(types_file) as f:
+            text = f.read()
+        text = fix_types(text)
+        with open(types_file, "wb") as f:
+            f.write(bytes(text, "utf8"))
 
-    js_file = "pkg/wasm.js"
+    js_files = ["pkg/ironcalc.js", "pkg/xlsx.js"]
     with open("types.js") as f:
         text_js = f.read()
-    with open(js_file) as f:
-        text = f.read()
 
-    with open(js_file, "wb") as f:
-        f.write(bytes("{}\n{}".format(text_js, text), "utf8"))
-    
+    for js_file in js_files:
+        with open(js_file) as f:
+            text = f.read()
+        with open(js_file, "wb") as f:
+            f.write(bytes("{}\n{}".format(text_js, text), "utf8"))
