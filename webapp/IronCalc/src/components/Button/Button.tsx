@@ -28,27 +28,31 @@ const sizeStyles: Record<ButtonSize, CSSProperties> = {
   md: { height: 32, lineHeight: "32px" },
 };
 
+export interface GetButtonStylesOptions {
+  pressed?: boolean;
+  disabled?: boolean;
+  hovered?: boolean;
+}
+
 export function getButtonStyles(
   theme: Theme,
   variant: ButtonVariant,
   size: ButtonSize,
-  iconOnly: boolean,
-  pressed: boolean,
-  disabled: boolean,
-  hovered: boolean,
+  options: GetButtonStylesOptions = {},
 ): CSSProperties {
+  const { pressed = false, disabled = false, hovered = false } = options;
   const { height, lineHeight } = sizeStyles[size];
 
   const base: CSSProperties = {
     cursor: disabled ? "not-allowed" : "pointer",
     position: "relative",
     overflow: "hidden",
-    padding: iconOnly ? 0 : "0 10px",
+    padding: "0 10px",
     borderRadius: 6,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: iconOnly ? 0 : 8,
+    gap: 8,
     fontFamily: theme.typography.fontFamily,
     fontSize: theme.typography.fontSize,
     fontWeight: 500,
@@ -60,7 +64,6 @@ export function getButtonStyles(
       : `${alpha(theme.palette.common.black, 0.04)} 0px 1px 2px`,
     height,
     lineHeight,
-    ...(iconOnly ? { minWidth: height, width: height } : {}),
   };
 
   if (disabled) {
@@ -161,15 +164,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
   ) {
     const theme = useTheme();
     const [hovered, setHovered] = useState(false);
-    const computedStyles = getButtonStyles(
-      theme,
-      variant,
-      size,
-      false, // text button, never icon-only
+    const computedStyles = getButtonStyles(theme, variant, size, {
       pressed,
       disabled,
       hovered,
-    );
+    });
 
     return (
       <button

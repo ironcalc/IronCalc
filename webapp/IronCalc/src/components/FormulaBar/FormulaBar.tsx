@@ -55,8 +55,7 @@ function FormulaBar(properties: FormulaBarProps) {
             size="sm"
             pressed={isMenuOpen}
             endIcon={<ChevronDown />}
-            type="button"
-            style={{ flex: 1 }}
+            style={{ flex: 1 }} // button's content (cell address) width is dynamic
           >
             {cellAddress}
           </Button>

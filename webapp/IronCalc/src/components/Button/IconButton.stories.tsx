@@ -7,6 +7,7 @@ import {
   Strikethrough,
   Trash2,
   Underline,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import type { IconButtonProperties } from "./IconButton";
@@ -42,11 +43,11 @@ function IconButtonStory({
 }
 
 const defaultArgs: IconButtonStoryProps = {
-  variant: "primary",
+  variant: "ghost",
   size: "md",
   pressed: false,
-  iconName: "download",
-  "aria-label": "Download",
+  iconName: "bold",
+  "aria-label": "Bold",
 };
 
 const meta = {
@@ -94,9 +95,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    ...defaultArgs,
-    variant: "primary",
-    size: "md",
+    variant: "outline",
     "aria-label": "Download",
   },
 };
@@ -117,8 +116,8 @@ export const Variants: Story = {
         icon={<MoreHorizontal />}
         aria-label="More"
       />
-      <IconButton variant="outline" icon={<Download />} aria-label="Download" />
-      <IconButton variant="ghost" icon={<Bold />} aria-label="Bold" />
+      <IconButton variant="outline" icon={<Bold />} aria-label="Bold" />
+      <IconButton icon={<X />} aria-label="Close" />
       <IconButton variant="destructive" icon={<Trash2 />} aria-label="Delete" />
     </div>
   ),
@@ -127,37 +126,33 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: () => (
     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-      <IconButton
-        variant="outline"
-        size="xs"
-        icon={<Download />}
-        aria-label="Download"
-      />
+      <IconButton variant="outline" icon={<Bold />} aria-label="Bold" />
       <IconButton
         variant="outline"
         size="sm"
-        icon={<Download />}
-        aria-label="Download"
+        icon={<Bold />}
+        aria-label="Bold"
       />
-      <IconButton variant="outline" icon={<Download />} aria-label="Download" />
+      <IconButton
+        variant="outline"
+        size="md"
+        icon={<Bold />}
+        aria-label="Bold"
+      />
     </div>
   ),
 };
 
 export const Disabled: Story = {
   args: {
-    ...defaultArgs,
-    variant: "primary",
+    variant: "outline",
     disabled: true,
-    "aria-label": "Download",
+    "aria-label": "Bold",
   },
 };
 
 export const Pressed: Story = {
   args: {
-    ...defaultArgs,
-    variant: "ghost",
-    size: "sm",
     pressed: true,
     iconName: "bold",
     "aria-label": "Bold",
@@ -174,32 +169,24 @@ export const FormatToolbar: Story = {
     return (
       <div style={{ display: "flex", gap: 4 }}>
         <IconButton
-          variant="ghost"
-          size="sm"
           icon={<Bold />}
           pressed={bold}
           onClick={() => setBold((b) => !b)}
           aria-label="Bold"
         />
         <IconButton
-          variant="ghost"
-          size="sm"
           icon={<Italic />}
           pressed={italic}
           onClick={() => setItalic((i) => !i)}
           aria-label="Italic"
         />
         <IconButton
-          variant="ghost"
-          size="sm"
           icon={<Underline />}
           pressed={underline}
           onClick={() => setUnderline((u) => !u)}
           aria-label="Underline"
         />
         <IconButton
-          variant="ghost"
-          size="sm"
           icon={<Strikethrough />}
           pressed={strike}
           onClick={() => setStrike((s) => !s)}

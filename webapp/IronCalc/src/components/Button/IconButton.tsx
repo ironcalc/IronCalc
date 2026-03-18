@@ -17,11 +17,13 @@ export type { ButtonSize, ButtonVariant };
 /**
  * Icon-only button. Same variants and sizes as Button.
  * Use it for toolbar actions, to close drawers and modals, etc.
- * Always provide aria-label for accessibility.
+ * aria-label is required for accessibility.
  */
+
 export interface IconButtonProperties
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label"> {
   icon: ReactNode;
+  "aria-label": string;
   variant?: ButtonVariant;
   size?: ButtonSize;
   pressed?: boolean;
@@ -31,8 +33,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
   function IconButton(
     {
       icon,
-      variant = "primary",
-      size = "md",
+      variant = "ghost",
+      size = "xs",
       pressed = false,
       style,
       disabled = false,
@@ -44,15 +46,16 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
   ) {
     const theme = useTheme();
     const [hovered, setHovered] = useState(false);
-    const computedStyles = getButtonStyles(
-      theme,
-      variant,
-      size,
-      true,
+    const computedStyles = getButtonStyles(theme, variant, size, {
       pressed,
       disabled,
       hovered,
-    );
+    });
+    const height = computedStyles.height as number;
+    computedStyles.padding = 0;
+    computedStyles.gap = 0;
+    computedStyles.minWidth = height;
+    computedStyles.width = height;
 
     return (
       <button
