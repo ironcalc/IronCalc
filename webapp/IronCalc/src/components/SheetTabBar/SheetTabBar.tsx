@@ -5,9 +5,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IronCalcLogo } from "../../icons";
 import { theme } from "../../theme";
+import { Button } from "../Button/Button";
+import { IconButton } from "../Button/IconButton";
 import { NAVIGATION_HEIGHT } from "../constants";
 import { getLocaleDisplayName } from "../RightDrawer/RegionalSettings/RegionalSettings";
-import { StyledButton } from "../Toolbar/Toolbar";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
 import SheetTab from "./SheetTab";
@@ -55,14 +56,18 @@ function SheetTabBar(props: SheetTabBarProps) {
     <Container>
       <LeftButtonsContainer>
         <Tooltip title={t("navigation.add_sheet")}>
-          <StyledButton $pressed={false} onClick={props.onAddBlankSheet}>
-            <Plus />
-          </StyledButton>
+          <IconButton
+            aria-label={t("navigation.add_sheet")}
+            icon={<Plus />}
+            onClick={props.onAddBlankSheet}
+          />
         </Tooltip>
         <Tooltip title={t("navigation.sheet_list")}>
-          <StyledButton onClick={handleClick} $pressed={false}>
-            <Menu />
-          </StyledButton>
+          <IconButton
+            aria-label={t("navigation.sheet_list")}
+            icon={<Menu />}
+            onClick={handleClick}
+          />
         </Tooltip>
       </LeftButtonsContainer>
       <VerticalDivider />
@@ -93,8 +98,10 @@ function SheetTabBar(props: SheetTabBarProps) {
       </Sheets>
       <RightContainer>
         <Tooltip title={t("regional_settings.open_regional_settings")}>
-          <RegionalSettingsButton
-            $pressed={false}
+          <Button
+            style={{ color: theme.palette.grey["600"] }}
+            variant="ghost"
+            size="sm"
             onClick={() => {
               props.onOpenRegionalSettings();
             }}
@@ -104,9 +111,11 @@ function SheetTabBar(props: SheetTabBarProps) {
             {t(
               `regional_settings.language.display_language.${props.model.getLanguage()}`,
             )}
-          </RegionalSettingsButton>
+          </Button>
         </Tooltip>
         <LogoLink
+          variant="ghost"
+          size="sm"
           onClick={() => window.open("https://www.ironcalc.com", "_blank")}
         >
           <IronCalcLogo />
@@ -150,7 +159,7 @@ const Sheets = styled("div")`
   overflow: hidden;
   overflow-x: auto;
   scrollbar-width: none;
-  padding-left: 12px;
+  padding-left: 8px;
   display: flex;
   flex-direction: row;
   height: 100%;
@@ -165,8 +174,8 @@ const LeftButtonsContainer = styled("div")`
   flex-direction: row;
   align-items: center;
   height: 100%;
-  gap: 4px;
-  padding: 0px 12px;
+  gap: 2px;
+  padding: 0px 8px;
   @media (max-width: 769px) {
     padding: 0px 8px;
   }
@@ -195,36 +204,16 @@ const RightContainer = styled("div")`
   }
 `;
 
-const RegionalSettingsButton = styled(StyledButton)`
-  min-width: fit-content;
-  padding: 4px 8px;
-  color: ${theme.palette.grey["600"]};
-  text-wrap: nowrap;
-  gap: 8px;
-`;
-
 const TextDivider = styled("div")`
   width: 1px;
-  height: 60%;
+  height: 40%;
   background-color: ${theme.palette.grey["300"]};
 `;
 
-const LogoLink = styled("div")`
-  display: flex;
-  align-items: center;
-  padding: 0px 4px;
-  border-radius: 4px;
-  max-height: 24px;
-  min-height: 24px;
-  cursor: pointer;
+const LogoLink = styled(Button)`
   svg {
     height: 14px;
     width: auto;
-  }
-  &:hover {
-    background-color: ${theme.palette.grey["100"]};
-    transition: "all 0.2s";
-    outline: 1px solid ${theme.palette.grey["200"]};
   }
 `;
 
