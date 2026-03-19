@@ -49,7 +49,7 @@ export function getButtonStyles(styles: ButtonStyles): CSSProperties {
   const { height, lineHeight } = sizeStyles[size];
 
   const base: CSSProperties = {
-    cursor: disabled ? "not-allowed" : "pointer",
+    cursor: disabled ? "auto" : "pointer",
     position: "relative",
     overflow: "hidden",
     padding: "0 10px",
@@ -72,10 +72,19 @@ export function getButtonStyles(styles: ButtonStyles): CSSProperties {
   };
 
   if (disabled) {
+    if (variant === "ghost") {
+      return {
+        ...base,
+        backgroundColor: "transparent",
+        color: theme.palette.grey[400],
+        border: "none",
+        boxShadow: "none",
+      };
+    }
     return {
       ...base,
       backgroundColor: theme.palette.grey[200],
-      color: theme.palette.action.disabled,
+      color: theme.palette.grey[400],
       borderColor: theme.palette.grey[300],
       boxShadow: "none",
     };
