@@ -44,6 +44,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowMiddleFromLine } from "../../icons";
 import BorderPicker from "../BorderPicker/BorderPicker";
+import { Button } from "../Button/Button";
+import { IconButton } from "../Button/IconButton";
 import ColorPicker from "../ColorPicker/ColorPicker";
 import { TOOLBAR_HEIGHT } from "../constants";
 import FormatMenu from "../FormatMenu/FormatMenu";
@@ -168,24 +170,20 @@ function Toolbar(properties: ToolbarProperties) {
         {/* History/Edit Group */}
         <ButtonGroup>
           <Tooltip title={t("toolbar.undo")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
+            <IconButton
+              icon={<Undo2 />}
+              aria-label="Undo"
               onClick={properties.onUndo}
               disabled={!properties.canUndo}
-            >
-              <Undo2 />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.redo")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
+            <IconButton
+              icon={<Redo2 />}
+              aria-label="Redo"
               onClick={properties.onRedo}
               disabled={!properties.canRedo}
-            >
-              <Redo2 />
-            </StyledButton>
+            />
           </Tooltip>
         </ButtonGroup>
 
@@ -194,25 +192,21 @@ function Toolbar(properties: ToolbarProperties) {
         {/* Format Tools Group */}
         <ButtonGroup>
           <Tooltip title={t("toolbar.copy_styles")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
+            <IconButton
+              icon={<PaintRoller />}
+              aria-label="Copy Styles"
               onClick={properties.onCopyStyles}
-            >
-              <PaintRoller />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.clear_formatting")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
+            <IconButton
+              icon={<RemoveFormatting />}
+              aria-label="Clear Formatting"
               onClick={() => {
                 properties.onClearFormatting();
               }}
               disabled={!canEdit}
-            >
-              <RemoveFormatting />
-            </StyledButton>
+            />
           </Tooltip>
         </ButtonGroup>
 
@@ -221,58 +215,50 @@ function Toolbar(properties: ToolbarProperties) {
         {/* Number Format Group */}
         <ButtonGroup>
           <Tooltip title={t("toolbar.currency")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
+            <IconButton
+              icon={currencyIcon}
+              aria-label="Currency"
               onClick={(): void => {
                 properties.onNumberFormatPicked(
                   properties.formatOptions.currency_format,
                 );
               }}
               disabled={!canEdit}
-            >
-              {currencyIcon}
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.percentage")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
+            <IconButton
+              icon={<Percent />}
+              aria-label="Percentage"
               onClick={(): void => {
                 properties.onNumberFormatPicked(NumberFormats.PERCENTAGE);
               }}
               disabled={!canEdit}
-            >
-              <Percent />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.decimal_places_decrease")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
+            <IconButton
+              icon={<DecimalsArrowLeft />}
+              aria-label="Decrease Decimal Places"
               onClick={(): void => {
                 properties.onNumberFormatPicked(
                   decreaseDecimalPlaces(properties.numFmt),
                 );
               }}
               disabled={!canEdit}
-            >
-              <DecimalsArrowLeft />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.decimal_places_increase")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
+            <IconButton
+              icon={<DecimalsArrowRight />}
+              aria-label="Increase Decimal Places"
               onClick={(): void => {
                 properties.onNumberFormatPicked(
                   increaseDecimalPlaces(properties.numFmt),
                 );
               }}
               disabled={!canEdit}
-            >
-              <DecimalsArrowRight />
-            </StyledButton>
+            />
           </Tooltip>
           <FormatMenu
             numFmt={properties.numFmt}
@@ -287,18 +273,15 @@ function Toolbar(properties: ToolbarProperties) {
             formatOptions={properties.formatOptions}
           >
             <Tooltip title={t("toolbar.format_number")}>
-              <StyledButton
-                type="button"
-                $pressed={false}
+              <Button
+                variant="ghost"
+                size="sm"
                 disabled={!canEdit}
-                sx={{
-                  width: "40px", // Keep in sync with anchorOrigin in FormatMenu above
-                  padding: "0px 4px",
-                }}
+                style={{ gap: 0, paddingLeft: 4, paddingRight: 2 }}
+                endIcon={<ChevronDown size={12} />}
               >
                 {"123"}
-                <ChevronDown />
-              </StyledButton>
+              </Button>
             </Tooltip>
           </FormatMenu>
         </ButtonGroup>
@@ -308,29 +291,25 @@ function Toolbar(properties: ToolbarProperties) {
         {/* Font Size Group */}
         <ButtonGroup>
           <Tooltip title={t("toolbar.decrease_font_size")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
-              disabled={!canEdit}
+            <IconButton
+              icon={<Minus />}
+              aria-label="Decrease Font Size"
               onClick={() => {
                 properties.onIncreaseFontSize(-1);
               }}
-            >
-              <Minus />
-            </StyledButton>
+              disabled={!canEdit}
+            />
           </Tooltip>
           <FontSizeBox>{properties.fontSize}</FontSizeBox>
           <Tooltip title={t("toolbar.increase_font_size")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
-              disabled={!canEdit}
+            <IconButton
+              icon={<Plus />}
+              aria-label="Increase Font Size"
               onClick={() => {
                 properties.onIncreaseFontSize(1);
               }}
-            >
-              <Plus />
-            </StyledButton>
+              disabled={!canEdit}
+            />
           </Tooltip>
         </ButtonGroup>
 
@@ -339,46 +318,42 @@ function Toolbar(properties: ToolbarProperties) {
         {/* Text Style Group */}
         <ButtonGroup>
           <Tooltip title={t("toolbar.bold")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.bold}
+            <IconButton
+              icon={<Bold />}
+              aria-label="Bold"
+              pressed={properties.bold}
               onClick={() => properties.onToggleBold(!properties.bold)}
               disabled={!canEdit}
-            >
-              <Bold />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.italic")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.italic}
+            <IconButton
+              icon={<Italic />}
+              aria-label="Italic"
+              pressed={properties.italic}
               onClick={() => properties.onToggleItalic(!properties.italic)}
               disabled={!canEdit}
-            >
-              <Italic />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.underline")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.underline}
+            <IconButton
+              icon={<Underline />}
+              aria-label="Underline"
+              pressed={properties.underline}
               onClick={() =>
                 properties.onToggleUnderline(!properties.underline)
               }
               disabled={!canEdit}
-            >
-              <Underline />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.strike_through")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.strike}
+            <IconButton
+              icon={<Strikethrough />}
+              aria-label="Strike Through"
+              pressed={properties.strike}
               onClick={() => properties.onToggleStrike(!properties.strike)}
               disabled={!canEdit}
-            >
-              <Strikethrough />
-            </StyledButton>
+            />
           </Tooltip>
         </ButtonGroup>
 
@@ -387,39 +362,47 @@ function Toolbar(properties: ToolbarProperties) {
         {/* Color & Border Group */}
         <ButtonGroup>
           <Tooltip title={t("toolbar.font_color")}>
-            <StyledButton
+            <IconButton
               type="button"
-              $pressed={false}
+              pressed={false}
               disabled={!canEdit}
               ref={fontColorButton}
+              aria-label={t("toolbar.font_color")}
               onClick={() => setFontColorPickerOpen(true)}
-            >
-              <Type />
-              <ColorLine color={properties.fontColor} />
-            </StyledButton>
+              icon={
+                <>
+                  <Type />
+                  <ColorLine color={properties.fontColor} />
+                </>
+              }
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.fill_color")}>
-            <StyledButton
+            <IconButton
               type="button"
-              $pressed={false}
+              pressed={false}
               disabled={!canEdit}
               ref={fillColorButton}
+              aria-label={t("toolbar.fill_color")}
               onClick={() => setFillColorPickerOpen(true)}
-            >
-              <PaintBucket />
-              <ColorLine color={properties.fillColor} />
-            </StyledButton>
+              icon={
+                <>
+                  <PaintBucket />
+                  <ColorLine color={properties.fillColor} />
+                </>
+              }
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.borders.title")}>
-            <StyledButton
+            <IconButton
               type="button"
-              $pressed={borderPickerOpen}
-              onClick={() => setBorderPickerOpen(true)}
+              pressed={borderPickerOpen}
               ref={borderButton}
+              aria-label={t("toolbar.borders.title")}
+              onClick={() => setBorderPickerOpen(true)}
               disabled={!canEdit}
-            >
-              <Grid2X2 />
-            </StyledButton>
+              icon={<Grid2X2 />}
+            />
           </Tooltip>
         </ButtonGroup>
 
@@ -428,23 +411,23 @@ function Toolbar(properties: ToolbarProperties) {
         {/* Alignment Group */}
         <ButtonGroup>
           <Tooltip title={t("toolbar.align_left")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.horizontalAlign === "left"}
+            <IconButton
+              icon={<AlignLeft />}
+              aria-label="Align Left"
+              pressed={properties.horizontalAlign === "left"}
               onClick={() =>
                 properties.onToggleHorizontalAlign(
                   properties.horizontalAlign === "left" ? "general" : "left",
                 )
               }
               disabled={!canEdit}
-            >
-              <AlignLeft />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.align_center")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.horizontalAlign === "center"}
+            <IconButton
+              icon={<AlignCenter />}
+              aria-label="Align Center"
+              pressed={properties.horizontalAlign === "center"}
               onClick={() =>
                 properties.onToggleHorizontalAlign(
                   properties.horizontalAlign === "center"
@@ -453,65 +436,56 @@ function Toolbar(properties: ToolbarProperties) {
                 )
               }
               disabled={!canEdit}
-            >
-              <AlignCenter />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.align_right")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.horizontalAlign === "right"}
+            <IconButton
+              icon={<AlignRight />}
+              aria-label="Align Right"
+              pressed={properties.horizontalAlign === "right"}
               onClick={() =>
                 properties.onToggleHorizontalAlign(
                   properties.horizontalAlign === "right" ? "general" : "right",
                 )
               }
               disabled={!canEdit}
-            >
-              <AlignRight />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.vertical_align_top")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.verticalAlign === "top"}
+            <IconButton
+              icon={<ArrowUpToLine />}
+              aria-label="Align Top"
+              pressed={properties.verticalAlign === "top"}
               onClick={() => properties.onToggleVerticalAlign("top")}
               disabled={!canEdit}
-            >
-              <ArrowUpToLine />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.vertical_align_middle")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.verticalAlign === "center"}
+            <IconButton
+              icon={<ArrowMiddleFromLine />}
+              aria-label="Align Middle"
+              pressed={properties.verticalAlign === "center"}
               onClick={() => properties.onToggleVerticalAlign("center")}
               disabled={!canEdit}
-            >
-              <ArrowMiddleFromLine />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.vertical_align_bottom")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.verticalAlign === "bottom"}
+            <IconButton
+              icon={<ArrowDownToLine />}
+              aria-label="Align Bottom"
+              pressed={properties.verticalAlign === "bottom"}
               onClick={() => properties.onToggleVerticalAlign("bottom")}
               disabled={!canEdit}
-            >
-              <ArrowDownToLine />
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.wrap_text")}>
-            <StyledButton
-              type="button"
-              $pressed={properties.wrapText === true}
-              onClick={() => {
-                properties.onToggleWrapText(!properties.wrapText);
-              }}
+            <IconButton
+              icon={<WrapText />}
+              aria-label="Wrap Text"
+              pressed={properties.wrapText}
+              onClick={() => properties.onToggleWrapText(!properties.wrapText)}
               disabled={!canEdit}
-            >
-              <WrapText />
-            </StyledButton>
+            />
           </Tooltip>
         </ButtonGroup>
 
@@ -520,28 +494,22 @@ function Toolbar(properties: ToolbarProperties) {
         {/* View & Tools Group */}
         <ButtonGroup>
           <Tooltip title={t("toolbar.show_hide_grid_lines")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
+            <IconButton
+              icon={properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
+              aria-label="Show/Hide Grid Lines"
               onClick={() =>
                 properties.onToggleShowGridLines(!properties.showGridLines)
               }
               disabled={!canEdit}
-            >
-              {properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
-            </StyledButton>
+            />
           </Tooltip>
           <Tooltip title={t("toolbar.selected_png")}>
-            <StyledButton
-              type="button"
-              $pressed={false}
-              onClick={() => {
-                properties.onDownloadPNG();
-              }}
+            <IconButton
+              icon={<ImageDown />}
+              aria-label="Download PNG"
+              onClick={() => properties.onDownloadPNG()}
               disabled={!canEdit}
-            >
-              <ImageDown />
-            </StyledButton>
+            />
           </Tooltip>
         </ButtonGroup>
 
@@ -630,7 +598,7 @@ const ToolbarContainer = styled("div")({
   flex: 1,
   alignItems: "center",
   overflowX: "auto",
-  padding: "0px 12px",
+  padding: "0px 8px",
   gap: 4,
   scrollbarWidth: "none",
   "&::-webkit-scrollbar": {
@@ -707,13 +675,15 @@ const Divider = styled("div")(({ theme }) => ({
 }));
 
 const FontSizeBox = styled("div")(({ theme }) => ({
-  width: 24,
-  height: 24,
-  lineHeight: "24px",
+  width: 28,
+  height: 28,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
   textAlign: "center",
-  fontFamily: "Inter",
-  fontSize: 11,
-  border: `1px solid ${theme.palette.grey[300]}`,
+  fontFamily: theme.typography.fontFamily,
+  fontSize: 12,
+  border: "none",
   borderRadius: 4,
   minWidth: 24,
 }));
@@ -721,7 +691,7 @@ const FontSizeBox = styled("div")(({ theme }) => ({
 const ButtonGroup = styled("div")({
   display: "flex",
   alignItems: "center",
-  gap: 4,
+  gap: 2,
 });
 
 type ScrollArrowProps = { $direction: "left" | "right" };
