@@ -7,7 +7,6 @@ import type {
 } from "@ironcalc/wasm";
 import { styled } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
-import type {} from "@mui/system";
 import {
   AlignCenter,
   AlignLeft,
@@ -44,7 +43,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowMiddleFromLine } from "../../icons";
-import { theme } from "../../theme";
 import BorderPicker from "../BorderPicker/BorderPicker";
 import ColorPicker from "../ColorPicker/ColorPicker";
 import { TOOLBAR_HEIGHT } from "../constants";
@@ -617,140 +615,142 @@ function Toolbar(properties: ToolbarProperties) {
     </ToolbarWrapper>
   );
 }
+const ToolbarWrapper = styled("div")(({ theme }) => ({
+  position: "relative",
+  display: "flex",
+  alignItems: "center",
+  background: theme.palette.background.paper,
+  height: TOOLBAR_HEIGHT,
+  borderBottom: `1px solid ${theme.palette.grey[300]}`,
+  borderRadius: "4px 4px 0px 0px",
+}));
 
-const ToolbarWrapper = styled("div")`
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: ${({ theme }) => theme.palette.background.paper};
-  height: ${TOOLBAR_HEIGHT}px;
-  border-bottom: 1px solid ${({ theme }) => theme.palette.grey["300"]};
-  border-radius: 4px 4px 0px 0px;
-`;
-
-const ToolbarContainer = styled("div")`
-  display: flex;
-  flex: 1;
-  align-items: center;
-  overflow-x: auto;
-  padding: 0px 12px;
-  gap: 4px;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-`;
+const ToolbarContainer = styled("div")({
+  display: "flex",
+  flex: 1,
+  alignItems: "center",
+  overflowX: "auto",
+  padding: "0px 12px",
+  gap: 4,
+  scrollbarWidth: "none",
+  "&::-webkit-scrollbar": {
+    display: "none",
+  },
+});
 
 type TypeButtonProperties = { $pressed: boolean };
 export const StyledButton = styled("button", {
   shouldForwardProp: (prop) => prop !== "$pressed",
-})<TypeButtonProperties>(({ disabled, $pressed }) => {
+})<TypeButtonProperties>(({ theme, disabled, $pressed }) => {
   const result = {
-    width: "24px",
-    minWidth: "24px",
-    height: "24px",
+    width: 24,
+    minWidth: 24,
+    height: 24,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "12px",
+    fontSize: 12,
     border: `0px solid ${theme.palette.common.white}`,
-    borderRadius: "4px",
+    borderRadius: 4,
     transition: "all 0.2s",
     outline: `1px solid ${theme.palette.common.white}`,
     cursor: "pointer",
-    backgroundColor: "white",
-    padding: "0px",
+    backgroundColor: theme.palette.common.white,
+    padding: 0,
     position: "relative" as const,
-    svg: {
-      width: "16px",
-      height: "16px",
+    "& svg": {
+      width: 16,
+      height: 16,
     },
   };
+
   if (disabled) {
     return {
       ...result,
-      color: theme.palette.grey["400"],
+      color: theme.palette.grey[400],
       cursor: "default",
     };
   }
+
   return {
     ...result,
-    color: theme.palette.grey["900"],
+    color: theme.palette.grey[900],
     backgroundColor: $pressed
-      ? theme.palette.grey["300"]
+      ? theme.palette.grey[300]
       : theme.palette.common.white,
     "&:hover": {
       transition: "all 0.2s",
-      outline: `1px solid ${theme.palette.grey["200"]}`,
+      outline: `1px solid ${theme.palette.grey[200]}`,
     },
     "&:active": {
-      backgroundColor: theme.palette.grey["300"],
-      outline: `1px solid ${theme.palette.grey["300"]}`,
+      backgroundColor: theme.palette.grey[300],
+      outline: `1px solid ${theme.palette.grey[300]}`,
     },
   };
 });
 
 const ColorLine = styled("div")<{ color: string }>(({ color }) => ({
-  height: "3px",
-  width: "16px",
+  height: 3,
+  width: 16,
   position: "absolute",
-  bottom: "0px",
+  bottom: 0,
   left: "50%",
   transform: "translateX(-50%)",
   backgroundColor: color,
 }));
 
-const Divider = styled("div")({
-  minWidth: "1px",
-  height: "16px",
-  backgroundColor: theme.palette.grey["300"],
+const Divider = styled("div")(({ theme }) => ({
+  minWidth: 1,
+  height: 16,
+  backgroundColor: theme.palette.grey[300],
   margin: "0px 8px",
-});
+}));
 
-const FontSizeBox = styled("div")({
-  width: "24px",
-  height: "24px",
+const FontSizeBox = styled("div")(({ theme }) => ({
+  width: 24,
+  height: 24,
   lineHeight: "24px",
   textAlign: "center",
   fontFamily: "Inter",
-  fontSize: "11px",
-  border: `1px solid ${theme.palette.grey["300"]}`,
-  borderRadius: "4px",
-  minWidth: "24px",
-});
+  fontSize: 11,
+  border: `1px solid ${theme.palette.grey[300]}`,
+  borderRadius: 4,
+  minWidth: 24,
+}));
 
 const ButtonGroup = styled("div")({
   display: "flex",
   alignItems: "center",
-  gap: "4px",
+  gap: 4,
 });
 
 type ScrollArrowProps = { $direction: "left" | "right" };
 const ScrollArrow = styled("button", {
   shouldForwardProp: (prop) => prop !== "$direction",
-})<ScrollArrowProps>(({ $direction }) => ({
+})<ScrollArrowProps>(({ theme, $direction }) => ({
   position: "absolute",
   top: "50%",
   transform: "translateY(-50%)",
-  [$direction]: "0px",
+  [$direction]: 0,
   zIndex: 10,
-  width: "24px",
+  width: 24,
   height: "100%",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  backgroundColor: "white",
-  border:
-    $direction === "left"
-      ? `none; border-right: 1px solid ${theme.palette.grey["300"]};`
-      : `none; border-left: 1px solid ${theme.palette.grey["300"]};`,
+  backgroundColor: theme.palette.common.white,
+  border: "none",
+  borderRight:
+    $direction === "left" ? `1px solid ${theme.palette.grey[300]}` : "none",
+  borderLeft:
+    $direction === "right" ? `1px solid ${theme.palette.grey[300]}` : "none",
   cursor: "pointer",
   "&:hover": {
-    backgroundColor: theme.palette.grey["100"],
+    backgroundColor: theme.palette.grey[100],
   },
-  svg: {
-    width: "16px",
-    height: "16px",
+  "& svg": {
+    width: 16,
+    height: 16,
   },
 }));
 
