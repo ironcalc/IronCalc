@@ -23,6 +23,7 @@ import {
   BorderStyleIcon,
   BorderTopIcon,
 } from "../../icons";
+import { IconButton } from "../Button/IconButton";
 import ColorPicker from "../ColorPicker/ColorPicker";
 
 type BorderPickerProps = {
@@ -121,10 +122,12 @@ const BorderPicker = (properties: BorderPickerProps) => {
         <PopperContent>
           <BorderPickerDialog>
             <Borders>
-              <Line>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.All}
+              <Row>
+                <IconButton
+                  pressed={borderSelected === BorderType.All}
+                  aria-label={t("toolbar.borders.all")}
+                  title={t("toolbar.borders.all")}
+                  icon={<BorderAllIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.All) {
                       setBorderSelected(null);
@@ -132,14 +135,12 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.All);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.all")}
-                >
-                  <BorderAllIcon />
-                </Button>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.Inner}
+                />
+                <IconButton
+                  pressed={borderSelected === BorderType.Inner}
+                  aria-label={t("toolbar.borders.inner")}
+                  title={t("toolbar.borders.inner")}
+                  icon={<BorderInnerIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.Inner) {
                       setBorderSelected(null);
@@ -147,14 +148,12 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.Inner);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.inner")}
-                >
-                  <BorderInnerIcon />
-                </Button>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.CenterH}
+                />
+                <IconButton
+                  pressed={borderSelected === BorderType.CenterH}
+                  aria-label={t("toolbar.borders.horizontal")}
+                  title={t("toolbar.borders.horizontal")}
+                  icon={<BorderCenterHIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.CenterH) {
                       setBorderSelected(null);
@@ -162,14 +161,12 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.CenterH);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.horizontal")}
-                >
-                  <BorderCenterHIcon />
-                </Button>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.CenterV}
+                />
+                <IconButton
+                  pressed={borderSelected === BorderType.CenterV}
+                  aria-label={t("toolbar.borders.vertical")}
+                  title={t("toolbar.borders.vertical")}
+                  icon={<BorderCenterVIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.CenterV) {
                       setBorderSelected(null);
@@ -177,14 +174,12 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.CenterV);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.vertical")}
-                >
-                  <BorderCenterVIcon />
-                </Button>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.Outer}
+                />
+                <IconButton
+                  pressed={borderSelected === BorderType.Outer}
+                  aria-label={t("toolbar.borders.outer")}
+                  title={t("toolbar.borders.outer")}
+                  icon={<BorderOuterIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.Outer) {
                       setBorderSelected(BorderType.None);
@@ -192,16 +187,14 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.Outer);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.outer")}
-                >
-                  <BorderOuterIcon />
-                </Button>
-              </Line>
-              <Line>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.None}
+                />
+              </Row>
+              <Row>
+                <IconButton
+                  pressed={borderSelected === BorderType.None}
+                  aria-label={t("toolbar.borders.clear")}
+                  title={t("toolbar.borders.clear")}
+                  icon={<BorderNoneIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.None) {
                       setBorderSelected(BorderType.None);
@@ -209,14 +202,12 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.None);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.clear")}
-                >
-                  <BorderNoneIcon />
-                </Button>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.Top}
+                />
+                <IconButton
+                  pressed={borderSelected === BorderType.Top}
+                  aria-label={t("toolbar.borders.top")}
+                  title={t("toolbar.borders.top")}
+                  icon={<BorderTopIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.Top) {
                       setBorderSelected(BorderType.None);
@@ -224,14 +215,12 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.Top);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.top")}
-                >
-                  <BorderTopIcon />
-                </Button>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.Right}
+                />
+                <IconButton
+                  pressed={borderSelected === BorderType.Right}
+                  aria-label={t("toolbar.borders.right")}
+                  title={t("toolbar.borders.right")}
+                  icon={<BorderRightIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.Right) {
                       setBorderSelected(BorderType.None);
@@ -239,14 +228,12 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.Right);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.right")}
-                >
-                  <BorderRightIcon />
-                </Button>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.Bottom}
+                />
+                <IconButton
+                  pressed={borderSelected === BorderType.Bottom}
+                  aria-label={t("toolbar.borders.bottom")}
+                  title={t("toolbar.borders.bottom")}
+                  icon={<BorderBottomIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.Bottom) {
                       setBorderSelected(BorderType.None);
@@ -254,14 +241,12 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.Bottom);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.bottom")}
-                >
-                  <BorderBottomIcon />
-                </Button>
-                <Button
-                  type="button"
-                  $pressed={borderSelected === BorderType.Left}
+                />
+                <IconButton
+                  pressed={borderSelected === BorderType.Left}
+                  aria-label={t("toolbar.borders.left")}
+                  title={t("toolbar.borders.left")}
+                  icon={<BorderLeftIcon />}
                   onClick={() => {
                     if (borderSelected === BorderType.Left) {
                       setBorderSelected(BorderType.None);
@@ -269,12 +254,8 @@ const BorderPicker = (properties: BorderPickerProps) => {
                       setBorderSelected(BorderType.Left);
                     }
                   }}
-                  disabled={false}
-                  title={t("toolbar.borders.left")}
-                >
-                  <BorderLeftIcon />
-                </Button>
-              </Line>
+                />
+              </Row>
             </Borders>
             <Divider />
             <Styles>
@@ -536,11 +517,11 @@ const Styles = styled("div")({
   padding: 4,
 });
 
-const Line = styled("div")({
+const Row = styled("div")({
   display: "flex",
   flexDirection: "row",
   alignItems: "center",
-  gap: 4,
+  gap: 2,
 });
 
 const BaseMenuItem = (props: React.ComponentProps<typeof MenuItem>) => (
@@ -600,47 +581,6 @@ const BorderPickerDialog = styled("div")(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
 }));
-
-type TypeButtonProperties = { $pressed: boolean; $underlinedColor?: string };
-const Button = styled("button")<TypeButtonProperties>(
-  ({ theme, disabled, $pressed, $underlinedColor }) => {
-    const result = {
-      width: "24px",
-      height: "24px",
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      border: `0px solid ${theme.palette.common.white}`,
-      borderRadius: "4px",
-      cursor: "pointer",
-      padding: "0px",
-    };
-    if (disabled) {
-      return {
-        ...result,
-        color: theme.palette.grey["600"],
-        cursor: "default",
-      };
-    }
-    return {
-      ...result,
-      borderTop: $underlinedColor
-        ? `3px solid ${theme.palette.common.white}`
-        : "none",
-      borderBottom: $underlinedColor ? `3px solid ${$underlinedColor}` : "none",
-      color: `${theme.palette.grey[900]}`,
-      backgroundColor: $pressed ? theme.palette.grey["200"] : "inherit",
-      "&:hover": {
-        outline: `1px solid ${theme.palette.grey["200"]}`,
-        borderTopColor: theme.palette.grey["200"],
-      },
-      svg: {
-        width: "16px",
-        height: "16px",
-      },
-    };
-  },
-);
 
 const ChevronRightStyled = styled(ChevronRight)({
   width: 16,
