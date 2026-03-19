@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 import ColorPicker from "../ColorPicker/ColorPicker";
 import { isInReferenceMode } from "../Editor/util";
 import type { WorkbookState } from "../workbookState";
@@ -252,154 +251,153 @@ function SheetTab(props: SheetTabProps) {
   );
 }
 
-const StyledMenu = styled(Menu)`
-  & .MuiPaper-root {
-    border-radius: 8px;
-    padding: 4px 0px;
-    margin-left: -4px;
-  }
-  & .MuiList-root {
-    padding: 0;
-  }
-`;
+const StyledMenu = styled(Menu)({
+  "& .MuiPaper-root": {
+    borderRadius: 8,
+    padding: "4px 0px",
+    marginLeft: -4,
+  },
+  "& .MuiList-root": {
+    padding: 0,
+  },
+});
 
-const StyledMenuItem = styled(MenuItem)<MenuItemProps>(() => ({
+const StyledMenuItem = styled(MenuItem)<MenuItemProps>(({ theme }) => ({
   display: "flex",
   justifyContent: "flex-start",
   alignItems: "center",
-  gap: "8px",
-  fontSize: "12px",
+  gap: 8,
+  fontSize: 12,
   width: "calc(100% - 8px)",
   margin: "0px 4px",
-  borderRadius: "4px",
-  padding: "8px",
-  height: "32px",
+  borderRadius: 4,
+  padding: 8,
+  height: 32,
   "&:disabled": {
     color: "#BDBDBD",
   },
   "& svg": {
-    width: "16px",
-    height: "16px",
-    color: `${theme.palette.grey[600]}`,
+    width: 16,
+    height: 16,
+    color: theme.palette.grey[600],
   },
 }));
 
-const TabWrapper = styled("div")<{ $color: string; $selected: boolean }>`
-  display: flex;
-  margin-right: 12px;
-  border-bottom: 3px solid ${(props) => props.$color};
-  line-height: 37px;
-  padding: 0px 4px 0px 6px;
-  align-items: center;
-  cursor: pointer;
-  min-width: 40px;
-  font-weight: ${(props) => (props.$selected ? 600 : 400)};
-  background-color: ${(props) =>
-    props.$selected ? `${theme.palette.grey[50]}` : "transparent"};
-  &:hover {
-    background-color: ${theme.palette.grey[50]}80;
-  }
-`;
+const TabWrapper = styled("div")<{
+  $color: string;
+  $selected: boolean;
+}>(({ theme, $color, $selected }) => ({
+  display: "flex",
+  marginRight: 12,
+  borderBottom: `3px solid ${$color}`,
+  lineHeight: "37px",
+  padding: "0px 4px 0px 6px",
+  alignItems: "center",
+  cursor: "pointer",
+  minWidth: 40,
+  fontWeight: $selected ? 600 : 400,
+  backgroundColor: $selected ? theme.palette.grey[50] : "transparent",
+  "&:hover": {
+    backgroundColor: `${theme.palette.grey[50]}80`,
+  },
+}));
 
 const StyledButton = styled(Button, {
   shouldForwardProp: (prop) => prop !== "$active",
-})<{ $active: boolean }>`
-  width: 16px;
-  height: 16px;
-  min-width: 0px;
-  padding: 0px;
-  color: inherit;
-  font-weight: inherit;
-  border-radius: 4px;
-  flex-shrink: 0;
-  background-color: ${(props) =>
-    props.$active ? `${theme.palette.grey[300]}` : "transparent"};
-  &:hover {
-    background-color: ${theme.palette.grey[200]};
-  }
-  &:active {
-    background-color: ${theme.palette.grey[300]};
-  }
-  &:disabled {
-    pointer-events: none;
-  }
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
+})<{ $active: boolean }>(({ theme, $active }) => ({
+  width: 16,
+  height: 16,
+  minWidth: 0,
+  padding: 0,
+  color: "inherit",
+  fontWeight: "inherit",
+  borderRadius: 4,
+  flexShrink: 0,
+  backgroundColor: $active ? theme.palette.grey[300] : "transparent",
+  "&:hover": {
+    backgroundColor: theme.palette.grey[200],
+  },
+  "&:active": {
+    backgroundColor: theme.palette.grey[300],
+  },
+  "&:disabled": {
+    pointerEvents: "none",
+  },
+  "& svg": {
+    width: 14,
+    height: 14,
+  },
+}));
 
-const Name = styled("div")`
-  font-size: 12px;
-  margin-right: 5px;
-  text-wrap: nowrap;
-  user-select: none;
-  width: 100%;
-  text-align: center;
-`;
+const Name = styled("div")({
+  fontSize: 12,
+  marginRight: 5,
+  textWrap: "nowrap",
+  userSelect: "none",
+  width: "100%",
+  textAlign: "center",
+});
 
-const HiddenMeasure = styled("span")`
-  position: absolute;
-  visibility: hidden;
-  white-space: pre;
-  font-size: 12px;
-  font-family: Inter;
-  font-weight: inherit;
-  padding: 0;
-  margin: 0;
-  height: 100%;
-  overflow: hidden;
-  pointer-events: none;
-`;
+const HiddenMeasure = styled("span")({
+  position: "absolute",
+  visibility: "hidden",
+  whiteSpace: "pre",
+  fontSize: 12,
+  fontFamily: "Inter",
+  fontWeight: "inherit",
+  padding: 0,
+  margin: 0,
+  height: "100%",
+  overflow: "hidden",
+  pointerEvents: "none",
+});
 
-const StyledInput = styled(Input)`
-  font-size: 12px;
-  font-family: Inter;
-  font-weight: inherit;
-  min-width: 6px;
-  margin-right: 2px;
-  min-height: 100%;
-  flex-grow: 1;
-  & .MuiInputBase-input {
-    font-family: Inter;
-    background-color: ${theme.palette.common.white};
-    font-weight: inherit;
-    padding: 6px 0px;
-    border: 1px solid ${theme.palette.primary.main};
-    border-radius: 4px;
-    color: ${theme.palette.common.black};
-    text-align: center;
-    will-change: width;
-    &:focus {
-      border-color: ${theme.palette.primary.main};
-    }
-  }
+const StyledInput = styled(Input)(({ theme }) => ({
+  fontSize: 12,
+  fontFamily: "Inter",
+  fontWeight: "inherit",
+  minWidth: 6,
+  marginRight: 2,
+  minHeight: "100%",
+  flexGrow: 1,
+  "& .MuiInputBase-input": {
+    fontFamily: "Inter",
+    backgroundColor: theme.palette.common.white,
+    fontWeight: "inherit",
+    padding: "6px 0px",
+    border: `1px solid ${theme.palette.primary.main}`,
+    borderRadius: 4,
+    color: theme.palette.common.black,
+    textAlign: "center",
+    willChange: "width",
+    "&:focus": {
+      borderColor: theme.palette.primary.main,
+    },
+  },
+  "&::before, &::after": {
+    display: "none",
+  },
+}));
 
-  &::before,
-  &::after {
-    display: none;
-  }
-`;
+const MenuDivider = styled("div")(({ theme }) => ({
+  width: "100%",
+  margin: "auto",
+  marginTop: 4,
+  marginBottom: 4,
+  borderTop: `1px solid ${theme.palette.grey[200]}`,
+}));
 
-const MenuDivider = styled("div")`
-  width: 100%;
-  margin: auto;
-  margin-top: 4px;
-  margin-bottom: 4px;
-  border-top: 1px solid ${theme.palette.grey[200]};
-`;
-
-const DeleteButton = styled(StyledMenuItem)`
-  color: ${theme.palette.error.main};
-  svg {
-    color: ${theme.palette.error.main};
-  }
-  &:hover {
-    background-color: ${theme.palette.error.main}1A;
-  }
-  &:active {
-    background-color: ${theme.palette.error.main}1A;
-  }
-`;
+const DeleteButton = styled(StyledMenuItem)(({ theme }) => ({
+  color: theme.palette.error.main,
+  "& svg": {
+    color: theme.palette.error.main,
+  },
+  "&:hover": {
+    backgroundColor: `${theme.palette.error.main}1A`,
+  },
+  "&:active": {
+    backgroundColor: `${theme.palette.error.main}1A`,
+  },
+}));
 
 export default SheetTab;
