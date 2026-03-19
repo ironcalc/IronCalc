@@ -28,19 +28,24 @@ const sizeStyles: Record<ButtonSize, CSSProperties> = {
   md: { height: 32, lineHeight: "32px" },
 };
 
-export interface GetButtonStylesOptions {
+export interface ButtonStyles {
+  theme: Theme;
+  variant: ButtonVariant;
+  size: ButtonSize;
   pressed?: boolean;
   disabled?: boolean;
   hovered?: boolean;
 }
 
-export function getButtonStyles(
-  theme: Theme,
-  variant: ButtonVariant,
-  size: ButtonSize,
-  options: GetButtonStylesOptions = {},
-): CSSProperties {
-  const { pressed = false, disabled = false, hovered = false } = options;
+export function getButtonStyles(styles: ButtonStyles): CSSProperties {
+  const {
+    theme,
+    variant,
+    size,
+    pressed = false,
+    disabled = false,
+    hovered = false,
+  } = styles;
   const { height, lineHeight } = sizeStyles[size];
 
   const base: CSSProperties = {
@@ -49,7 +54,7 @@ export function getButtonStyles(
     overflow: "hidden",
     padding: "0 10px",
     borderRadius: 6,
-    display: "inline-flex",
+    display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -136,6 +141,11 @@ export const iconWrapperStyle: CSSProperties = {
   justifyContent: "center",
 };
 
+/** Extends native `<button>` props.
+ * Defaults: `variant` "primary", `size` "md", `pressed` false.
+ * Optional: `startIcon`, `endIcon`.
+ */
+
 export interface ButtonProperties
   extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -164,7 +174,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
   ) {
     const theme = useTheme();
     const [hovered, setHovered] = useState(false);
-    const computedStyles = getButtonStyles(theme, variant, size, {
+    const computedStyles = getButtonStyles({
+      theme,
+      variant,
+      size,
       pressed,
       disabled,
       hovered,

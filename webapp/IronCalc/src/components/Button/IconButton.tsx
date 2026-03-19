@@ -17,7 +17,7 @@ export type { ButtonSize, ButtonVariant };
 /**
  * Icon-only button. Same variants and sizes as Button.
  * Use it for toolbar actions, to close drawers and modals, etc.
- * aria-label is required for accessibility.
+ * Defaults: `variant` "ghost", `size` "xs", `pressed` false.
  */
 
 export interface IconButtonProperties
@@ -46,12 +46,15 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
   ) {
     const theme = useTheme();
     const [hovered, setHovered] = useState(false);
-    const computedStyles = getButtonStyles(theme, variant, size, {
+    const computedStyles = getButtonStyles({
+      theme,
+      variant,
+      size,
       pressed,
       disabled,
       hovered,
     });
-    const height = computedStyles.height as number;
+    const height = computedStyles.height ?? 24;
     computedStyles.padding = 0;
     computedStyles.gap = 0;
     computedStyles.minWidth = height;
