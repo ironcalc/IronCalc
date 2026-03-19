@@ -278,7 +278,7 @@ const ColorSwatch = styled("button")<{ $color: string }>(
         upperColor === "#FFFFFF" || upperColor === "#FFF"
           ? `1px solid ${theme.palette.grey[300]}`
           : "none",
-      backgroundColor: $color === "transparent" ? "none" : $color,
+      backgroundColor: $color === "transparent" ? "transparent" : $color,
       boxSizing: "border-box",
       marginTop: 0,
       borderRadius: 4,
