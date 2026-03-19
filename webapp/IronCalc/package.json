@@ -27,6 +27,8 @@
     "@storybook/react": "^10.3.0",
     "@storybook/react-vite": "^10.3.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "i18next": "^25.7.4",
     "lucide-react": "^0.562.0",
     "react": "^19.2.4",
