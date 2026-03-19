@@ -21,8 +21,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "rootDir": "src"
   },
-  "include": ["src", "tests"],
-  "references": [{ "path": "./tsconfig.node.json" }],
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

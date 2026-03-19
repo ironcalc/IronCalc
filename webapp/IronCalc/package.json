@@ -8,7 +8,7 @@
   "source": "./src/index.ts",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "vite build && tsc",
+    "build": "vite build && tsc -p tsconfig.json",
     "check": "biome check ./src",
     "check-write": "biome check --write ./src",
     "test": "vitest run",
