@@ -32,9 +32,9 @@ export interface ButtonStyles {
   theme: Theme;
   variant: ButtonVariant;
   size: ButtonSize;
-  pressed?: boolean;
-  disabled?: boolean;
-  hovered?: boolean;
+  pressed: boolean;
+  disabled: boolean;
+  hovered: boolean;
 }
 
 export function getButtonStyles(styles: ButtonStyles): CSSProperties {

@@ -54,7 +54,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
       disabled,
       hovered,
     });
-    const height = computedStyles.height ?? 24;
+    const height = computedStyles.height;
     computedStyles.padding = 0;
     computedStyles.gap = 0;
     computedStyles.minWidth = height;
