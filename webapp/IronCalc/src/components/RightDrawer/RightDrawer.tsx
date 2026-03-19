@@ -3,7 +3,6 @@ import { styled } from "@mui/material/styles";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 import { TOOLBAR_HEIGHT } from "../constants";
 import NamedRanges from "./NamedRanges/NamedRanges";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
@@ -135,33 +134,35 @@ const RightDrawer = ({
 type DrawerContainerProps = {
   $drawerWidth: number;
 };
+
 const DrawerContainer = styled("div")<DrawerContainerProps>(
-  ({ $drawerWidth }) => ({
+  ({ theme, $drawerWidth }) => ({
     position: "absolute",
     overflow: "hidden",
     backgroundColor: theme.palette.common.white,
     right: 0,
-    top: `${TOOLBAR_HEIGHT}px`,
+    top: TOOLBAR_HEIGHT,
     bottom: 0,
     borderLeft: `1px solid ${theme.palette.grey[300]}`,
-    width: `${$drawerWidth}px`,
+    width: $drawerWidth,
     display: "flex",
     flexDirection: "column",
+
     "@media (max-width: 600px)": {
       width: "100%",
       borderLeft: "none",
-      top: "0px",
+      top: 0,
       zIndex: 1000,
     },
   }),
 );
 
-const Divider = styled("div")({
-  height: "1px",
+const Divider = styled("div")(({ theme }) => ({
+  height: 1,
   width: "100%",
   backgroundColor: theme.palette.grey[300],
-  margin: "0",
-});
+  margin: 0,
+}));
 
 const DrawerContent = styled("div")({
   flex: 1,
@@ -169,19 +170,21 @@ const DrawerContent = styled("div")({
 });
 
 const ResizeHandle = styled("div")<{ $isResizing: boolean }>(
-  ({ $isResizing }) => ({
+  ({ theme, $isResizing }) => ({
     position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
-    width: "4px",
+    width: 4,
     cursor: "col-resize",
     backgroundColor: $isResizing ? theme.palette.primary.main : "transparent",
     zIndex: 10,
+
     "&:hover": {
       backgroundColor: theme.palette.primary.main,
       opacity: 0.5,
     },
+
     transition: $isResizing ? "none" : "background-color 0.2s ease",
   }),
 );
