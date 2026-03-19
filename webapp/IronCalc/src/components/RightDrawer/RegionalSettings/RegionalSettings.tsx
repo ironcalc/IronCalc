@@ -9,8 +9,8 @@ import {
   Select,
   styled,
   TextField,
-  type Theme,
 } from "@mui/material";
+import type { Theme } from "@mui/material/styles";
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
