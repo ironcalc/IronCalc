@@ -794,22 +794,22 @@ type WorksheetAreaLeftProps = { $drawerWidth: number };
 const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
   ({ $drawerWidth }) => ({
     position: "absolute",
-    top: `${TOOLBAR_HEIGHT}px`,
+    top: TOOLBAR_HEIGHT,
     width: `calc(100% - ${$drawerWidth}px)`,
     height: `calc(100% - ${TOOLBAR_HEIGHT}px)`,
   }),
 );
 
-const Container = styled("div")`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  position: relative;
-  font-family: ${({ theme }) => theme.typography.fontFamily};
+const Container = styled("div")(({ theme }) => ({
+  display: "flex",
+  flexDirection: "column",
+  height: "100%",
+  position: "relative",
+  fontFamily: theme.typography.fontFamily,
 
-  &:focus {
-    outline: none;
-  }
-`;
+  "&:focus": {
+    outline: "none",
+  },
+}));
 
 export default Workbook;
