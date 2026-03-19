@@ -4,7 +4,6 @@ import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IronCalcLogo } from "../../icons";
-import { theme } from "../../theme";
 import { NAVIGATION_HEIGHT } from "../constants";
 import { getLocaleDisplayName } from "../RightDrawer/RegionalSettings/RegionalSettings";
 import { StyledButton } from "../Toolbar/Toolbar";
@@ -128,104 +127,103 @@ function SheetTabBar(props: SheetTabBarProps) {
 }
 
 // Note I have to specify the font-family in every component that can be considered stand-alone
-const Container = styled("div")`
-  display: flex;
-  flex-direction: row;
-  position: absolute;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  display: flex;
-  height: ${NAVIGATION_HEIGHT}px;
-  align-items: center;
-  padding: 0px;
-  font-family: Inter;
-  overflow: hidden;
-  background-color: ${theme.palette.common.white};
-  border-top: 1px solid ${theme.palette.grey["300"]};
-`;
+const Container = styled("div")(({ theme }) => ({
+  display: "flex",
+  flexDirection: "row",
+  position: "absolute",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  height: NAVIGATION_HEIGHT,
+  alignItems: "center",
+  padding: 0,
+  fontFamily: "Inter",
+  overflow: "hidden",
+  backgroundColor: theme.palette.common.white,
+  borderTop: `1px solid ${theme.palette.grey[300]}`,
+}));
 
-const Sheets = styled("div")`
-  flex-grow: 2;
-  overflow: hidden;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-left: 12px;
-  display: flex;
-  flex-direction: row;
-  height: 100%;
-`;
+const Sheets = styled("div")({
+  flexGrow: 2,
+  overflow: "hidden",
+  overflowX: "auto",
+  scrollbarWidth: "none",
+  paddingLeft: 12,
+  display: "flex",
+  flexDirection: "row",
+  height: "100%",
+});
 
-const SheetInner = styled("div")`
-  display: flex;
-`;
+const SheetInner = styled("div")({
+  display: "flex",
+});
 
-const LeftButtonsContainer = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  height: 100%;
-  gap: 4px;
-  padding: 0px 12px;
-  @media (max-width: 769px) {
-    padding: 0px 8px;
-  }
-`;
+const LeftButtonsContainer = styled("div")({
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  height: "100%",
+  gap: 4,
+  padding: "0px 12px",
+  "@media (max-width: 769px)": {
+    padding: "0px 8px",
+  },
+});
 
-const VerticalDivider = styled("div")`
-  height: 100%;
-  width: 0px;
-  @media (max-width: 769px) {
-    border-right: 1px solid ${theme.palette.grey["200"]};
-  }
-`;
+const VerticalDivider = styled("div")(({ theme }) => ({
+  height: "100%",
+  width: 0,
+  "@media (max-width: 769px)": {
+    borderRight: `1px solid ${theme.palette.grey[200]}`,
+  },
+}));
 
-const RightContainer = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  color: ${theme.palette.primary.main};
-  height: 100%;
-  padding: 0px 8px;
-  gap: 4px;
-  flex-shrink: 0;
-  width: auto;
-  @media (max-width: 769px) {
-    display: none;
-  }
-`;
+const RightContainer = styled("div")(({ theme }) => ({
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  color: theme.palette.primary.main,
+  height: "100%",
+  padding: "0px 8px",
+  gap: 4,
+  flexShrink: 0,
+  width: "auto",
+  "@media (max-width: 769px)": {
+    display: "none",
+  },
+}));
 
-const RegionalSettingsButton = styled(StyledButton)`
-  min-width: fit-content;
-  padding: 4px 8px;
-  color: ${theme.palette.grey["600"]};
-  text-wrap: nowrap;
-  gap: 8px;
-`;
+const RegionalSettingsButton = styled(StyledButton)(({ theme }) => ({
+  minWidth: "fit-content",
+  padding: "4px 8px",
+  color: theme.palette.grey[600],
+  textWrap: "nowrap",
+  gap: 8,
+}));
 
-const TextDivider = styled("div")`
-  width: 1px;
-  height: 60%;
-  background-color: ${theme.palette.grey["300"]};
-`;
+const TextDivider = styled("div")(({ theme }) => ({
+  width: 1,
+  height: "60%",
+  backgroundColor: theme.palette.grey[300],
+}));
 
-const LogoLink = styled("div")`
-  display: flex;
-  align-items: center;
-  padding: 0px 4px;
-  border-radius: 4px;
-  max-height: 24px;
-  min-height: 24px;
-  cursor: pointer;
-  svg {
-    height: 14px;
-    width: auto;
-  }
-  &:hover {
-    background-color: ${theme.palette.grey["100"]};
-    transition: "all 0.2s";
-    outline: 1px solid ${theme.palette.grey["200"]};
-  }
-`;
+const LogoLink = styled("div")(({ theme }) => ({
+  display: "flex",
+  alignItems: "center",
+  padding: "0px 4px",
+  borderRadius: 4,
+  maxHeight: 24,
+  minHeight: 24,
+  cursor: "pointer",
+  "& svg": {
+    height: 14,
+    width: "auto",
+  },
+  "&:hover": {
+    backgroundColor: theme.palette.grey[100],
+    transition: "all 0.2s",
+    outline: `1px solid ${theme.palette.grey[200]}`,
+  },
+}));
 
 export default SheetTabBar;
