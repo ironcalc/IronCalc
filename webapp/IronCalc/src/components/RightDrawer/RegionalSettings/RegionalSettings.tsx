@@ -1,4 +1,3 @@
-import styled from "@emotion/styled";
 import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
 import {
   Autocomplete,
@@ -8,12 +7,13 @@ import {
   FormHelperText,
   MenuItem,
   Select,
+  styled,
   TextField,
+  type Theme,
 } from "@mui/material";
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../../theme";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 
@@ -147,7 +147,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 renderValue={(value) => getLocaleDisplayName(value as string)}
                 MenuProps={{
                   PaperProps: {
-                    sx: menuPaperStyles,
+                    sx: (theme) => menuPaperStyles(theme),
                   },
                   TransitionProps: {
                     timeout: 0,
@@ -229,7 +229,10 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 disableClearable
                 slotProps={{
                   paper: {
-                    sx: { ...menuPaperStyles, margin: "4px 0px" },
+                    sx: (theme) => ({
+                      ...menuPaperStyles(theme),
+                      margin: "4px 0px",
+                    }),
                   },
                   popper: {
                     sx: {
@@ -266,110 +269,115 @@ const Container = styled("div")({
   flexDirection: "column",
 });
 
-const Header = styled("div")({
-  height: "40px",
+const Header = styled("div")(({ theme }) => ({
+  height: 40,
   display: "flex",
   alignItems: "center",
   justifyContent: "flex-end",
   padding: "0 8px",
   borderBottom: `1px solid ${theme.palette.grey[300]}`,
-});
+}));
 
 const HeaderTitle = styled("div")({
   width: "100%",
-  fontSize: "12px",
+  fontSize: 12,
 });
 
 const Content = styled("div")({
   flex: 1,
   display: "flex",
   flexDirection: "column",
-  fontSize: "12px",
+  fontSize: 12,
   overflow: "auto",
 });
 
-const FormSection = styled("div")`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 12px;
-  border-bottom: 1px solid ${theme.palette.grey[300]};
-  &:last-child {
-    border-bottom: none;
-  }
-`;
+const FormSection = styled("div")(({ theme }) => ({
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+  padding: "16px 12px",
+  borderBottom: `1px solid ${theme.palette.grey[300]}`,
 
-const StyledSectionTitle = styled("h1")`
-  font-size: 14px;
-  font-weight: 600;
-  font-family: Inter;
-  margin: 0px;
-  color: ${theme.palette.text.primary};
-`;
+  "&:last-child": {
+    borderBottom: "none",
+  },
+}));
 
-const StyledSelect = styled(Select)`
-  font-size: 12px;
-  height: 32px;
-  & .MuiInputBase-root {
-    padding: 0px !important;
-  }
-  & .MuiInputBase-input {
-    font-size: 12px;
-    height: 20px;
-    padding-right: 0px !important;
-    margin: 0px;
-  }
-  & .MuiSelect-select {
-    padding: 8px 32px 8px 8px !important;
-    font-size: 12px;
-  }
-  & .MuiSvgIcon-root {
-    right: 4px !important;
-  }
-`;
+const StyledSectionTitle = styled("h1")(({ theme }) => ({
+  fontSize: 14,
+  fontWeight: 600,
+  fontFamily: "Inter",
+  margin: 0,
+  color: theme.palette.text.primary,
+}));
 
-const StyledHelperText = styled(FormHelperText)(() => ({
-  fontSize: "12px",
+const StyledSelect = styled(Select)({
+  fontSize: 12,
+  height: 32,
+
+  "& .MuiInputBase-root": {
+    padding: "0px !important",
+  },
+
+  "& .MuiInputBase-input": {
+    fontSize: 12,
+    height: 20,
+    paddingRight: "0px !important",
+    margin: 0,
+  },
+
+  "& .MuiSelect-select": {
+    padding: "8px 32px 8px 8px !important",
+    fontSize: 12,
+  },
+
+  "& .MuiSvgIcon-root": {
+    right: "4px !important",
+  },
+});
+
+const StyledHelperText = styled(FormHelperText)(({ theme }) => ({
+  fontSize: 12,
   fontFamily: "Inter",
   color: theme.palette.grey[500],
   margin: 0,
-  marginTop: "6px",
+  marginTop: 6,
   padding: 0,
   lineHeight: 1.4,
 }));
 
-const HelperBox = styled("div")`
-  display: flex;
-  flex-direction: column;
-  align-items: start;
-  justify-content: center;
-  gap: 2px;
-  box-sizing: border-box;
-  border: 1px solid ${theme.palette.grey["300"]};
-  font-family: Inter;
-  width: 100%;
-  height: 100%;
-  margin-top: 8px;
-  background-color: ${theme.palette.grey["100"]};
-  border-radius: 4px;
-  padding: 8px;
-`;
+const HelperBox = styled("div")(({ theme }) => ({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "start",
+  justifyContent: "center",
+  gap: 2,
+  boxSizing: "border-box",
+  border: `1px solid ${theme.palette.grey[300]}`,
+  fontFamily: "Inter",
+  width: "100%",
+  height: "100%",
+  marginTop: 8,
+  backgroundColor: theme.palette.grey[100],
+  borderRadius: 4,
+  padding: 8,
+}));
 
-const Row = styled("div")`
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-  width: 100%;
-  justify-content: space-between;
-  color: ${theme.palette.grey[700]};
-`;
+const Row = styled("div")(({ theme }) => ({
+  display: "flex",
+  flexDirection: "row",
+  gap: 4,
+  width: "100%",
+  justifyContent: "space-between",
+  color: theme.palette.grey[700],
+}));
 
-const RowValue = styled("span")`
-  font-size: 12px;
-  font-family: Inter;
-  font-weight: normal;
-  color: ${theme.palette.grey[500]};
-`;
+const RowValue = styled("span")(({ theme }) => ({
+  fontSize: 12,
+  fontFamily: "Inter",
+  fontWeight: "normal",
+  color: theme.palette.grey[500],
+}));
 
 // Autocomplete with customized styles
 // Value => string,
@@ -379,35 +387,40 @@ const RowValue = styled("span")`
 type TimezoneAutocompleteProps = AutocompleteProps<string, false, true, false>;
 const StyledAutocomplete = styled((props: TimezoneAutocompleteProps) => (
   <Autocomplete<string, false, true, false> {...props} />
-))`
-  & .MuiInputBase-root {
-    padding: 0px !important;
-    height: 32px;
-  }
-  & .MuiInputBase-input {
-    font-size: 12px;
-    height: 20px;
-    padding: 0px;
-    padding-right: 0px !important;
-    margin: 0px;
-  }
-  & .MuiAutocomplete-popupIndicator:hover {
-    background-color: transparent !important;
-  }
-  & .MuiAutocomplete-popupIndicator {
-    & .MuiTouchRipple-root {
-      display: none;
-    }
-  }
-  & .MuiOutlinedInput-root .MuiAutocomplete-endAdornment {
-    right: 4px;
-  }
-  & .MuiOutlinedInput-root .MuiAutocomplete-input {
-    padding: 8px !important;
-  }
-`;
+))({
+  "& .MuiInputBase-root": {
+    padding: "0px !important",
+    height: 32,
+  },
 
-const menuPaperStyles = {
+  "& .MuiInputBase-input": {
+    fontSize: 12,
+    height: 20,
+    padding: 0,
+    paddingRight: "0px !important",
+    margin: 0,
+  },
+
+  "& .MuiAutocomplete-popupIndicator:hover": {
+    backgroundColor: "transparent !important",
+  },
+
+  "& .MuiAutocomplete-popupIndicator": {
+    "& .MuiTouchRipple-root": {
+      display: "none",
+    },
+  },
+
+  "& .MuiOutlinedInput-root .MuiAutocomplete-endAdornment": {
+    right: 4,
+  },
+
+  "& .MuiOutlinedInput-root .MuiAutocomplete-input": {
+    padding: "8px !important",
+  },
+});
+
+const menuPaperStyles = (theme: Theme) => ({
   boxSizing: "border-box",
   marginTop: "4px",
   padding: "4px",
@@ -433,54 +446,54 @@ const menuPaperStyles = {
     backgroundColor: `${theme.palette.grey[100]} !important`,
     fontWeight: "500 !important",
   },
-};
+});
 
-const StyledMenuItem = styled(MenuItem)`
-  padding: 8px !important;
-  height: 32px !important;
-  min-height: 32px !important;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  font-size: 12px;
+const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
+  padding: "8px !important",
+  height: "32px !important",
+  minHeight: "32px !important",
+  borderRadius: 4,
+  display: "flex",
+  alignItems: "center",
+  fontSize: 12,
 
-  &.Mui-selected {
-    background-color: ${theme.palette.grey[50]} !important;
-  }
+  "&.Mui-selected": {
+    backgroundColor: `${theme.palette.grey[50]} !important`,
+  },
 
-  &.Mui-selected:hover {
-    background-color: ${theme.palette.grey[50]} !important;
-  }
+  "&.Mui-selected:hover": {
+    backgroundColor: `${theme.palette.grey[50]} !important`,
+  },
 
-  &:hover {
-    background-color: ${theme.palette.grey[50]} !important;
-  }
-`;
+  "&:hover": {
+    backgroundColor: `${theme.palette.grey[50]} !important`,
+  },
+}));
 
-const FieldWrapper = styled(Box)`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 6px;
-`;
+const FieldWrapper = styled(Box)({
+  display: "flex",
+  flexDirection: "column",
+  width: "100%",
+  gap: 6,
+});
 
-const StyledLabel = styled("label")`
-  font-size: 12px;
-  font-family: "Inter";
-  font-weight: 500;
-  color: ${theme.palette.text.primary};
-  display: block;
-`;
+const StyledLabel = styled("label")(({ theme }) => ({
+  fontSize: 12,
+  fontFamily: "Inter",
+  fontWeight: 500,
+  color: theme.palette.text.primary,
+  display: "block",
+}));
 
-const Footer = styled("div")`
-  color: ${theme.palette.grey[700]};
-  display: flex;
-  align-items: center;
-  border-top: 1px solid ${theme.palette.grey["300"]};
-  font-family: Inter;
-  justify-content: flex-end;
-  padding: 8px;
-  gap: 8px;
-`;
+const Footer = styled("div")(({ theme }) => ({
+  color: theme.palette.grey[700],
+  display: "flex",
+  alignItems: "center",
+  borderTop: `1px solid ${theme.palette.grey[300]}`,
+  fontFamily: "Inter",
+  justifyContent: "flex-end",
+  padding: 8,
+  gap: 8,
+}));
 
 export default RegionalSettings;
