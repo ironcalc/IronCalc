@@ -1,4 +1,3 @@
-import type {} from "@emotion/styled";
 import type {
   BorderOptions,
   FmtSettings,
