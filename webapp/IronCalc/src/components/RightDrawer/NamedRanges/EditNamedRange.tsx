@@ -12,7 +12,6 @@ import {
 import { Check, MousePointerClick, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../../theme";
 import { Button } from "../../Button/Button";
 import { getFullRangeToString } from "../../util";
 
@@ -299,78 +298,79 @@ const ContentArea = styled("div")({
   overflow: "auto",
 });
 
-const MenuSpan = styled("span")<{ $selected?: boolean }>`
-  font-size: 12px;
-  font-family: "Inter";
-  font-weight: ${(props) => (props.$selected ? "bold" : "normal")};
-`;
+const MenuSpan = styled("span")<{ $selected?: boolean }>(({ $selected }) => ({
+  fontSize: 12,
+  fontFamily: "Inter",
+  fontWeight: $selected ? "bold" : "normal",
+}));
 
-const MenuSpanGrey = styled("span")`
-  white-space: pre;
-  font-size: 12px;
-  font-family: "Inter";
-  color: ${theme.palette.grey[400]};
-`;
+const MenuSpanGrey = styled("span")(({ theme }) => ({
+  whiteSpace: "pre",
+  fontSize: 12,
+  fontFamily: "Inter",
+  color: theme.palette.grey[400],
+}));
 
 const CheckIcon = () => (
   <Check style={{ width: "16px", height: "16px", marginRight: "8px" }} />
 );
 
-const IconPlaceholder = styled("div")`
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-`;
+const IconPlaceholder = styled("div")({
+  width: 16,
+  height: 16,
+  marginRight: 8,
+});
 
-const HeaderBox = styled(Box)`
-  font-size: 14px;
-  font-family: "Inter";
-  font-weight: 600;
-  width: auto;
-  gap: 8px;
-  padding: 24px 12px;
-  color: ${theme.palette.text.primary};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  border-bottom: 1px solid ${theme.palette.grey["200"]};
-`;
+const HeaderBox = styled(Box)(({ theme }) => ({
+  fontSize: 14,
+  fontFamily: "Inter",
+  fontWeight: 600,
+  width: "auto",
+  gap: 8,
+  padding: "24px 12px",
+  color: theme.palette.text.primary,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  textAlign: "center",
+  borderBottom: `1px solid ${theme.palette.grey[200]}`,
+}));
 
-const HeaderBoxText = styled("span")`
-  max-width: 100%;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-`;
+const HeaderBoxText = styled("span")({
+  maxWidth: "100%",
+  textOverflow: "ellipsis",
+  overflow: "hidden",
+  whiteSpace: "nowrap",
+});
 
-const HeaderIcon = styled(Box)`
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  background-color: ${theme.palette.grey["100"]};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  svg {
-    width: 16px;
-    height: 16px;
-    color: ${theme.palette.grey["600"]};
-  }
-`;
+const HeaderIcon = styled(Box)(({ theme }) => ({
+  width: 28,
+  height: 28,
+  borderRadius: 4,
+  backgroundColor: theme.palette.grey[100],
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
 
-const StyledBox = styled(Box)`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  width: auto;
-  padding: 16px 12px;
+  "& svg": {
+    width: 16,
+    height: 16,
+    color: theme.palette.grey[600],
+  },
+}));
 
-  @media (max-width: 600px) {
-    padding: 12px;
-  }
-`;
+const StyledBox = styled(Box)({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 16,
+  width: "auto",
+  padding: "16px 12px",
+
+  "@media (max-width: 600px)": {
+    padding: 12,
+  },
+});
 
 const StyledTextField = styled(TextField)(() => ({
   "& .MuiInputBase-root": {
@@ -410,7 +410,7 @@ const StyledMenuPaper = styled(Paper)(() => ({
   },
 }));
 
-const StyledMenuItem = styled(MenuItem)(() => ({
+const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
   padding: 8,
   borderRadius: 4,
   display: "flex",
@@ -426,22 +426,22 @@ const StyledMenuItem = styled(MenuItem)(() => ({
   },
 }));
 
-const FieldWrapper = styled(Box)`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 6px;
-`;
+const FieldWrapper = styled(Box)({
+  display: "flex",
+  flexDirection: "column",
+  width: "100%",
+  gap: 6,
+});
 
-const StyledLabel = styled("label")`
-  font-size: 12px;
-  font-family: "Inter";
-  font-weight: 500;
-  color: ${theme.palette.text.primary};
-  display: block;
-`;
+const StyledLabel = styled("label")(({ theme }) => ({
+  fontSize: "12px",
+  fontFamily: "Inter",
+  fontWeight: 500,
+  color: theme.palette.text.primary,
+  display: "block",
+}));
 
-const StyledHelperText = styled(FormHelperText)(() => ({
+const StyledHelperText = styled(FormHelperText)(({ theme }) => ({
   fontSize: "12px",
   fontFamily: "Inter",
   color: theme.palette.grey[500],
@@ -451,16 +451,17 @@ const StyledHelperText = styled(FormHelperText)(() => ({
   lineHeight: 1.4,
 }));
 
-const StyledErrorText = styled(StyledHelperText)(() => ({
+const StyledErrorText = styled(StyledHelperText)(({ theme }) => ({
   color: theme.palette.error.main,
 }));
-const StyledFooter = styled("div")`
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid ${theme.palette.grey["300"]};
-  gap: 8px;
-`;
+
+const StyledFooter = styled("div")(({ theme }) => ({
+  padding: 8,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  borderTop: `1px solid ${theme.palette.grey[300]}`,
+  gap: 8,
+}));
 
 export default EditNamedRange;
