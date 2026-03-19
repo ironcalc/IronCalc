@@ -1,8 +1,6 @@
-import styled from "@emotion/styled";
-import { Button, Dialog } from "@mui/material";
+import { Button, Dialog, styled } from "@mui/material";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 
 interface SheetDeleteDialogProps {
   open: boolean;
@@ -44,79 +42,79 @@ function SheetDeleteDialog({
   );
 }
 
-const DialogWrapper = styled.div`
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 8px;
-  box-shadow: 0px 1px 3px 0px ${theme.palette.common.black}1A;
-  width: 280px;
-  max-width: calc(100% - 40px);
-  z-index: 50;
-  font-family: "Inter", sans-serif;
-`;
+const DialogWrapper = styled("div")(({ theme }) => ({
+  position: "fixed",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  background: theme.palette.common.white,
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  padding: 12,
+  borderRadius: 8,
+  boxShadow: `0px 1px 3px 0px ${theme.palette.common.black}1A`,
+  width: 280,
+  maxWidth: "calc(100% - 40px)",
+  zIndex: 50,
+  fontFamily: '"Inter", sans-serif',
+}));
 
-const IconWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  background-color: ${theme.palette.error.main}1A;
-  margin: 12px auto 8px auto;
-  color: ${theme.palette.error.main};
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
+const IconWrapper = styled("div")(({ theme }) => ({
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  width: 36,
+  height: 36,
+  borderRadius: 4,
+  backgroundColor: `${theme.palette.error.main}1A`,
+  margin: "12px auto 8px auto",
+  color: theme.palette.error.main,
+  "& svg": {
+    width: 16,
+    height: 16,
+  },
+}));
 
-const Title = styled.h2`
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: ${theme.palette.grey["900"]};
-  text-align: center;
-`;
+const Title = styled("h2")(({ theme }) => ({
+  margin: 0,
+  fontSize: 14,
+  fontWeight: 600,
+  color: theme.palette.grey[900],
+  textAlign: "center",
+}));
 
-const Body = styled.p`
-  margin: 0;
-  text-align: center;
-  color: ${theme.palette.grey["900"]};
-  font-size: 12px;
-`;
+const Body = styled("p")(({ theme }) => ({
+  margin: 0,
+  textAlign: "center",
+  color: theme.palette.grey[900],
+  fontSize: 12,
+}));
 
-const ButtonGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-  width: 100%;
-`;
+const ButtonGroup = styled("div")({
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  marginTop: 8,
+  width: "100%",
+});
 
-const DeleteButton = styled(Button)`
-  background-color: ${theme.palette.error.main};
-  color: ${theme.palette.common.white};
-  text-transform: none;
-  &:hover {
-    background-color: ${theme.palette.error.dark};
-  }
-`;
+const DeleteButton = styled(Button)(({ theme }) => ({
+  backgroundColor: theme.palette.error.main,
+  color: theme.palette.common.white,
+  textTransform: "none",
+  "&:hover": {
+    backgroundColor: theme.palette.error.dark,
+  },
+}));
 
-const CancelButton = styled(Button)`
-  background-color: ${theme.palette.grey["200"]};
-  color: ${theme.palette.grey["700"]};
-  text-transform: none;
-  &:hover {
-    background-color: ${theme.palette.grey["300"]};
-  }
-`;
+const CancelButton = styled(Button)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[200],
+  color: theme.palette.grey[700],
+  textTransform: "none",
+  "&:hover": {
+    backgroundColor: theme.palette.grey[300],
+  },
+}));
 
 export default SheetDeleteDialog;
