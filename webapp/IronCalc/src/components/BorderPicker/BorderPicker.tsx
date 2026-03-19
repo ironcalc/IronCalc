@@ -2,7 +2,7 @@ import { type BorderOptions, BorderStyle, BorderType } from "@ironcalc/wasm";
 import ClickAwayListener from "@mui/material/ClickAwayListener";
 import MenuItem from "@mui/material/MenuItem";
 import Popper, { type PopperPlacementType } from "@mui/material/Popper";
-import { styled } from "@mui/material/styles";
+import { styled, useTheme } from "@mui/material/styles";
 import {
   Grid2X2 as BorderAllIcon,
   ChevronRight,
@@ -23,7 +23,6 @@ import {
   BorderStyleIcon,
   BorderTopIcon,
 } from "../../icons";
-import { theme } from "../../theme";
 import ColorPicker from "../ColorPicker/ColorPicker";
 
 type BorderPickerProps = {
@@ -37,6 +36,7 @@ type BorderPickerProps = {
 
 const BorderPicker = (properties: BorderPickerProps) => {
   const { t } = useTranslation();
+  const theme = useTheme();
 
   const [borderSelected, setBorderSelected] = useState<BorderType | null>(null);
   const [borderColor, setBorderColor] = useState(theme.palette.common.white);
@@ -346,7 +346,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   }}
                   selected={borderStyle === BorderStyle.Thin}
                 >
-                  <SolidLine />
+                  <SolidLine thickness={1} />
                 </StyledMenuItem>
                 <StyledMenuItem
                   onClick={() => {
@@ -355,7 +355,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   }}
                   selected={borderStyle === BorderStyle.Medium}
                 >
-                  <MediumLine />
+                  <SolidLine thickness={2} />
                 </StyledMenuItem>
                 <StyledMenuItem
                   onClick={() => {
@@ -364,7 +364,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   }}
                   selected={borderStyle === BorderStyle.Thick}
                 >
-                  <ThickLine />
+                  <SolidLine thickness={3} />
                 </StyledMenuItem>
                 <StyledMenuItem
                   onClick={() => {
@@ -429,7 +429,6 @@ const BorderPicker = (properties: BorderPickerProps) => {
   );
 };
 
-const borderLineColor = theme.palette.grey["900"];
 const borderLinePreviewWidth = 68;
 
 const dashDotGradient = (color: string) =>
@@ -438,182 +437,179 @@ const dashDotGradient = (color: string) =>
 const dashDotDotGradient = (color: string) =>
   `repeating-linear-gradient(90deg, ${color} 0px 4px, transparent 4px 6px, ${color} 6px 7px, transparent 7px 9px, ${color} 9px 10px, transparent 10px 12px)`;
 
-const StyledMenuItem = styled(MenuItem)`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  padding: 8px;
-  border-radius: 4px;
-  &::before {
-    content: none;
-  }
-  &.Mui-selected {
-    background-color: ${({ theme }) => theme.palette.action.hover};
-    &:hover {
-      background-color: ${({ theme }) => theme.palette.action.hover};
-    }
-  }
-`;
+const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  height: 32,
+  padding: 8,
+  borderRadius: 4,
 
-const SolidLine = styled("div")`
-  width: ${borderLinePreviewWidth}px;
-  border-top: 1px solid ${theme.palette.grey["900"]};
-`;
-const MediumLine = styled("div")`
-  width: ${borderLinePreviewWidth}px;
-  border-top: 2px solid ${theme.palette.grey["900"]};
-`;
-const ThickLine = styled("div")`
-  width: ${borderLinePreviewWidth}px;
-  border-top: 3px solid ${theme.palette.grey["900"]};
-`;
+  "&::before": {
+    content: "none",
+  },
 
-const DoubleLine = styled("div")`
-  width: ${borderLinePreviewWidth}px;
-  height: 3px;
-  position: relative;
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    border-top: 1px solid ${theme.palette.grey["900"]};
-  }
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    border-top: 1px solid ${theme.palette.grey["900"]};
-  }
-`;
+  "&.Mui-selected": {
+    backgroundColor: theme.palette.action.hover,
+    "&:hover": {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+}));
 
-const DottedLine = styled("div")`
-  width: ${borderLinePreviewWidth}px;
-  border-top: 1px dotted ${theme.palette.grey["900"]};
-`;
+type SolidLineProps = { thickness: 1 | 2 | 3 };
 
-const MediumDashedLine = styled("div")`
-  width: ${borderLinePreviewWidth}px;
-  border-top: 2px dashed ${theme.palette.grey["900"]};
-`;
+const SolidLine = styled("div")<SolidLineProps>(({ theme, thickness }) => ({
+  width: borderLinePreviewWidth,
+  borderTop: `${thickness}px solid ${theme.palette.grey[900]}`,
+}));
 
-const SlantDashDotLine = styled("div")`
-  width: ${borderLinePreviewWidth}px;
-  height: 1px;
-  background: ${dashDotGradient(borderLineColor)};
-`;
+const DoubleLine = styled("div")(({ theme }) => ({
+  width: borderLinePreviewWidth,
+  height: 3,
+  position: "relative",
 
-const MediumDashDotLine = styled("div")`
-  width: ${borderLinePreviewWidth}px;
-  height: 2px;
-  background: ${dashDotGradient(borderLineColor)};
-`;
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    borderTop: `1px solid ${theme.palette.grey[900]}`,
+  },
 
-const MediumDashDotDotLine = styled("div")`
-  width: ${borderLinePreviewWidth}px;
-  height: 2px;
-  background: ${dashDotDotGradient(borderLineColor)};
-`;
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTop: `1px solid ${theme.palette.grey[900]}`,
+  },
+}));
 
-const Divider = styled("div")`
-  width: 100%;
-  margin: auto;
-  border-top: 1px solid ${theme.palette.grey["200"]};
-`;
+const DottedLine = styled("div")(({ theme }) => ({
+  width: `${borderLinePreviewWidth}px`,
+  borderTop: `1px dotted ${theme.palette.grey[900]}`,
+}));
 
-const Borders = styled("div")`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px;
-`;
+const MediumDashedLine = styled("div")(({ theme }) => ({
+  width: borderLinePreviewWidth,
+  borderTop: `2px dashed ${theme.palette.grey[900]}`,
+}));
 
-const Styles = styled("div")`
-  display: flex;
-  flex-direction: column;
-  padding: 4px;
-`;
+const SlantDashDotLine = styled("div")(({ theme }) => ({
+  width: borderLinePreviewWidth,
+  height: 1,
+  background: dashDotGradient(theme.palette.grey[900]),
+}));
 
-const Line = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-`;
+const MediumDashDotLine = styled("div")(({ theme }) => ({
+  width: borderLinePreviewWidth,
+  height: 2,
+  background: dashDotGradient(theme.palette.grey[900]),
+}));
+
+const MediumDashDotDotLine = styled("div")(({ theme }) => ({
+  width: borderLinePreviewWidth,
+  height: 2,
+  background: dashDotDotGradient(theme.palette.grey[900]),
+}));
+
+const Divider = styled("div")(({ theme }) => ({
+  width: "100%",
+  margin: "auto",
+  borderTop: `1px solid ${theme.palette.grey["200"]}`,
+}));
+
+const Borders = styled("div")({
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  padding: 4,
+});
+
+const Styles = styled("div")({
+  display: "flex",
+  flexDirection: "column",
+  padding: 4,
+});
+
+const Line = styled("div")({
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 4,
+});
 
 const BaseMenuItem = (props: React.ComponentProps<typeof MenuItem>) => (
   <MenuItem disableRipple {...props} />
 );
 
-const MenuItemWrapper = styled(BaseMenuItem)`
-  display: flex;
-  justify-content: flex-start;
-  border-radius: 4px;
-  padding: 8px;
-  height: 32px;
-  min-height: 32px;
-  max-height: 32px;
-  color: ${theme.palette.common.black};
-  font-size: 12px;
-  gap: 8px;
-  svg {
-    max-width: 16px;
-    min-width: 16px;
-    max-height: 16px;
-    min-height: 16px;
-    color: ${theme.palette.grey[600]};
-  }
-`;
+const MenuItemWrapper = styled(BaseMenuItem)(({ theme }) => ({
+  display: "flex",
+  justifyContent: "flex-start",
+  borderRadius: 4,
+  padding: 8,
+  height: 32,
+  minHeight: 32,
+  maxHeight: 32,
+  color: theme.palette.common.black,
+  fontSize: 12,
+  gap: 8,
+  svg: {
+    maxWidth: 16,
+    minWidth: 16,
+    maxHeight: 16,
+    minHeight: 16,
+    color: theme.palette.grey[600],
+  },
+}));
 
-const MenuItemText = styled("div")`
-  flex-grow: 1;
-`;
+const MenuItemText = styled("div")({
+  flexGrow: 1,
+});
 
-const PopperContent = styled("div")`
-  border-radius: 8px;
-  border: 0px solid ${({ theme }): string => theme.palette.background.default};
-  box-shadow: 1px 2px 8px rgba(139, 143, 173, 0.5);
-  background: ${({ theme }): string => theme.palette.background.default};
-  font-family: ${({ theme }) => theme.typography.fontFamily};
-  font-size: 12px;
-  overflow: hidden;
-`;
+const PopperContent = styled("div")(({ theme }) => ({
+  borderRadius: 8,
+  border: `0px solid ${theme.palette.background.default}`,
+  boxShadow: "1px 2px 8px rgba(139, 143, 173, 0.5)",
+  background: theme.palette.background.default,
+  fontFamily: theme.typography.fontFamily,
+  fontSize: 12,
+  overflow: "hidden",
+}));
 
-const StylePicker = styled(PopperContent)`
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-`;
+const StylePicker = styled(PopperContent)({
+  padding: 4,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+});
 
-const StyledPopper = styled(Popper)`
-  z-index: 1300;
-  &[data-popper-placement] {
-    pointer-events: auto;
-  }
-`;
+const StyledPopper = styled(Popper)({
+  zIndex: 1300,
+  "&[data-popper-placement]": {
+    pointerEvents: "auto",
+  },
+});
 
-const BorderPickerDialog = styled("div")`
-  background: ${({ theme }): string => theme.palette.background.default};
-  display: flex;
-  flex-direction: column;
-`;
+const BorderPickerDialog = styled("div")(({ theme }) => ({
+  background: theme.palette.background.default,
+  display: "flex",
+  flexDirection: "column",
+}));
 
 type TypeButtonProperties = { $pressed: boolean; $underlinedColor?: string };
 const Button = styled("button")<TypeButtonProperties>(
-  ({ disabled, $pressed, $underlinedColor }) => {
+  ({ theme, disabled, $pressed, $underlinedColor }) => {
     const result = {
       width: "24px",
       height: "24px",
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
-      // fontSize: "26px",
       border: `0px solid ${theme.palette.common.white}`,
       borderRadius: "4px",
       cursor: "pointer",
@@ -632,7 +628,7 @@ const Button = styled("button")<TypeButtonProperties>(
         ? `3px solid ${theme.palette.common.white}`
         : "none",
       borderBottom: $underlinedColor ? `3px solid ${$underlinedColor}` : "none",
-      color: `${theme.palette.grey["900"]}`,
+      color: `${theme.palette.grey[900]}`,
       backgroundColor: $pressed ? theme.palette.grey["200"] : "inherit",
       "&:hover": {
         outline: `1px solid ${theme.palette.grey["200"]}`,
@@ -646,9 +642,9 @@ const Button = styled("button")<TypeButtonProperties>(
   },
 );
 
-const ChevronRightStyled = styled(ChevronRight)`
-  width: 16px;
-  height: 16px;
-`;
+const ChevronRightStyled = styled(ChevronRight)({
+  width: 16,
+  height: 16,
+});
 
 export default BorderPicker;
