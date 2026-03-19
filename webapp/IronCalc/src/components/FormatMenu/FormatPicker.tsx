@@ -1,9 +1,7 @@
-import styled from "@emotion/styled";
-import { Dialog, TextField } from "@mui/material";
+import { Dialog, styled, TextField } from "@mui/material";
 import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
 
@@ -80,48 +78,50 @@ const FormatPicker = (properties: FormatPickerProps) => {
   );
 };
 
-const StyledDialogTitle = styled("div")`
-  display: flex;
-  align-items: center;
-  height: 44px;
-  font-size: 14px;
-  font-weight: 500;
-  font-family: Inter;
-  padding: 0px 12px;
-  justify-content: space-between;
-  border-bottom: 1px solid ${theme.palette.grey["300"]};
-`;
+const StyledDialogTitle = styled("div")(({ theme }) => ({
+  display: "flex",
+  alignItems: "center",
+  height: 44,
+  fontSize: 14,
+  fontWeight: 500,
+  fontFamily: "Inter",
+  padding: "0px 12px",
+  justifyContent: "space-between",
+  borderBottom: `1px solid ${theme.palette.grey[300]}`,
+}));
 
-const StyledDialogContent = styled("div")`
-  font-size: 12px;
-  margin: 12px;
-`;
+const StyledDialogContent = styled("div")({
+  fontSize: 12,
+  margin: 12,
+});
 
-const StyledTextField = styled(TextField)`
-  width: 100%;
-  border-radius: 4px;
-  overflow: hidden;
-  & .MuiInputBase-input {
-    font-size: 14px;
-    padding: 10px;
-    border: 1px solid ${theme.palette.grey["300"]};
-    border-radius: 4px;
-    color: ${theme.palette.common.black};
-    background-color: ${theme.palette.common.white};
-  }
-  &:hover .MuiInputBase-input {
-    border: 1px solid ${theme.palette.grey["500"]};
-  }
-`;
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  width: "100%",
+  borderRadius: 4,
+  overflow: "hidden",
 
-const DialogFooter = styled("div")`
-  color: #757575;
-  display: flex;
-  align-items: center;
-  border-top: 1px solid ${theme.palette.grey["300"]};
-  font-family: Inter;
-  justify-content: flex-end;
-  padding: 12px;
-`;
+  "& .MuiInputBase-input": {
+    fontSize: 14,
+    padding: 10,
+    border: `1px solid ${theme.palette.grey[300]}`,
+    borderRadius: 4,
+    color: theme.palette.common.black,
+    backgroundColor: theme.palette.common.white,
+  },
+
+  "&:hover .MuiInputBase-input": {
+    border: `1px solid ${theme.palette.grey[500]}`,
+  },
+}));
+
+const DialogFooter = styled("div")(({ theme }) => ({
+  color: "#757575",
+  display: "flex",
+  alignItems: "center",
+  borderTop: `1px solid ${theme.palette.grey[300]}`,
+  fontFamily: "Inter",
+  justifyContent: "flex-end",
+  padding: 12,
+}));
 
 export default FormatPicker;
