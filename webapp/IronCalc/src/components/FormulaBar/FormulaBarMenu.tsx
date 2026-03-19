@@ -3,7 +3,6 @@ import { Menu, MenuItem, styled } from "@mui/material";
 import { Tag } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 import { parseRangeInSheet } from "../Editor/util";
 
 type FormulaBarMenuProps = {
@@ -106,65 +105,67 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
     </>
   );
 };
+const StyledMenu = styled(Menu)({
+  top: 4,
+  minWidth: 260,
+  maxWidth: 460,
 
-const StyledMenu = styled(Menu)`
-  top: 4px;
-  min-width: 260px;
-  max-width: 460px;
-  & .MuiPaper-root {
-    border-radius: 8px;
-    padding: 4px 0px;
-    margin-left: -4px;
-  }
-  & .MuiList-root {
-    padding: 0;
-  }
-`;
+  "& .MuiPaper-root": {
+    borderRadius: 8,
+    padding: "4px 0px",
+    marginLeft: -4,
+  },
 
-const MenuItemWrapper = styled(MenuItem)`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  gap: 8px;
-  width: calc(100% - 8px);
-  min-width: 172px;
-  margin: 0px 4px;
-  border-radius: 4px;
-  padding: 8px;
-  height: 32px;
-  & svg {
-    width: 12px;
-    height: 12px;
-    flex-shrink: 0;
-    color: ${theme.palette.grey[600]};
-  }
-`;
+  "& .MuiList-root": {
+    padding: 0,
+  },
+});
 
-const ChildrenWrapper = styled("div")`
-  display: flex;
-`;
+const MenuItemWrapper = styled(MenuItem)(({ theme }) => ({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  fontSize: 12,
+  gap: 8,
+  width: "calc(100% - 8px)",
+  minWidth: 172,
+  margin: "0px 4px",
+  borderRadius: 4,
+  padding: 8,
+  height: 32,
 
-const MenuDivider = styled("div")`
-  width: 100%;
-  margin: auto;
-  margin-top: 4px;
-  margin-bottom: 4px;
-  border-top: 1px solid ${theme.palette.grey[200]};
-`;
+  "& svg": {
+    width: 12,
+    height: 12,
+    flexShrink: 0,
+    color: theme.palette.grey[600],
+  },
+}));
 
-const MenuItemText = styled("div")`
-  flex: 1;
-  min-width: 0;
-  color: ${theme.palette.common.black};
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
+const ChildrenWrapper = styled("div")({
+  display: "flex",
+});
 
-const MenuItemExample = styled("div")`
-  color: ${theme.palette.grey[400]};
-  margin-left: 12px;
-`;
+const MenuDivider = styled("div")(({ theme }) => ({
+  width: "100%",
+  margin: "auto",
+  marginTop: 4,
+  marginBottom: 4,
+  borderTop: `1px solid ${theme.palette.grey[200]}`,
+}));
+
+const MenuItemText = styled("div")(({ theme }) => ({
+  flex: 1,
+  minWidth: 0,
+  color: theme.palette.common.black,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+}));
+
+const MenuItemExample = styled("div")(({ theme }) => ({
+  color: theme.palette.grey[400],
+  marginLeft: 12,
+}));
 
 export default FormulaBarMenu;
