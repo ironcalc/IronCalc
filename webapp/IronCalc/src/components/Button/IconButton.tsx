@@ -34,7 +34,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
     {
       icon,
       variant = "ghost",
-      size = "xs",
+      size = "sm",
       pressed = false,
       style,
       disabled = false,

@@ -126,13 +126,13 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: () => (
     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-      <IconButton variant="outline" icon={<Bold />} aria-label="Bold" />
       <IconButton
         variant="outline"
-        size="sm"
+        size="xs"
         icon={<Bold />}
         aria-label="Bold"
       />
+      <IconButton variant="outline" icon={<Bold />} aria-label="Bold" />
       <IconButton
         variant="outline"
         size="md"
