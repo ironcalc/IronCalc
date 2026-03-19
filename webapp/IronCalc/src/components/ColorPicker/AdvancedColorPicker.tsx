@@ -1,10 +1,8 @@
-import styled from "@emotion/styled";
-import { Popover, type PopoverOrigin } from "@mui/material";
+import { Popover, type PopoverOrigin, styled } from "@mui/material";
 import { Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 import { Button } from "../Button/Button";
 
 type AdvancedColorPickerProps = {
@@ -99,150 +97,151 @@ const AdvancedColorPicker = ({
   );
 };
 
-const StylePopover = styled(Popover)`
-  & .MuiPaper-root {
-    border-radius: 8px;
-    padding: 0px;
-    margin-left: -4px;
-    max-width: 220px;
-  }
-`;
+const StylePopover = styled(Popover)({
+  "& .MuiPaper-root": {
+    borderRadius: 8,
+    padding: 0,
+    marginLeft: -4,
+    maxWidth: 220,
+  },
+});
 
-const HorizontalDivider = styled.div`
-  height: 0px;
-  width: 100%;
-  border-top: 1px solid ${theme.palette.grey["200"]};
-`;
+const HorizontalDivider = styled("div")(({ theme }) => ({
+  height: 0,
+  width: "100%",
+  borderTop: `1px solid ${theme.palette.grey[200]}`,
+}));
 
 // Color Picker Dialog Styles
-const ColorPickerDialog = styled.div`
-  background: ${theme.palette.background.default};
-  width: 240px;
-  padding: 0px;
-  display: flex;
-  flex-direction: column;
-  max-width: 100%;
-  & .react-colorful {
-    height: 160px;
-    width: 100%;
-  }
-  & .react-colorful__saturation {
-    border-bottom: none;
-    border-radius: 8px 8px 0px 0px;
-  }
-  & .react-colorful__hue {
-    height: 8px;
-    margin: 8px;
-    border-radius: 5px;
-  }
-  & .react-colorful__saturation-pointer {
-    width: 14px;
-    height: 14px;
-  }
-  & .react-colorful__hue-pointer {
-    width: 7px;
-    border-radius: 8px;
-    height: 16px;
-    width: 16px;
-  }
-`;
+const ColorPickerDialog = styled("div")(({ theme }) => ({
+  background: theme.palette.background.default,
+  width: 240,
+  padding: 0,
+  display: "flex",
+  flexDirection: "column",
+  maxWidth: "100%",
 
-const ButtonsWrapper = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin: 8px;
-  gap: 8px;
-`;
+  "& .react-colorful": {
+    height: 160,
+    width: "100%",
+  },
+  "& .react-colorful__saturation": {
+    borderBottom: "none",
+    borderRadius: "8px 8px 0px 0px",
+  },
+  "& .react-colorful__hue": {
+    height: 8,
+    margin: 8,
+    borderRadius: 5,
+  },
+  "& .react-colorful__saturation-pointer": {
+    width: 14,
+    height: 14,
+  },
+  "& .react-colorful__hue-pointer": {
+    borderRadius: 8,
+    height: 16,
+    width: 16,
+  },
+}));
 
-const HashLabel = styled.div`
-  margin: auto 0px auto 10px;
-  font-size: 13px;
-  color: #333;
-  font-family: ${theme.typography.button.fontFamily};
-`;
+const ButtonsWrapper = styled("div")({
+  display: "flex",
+  justifyContent: "space-between",
+  margin: 8,
+  gap: 8,
+});
 
-const HexLabel = styled.div`
-  margin: auto 0px;
-  font-size: 12px;
-  display: inline-flex;
-  font-family: ${theme.typography.button.fontFamily};
-`;
+const HashLabel = styled("div")(({ theme }) => ({
+  margin: "auto 0px auto 10px",
+  fontSize: 13,
+  color: "#333",
+  fontFamily: theme.typography.button.fontFamily,
+}));
 
-const HexColorInputBox = styled.div`
-  display: inline-flex;
-  flex-grow: 1;
-  width: 100%;
-  height: 28px;
-  border: 1px solid ${theme.palette.grey["300"]};
-  border-radius: 5px;
-  &:hover {
-    border: 1px solid ${theme.palette.grey["600"]};
-  }
-  &:focus-within {
-    outline: 2px solid ${theme.palette.secondary.main};
-    outline-offset: 1px;
-  }
-`;
+const HexLabel = styled("div")(({ theme }) => ({
+  margin: "auto 0px",
+  fontSize: 12,
+  display: "inline-flex",
+  fontFamily: theme.typography.button.fontFamily,
+}));
 
-const StyledHexColorInput = styled(HexColorInput)`
-  width: 100%;
-  border: none;
-  background: transparent;
-  outline: none;
-  font-family: ${theme.typography.button.fontFamily};
-  font-size: 12px;
-  text-transform: uppercase;
-  text-align: right;
-  padding-right: 10px;
-  border-radius: 5px;
+const HexColorInputBox = styled("div")(({ theme }) => ({
+  display: "inline-flex",
+  flexGrow: 1,
+  width: "100%",
+  height: 28,
+  border: `1px solid ${theme.palette.grey[300]}`,
+  borderRadius: 5,
 
-  &:focus {
-    border-color: #4298ef;
-  }
-`;
+  "&:hover": {
+    border: `1px solid ${theme.palette.grey[600]}`,
+  },
 
-const HexWrapper = styled.div`
-  display: flex;
-  gap: 8px;
-  flex-grow: 1;
-  & input {
-    min-width: 0px;
-    border: 0px;
-    background: ${theme.palette.background.default};
-    outline: none;
-    font-family: ${theme.typography.button.fontFamily};
-    font-size: 12px;
-    text-transform: uppercase;
-    text-align: right;
-    padding-right: 10px;
-    border-radius: 5px;
-  }
+  "&:focus-within": {
+    outline: `2px solid ${theme.palette.secondary.main}`,
+    outlineOffset: 1,
+  },
+}));
 
-  & input:focus {
-    border-color: #4298ef;
-  }
-`;
+const StyledHexColorInput = styled(HexColorInput)(({ theme }) => ({
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  outline: "none",
+  fontFamily: theme.typography.button.fontFamily,
+  fontSize: 12,
+  textTransform: "uppercase",
+  textAlign: "right",
+  paddingRight: 10,
+  borderRadius: 5,
 
-const Swatch = styled.div<{ $color: string }>`
-  display: inline-flex;
-  ${({ $color }): string => {
-    if ($color.toUpperCase() === "#FFFFFF") {
-      return `border: 1px solid ${theme.palette.grey["300"]};`;
-    }
-    return `border: 1px solid ${$color};`;
-  }}
-  background-color: ${({ $color }): string => $color};
-  min-width: 28px;
-  height: 28px;
-  border-radius: 5px;
-`;
+  "&:focus": {
+    borderColor: "#4298ef",
+  },
+}));
 
-const ColorPickerInput = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  margin: 8px;
-  gap: 8px;
-`;
+const HexWrapper = styled("div")(({ theme }) => ({
+  display: "flex",
+  gap: 8,
+  flexGrow: 1,
+
+  "& input": {
+    minWidth: 0,
+    border: 0,
+    background: theme.palette.background.default,
+    outline: "none",
+    fontFamily: theme.typography.button.fontFamily,
+    fontSize: 12,
+    textTransform: "uppercase",
+    textAlign: "right",
+    paddingRight: 10,
+    borderRadius: 5,
+  },
+
+  "& input:focus": {
+    borderColor: "#4298ef",
+  },
+}));
+
+const Swatch = styled("div")<{ $color: string }>(({ $color, theme }) => ({
+  display: "inline-flex",
+  border:
+    $color.toUpperCase() === "#FFFFFF"
+      ? `1px solid ${theme.palette.grey[300]}`
+      : `1px solid ${$color}`,
+  backgroundColor: $color,
+  minWidth: 28,
+  height: 28,
+  borderRadius: 5,
+}));
+
+const ColorPickerInput = styled("div")({
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  margin: 8,
+  gap: 8,
+});
 
 export default AdvancedColorPicker;
