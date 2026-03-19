@@ -3,7 +3,6 @@ import { styled } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Fx } from "../../icons";
-import { theme } from "../../theme";
 import { Button } from "../Button/Button";
 import { FORMULA_BAR_HEIGHT } from "../constants";
 import Editor from "../Editor/Editor";
@@ -106,85 +105,89 @@ function FormulaBar(properties: FormulaBarProps) {
   );
 }
 
-const StyledButton = styled("div")`
-  display: inline-flex;
-  align-items: center;
-  width: 15px;
-  min-width: 0px;
-  padding: 0px;
-  color: inherit;
-  font-weight: inherit;
-  svg {
-    width: 15px;
-    height: 15px;
-  }
-`;
+const StyledButton = styled("div")({
+  display: "inline-flex",
+  alignItems: "center",
+  width: 15,
+  minWidth: 0,
+  padding: 0,
+  color: "inherit",
+  fontWeight: "inherit",
 
-const FormulaSymbolButton = styled(StyledButton)`
-  margin-right: 8px;
-`;
+  "& svg": {
+    width: 15,
+    height: 15,
+  },
+});
 
-const Divider = styled("div")`
-  background-color: ${theme.palette.grey["300"]};
-  min-width: 1px;
-  height: 16px;
-  margin: 0px 16px 0px 8px;
-`;
+const FormulaSymbolButton = styled(StyledButton)({
+  marginRight: 8,
+});
 
-const FormulaContainer = styled("div")`
-  margin-left: 0px;
-  line-height: 22px;
-  font-weight: normal;
-  width: 100%;
-  height: 22px;
-  display: flex;
-`;
+const Divider = styled("div")(({ theme }) => ({
+  backgroundColor: theme.palette.grey[300],
+  minWidth: 1,
+  height: 16,
+  margin: "0px 16px 0px 8px",
+}));
 
-const Container = styled("div")`
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  background: ${(properties): string =>
-    properties.theme.palette.background.default};
-  height: ${FORMULA_BAR_HEIGHT}px;
-  border-top: 1px solid ${theme.palette.grey["300"]};
-`;
+const FormulaContainer = styled("div")({
+  marginLeft: 0,
+  lineHeight: "22px",
+  fontWeight: "normal",
+  width: "100%",
+  height: 22,
+  display: "flex",
+});
 
-const AddressContainer = styled("div")<{ $active?: boolean }>`
-  color: ${theme.palette.common.black};
-  font-style: normal;
-  font-size: 12px;
-  display: flex;
-  font-weight: 600;
-  align-items: center;
-  gap: 2px;
-  border-radius: 4px;
-  margin-left: 8px;
-  cursor: pointer;
-  background-color: ${(props) =>
-    props.$active ? theme.palette.action.selected : "transparent"};
-  &:hover {
-   background-color: ${(props) =>
-     props.$active ? theme.palette.action.selected : theme.palette.grey["100"]};
-  }
-`;
+const Container = styled("div")(({ theme }) => ({
+  flexShrink: 0,
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  background: theme.palette.background.default,
+  height: FORMULA_BAR_HEIGHT,
+  borderTop: `1px solid ${theme.palette.grey[300]}`,
+}));
 
-const EditorWrapper = styled("div")`
-  position: relative;
-  width: 100%;
-  padding: 0px;
-  border-width: 0px;
-  outline: none;
-  resize: none;
-  white-space: pre-wrap;
-  vertical-align: bottom;
-  overflow: hidden;
-  text-align: left;
-  span {
-    min-width: 1px;
-  }
-  font-family: monospace;
-`;
+const AddressContainer = styled("div")<{ $active?: boolean }>(
+  ({ theme, $active }) => ({
+    color: theme.palette.common.black,
+    fontStyle: "normal",
+    fontSize: 12,
+    display: "flex",
+    fontWeight: 600,
+    alignItems: "center",
+    gap: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+    cursor: "pointer",
+    backgroundColor: $active ? theme.palette.action.selected : "transparent",
+
+    "&:hover": {
+      backgroundColor: $active
+        ? theme.palette.action.selected
+        : theme.palette.grey[100],
+    },
+  }),
+);
+
+const EditorWrapper = styled("div")({
+  position: "relative",
+  width: "100%",
+  padding: 0,
+  borderWidth: 0,
+  outline: "none",
+  resize: "none",
+  whiteSpace: "pre-wrap",
+  verticalAlign: "bottom",
+  overflow: "hidden",
+  textAlign: "left",
+  fontFamily: "monospace",
+
+  "& span": {
+    minWidth: 1,
+  },
+});
 
 export default FormulaBar;
