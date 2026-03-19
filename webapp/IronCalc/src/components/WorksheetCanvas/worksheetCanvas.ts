@@ -1,6 +1,5 @@
 import type { CellStyle, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
-import { theme } from "../../theme";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
@@ -41,6 +40,10 @@ export interface CanvasSettings {
   onColumnWidthChanges: (sheet: number, column: number, width: number) => void;
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
   refresh: () => void;
+  theme: {
+    commonWhite: string;
+    primaryMain: string;
+  };
 }
 
 export const fonts = {
@@ -112,6 +115,11 @@ export default class WorksheetCanvas {
   cells: TextProperties[];
   spills: Map<string, number>;
 
+  theme: {
+    commonWhite: string;
+    primaryMain: string;
+  };
+
   constructor(options: CanvasSettings) {
     this.model = options.model;
     this.sheetWidth = 0;
@@ -119,6 +127,7 @@ export default class WorksheetCanvas {
     this.canvas = options.elements.canvas;
     this.width = options.width;
     this.height = options.height;
+    this.theme = options.theme;
     this.ctx = this.setContext();
     this.workbookState = options.workbookState;
     this.editor = options.elements.editor;
@@ -820,7 +829,7 @@ export default class WorksheetCanvas {
     const style = this.model.getCellStyle(selectedSheet, row, column);
 
     // first the background
-    let backgroundColor = theme.palette.common.white;
+    let backgroundColor = this.theme.commonWhite;
     if (style.fill.fg_color) {
       backgroundColor = style.fill.fg_color;
     }
@@ -1118,12 +1127,12 @@ export default class WorksheetCanvas {
     div.style.height = `${headerRowHeight}px`;
     div.style.backgroundColor = selected
       ? isFullColumnSelected
-        ? theme.palette.primary.main
+        ? this.theme.primaryMain
         : headerSelectedBackground
       : headerBackground;
     div.style.color = selected
       ? isFullColumnSelected
-        ? theme.palette.common.white
+        ? this.theme.commonWhite
         : headerSelectedColor
       : headerTextColor;
     div.style.fontWeight = "bold";
@@ -1177,7 +1186,7 @@ export default class WorksheetCanvas {
       context.fillRect(0.5, topLeftCornerY, headerColumnWidth, rowHeight);
       context.fillStyle = selected
         ? isFullRowSelected
-          ? theme.palette.primary.main
+          ? this.theme.primaryMain
           : headerSelectedBackground
         : headerBackground;
       context.fillRect(
@@ -1192,7 +1201,7 @@ export default class WorksheetCanvas {
       }
       context.fillStyle = selected
         ? isFullRowSelected
-          ? theme.palette.common.white
+          ? this.theme.commonWhite
           : headerSelectedColor
         : headerTextColor;
       context.font = `bold 12px ${defaultCellFontFamily}`;
