@@ -1,9 +1,13 @@
-import styled from "@emotion/styled";
-import { Menu, MenuItem, type PopoverOrigin } from "@mui/material";
+import {
+  Menu,
+  MenuItem,
+  type PopoverOrigin,
+  styled,
+  useTheme,
+} from "@mui/material";
 import { Check, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 import AdvancedColorPicker from "./AdvancedColorPicker";
 
 type ColorPickerProps = {
@@ -33,6 +37,8 @@ const ColorPicker = ({
   const [isPickerOpen, setPickerOpen] = useState(false);
   const recentColors = useRef<string[]>([]);
   const { t } = useTranslation();
+
+  const theme = useTheme();
 
   useEffect(() => {
     setSelectedColor(color);
@@ -191,104 +197,106 @@ const ColorPicker = ({
   );
 };
 
-const StyledMenu = styled(Menu)`
-  & .MuiPaper-root {
-    border-radius: 8px;
-    padding: 4px 0px;
-    margin-left: -4px;
-    max-width: 220px;
-  }
-  & .MuiList-root {
-    padding: 0;
-  }
-`;
+const StyledMenu = styled(Menu)({
+  "& .MuiPaper-root": {
+    borderRadius: 8,
+    padding: "4px 0px",
+    marginLeft: -4,
+    maxWidth: 220,
+  },
+  "& .MuiList-root": {
+    padding: 0,
+  },
+});
 
-const MenuItemWrapper = styled(MenuItem)`
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  font-size: 12px;
-  gap: 8px;
-  width: calc(100% - 8px);
-  min-width: 172px;
-  margin: 0px 4px 4px 4px;
-  border-radius: 4px;
-  padding: 8px;
-  height: 32px;
-`;
+const MenuItemWrapper = styled(MenuItem)({
+  display: "flex",
+  flexDirection: "row",
+  justifyContent: "flex-start",
+  fontSize: 12,
+  gap: 8,
+  width: "calc(100% - 8px)",
+  minWidth: 172,
+  margin: "0px 4px 4px 4px",
+  borderRadius: 4,
+  padding: 8,
+  height: 32,
+});
 
-const MenuItemText = styled("div")`
-  color: ${theme.palette.text.primary};
-`;
+const MenuItemText = styled("div")(({ theme }) => ({
+  color: theme.palette.text.primary,
+}));
 
-const MenuItemSquare = styled.div`
-  width: 16px;
-  height: 16px;
-  box-sizing: border-box;
-  margin-top: 0px;
-  border: 1px solid ${theme.palette.grey["300"]};
-  border-radius: 4px;
-`;
+const MenuItemSquare = styled("div")(({ theme }) => ({
+  width: 16,
+  height: 16,
+  boxSizing: "border-box",
+  marginTop: 0,
+  border: `1px solid ${theme.palette.grey[300]}`,
+  borderRadius: 4,
+}));
 
-const ColorsWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  margin: 4px;
-`;
+const ColorsWrapper = styled("div")({
+  display: "flex",
+  flexDirection: "column",
+  margin: 4,
+});
 
-const ColorList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  flex-direction: row;
-  margin: 8px 8px 0px 8px;
-  justify-content: flex-start;
-  gap: 4px;
-`;
+const ColorList = styled("div")({
+  display: "flex",
+  flexWrap: "wrap",
+  flexDirection: "row",
+  margin: "8px 8px 0px 8px",
+  justifyContent: "flex-start",
+  gap: 4,
+});
 
-const ColorGrid = styled.div`
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  margin: 8px;
-  gap: 4px;
-`;
+const ColorGrid = styled("div")({
+  display: "flex",
+  flexDirection: "row",
+  justifyContent: "flex-start",
+  margin: 8,
+  gap: 4,
+});
 
-const ColorGridCol = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 4px;
-`;
+const ColorGridCol = styled("div")({
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "flex-start",
+  gap: 4,
+});
 
-const ColorSwatch = styled.button<{ $color: string }>`
-  width: 16px;
-  height: 16px;
-  padding: 0px;
-  ${({ $color }): string => {
+const ColorSwatch = styled("button")<{ $color: string }>(
+  ({ $color, theme }) => {
     const upperColor = $color.toUpperCase();
-    if (upperColor === "#FFFFFF" || upperColor === "#FFF") {
-      return `border: 1px solid ${theme.palette.grey["300"]};`;
-    }
-    return "border: none;";
-  }}
-  background-color: ${({ $color }): string => {
-    return $color === "transparent" ? "none" : $color;
-  }};
-  box-sizing: border-box;
-  margin-top: 0px;
-  border-radius: 4px;
-  &:hover {
-    cursor: pointer;
-    outline: 1px solid ${theme.palette.grey["300"]};
-    outline-offset: 1px;
-  }
-`;
 
-const SelectableColorSwatch = styled(ColorSwatch)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
+    return {
+      width: 16,
+      height: 16,
+      padding: 0,
+      border:
+        upperColor === "#FFFFFF" || upperColor === "#FFF"
+          ? `1px solid ${theme.palette.grey[300]}`
+          : "none",
+      backgroundColor: $color === "transparent" ? "none" : $color,
+      boxSizing: "border-box",
+      marginTop: 0,
+      borderRadius: 4,
+
+      "&:hover": {
+        cursor: "pointer",
+        outline: `1px solid ${theme.palette.grey[300]}`,
+        outlineOffset: 1,
+      },
+    };
+  },
+);
+
+const SelectableColorSwatch = styled(ColorSwatch)({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+});
 
 // This function checks if a color is light or dark.
 // This is needed to determine the text color for the check icon, as it's not visible on light colors.
@@ -306,66 +314,66 @@ const isLightColor = (hex: string): boolean => {
   return luminance > 160;
 };
 
-const CheckIcon = styled(Check)<{ $color: string }>`
-  width: 10px;
-  height: 10px;
-  stroke-width: 3px;
-  color: ${({ $color }) =>
-    isLightColor($color)
-      ? theme.palette.common.black
-      : theme.palette.common.white};
-`;
+const CheckIcon = styled(Check)<{ $color: string }>(({ $color, theme }) => ({
+  width: 10,
+  height: 10,
+  strokeWidth: 3,
+  color: isLightColor($color)
+    ? theme.palette.common.black
+    : theme.palette.common.white,
+}));
 
-const HorizontalDivider = styled.div`
-  height: 0px;
-  width: 100%;
-  border-top: 1px solid ${theme.palette.grey["200"]};
-`;
+const HorizontalDivider = styled("div")(({ theme }) => ({
+  height: 0,
+  width: "100%",
+  borderTop: `1px solid ${theme.palette.grey[200]}`,
+}));
 
-const RecentLabel = styled.div`
-  font-family: "Inter";
-  font-size: 12px;
-  font-family: Inter;
-  margin: 8px 12px 0px 12px;
-  color: ${theme.palette.text.secondary};
-`;
+const RecentLabel = styled("div")(({ theme }) => ({
+  fontFamily: "Inter",
+  fontSize: 12,
+  margin: "8px 12px 0px 12px",
+  color: theme.palette.text.secondary,
+}));
 
-const RecentColorsList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  flex-direction: row;
-  padding: 8px;
-  margin: 0px 4px;
-  justify-content: flex-start;
-  gap: 4px;
-`;
+const RecentColorsList = styled("div")({
+  display: "flex",
+  flexWrap: "wrap",
+  flexDirection: "row",
+  padding: 8,
+  margin: "0px 4px",
+  justifyContent: "flex-start",
+  gap: 4,
+});
 
-const StyledPlusButton = styled("button")`
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  align-items: center;
-  border: none;
-  background: none;
-  font-size: 12px;
-  height: 16px;
-  width: 16px;
-  margin: 0;
-  padding: 0;
-  border-radius: 4px;
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-  &:hover {
-    cursor: pointer;
-    outline: 1px solid ${theme.palette.grey["300"]};
-    outline-offset: 1px;
-  }
-`;
+const StyledPlusButton = styled("button")(({ theme }) => ({
+  display: "flex",
+  justifyContent: "center",
+  flexWrap: "wrap",
+  alignItems: "center",
+  border: "none",
+  background: "none",
+  fontSize: 12,
+  height: 16,
+  width: 16,
+  margin: 0,
+  padding: 0,
+  borderRadius: 4,
 
-const EmptyContainer = styled.div`
-  display: none;
-`;
+  "& svg": {
+    width: 16,
+    height: 16,
+  },
+
+  "&:hover": {
+    cursor: "pointer",
+    outline: `1px solid ${theme.palette.grey[300]}`,
+    outlineOffset: 1,
+  },
+}));
+
+const EmptyContainer = styled("div")({
+  display: "none",
+});
 
 export default ColorPicker;
