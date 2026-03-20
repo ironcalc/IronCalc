@@ -4,7 +4,7 @@
 /// Either because Excel does not have that feature (i.e. wrong number of arguments)
 /// or because we differ from Excel throwing #NUM! on invalid dates
 /// We can also enter examples that illustrate/document a part of the function
-use crate::{cell::CellValue, test::util::new_empty_model};
+use crate::{cell::CellValue, model::Model, test::util::new_empty_model};
 
 // Excel uses a serial date system where Jan 1, 1900 = 1 (though it treats 1900 as a leap year)
 // Most test dates are documented inline, but we define boundary values here:
@@ -42,13 +42,14 @@ fn test_fn_date_arguments() {
     assert_eq!(model._get_text("A3"), *"#ERROR!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");
 
-    assert_eq!(model._get_text("A5"), *"10/10/1974");
-    assert_eq!(model._get_text("A6"), *"1/21/1975");
-    assert_eq!(model._get_text("A7"), *"2/10/1976");
-    assert_eq!(model._get_text("A8"), *"3/2/1975");
+    // en-US locale short date is "m/d/yy" — numFmtId 14 renders with 2-digit year.
+    assert_eq!(model._get_text("A5"), *"10/10/74");
+    assert_eq!(model._get_text("A6"), *"1/21/75");
+    assert_eq!(model._get_text("A7"), *"2/10/76");
+    assert_eq!(model._get_text("A8"), *"3/2/75");
 
-    assert_eq!(model._get_text("A9"), *"3/1/1975");
-    assert_eq!(model._get_text("A10"), *"2/29/1976");
+    assert_eq!(model._get_text("A9"), *"3/1/75");
+    assert_eq!(model._get_text("A10"), *"2/29/76");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A10"),
         Ok(CellValue::Number(27819.0))
@@ -74,10 +75,11 @@ fn test_date_out_of_range() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"12/10/2021");
-    assert_eq!(model._get_text("A2"), *"1/10/2023");
-    assert_eq!(model._get_text("B1"), *"4/30/2042");
-    assert_eq!(model._get_text("B2"), *"6/1/2025");
+    // en-US locale short date is "m/d/yy" — numFmtId 14 renders with 2-digit year.
+    assert_eq!(model._get_text("A1"), *"12/10/21");
+    assert_eq!(model._get_text("A2"), *"1/10/23");
+    assert_eq!(model._get_text("B1"), *"4/30/42");
+    assert_eq!(model._get_text("B2"), *"6/1/25");
 
     assert_eq!(model._get_text("C1"), *"#NUM!");
     assert_eq!(model._get_text("C2"), *"#NUM!");
@@ -195,8 +197,9 @@ fn test_date_early_dates() {
 
     model.evaluate();
 
-    // This is 1 in Excel, we agree with Google Docs
-    assert_eq!(model._get_text("A1"), *"1/1/1900");
+    // This is 1 in Excel, we agree with Google Docs.
+    // en-US "m/d/yy" renders 1900 as 2-digit "00".
+    assert_eq!(model._get_text("A1"), *"1/1/00");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(2.0))
@@ -204,7 +207,7 @@ fn test_date_early_dates() {
 
     // 1900 was not a leap year, this is a bug in EXCEL
     // This would be 60 in Excel
-    assert_eq!(model._get_text("A2"), *"2/28/1900");
+    assert_eq!(model._get_text("A2"), *"2/28/00");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A2"),
         Ok(CellValue::Number(60.0))
@@ -212,10 +215,10 @@ fn test_date_early_dates() {
 
     // This does not agree with Excel, instead of mistakenly allowing
     // for Feb 29, it will auto-wrap to the next day after Feb 28.
-    assert_eq!(model._get_text("B2"), *"3/1/1900");
+    assert_eq!(model._get_text("B2"), *"3/1/00");
 
     // This agrees with Excel from he onward
-    assert_eq!(model._get_text("A3"), *"3/1/1900");
+    assert_eq!(model._get_text("A3"), *"3/1/00");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A3"),
         Ok(CellValue::Number(61.0))
@@ -452,27 +455,33 @@ fn test_workday_function() {
 
     model.evaluate();
 
-    // Basic functionality
-    assert_eq!(model._get_text("A1"), *"44561"); // 1 day forward
-    assert_eq!(model._get_text("A2"), *"44560"); // 1 day backward
-    assert_eq!(model._get_text("A3"), *"44561"); // 0 days
-    assert_eq!(model._get_text("A4"), *"44567"); // 5 days forward
+    // Basic functionality — results are formatted as locale dates (en-US M/d/yy)
+    assert_eq!(model._get_text("A1"), *"12/31/21"); // Dec 31 2021, 1 day forward
+    assert_eq!(model._get_text("A2"), *"12/30/21"); // Dec 30 2021, 1 day backward
+    assert_eq!(model._get_text("A3"), *"12/31/21"); // 0 days
+    assert_eq!(model._get_text("A4"), *"1/6/22"); // Jan 6 2022, 5 days forward
 
     // With holidays
-    assert_eq!(model._get_text("A5"), *"44564"); // Skip holiday, go to Monday
-    assert_eq!(model._get_text("A6"), *"44566"); // Skip multiple holidays
+    assert_eq!(model._get_text("A5"), *"1/3/22"); // Jan 3 2022, skip Dec 31 holiday
+    assert_eq!(model._get_text("A6"), *"1/5/22"); // Jan 5 2022, skip multiple holidays
 
     // Weekend starts
-    assert_eq!(model._get_text("A7"), *"44564"); // From Saturday
-    assert_eq!(model._get_text("A8"), *"44564"); // From Sunday
+    assert_eq!(model._get_text("A7"), *"1/3/22"); // Jan 3 2022, from Saturday
+    assert_eq!(model._get_text("A8"), *"1/3/22"); // Jan 3 2022, from Sunday
 
     // Negative workdays
-    assert_eq!(model._get_text("A9"), *"44560"); // 3 days back
-    assert_eq!(model._get_text("A10"), *"44557"); // 5 days back with holidays
+    assert_eq!(model._get_text("A9"), *"12/30/21"); // Dec 30 2021, 3 days back
+    assert_eq!(model._get_text("A10"), *"12/27/21"); // Dec 27 2021, 5 days back with holidays
 
-    // Edge cases
-    assert_eq!(model._get_text("A11"), *"2"); // Early date
-    assert_eq!(model._get_text("A12"), *"100014"); // Large numbers
+    // Edge cases — use raw value to avoid dependence on far-future date strings
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A11"),
+        Ok(CellValue::Number(2.0))
+    ); // Early date
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A12"),
+        Ok(CellValue::Number(100014.0))
+    ); // Large numbers
 
     // Error cases
     assert_eq!(model._get_text("A13"), *"#ERROR!");
@@ -510,19 +519,19 @@ fn test_workday_intl_function() {
 
     model.evaluate();
 
-    // Weekend mask functionality
-    assert_eq!(model._get_text("A1"), *"44561"); // Standard weekend
-    assert_eq!(model._get_text("A2"), *"44561"); // Sun-Mon weekend
-    assert_eq!(model._get_text("A3"), *"44561"); // Sunday only
-    assert_eq!(model._get_text("A4"), *"44561"); // Mon-Tue weekend
+    // Weekend mask functionality — results formatted as locale dates (en-US M/d/yy)
+    assert_eq!(model._get_text("A1"), *"12/31/21"); // Dec 31 2021, standard weekend
+    assert_eq!(model._get_text("A2"), *"12/31/21"); // Dec 31 2021, Sun-Mon weekend
+    assert_eq!(model._get_text("A3"), *"12/31/21"); // Dec 31 2021, Sunday only
+    assert_eq!(model._get_text("A4"), *"12/31/21"); // Dec 31 2021, Mon-Tue weekend
 
     // With holidays
-    assert_eq!(model._get_text("A5"), *"44565"); // Skip holiday + standard weekend
-    assert_eq!(model._get_text("A6"), *"44564"); // Skip holiday + Fri-Sat weekend
+    assert_eq!(model._get_text("A5"), *"1/4/22"); // Jan 4 2022, skip holiday + standard weekend
+    assert_eq!(model._get_text("A6"), *"1/3/22"); // Jan 3 2022, skip holiday + Fri-Sat weekend
 
     // Edge cases
-    assert_eq!(model._get_text("A7"), *"44561"); // Zero days
-    assert_eq!(model._get_text("A8"), *"44564"); // Negative days
+    assert_eq!(model._get_text("A7"), *"12/31/21"); // Dec 31 2021, zero days
+    assert_eq!(model._get_text("A8"), *"1/3/22"); // Jan 3 2022, negative days
 
     // Error cases
     assert_eq!(model._get_text("A9"), *"#ERROR!");
@@ -597,4 +606,83 @@ fn test_isoweeknum_function() {
     // Error cases
     assert_eq!(model._get_text("A6"), *"#ERROR!");
     assert_eq!(model._get_text("A7"), *"#NUM!");
+}
+
+fn en_gb_model<'a>() -> Model<'a> {
+    Model::new_empty("model", "en-GB", "UTC", "en").unwrap()
+}
+
+#[test]
+fn edate_formats_as_locale_date() {
+    // =EDATE(DATE(2025,1,15), 1) → Feb 15 2025
+    let mut model = new_empty_model();
+    model._set("A1", "=EDATE(DATE(2025,1,15),1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2/15/25"); // en-US M/d/yy
+
+    model.set_locale("en-GB").unwrap();
+    assert_eq!(model._get_text("A1"), "15/02/2025"); // en-GB dd/MM/yyyy
+}
+
+#[test]
+fn eomonth_formats_as_locale_date() {
+    // =EOMONTH(DATE(2025,1,1), 0) → Jan 31 2025
+    let mut model = new_empty_model();
+    model._set("A1", "=EOMONTH(DATE(2025,1,1),0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1/31/25"); // en-US
+
+    model.set_locale("en-GB").unwrap();
+    assert_eq!(model._get_text("A1"), "31/01/2025"); // en-GB
+}
+
+#[test]
+fn workday_formats_as_locale_date() {
+    // =WORKDAY(DATE(2025,1,10), 5) → Jan 17 2025 (skipping Sat/Sun)
+    let mut model = new_empty_model();
+    model._set("A1", "=WORKDAY(DATE(2025,1,10),5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1/17/25"); // en-US
+
+    model.set_locale("en-GB").unwrap();
+    assert_eq!(model._get_text("A1"), "17/01/2025"); // en-GB
+}
+
+#[test]
+fn workday_intl_formats_as_locale_date() {
+    // =WORKDAY.INTL(DATE(2025,1,10), 5, 1) → same as WORKDAY with Sat/Sun weekend
+    let mut model = new_empty_model();
+    model._set("A1", "=WORKDAY.INTL(DATE(2025,1,10),5,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1/17/25"); // en-US
+
+    model.set_locale("en-GB").unwrap();
+    assert_eq!(model._get_text("A1"), "17/01/2025"); // en-GB
+}
+
+#[test]
+fn datevalue_formats_as_locale_date() {
+    // =DATEVALUE("01/15/2025") in en-US → January 15, 2025
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEVALUE(\"01/15/2025\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1/15/25"); // en-US formatted as date
+
+    model.set_locale("en-GB").unwrap();
+    assert_eq!(model._get_text("A1"), "15/01/2025"); // same serial, day-first display
+}
+
+#[test]
+fn datevalue_locale_day_first_parsing() {
+    // In en-GB, "01/03/2025" is day-first → March 1, 2025
+    let mut model = en_gb_model();
+    model._set("A1", "=DATEVALUE(\"01/03/2025\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "01/03/2025"); // March 1 in en-GB
+
+    // Same string in en-US is month-first → January 3, 2025
+    let mut us_model = new_empty_model();
+    us_model._set("A1", "=DATEVALUE(\"01/03/2025\")");
+    us_model.evaluate();
+    assert_eq!(us_model._get_text("A1"), "1/3/25"); // January 3 in en-US
 }

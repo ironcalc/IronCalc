@@ -1,6 +1,10 @@
 use chrono::Datelike;
 
-use crate::{locale::Locale, number_format::to_precision};
+use crate::{
+    locale::Locale,
+    number_format::{to_precision, DefaultFmts},
+    types::NumFmtSpec,
+};
 
 use super::{
     dates::{date_to_serial_number, from_excel_date},
@@ -744,8 +748,9 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 //
 // NOTE 1: The separator has to be the same
 // NOTE 2: In some engines "2/3" is implemented ad "2/March of the present year"
-// NOTE 3: I did not implement the "short date"
-fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
+// [x] NOTE 3: I did not implement the "short date"
+
+fn parse_date(value: &str, locale: &Locale) -> Result<(i32, Option<String>), String> {
     let separator = if value.contains('/') {
         '/'
     } else if value.contains('-') {
@@ -758,7 +763,6 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
 
     let parts: Vec<&str> = value.split(separator).collect();
     let mut is_iso_date = false;
-    let mut day_first = true;
     let (day_str, month_str, year_str) = if parts.len() == 3 {
         if parts[0].len() == 4 {
             // ISO date  yyyy-mm-dd
@@ -772,11 +776,9 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
             (parts[2], parts[1], parts[0])
         } else {
             //  localized date dd-mm-yyyy or mm-dd-yyyy
-            // TODO: A bit hacky, but works for now
-            if locale.dates.date_formats.short.starts_with('d') {
+            if locale.day_first() {
                 (parts[0], parts[1], parts[2])
             } else {
-                day_first = false;
                 (parts[1], parts[0], parts[2])
             }
         }
@@ -785,41 +787,32 @@ fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
     };
     let (day, day_format) = parse_day(day_str)?;
     let (month, month_format) = parse_month(month_str, locale)?;
-    let (year, year_format) = parse_year(year_str)?;
+    let (year, _year_format) = parse_year(year_str)?;
     let serial_number = match date_to_serial_number(day, month, year) {
         Ok(n) => n,
         Err(_) => return Err("Not a valid date".to_string()),
     };
     if is_iso_date {
+        // ISO date — locale-independent; preserve the literal format string.
         Ok((
             serial_number,
-            format!("yyyy{separator}{month_format}{separator}{day_format}"),
-        ))
-    } else if !day_first {
-        Ok((
-            serial_number,
-            format!("{month_format}{separator}{day_format}{separator}{year_format}"),
+            Some(format!(
+                "yyyy{separator}{month_format}{separator}{day_format}"
+            )),
         ))
     } else {
-        Ok((
-            serial_number,
-            format!("{day_format}{separator}{month_format}{separator}{year_format}"),
-        ))
+        // Simple locale date: caller stores as numFmtId 14.
+        Ok((serial_number, None))
     }
 }
 
-/// Parses a formatted number, returning the numeric value together with the format
-/// Uses heuristics to guess the format string
-/// "$ 123,345.678" => (123345.678, "$#,##0.00")
-/// "30.34%" => (0.3034, "0.00%")
-/// 100€ => (100, "100€")
+/// Parses a formatted number; returns the value and [`NumFmtSpec`] to apply, or `Err`.
 pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
     locale: &Locale,
-) -> Result<(f64, Option<String>), String> {
+) -> Result<(f64, Option<NumFmtSpec>), String> {
     let value = original.trim();
-    let scientific_format = "0.00E+00";
 
     let (decimal_separator, group_separator) = if locale.numbers.symbols.decimal == "," {
         (b',', b'.')
@@ -831,15 +824,24 @@ pub(crate) fn parse_formatted_number(
     if let Some(p) = value.strip_suffix('%') {
         let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
         if options.is_scientific {
-            return Ok((f / 100.0, Some(scientific_format.to_string())));
+            return Ok((
+                f / 100.0,
+                Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
+            ));
         }
         // We ignore the separator
         if options.decimal_digits > 0 {
             // Percentage format with decimals
-            return Ok((f / 100.0, Some("#,##0.00%".to_string())));
+            return Ok((
+                f / 100.0,
+                Some(NumFmtSpec::Literal(DefaultFmts::percent_dec())),
+            ));
         }
         // Percentage format standard
-        return Ok((f / 100.0, Some("#,##0%".to_string())));
+        return Ok((
+            f / 100.0,
+            Some(NumFmtSpec::Literal(DefaultFmts::percent_int())),
+        ));
     }
 
     // check if it is a currency in currencies
@@ -847,52 +849,92 @@ pub(crate) fn parse_formatted_number(
         if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
+                return Ok((
+                    f,
+                    Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
+                ));
             }
             if options.decimal_digits > 0 {
-                return Ok((-f, Some(format!("{currency}#,##0.00"))));
+                return Ok((
+                    -f,
+                    Some(NumFmtSpec::Literal(format!(
+                        "{currency}{}",
+                        DefaultFmts::comma_dec()
+                    ))),
+                ));
             }
-            return Ok((-f, Some(format!("{currency}#,##0"))));
+            return Ok((
+                -f,
+                Some(NumFmtSpec::Literal(format!(
+                    "{currency}{}",
+                    DefaultFmts::comma_int()
+                ))),
+            ));
         } else if let Some(p) = value.strip_prefix(currency) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
+                return Ok((
+                    f,
+                    Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
+                ));
             }
             if options.decimal_digits > 0 {
-                return Ok((f, Some(format!("{currency}#,##0.00"))));
+                return Ok((
+                    f,
+                    Some(NumFmtSpec::Literal(format!(
+                        "{currency}{}",
+                        DefaultFmts::comma_dec()
+                    ))),
+                ));
             }
-            return Ok((f, Some(format!("{currency}#,##0"))));
+            return Ok((
+                f,
+                Some(NumFmtSpec::Literal(format!(
+                    "{currency}{}",
+                    DefaultFmts::comma_int()
+                ))),
+            ));
         } else if let Some(p) = value.strip_suffix(currency) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
+                return Ok((
+                    f,
+                    Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
+                ));
             }
             if options.decimal_digits > 0 {
-                let currency_format = &format!("#,##0.00{currency}");
-                return Ok((f, Some(currency_format.to_string())));
+                let currency_format = format!("{}{currency}", DefaultFmts::comma_dec());
+                return Ok((f, Some(NumFmtSpec::Literal(currency_format))));
             }
-            let currency_format = &format!("#,##0{currency}");
-            return Ok((f, Some(currency_format.to_string())));
+            let currency_format = format!("{}{currency}", DefaultFmts::comma_int());
+            return Ok((f, Some(NumFmtSpec::Literal(currency_format))));
         }
     }
 
     // check if it is a date. NOTE: we don't trim the original here
-    if let Ok((serial_number, format)) = parse_date(original, locale) {
-        return Ok((serial_number as f64, Some(format)));
+    if let Ok((serial_number, fmt_opt)) = parse_date(original, locale) {
+        let spec = match fmt_opt {
+            Some(fmt) => NumFmtSpec::Literal(fmt),
+            None => NumFmtSpec::LocaleDate,
+        };
+        return Ok((serial_number as f64, Some(spec)));
     }
 
     // Lastly we check if it is a number
     let (f, options) = parse_number(value, decimal_separator, group_separator)?;
     if options.is_scientific {
-        return Ok((f, Some(scientific_format.to_string())));
+        return Ok((
+            f,
+            Some(NumFmtSpec::Literal(DefaultFmts::scientific_format())),
+        ));
     }
     if options.has_commas {
         if options.decimal_digits > 0 {
             // group separator and two decimal points
-            return Ok((f, Some("#,##0.00".to_string())));
+            return Ok((f, Some(NumFmtSpec::Literal(DefaultFmts::comma_dec()))));
         }
         // Group separator and no decimal points
-        return Ok((f, Some("#,##0".to_string())));
+        return Ok((f, Some(NumFmtSpec::Literal(DefaultFmts::comma_int()))));
     }
     Ok((f, None))
 }

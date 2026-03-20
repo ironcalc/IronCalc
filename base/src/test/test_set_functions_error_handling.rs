@@ -417,7 +417,7 @@ fn workbook_styles_get_style_error_handling() {
     // case 1 : Invalid index
     assert_eq!(
         model.workbook.styles.get_style(15),
-        Err("Invalid index provided".to_string())
+        Err("Invalid style index: 15".to_string())
     );
 }
 
@@ -428,7 +428,7 @@ fn workbook_styles_get_style_without_quote_prefix_error_handling() {
     // case 1 : Invalid index
     assert_eq!(
         model.workbook.styles.get_style_without_quote_prefix(15),
-        Err("Invalid index provided".to_string())
+        Err("Invalid style index: 15".to_string())
     );
 }
 
@@ -442,7 +442,7 @@ fn workbook_styles_get_style_with_format_error_handling() {
             .workbook
             .styles
             .get_style_with_format(15, "dummy_num_format"),
-        Err("Invalid index provided".to_string())
+        Err("Invalid style index: 15".to_string())
     );
 }
 
@@ -453,6 +453,6 @@ fn workbook_styles_get_style_with_quote_prefix_handling() {
     // case 1 : Invalid index
     assert_eq!(
         model.workbook.styles.get_style_with_quote_prefix(15),
-        Err("Invalid index provided".to_string())
+        Err("Invalid style index: 15".to_string())
     );
 }

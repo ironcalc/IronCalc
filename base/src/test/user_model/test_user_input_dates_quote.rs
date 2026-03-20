@@ -23,7 +23,7 @@ fn dates_format() {
     user_model.set_user_input(0, 2, 1, "2024-06-01").unwrap();
     // format A1 as date
     let style = user_model.get_cell_style(0, 2, 1).unwrap();
-    assert_eq!(style.num_fmt, "yyyy-mm-dd");
+    assert_eq!(style.num_fmt.format_code, "yyyy-mm-dd");
     let range = Area {
         sheet: 0,
         row: 1,
