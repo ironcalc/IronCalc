@@ -87,16 +87,16 @@ const StyledMenuItem = styled(MenuItem)({
   borderRadius: 4,
 });
 
-const ItemColor = styled("div")`
-  width: 12px;
-  height: 12px;
-  border-radius: 4px;
-  margin-right: 8px;
-`;
+const ItemColor = styled("div")({
+  width: 12,
+  height: 12,
+  borderRadius: 4,
+  marginRight: 8,
+});
 
-const ItemName = styled("div")`
-  font-size: 12px;
-  color: #333;
-`;
+const ItemName = styled("div")({
+  fontSize: 12,
+  color: "#333",
+});
 
 export default SheetListMenu;

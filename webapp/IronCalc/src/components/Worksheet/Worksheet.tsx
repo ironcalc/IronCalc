@@ -628,45 +628,46 @@ const Worksheet = forwardRef(
   },
 );
 
-const Spacer = styled("div")`
-  position: absolute;
-  height: 5000px;
-  width: 5000px;
-`;
+const Spacer = styled("div")({
+  position: "absolute",
+  height: 5000,
+  width: 5000,
+});
 
-const SheetContainer = styled("div")`
-  position: sticky;
-  top: 0px;
-  left: 0px;
-  height: 100%;
+const SheetContainer = styled("div")(({ theme }) => ({
+  position: "sticky",
+  top: 0,
+  left: 0,
+  height: "100%",
 
-  .column-resize-handle {
-    position: absolute;
-    top: 0px;
-    width: 3px;
-    opacity: 0;
-    background: ${(props) => props.theme.palette.sheet.outlineColor};
-    border-radius: 5px;
-    cursor: col-resize;
-  }
+  "& .column-resize-handle": {
+    position: "absolute",
+    top: 0,
+    width: 3,
+    opacity: 0,
+    background: theme.palette.sheet.outlineColor,
+    borderRadius: 5,
+    cursor: "col-resize",
+  },
 
-  .column-resize-handle:hover {
-    opacity: 1;
-  }
-  .row-resize-handle {
-    position: absolute;
-    left: 0px;
-    height: 3px;
-    opacity: 0;
-    background: ${(props) => props.theme.palette.sheet.outlineColor};
-    border-radius: 5px;
-    cursor: row-resize;
-  }
+  "& .column-resize-handle:hover": {
+    opacity: 1,
+  },
 
-  .row-resize-handle:hover {
-    opacity: 1;
-  }
-`;
+  "& .row-resize-handle": {
+    position: "absolute",
+    left: 0,
+    height: 3,
+    opacity: 0,
+    background: theme.palette.sheet.outlineColor,
+    borderRadius: 5,
+    cursor: "row-resize",
+  },
+
+  "& .row-resize-handle:hover": {
+    opacity: 1,
+  },
+}));
 
 const Wrapper = styled("div")({
   position: "absolute",
@@ -677,89 +678,89 @@ const Wrapper = styled("div")({
   bottom: NAVIGATION_HEIGHT + 1,
   overscrollBehavior: "none",
 });
+const SheetCanvas = styled("canvas")({
+  position: "relative",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 40,
+});
 
-const SheetCanvas = styled("canvas")`
-  position: relative;
-  top: 0px;
-  left: 0px;
-  right: 0px;
-  bottom: 40px;
-`;
+const ColumnResizeGuide = styled("div")(({ theme }) => ({
+  position: "absolute",
+  top: 0,
+  display: "none",
+  height: "100%",
+  width: 0,
+  borderLeft: `1px dashed ${theme.palette.sheet.outlineColor}`,
+}));
 
-const ColumnResizeGuide = styled("div")`
-  position: absolute;
-  top: 0px;
-  display: none;
-  height: 100%;
-  width: 0px;
-  border-left: 1px dashed ${(props) => props.theme.palette.sheet.outlineColor};
-`;
+const ColumnHeaders = styled("div")({
+  position: "absolute",
+  left: 0,
+  top: 0,
+  overflow: "hidden",
+  display: "flex",
 
-const ColumnHeaders = styled("div")`
-  position: absolute;
-  left: 0px;
-  top: 0px;
-  overflow: hidden;
-  display: flex;
-  & .column-header {
-    display: inline-block;
-    text-align: center;
-    overflow: hidden;
-    height: 100%;
-    user-select: none;
-  }
-`;
+  "& .column-header": {
+    display: "inline-block",
+    textAlign: "center",
+    overflow: "hidden",
+    height: "100%",
+    userSelect: "none",
+  },
+});
 
-const RowResizeGuide = styled("div")`
-  position: absolute;
-  display: none;
-  left: 0px;
-  height: 0px;
-  width: 100%;
-  border-top: 1px dashed ${(props) => props.theme.palette.sheet.outlineColor};
-`;
+const RowResizeGuide = styled("div")(({ theme }) => ({
+  position: "absolute",
+  display: "none",
+  left: 0,
+  height: 0,
+  width: "100%",
+  borderTop: `1px dashed ${theme.palette.sheet.outlineColor}`,
+}));
 
-const AreaOutline = styled("div")`
-  position: absolute;
-  border: 0px solid ${(props) => props.theme.palette.sheet.outlineColor};
-  border-radius: 1px;
-  background-color: ${(props) => props.theme.palette.sheet.outlineBackgroundColor};
-`;
+const AreaOutline = styled("div")(({ theme }) => ({
+  position: "absolute",
+  border: `0px solid ${theme.palette.sheet.outlineColor}`,
+  borderRadius: 1,
+  backgroundColor: theme.palette.sheet.outlineBackgroundColor,
+}));
 
-const CellOutline = styled("div")`
-  position: absolute;
-  border: 2px solid ${(props) => props.theme.palette.sheet.outlineColor};
-  border-radius: 3px;
-  word-break: break-word;
-  font-size: 13px;
-  display: flex;
-  box-shadow: inset 0 0 0 1px white;
-`;
+const CellOutline = styled("div")(({ theme }) => ({
+  position: "absolute",
+  border: `2px solid ${theme.palette.sheet.outlineColor}`,
+  borderRadius: 3,
+  wordBreak: "break-word",
+  fontSize: 13,
+  display: "flex",
+  boxShadow: "inset 0 0 0 1px white",
+}));
 
-const ExtendToOutline = styled("div")`
-  position: absolute;
-  border: 1px dashed ${(props) => props.theme.palette.sheet.outlineColor};
-  border-radius: 3px;
-`;
+const ExtendToOutline = styled("div")(({ theme }) => ({
+  position: "absolute",
+  border: `1px dashed ${theme.palette.sheet.outlineColor}`,
+  borderRadius: 3,
+}));
 
-const EditorWrapper = styled("div")`
-  position: absolute;
-  width: 100%;
-  padding: 0px;
-  border-width: 0px;
-  outline: none;
-  resize: none;
-  white-space: pre-wrap;
-  vertical-align: bottom;
-  overflow: hidden;
-  text-align: left;
-  outline: 3px solid ${(props) => props.theme.palette.sheet.outlineEditingColor};
-  z-index: 1000;
-  span {
-    min-width: 1px;
-  }
-  font-family: monospace;
-  border: 2px solid ${(props) => props.theme.palette.sheet.outlineColor};
-`;
+const EditorWrapper = styled("div")(({ theme }) => ({
+  position: "absolute",
+  width: "100%",
+  padding: 0,
+  borderWidth: 0,
+  outline: `3px solid ${theme.palette.sheet.outlineEditingColor}`,
+  resize: "none",
+  whiteSpace: "pre-wrap",
+  verticalAlign: "bottom",
+  overflow: "hidden",
+  textAlign: "left",
+  zIndex: 1000,
+  fontFamily: "monospace",
+  border: `2px solid ${theme.palette.sheet.outlineColor}`,
+
+  "& span": {
+    minWidth: 1,
+  },
+}));
 
 export default Worksheet;
