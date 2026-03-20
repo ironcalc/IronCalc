@@ -175,61 +175,61 @@ const FormatMenu = (properties: FormatMenuProps) => {
   );
 };
 
-const StyledMenu = styled(Menu)`
-  & .MuiPaper-root {
-    border-radius: 8px;
-    padding: 4px 0px;
-    margin-left: -4px; // Starting with a small offset
-  }
-  & .MuiList-root {
-    padding: 0;
-  }
-`;
+const StyledMenu = styled(Menu)({
+  "& .MuiPaper-root": {
+    borderRadius: 8,
+    padding: "4px 0px",
+    marginLeft: -4, // Starting with a small offset
+  },
+  "& .MuiList-root": {
+    padding: 0,
+  },
+});
 
-const MenuItemWrapper = styled(MenuItem)`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  width: calc(100% - 8px);
-  min-width: 172px;
-  margin: 0px 4px;
-  border-radius: 4px;
-  padding: 8px;
-  height: 32px;
-`;
+const MenuItemWrapper = styled(MenuItem)({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  fontSize: 12,
+  width: "calc(100% - 8px)",
+  minWidth: 172,
+  margin: "0px 4px",
+  borderRadius: 4,
+  padding: 8,
+  height: 32,
+});
 
-const ChildrenWrapper = styled("div")`
-  display: flex;
-`;
+const ChildrenWrapper = styled("div")({
+  display: "flex",
+});
 
-const MenuDivider = styled("div")`
-  width: 100%;
-  margin: auto;
-  margin-top: 4px;
-  margin-bottom: 4px;
-  border-top: 1px solid #eeeeee;
-`;
+const MenuDivider = styled("div")({
+  width: "100%",
+  margin: "auto",
+  marginTop: 4,
+  marginBottom: 4,
+  borderTop: "1px solid #eeeeee",
+});
 
 const CheckIcon = styled(Check, {
   shouldForwardProp: (prop) => prop !== "$active",
-})<{ $active: boolean }>`
-  width: 16px;
-  height: 16px;
-  color: ${(props) => (props.$active ? "currentColor" : "transparent")};
-  margin-right: 8px;
-  flex-shrink: 0;
-`;
+})<{ $active: boolean }>(({ $active }) => ({
+  width: 16,
+  height: 16,
+  color: $active ? "currentColor" : "transparent",
+  marginRight: 8,
+  flexShrink: 0,
+}));
 
-const MenuItemText = styled("div")`
-  color: #000;
-  display: flex;
-  align-items: center;
-`;
+const MenuItemText = styled("div")({
+  color: "#000",
+  display: "flex",
+  alignItems: "center",
+});
 
-const MenuItemExample = styled("div")`
-  color: #bdbdbd;
-  margin-left: 20px;
-`;
+const MenuItemExample = styled("div")({
+  color: "#bdbdbd",
+  marginLeft: 20,
+});
 
 export default FormatMenu;
