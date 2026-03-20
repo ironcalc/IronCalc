@@ -1183,7 +1183,7 @@ export default class WorksheetCanvas {
           ? this.theme.palette.common.white
           : this.theme.palette.sheet.headerSelectedColor
         : this.theme.palette.sheet.headerTextColor;
-      context.font = `bold 12px ${this.theme.palette.sheet.headerFontFamily}`;
+      context.font = `bold ${this.theme.palette.sheet.headerFontSize}px ${this.theme.palette.sheet.headerFontFamily}`;
       context.fillText(
         `${row}`,
         headerColumnWidth / 2,
@@ -1229,7 +1229,7 @@ export default class WorksheetCanvas {
     ))
       separator.remove();
     columnHeaders.style.fontFamily = this.theme.palette.sheet.headerFontFamily;
-    columnHeaders.style.fontSize = "12px";
+    columnHeaders.style.fontSize = `${this.theme.palette.sheet.headerFontSize}px`;
     columnHeaders.style.height = `${headerRowHeight}px`;
     columnHeaders.style.lineHeight = `${headerRowHeight}px`;
     columnHeaders.style.left = `${headerColumnWidth}px`;
@@ -1249,7 +1249,7 @@ export default class WorksheetCanvas {
       const div = document.createElement("div");
       div.className = "frozen-column-separator";
       div.style.width = `${frozenSeparatorWidth}px`;
-      div.style.height = `${headerRowHeight}`;
+      div.style.height = `${headerRowHeight}px`;
       div.style.display = "inline-block";
       div.style.backgroundColor = this.theme.palette.sheet.gridSeparatorColor;
       this.columnHeaders.insertBefore(div, null);

@@ -78,7 +78,9 @@ export const defaultTheme = createTheme({
       outlineEditingColor: "#FBE0C9",
       outlineBackgroundColor: "#F2994A1A",
       defaultCellFontFamily: "Inter, 'Adjusted Arial Fallback', sans-serif",
-      headerFontFamily: "Inter, 'Adjusted Arial Fallback', sans-serif",
+      headerFontFamily:
+        "bold 12px Inter, 'Adjusted Arial Fallback', sans-serif",
+      headerFontSize: 12,
     },
   },
 });
