@@ -116,7 +116,13 @@ function SheetTabBar(props: SheetTabBarProps) {
         <LogoLink
           variant="ghost"
           size="sm"
-          onClick={() => window.open("https://www.ironcalc.com", "_blank")}
+          onClick={() =>
+            window.open(
+              "https://www.ironcalc.com",
+              "_blank",
+              "noopener,noreferrer",
+            )
+          }
         >
           <IronCalcLogo />
         </LogoLink>
