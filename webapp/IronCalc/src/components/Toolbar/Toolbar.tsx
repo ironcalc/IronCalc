@@ -605,57 +605,6 @@ const ToolbarContainer = styled("div")({
   },
 });
 
-type TypeButtonProperties = { $pressed: boolean };
-export const StyledButton = styled("button", {
-  shouldForwardProp: (prop) => prop !== "$pressed",
-})<TypeButtonProperties>(({ theme, disabled, $pressed }) => {
-  const result = {
-    width: 24,
-    minWidth: 24,
-    height: 24,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 12,
-    border: `0px solid ${theme.palette.common.white}`,
-    borderRadius: 4,
-    transition: "all 0.2s",
-    outline: `1px solid ${theme.palette.common.white}`,
-    cursor: "pointer",
-    backgroundColor: theme.palette.common.white,
-    padding: 0,
-    position: "relative" as const,
-    "& svg": {
-      width: 16,
-      height: 16,
-    },
-  };
-
-  if (disabled) {
-    return {
-      ...result,
-      color: theme.palette.grey[400],
-      cursor: "default",
-    };
-  }
-
-  return {
-    ...result,
-    color: theme.palette.grey[900],
-    backgroundColor: $pressed
-      ? theme.palette.grey[300]
-      : theme.palette.common.white,
-    "&:hover": {
-      transition: "all 0.2s",
-      outline: `1px solid ${theme.palette.grey[200]}`,
-    },
-    "&:active": {
-      backgroundColor: theme.palette.grey[300],
-      outline: `1px solid ${theme.palette.grey[300]}`,
-    },
-  };
-});
-
 const ColorLine = styled("div")<{ color: string }>(({ color }) => ({
   height: 3,
   width: 16,
