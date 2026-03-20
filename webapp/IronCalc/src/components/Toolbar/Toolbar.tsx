@@ -171,7 +171,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.undo")}>
             <IconButton
               icon={<Undo2 />}
-              aria-label="Undo"
+              aria-label={t("toolbar.undo")}
               onClick={properties.onUndo}
               disabled={!properties.canUndo}
             />
@@ -179,7 +179,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.redo")}>
             <IconButton
               icon={<Redo2 />}
-              aria-label="Redo"
+              aria-label={t("toolbar.redo")}
               onClick={properties.onRedo}
               disabled={!properties.canRedo}
             />
@@ -193,14 +193,14 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.copy_styles")}>
             <IconButton
               icon={<PaintRoller />}
-              aria-label="Copy Styles"
+              aria-label={t("toolbar.copy_styles")}
               onClick={properties.onCopyStyles}
             />
           </Tooltip>
           <Tooltip title={t("toolbar.clear_formatting")}>
             <IconButton
               icon={<RemoveFormatting />}
-              aria-label="Clear Formatting"
+              aria-label={t("toolbar.clear_formatting")}
               onClick={() => {
                 properties.onClearFormatting();
               }}
@@ -216,7 +216,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.currency")}>
             <IconButton
               icon={currencyIcon}
-              aria-label="Currency"
+              aria-label={t("toolbar.currency")}
               onClick={(): void => {
                 properties.onNumberFormatPicked(
                   properties.formatOptions.currency_format,
@@ -228,7 +228,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.percentage")}>
             <IconButton
               icon={<Percent />}
-              aria-label="Percentage"
+              aria-label={t("toolbar.percentage")}
               onClick={(): void => {
                 properties.onNumberFormatPicked(NumberFormats.PERCENTAGE);
               }}
@@ -238,7 +238,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.decimal_places_decrease")}>
             <IconButton
               icon={<DecimalsArrowLeft />}
-              aria-label="Decrease Decimal Places"
+              aria-label={t("toolbar.decimal_places_decrease")}
               onClick={(): void => {
                 properties.onNumberFormatPicked(
                   decreaseDecimalPlaces(properties.numFmt),
@@ -250,7 +250,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.decimal_places_increase")}>
             <IconButton
               icon={<DecimalsArrowRight />}
-              aria-label="Increase Decimal Places"
+              aria-label={t("toolbar.decimal_places_increase")}
               onClick={(): void => {
                 properties.onNumberFormatPicked(
                   increaseDecimalPlaces(properties.numFmt),
@@ -292,7 +292,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.decrease_font_size")}>
             <IconButton
               icon={<Minus />}
-              aria-label="Decrease Font Size"
+              aria-label={t("toolbar.decrease_font_size")}
               onClick={() => {
                 properties.onIncreaseFontSize(-1);
               }}
@@ -303,7 +303,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.increase_font_size")}>
             <IconButton
               icon={<Plus />}
-              aria-label="Increase Font Size"
+              aria-label={t("toolbar.increase_font_size")}
               onClick={() => {
                 properties.onIncreaseFontSize(1);
               }}
@@ -319,7 +319,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.bold")}>
             <IconButton
               icon={<Bold />}
-              aria-label="Bold"
+              aria-label={t("toolbar.bold")}
               pressed={properties.bold}
               onClick={() => properties.onToggleBold(!properties.bold)}
               disabled={!canEdit}
@@ -328,7 +328,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.italic")}>
             <IconButton
               icon={<Italic />}
-              aria-label="Italic"
+              aria-label={t("toolbar.italic")}
               pressed={properties.italic}
               onClick={() => properties.onToggleItalic(!properties.italic)}
               disabled={!canEdit}
@@ -337,7 +337,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.underline")}>
             <IconButton
               icon={<Underline />}
-              aria-label="Underline"
+              aria-label={t("toolbar.underline")}
               pressed={properties.underline}
               onClick={() =>
                 properties.onToggleUnderline(!properties.underline)
@@ -348,7 +348,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.strike_through")}>
             <IconButton
               icon={<Strikethrough />}
-              aria-label="Strike Through"
+              aria-label={t("toolbar.strike_through")}
               pressed={properties.strike}
               onClick={() => properties.onToggleStrike(!properties.strike)}
               disabled={!canEdit}
@@ -412,7 +412,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.align_left")}>
             <IconButton
               icon={<AlignLeft />}
-              aria-label="Align Left"
+              aria-label={t("toolbar.align_left")}
               pressed={properties.horizontalAlign === "left"}
               onClick={() =>
                 properties.onToggleHorizontalAlign(
@@ -425,7 +425,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.align_center")}>
             <IconButton
               icon={<AlignCenter />}
-              aria-label="Align Center"
+              aria-label={t("toolbar.align_center")}
               pressed={properties.horizontalAlign === "center"}
               onClick={() =>
                 properties.onToggleHorizontalAlign(
@@ -440,7 +440,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.align_right")}>
             <IconButton
               icon={<AlignRight />}
-              aria-label="Align Right"
+              aria-label={t("toolbar.align_right")}
               pressed={properties.horizontalAlign === "right"}
               onClick={() =>
                 properties.onToggleHorizontalAlign(
@@ -453,7 +453,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.vertical_align_top")}>
             <IconButton
               icon={<ArrowUpToLine />}
-              aria-label="Align Top"
+              aria-label={t("toolbar.vertical_align_top")}
               pressed={properties.verticalAlign === "top"}
               onClick={() => properties.onToggleVerticalAlign("top")}
               disabled={!canEdit}
@@ -462,7 +462,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.vertical_align_middle")}>
             <IconButton
               icon={<ArrowMiddleFromLine />}
-              aria-label="Align Middle"
+              aria-label={t("toolbar.vertical_align_middle")}
               pressed={properties.verticalAlign === "center"}
               onClick={() => properties.onToggleVerticalAlign("center")}
               disabled={!canEdit}
@@ -471,7 +471,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.vertical_align_bottom")}>
             <IconButton
               icon={<ArrowDownToLine />}
-              aria-label="Align Bottom"
+              aria-label={t("toolbar.vertical_align_bottom")}
               pressed={properties.verticalAlign === "bottom"}
               onClick={() => properties.onToggleVerticalAlign("bottom")}
               disabled={!canEdit}
@@ -480,7 +480,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.wrap_text")}>
             <IconButton
               icon={<WrapText />}
-              aria-label="Wrap Text"
+              aria-label={t("toolbar.wrap_text")}
               pressed={properties.wrapText}
               onClick={() => properties.onToggleWrapText(!properties.wrapText)}
               disabled={!canEdit}
@@ -495,7 +495,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.show_hide_grid_lines")}>
             <IconButton
               icon={properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
-              aria-label="Show/Hide Grid Lines"
+              aria-label={t("toolbar.show_hide_grid_lines")}
               onClick={() =>
                 properties.onToggleShowGridLines(!properties.showGridLines)
               }
@@ -505,7 +505,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.selected_png")}>
             <IconButton
               icon={<ImageDown />}
-              aria-label="Download PNG"
+              aria-label={t("toolbar.download_png")}
               onClick={() => properties.onDownloadPNG()}
               disabled={!canEdit}
             />
