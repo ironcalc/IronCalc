@@ -1,3 +1,4 @@
+import type { Theme } from "@emotion/react";
 import type { Model } from "@ironcalc/wasm";
 import { createTheme, type ThemeOptions, ThemeProvider } from "@mui/material";
 import { forwardRef, useImperativeHandle } from "react";
@@ -5,11 +6,12 @@ import { I18nextProvider } from "react-i18next";
 import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
 import i18n from "./i18n";
-import { theme } from "./theme.ts";
+import { defaultTheme } from "./theme.ts";
 
 interface IronCalcProperties {
   model: Model;
-  theme?: ThemeOptions;
+  theme?: Theme;
+  themeOptions?: ThemeOptions;
 }
 
 export interface IronCalcHandle {
@@ -27,8 +29,9 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
         }
       },
     }));
+    const theme = properties.theme ?? defaultTheme;
     return (
-      <ThemeProvider theme={createTheme(theme, properties.theme || {})}>
+      <ThemeProvider theme={createTheme(theme, properties.themeOptions || {})}>
         <I18nextProvider i18n={i18n}>
           <Workbook
             model={properties.model}

@@ -15,9 +15,6 @@ import {
   COLUMN_WIDTH_SCALE,
   LAST_COLUMN,
   LAST_ROW,
-  outlineBackgroundColor,
-  outlineColor,
-  outlineEditingColor,
   ROW_HEIGH_SCALE,
 } from "../WorksheetCanvas/constants";
 import WorksheetCanvas, {
@@ -129,10 +126,7 @@ const Worksheet = forwardRef(
           extendToOutline: extendTo,
           editor: editor,
         },
-        theme: {
-          commonWhite: theme.palette.common.white,
-          primaryMain: theme.palette.primary.main,
-        },
+        theme,
         onColumnWidthChanges(sheet, column, width) {
           if (width < 0) {
             return;
@@ -651,7 +645,7 @@ const SheetContainer = styled("div")`
     top: 0px;
     width: 3px;
     opacity: 0;
-    background: ${outlineColor};
+    background: ${(props) => props.theme.palette.sheet.outlineColor};
     border-radius: 5px;
     cursor: col-resize;
   }
@@ -664,7 +658,7 @@ const SheetContainer = styled("div")`
     left: 0px;
     height: 3px;
     opacity: 0;
-    background: ${outlineColor};
+    background: ${(props) => props.theme.palette.sheet.outlineColor};
     border-radius: 5px;
     cursor: row-resize;
   }
@@ -698,7 +692,7 @@ const ColumnResizeGuide = styled("div")`
   display: none;
   height: 100%;
   width: 0px;
-  border-left: 1px dashed ${outlineColor};
+  border-left: 1px dashed ${(props) => props.theme.palette.sheet.outlineColor};
 `;
 
 const ColumnHeaders = styled("div")`
@@ -722,19 +716,19 @@ const RowResizeGuide = styled("div")`
   left: 0px;
   height: 0px;
   width: 100%;
-  border-top: 1px dashed ${outlineColor};
+  border-top: 1px dashed ${(props) => props.theme.palette.sheet.outlineColor};
 `;
 
 const AreaOutline = styled("div")`
   position: absolute;
-  border: 0px solid ${outlineColor};
+  border: 0px solid ${(props) => props.theme.palette.sheet.outlineColor};
   border-radius: 1px;
-  background-color: ${outlineBackgroundColor};
+  background-color: ${(props) => props.theme.palette.sheet.outlineBackgroundColor};
 `;
 
 const CellOutline = styled("div")`
   position: absolute;
-  border: 2px solid ${outlineColor};
+  border: 2px solid ${(props) => props.theme.palette.sheet.outlineColor};
   border-radius: 3px;
   word-break: break-word;
   font-size: 13px;
@@ -744,7 +738,7 @@ const CellOutline = styled("div")`
 
 const ExtendToOutline = styled("div")`
   position: absolute;
-  border: 1px dashed ${outlineColor};
+  border: 1px dashed ${(props) => props.theme.palette.sheet.outlineColor};
   border-radius: 3px;
 `;
 
@@ -759,13 +753,13 @@ const EditorWrapper = styled("div")`
   vertical-align: bottom;
   overflow: hidden;
   text-align: left;
-  outline: 3px solid ${outlineEditingColor};
+  outline: 3px solid ${(props) => props.theme.palette.sheet.outlineEditingColor};
   z-index: 1000;
   span {
     min-width: 1px;
   }
   font-family: monospace;
-  border: 2px solid ${outlineColor};
+  border: 2px solid ${(props) => props.theme.palette.sheet.outlineColor};
 `;
 
 export default Worksheet;
