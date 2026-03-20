@@ -32,7 +32,7 @@ test("decrease decimals", () => {
 
 test("format range to get the full formula", async () => {
   const buffer = await readFile("node_modules/@ironcalc/wasm/wasm_bg.wasm");
-  initSync({module: buffer});
+  initSync({ module: buffer });
 
   const selectedView: SelectedView = {
     sheet: 0,

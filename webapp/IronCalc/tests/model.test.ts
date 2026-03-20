@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 
 test("simple calculation", async () => {
   const buffer = await readFile("node_modules/@ironcalc/wasm/wasm_bg.wasm");
-  initSync({module: buffer});
+  initSync({ module: buffer });
   const model = new Model("workbook", "en", "UTC", "en");
   model.setUserInput(0, 1, 1, "=21*2");
   expect(model.getFormattedCellValue(0, 1, 1)).toBe("42");
