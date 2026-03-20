@@ -196,11 +196,7 @@ const BorderPicker = (properties: BorderPickerProps) => {
                   title={t("toolbar.borders.clear")}
                   icon={<BorderNoneIcon />}
                   onClick={() => {
-                    if (borderSelected === BorderType.None) {
-                      setBorderSelected(BorderType.None);
-                    } else {
-                      setBorderSelected(BorderType.None);
-                    }
+                    setBorderSelected(BorderType.None);
                   }}
                 />
                 <IconButton

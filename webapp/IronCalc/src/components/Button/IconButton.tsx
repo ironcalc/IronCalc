@@ -17,9 +17,8 @@ export type { ButtonSize, ButtonVariant };
 /**
  * Icon-only button. Same variants and sizes as Button.
  * Use it for toolbar actions, to close drawers and modals, etc.
- * Defaults: `variant` "ghost", `size` "xs", `pressed` false.
+ * Defaults: `variant` "ghost", `size` "sm", `pressed` false.
  */
-
 export interface IconButtonProperties
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label"> {
   icon: ReactNode;
