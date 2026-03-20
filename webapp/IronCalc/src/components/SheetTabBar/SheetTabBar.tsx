@@ -3,7 +3,6 @@ import { styled, Tooltip, useTheme } from "@mui/material";
 import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IronCalcLogo } from "../../icons";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
 import { NAVIGATION_HEIGHT } from "../constants";
@@ -99,7 +98,7 @@ function SheetTabBar(props: SheetTabBarProps) {
       <RightContainer>
         <Tooltip title={t("regional_settings.open_regional_settings")}>
           <Button
-            style={{ color: theme.palette.grey["600"] }}
+            style={{ color: theme.palette.grey[600] }}
             variant="ghost"
             size="sm"
             onClick={() => {
@@ -113,19 +112,6 @@ function SheetTabBar(props: SheetTabBarProps) {
             )}
           </Button>
         </Tooltip>
-        <LogoLink
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            window.open(
-              "https://www.ironcalc.com",
-              "_blank",
-              "noopener,noreferrer",
-            )
-          }
-        >
-          <IronCalcLogo />
-        </LogoLink>
       </RightContainer>
       <SheetListMenu
         anchorEl={anchorEl}
@@ -214,12 +200,5 @@ const TextDivider = styled("div")(({ theme }) => ({
   height: "60%",
   backgroundColor: theme.palette.grey[300],
 }));
-
-const LogoLink = styled(Button)({
-  "& svg": {
-    height: 14,
-    width: "auto",
-  },
-});
 
 export default SheetTabBar;
