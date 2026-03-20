@@ -1,22 +1,14 @@
 import type { CellStyle, Model } from "@ironcalc/wasm";
 import { columnNameFromNumber } from "@ironcalc/wasm";
+import type { Theme } from "@mui/material";
 import { getColor } from "../Editor/util";
 import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
 import {
   COLUMN_WIDTH_SCALE,
   cellPadding,
-  defaultTextColor,
-  gridColor,
-  gridSeparatorColor,
-  headerBackground,
-  headerBorderColor,
-  headerSelectedBackground,
-  headerSelectedColor,
-  headerTextColor,
   LAST_COLUMN,
   LAST_ROW,
-  outlineColor,
   ROW_HEIGH_SCALE,
 } from "./constants";
 import { attachOutlineHandle } from "./outlineHandle";
@@ -40,23 +32,13 @@ export interface CanvasSettings {
   onColumnWidthChanges: (sheet: number, column: number, width: number) => void;
   onRowHeightChanges: (sheet: number, row: number, height: number) => void;
   refresh: () => void;
-  theme: {
-    commonWhite: string;
-    primaryMain: string;
-  };
+  theme: Theme;
 }
-
-export const fonts = {
-  regular: 'Inter, "Adjusted Arial Fallback", sans-serif',
-  mono: '"Fira Mono", "Adjusted Courier New Fallback", serif',
-};
 
 export const headerRowHeight = 28;
 export const headerColumnWidth = 30;
 export const devicePixelRatio = window.devicePixelRatio || 1;
 
-export const defaultCellFontFamily = fonts.regular;
-export const headerFontFamily = fonts.regular;
 export const frozenSeparatorWidth = 3;
 
 interface TextProperties {
@@ -115,10 +97,7 @@ export default class WorksheetCanvas {
   cells: TextProperties[];
   spills: Map<string, number>;
 
-  theme: {
-    commonWhite: string;
-    primaryMain: string;
-  };
+  theme: Theme;
 
   constructor(options: CanvasSettings) {
     this.model = options.model;
@@ -356,8 +335,8 @@ export default class WorksheetCanvas {
     fontSize: number;
   } {
     const fontSize = style.font?.sz || 13;
-    let font = `${fontSize}px ${defaultCellFontFamily}`;
-    let color = defaultTextColor;
+    let font = `${fontSize}px ${this.theme.palette.sheet.defaultCellFontFamily}`;
+    let color = this.theme.palette.sheet.defaultTextColor;
 
     if (style.font) {
       color = style.font.color;
@@ -829,12 +808,12 @@ export default class WorksheetCanvas {
     const style = this.model.getCellStyle(selectedSheet, row, column);
 
     // first the background
-    let backgroundColor = this.theme.commonWhite;
+    let backgroundColor = this.theme.palette.common.white;
     if (style.fill.fg_color) {
       backgroundColor = style.fill.fg_color;
     }
     const cellGridColor = this.model.getShowGridLines(selectedSheet)
-      ? gridColor
+      ? this.theme.palette.sheet.gridColor
       : backgroundColor;
     const context = this.ctx;
     context.fillStyle = backgroundColor;
@@ -1022,7 +1001,7 @@ export default class WorksheetCanvas {
         }
         const style = this.model.getCellStyle(sheet, row, column);
         const fontSize = style.font.sz;
-        let font = `${fontSize}px ${defaultCellFontFamily}`;
+        let font = `${fontSize}px ${this.theme.palette.sheet.defaultCellFontFamily}`;
         font = style.font.b ? `bold ${font}` : `400 ${font}`;
         this.ctx.font = font;
         const lines = fullText.split("\n");
@@ -1093,7 +1072,7 @@ export default class WorksheetCanvas {
         const style = this.model.getCellStyle(sheet, row, column);
         const fontSize = style.font.sz;
         const lineHeight = fontSize * 1.5;
-        let font = `${fontSize}px ${defaultCellFontFamily}`;
+        let font = `${fontSize}px ${this.theme.palette.sheet.defaultCellFontFamily}`;
         font = style.font.b ? `bold ${font}` : `400 ${font}`;
         this.ctx.font = font;
         const lines = computeWrappedLines(
@@ -1127,19 +1106,19 @@ export default class WorksheetCanvas {
     div.style.height = `${headerRowHeight}px`;
     div.style.backgroundColor = selected
       ? isFullColumnSelected
-        ? this.theme.primaryMain
-        : headerSelectedBackground
-      : headerBackground;
+        ? this.theme.palette.primary.main
+        : this.theme.palette.sheet.headerSelectedBackground
+      : this.theme.palette.sheet.headerBackground;
     div.style.color = selected
       ? isFullColumnSelected
-        ? this.theme.commonWhite
-        : headerSelectedColor
-      : headerTextColor;
+        ? this.theme.palette.common.white
+        : this.theme.palette.sheet.headerSelectedColor
+      : this.theme.palette.sheet.headerTextColor;
     div.style.fontWeight = "bold";
-    div.style.borderLeft = `1px solid ${headerBorderColor}`;
-    div.style.borderTop = `1px solid ${headerBorderColor}`;
+    div.style.borderLeft = `1px solid ${this.theme.palette.sheet.headerBorderColor}`;
+    div.style.borderTop = `1px solid ${this.theme.palette.sheet.headerBorderColor}`;
     if (selected) {
-      div.style.borderBottom = `1px solid ${outlineColor}`;
+      div.style.borderBottom = `1px solid ${this.theme.palette.sheet.outlineColor}`;
       div.classList.add("selected");
     } else {
       div.classList.remove("selected");
@@ -1182,13 +1161,13 @@ export default class WorksheetCanvas {
         continue;
       }
       const selected = row >= rowStart && row <= rowEnd;
-      context.fillStyle = headerBorderColor;
+      context.fillStyle = this.theme.palette.sheet.headerBorderColor;
       context.fillRect(0.5, topLeftCornerY, headerColumnWidth, rowHeight);
       context.fillStyle = selected
         ? isFullRowSelected
-          ? this.theme.primaryMain
-          : headerSelectedBackground
-        : headerBackground;
+          ? this.theme.palette.primary.main
+          : this.theme.palette.sheet.headerSelectedBackground
+        : this.theme.palette.sheet.headerBackground;
       context.fillRect(
         0.5,
         topLeftCornerY + 0.5,
@@ -1196,15 +1175,15 @@ export default class WorksheetCanvas {
         rowHeight - 1,
       );
       if (selected) {
-        context.fillStyle = outlineColor;
+        context.fillStyle = this.theme.palette.sheet.outlineColor;
         context.fillRect(headerColumnWidth - 1, topLeftCornerY, 1, rowHeight);
       }
       context.fillStyle = selected
         ? isFullRowSelected
-          ? this.theme.commonWhite
-          : headerSelectedColor
-        : headerTextColor;
-      context.font = `bold 12px ${defaultCellFontFamily}`;
+          ? this.theme.palette.common.white
+          : this.theme.palette.sheet.headerSelectedColor
+        : this.theme.palette.sheet.headerTextColor;
+      context.font = `bold 12px ${this.theme.palette.sheet.headerFontFamily}`;
       context.fillText(
         `${row}`,
         headerColumnWidth / 2,
@@ -1249,7 +1228,7 @@ export default class WorksheetCanvas {
       ".frozen-column-separator",
     ))
       separator.remove();
-    columnHeaders.style.fontFamily = headerFontFamily;
+    columnHeaders.style.fontFamily = this.theme.palette.sheet.headerFontFamily;
     columnHeaders.style.fontSize = "12px";
     columnHeaders.style.height = `${headerRowHeight}px`;
     columnHeaders.style.lineHeight = `${headerRowHeight}px`;
@@ -1272,7 +1251,7 @@ export default class WorksheetCanvas {
       div.style.width = `${frozenSeparatorWidth}px`;
       div.style.height = `${headerRowHeight}`;
       div.style.display = "inline-block";
-      div.style.backgroundColor = gridSeparatorColor;
+      div.style.backgroundColor = this.theme.palette.sheet.gridSeparatorColor;
       this.columnHeaders.insertBefore(div, null);
       deltaX += frozenSeparatorWidth;
     }
@@ -1585,7 +1564,7 @@ export default class WorksheetCanvas {
       rowEnd,
       columnEnd,
     );
-    extendToOutline.style.border = `1px dashed ${outlineColor}`;
+    extendToOutline.style.border = `1px dashed ${this.theme.palette.sheet.outlineColor}`;
     extendToOutline.style.borderRadius = "3px";
 
     extendToOutline.style.left = `${areaX}px`;
@@ -1742,7 +1721,7 @@ export default class WorksheetCanvas {
       );
       areaOutline.style.border = isSelecting
         ? "none"
-        : `1px solid ${outlineColor}`;
+        : `1px solid ${this.theme.palette.sheet.outlineColor}`;
       // hide the handle if it is out of the visible area
       if (
         (rowEnd > frozenRows && rowEnd < topLeftCell.row - 1) ||
@@ -1910,7 +1889,7 @@ export default class WorksheetCanvas {
     if (frozenRows) {
       context.beginPath();
       context.lineWidth = frozenSeparatorWidth;
-      context.strokeStyle = gridSeparatorColor;
+      context.strokeStyle = this.theme.palette.sheet.gridSeparatorColor;
       context.moveTo(0, y + frozenOffset);
       context.lineTo(this.width, y + frozenOffset);
       y += frozenSeparatorWidth;
@@ -1922,7 +1901,7 @@ export default class WorksheetCanvas {
     if (frozenColumns) {
       context.beginPath();
       context.lineWidth = frozenSeparatorWidth;
-      context.strokeStyle = gridSeparatorColor;
+      context.strokeStyle = this.theme.palette.sheet.gridSeparatorColor;
       context.moveTo(x + frozenOffset, 0);
       context.lineTo(x + frozenOffset, this.height);
       x += frozenSeparatorWidth;
@@ -2000,7 +1979,7 @@ export default class WorksheetCanvas {
 
     // square in the top left corner
     context.beginPath();
-    context.strokeStyle = gridSeparatorColor;
+    context.strokeStyle = this.theme.palette.sheet.gridSeparatorColor;
     context.moveTo(0, 0.5);
     context.lineTo(x + headerColumnWidth, 0.5);
     context.stroke();

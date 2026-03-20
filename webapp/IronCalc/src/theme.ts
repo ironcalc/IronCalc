@@ -1,6 +1,6 @@
 import { createTheme } from "@mui/material/styles";
 
-export const theme = createTheme({
+export const defaultTheme = createTheme({
   typography: {
     fontFamily: "Inter",
     fontSize: 12,
@@ -61,6 +61,24 @@ export const theme = createTheme({
       A200: "#EEEEEE",
       A400: "#bdbdbd",
       A700: "#616161",
+    },
+    sheet: {
+      headerCornerBackground: "#FFF",
+      headerTextColor: "#333",
+      headerBackground: "#FFF",
+      headerGlobalSelectorColor: "#EAECF4",
+      headerSelectedBackground: "#EEEEEE",
+      headerFullSelectedBackground: "#D3D6E9",
+      headerSelectedColor: "#333",
+      headerBorderColor: "#E0E0E0",
+      gridColor: "#E0E0E0",
+      gridSeparatorColor: "#E0E0E0",
+      defaultTextColor: "#2E414D",
+      outlineColor: "#F2994A",
+      outlineEditingColor: "#FBE0C9",
+      outlineBackgroundColor: "#F2994A1A",
+      defaultCellFontFamily: "Inter, 'Adjusted Arial Fallback', sans-serif",
+      headerFontFamily: "Inter, 'Adjusted Arial Fallback', sans-serif",
     },
   },
 });

@@ -1,10 +1,11 @@
+import { useTheme } from "@mui/material/styles";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useState } from "react";
-
 import { IronCalc, init, Model } from "../../index";
 
 function WorkbookWithInit() {
   const [model, setModel] = useState<Model | null>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     async function start() {
@@ -25,7 +26,7 @@ function WorkbookWithInit() {
         right: 0,
       }}
     >
-      <IronCalc model={model} ref={null} />
+      <IronCalc model={model} ref={null} theme={theme} />
     </div>
   );
 }
