@@ -113,13 +113,13 @@ function SheetTabBar(props: SheetTabBarProps) {
             )}
           </Button>
         </Tooltip>
-        <LogoLink
+        <LogoButton
           variant="ghost"
           size="sm"
           onClick={() => window.open("https://www.ironcalc.com", "_blank")}
         >
           <IronCalcLogo />
-        </LogoLink>
+        </LogoButton>
       </RightContainer>
       <SheetListMenu
         anchorEl={anchorEl}
@@ -153,32 +153,32 @@ const Container = styled("div")(({ theme }) => ({
   borderTop: `1px solid ${theme.palette.grey[300]}`,
 }));
 
-const Sheets = styled("div")`
-  flex-grow: 2;
-  overflow: hidden;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-left: 8px;
-  display: flex;
-  flex-direction: row;
-  height: 100%;
-`;
+const Sheets = styled("div")({
+  flexGrow: 2,
+  overflow: "hidden",
+  overflowX: "auto",
+  scrollbarWidth: "none",
+  paddingLeft: 12,
+  display: "flex",
+  flexDirection: "row",
+  height: "100%",
+});
 
 const SheetInner = styled("div")({
   display: "flex",
 });
 
-const LeftButtonsContainer = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  height: 100%;
-  gap: 2px;
-  padding: 0px 8px;
-  @media (max-width: 769px) {
-    padding: 0px 8px;
-  }
-`;
+const LeftButtonsContainer = styled("div")({
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  height: "100%",
+  gap: 4,
+  padding: "0px 12px",
+  "@media (max-width: 769px)": {
+    padding: "0px 8px",
+  },
+});
 
 const VerticalDivider = styled("div")(({ theme }) => ({
   height: "100%",
@@ -203,17 +203,19 @@ const RightContainer = styled("div")`
   }
 `;
 
-const TextDivider = styled("div")`
-  width: 1px;
-  height: 40%;
-  background-color: ${theme.palette.grey["300"]};
-`;
+const TextDivider = styled("div")(({ theme }) => ({
+  width: 1,
+  height: "40%",
+  backgroundColor: theme.palette.grey["300"],
+}));
 
-const LogoLink = styled(Button)`
-  svg {
-    height: 14px;
-    width: auto;
-  }
-`;
-
+const LogoButton = styled(Button)(({ theme }) => ({
+  "& svg": {
+    height: 14,
+    width: "auto",
+  },
+  "&:hover": {
+    backgroundColor: theme.palette.grey["100"],
+  },
+}));
 export default SheetTabBar;
