@@ -1,12 +1,13 @@
 import type { Model } from "@ironcalc/wasm";
-import { styled, Tooltip } from "@mui/material";
+import { styled, Tooltip, useTheme } from "@mui/material";
 import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IronCalcLogo } from "../../icons";
+import { Button } from "../Button/Button";
+import { IconButton } from "../Button/IconButton";
 import { NAVIGATION_HEIGHT } from "../constants";
 import { getLocaleDisplayName } from "../RightDrawer/RegionalSettings/RegionalSettings";
-import { StyledButton } from "../Toolbar/Toolbar";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
 import SheetTab from "./SheetTab";
@@ -30,6 +31,7 @@ function SheetTabBar(props: SheetTabBarProps) {
   const { t } = useTranslation();
   const { workbookState, onSheetSelected, sheets, selectedIndex } = props;
   const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
+  const theme = useTheme();
   const open = Boolean(anchorEl);
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -38,7 +40,7 @@ function SheetTabBar(props: SheetTabBarProps) {
     setAnchorEl(null);
   };
 
-  const nonHidenSheets = sheets
+  const nonHiddenSheets = sheets
     .map((s, index) => {
       return {
         state: s.state,
@@ -54,20 +56,24 @@ function SheetTabBar(props: SheetTabBarProps) {
     <Container>
       <LeftButtonsContainer>
         <Tooltip title={t("navigation.add_sheet")}>
-          <StyledButton $pressed={false} onClick={props.onAddBlankSheet}>
-            <Plus />
-          </StyledButton>
+          <IconButton
+            aria-label={t("navigation.add_sheet")}
+            icon={<Plus />}
+            onClick={props.onAddBlankSheet}
+          />
         </Tooltip>
         <Tooltip title={t("navigation.sheet_list")}>
-          <StyledButton onClick={handleClick} $pressed={false}>
-            <Menu />
-          </StyledButton>
+          <IconButton
+            aria-label={t("navigation.sheet_list")}
+            icon={<Menu />}
+            onClick={handleClick}
+          />
         </Tooltip>
       </LeftButtonsContainer>
       <VerticalDivider />
       <Sheets>
         <SheetInner>
-          {nonHidenSheets.map((tab) => (
+          {nonHiddenSheets.map((tab) => (
             <SheetTab
               key={tab.sheetId}
               name={tab.name}
@@ -80,7 +86,7 @@ function SheetTabBar(props: SheetTabBarProps) {
               onRenamed={(name: string): void => {
                 props.onSheetRenamed(name);
               }}
-              canDelete={nonHidenSheets.length > 1}
+              canDelete={nonHiddenSheets.length > 1}
               onDeleted={(): void => {
                 props.onSheetDeleted();
               }}
@@ -92,8 +98,10 @@ function SheetTabBar(props: SheetTabBarProps) {
       </Sheets>
       <RightContainer>
         <Tooltip title={t("regional_settings.open_regional_settings")}>
-          <RegionalSettingsButton
-            $pressed={false}
+          <Button
+            style={{ color: theme.palette.grey["600"] }}
+            variant="ghost"
+            size="sm"
             onClick={() => {
               props.onOpenRegionalSettings();
             }}
@@ -103,9 +111,11 @@ function SheetTabBar(props: SheetTabBarProps) {
             {t(
               `regional_settings.language.display_language.${props.model.getLanguage()}`,
             )}
-          </RegionalSettingsButton>
+          </Button>
         </Tooltip>
         <LogoLink
+          variant="ghost"
+          size="sm"
           onClick={() => window.open("https://www.ironcalc.com", "_blank")}
         >
           <IronCalcLogo />
@@ -148,7 +158,7 @@ const Sheets = styled("div")({
   overflow: "hidden",
   overflowX: "auto",
   scrollbarWidth: "none",
-  paddingLeft: 12,
+  paddingLeft: 8,
   display: "flex",
   flexDirection: "row",
   height: "100%",
@@ -163,8 +173,8 @@ const LeftButtonsContainer = styled("div")({
   flexDirection: "row",
   alignItems: "center",
   height: "100%",
-  gap: 4,
-  padding: "0px 12px",
+  gap: 2,
+  padding: "0px 8px",
   "@media (max-width: 769px)": {
     padding: "0px 8px",
   },
@@ -193,37 +203,17 @@ const RightContainer = styled("div")(({ theme }) => ({
   },
 }));
 
-const RegionalSettingsButton = styled(StyledButton)(({ theme }) => ({
-  minWidth: "fit-content",
-  padding: "4px 8px",
-  color: theme.palette.grey[600],
-  textWrap: "nowrap",
-  gap: 8,
-}));
-
 const TextDivider = styled("div")(({ theme }) => ({
   width: 1,
   height: "60%",
   backgroundColor: theme.palette.grey[300],
 }));
 
-const LogoLink = styled("div")(({ theme }) => ({
-  display: "flex",
-  alignItems: "center",
-  padding: "0px 4px",
-  borderRadius: 4,
-  maxHeight: 24,
-  minHeight: 24,
-  cursor: "pointer",
+const LogoLink = styled(Button)({
   "& svg": {
     height: 14,
     width: "auto",
   },
-  "&:hover": {
-    backgroundColor: theme.palette.grey[100],
-    transition: "all 0.2s",
-    outline: `1px solid ${theme.palette.grey[200]}`,
-  },
-}));
+});
 
 export default SheetTabBar;
