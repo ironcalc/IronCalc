@@ -26,7 +26,7 @@ function WorkbookWithInit() {
         right: 0,
       }}
     >
-      <IronCalc model={model} ref={null} theme={theme} />
+      <IronCalc model={model} ref={null} themeOptions={theme} />
     </div>
   );
 }

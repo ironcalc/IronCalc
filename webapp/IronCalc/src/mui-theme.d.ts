@@ -17,6 +17,7 @@ type SheetPalette = {
   outlineBackgroundColor: string;
   defaultCellFontFamily: string;
   headerFontFamily: string;
+  headerFontSize: 12;
 };
 
 declare module "@mui/material/styles" {
