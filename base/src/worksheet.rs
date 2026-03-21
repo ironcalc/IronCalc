@@ -5,7 +5,7 @@ use crate::{expressions::token::Error, types::*};
 
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct WorksheetDimension {
     pub min_row: i32,
     pub max_row: i32,
