@@ -922,4 +922,11 @@ impl Model {
         let settings: FmtSettings = self.model.get_fmt_settings().into();
         serde_wasm_bindgen::to_value(&settings).map_err(|e| to_js_error(e.to_string()))
     }
+
+    /// Returns list of cells that were changed during evaluation
+    #[wasm_bindgen(js_name = "getChangedCells", unchecked_return_type = "ChangedCell[]")]
+    pub fn get_changed_cells(&self) -> Result<JsValue, JsError> {
+        let changed_cells = self.model.get_changed_cells();
+        serde_wasm_bindgen::to_value(&changed_cells).map_err(|e| to_js_error(e.to_string()))
+    }
 }
