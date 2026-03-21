@@ -17,6 +17,7 @@ mod normal;
 mod pearson;
 mod phi;
 mod poisson;
+mod quartile;
 mod rank_eq_avg;
 mod standard_dev;
 mod standardize;
