@@ -157,7 +157,12 @@ const FormatMenu = (properties: FormatMenuProps) => {
         </MenuItemWrapper>
 
         <MenuDivider />
-        <MenuItemWrapper onClick={(): void => setPickerOpen(true)}>
+        <MenuItemWrapper
+          onClick={(): void => {
+            setMenuOpen(false);
+            setPickerOpen(true);
+          }}
+        >
           <MenuItemText>
             <CheckIcon $active={isCustomFormat} />
             {t("toolbar.format_menu.custom")}
@@ -169,7 +174,6 @@ const FormatMenu = (properties: FormatMenuProps) => {
         onChange={onSelect}
         open={isPickerOpen}
         onClose={(): void => setPickerOpen(false)}
-        onExited={properties.onExited}
       />
     </>
   );
