@@ -83,7 +83,10 @@ const DialogContent = styled("div")(({ theme }) => ({
 const DialogFooter = styled("div")(({ theme }) => ({
   padding: `${theme.spacing(1)} ${theme.spacing(2)}`,
   display: "flex",
-  flexDirection: "row",
+  flexDirection: "column-reverse",
+  [theme.breakpoints.up("sm")]: {
+    flexDirection: "row",
+  },
   gap: theme.spacing(1),
   justifyContent: "flex-end",
 }));
@@ -101,7 +104,6 @@ export const Dialog = ({
 
   useEffect(() => {
     if (!open) return;
-
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
