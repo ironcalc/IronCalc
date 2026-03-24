@@ -42,7 +42,6 @@ fn test_leading_comma_text() {
 }
 
 #[test]
-#[ignore = "not yet implemented"]
 fn test_wrong_locale() {
     let formatted = format_number(2.3, "General", "ens");
     assert_eq!(formatted.text, "#ERROR!".to_string());
