@@ -71,14 +71,7 @@ export const Default: Story = {
           <div>Dialog content</div>
         </Dialog>
 
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div>
           <Button variant="outline" onClick={() => setOpen(true)}>
             Open dialog
           </Button>
@@ -127,14 +120,7 @@ export const Confirmation: Story = {
           </div>
         </Dialog>
 
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div>
           <Button variant="outline" onClick={() => setOpen(true)}>
             Open dialog
           </Button>
@@ -174,19 +160,19 @@ export const LongText: Story = {
             ) : undefined
           }
         >
-          <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+          <p
+            style={{
+              margin: 0,
+              whiteSpace: "pre-wrap",
+              overflowWrap: "anywhere",
+              lineHeight: 1.5,
+            }}
+          >
             {longText}
           </p>
         </Dialog>
 
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div>
           <Button variant="outline" onClick={() => setOpen(true)}>
             Open dialog
           </Button>

@@ -1,9 +1,11 @@
 import { styled } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import TrapFocus from "@mui/material/Unstable_TrapFocus";
 import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useId } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { IconButton } from "../Button/IconButton";
 
 /**
@@ -34,10 +36,10 @@ const DialogOverlay = styled("div")(({ theme }) => ({
 }));
 
 const DialogContainer = styled("div", {
-  shouldForwardProp: (prop) => prop !== "dialogWidth",
-})<{ dialogWidth: number | string }>(({ theme, dialogWidth }) => ({
-  width: dialogWidth,
-  minWidth: "min(280px, calc(100vw - 32px))",
+  shouldForwardProp: (prop) => prop !== "dialogMinWidth",
+})<{ dialogMinWidth: string }>(({ theme, dialogMinWidth }) => ({
+  width: "max-content",
+  minWidth: `max(${dialogMinWidth}, min(280px, calc(100vw - 32px)))`,
   maxWidth: "calc(100vw - 32px)",
   maxHeight: "calc(100vh - 32px)",
   overflow: "hidden",
@@ -49,6 +51,11 @@ const DialogContainer = styled("div", {
   display: "flex",
   flexDirection: "column",
   fontFamily: theme.typography.fontFamily,
+  transition: "box-shadow 120ms ease-out",
+  "&:focus": {
+    outline: "none",
+    boxShadow: `0px 30px 70px ${alpha(theme.palette.common.black, 0.24)}, 0 0 0 4px ${alpha(theme.palette.common.black, 0.08)}`,
+  },
 }));
 
 const DialogHeader = styled("div")(({ theme }) => ({
@@ -100,7 +107,9 @@ export const Dialog = ({
   showCloseButton = true,
   width = 300,
 }: DialogProperties) => {
+  const { t } = useTranslation();
   const titleId = useId();
+  const dialogMinWidth = typeof width === "number" ? `${width}px` : width;
 
   useEffect(() => {
     if (!open) return;
@@ -110,9 +119,9 @@ export const Dialog = ({
         onClose();
       }
     };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [open, onClose]);
 
   if (!open) return null;
@@ -125,32 +134,34 @@ export const Dialog = ({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <DialogContainer
-        dialogWidth={width}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        {/* 1) header */}
-        <DialogHeader>
-          <DialogTitle id={titleId}>{title}</DialogTitle>
+      <TrapFocus open={open}>
+        <DialogContainer
+          dialogMinWidth={dialogMinWidth}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {/* 1) header */}
+          <DialogHeader>
+            <DialogTitle id={titleId}>{title}</DialogTitle>
 
-          {showCloseButton && (
-            <IconButton
-              icon={<X />}
-              aria-label="Close dialog"
-              onClick={onClose}
-            />
-          )}
-        </DialogHeader>
+            {showCloseButton && (
+              <IconButton
+                icon={<X />}
+                aria-label={t("dialog.close")}
+                onClick={onClose}
+              />
+            )}
+          </DialogHeader>
 
-        {/* 2) content */}
-        <DialogContent>{children}</DialogContent>
+          {/* 2) content */}
+          <DialogContent>{children}</DialogContent>
 
-        {/* 3) footer */}
-        {footer != null && <DialogFooter>{footer}</DialogFooter>}
-      </DialogContainer>
+          {/* 3) footer */}
+          {footer != null && <DialogFooter>{footer}</DialogFooter>}
+        </DialogContainer>
+      </TrapFocus>
     </DialogOverlay>,
     document.body,
   );

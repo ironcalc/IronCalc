@@ -10,7 +10,6 @@ type FormatMenuProps = {
   children: React.ReactNode;
   numFmt: string;
   onChange: (numberFmt: string) => void;
-  onExited: () => void;
   anchorOrigin: ComponentProps<typeof Menu>["anchorOrigin"];
   formatOptions: FmtSettings;
 };
