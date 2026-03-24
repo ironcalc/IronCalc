@@ -61,6 +61,9 @@
       "style": "Style de bordure"
     }
   },
+  "dialog": {
+    "close": "Fermer la boîte de dialogue"
+  },
   "num_fmt": {
     "title": "Format de nombre personnalisé",
     "label": "Format de nombre",

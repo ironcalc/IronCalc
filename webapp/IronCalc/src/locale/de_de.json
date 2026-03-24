@@ -61,6 +61,9 @@
       "style": "Rahmenstil"
     }
   },
+  "dialog": {
+    "close": "Dialog schließen"
+  },
   "num_fmt": {
     "title": "Benutzerdefiniertes Zahlenformat",
     "label": "Zahlenformat",
