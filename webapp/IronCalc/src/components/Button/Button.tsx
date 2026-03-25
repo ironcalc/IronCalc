@@ -1,17 +1,11 @@
-import { useTheme } from "@mui/material";
-import { alpha, type Theme } from "@mui/material/styles";
-import {
-  type ButtonHTMLAttributes,
-  type CSSProperties,
-  forwardRef,
-  type ReactNode,
-  useState,
-} from "react";
+import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react";
+
+import "./button.css";
 
 /**
  * This is a reusable text Button with optional start/end icons.
  * Variants: primary, secondary, outline, ghost (no border), destructive.
- * Sizes: xs, sm, md. Styled with MUI theme.
+ * Sizes: xs, sm, md.
  */
 
 export type ButtonVariant =
@@ -21,134 +15,6 @@ export type ButtonVariant =
   | "ghost"
   | "destructive";
 export type ButtonSize = "xs" | "sm" | "md";
-
-const sizeStyles: Record<ButtonSize, CSSProperties> = {
-  xs: { height: 24, lineHeight: "24px" },
-  sm: { height: 28, lineHeight: "28px" },
-  md: { height: 32, lineHeight: "32px" },
-};
-
-export interface ButtonStyles {
-  theme: Theme;
-  variant: ButtonVariant;
-  size: ButtonSize;
-  pressed: boolean;
-  disabled: boolean;
-  hovered: boolean;
-}
-
-export function getButtonStyles(styles: ButtonStyles): CSSProperties {
-  const {
-    theme,
-    variant,
-    size,
-    pressed = false,
-    disabled = false,
-    hovered = false,
-  } = styles;
-  const { height, lineHeight } = sizeStyles[size];
-
-  const base: CSSProperties = {
-    cursor: disabled ? "auto" : "pointer",
-    position: "relative",
-    overflow: "hidden",
-    padding: "0 10px",
-    borderRadius: 6,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    fontFamily: theme.typography.fontFamily,
-    fontSize: theme.typography.fontSize,
-    fontWeight: 500,
-    textDecoration: "none",
-    boxSizing: "border-box",
-    border: `1px solid ${alpha(theme.palette.common.black, 0.04)}`,
-    boxShadow: pressed
-      ? `inset 0 1px 1px ${alpha(theme.palette.common.black, 0.12)}`
-      : `${alpha(theme.palette.common.black, 0.04)} 0px 1px 2px`,
-    height,
-    lineHeight,
-  };
-
-  if (disabled) {
-    if (variant === "ghost") {
-      return {
-        ...base,
-        backgroundColor: "transparent",
-        color: theme.palette.grey[400],
-        border: "none",
-        boxShadow: "none",
-      };
-    }
-    return {
-      ...base,
-      backgroundColor: theme.palette.grey[200],
-      color: theme.palette.grey[400],
-      borderColor: theme.palette.grey[300],
-      boxShadow: "none",
-    };
-  }
-
-  const showHover = hovered && !disabled;
-
-  const variantStyles: Record<ButtonVariant, CSSProperties> = {
-    primary: {
-      backgroundColor: showHover
-        ? theme.palette.primary.dark
-        : pressed
-          ? theme.palette.primary.dark
-          : theme.palette.primary.main,
-      color: theme.palette.primary.contrastText,
-    },
-    secondary: {
-      backgroundColor: showHover
-        ? theme.palette.grey[300]
-        : pressed
-          ? theme.palette.grey[300]
-          : theme.palette.grey[200],
-      color: theme.palette.common.black,
-    },
-    outline: {
-      backgroundColor: showHover
-        ? theme.palette.grey[100]
-        : pressed
-          ? theme.palette.grey[100]
-          : "transparent",
-      color: theme.palette.common.black,
-      borderColor: theme.palette.grey[300],
-      boxShadow: "none",
-    },
-    ghost: {
-      backgroundColor: showHover
-        ? theme.palette.grey[100]
-        : pressed
-          ? theme.palette.grey[200]
-          : "transparent",
-      color: theme.palette.common.black,
-      border: "none",
-      boxShadow: "none",
-    },
-    destructive: {
-      backgroundColor: showHover
-        ? theme.palette.error.dark
-        : pressed
-          ? theme.palette.error.dark
-          : theme.palette.error.main,
-      color: theme.palette.error.contrastText,
-    },
-  };
-
-  return { ...base, ...variantStyles[variant] };
-}
-
-export const iconWrapperStyle: CSSProperties = {
-  width: 16,
-  height: 16,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
 
 /** Extends native `<button>` props.
  * Defaults: `variant` "primary", `size` "md", `pressed` false.
@@ -170,47 +36,36 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
       variant = "primary",
       size = "md",
       pressed = false,
+      disabled = false,
       children,
       startIcon,
       endIcon,
       style,
-      disabled = false,
-      onMouseEnter,
-      onMouseLeave,
+      className,
       ...rest
     },
     ref,
   ) {
-    const theme = useTheme();
-    const [hovered, setHovered] = useState(false);
-    const computedStyles = getButtonStyles({
-      theme,
-      variant,
-      size,
-      pressed,
-      disabled,
-      hovered,
-    });
-
+    const buttonClassName = [
+      "ic-button",
+      `ic-button--${variant}`,
+      `ic-button--${size}`,
+      className,
+    ]
+      .filter(Boolean)
+      .join(" ");
     return (
       <button
         ref={ref}
         disabled={disabled}
         aria-pressed={pressed}
-        style={{ ...computedStyles, ...style }}
-        onMouseEnter={(e) => {
-          setHovered(true);
-          onMouseEnter?.(e);
-        }}
-        onMouseLeave={(e) => {
-          setHovered(false);
-          onMouseLeave?.(e);
-        }}
+        className={buttonClassName}
+        style={style}
         {...rest}
       >
-        {startIcon && <span style={iconWrapperStyle}>{startIcon}</span>}
+        {startIcon && <span className="ic-button__icon">{startIcon}</span>}
         {children}
-        {endIcon && <span style={iconWrapperStyle}>{endIcon}</span>}
+        {endIcon && <span className="ic-button__icon">{endIcon}</span>}
       </button>
     );
   },

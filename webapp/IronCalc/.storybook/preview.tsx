@@ -5,6 +5,7 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "../src/i18n";
 import type { PartialIronCalcThemeVariables } from "../src/theme";
 import { createIronCalcTheme } from "../src/theme/theme";
+import "../src/theme/theme.css";
 
 const crazyThemeVariables: PartialIronCalcThemeVariables = {
   "--palette-common-black": "#2f1616",

@@ -1,16 +1,5 @@
-import { useTheme } from "@mui/material";
-import {
-  type ButtonHTMLAttributes,
-  forwardRef,
-  type ReactNode,
-  useState,
-} from "react";
-import {
-  type ButtonSize,
-  type ButtonVariant,
-  getButtonStyles,
-  iconWrapperStyle,
-} from "./Button";
+import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react";
+import type { ButtonSize, ButtonVariant } from "./Button";
 
 export type { ButtonSize, ButtonVariant };
 
@@ -35,47 +24,33 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
       variant = "ghost",
       size = "sm",
       pressed = false,
-      style,
       disabled = false,
-      onMouseEnter,
-      onMouseLeave,
+      style,
+      className,
       ...rest
     },
     ref,
   ) {
-    const theme = useTheme();
-    const [hovered, setHovered] = useState(false);
-    const computedStyles = getButtonStyles({
-      theme,
-      variant,
-      size,
-      pressed,
-      disabled,
-      hovered,
-    });
-    const height = computedStyles.height;
-    computedStyles.padding = 0;
-    computedStyles.gap = 0;
-    computedStyles.minWidth = height;
-    computedStyles.width = height;
+    const buttonClassName = [
+      "ic-button",
+      "ic-button--icon-only",
+      `ic-button--${variant}`,
+      `ic-button--${size}`,
+      className,
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     return (
       <button
         ref={ref}
+        className={buttonClassName}
         disabled={disabled}
         aria-pressed={pressed}
-        style={{ ...computedStyles, ...style }}
-        onMouseEnter={(e) => {
-          setHovered(true);
-          onMouseEnter?.(e);
-        }}
-        onMouseLeave={(e) => {
-          setHovered(false);
-          onMouseLeave?.(e);
-        }}
+        style={style}
         {...rest}
       >
-        <span style={iconWrapperStyle}>{icon}</span>
+        <span className="ic-button__icon">{icon}</span>
       </button>
     );
   },
