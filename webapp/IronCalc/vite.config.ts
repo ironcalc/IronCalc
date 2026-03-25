@@ -4,6 +4,11 @@ import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
 import pkg from "./package.json";
 
+function isExternal(id: string): boolean {
+  const externals = ["@ironcalc/wasm", ...Object.keys(pkg.peerDependencies)];
+  return externals.some((pkg) => id === pkg || id.startsWith(`${pkg}/`));
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   build: {
@@ -15,9 +20,7 @@ export default defineConfig({
       formats: ["es"],
     },
     rolldownOptions: {
-      // make sure to externalize deps that shouldn't be bundled
-      // into your library
-      external: ["@ironcalc/wasm", ...Object.keys(pkg.peerDependencies)],
+      external: isExternal,
     },
   },
   plugins: [react(), svgr()],

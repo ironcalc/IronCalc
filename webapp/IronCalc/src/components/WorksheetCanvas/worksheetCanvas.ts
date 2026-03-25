@@ -1183,7 +1183,7 @@ export default class WorksheetCanvas {
           ? this.theme.palette.common.white
           : this.theme.palette.sheet.headerSelectedColor
         : this.theme.palette.sheet.headerTextColor;
-      context.font = `bold ${this.theme.palette.sheet.headerFontSize}px ${this.theme.palette.sheet.headerFontFamily}`;
+      context.font = this.theme.palette.sheet.headerFontFamily;
       context.fillText(
         `${row}`,
         headerColumnWidth / 2,

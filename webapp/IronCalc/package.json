@@ -2,11 +2,21 @@
   "name": "@ironcalc/workbook",
   "version": "0.7.1",
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css",
+    "**/*.css"
+  ],
   "main": "./dist/ironcalc.js",
   "module": "./dist/ironcalc.js",
   "source": "./src/index.ts",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/ironcalc.js"
+    },
+    "./style.css": "./dist/ironcalc.css"
+  },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.json",
     "check": "biome check ./src ./tests .storybook/ *.ts *.json",

@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 import type { IronCalcHandle } from "@ironcalc/workbook";
 // From IronCalc
 import { IronCalc, IronCalcIcon, init, Model } from "@ironcalc/workbook";
+import "@ironcalc/workbook/style.css";
 import { Modal } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

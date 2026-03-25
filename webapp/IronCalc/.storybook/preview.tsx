@@ -1,46 +1,39 @@
-import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { ThemeProvider } from "@mui/material/styles";
 import type { Preview } from "@storybook/react";
 import { useEffect, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../src/i18n";
-import { defaultTheme } from "../src/theme";
+import type { PartialIronCalcThemeVariables } from "../src/theme";
+import { createIronCalcTheme } from "../src/theme/theme";
 
-const crazyTheme = createTheme(defaultTheme, {
-  palette: {
-    common: {
-      black: "#2f1616",
-      white: "#ecc9c9",
-    },
-    primary: {
-      main: "#F2994A",
-      light: "#EFAA6D",
-      dark: "#D68742",
-      contrastText: "#dccece",
-    },
-    secondary: {
-      main: "#2F80ED",
-      light: "#4E92EC",
-      dark: "#2B6EC8",
-      contrastText: "#272525",
-    },
-    error: {
-      main: "#EB5757",
-      light: "#E77A7A",
-      dark: "#CB4C4C",
-      contrastText: "#272525",
-    },
-    warning: {
-      main: "#F2C94C",
-      light: "#EED384",
-      dark: "#D6B244",
-      contrastText: "#e3e9cf",
-    },
-  },
-});
+const crazyThemeVariables: PartialIronCalcThemeVariables = {
+  "--palette-common-black": "#2f1616",
+  "--palette-common-white": "#ecc9c9",
+
+  "--palette-primary-main": "#F2994A",
+  "--palette-primary-light": "#EFAA6D",
+  "--palette-primary-dark": "#D68742",
+  "--palette-primary-contrast-text": "#dccece",
+
+  "--palette-secondary-main": "#2F80ED",
+  "--palette-secondary-light": "#4E92EC",
+  "--palette-secondary-dark": "#2B6EC8",
+  "--palette-secondary-contrast-text": "#272525",
+
+  "--palette-error-main": "#EB5757",
+  "--palette-error-light": "#E77A7A",
+  "--palette-error-dark": "#CB4C4C",
+  "--palette-error-contrast-text": "#272525",
+
+  "--palette-warning-main": "#F2C94C",
+  "--palette-warning-light": "#EED384",
+  "--palette-warning-dark": "#D6B244",
+  "--palette-warning-contrast-text": "#e3e9cf",
+};
 
 const themes = {
-  default: defaultTheme,
-  crazy: crazyTheme,
+  default: null,
+  crazy: crazyThemeVariables,
 };
 
 function PreviewProviders({
@@ -52,8 +45,6 @@ function PreviewProviders({
   themeName: keyof typeof themes;
   locale: string;
 }) {
-  const theme = themes[themeName] ?? defaultTheme;
-
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -66,6 +57,8 @@ function PreviewProviders({
     }
     start();
   }, [locale]);
+
+  const theme = createIronCalcTheme(themes[themeName] ?? {});
 
   if (!isLoaded) {
     return null;
