@@ -1,0 +1,154 @@
+:root {
+  --black-04: color-mix(in srgb, var(--palette-common-black) 4%, transparent);
+  --black-12: color-mix(in srgb, var(--palette-common-black) 12%, transparent);
+}
+
+.ic-button {
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  padding: 0 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+  font-weight: 500;
+  text-decoration: none;
+  box-sizing: border-box;
+  border: 1px solid var(--black-04);
+  box-shadow: 0px 1px 2px var(--black-04);
+}
+
+.ic-button:focus {
+  outline: none;
+}
+
+.ic-button:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+}
+
+.ic-button__icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ic-button--xs {
+  --button-height: 24px;
+  height: var(--button-height);
+  line-height: var(--button-height);
+}
+
+.ic-button--sm {
+  --button-height: 28px;
+  height: var(--button-height);
+  line-height: var(--button-height);
+}
+
+.ic-button--md {
+  --button-height: 32px;
+  height: var(--button-height);
+  line-height: var(--button-height);
+}
+
+.ic-button--primary {
+  background-color: var(--palette-primary-main);
+  color: var(--palette-primary-contrast-text);
+}
+
+.ic-button--primary:not(:disabled):is(:hover, :active, [aria-pressed="true"]) {
+  background-color: var(--palette-primary-dark);
+}
+
+.ic-button--secondary {
+  background-color: var(--palette-grey-200);
+  color: var(--palette-common-black);
+}
+
+.ic-button--secondary:not(:disabled):is(
+    :hover,
+    :active,
+    [aria-pressed="true"]
+  ) {
+  background-color: var(--palette-grey-300);
+}
+
+.ic-button--outline {
+  background-color: transparent;
+  color: var(--palette-common-black);
+  border-color: var(--palette-grey-300);
+  box-shadow: none;
+}
+
+.ic-button--outline:not(:disabled):is(:hover, :active, [aria-pressed="true"]) {
+  background-color: var(--palette-grey-100);
+}
+
+.ic-button--ghost {
+  background-color: transparent;
+  color: var(--palette-common-black);
+  border: none;
+  box-shadow: none;
+}
+
+.ic-button--ghost:not(:disabled):hover {
+  background-color: var(--palette-grey-100);
+}
+
+.ic-button--ghost:not(:disabled):is(:active, [aria-pressed="true"]) {
+  background-color: var(--palette-grey-200);
+}
+
+.ic-button--destructive {
+  background-color: var(--palette-error-main);
+  color: var(--palette-error-contrast-text);
+}
+
+.ic-button--destructive:not(:disabled):is(
+    :hover,
+    :active,
+    [aria-pressed="true"]
+  ) {
+  background-color: var(--palette-error-dark);
+}
+
+.ic-button:not(:disabled):is(:active, [aria-pressed="true"]) {
+  box-shadow: inset 0 1px 1px var(--black-12);
+}
+
+:is(.ic-button--outline, .ic-button--ghost):not(:disabled):is(
+    :active,
+    [aria-pressed="true"]
+  ) {
+  box-shadow: none;
+}
+
+.ic-button:disabled {
+  cursor: auto;
+  color: var(--palette-grey-400);
+  box-shadow: none;
+}
+
+.ic-button--ghost:disabled {
+  background-color: transparent;
+  border: none;
+}
+
+.ic-button:not(.ic-button--ghost):disabled {
+  background-color: var(--palette-grey-200);
+  border-color: var(--palette-grey-300);
+}
+
+.ic-button--icon-only {
+  padding: 0;
+  gap: 0;
+  min-width: var(--button-height);
+  width: var(--button-height);
+}
