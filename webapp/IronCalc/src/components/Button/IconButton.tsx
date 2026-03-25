@@ -1,14 +1,11 @@
-import { useTheme } from "@mui/material";
 import {
   type ButtonHTMLAttributes,
   forwardRef,
   type ReactNode,
-  useState,
 } from "react";
 import {
   type ButtonSize,
   type ButtonVariant,
-  getButtonStyles,
   iconWrapperStyle,
 } from "./Button";
 
@@ -35,42 +32,37 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
       variant = "ghost",
       size = "sm",
       pressed = false,
-      style,
       disabled = false,
+      style,
       onMouseEnter,
       onMouseLeave,
       ...rest
     },
     ref,
   ) {
-    const theme = useTheme();
-    const [hovered, setHovered] = useState(false);
-    const computedStyles = getButtonStyles({
-      theme,
-      variant,
-      size,
-      pressed,
-      disabled,
-      hovered,
-    });
-    const height = computedStyles.height;
-    computedStyles.padding = 0;
-    computedStyles.gap = 0;
-    computedStyles.minWidth = height;
-    computedStyles.width = height;
+
+    const buttonClassName = [
+          "ic-button",
+          "ic-button--icon-only",
+          `ic-button--${variant}`,
+          `ic-button--${size}`,
+        ]
+          .filter(Boolean)
+          .join(" ")
 
     return (
       <button
         ref={ref}
+        className={buttonClassName}
         disabled={disabled}
         aria-pressed={pressed}
-        style={{ ...computedStyles, ...style }}
+        style={style}
         onMouseEnter={(e) => {
-          setHovered(true);
+          // setHovered(true);
           onMouseEnter?.(e);
         }}
         onMouseLeave={(e) => {
-          setHovered(false);
+          // setHovered(false);
           onMouseLeave?.(e);
         }}
         {...rest}
