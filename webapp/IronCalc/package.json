@@ -9,8 +9,8 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "vite build && tsc -p tsconfig.json",
-    "check": "biome check ./src",
-    "check-write": "biome check --write ./src",
+    "check": "biome check ./src ./tests .storybook/ *.ts *.json",
+    "check-write": "biome check --write ./src ./tests .storybook/ *.ts *.json",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build"
