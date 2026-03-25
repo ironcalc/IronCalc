@@ -51,7 +51,6 @@ export interface ButtonProperties
   endIcon?: ReactNode;
 }
 
-
 export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
   function Button(
     {
@@ -67,19 +66,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
     },
     ref,
   ) {
-  const buttonClassName = [
-      "ic-button",
-      `ic-button--${variant}`,
-      `ic-button--${size}`,
-    ].filter(Boolean)
-  .join(" ");
     return (
       <button
         ref={ref}
         disabled={disabled}
         aria-pressed={pressed}
-        data-pressed={pressed ? "true" : undefined}
-        className={buttonClassName}
+        className={`ic-button ic-button--${variant} ic-button--${size}`}
         style={style}
         {...rest}
       >

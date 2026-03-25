@@ -1,8 +1,4 @@
-import {
-  type ButtonHTMLAttributes,
-  forwardRef,
-  type ReactNode,
-} from "react";
+import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react";
 import {
   type ButtonSize,
   type ButtonVariant,
@@ -34,21 +30,16 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
       pressed = false,
       disabled = false,
       style,
-      onMouseEnter,
-      onMouseLeave,
       ...rest
     },
     ref,
   ) {
-
     const buttonClassName = [
-          "ic-button",
-          "ic-button--icon-only",
-          `ic-button--${variant}`,
-          `ic-button--${size}`,
-        ]
-          .filter(Boolean)
-          .join(" ")
+      "ic-button",
+      "ic-button--icon-only",
+      `ic-button--${variant}`,
+      `ic-button--${size}`,
+    ].join(" ");
 
     return (
       <button
@@ -57,14 +48,6 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProperties>(
         disabled={disabled}
         aria-pressed={pressed}
         style={style}
-        onMouseEnter={(e) => {
-          // setHovered(true);
-          onMouseEnter?.(e);
-        }}
-        onMouseLeave={(e) => {
-          // setHovered(false);
-          onMouseLeave?.(e);
-        }}
         {...rest}
       >
         <span style={iconWrapperStyle}>{icon}</span>
