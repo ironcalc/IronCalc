@@ -1,6 +1,6 @@
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import type { Preview } from "@storybook/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../src/i18n";
 import { defaultTheme } from "../src/theme";
@@ -54,11 +54,22 @@ function PreviewProviders({
 }) {
   const theme = themes[themeName] ?? defaultTheme;
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
-    if (i18n.isInitialized && i18n.language !== locale) {
-      void i18n.changeLanguage(locale);
+    async function start() {
+      await i18n.init();
+      if (i18n.language !== locale) {
+        void i18n.changeLanguage(locale);
+      }
+      setIsLoaded(true);
     }
+    start();
   }, [locale]);
+
+  if (!isLoaded) {
+    return null;
+  }
 
   return (
     <I18nextProvider i18n={i18n}>
