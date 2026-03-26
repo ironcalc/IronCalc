@@ -1,6 +1,12 @@
 import type { Model } from "@ironcalc/wasm";
 import { ThemeProvider } from "@mui/material";
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from "react";
 import { I18nextProvider } from "react-i18next";
 import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
@@ -42,7 +48,10 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
       },
     }));
 
-    const theme = createIronCalcTheme(themeVariables);
+    const theme = useMemo(
+      () => createIronCalcTheme(themeVariables),
+      [themeVariables],
+    );
 
     return (
       <div ref={rootRef} className="ic-root">
