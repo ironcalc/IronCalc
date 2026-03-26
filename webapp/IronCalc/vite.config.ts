@@ -4,9 +4,12 @@ import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
 import pkg from "./package.json";
 
+const EXTERNALS = ["@ironcalc/wasm", ...Object.keys(pkg.peerDependencies)];
+
 function isExternal(id: string): boolean {
-  const externals = ["@ironcalc/wasm", ...Object.keys(pkg.peerDependencies)];
-  return externals.some((pkg) => id === pkg || id.startsWith(`${pkg}/`));
+  return EXTERNALS.some(
+    (externalPkg) => id === externalPkg || id.startsWith(`${externalPkg}/`),
+  );
 }
 
 // https://vitejs.dev/config/
