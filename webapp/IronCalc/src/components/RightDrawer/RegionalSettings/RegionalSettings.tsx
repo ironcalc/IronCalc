@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
+import "./regional-settings.css";
 
 type RegionalSettingsProps = {
   onClose: () => void;
@@ -113,9 +114,11 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
   };
 
   return (
-    <Container>
-      <Header>
-        <HeaderTitle>{t("regional_settings.title")}</HeaderTitle>
+    <div className="ic-regional-settings-container">
+      <div className="ic-regional-settings-header">
+        <div className="ic-regional-settings-header-title">
+          {t("regional_settings.title")}
+        </div>
         <IconButton
           variant="ghost"
           size="xs"
@@ -123,20 +126,23 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
           onClick={properties.onClose}
           aria-label={t("right_drawer.close")}
         />
-      </Header>
+      </div>
 
-      <Content
+      {/** biome-ignore lint/a11y/noStaticElementInteractions: mouse-driven resize handle for drawer; not keyboard-accessible yet */}
+      {/** biome-ignore lint/a11y/useKeyWithClickEvents: mouse-driven resize handle for drawer; not keyboard-accessible yet */}
+      <div
+        className="ic-regional-settings-content"
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <FormSection>
-          <StyledSectionTitle>
+        <div className="ic-regional-settings-section">
+          <div className="ic-regional-settings-section-title">
             {t("regional_settings.locale.title")}
-          </StyledSectionTitle>
+          </div>
           <FieldWrapper>
-            <StyledLabel htmlFor="locale">
+            <label className="ic-regional-settings-label" htmlFor="locale">
               {t("regional_settings.locale.locale_label")}
-            </StyledLabel>
+            </label>
             <FormControl fullWidth>
               <StyledSelect
                 id="locale"
@@ -169,23 +175,23 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                   </StyledMenuItem>
                 ))}
               </StyledSelect>
-              <HelperBox>
-                <Row>
+              <div className="ic-regional-settings-helper-box">
+                <div className="ic-regional-settings-row">
                   {t("regional_settings.locale.locale_example1")}
-                  <RowValue>
+                  <span className="ic-regional-settings-row-value">
                     {localeFormatExamples[selectedLocale]?.number ?? "1,234.56"}
-                  </RowValue>
-                </Row>
-                <Row>
+                  </span>
+                </div>
+                <div className="ic-regional-settings-row">
                   {t("regional_settings.locale.locale_example2")}
-                  <RowValue>
+                  <span className="ic-regional-settings-row-value">
                     {localeFormatExamples[selectedLocale]?.dateTime ??
                       "10/17/2026 09:21:06 PM"}
-                  </RowValue>
-                </Row>
-                <Row>
+                  </span>
+                </div>
+                <div className="ic-regional-settings-row">
                   {t("regional_settings.locale.locale_example3")}
-                  <RowValue>
+                  <span className="ic-regional-settings-row-value">
                     {(() => {
                       const delimiterType =
                         localeFormatExamples[selectedLocale]?.delimiterType ??
@@ -198,20 +204,20 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                       );
                       return `${delimiterLabel} (${delimiterChar})`;
                     })()}
-                  </RowValue>
-                </Row>
-              </HelperBox>
+                  </span>
+                </div>
+              </div>
             </FormControl>
           </FieldWrapper>
-        </FormSection>
-        <FormSection>
-          <StyledSectionTitle>
+        </div>
+        <div className="ic-regional-settings-section">
+          <h1 className="ic-regional-settings-section-title">
             {t("regional_settings.timezone.title")}
-          </StyledSectionTitle>
+          </h1>
           <FieldWrapper>
-            <StyledLabel htmlFor="timezone">
+            <label className="ic-regional-settings-label" htmlFor="timezone">
               {t("regional_settings.timezone.timezone_label")}
-            </StyledLabel>
+            </label>
             <FormControl fullWidth>
               <StyledAutocomplete
                 id="timezone"
@@ -251,65 +257,17 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
               </StyledHelperText>
             </FormControl>
           </FieldWrapper>
-        </FormSection>
-      </Content>
+        </div>
+      </div>
 
-      <Footer>
+      <div className="ic-regional-settings-footer">
         <Button startIcon={<Check />} onClick={handleSave}>
           {t("num_fmt.save")}
         </Button>
-      </Footer>
-    </Container>
+      </div>
+    </div>
   );
 };
-
-const Container = styled("div")({
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-});
-
-const Header = styled("div")(({ theme }) => ({
-  height: 40,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  padding: "0 8px",
-  borderBottom: `1px solid ${theme.palette.grey[300]}`,
-}));
-
-const HeaderTitle = styled("div")({
-  width: "100%",
-  fontSize: 12,
-});
-
-const Content = styled("div")({
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  fontSize: 12,
-  overflow: "auto",
-});
-
-const FormSection = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
-  padding: "16px 12px",
-  borderBottom: `1px solid ${theme.palette.grey[300]}`,
-
-  "&:last-child": {
-    borderBottom: "none",
-  },
-}));
-
-const StyledSectionTitle = styled("h1")(({ theme }) => ({
-  fontSize: 14,
-  fontWeight: 600,
-  fontFamily: "Inter",
-  margin: 0,
-  color: theme.palette.text.primary,
-}));
 
 const StyledSelect = styled(Select)({
   fontSize: 12,
@@ -344,39 +302,6 @@ const StyledHelperText = styled(FormHelperText)(({ theme }) => ({
   marginTop: 6,
   padding: 0,
   lineHeight: 1.4,
-}));
-
-const HelperBox = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "start",
-  justifyContent: "center",
-  gap: 2,
-  boxSizing: "border-box",
-  border: `1px solid ${theme.palette.grey[300]}`,
-  fontFamily: "Inter",
-  width: "100%",
-  height: "100%",
-  marginTop: 8,
-  backgroundColor: theme.palette.grey[100],
-  borderRadius: 4,
-  padding: 8,
-}));
-
-const Row = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexDirection: "row",
-  gap: 4,
-  width: "100%",
-  justifyContent: "space-between",
-  color: theme.palette.grey[700],
-}));
-
-const RowValue = styled("span")(({ theme }) => ({
-  fontSize: 12,
-  fontFamily: "Inter",
-  fontWeight: "normal",
-  color: theme.palette.grey[500],
 }));
 
 // Autocomplete with customized styles
@@ -476,24 +401,5 @@ const FieldWrapper = styled(Box)({
   width: "100%",
   gap: 6,
 });
-
-const StyledLabel = styled("label")(({ theme }) => ({
-  fontSize: 12,
-  fontFamily: "Inter",
-  fontWeight: 500,
-  color: theme.palette.text.primary,
-  display: "block",
-}));
-
-const Footer = styled("div")(({ theme }) => ({
-  color: theme.palette.grey[700],
-  display: "flex",
-  alignItems: "center",
-  borderTop: `1px solid ${theme.palette.grey[300]}`,
-  fontFamily: "Inter",
-  justifyContent: "flex-end",
-  padding: 8,
-  gap: 8,
-}));
 
 export default RegionalSettings;
