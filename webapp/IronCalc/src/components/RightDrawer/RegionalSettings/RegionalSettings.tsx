@@ -3,7 +3,6 @@ import {
   Autocomplete,
   type AutocompleteProps,
   FormControl,
-  FormHelperText,
   MenuItem,
   Select,
   styled,
@@ -251,9 +250,9 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                   },
                 }}
               />
-              <StyledHelperText>
+              <p className="ic-regional-settings-helper-text">
                 {t("regional_settings.timezone.timezone_helper")}
-              </StyledHelperText>
+              </p>
             </FormControl>
           </div>
         </div>
@@ -292,16 +291,6 @@ const StyledSelect = styled(Select)({
     right: "4px !important",
   },
 });
-
-const StyledHelperText = styled(FormHelperText)(({ theme }) => ({
-  fontSize: 12,
-  fontFamily: "Inter",
-  color: theme.palette.grey[500],
-  margin: 0,
-  marginTop: 6,
-  padding: 0,
-  lineHeight: 1.4,
-}));
 
 // Autocomplete with customized styles
 // Value => string,
