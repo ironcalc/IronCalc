@@ -1,5 +1,5 @@
 import { columnNameFromNumber, type Model } from "@ironcalc/wasm";
-import { styled, useTheme } from "@mui/material/styles";
+import { styled } from "@mui/material/styles";
 import {
   forwardRef,
   useEffect,
@@ -63,8 +63,6 @@ const Worksheet = forwardRef(
     const columnHeaders = useRef<HTMLDivElement>(null);
     const worksheetCanvas = useRef<WorksheetCanvas | null>(null);
 
-    const theme = useTheme();
-
     const [colHeaderContextMenuOpen, setColHeaderContextMenuOpen] =
       useState(false);
     const [rowHeaderContextMenuOpen, setRowHeaderContextMenuOpen] =
@@ -126,7 +124,6 @@ const Worksheet = forwardRef(
           extendToOutline: extendTo,
           editor: editor,
         },
-        theme,
         onColumnWidthChanges(sheet, column, width) {
           if (width < 0) {
             return;

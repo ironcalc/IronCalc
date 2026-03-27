@@ -23,7 +23,7 @@ export function attachOutlineHandle(
     position: "absolute",
     width: "5px",
     height: "5px",
-    background: worksheet.theme.palette.sheet.outlineColor,
+    background: worksheet.theme.outlineColor,
     cursor: "crosshair",
     borderRadius: "1px",
     border: `1px solid white`,
