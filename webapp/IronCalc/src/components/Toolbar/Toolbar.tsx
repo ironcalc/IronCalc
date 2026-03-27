@@ -4,7 +4,6 @@ import type {
   HorizontalAlignment,
   VerticalAlignment,
 } from "@ironcalc/wasm";
-import { styled } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import {
   AlignCenter,
@@ -46,13 +45,13 @@ import BorderPicker from "../BorderPicker/BorderPicker";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
 import ColorPicker from "../ColorPicker/ColorPicker";
-import { TOOLBAR_HEIGHT } from "../constants";
 import FormatMenu from "../FormatMenu/FormatMenu";
 import {
   decreaseDecimalPlaces,
   increaseDecimalPlaces,
   NumberFormats,
 } from "../FormatMenu/formatUtil";
+import "./toolbar.css";
 
 type ToolbarProperties = {
   canUndo: boolean;
@@ -143,7 +142,7 @@ function Toolbar(properties: ToolbarProperties) {
   }
 
   return (
-    <ToolbarWrapper>
+    <div className="ic-toolbar-wrapper">
       {showLeftArrow && (
         <Tooltip
           title={t("toolbar.scroll_left")}
@@ -160,14 +159,19 @@ function Toolbar(properties: ToolbarProperties) {
             },
           }}
         >
-          <ScrollArrow $direction="left" onClick={scrollLeft}>
+          {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
+          {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
+          <div
+            className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--left"
+            onClick={scrollLeft}
+          >
             <ChevronLeft />
-          </ScrollArrow>
+          </div>
         </Tooltip>
       )}
-      <ToolbarContainer ref={toolbarRef}>
+      <div className="ic-toolbar-container" ref={toolbarRef}>
         {/* History/Edit Group */}
-        <ButtonGroup>
+        <div className="ic-toolbar-button-group">
           <Tooltip title={t("toolbar.undo")}>
             <IconButton
               icon={<Undo2 />}
@@ -184,12 +188,12 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!properties.canRedo}
             />
           </Tooltip>
-        </ButtonGroup>
+        </div>
 
-        <Divider />
+        <div className="ic-toolbar-divider" />
 
         {/* Format Tools Group */}
-        <ButtonGroup>
+        <div className="ic-toolbar-button-group">
           <Tooltip title={t("toolbar.copy_styles")}>
             <IconButton
               icon={<PaintRoller />}
@@ -207,12 +211,12 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-        </ButtonGroup>
+        </div>
 
-        <Divider />
+        <div className="ic-toolbar-divider" />
 
         {/* Number Format Group */}
-        <ButtonGroup>
+        <div className="ic-toolbar-button-group">
           <Tooltip title={t("toolbar.currency")}>
             <IconButton
               icon={currencyIcon}
@@ -283,12 +287,12 @@ function Toolbar(properties: ToolbarProperties) {
               </Button>
             </Tooltip>
           </FormatMenu>
-        </ButtonGroup>
+        </div>
 
-        <Divider />
+        <div className="ic-toolbar-divider" />
 
         {/* Font Size Group */}
-        <ButtonGroup>
+        <div className="ic-toolbar-button-group">
           <Tooltip title={t("toolbar.decrease_font_size")}>
             <IconButton
               icon={<Minus />}
@@ -299,7 +303,7 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-          <FontSizeBox>{properties.fontSize}</FontSizeBox>
+          <div className="ic-toolbar-font-size-box">{properties.fontSize}</div>
           <Tooltip title={t("toolbar.increase_font_size")}>
             <IconButton
               icon={<Plus />}
@@ -310,12 +314,12 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-        </ButtonGroup>
+        </div>
 
-        <Divider />
+        <div className="ic-toolbar-divider" />
 
         {/* Text Style Group */}
-        <ButtonGroup>
+        <div className="ic-toolbar-button-group">
           <Tooltip title={t("toolbar.bold")}>
             <IconButton
               icon={<Bold />}
@@ -354,12 +358,12 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-        </ButtonGroup>
+        </div>
 
-        <Divider />
+        <div className="ic-toolbar-divider" />
 
         {/* Color & Border Group */}
-        <ButtonGroup>
+        <div className="ic-toolbar-button-group">
           <Tooltip title={t("toolbar.font_color")}>
             <IconButton
               type="button"
@@ -371,7 +375,10 @@ function Toolbar(properties: ToolbarProperties) {
               icon={
                 <>
                   <Type />
-                  <ColorLine color={properties.fontColor} />
+                  <div
+                    className="ic-toolbar-color-line"
+                    style={{ backgroundColor: properties.fontColor }}
+                  />
                 </>
               }
             />
@@ -387,7 +394,10 @@ function Toolbar(properties: ToolbarProperties) {
               icon={
                 <>
                   <PaintBucket />
-                  <ColorLine color={properties.fillColor} />
+                  <div
+                    className="ic-toolbar-color-line"
+                    style={{ backgroundColor: properties.fillColor }}
+                  />
                 </>
               }
             />
@@ -403,12 +413,12 @@ function Toolbar(properties: ToolbarProperties) {
               icon={<Grid2X2 />}
             />
           </Tooltip>
-        </ButtonGroup>
+        </div>
 
-        <Divider />
+        <div className="ic-toolbar-divider" />
 
         {/* Alignment Group */}
-        <ButtonGroup>
+        <div className="ic-toolbar-button-group">
           <Tooltip title={t("toolbar.align_left")}>
             <IconButton
               icon={<AlignLeft />}
@@ -486,12 +496,12 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-        </ButtonGroup>
+        </div>
 
-        <Divider />
+        <div className="ic-toolbar-divider" />
 
         {/* View & Tools Group */}
-        <ButtonGroup>
+        <div className="ic-toolbar-button-group">
           <Tooltip title={t("toolbar.show_hide_grid_lines")}>
             <IconButton
               icon={properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
@@ -510,7 +520,7 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-        </ButtonGroup>
+        </div>
 
         <ColorPicker
           color={properties.fontColor}
@@ -557,7 +567,7 @@ function Toolbar(properties: ToolbarProperties) {
           anchorEl={borderButton}
           open={borderPickerOpen}
         />
-      </ToolbarContainer>
+      </div>
       {showRightArrow && (
         <Tooltip
           title={t("toolbar.scroll_right")}
@@ -574,102 +584,18 @@ function Toolbar(properties: ToolbarProperties) {
             },
           }}
         >
-          <ScrollArrow $direction="right" onClick={scrollRight}>
+          {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
+          {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
+          <div
+            className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--right"
+            onClick={scrollRight}
+          >
             <ChevronRight />
-          </ScrollArrow>
+          </div>
         </Tooltip>
       )}
-    </ToolbarWrapper>
+    </div>
   );
 }
-const ToolbarWrapper = styled("div")(({ theme }) => ({
-  position: "relative",
-  display: "flex",
-  alignItems: "center",
-  background: theme.palette.background.paper,
-  height: TOOLBAR_HEIGHT,
-  borderBottom: `1px solid ${theme.palette.grey[300]}`,
-  borderRadius: "4px 4px 0px 0px",
-}));
-
-const ToolbarContainer = styled("div")({
-  display: "flex",
-  flex: 1,
-  alignItems: "center",
-  overflowX: "auto",
-  padding: "0px 8px",
-  gap: 4,
-  scrollbarWidth: "none",
-  "&::-webkit-scrollbar": {
-    display: "none",
-  },
-});
-
-const ColorLine = styled("div")<{ color: string }>(({ color }) => ({
-  height: 3,
-  width: 16,
-  position: "absolute",
-  bottom: 0,
-  left: "50%",
-  transform: "translateX(-50%)",
-  backgroundColor: color,
-}));
-
-const Divider = styled("div")(({ theme }) => ({
-  minWidth: 1,
-  height: 16,
-  backgroundColor: theme.palette.grey[300],
-  margin: "0px 8px",
-}));
-
-const FontSizeBox = styled("div")(({ theme }) => ({
-  width: 28,
-  height: 28,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  textAlign: "center",
-  fontFamily: theme.typography.fontFamily,
-  fontSize: 12,
-  border: "none",
-  borderRadius: 4,
-  minWidth: 24,
-}));
-
-const ButtonGroup = styled("div")({
-  display: "flex",
-  alignItems: "center",
-  gap: 2,
-});
-
-type ScrollArrowProps = { $direction: "left" | "right" };
-const ScrollArrow = styled("button", {
-  shouldForwardProp: (prop) => prop !== "$direction",
-})<ScrollArrowProps>(({ theme, $direction }) => ({
-  position: "absolute",
-  top: "50%",
-  transform: "translateY(-50%)",
-  [$direction]: 0,
-  zIndex: 10,
-  width: 24,
-  height: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: theme.palette.common.white,
-  border: "none",
-  borderRight:
-    $direction === "left" ? `1px solid ${theme.palette.grey[300]}` : "none",
-  borderLeft:
-    $direction === "right" ? `1px solid ${theme.palette.grey[300]}` : "none",
-  cursor: "pointer",
-  "&:hover": {
-    backgroundColor: theme.palette.grey[100],
-  },
-  "& svg": {
-    width: 16,
-    height: 16,
-  },
-}));
 
 export default Toolbar;
