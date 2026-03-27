@@ -61,3 +61,62 @@ export function computeWrappedLines(
   }
   return wrappedLines;
 }
+
+function readCSSVar(name: string, el: Element): string {
+  return getComputedStyle(el).getPropertyValue(name).trim();
+}
+
+function readNumberCSSVar(name: string, el: Element): number {
+  const value = readCSSVar(name, el);
+  return parseFloat(value);
+}
+
+export function readThemeFromCSS(root: Element): Theme {
+  return {
+    backgroundColor: readCSSVar("--palette-common-white", root),
+    commonWhite: readCSSVar("--palette-common-white", root),
+    gridColor: readCSSVar("--palette-sheet-grid-color", root),
+    cellFontFamily: readCSSVar(
+      "--palette-sheet-default-cell-font-family",
+      root,
+    ),
+    primaryMain: readCSSVar("--palette-primary-main", root),
+    headerTextColor: readCSSVar("--palette-sheet-header-text-color", root),
+    headerBackground: readCSSVar("--palette-sheet-header-background", root),
+    headerSelectedBackground: readCSSVar(
+      "--palette-sheet-header-selected-background",
+      root,
+    ),
+    headerBorderColor: readCSSVar("--palette-sheet-header-border-color", root),
+    outlineColor: readCSSVar("--palette-sheet-outline-color", root),
+    headerFontFamily: readCSSVar("--palette-sheet-header-font-family", root),
+    headerFontSize: readNumberCSSVar("--palette-sheet-header-font-size", root),
+    gridSeparatorColor: readCSSVar(
+      "--palette-sheet-grid-separator-color",
+      root,
+    ),
+    defaultTextColor: readCSSVar("--palette-sheet-default-text-color", root),
+    headerSelectedColor: readCSSVar(
+      "--palette-sheet-header-selected-color",
+      root,
+    ),
+  };
+}
+
+export interface Theme {
+  backgroundColor: string;
+  gridColor: string;
+  cellFontFamily: string;
+  primaryMain: string;
+  headerTextColor: string;
+  headerBackground: string;
+  headerSelectedBackground: string;
+  headerBorderColor: string;
+  outlineColor: string;
+  headerFontFamily: string;
+  headerFontSize: number;
+  gridSeparatorColor: string;
+  defaultTextColor: string;
+  commonWhite: string;
+  headerSelectedColor: string;
+}
