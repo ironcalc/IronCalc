@@ -1,5 +1,4 @@
 import { columnNameFromNumber, type Model } from "@ironcalc/wasm";
-import { styled } from "@mui/material/styles";
 import {
   forwardRef,
   useEffect,
@@ -8,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { FORMULA_BAR_HEIGHT, NAVIGATION_HEIGHT } from "../constants";
 import Editor from "../Editor/Editor";
 import type { Cell } from "../types";
 import {
@@ -25,6 +23,7 @@ import type { WorkbookState } from "../workbookState";
 import ColumnHeaderContextMenu from "./ContextMenus/ColumnHeader";
 import RowHeaderContextMenu from "./ContextMenus/RowHeader";
 import usePointer from "./usePointer";
+import "./worksheet.css";
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -280,10 +279,15 @@ const Worksheet = forwardRef(
     };
 
     return (
-      <Wrapper ref={scrollElement} onScroll={onScroll} className="scroll">
-        <Spacer ref={spacerElement} />
-        <SheetContainer
-          className="sheet-container"
+      <div
+        ref={scrollElement}
+        onScroll={onScroll}
+        className="ic-worksheet-wrapper scroll"
+      >
+        <div className="ic-worksheet-spacer" ref={spacerElement} />
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: spreadsheet surface handles pointer interactions */}
+        <div
+          className="ic-worksheet-sheet-container"
           ref={worksheetElement}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -411,9 +415,9 @@ const Worksheet = forwardRef(
             props.refresh();
           }}
         >
-          <SheetCanvas ref={canvasElement} />
-          <CellOutline ref={cellOutline} />
-          <EditorWrapper ref={editorElement}>
+          <canvas className="ic-worksheet-sheet-canvas" ref={canvasElement} />
+          <div className="ic-worksheet-cell-outline" ref={cellOutline} />
+          <div className="ic-worksheet-editor-wrapper" ref={editorElement}>
             <Editor
               originalText={workbookState.getEditingText()}
               onEditEnd={(): void => {
@@ -426,13 +430,19 @@ const Worksheet = forwardRef(
               workbookState={workbookState}
               type={"cell"}
             />
-          </EditorWrapper>
-          <AreaOutline ref={areaOutline} />
-          <ExtendToOutline ref={extendToOutline} />
-          <ColumnResizeGuide ref={columnResizeGuide} />
-          <RowResizeGuide ref={rowResizeGuide} />
-          <ColumnHeaders ref={columnHeaders} />
-        </SheetContainer>
+          </div>
+          <div className="ic-worksheet-area-outline" ref={areaOutline} />
+          <div
+            className="ic-worksheet-extend-to-outline"
+            ref={extendToOutline}
+          />
+          <div
+            className="ic-worksheet-column-resize-guide"
+            ref={columnResizeGuide}
+          />
+          <div className="ic-worksheet-row-resize-guide" ref={rowResizeGuide} />
+          <div className="ic-worksheet-column-headers" ref={columnHeaders} />
+        </div>
         <ColumnHeaderContextMenu
           open={colHeaderContextMenuOpen}
           onClose={() => setColHeaderContextMenuOpen(false)}
@@ -620,144 +630,9 @@ const Worksheet = forwardRef(
           })()}
           frozenRowsCount={model.getFrozenRowsCount(model.getSelectedSheet())}
         />
-      </Wrapper>
+      </div>
     );
   },
 );
-
-const Spacer = styled("div")({
-  position: "absolute",
-  height: 5000,
-  width: 5000,
-});
-
-const SheetContainer = styled("div")(({ theme }) => ({
-  position: "sticky",
-  top: 0,
-  left: 0,
-  height: "100%",
-
-  "& .column-resize-handle": {
-    position: "absolute",
-    top: 0,
-    width: 3,
-    opacity: 0,
-    background: theme.palette.sheet.outlineColor,
-    borderRadius: 5,
-    cursor: "col-resize",
-  },
-
-  "& .column-resize-handle:hover": {
-    opacity: 1,
-  },
-
-  "& .row-resize-handle": {
-    position: "absolute",
-    left: 0,
-    height: 3,
-    opacity: 0,
-    background: theme.palette.sheet.outlineColor,
-    borderRadius: 5,
-    cursor: "row-resize",
-  },
-
-  "& .row-resize-handle:hover": {
-    opacity: 1,
-  },
-}));
-
-const Wrapper = styled("div")({
-  position: "absolute",
-  overflow: "scroll",
-  top: FORMULA_BAR_HEIGHT + 1,
-  left: 0,
-  right: 0,
-  bottom: NAVIGATION_HEIGHT + 1,
-  overscrollBehavior: "none",
-});
-const SheetCanvas = styled("canvas")({
-  position: "relative",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 40,
-});
-
-const ColumnResizeGuide = styled("div")(({ theme }) => ({
-  position: "absolute",
-  top: 0,
-  display: "none",
-  height: "100%",
-  width: 0,
-  borderLeft: `1px dashed ${theme.palette.sheet.outlineColor}`,
-}));
-
-const ColumnHeaders = styled("div")({
-  position: "absolute",
-  left: 0,
-  top: 0,
-  overflow: "hidden",
-  display: "flex",
-
-  "& .column-header": {
-    display: "inline-block",
-    textAlign: "center",
-    overflow: "hidden",
-    height: "100%",
-    userSelect: "none",
-  },
-});
-
-const RowResizeGuide = styled("div")(({ theme }) => ({
-  position: "absolute",
-  display: "none",
-  left: 0,
-  height: 0,
-  width: "100%",
-  borderTop: `1px dashed ${theme.palette.sheet.outlineColor}`,
-}));
-
-const AreaOutline = styled("div")(({ theme }) => ({
-  position: "absolute",
-  border: `0px solid ${theme.palette.sheet.outlineColor}`,
-  borderRadius: 1,
-  backgroundColor: theme.palette.sheet.outlineBackgroundColor,
-}));
-
-const CellOutline = styled("div")(({ theme }) => ({
-  position: "absolute",
-  border: `2px solid ${theme.palette.sheet.outlineColor}`,
-  borderRadius: 3,
-  wordBreak: "break-word",
-  fontSize: 13,
-  display: "flex",
-  boxShadow: "inset 0 0 0 1px white",
-}));
-
-const ExtendToOutline = styled("div")(({ theme }) => ({
-  position: "absolute",
-  border: `1px dashed ${theme.palette.sheet.outlineColor}`,
-  borderRadius: 3,
-}));
-
-const EditorWrapper = styled("div")(({ theme }) => ({
-  position: "absolute",
-  width: "100%",
-  padding: 0,
-  borderWidth: 0,
-  outline: `3px solid ${theme.palette.sheet.outlineEditingColor}`,
-  resize: "none",
-  whiteSpace: "pre-wrap",
-  verticalAlign: "bottom",
-  overflow: "hidden",
-  textAlign: "left",
-  zIndex: 1000,
-  fontFamily: "monospace",
-  border: `2px solid ${theme.palette.sheet.outlineColor}`,
-
-  "& span": {
-    minWidth: 1,
-  },
-}));
 
 export default Worksheet;
