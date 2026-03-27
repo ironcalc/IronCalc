@@ -4,13 +4,11 @@ import type {
   Model,
   WorksheetProperties,
 } from "@ironcalc/wasm";
-import { styled } from "@mui/material/styles";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
 } from "../clipboard";
-import { TOOLBAR_HEIGHT } from "../constants";
 import FormulaBar from "../FormulaBar/FormulaBar";
 import RightDrawer, {
   DEFAULT_DRAWER_WIDTH,
@@ -34,6 +32,7 @@ import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
+import "./workbook.css";
 
 const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const { model, workbookState } = props;
@@ -395,9 +394,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const style = getCellStyle();
 
   return (
-    <Container
+    // biome-ignore lint/a11y/noStaticElementInteractions: This div needs to be focusable to handle keyboard events for the workbook
+    <div
+      className="ic-workbook-container"
       ref={rootRef}
       onKeyDown={onKeyDown}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: This div needs to be focusable to handle keyboard events for the workbook
       tabIndex={0}
       onClick={(event: React.MouseEvent) => {
         if (!workbookState.getEditingCell()) {
@@ -687,7 +689,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
         formatOptions={fmtSettings}
       />
-      <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? drawerWidth : 0}>
+      <div
+        className="ic-workbook-worksheet-area-left"
+        style={{
+          width: isDrawerOpen ? `calc(100% - ${drawerWidth}px)` : "100%",
+        }}
+      >
         <FormulaBar
           cellAddress={cellAddress()}
           formulaValue={formulaValue()}
@@ -762,7 +769,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           }}
           model={model}
         />
-      </WorksheetAreaLeft>
+      </div>
       <RightDrawer
         isOpen={isDrawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -790,30 +797,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setRedrawId((id) => id + 1);
         }}
       />
-    </Container>
+    </div>
   );
 };
-
-type WorksheetAreaLeftProps = { $drawerWidth: number };
-const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
-  ({ $drawerWidth }) => ({
-    position: "absolute",
-    top: TOOLBAR_HEIGHT,
-    width: `calc(100% - ${$drawerWidth}px)`,
-    height: `calc(100% - ${TOOLBAR_HEIGHT}px)`,
-  }),
-);
-
-const Container = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  height: "100%",
-  position: "relative",
-  fontFamily: theme.typography.fontFamily,
-
-  "&:focus": {
-    outline: "none",
-  },
-}));
 
 export default Workbook;

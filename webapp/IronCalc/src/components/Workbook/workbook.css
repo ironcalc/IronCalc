@@ -1,0 +1,17 @@
+.ic-workbook-worksheet-area-left {
+  position: absolute;
+  top: var(--toolbar-height);
+  height: calc(100% - var(--toolbar-height));
+}
+
+.ic-workbook-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  font-family: var(--typography-font-family);
+}
+
+.ic-workbook-container:focus {
+  outline: none;
+}
