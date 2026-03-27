@@ -1,0 +1,104 @@
+/* Toolbar wrapper */
+.ic-toolbar-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--palette-common-white);
+  height: var(--toolbar-height);
+  border-bottom: 1px solid var(--palette-grey-300);
+  border-radius: 4px 4px 0 0;
+}
+
+/* Toolbar container */
+.ic-toolbar-container {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  overflow-x: auto;
+  padding: 0 8px;
+  gap: 4px;
+  scrollbar-width: none; /* Firefox */
+}
+
+.ic-toolbar-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Color line */
+.ic-toolbar-color-line {
+  height: 3px;
+  width: 16px;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  /* dynamic color via inline style */
+}
+
+/* Divider */
+.ic-toolbar-divider {
+  min-width: 1px;
+  height: 16px;
+  background-color: var(--palette-grey-300);
+  margin: 0 8px;
+}
+
+/* Font size box */
+.ic-toolbar-font-size-box {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--typography-font-family);
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  min-width: 24px;
+}
+
+/* Button group */
+.ic-toolbar-button-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Scroll arrow (base) */
+.ic-toolbar-scroll-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 24px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--palette-common-white);
+  border: none;
+  cursor: pointer;
+}
+
+/* Direction modifiers */
+.ic-toolbar-scroll-arrow--left {
+  left: 0;
+  border-right: 1px solid var(--palette-grey-300);
+}
+
+.ic-toolbar-scroll-arrow--right {
+  right: 0;
+  border-left: 1px solid var(--palette-grey-300);
+}
+
+/* Hover */
+.ic-toolbar-scroll-arrow:hover {
+  background-color: var(--palette-grey-100);
+}
+
+/* SVG inside arrow */
+.ic-toolbar-scroll-arrow svg {
+  width: 16px;
+  height: 16px;
+}
