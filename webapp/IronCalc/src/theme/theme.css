@@ -76,7 +76,6 @@
   --palette-sheet-outline-background-color: #f2994a1a;
   --palette-sheet-default-cell-font-family:
     "Inter", "Adjusted Arial Fallback", sans-serif;
-  --palette-sheet-header-font-family:
+  --palette-sheet-header-font:
     bold 12px "Inter", "Adjusted Arial Fallback", sans-serif;
-  --palette-sheet-header-font-size: 12px;
 }
