@@ -4,7 +4,7 @@ import type {
   PartialIronCalcThemeVariables,
 } from "./themeVariables";
 
-const defaultThemeVariables: IronCalcThemeVariables = {
+export const defaultThemeVariables: IronCalcThemeVariables = {
   "--typography-font-family": "Inter",
   "--typography-font-size": "12px",
 

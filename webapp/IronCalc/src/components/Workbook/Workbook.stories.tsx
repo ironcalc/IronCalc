@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useState } from "react";
-import { IronCalc, init, Model } from "../../index";
+import { init, Model } from "../../index";
+import { WorkbookState } from "../workbookState";
+import Workbook from "./Workbook";
 
 function WorkbookWithInit() {
   const [model, setModel] = useState<Model | null>(null);
@@ -13,7 +15,9 @@ function WorkbookWithInit() {
     start();
   }, []);
 
-  if (!model) return <div>Loading...</div>;
+  if (!model) {
+    return <div>Loading...</div>;
+  }
   return (
     <div
       style={{
@@ -24,7 +28,7 @@ function WorkbookWithInit() {
         right: 0,
       }}
     >
-      <IronCalc model={model} ref={null} themeVariables={{}} />
+      <Workbook model={model} workbookState={new WorkbookState()} />
     </div>
   );
 }
