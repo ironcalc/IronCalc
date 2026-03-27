@@ -114,3 +114,13 @@
   width: 100%;
   gap: 6px;
 }
+
+.ic-regional-settings-helper-text {
+  font-size: 12px;
+  font-family: var(--typography-font-family);
+  color: var(--palette-grey-500);
+  margin: 0;
+  margin-top: 6px;
+  padding: 0;
+  line-height: 1.4;
+}
