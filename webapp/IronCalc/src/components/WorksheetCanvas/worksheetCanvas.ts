@@ -1188,7 +1188,7 @@ export default class WorksheetCanvas {
           ? this.theme.commonWhite
           : this.theme.headerSelectedColor
         : this.theme.headerTextColor;
-      context.font = this.theme.headerFontFamily;
+      context.font = this.theme.headerFont;
       context.fillText(
         `${row}`,
         headerColumnWidth / 2,
@@ -1233,8 +1233,7 @@ export default class WorksheetCanvas {
       ".frozen-column-separator",
     ))
       separator.remove();
-    columnHeaders.style.fontFamily = this.theme.headerFontFamily;
-    columnHeaders.style.fontSize = `${this.theme.headerFontSize}px`;
+    columnHeaders.style.font = this.theme.headerFont;
     columnHeaders.style.height = `${headerRowHeight}px`;
     columnHeaders.style.lineHeight = `${headerRowHeight}px`;
     columnHeaders.style.left = `${headerColumnWidth}px`;

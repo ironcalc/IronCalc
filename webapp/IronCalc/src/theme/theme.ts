@@ -72,9 +72,8 @@ export const defaultThemeVariables: IronCalcThemeVariables = {
   "--palette-sheet-outline-background-color": "#F2994A1A",
   "--palette-sheet-default-cell-font-family":
     'Inter, "Adjusted Arial Fallback", sans-serif',
-  "--palette-sheet-header-font-family":
+  "--palette-sheet-header-font":
     'bold 12px Inter, "Adjusted Arial Fallback", sans-serif',
-  "--palette-sheet-header-font-size": "12px",
 };
 
 export function createIronCalcTheme(overrides?: PartialIronCalcThemeVariables) {
@@ -163,11 +162,7 @@ export function createIronCalcTheme(overrides?: PartialIronCalcThemeVariables) {
           variables["--palette-sheet-outline-background-color"],
         defaultCellFontFamily:
           variables["--palette-sheet-default-cell-font-family"],
-        headerFontFamily: variables["--palette-sheet-header-font-family"],
-        headerFontSize: parseInt(
-          variables["--palette-sheet-header-font-size"],
-          10,
-        ),
+        headerFontFamily: variables["--palette-sheet-header-font"],
       },
     },
   });

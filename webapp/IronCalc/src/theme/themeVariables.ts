@@ -65,8 +65,7 @@ export interface IronCalcThemeVariables {
   "--palette-sheet-outline-editing-color": string;
   "--palette-sheet-outline-background-color": string;
   "--palette-sheet-default-cell-font-family": string;
-  "--palette-sheet-header-font-family": string;
-  "--palette-sheet-header-font-size": string;
+  "--palette-sheet-header-font": string;
 }
 
 export type PartialIronCalcThemeVariables = Partial<IronCalcThemeVariables>;

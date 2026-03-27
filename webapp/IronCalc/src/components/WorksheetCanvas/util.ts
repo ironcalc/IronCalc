@@ -66,11 +66,6 @@ function readCSSVar(name: string, style: CSSStyleDeclaration): string {
   return style.getPropertyValue(name).trim();
 }
 
-function readNumberCSSVar(name: string, style: CSSStyleDeclaration): number {
-  const value = readCSSVar(name, style);
-  return parseFloat(value);
-}
-
 export function readThemeFromCSS(root: Element): Theme {
   const style = getComputedStyle(root);
   return {
@@ -90,8 +85,7 @@ export function readThemeFromCSS(root: Element): Theme {
     ),
     headerBorderColor: readCSSVar("--palette-sheet-header-border-color", style),
     outlineColor: readCSSVar("--palette-sheet-outline-color", style),
-    headerFontFamily: readCSSVar("--palette-sheet-header-font-family", style),
-    headerFontSize: readNumberCSSVar("--palette-sheet-header-font-size", style),
+    headerFont: readCSSVar("--palette-sheet-header-font", style),
     gridSeparatorColor: readCSSVar(
       "--palette-sheet-grid-separator-color",
       style,
@@ -114,8 +108,7 @@ export interface Theme {
   headerSelectedBackground: string;
   headerBorderColor: string;
   outlineColor: string;
-  headerFontFamily: string;
-  headerFontSize: number;
+  headerFont: string;
   gridSeparatorColor: string;
   defaultTextColor: string;
   commonWhite: string;
