@@ -1,11 +1,9 @@
 import type { Model } from "@ironcalc/wasm";
-import { styled } from "@mui/material/styles";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { TOOLBAR_HEIGHT } from "../constants";
 import NamedRanges from "./NamedRanges/NamedRanges";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
+import "./rightdrawer.css";
 
 const DEFAULT_DRAWER_WIDTH = 360;
 const MIN_DRAWER_WIDTH = 300;
@@ -43,7 +41,6 @@ const RightDrawer = ({
   initialLanguage,
   onSettingsSave,
 }: RightDrawerProps) => {
-  const { t } = useTranslation();
   const [drawerWidth, setDrawerWidth] = useState(width);
   const [isResizing, setIsResizing] = useState(false);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
@@ -118,76 +115,18 @@ const RightDrawer = ({
   };
 
   return (
-    <DrawerContainer $drawerWidth={drawerWidth}>
-      <ResizeHandle
+    <div className="ic-drawer-container" style={{ width: drawerWidth }}>
+      {/** biome-ignore lint/a11y/noStaticElementInteractions: mouse-driven resize handle for drawer; not keyboard-accessible yet */}
+      <div
+        className={`ic-drawer-resize-handle ${isResizing ? "ic-drawer-resize-handle--resizing" : ""}`}
         ref={resizeHandleRef}
         onMouseDown={handleMouseDown}
-        $isResizing={isResizing}
-        aria-label={t("right_drawer.resize_drawer")}
       />
-      <Divider />
-      <DrawerContent>{renderDrawerContent()}</DrawerContent>
-    </DrawerContainer>
+      <div className="ic-drawer-divider" />
+      <div className="ic-drawer-content">{renderDrawerContent()}</div>
+    </div>
   );
 };
-
-type DrawerContainerProps = {
-  $drawerWidth: number;
-};
-
-const DrawerContainer = styled("div")<DrawerContainerProps>(
-  ({ theme, $drawerWidth }) => ({
-    position: "absolute",
-    overflow: "hidden",
-    backgroundColor: theme.palette.common.white,
-    right: 0,
-    top: TOOLBAR_HEIGHT,
-    bottom: 0,
-    borderLeft: `1px solid ${theme.palette.grey[300]}`,
-    width: $drawerWidth,
-    display: "flex",
-    flexDirection: "column",
-
-    "@media (max-width: 600px)": {
-      width: "100%",
-      borderLeft: "none",
-      top: 0,
-      zIndex: 1000,
-    },
-  }),
-);
-
-const Divider = styled("div")(({ theme }) => ({
-  height: 1,
-  width: "100%",
-  backgroundColor: theme.palette.grey[300],
-  margin: 0,
-}));
-
-const DrawerContent = styled("div")({
-  flex: 1,
-  height: "100%",
-});
-
-const ResizeHandle = styled("div")<{ $isResizing: boolean }>(
-  ({ theme, $isResizing }) => ({
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    cursor: "col-resize",
-    backgroundColor: $isResizing ? theme.palette.primary.main : "transparent",
-    zIndex: 10,
-
-    "&:hover": {
-      backgroundColor: theme.palette.primary.main,
-      opacity: 0.5,
-    },
-
-    transition: $isResizing ? "none" : "background-color 0.2s ease",
-  }),
-);
 
 export default RightDrawer;
 export { DEFAULT_DRAWER_WIDTH, MAX_DRAWER_WIDTH, MIN_DRAWER_WIDTH };
