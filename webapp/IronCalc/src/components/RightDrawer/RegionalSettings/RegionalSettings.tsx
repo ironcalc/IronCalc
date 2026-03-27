@@ -2,7 +2,6 @@ import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
 import {
   Autocomplete,
   type AutocompleteProps,
-  Box,
   FormControl,
   FormHelperText,
   MenuItem,
@@ -139,7 +138,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
           <div className="ic-regional-settings-section-title">
             {t("regional_settings.locale.title")}
           </div>
-          <FieldWrapper>
+          <div className="ic-regional-settings-field-wrapper">
             <label className="ic-regional-settings-label" htmlFor="locale">
               {t("regional_settings.locale.locale_label")}
             </label>
@@ -208,13 +207,13 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 </div>
               </div>
             </FormControl>
-          </FieldWrapper>
+          </div>
         </div>
         <div className="ic-regional-settings-section">
           <h1 className="ic-regional-settings-section-title">
             {t("regional_settings.timezone.title")}
           </h1>
-          <FieldWrapper>
+          <div className="ic-regional-settings-field-wrapper">
             <label className="ic-regional-settings-label" htmlFor="timezone">
               {t("regional_settings.timezone.timezone_label")}
             </label>
@@ -256,7 +255,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                 {t("regional_settings.timezone.timezone_helper")}
               </StyledHelperText>
             </FormControl>
-          </FieldWrapper>
+          </div>
         </div>
       </div>
 
@@ -394,12 +393,5 @@ const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
     backgroundColor: `${theme.palette.grey[50]} !important`,
   },
 }));
-
-const FieldWrapper = styled(Box)({
-  display: "flex",
-  flexDirection: "column",
-  width: "100%",
-  gap: 6,
-});
 
 export default RegionalSettings;
