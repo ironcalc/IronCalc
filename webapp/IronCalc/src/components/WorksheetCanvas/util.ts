@@ -62,43 +62,44 @@ export function computeWrappedLines(
   return wrappedLines;
 }
 
-function readCSSVar(name: string, el: Element): string {
-  return getComputedStyle(el).getPropertyValue(name).trim();
+function readCSSVar(name: string, style: CSSStyleDeclaration): string {
+  return style.getPropertyValue(name).trim();
 }
 
-function readNumberCSSVar(name: string, el: Element): number {
-  const value = readCSSVar(name, el);
+function readNumberCSSVar(name: string, style: CSSStyleDeclaration): number {
+  const value = readCSSVar(name, style);
   return parseFloat(value);
 }
 
 export function readThemeFromCSS(root: Element): Theme {
+  const style = getComputedStyle(root);
   return {
-    backgroundColor: readCSSVar("--palette-common-white", root),
-    commonWhite: readCSSVar("--palette-common-white", root),
-    gridColor: readCSSVar("--palette-sheet-grid-color", root),
+    backgroundColor: readCSSVar("--palette-common-white", style),
+    commonWhite: readCSSVar("--palette-common-white", style),
+    gridColor: readCSSVar("--palette-sheet-grid-color", style),
     cellFontFamily: readCSSVar(
       "--palette-sheet-default-cell-font-family",
-      root,
+      style,
     ),
-    primaryMain: readCSSVar("--palette-primary-main", root),
-    headerTextColor: readCSSVar("--palette-sheet-header-text-color", root),
-    headerBackground: readCSSVar("--palette-sheet-header-background", root),
+    primaryMain: readCSSVar("--palette-primary-main", style),
+    headerTextColor: readCSSVar("--palette-sheet-header-text-color", style),
+    headerBackground: readCSSVar("--palette-sheet-header-background", style),
     headerSelectedBackground: readCSSVar(
       "--palette-sheet-header-selected-background",
-      root,
+      style,
     ),
-    headerBorderColor: readCSSVar("--palette-sheet-header-border-color", root),
-    outlineColor: readCSSVar("--palette-sheet-outline-color", root),
-    headerFontFamily: readCSSVar("--palette-sheet-header-font-family", root),
-    headerFontSize: readNumberCSSVar("--palette-sheet-header-font-size", root),
+    headerBorderColor: readCSSVar("--palette-sheet-header-border-color", style),
+    outlineColor: readCSSVar("--palette-sheet-outline-color", style),
+    headerFontFamily: readCSSVar("--palette-sheet-header-font-family", style),
+    headerFontSize: readNumberCSSVar("--palette-sheet-header-font-size", style),
     gridSeparatorColor: readCSSVar(
       "--palette-sheet-grid-separator-color",
-      root,
+      style,
     ),
-    defaultTextColor: readCSSVar("--palette-sheet-default-text-color", root),
+    defaultTextColor: readCSSVar("--palette-sheet-default-text-color", style),
     headerSelectedColor: readCSSVar(
       "--palette-sheet-header-selected-color",
-      root,
+      style,
     ),
   };
 }
