@@ -5,9 +5,11 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::math_util::{from_roman, to_roman_with_form};
 use crate::number_format::{to_excel_precision, to_precision};
 use crate::single_number_fn;
+use crate::worksheet::WorksheetDimension;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+
 use std::f64::consts::PI;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -301,33 +303,46 @@ impl<'a> Model<'a> {
                     let column1 = left.column;
                     let mut column2 = right.column;
 
-                    if row1 == 1 && row2 == LAST_ROW {
-                        row2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_row,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_column,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
+                    let dx: WorksheetDimension = match self.get_max_rc(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                    };
 
-                    for row in row1..=row2 {
-                        for column in column1..=column2 {
+                    // if row1 == 1 && row2 == LAST_ROW {
+                    //     row2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_row,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+                    // if column1 == 1 && column2 == LAST_COLUMN {
+                    //     column2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_column,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+
+                    // for row in row1..=row2 {
+                    // for column in column1..=column2 {
+                    for row in dx.min_row..(dx.max_row + 1) {
+                        for column in dx.min_column..(dx.max_column + 1) {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -451,33 +466,46 @@ impl<'a> Model<'a> {
                     let column1 = left.column;
                     let mut column2 = right.column;
 
-                    if row1 == 1 && row2 == LAST_ROW {
-                        row2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_row,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_column,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
+                    let dx: WorksheetDimension = match self.get_max_rc(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                    };
 
-                    for row in row1..=row2 {
-                        for column in column1..=column2 {
+                    // if row1 == 1 && row2 == LAST_ROW {
+                    //     row2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_row,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+                    // if column1 == 1 && column2 == LAST_COLUMN {
+                    //     column2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_column,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+
+                    // for row in row1..=row2 {
+                    // for column in column1..=column2 {
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -557,36 +585,50 @@ impl<'a> Model<'a> {
                     // TODO: We should do this for all functions that run through ranges
                     // Running cargo test for the ironcalc takes around .8 seconds with this speedup
                     // and ~ 3.5 seconds without it. Note that once properly in place sheet.dimension should be almost a noop
-                    let row1 = left.row;
-                    let mut row2 = right.row;
-                    let column1 = left.column;
-                    let mut column2 = right.column;
-                    if row1 == 1 && row2 == LAST_ROW {
-                        row2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_row,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_column,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    for row in row1..row2 + 1 {
-                        for column in column1..(column2 + 1) {
+                    // let row1 = left.row;
+                    // let mut row2 = right.row;
+                    // let column1 = left.column;
+                    // let mut column2 = right.column;
+
+                    let dx: WorksheetDimension = match self.get_max_rc(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                    };
+
+                    // if row1 == 1 && row2 == LAST_ROW {
+                    //     row2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_row,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+                    // if column1 == 1 && column2 == LAST_COLUMN {
+                    //     column2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_column,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+                    // for row in row1..row2 + 1 {
+                    //     for column in column1..(column2 + 1) {
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -653,36 +695,49 @@ impl<'a> Model<'a> {
                     // TODO: We should do this for all functions that run through ranges
                     // Running cargo test for the ironcalc takes around .8 seconds with this speedup
                     // and ~ 3.5 seconds without it. Note that once properly in place sheet.dimension should be almost a noop
-                    let row1 = left.row;
-                    let mut row2 = right.row;
-                    let column1 = left.column;
-                    let mut column2 = right.column;
-                    if row1 == 1 && row2 == LAST_ROW {
-                        row2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_row,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_column,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    for row in row1..row2 + 1 {
-                        for column in column1..(column2 + 1) {
+                    // let row1 = left.row;
+                    // let mut row2 = right.row;
+                    // let column1 = left.column;
+                    // let mut column2 = right.column;
+                    // if row1 == 1 && row2 == LAST_ROW {
+                    //     row2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_row,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+                    // if column1 == 1 && column2 == LAST_COLUMN {
+                    //     column2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_column,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+                    // for row in row1..row2 + 1 {
+                    //     for column in column1..(column2 + 1) {
+                    let dx: WorksheetDimension = match self.get_max_rc(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                    };
+
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -748,36 +803,50 @@ impl<'a> Model<'a> {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    let row1 = left.row;
-                    let mut row2 = right.row;
-                    let column1 = left.column;
-                    let mut column2 = right.column;
-                    if row1 == 1 && row2 == LAST_ROW {
-                        row2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_row,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_column,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    for row in row1..row2 + 1 {
-                        for column in column1..(column2 + 1) {
+                    // let row1 = left.row;
+                    // let mut row2 = right.row;
+                    // let column1 = left.column;
+                    // let mut column2 = right.column;
+                    // if row1 == 1 && row2 == LAST_ROW {
+                    //     row2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_row,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+                    // if column1 == 1 && column2 == LAST_COLUMN {
+                    //     column2 = match self.workbook.worksheet(left.sheet) {
+                    //         Ok(s) => s.dimension().max_column,
+                    //         Err(_) => {
+                    //             return CalcResult::new_error(
+                    //                 Error::ERROR,
+                    //                 cell,
+                    //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                    //             );
+                    //         }
+                    //     };
+                    // }
+                    // for row in row1..row2 + 1 {
+                    //     for column in column1..(column2 + 1) {
+                    //
+                    let dx: WorksheetDimension = match self.get_max_rc(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                    };
+
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,

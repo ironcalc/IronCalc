@@ -20,6 +20,7 @@ mod macros;
 mod math_util;
 mod mathematical;
 mod mathematical_sum;
+mod model_util;
 mod statistical;
 mod subtotal;
 mod text;

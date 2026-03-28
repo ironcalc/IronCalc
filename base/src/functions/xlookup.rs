@@ -1,5 +1,6 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
+use crate::worksheet::WorksheetDimension;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -245,44 +246,58 @@ impl<'a> Model<'a> {
                                 message: "Arrays must be of the same size".to_string(),
                             };
                         }
-                        let mut row2 = right.row;
-                        let row1 = left.row;
-                        let mut column2 = right.column;
-                        let column1 = left.column;
+                        // let mut row2 = right.row;
+                        // let row1 = left.row;
+                        // let mut column2 = right.column;
+                        // let column1 = left.column;
 
-                        if row1 == 1 && row2 == LAST_ROW {
-                            row2 = match self.workbook.worksheet(left.sheet) {
-                                Ok(s) => s.dimension().max_row,
-                                Err(_) => {
-                                    return CalcResult::new_error(
-                                        Error::ERROR,
-                                        cell,
-                                        format!("Invalid worksheet index: '{}'", left.sheet),
-                                    );
-                                }
-                            };
-                        }
-                        if column1 == 1 && column2 == LAST_COLUMN {
-                            column2 = match self.workbook.worksheet(left.sheet) {
-                                Ok(s) => s.dimension().max_column,
-                                Err(_) => {
-                                    return CalcResult::new_error(
-                                        Error::ERROR,
-                                        cell,
-                                        format!("Invalid worksheet index: '{}'", left.sheet),
-                                    );
-                                }
-                            };
-                        }
+                        // if row1 == 1 && row2 == LAST_ROW {
+                        //     row2 = match self.workbook.worksheet(left.sheet) {
+                        //         Ok(s) => s.dimension().max_row,
+                        //         Err(_) => {
+                        //             return CalcResult::new_error(
+                        //                 Error::ERROR,
+                        //                 cell,
+                        //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                        //             );
+                        //         }
+                        //     };
+                        // }
+                        // if column1 == 1 && column2 == LAST_COLUMN {
+                        //     column2 = match self.workbook.worksheet(left.sheet) {
+                        //         Ok(s) => s.dimension().max_column,
+                        //         Err(_) => {
+                        //             return CalcResult::new_error(
+                        //                 Error::ERROR,
+                        //                 cell,
+                        //                 format!("Invalid worksheet index: '{}'", left.sheet),
+                        //             );
+                        //         }
+                        //     };
+                        // }
+
+                        let dx: WorksheetDimension = match self.get_max_rc(
+                            left.sheet,
+                            left.row,
+                            left.column,
+                            right.row,
+                            right.column,
+                        ) {
+                            Ok(d) => d,
+                            Err(_) => {
+                                return CalcResult::new_error(Error::ERROR, cell, format!("..."))
+                            }
+                        };
+
                         let left = CellReferenceIndex {
                             sheet: left.sheet,
-                            column: column1,
-                            row: row1,
+                            column: dx.min_column,
+                            row: dx.min_row,
                         };
                         let right = CellReferenceIndex {
                             sheet: left.sheet,
-                            column: column2,
-                            row: row2,
+                            column: dx.max_column,
+                            row: dx.max_row,
                         };
                         match search_mode {
                             SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {

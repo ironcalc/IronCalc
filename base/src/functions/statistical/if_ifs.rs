@@ -1,6 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::build_criteria;
+use crate::worksheet::WorksheetDimension;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::Node,
@@ -224,38 +225,49 @@ impl<'a> Model<'a> {
             fn_criteria.push(build_criteria(criterion));
         }
 
-        let left_row = sum_range.left.row;
-        let left_column = sum_range.left.column;
-        let mut right_row = sum_range.right.row;
-        let mut right_column = sum_range.right.column;
+        // let left_row = sum_range.left.row;
+        // let left_column = sum_range.left.column;
+        // let mut right_row = sum_range.right.row;
+        // let mut right_column = sum_range.right.column;
 
-        if left_row == 1 && right_row == LAST_ROW {
-            right_row = match self.workbook.worksheet(sum_range.left.sheet) {
-                Ok(s) => s.dimension().max_row,
-                Err(_) => {
-                    return Err(CalcResult::new_error(
-                        Error::ERROR,
-                        cell,
-                        format!("Invalid worksheet index: '{}'", sum_range.left.sheet),
-                    ));
-                }
-            };
-        }
-        if left_column == 1 && right_column == LAST_COLUMN {
-            right_column = match self.workbook.worksheet(sum_range.left.sheet) {
-                Ok(s) => s.dimension().max_column,
-                Err(_) => {
-                    return Err(CalcResult::new_error(
-                        Error::ERROR,
-                        cell,
-                        format!("Invalid worksheet index: '{}'", sum_range.left.sheet),
-                    ));
-                }
-            };
-        }
+        // if left_row == 1 && right_row == LAST_ROW {
+        //     right_row = match self.workbook.worksheet(sum_range.left.sheet) {
+        //         Ok(s) => s.dimension().max_row,
+        //         Err(_) => {
+        //             return Err(CalcResult::new_error(
+        //                 Error::ERROR,
+        //                 cell,
+        //                 format!("Invalid worksheet index: '{}'", sum_range.left.sheet),
+        //             ));
+        //         }
+        //     };
+        // }
+        // if left_column == 1 && right_column == LAST_COLUMN {
+        //     right_column = match self.workbook.worksheet(sum_range.left.sheet) {
+        //         Ok(s) => s.dimension().max_column,
+        //         Err(_) => {
+        //             return Err(CalcResult::new_error(
+        //                 Error::ERROR,
+        //                 cell,
+        //                 format!("Invalid worksheet index: '{}'", sum_range.left.sheet),
+        //             ));
+        //         }
+        //     };
+        // }
+        // for row in left_row..right_row + 1 {
+        //     for column in left_column..right_column + 1 {
+        let dx: WorksheetDimension = self
+            .get_max_rc(
+                sum_range.left.sheet,
+                sum_range.left.row,
+                sum_range.left.column,
+                sum_range.right.row,
+                sum_range.right.column,
+            )
+            .map_err(|_| CalcResult::new_error(Error::ERROR, cell, format!("...")))?;
 
-        for row in left_row..right_row + 1 {
-            for column in left_column..right_column + 1 {
+        for row in dx.min_row..=dx.max_row {
+            for column in dx.min_column..=dx.max_column {
                 let mut is_true = true;
                 for case_index in 0..case_count {
                     // We check if value in range n meets criterion n
