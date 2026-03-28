@@ -1064,7 +1064,9 @@ impl<'a> Model<'a> {
                         right.column,
                     ) {
                         Ok(d) => d,
-                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                        Err(_) => {
+                            return CalcResult::new_error(Error::ERROR, cell, "...".to_string())
+                        }
                     };
 
                     for row in dx.min_row..=dx.max_row {

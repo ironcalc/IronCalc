@@ -1,4 +1,3 @@
-use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::worksheet::WorksheetDimension;
 use crate::{
@@ -285,7 +284,7 @@ impl<'a> Model<'a> {
                         ) {
                             Ok(d) => d,
                             Err(_) => {
-                                return CalcResult::new_error(Error::ERROR, cell, format!("..."))
+                                return CalcResult::new_error(Error::ERROR, cell, "...".to_string())
                             }
                         };
 

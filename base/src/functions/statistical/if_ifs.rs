@@ -264,7 +264,7 @@ impl<'a> Model<'a> {
                 sum_range.right.row,
                 sum_range.right.column,
             )
-            .map_err(|_| CalcResult::new_error(Error::ERROR, cell, format!("...")))?;
+            .map_err(|_| CalcResult::new_error(Error::ERROR, cell, "...".to_string()))?;
 
         for row in dx.min_row..=dx.max_row {
             for column in dx.min_column..=dx.max_column {

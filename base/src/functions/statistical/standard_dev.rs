@@ -1,4 +1,3 @@
-use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::worksheet::WorksheetDimension;
@@ -77,7 +76,9 @@ impl<'a> Model<'a> {
                         right.column,
                     ) {
                         Ok(d) => d,
-                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                        Err(_) => {
+                            return CalcResult::new_error(Error::ERROR, cell, "...".to_string())
+                        }
                     };
 
                     for row in dx.min_row..=dx.max_row {
@@ -215,7 +216,9 @@ impl<'a> Model<'a> {
                         right.column,
                     ) {
                         Ok(d) => d,
-                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                        Err(_) => {
+                            return CalcResult::new_error(Error::ERROR, cell, "...".to_string())
+                        }
                     };
 
                     for row in dx.min_row..=dx.max_row {
@@ -352,7 +355,9 @@ impl<'a> Model<'a> {
                         right.column,
                     ) {
                         Ok(d) => d,
-                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                        Err(_) => {
+                            return CalcResult::new_error(Error::ERROR, cell, "...".to_string())
+                        }
                     };
 
                     for row in dx.min_row..=dx.max_row {
@@ -496,7 +501,9 @@ impl<'a> Model<'a> {
                         right.column,
                     ) {
                         Ok(d) => d,
-                        Err(_) => return CalcResult::new_error(Error::ERROR, cell, format!("...")),
+                        Err(_) => {
+                            return CalcResult::new_error(Error::ERROR, cell, "...".to_string())
+                        }
                     };
 
                     for row in dx.min_row..=dx.max_row {
