@@ -245,35 +245,6 @@ impl<'a> Model<'a> {
                                 message: "Arrays must be of the same size".to_string(),
                             };
                         }
-                        // let mut row2 = right.row;
-                        // let row1 = left.row;
-                        // let mut column2 = right.column;
-                        // let column1 = left.column;
-
-                        // if row1 == 1 && row2 == LAST_ROW {
-                        //     row2 = match self.workbook.worksheet(left.sheet) {
-                        //         Ok(s) => s.dimension().max_row,
-                        //         Err(_) => {
-                        //             return CalcResult::new_error(
-                        //                 Error::ERROR,
-                        //                 cell,
-                        //                 format!("Invalid worksheet index: '{}'", left.sheet),
-                        //             );
-                        //         }
-                        //     };
-                        // }
-                        // if column1 == 1 && column2 == LAST_COLUMN {
-                        //     column2 = match self.workbook.worksheet(left.sheet) {
-                        //         Ok(s) => s.dimension().max_column,
-                        //         Err(_) => {
-                        //             return CalcResult::new_error(
-                        //                 Error::ERROR,
-                        //                 cell,
-                        //                 format!("Invalid worksheet index: '{}'", left.sheet),
-                        //             );
-                        //         }
-                        //     };
-                        // }
 
                         let dx: WorksheetDimension = match self.get_max_rc(
                             left.sheet,
