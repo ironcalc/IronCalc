@@ -126,13 +126,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
         />
       </div>
 
-      {/** biome-ignore lint/a11y/noStaticElementInteractions: mouse-driven resize handle for drawer; not keyboard-accessible yet */}
-      {/** biome-ignore lint/a11y/useKeyWithClickEvents: mouse-driven resize handle for drawer; not keyboard-accessible yet */}
-      <div
-        className="ic-regional-settings-content"
-        onClick={(event) => event.stopPropagation()}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
+      <div className="ic-regional-settings-content">
         <div className="ic-regional-settings-section">
           <div className="ic-regional-settings-section-title">
             {t("regional_settings.locale.title")}
@@ -209,9 +203,9 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
           </div>
         </div>
         <div className="ic-regional-settings-section">
-          <h1 className="ic-regional-settings-section-title">
+          <div className="ic-regional-settings-section-title">
             {t("regional_settings.timezone.title")}
-          </h1>
+          </div>
           <div className="ic-regional-settings-field-wrapper">
             <label className="ic-regional-settings-label" htmlFor="timezone">
               {t("regional_settings.timezone.timezone_label")}
@@ -250,6 +244,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                   },
                 }}
               />
+              {/* FIXME: https://github.com/ironcalc/IronCalc/pull/824#discussion_r3003370209 */}
               <p className="ic-regional-settings-helper-text">
                 {t("regional_settings.timezone.timezone_helper")}
               </p>

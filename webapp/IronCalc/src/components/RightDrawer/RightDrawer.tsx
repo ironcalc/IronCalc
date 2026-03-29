@@ -5,6 +5,7 @@ import NamedRanges from "./NamedRanges/NamedRanges";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
 import "./rightdrawer.css";
 
+// Default drawer width is duplicated in CSS in rightdrawer.css; keep in sync
 const DEFAULT_DRAWER_WIDTH = 360;
 const MIN_DRAWER_WIDTH = 300;
 const MAX_DRAWER_WIDTH = 500;
@@ -115,12 +116,17 @@ const RightDrawer = ({
   };
 
   return (
-    <div className="ic-drawer-container" style={{ width: drawerWidth }}>
+    <div
+      className="ic-drawer-container"
+      style={{ ["--ic-runtime-drawer-width" as string]: `${drawerWidth}px` }}
+    >
       {/** biome-ignore lint/a11y/noStaticElementInteractions: mouse-driven resize handle for drawer; not keyboard-accessible yet */}
       <div
         className={`ic-drawer-resize-handle ${isResizing ? "ic-drawer-resize-handle--resizing" : ""}`}
         ref={resizeHandleRef}
         onMouseDown={handleMouseDown}
+        // FIXME: add keyboard accessibility for resizing the drawer
+        // aria-label={t("right_drawer.resize_drawer")}
       />
       <div className="ic-drawer-divider" />
       <div className="ic-drawer-content">{renderDrawerContent()}</div>
