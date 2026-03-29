@@ -39,7 +39,7 @@
   border-bottom: 1px solid var(--palette-grey-300);
 }
 
-.ic-regional-settings-form-section:last-child {
+.ic-regional-settings-section:last-child {
   border-bottom: none;
 }
 
