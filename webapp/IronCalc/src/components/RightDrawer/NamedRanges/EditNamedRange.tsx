@@ -1,5 +1,5 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
-import { FormControl, MenuItem, Paper, Select, styled } from "@mui/material";
+import { MenuItem, Paper, Select, styled } from "@mui/material";
 import { Check, MousePointerClick, Tag } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -123,7 +123,7 @@ const EditNamedRange = ({
             <label className="ic-edit-range-label" htmlFor={nameId}>
               {t("name_manager_dialog.range_name")}
             </label>
-            <FormControl fullWidth size="small" error={!!nameError}>
+            <div className="ic-edit-range-form-control">
               <input
                 id={nameId}
                 className={`ic-edit-range-textarea ${
@@ -142,13 +142,13 @@ const EditNamedRange = ({
                   {nameError}
                 </span>
               )}
-            </FormControl>
+            </div>
           </div>
           <div className="ic-edit-range-field-wrapper">
             <label className="ic-edit-range-label" htmlFor={scopeId}>
               {t("name_manager_dialog.scope_label")}
             </label>
-            <FormControl fullWidth size="small">
+            <div className="ic-edit-range-form-control">
               <StyledSelect
                 id={scopeId}
                 value={scope}
@@ -226,7 +226,7 @@ const EditNamedRange = ({
               <span className="ic-edit-range-helper-text">
                 {t("name_manager_dialog.scope_helper")}
               </span>
-            </FormControl>
+            </div>
           </div>
           <div className="ic-edit-range-field-wrapper">
             <div className="ic-edit-range-line-wrapper">
@@ -248,7 +248,7 @@ const EditNamedRange = ({
                 }}
               />
             </div>
-            <FormControl fullWidth size="small" error={!!formulaError}>
+            <div className="ic-edit-range-form-control">
               <textarea
                 id={formulaId}
                 className={`ic-edit-range-textarea ${
@@ -270,7 +270,7 @@ const EditNamedRange = ({
                   {formulaError}
                 </span>
               )}
-            </FormControl>
+            </div>
           </div>
         </div>
       </div>

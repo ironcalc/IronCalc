@@ -161,3 +161,8 @@
 .ic-edit-range-textarea--error {
   border: 2px solid var(--palette-error-main);
 }
+
+.ic-edit-range-form-control {
+  display: flex;
+  flex-direction: column;
+}
