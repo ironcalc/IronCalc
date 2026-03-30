@@ -1,14 +1,17 @@
 import type { Model } from "@ironcalc/wasm";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import NamedRanges from "./NamedRanges/NamedRanges";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
 import "./rightdrawer.css";
+import { useTranslation } from "react-i18next";
 
 // Default drawer width is duplicated in CSS in rightdrawer.css; keep in sync
 const DEFAULT_DRAWER_WIDTH = 360;
 const MIN_DRAWER_WIDTH = 300;
 const MAX_DRAWER_WIDTH = 500;
+
+const KEYBOARD_RESIZE_STEP = 16;
 
 export type DrawerType = "namedRanges" | "regionalSettings";
 
@@ -44,12 +47,47 @@ const RightDrawer = ({
 }: RightDrawerProps) => {
   const [drawerWidth, setDrawerWidth] = useState(width);
   const [isResizing, setIsResizing] = useState(false);
-  const resizeHandleRef = useRef<HTMLDivElement>(null);
+
+  const { t } = useTranslation();
 
   const handleMouseDown = useCallback((e: ReactMouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
   }, []);
+
+  // FIXME: Because of my complicated (aka stupid) global logic it is hard for the separator
+  // to receive keyboard focus (a11y issue)
+  // You can reach it via Shift+Tab from the locale select,
+  // but any redraw steals focus back to the sheet.
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLHRElement>) => {
+      let nextWidth = drawerWidth;
+
+      if (e.key === "ArrowLeft") {
+        nextWidth = Math.min(
+          MAX_DRAWER_WIDTH,
+          drawerWidth + KEYBOARD_RESIZE_STEP,
+        );
+      } else if (e.key === "ArrowRight") {
+        nextWidth = Math.max(
+          MIN_DRAWER_WIDTH,
+          drawerWidth - KEYBOARD_RESIZE_STEP,
+        );
+      } else if (e.key === "Home") {
+        nextWidth = MIN_DRAWER_WIDTH;
+      } else if (e.key === "End") {
+        nextWidth = MAX_DRAWER_WIDTH;
+      } else {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      setDrawerWidth(nextWidth);
+      onWidthChange(nextWidth);
+    },
+    [drawerWidth, onWidthChange],
+  );
 
   useEffect(() => {
     if (!isResizing) {
@@ -120,13 +158,13 @@ const RightDrawer = ({
       className="ic-drawer-container"
       style={{ ["--ic-runtime-drawer-width" as string]: `${drawerWidth}px` }}
     >
-      {/** biome-ignore lint/a11y/noStaticElementInteractions: mouse-driven resize handle for drawer; not keyboard-accessible yet */}
-      <div
+      <hr
         className={`ic-drawer-resize-handle ${isResizing ? "ic-drawer-resize-handle--resizing" : ""}`}
-        ref={resizeHandleRef}
+        tabIndex={0}
+        aria-label={t("right_drawer.resize_drawer")}
+        aria-orientation="vertical"
         onMouseDown={handleMouseDown}
-        // FIXME: add keyboard accessibility for resizing the drawer
-        // aria-label={t("right_drawer.resize_drawer")}
+        onKeyDown={handleKeyDown}
       />
       <div className="ic-drawer-divider" />
       <div className="ic-drawer-content">{renderDrawerContent()}</div>

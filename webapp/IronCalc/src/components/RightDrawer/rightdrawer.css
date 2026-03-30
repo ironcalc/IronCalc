@@ -35,6 +35,9 @@
 }
 
 .ic-drawer-resize-handle {
+  /* all: unset is used to reset the default styles of the hr element */
+  /* We probably should do this for all elements */
+  all: unset;
   position: absolute;
   left: 0;
   top: 0;
@@ -47,6 +50,11 @@
 }
 
 .ic-drawer-resize-handle:hover {
+  background-color: var(--palette-primary-main);
+  opacity: 0.5;
+}
+
+.ic-drawer-resize-handle:focus {
   background-color: var(--palette-primary-main);
   opacity: 0.5;
 }
