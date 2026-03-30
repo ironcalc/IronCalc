@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
-import { IconButton, Tooltip } from "@mui/material";
-import { Plus } from "lucide-react";
+import { IconButton, TextField, Tooltip } from "@mui/material";
+import { Plus, Search, X } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogHeaderLogoWrapper } from "../WelcomeDialog/WelcomeDialog";
 
@@ -11,47 +12,51 @@ interface DrawerHeaderProps {
 
 function DrawerHeader({ onNewModel }: DrawerHeaderProps) {
   const { t } = useTranslation();
+  const [isSearching, setIsSearching] = useState(false);
+
   return (
     <HeaderContainer>
-      <LogoWrapper>
+      <LogoWrapper className={isSearching ? "hidden" : ""}>
         <Logo>
           <IronCalcIcon />
         </Logo>
         <Title>IronCalc</Title>
       </LogoWrapper>
-      <Tooltip
-        title={t("left_drawer.new_workbook")}
-        slotProps={{
-          popper: {
-            modifiers: [
-              {
-                name: "offset",
-                options: {
-                  offset: [0, -8],
-                },
-              },
-            ],
-          },
-        }}
-      >
-        <AddButton onClick={onNewModel}>
-          <PlusIcon />
-        </AddButton>
-      </Tooltip>
+
+      <ActionsWrapper className={isSearching ? "hidden" : ""}>
+        <Tooltip title="Search workbooks">
+          <AddButton onClick={() => setIsSearching(true)}>
+            <Search />
+          </AddButton>
+        </Tooltip>
+
+        <Tooltip title={t("left_drawer.new_workbook")}>
+          <AddButton onClick={onNewModel}>
+            <Plus />
+          </AddButton>
+        </Tooltip>
+      </ActionsWrapper>
+
+      <SearchOverlay className={isSearching ? "active" : ""}>
+        <SearchIconWrapper>
+          <Search />
+        </SearchIconWrapper>
+
+        <SearchInput
+          size="small"
+          placeholder="Search workbook..."
+          autoFocus
+          variant="standard"
+          fullWidth
+          InputProps={{ disableUnderline: true }}
+        />
+        <ClearIcon onClick={() => setIsSearching(false)}>
+          <X />
+        </ClearIcon>
+      </SearchOverlay>
     </HeaderContainer>
   );
 }
-
-const HeaderContainer = styled("div")`
-  display: flex;
-  align-items: center;
-  padding: 12px 8px 12px 16px;
-  justify-content: space-between;
-  max-height: 60px;
-  min-height: 60px;
-  box-sizing: border-box;
-  box-shadow: 0 1px 0 0 #e0e0e0;
-`;
 
 const LogoWrapper = styled("div")`
   display: flex;
@@ -70,8 +75,13 @@ const Logo = styled(DialogHeaderLogoWrapper)`
   padding: 6px;
 `;
 
+const ActionsWrapper = styled("div")`
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+`;
+
 const AddButton = styled(IconButton)`
-  margin-left: 8px;
   height: 32px;
   width: 32px;
   padding: 8px;
@@ -91,9 +101,88 @@ const AddButton = styled(IconButton)`
   }
 `;
 
-const PlusIcon = styled(Plus)`
+const HeaderContainer = styled("div")`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 8px 12px 16px;
+  height: 60px;
+  box-sizing: border-box;
+  box-shadow: 0 1px 0 0 #e0e0e0;
+
+  .hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+`;
+
+const SearchOverlay = styled("div")`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+
+  &.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+`;
+
+const SearchIconWrapper = styled("div")`
+  display: flex;
+  align-items: center;
+
+  svg {
+    stroke: #757575;
+    width: 16px;
+    height: 16px;
+  }
+`;
+
+const SearchInput = styled(TextField)`
+  flex: 1;
+  
+  .MuiInputBase-root {
+    width: 100%;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .MuiInputBase-input {
+    padding: 0; 
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  .MuiInputBase-input::placeholder {
+    transition: opacity 0.15s ease;
+  }
+
+  .MuiInputBase-input:focus::placeholder {
+    opacity: 0;
+  }
+`;
+
+const ClearIcon = styled("div")`
+  display: flex;
+  
   width: 16px;
-  height: 16px;
+  cursor: pointer;
+
+  svg {
+    stroke: #757575;
+    width: 16px;
+    height: 16px;
+    }
+  }
 `;
 
 export default DrawerHeader;
