@@ -49,12 +49,7 @@
   transition: background-color 0.2s ease;
 }
 
-.ic-drawer-resize-handle:hover {
-  background-color: var(--palette-primary-main);
-  opacity: 0.5;
-}
-
-.ic-drawer-resize-handle:focus {
+.ic-drawer-resize-handle:is(:hover, :focus-visible) {
   background-color: var(--palette-primary-main);
   opacity: 0.5;
 }
