@@ -1,12 +1,5 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
-import {
-  FormControl,
-  MenuItem,
-  Paper,
-  Select,
-  styled,
-  TextField,
-} from "@mui/material";
+import { FormControl, MenuItem, Paper, Select, styled } from "@mui/material";
 import { Check, MousePointerClick, Tag } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -131,19 +124,18 @@ const EditNamedRange = ({
               {t("name_manager_dialog.range_name")}
             </label>
             <FormControl fullWidth size="small" error={!!nameError}>
-              <StyledTextField
-                autoFocus={true}
+              <input
                 id={nameId}
-                variant="outlined"
-                size="small"
-                margin="none"
+                className={`ic-edit-range-textarea ${
+                  nameError ? "ic-edit-range-textarea--error" : ""
+                }`}
+                type="text"
                 placeholder={t("name_manager_dialog.enter_range_name")}
-                fullWidth
-                error={!!nameError}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
+                aria-invalid={nameError ? "true" : "false"}
               />
               {nameError && (
                 <span className="ic-edit-range-helper-text ic-edit-range-error-text">
@@ -257,16 +249,13 @@ const EditNamedRange = ({
               />
             </div>
             <FormControl fullWidth size="small" error={!!formulaError}>
-              <StyledTextField
+              <textarea
                 id={formulaId}
-                variant="outlined"
-                size="small"
-                margin="none"
+                className={`ic-edit-range-textarea ${
+                  formulaError ? "ic-edit-range-textarea--error" : ""
+                }`}
                 placeholder={t("name_manager_dialog.enter_formula")}
-                fullWidth
-                multiline
                 rows={3}
-                error={!!formulaError}
                 value={formula}
                 onChange={(e) => {
                   setFormula(e.target.value);
@@ -274,6 +263,7 @@ const EditNamedRange = ({
                 }}
                 onKeyDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
+                aria-invalid={formulaError ? "true" : "false"}
               />
               {formulaError && (
                 <span className="ic-edit-range-helper-text ic-edit-range-error-text">
@@ -307,22 +297,6 @@ const EditNamedRange = ({
     </div>
   );
 };
-
-const StyledTextField = styled(TextField)(() => ({
-  "& .MuiInputBase-root": {
-    width: "100%",
-    margin: 0,
-    fontFamily: "Inter",
-    fontSize: "12px",
-    padding: "8px",
-  },
-  "& .MuiInputBase-input": {
-    padding: "0px",
-  },
-  "& .MuiInputBase-inputMultiline": {
-    padding: "0px",
-  },
-}));
 
 const StyledSelect = styled(Select)(() => ({
   fontFamily: "Inter",

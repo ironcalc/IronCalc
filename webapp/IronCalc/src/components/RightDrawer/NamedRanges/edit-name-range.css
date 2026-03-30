@@ -134,3 +134,30 @@
   padding: 8px;
   border-top: 1px solid var(--palette-grey-300);
 }
+
+.ic-edit-range-textarea {
+  width: 100%;
+  box-sizing: border-box;
+
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+
+  padding: 8px;
+  margin: 0;
+
+  border: 1px solid var(--palette-grey-300);
+  border-radius: 4px;
+  background-color: var(--palette-common-white);
+  color: var(--palette-common-black);
+
+  resize: none;
+  outline: none;
+}
+
+.ic-edit-range-textarea:focus:not(.ic-edit-range-textarea--error) {
+  border: 2px solid var(--palette-primary-main);
+}
+
+.ic-edit-range-textarea--error {
+  border: 2px solid var(--palette-error-main);
+}
