@@ -191,14 +191,14 @@ const EditNamedRange = ({
               >
                 <StyledMenuItem value={"[Global]"}>
                   {isSelected("[Global]") ? (
-                    <Check className="ic-edit-range-check-icon " />
+                    <Check className="ic-edit-range-check-icon" />
                   ) : (
                     <div className="ic-edit-range-icon-placeholder" />
                   )}
                   <span
                     className={
                       isSelected("[Global]")
-                        ? "ic-edit-range-menu-span-selected"
+                        ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
                         : "ic-edit-range-menu-span"
                     }
                   >
@@ -211,14 +211,14 @@ const EditNamedRange = ({
                 {model.getWorksheetsProperties().map((option) => (
                   <StyledMenuItem key={option.name} value={option.name}>
                     {isSelected(option.name) ? (
-                      <Check className="ic-edit-range-check-icon " />
+                      <Check className="ic-edit-range-check-icon" />
                     ) : (
                       <div className="ic-edit-range-icon-placeholder" />
                     )}
                     <span
                       className={
                         isSelected(option.name)
-                          ? "ic-edit-range-menu-span-selected"
+                          ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
                           : "ic-edit-range-menu-span"
                       }
                     >

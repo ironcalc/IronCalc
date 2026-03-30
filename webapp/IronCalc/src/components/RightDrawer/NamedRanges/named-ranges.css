@@ -26,7 +26,6 @@
   min-height: 40px;
   box-sizing: border-box;
   border-bottom: 1px solid var(--palette-grey-200);
-  padding-left: 12px;
   transition: all 0.2s ease-in-out;
   border-left: 3px solid transparent;
 }

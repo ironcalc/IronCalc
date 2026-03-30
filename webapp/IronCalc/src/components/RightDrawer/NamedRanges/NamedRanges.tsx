@@ -216,7 +216,7 @@ const NamedRanges = ({
               return (
                 // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
                 <div
-                  className={`ic-named-ranges-list-item ${isSelected ? "selected" : ""}`}
+                  className={`ic-named-ranges-list-item ${isSelected ? "ic-named-ranges-list-item--selected" : ""}`}
                   key={`${definedName.name}-${definedName.scope}`}
                   // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
                   tabIndex={0}

@@ -16,8 +16,8 @@
 }
 
 .ic-edit-range-menu-span {
-  font-size: 12px;
-  font-family: var(--typography-font-family, "Inter");
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
   font-weight: 400;
 }
 
@@ -27,8 +27,8 @@
 
 .ic-edit-range-menu-span-grey {
   white-space: pre;
-  font-size: 12px;
-  font-family: var(--typography-font-family, "Inter");
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
   color: var(--palette-grey-400);
 }
 
@@ -51,7 +51,7 @@
   width: auto;
   gap: 8px;
   padding: 24px 12px;
-  color: var(--palette-text-primary);
+  color: var(--palette-common-black);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -106,17 +106,17 @@
 
 .ic-edit-range-label {
   display: block;
-  font-size: 12px;
+  font-size: var(--typography-font-size);
   font-family: var(--typography-font-family);
   font-weight: 500;
-  color: var(--palette-text-primary);
+  color: var(--palette-common-black);
 }
 
 .ic-edit-range-helper-text {
   margin: 0;
   margin-top: 6px;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--typography-font-size);
   font-family: var(--typography-font-family);
   line-height: 1.4;
   color: var(--palette-grey-500);
