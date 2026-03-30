@@ -1,5 +1,5 @@
 import type { Model } from "@ironcalc/wasm";
-import { styled, Tooltip, useTheme } from "@mui/material";
+import { styled, useTheme } from "@mui/material";
 import { Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,6 +7,7 @@ import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
 import { NAVIGATION_HEIGHT } from "../constants";
 import { getLocaleDisplayName } from "../RightDrawer/RegionalSettings/RegionalSettings";
+import { Tooltip } from "../Tooltip/Tooltip";
 import type { WorkbookState } from "../workbookState";
 import SheetListMenu from "./SheetListMenu";
 import SheetTab from "./SheetTab";

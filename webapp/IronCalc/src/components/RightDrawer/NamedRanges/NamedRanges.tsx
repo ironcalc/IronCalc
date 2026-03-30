@@ -1,5 +1,5 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
-import { styled, Tooltip } from "@mui/material";
+import { styled } from "@mui/material";
 import {
   ArrowLeft,
   PackageOpen,
@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { parseRangeInSheet } from "../../Editor/util";
+import { Tooltip } from "../../Tooltip/Tooltip";
 import EditNamedRange, {
   formatOnSaveError,
   type SaveError,

@@ -4,7 +4,6 @@ import type {
   HorizontalAlignment,
   VerticalAlignment,
 } from "@ironcalc/wasm";
-import Tooltip from "@mui/material/Tooltip";
 import {
   AlignCenter,
   AlignLeft,
@@ -52,6 +51,7 @@ import {
   NumberFormats,
 } from "../FormatMenu/formatUtil";
 import "./toolbar.css";
+import { Tooltip } from "../Tooltip/Tooltip";
 
 type ToolbarProperties = {
   canUndo: boolean;
@@ -144,21 +144,7 @@ function Toolbar(properties: ToolbarProperties) {
   return (
     <div className="ic-toolbar-wrapper">
       {showLeftArrow && (
-        <Tooltip
-          title={t("toolbar.scroll_left")}
-          slotProps={{
-            popper: {
-              modifiers: [
-                {
-                  name: "offset",
-                  options: {
-                    offset: [0, -8],
-                  },
-                },
-              ],
-            },
-          }}
-        >
+        <Tooltip title={t("toolbar.scroll_left")}>
           {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
           {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
           <div
@@ -569,21 +555,7 @@ function Toolbar(properties: ToolbarProperties) {
         />
       </div>
       {showRightArrow && (
-        <Tooltip
-          title={t("toolbar.scroll_right")}
-          slotProps={{
-            popper: {
-              modifiers: [
-                {
-                  name: "offset",
-                  options: {
-                    offset: [0, -8],
-                  },
-                },
-              ],
-            },
-          }}
-        >
+        <Tooltip title={t("toolbar.scroll_right")}>
           {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
           {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
           <div
