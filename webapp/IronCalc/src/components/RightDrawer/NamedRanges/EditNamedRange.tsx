@@ -8,7 +8,7 @@ import {
   TextField,
 } from "@mui/material";
 import { Check, MousePointerClick, Tag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { getFullRangeToString } from "../../util";
@@ -84,6 +84,10 @@ const EditNamedRange = ({
 
   const isSelected = (value: string) => scope === value;
 
+  const nameId = useId();
+  const scopeId = useId();
+  const formulaId = useId();
+
   // Validate name (format and duplicates)
   useEffect(() => {
     const worksheets = model.getWorksheetsProperties();
@@ -123,13 +127,13 @@ const EditNamedRange = ({
         </div>
         <div className="ic-edit-range-styled-box">
           <div className="ic-edit-range-field-wrapper">
-            <label className="ic-edit-range-label" htmlFor="name">
+            <label className="ic-edit-range-label" htmlFor={nameId}>
               {t("name_manager_dialog.range_name")}
             </label>
             <FormControl fullWidth size="small" error={!!nameError}>
               <StyledTextField
                 autoFocus={true}
-                id="name"
+                id={nameId}
                 variant="outlined"
                 size="small"
                 margin="none"
@@ -149,12 +153,12 @@ const EditNamedRange = ({
             </FormControl>
           </div>
           <div className="ic-edit-range-field-wrapper">
-            <label className="ic-edit-range-label" htmlFor="scope">
+            <label className="ic-edit-range-label" htmlFor={scopeId}>
               {t("name_manager_dialog.scope_label")}
             </label>
             <FormControl fullWidth size="small">
               <StyledSelect
-                id="scope"
+                id={scopeId}
                 value={scope}
                 onChange={(event) => {
                   setScope(event.target.value as string);
@@ -234,7 +238,7 @@ const EditNamedRange = ({
           </div>
           <div className="ic-edit-range-field-wrapper">
             <div className="ic-edit-range-line-wrapper">
-              <label className="ic-edit-range-label" htmlFor="formula">
+              <label className="ic-edit-range-label" htmlFor={formulaId}>
                 {t("name_manager_dialog.refers_to")}
               </label>
               <MousePointerClick
@@ -254,7 +258,7 @@ const EditNamedRange = ({
             </div>
             <FormControl fullWidth size="small" error={!!formulaError}>
               <StyledTextField
-                id="formula"
+                id={formulaId}
                 variant="outlined"
                 size="small"
                 margin="none"
