@@ -126,6 +126,8 @@ const EditNamedRange = ({
             <div className="ic-edit-range-form-control">
               <input
                 id={nameId}
+                // biome-ignore lint/a11y/noAutofocus: This input is in a dialog, so autofocus is appropriate here.
+                autoFocus
                 className={`ic-edit-range-textarea ${
                   nameError ? "ic-edit-range-textarea--error" : ""
                 }`}

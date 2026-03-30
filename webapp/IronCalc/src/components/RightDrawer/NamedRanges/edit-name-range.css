@@ -154,6 +154,10 @@
   outline: none;
 }
 
+.ic-edit-range-textarea:hover:not(.ic-edit-range-textarea--error) {
+  border: 1px solid var(--palette-grey-600);
+}
+
 .ic-edit-range-textarea:focus:not(.ic-edit-range-textarea--error) {
   border: 2px solid var(--palette-primary-main);
 }
