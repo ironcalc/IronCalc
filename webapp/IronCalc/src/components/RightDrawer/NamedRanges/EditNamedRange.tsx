@@ -4,6 +4,7 @@ import { Check, MousePointerClick, Tag } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
+import { Input } from "../../Input/Input";
 import { getFullRangeToString } from "../../util";
 import "./edit-name-range.css";
 
@@ -119,33 +120,19 @@ const EditNamedRange = ({
           </span>
         </div>
         <div className="ic-edit-range-styled-box">
-          <div className="ic-edit-range-field-wrapper">
-            <label className="ic-edit-range-label" htmlFor={nameId}>
-              {t("name_manager_dialog.range_name")}
-            </label>
-            <div className="ic-edit-range-form-control">
-              <input
-                id={nameId}
-                // biome-ignore lint/a11y/noAutofocus: This input is in a dialog, so autofocus is appropriate here.
-                autoFocus
-                className={`ic-edit-range-textarea ${
-                  nameError ? "ic-edit-range-textarea--error" : ""
-                }`}
-                type="text"
-                placeholder={t("name_manager_dialog.enter_range_name")}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-                aria-invalid={nameError ? "true" : "false"}
-              />
-              {nameError && (
-                <span className="ic-edit-range-helper-text ic-edit-range-error-text">
-                  {nameError}
-                </span>
-              )}
-            </div>
-          </div>
+          <Input
+            id={nameId}
+            autoFocus
+            type="text"
+            label={t("name_manager_dialog.range_name")}
+            placeholder={t("name_manager_dialog.enter_range_name")}
+            value={name}
+            error={!!nameError}
+            helperText={nameError}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          />
           <div className="ic-edit-range-field-wrapper">
             <label className="ic-edit-range-label" htmlFor={scopeId}>
               {t("name_manager_dialog.scope_label")}
