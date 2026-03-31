@@ -124,3 +124,8 @@
   padding: 0;
   line-height: 1.4;
 }
+
+.ic-regional-settings-form-control {
+  display: flex;
+  flex-direction: column;
+}

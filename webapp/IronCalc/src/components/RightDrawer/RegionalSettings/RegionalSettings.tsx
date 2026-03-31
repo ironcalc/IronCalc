@@ -1,5 +1,4 @@
 import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
-import { FormControl } from "@mui/material";
 import { Check, X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -130,7 +129,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             <label className="ic-regional-settings-label" htmlFor={languageId}>
               {t("regional_settings.locale.locale_label")}
             </label>
-            <FormControl fullWidth>
+            <div className="ic-regional-settings-form-control">
               <Select
                 id={languageId}
                 value={selectedLocale}
@@ -173,7 +172,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
                   </span>
                 </div>
               </div>
-            </FormControl>
+            </div>
           </div>
         </div>
         <div className="ic-regional-settings-section">
@@ -184,7 +183,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             <label className="ic-regional-settings-label" htmlFor={timezoneId}>
               {t("regional_settings.timezone.timezone_label")}
             </label>
-            <FormControl fullWidth>
+            <div className="ic-regional-settings-form-control">
               <Select
                 id={timezoneId}
                 value={selectedTimezone}
@@ -200,7 +199,7 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
               <p className="ic-regional-settings-helper-text">
                 {t("regional_settings.timezone.timezone_helper")}
               </p>
-            </FormControl>
+            </div>
           </div>
         </div>
       </div>
