@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
 import { IconButton, TextField, Tooltip } from "@mui/material";
 import { Plus, Search, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogHeaderLogoWrapper } from "../WelcomeDialog/WelcomeDialog";
 
@@ -19,6 +19,13 @@ function DrawerHeader({
 }: DrawerHeaderProps) {
   const { t } = useTranslation();
   const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSearching && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearching]);
 
   return (
     <HeaderContainer>
@@ -30,7 +37,7 @@ function DrawerHeader({
       </LogoWrapper>
 
       <ActionsWrapper className={isSearching ? "hidden" : ""}>
-        <Tooltip title="Search workbooks">
+        <Tooltip title={t("left_drawer.search_workbook")}>
           <AddButton onClick={() => setIsSearching(true)}>
             <Search />
           </AddButton>
@@ -51,12 +58,20 @@ function DrawerHeader({
         <SearchInput
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setSearchQuery("");
+              setIsSearching(false);
+            }
+          }}
           size="small"
-          placeholder="Search workbook..."
-          autoFocus
+          placeholder={t("left_drawer.search_placeholder")}
           variant="standard"
           fullWidth
-          InputProps={{ disableUnderline: true }}
+          InputProps={{
+            disableUnderline: true,
+            inputRef: searchInputRef,
+          }}
         />
         <ClearIcon
           onClick={() => {
@@ -119,7 +134,7 @@ const HeaderContainer = styled("div")`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 8px 12px 16px;
+  padding: 12px 10px 12px 16px;
   height: 60px;
   box-sizing: border-box;
   box-shadow: 0 1px 0 0 #e0e0e0;
@@ -174,14 +189,6 @@ const SearchInput = styled(TextField)`
     height: 100%;
     box-sizing: border-box;
   }
-
-  .MuiInputBase-input::placeholder {
-    transition: opacity 0.15s ease;
-  }
-
-  .MuiInputBase-input:focus::placeholder {
-    opacity: 0;
-  }
 `;
 
 const ClearIcon = styled("div")`
@@ -194,6 +201,10 @@ const ClearIcon = styled("div")`
     stroke: #757575;
     width: 16px;
     height: 16px;
+    }
+
+    &:hover svg {
+      stroke: #272525;
     }
   }
 `;

@@ -224,16 +224,19 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
     (a, b) => models[b].createdAt - models[a].createdAt,
   );
 
-  const filteredModels =
-    normalizedQuery.length > 0
-      ? allModelsSorted.filter((uuid) =>
-          models[uuid].name.toLowerCase().includes(normalizedQuery),
-        )
-      : null;
+  const isSearchMode = normalizedQuery.length > 0;
+
+  const filteredModels = isSearchMode
+    ? allModelsSorted.filter((uuid) =>
+        models[uuid].name.toLowerCase().includes(normalizedQuery),
+      )
+    : [];
+
+  const isNoResults = isSearchMode && filteredModels.length === 0;
 
   return (
     <>
-      {filteredModels ? (
+      {isSearchMode ? (
         // Search mode (flat list, no grouping)
         filteredModels.map(renderWorkbookItem)
       ) : (
@@ -244,6 +247,11 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
           {renderSection(t("left_drawer.last_30_days"), modelsCreatedThisMonth)}
           {renderSection(t("left_drawer.older"), olderModels)}
         </>
+      )}
+      {isNoResults && (
+        <NoResultsContainer>
+          {t("left_drawer.search_no_results")}
+        </NoResultsContainer>
       )}
 
       <StyledMenu
@@ -323,7 +331,7 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
         </DeleteButton>
       </StyledMenu>
 
-      <Modal open={isDeleteDialogOpen} onClose={handleDeleteCancel} >
+      <Modal open={isDeleteDialogOpen} onClose={handleDeleteCancel}>
         <DeleteWorkbookDialog
           onClose={handleDeleteCancel}
           onConfirm={handleDeleteConfirm}
@@ -433,6 +441,14 @@ const SectionTitle = styled("div")`
     width: 12px;
     height: 12px;
   }
+`;
+
+const NoResultsContainer = styled("div")`
+  padding: 12px 8px;
+  color: #9e9e9e;
+  font-size: 12px;
+  line-height: 18px;
+  padding: 0 8px;
 `;
 
 export default WorkbookList;
