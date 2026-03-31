@@ -1,20 +1,12 @@
 import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
-import {
-  Autocomplete,
-  type AutocompleteProps,
-  FormControl,
-  MenuItem,
-  Select,
-  styled,
-  TextField,
-} from "@mui/material";
-import type { Theme } from "@mui/material/styles";
+import { FormControl } from "@mui/material";
 import { Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import "./regional-settings.css";
+import { Select } from "../../Select/Select";
 
 type RegionalSettingsProps = {
   onClose: () => void;
@@ -84,6 +76,9 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
   const { t } = useTranslation();
   const locales = getSupportedLocales();
 
+  const timezoneId = useId();
+  const languageId = useId();
+
   const timezones = getAllTimezones();
 
   const [selectedLocale, setSelectedLocale] = useState(
@@ -132,41 +127,20 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             {t("regional_settings.locale.title")}
           </div>
           <div className="ic-regional-settings-field-wrapper">
-            <label className="ic-regional-settings-label" htmlFor="locale">
+            <label className="ic-regional-settings-label" htmlFor={languageId}>
               {t("regional_settings.locale.locale_label")}
             </label>
             <FormControl fullWidth>
-              <StyledSelect
-                id="locale"
+              <Select
+                id={languageId}
                 value={selectedLocale}
-                onChange={(event) => {
-                  setSelectedLocale(event.target.value as string);
-                }}
-                renderValue={(value) => getLocaleDisplayName(value as string)}
-                MenuProps={{
-                  PaperProps: {
-                    sx: (theme) => menuPaperStyles(theme),
-                  },
-                  TransitionProps: {
-                    timeout: 0,
-                  },
-                  anchorOrigin: {
-                    vertical: "bottom",
-                    horizontal: "center",
-                  },
-                  transformOrigin: {
-                    vertical: "top",
-                    horizontal: "center",
-                  },
-                  marginThreshold: 0,
-                }}
-              >
-                {locales.map((locale) => (
-                  <StyledMenuItem key={locale} value={locale}>
-                    {getLocaleDisplayName(locale)}
-                  </StyledMenuItem>
-                ))}
-              </StyledSelect>
+                onChange={setSelectedLocale}
+                options={locales.map((locale) => ({
+                  value: locale,
+                  label: getLocaleDisplayName(locale),
+                  triggerLabel: getLocaleDisplayName(locale),
+                }))}
+              />
               <div className="ic-regional-settings-helper-box">
                 <div className="ic-regional-settings-row">
                   {t("regional_settings.locale.locale_example1")}
@@ -207,42 +181,20 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             {t("regional_settings.timezone.title")}
           </div>
           <div className="ic-regional-settings-field-wrapper">
-            <label className="ic-regional-settings-label" htmlFor="timezone">
+            <label className="ic-regional-settings-label" htmlFor={timezoneId}>
               {t("regional_settings.timezone.timezone_label")}
             </label>
             <FormControl fullWidth>
-              <StyledAutocomplete
-                id="timezone"
+              <Select
+                id={timezoneId}
                 value={selectedTimezone}
-                onChange={(_event, newValue) => {
-                  setSelectedTimezone(newValue);
-                }}
-                options={timezones}
-                renderInput={(params) => <TextField {...params} />}
-                renderOption={(props, option) => (
-                  <StyledMenuItem {...props} key={option as string}>
-                    {option as string}
-                  </StyledMenuItem>
-                )}
-                disableClearable
-                slotProps={{
-                  paper: {
-                    sx: (theme) => ({
-                      ...menuPaperStyles(theme),
-                      margin: "4px 0px",
-                    }),
-                  },
-                  popper: {
-                    sx: {
-                      "& .MuiAutocomplete-paper": {
-                        transition: "none !important",
-                      },
-                    },
-                  },
-                  popupIndicator: {
-                    disableRipple: true,
-                  },
-                }}
+                onChange={setSelectedTimezone}
+                options={timezones.map((timezone) => ({
+                  value: timezone,
+                  label: timezone,
+                  triggerLabel: timezone,
+                }))}
+                compact
               />
               {/* FIXME: https://github.com/ironcalc/IronCalc/pull/824#discussion_r3003370209 */}
               <p className="ic-regional-settings-helper-text">
@@ -261,121 +213,5 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
     </div>
   );
 };
-
-const StyledSelect = styled(Select)({
-  fontSize: 12,
-  height: 32,
-
-  "& .MuiInputBase-root": {
-    padding: "0px !important",
-  },
-
-  "& .MuiInputBase-input": {
-    fontSize: 12,
-    height: 20,
-    paddingRight: "0px !important",
-    margin: 0,
-  },
-
-  "& .MuiSelect-select": {
-    padding: "8px 32px 8px 8px !important",
-    fontSize: 12,
-  },
-
-  "& .MuiSvgIcon-root": {
-    right: "4px !important",
-  },
-});
-
-// Autocomplete with customized styles
-// Value => string,
-// multiple => false, (we cannot select multiple timezones)
-// disableClearable => true, (the timezone must always have a value)
-// freeSolo => false (the timezone must be from the list)
-type TimezoneAutocompleteProps = AutocompleteProps<string, false, true, false>;
-const StyledAutocomplete = styled((props: TimezoneAutocompleteProps) => (
-  <Autocomplete<string, false, true, false> {...props} />
-))({
-  "& .MuiInputBase-root": {
-    padding: "0px !important",
-    height: 32,
-  },
-
-  "& .MuiInputBase-input": {
-    fontSize: 12,
-    height: 20,
-    padding: 0,
-    paddingRight: "0px !important",
-    margin: 0,
-  },
-
-  "& .MuiAutocomplete-popupIndicator:hover": {
-    backgroundColor: "transparent !important",
-  },
-
-  "& .MuiAutocomplete-popupIndicator": {
-    "& .MuiTouchRipple-root": {
-      display: "none",
-    },
-  },
-
-  "& .MuiOutlinedInput-root .MuiAutocomplete-endAdornment": {
-    right: 4,
-  },
-
-  "& .MuiOutlinedInput-root .MuiAutocomplete-input": {
-    padding: "8px !important",
-  },
-});
-
-const menuPaperStyles = (theme: Theme) => ({
-  boxSizing: "border-box",
-  marginTop: "4px",
-  padding: "4px",
-  borderRadius: "8px",
-  transition: "none !important",
-  "& .MuiList-padding": {
-    padding: 0,
-  },
-  "& .MuiList-root": {
-    padding: 0,
-  },
-  "& .MuiAutocomplete-noOptions": {
-    padding: "8px",
-    fontSize: "12px",
-    fontFamily: "Inter",
-  },
-  "& .MuiMenuItem-root": {
-    height: "32px !important",
-    padding: "8px !important",
-    minHeight: "32px !important",
-  },
-  "& .MuiAutocomplete-option[aria-selected='true']": {
-    backgroundColor: `${theme.palette.grey[100]} !important`,
-    fontWeight: "500 !important",
-  },
-});
-
-const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
-  padding: "8px !important",
-  height: "32px !important",
-  minHeight: "32px !important",
-  borderRadius: 4,
-  display: "flex",
-  alignItems: "center",
-  fontSize: 12,
-
-  "&.Mui-selected": {
-    backgroundColor: `${theme.palette.grey[50]} !important`,
-  },
-
-  "&.Mui-selected:hover": {
-    backgroundColor: `${theme.palette.grey[50]} !important`,
-  },
-
-  "&:hover": {
-    backgroundColor: `${theme.palette.grey[50]} !important`,
-  },
-}));
 
 export default RegionalSettings;
