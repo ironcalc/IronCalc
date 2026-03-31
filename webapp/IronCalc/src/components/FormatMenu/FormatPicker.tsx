@@ -1,9 +1,10 @@
-import { Dialog, styled, TextField } from "@mui/material";
+import { Dialog, styled } from "@mui/material";
 import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
+import { Input } from "../Input/Input";
 
 type FormatPickerProps = {
   className?: string;
@@ -45,7 +46,7 @@ const FormatPicker = (properties: FormatPickerProps) => {
       </StyledDialogTitle>
 
       <StyledDialogContent>
-        <StyledTextField
+        <Input
           autoFocus
           defaultValue={properties.numFmt}
           name="format_code"
@@ -57,7 +58,7 @@ const FormatPicker = (properties: FormatPickerProps) => {
               properties.onClose();
             }
           }}
-          spellCheck="false"
+          spellCheck={false}
           onClick={(event) => event.stopPropagation()}
           onFocus={(event) => event.target.select()}
           onPaste={(event) => event.stopPropagation()}
@@ -94,25 +95,6 @@ const StyledDialogContent = styled("div")({
   fontSize: 12,
   margin: 12,
 });
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  width: "100%",
-  borderRadius: 4,
-  overflow: "hidden",
-
-  "& .MuiInputBase-input": {
-    fontSize: 14,
-    padding: 10,
-    border: `1px solid ${theme.palette.grey[300]}`,
-    borderRadius: 4,
-    color: theme.palette.common.black,
-    backgroundColor: theme.palette.common.white,
-  },
-
-  "&:hover .MuiInputBase-input": {
-    border: `1px solid ${theme.palette.grey[500]}`,
-  },
-}));
 
 const DialogFooter = styled("div")(({ theme }) => ({
   color: "#757575",
