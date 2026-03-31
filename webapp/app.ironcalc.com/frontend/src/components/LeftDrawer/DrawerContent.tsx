@@ -5,15 +5,20 @@ import WorkbookList from "./WorkbookList";
 interface DrawerContentProps {
   setModel: (key: string) => void;
   onDelete: (uuid: string) => void;
+  searchQuery: string;
 }
 
 function DrawerContent(props: DrawerContentProps) {
-  const { setModel, onDelete } = props;
+  const { setModel, onDelete, searchQuery } = props;
 
   return (
     <>
       <ContentContainer>
-        <WorkbookList setModel={setModel} onDelete={onDelete} />
+        <WorkbookList
+          setModel={setModel}
+          onDelete={onDelete}
+          searchQuery={searchQuery}
+        />
       </ContentContainer>
       <LocalStorageAlertWrapper>
         <LocalStorageAlert />
