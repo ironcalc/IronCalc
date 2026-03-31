@@ -26,6 +26,9 @@
   },
   "left_drawer": {
     "new_workbook": "Nouveau classeur",
+    "search_workbook": "Rechercher des classeurs",
+    "search_placeholder": "Rechercher un classeur...",
+    "search_no_results": "Votre recherche ne correspond à aucun classeur.",
     "pinned": "Épinglés",
     "today": "Aujourd'hui",
     "last_30_days": "30 derniers jours",

@@ -26,6 +26,9 @@
   },
   "left_drawer": {
     "new_workbook": "Neue Arbeitsmappe",
+    "search_workbook": "Arbeitsmappen durchsuchen",
+    "search_placeholder": "Arbeitsmappe suchen...",
+    "search_no_results": "Deine Suche entspricht keinem Arbeitsbuch.",
     "pinned": "Angeheftet",
     "today": "Heute",
     "last_30_days": "Letzte 30 Tage",
