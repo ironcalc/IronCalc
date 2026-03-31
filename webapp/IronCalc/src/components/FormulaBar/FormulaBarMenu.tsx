@@ -25,6 +25,7 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
   const { t } = useTranslation();
   const [isMenuOpen, setMenuOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
 
   const definedNameList = properties.model.getDefinedNameList();
@@ -37,6 +38,7 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
   const closeMenu = useCallback((): void => {
     setMenuOpen(false);
     properties.onMenuOpenChange(false);
+    triggerRef.current?.focus();
   }, [properties.onMenuOpenChange]);
 
   const toggleMenu = useCallback((): void => {
@@ -75,22 +77,23 @@ const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
 
   return (
     <div className="ic-formula-bar-menu" ref={rootRef}>
-      <button
-        type="button"
+      {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
+      {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
+      <div
+        ref={triggerRef}
         className="ic-formula-bar-menu-trigger"
-        aria-haspopup="menu"
-        aria-expanded={isMenuOpen}
-        aria-controls={isMenuOpen ? menuId : undefined}
         onClick={toggleMenu}
       >
         {properties.children}
-      </button>
+      </div>
 
       {isMenuOpen ? (
         <div id={menuId} className="ic-formula-bar-menu-popover" role="menu">
           {definedNameList.length > 0 ? (
             <>
               {definedNameList.map((definedName) => {
+                // FIXME: Implement the WAI-ARIA menu pattern
+                // (see Select.tsx).
                 return (
                   <button
                     key={`${definedName.name}-${definedName.scope}`}
