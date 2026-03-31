@@ -1,10 +1,10 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
-import { MenuItem, Paper, Select, styled } from "@mui/material";
 import { Check, MousePointerClick, Tag } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { Input } from "../../Input/Input";
+import { Select } from "../../Select/Select";
 import { getFullRangeToString } from "../../util";
 import "./edit-name-range.css";
 
@@ -138,81 +138,62 @@ const EditNamedRange = ({
               {t("name_manager_dialog.scope_label")}
             </label>
             <div className="ic-edit-range-form-control">
-              <StyledSelect
+              <Select
                 id={scopeId}
                 value={scope}
-                onChange={(event) => {
-                  setScope(event.target.value as string);
-                }}
-                renderValue={(value: unknown) => {
-                  const stringValue = value as string;
-                  return stringValue === "[Global]" ? (
-                    <>
-                      <span className="ic-edit-range-menu-span">
-                        {t("name_manager_dialog.workbook")}
+                onChange={setScope}
+                options={[
+                  {
+                    value: "[Global]",
+                    label: (
+                      <>
+                        <span
+                          className={
+                            isSelected("[Global]")
+                              ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
+                              : "ic-edit-range-menu-span"
+                          }
+                        >
+                          {t("name_manager_dialog.workbook")}
+                        </span>
+                        <span className="ic-edit-range-menu-span-grey">{` ${t(
+                          "name_manager_dialog.global",
+                        )}`}</span>
+                      </>
+                    ),
+                    triggerLabel: (
+                      <>
+                        <span className="ic-edit-range-menu-span">
+                          {t("name_manager_dialog.workbook")}
+                        </span>
+                        <span className="ic-edit-range-menu-span-grey">{` ${t(
+                          "name_manager_dialog.global",
+                        )}`}</span>
+                      </>
+                    ),
+                  },
+                  ...model.getWorksheetsProperties().map((option) => ({
+                    value: option.name,
+                    label: (
+                      <span
+                        className={
+                          isSelected(option.name)
+                            ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
+                            : "ic-edit-range-menu-span"
+                        }
+                      >
+                        {option.name}
                       </span>
-                      <span className="ic-edit-range-menu-span-grey">{` ${t(
-                        "name_manager_dialog.global",
-                      )}`}</span>
-                    </>
-                  ) : (
-                    stringValue
-                  );
-                }}
-                MenuProps={{
-                  PaperProps: {
-                    component: StyledMenuPaper,
-                  },
-                  anchorOrigin: {
-                    vertical: "bottom",
-                    horizontal: "center",
-                  },
-                  transformOrigin: {
-                    vertical: "top",
-                    horizontal: "center",
-                  },
-                  marginThreshold: 0,
-                }}
+                    ),
+                    triggerLabel: <span>{option.name}</span>,
+                  })),
+                ]}
+                ariaDescribedBy={`${scopeId}-helper`}
+              />
+              <span
+                id={`${scopeId}-helper`}
+                className="ic-edit-range-helper-text"
               >
-                <StyledMenuItem value={"[Global]"}>
-                  {isSelected("[Global]") ? (
-                    <Check className="ic-edit-range-check-icon" />
-                  ) : (
-                    <div className="ic-edit-range-icon-placeholder" />
-                  )}
-                  <span
-                    className={
-                      isSelected("[Global]")
-                        ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
-                        : "ic-edit-range-menu-span"
-                    }
-                  >
-                    {t("name_manager_dialog.workbook")}
-                  </span>
-                  <span className="ic-edit-range-menu-span-grey">{` ${t(
-                    "name_manager_dialog.global",
-                  )}`}</span>
-                </StyledMenuItem>
-                {model.getWorksheetsProperties().map((option) => (
-                  <StyledMenuItem key={option.name} value={option.name}>
-                    {isSelected(option.name) ? (
-                      <Check className="ic-edit-range-check-icon" />
-                    ) : (
-                      <div className="ic-edit-range-icon-placeholder" />
-                    )}
-                    <span
-                      className={
-                        isSelected(option.name)
-                          ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
-                          : "ic-edit-range-menu-span"
-                      }
-                    >
-                      {option.name}
-                    </span>
-                  </StyledMenuItem>
-                ))}
-              </StyledSelect>
-              <span className="ic-edit-range-helper-text">
                 {t("name_manager_dialog.scope_helper")}
               </span>
             </div>
@@ -286,43 +267,5 @@ const EditNamedRange = ({
     </div>
   );
 };
-
-const StyledSelect = styled(Select)(() => ({
-  fontFamily: "Inter",
-  fontSize: "12px",
-  "& .MuiSelect-select": {
-    padding: "8px",
-  },
-}));
-
-const StyledMenuPaper = styled(Paper)(() => ({
-  padding: 4,
-  marginTop: "4px",
-  "&.MuiPaper-root": {
-    borderRadius: "8px",
-  },
-  "& .MuiList-padding": {
-    padding: 0,
-  },
-  "& .MuiList-root": {
-    padding: 0,
-  },
-}));
-
-const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
-  padding: 8,
-  borderRadius: 4,
-  display: "flex",
-  alignItems: "center",
-  "&.Mui-selected": {
-    backgroundColor: "transparent",
-    "&:hover": {
-      backgroundColor: theme.palette.grey[50],
-    },
-  },
-  "&:hover": {
-    backgroundColor: theme.palette.grey[50],
-  },
-}));
 
 export default EditNamedRange;
