@@ -67,6 +67,8 @@
 .ic-select-menu {
   padding: 4px;
   background: var(--palette-common-white);
+  max-height: 240px;
+  overflow-y: auto;
   border-radius: 8px;
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.12),
@@ -114,4 +116,21 @@
 
 .ic-select-option.is-selected .ic-select-option-content {
   font-weight: 600;
+}
+
+/* Only used for very long lists like the timezones */
+.compact {
+  .ic-select-trigger {
+    min-height: 24px;
+    padding: 8px 24px 8px 8px;
+  }
+
+  .ic-select-option {
+    min-height: 24px;
+    padding: 4px;
+  }
+
+  .ic-select-trigger-icon {
+    right: 4px;
+  }
 }

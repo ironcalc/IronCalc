@@ -26,6 +26,7 @@ interface SelectProps {
   ariaLabelledBy?: string;
   ariaDescribedBy?: string;
   className?: string;
+  compact?: boolean;
 }
 
 export function Select({
@@ -35,6 +36,7 @@ export function Select({
   id,
   name,
   disabled = false,
+  compact = false,
   ariaLabelledBy,
   ariaDescribedBy,
   className = "",
@@ -51,6 +53,8 @@ export function Select({
     options.findIndex((option) => option.value === value),
   );
 
+  // FIXME: This fallback to 0 can cause issues if the value is not in options.
+  // See: https://github.com/ironcalc/IronCalc/pull/834#discussion_r3015897822
   const selectedOption = options[selectedIndex] ?? options[0];
 
   const [open, setOpen] = useState(false);
@@ -89,11 +93,12 @@ export function Select({
       "ic-select",
       open && "is-open",
       disabled && "is-disabled",
+      compact && "compact",
       className,
     ]
       .filter(Boolean)
       .join(" ");
-  }, [open, disabled, className]);
+  }, [open, disabled, compact, className]);
 
   function closeMenu() {
     setOpen(false);
@@ -126,7 +131,7 @@ export function Select({
   }
 
   function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (disabled) {
+    if (disabled || options.length === 0) {
       return;
     }
 
@@ -258,7 +263,7 @@ export function Select({
                     .filter(Boolean)
                     .join(" ")}
                   onClick={() => commit(index)}
-                  onMouseMove={() => setActiveIndex(index)}
+                  onMouseEnter={() => setActiveIndex(index)}
                   onKeyDown={(event) => handleOptionKeyDown(event, index)}
                 >
                   <span className="ic-select-option-check" aria-hidden="true">
