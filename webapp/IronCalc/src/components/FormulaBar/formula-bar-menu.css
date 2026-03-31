@@ -1,0 +1,102 @@
+.ic-formula-bar-menu {
+  position: relative;
+  display: flex;
+  font-weight: 400;
+}
+
+.ic-formula-bar-menu-trigger {
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ic-formula-bar-menu-trigger:disabled {
+  cursor: default;
+}
+
+.ic-formula-bar-menu-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: -4px;
+  z-index: 1000;
+
+  max-width: 460px;
+  padding: 4px 0;
+
+  border: 1px solid var(--palette-grey-200);
+  border-radius: 8px;
+  background: var(--palette-common-white);
+  box-shadow:
+    0px 4px 10px rgba(0, 0, 0, 0.12),
+    0px 2px 4px rgba(0, 0, 0, 0.08);
+  min-width: 0;
+  width: max-content;
+}
+
+.ic-formula-bar-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+
+  width: calc(100% - 8px);
+  min-width: 172px;
+  height: 32px;
+  margin: 0 4px;
+  padding: 8px;
+
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ic-formula-bar-menu-item:hover:not(:disabled) {
+  background: var(--palette-grey-50);
+}
+
+.ic-formula-bar-menu-item:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: -2px;
+}
+
+.ic-formula-bar-menu-item:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.ic-formula-bar-menu-item-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--palette-grey-500);
+}
+
+.ic-formula-bar-menu-item-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--palette-common-black);
+}
+
+.ic-formula-bar-menu-item-example {
+  margin-left: 12px;
+  color: var(--palette-grey-400);
+  white-space: nowrap;
+}
+
+.ic-formula-bar-menu-divider {
+  width: 100%;
+  margin: 4px auto;
+  border-top: 1px solid var(--palette-grey-300);
+}
