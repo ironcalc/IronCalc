@@ -27,9 +27,10 @@ import {
 interface WorkbookListProps {
   setModel: (key: string) => void;
   onDelete: (uuid: string) => void;
+  searchQuery: string;
 }
 
-function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
+function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
   const { t } = useTranslation();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedWorkbookUuid, setSelectedWorkbookUuid] = useState<
@@ -170,6 +171,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
     const isMenuOpen = menuAnchorEl !== null && selectedWorkbookUuid === uuid;
     const isAnyMenuOpen = menuAnchorEl !== null;
     const models = getModelsMetadata();
+
     return (
       <WorkbookListItem
         key={uuid}
@@ -216,12 +218,33 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
 
   const models = getModelsMetadata();
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  const allModelsSorted = Object.keys(models).sort(
+    (a, b) => models[b].createdAt - models[a].createdAt,
+  );
+
+  const filteredModels =
+    normalizedQuery.length > 0
+      ? allModelsSorted.filter((uuid) =>
+          models[uuid].name.toLowerCase().includes(normalizedQuery),
+        )
+      : null;
+
   return (
     <>
-      {renderSection(t("left_drawer.pinned"), pinnedModels)}
-      {renderSection(t("left_drawer.today"), modelsCreatedToday)}
-      {renderSection(t("left_drawer.last_30_days"), modelsCreatedThisMonth)}
-      {renderSection(t("left_drawer.older"), olderModels)}
+      {filteredModels ? (
+        // Search mode (flat list, no grouping)
+        filteredModels.map(renderWorkbookItem)
+      ) : (
+        // Default mode (grouped)
+        <>
+          {renderSection(t("left_drawer.pinned"), pinnedModels)}
+          {renderSection(t("left_drawer.today"), modelsCreatedToday)}
+          {renderSection(t("left_drawer.last_30_days"), modelsCreatedThisMonth)}
+          {renderSection(t("left_drawer.older"), olderModels)}
+        </>
+      )}
 
       <StyledMenu
         anchorEl={menuAnchorEl}
@@ -230,9 +253,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
         autoFocus={false}
         disableRestoreFocus={true}
         transitionDuration={0}
-        MenuListProps={{
-          dense: true,
-        }}
+        MenuListProps={{ dense: true }}
         anchorOrigin={{
           vertical: "bottom",
           horizontal: "right",
@@ -255,6 +276,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
           <FileDown />
           {t("left_drawer.workbook_menu.download")}
         </MenuItemWrapper>
+
         <MenuItemWrapper
           onClick={() => {
             if (selectedWorkbookUuid) {
@@ -272,6 +294,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
             ? t("left_drawer.workbook_menu.unpin")
             : t("left_drawer.workbook_menu.pin")}
         </MenuItemWrapper>
+
         <MenuItemWrapper
           onClick={() => {
             if (selectedWorkbookUuid) {
@@ -283,7 +306,9 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
           <Copy />
           {t("left_drawer.workbook_menu.duplicate")}
         </MenuItemWrapper>
+
         <MenuDivider />
+
         <DeleteButton
           selected={false}
           onClick={() => {
@@ -298,12 +323,7 @@ function WorkbookList({ setModel, onDelete }: WorkbookListProps) {
         </DeleteButton>
       </StyledMenu>
 
-      <Modal
-        open={isDeleteDialogOpen}
-        onClose={handleDeleteCancel}
-        aria-labelledby="delete-dialog-title"
-        aria-describedby="delete-dialog-description"
-      >
+      <Modal open={isDeleteDialogOpen} onClose={handleDeleteCancel} >
         <DeleteWorkbookDialog
           onClose={handleDeleteCancel}
           onConfirm={handleDeleteConfirm}

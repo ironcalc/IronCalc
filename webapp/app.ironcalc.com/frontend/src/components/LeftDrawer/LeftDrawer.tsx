@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { Drawer } from "@mui/material";
+import { useState } from "react";
 import DrawerContent from "./DrawerContent";
 import DrawerFooter from "./DrawerFooter";
 import DrawerHeader from "./DrawerHeader";
@@ -20,6 +21,8 @@ function LeftDrawer({
   setModel,
   onDelete,
 }: LeftDrawerProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
   return (
     <DrawerWrapper
       variant="persistent"
@@ -28,8 +31,16 @@ function LeftDrawer({
       onClose={onClose}
       transitionDuration={0}
     >
-      <DrawerHeader onNewModel={newModel} />
-      <DrawerContent setModel={setModel} onDelete={onDelete} />
+      <DrawerHeader
+        onNewModel={newModel}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+      />
+      <DrawerContent
+        setModel={setModel}
+        onDelete={onDelete}
+        searchQuery={searchQuery}
+      />
 
       <DrawerFooter />
     </DrawerWrapper>

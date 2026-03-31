@@ -8,9 +8,15 @@ import { DialogHeaderLogoWrapper } from "../WelcomeDialog/WelcomeDialog";
 
 interface DrawerHeaderProps {
   onNewModel: () => void;
+  searchQuery: string;
+  setSearchQuery: (value: string) => void;
 }
 
-function DrawerHeader({ onNewModel }: DrawerHeaderProps) {
+function DrawerHeader({
+  onNewModel,
+  searchQuery,
+  setSearchQuery,
+}: DrawerHeaderProps) {
   const { t } = useTranslation();
   const [isSearching, setIsSearching] = useState(false);
 
@@ -43,6 +49,8 @@ function DrawerHeader({ onNewModel }: DrawerHeaderProps) {
         </SearchIconWrapper>
 
         <SearchInput
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           size="small"
           placeholder="Search workbook..."
           autoFocus
@@ -50,7 +58,12 @@ function DrawerHeader({ onNewModel }: DrawerHeaderProps) {
           fullWidth
           InputProps={{ disableUnderline: true }}
         />
-        <ClearIcon onClick={() => setIsSearching(false)}>
+        <ClearIcon
+          onClick={() => {
+            setSearchQuery("");
+            setIsSearching(false);
+          }}
+        >
           <X />
         </ClearIcon>
       </SearchOverlay>
