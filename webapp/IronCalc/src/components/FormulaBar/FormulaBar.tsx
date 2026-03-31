@@ -1,10 +1,8 @@
 import type { Model } from "@ironcalc/wasm";
-import { styled } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Fx } from "../../icons";
 import { Button } from "../Button/Button";
-import { FORMULA_BAR_HEIGHT } from "../constants";
 import Editor from "../Editor/Editor";
 import {
   COLUMN_WIDTH_SCALE,
@@ -12,6 +10,7 @@ import {
 } from "../WorksheetCanvas/constants";
 import type { WorkbookState } from "../workbookState";
 import FormulaBarMenu from "./FormulaBarMenu";
+import "./formula-bar.css";
 
 type FormulaBarProps = {
   cellAddress: string;
@@ -40,8 +39,10 @@ function FormulaBar(properties: FormulaBarProps) {
   };
 
   return (
-    <Container>
-      <AddressContainer $active={isMenuOpen}>
+    <div className="ic-formula-bar-root">
+      <div
+        className={`${isMenuOpen ? "ic-formula-bar-address ic-formula-bar-address--active" : "ic-formula-bar-address"}`}
+      >
         <FormulaBarMenu
           onMenuOpenChange={handleMenuOpenChange}
           openDrawer={properties.openDrawer}
@@ -58,13 +59,16 @@ function FormulaBar(properties: FormulaBarProps) {
             {cellAddress}
           </Button>
         </FormulaBarMenu>
-      </AddressContainer>
-      <Divider />
-      <FormulaContainer>
-        <FormulaSymbolButton>
+      </div>
+      <div className="ic-formula-bar-divider" />
+      <div className="ic-formula-bar-formula-container">
+        <div className="ic-formula-bar-button">
           <Fx />
-        </FormulaSymbolButton>
-        <EditorWrapper
+        </div>
+        {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
+        {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
+        <div
+          className="ic-formula-bar-editor-wrapper"
           onClick={(event) => {
             const [sheet, row, column] = model.getSelectedCell();
             const editorWidth =
@@ -99,95 +103,10 @@ function FormulaBar(properties: FormulaBarProps) {
             onTextUpdated={onTextUpdated}
             type="formula-bar"
           />
-        </EditorWrapper>
-      </FormulaContainer>
-    </Container>
+        </div>
+      </div>
+    </div>
   );
 }
-
-const StyledButton = styled("div")({
-  display: "inline-flex",
-  alignItems: "center",
-  width: 15,
-  minWidth: 0,
-  padding: 0,
-  color: "inherit",
-  fontWeight: "inherit",
-
-  "& svg": {
-    width: 15,
-    height: 15,
-  },
-});
-
-const FormulaSymbolButton = styled(StyledButton)({
-  marginRight: 8,
-});
-
-const Divider = styled("div")(({ theme }) => ({
-  backgroundColor: theme.palette.grey[300],
-  minWidth: 1,
-  height: 16,
-  margin: "0px 16px 0px 8px",
-}));
-
-const FormulaContainer = styled("div")({
-  marginLeft: 0,
-  lineHeight: "22px",
-  fontWeight: "normal",
-  width: "100%",
-  height: 22,
-  display: "flex",
-});
-
-const Container = styled("div")(({ theme }) => ({
-  flexShrink: 0,
-  display: "flex",
-  flexDirection: "row",
-  alignItems: "center",
-  background: theme.palette.background.default,
-  height: FORMULA_BAR_HEIGHT,
-  borderTop: `1px solid ${theme.palette.grey[300]}`,
-}));
-
-const AddressContainer = styled("div")<{ $active?: boolean }>(
-  ({ theme, $active }) => ({
-    color: theme.palette.common.black,
-    fontStyle: "normal",
-    fontSize: 12,
-    display: "flex",
-    fontWeight: 600,
-    alignItems: "center",
-    gap: 2,
-    borderRadius: 4,
-    marginLeft: 8,
-    cursor: "pointer",
-    backgroundColor: $active ? theme.palette.action.selected : "transparent",
-
-    "&:hover": {
-      backgroundColor: $active
-        ? theme.palette.action.selected
-        : theme.palette.grey[100],
-    },
-  }),
-);
-
-const EditorWrapper = styled("div")({
-  position: "relative",
-  width: "100%",
-  padding: 0,
-  borderWidth: 0,
-  outline: "none",
-  resize: "none",
-  whiteSpace: "pre-wrap",
-  verticalAlign: "bottom",
-  overflow: "hidden",
-  textAlign: "left",
-  fontFamily: "monospace",
-
-  "& span": {
-    minWidth: 1,
-  },
-});
 
 export default FormulaBar;
