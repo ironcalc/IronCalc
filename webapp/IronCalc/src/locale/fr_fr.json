@@ -83,7 +83,8 @@
     "rename": "Renommer",
     "change_color": "Changer la couleur",
     "delete": "Supprimer",
-    "hide_sheet": "Masquer la feuille"
+    "hide_sheet": "Masquer la feuille",
+    "open_menu": "Ouvrir le menu de la feuille"
   },
   "formula_input": {
     "update": "Mettre à jour",

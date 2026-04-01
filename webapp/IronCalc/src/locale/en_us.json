@@ -83,7 +83,8 @@
     "rename": "Rename",
     "change_color": "Change Color",
     "delete": "Delete",
-    "hide_sheet": "Hide sheet"
+    "hide_sheet": "Hide sheet",
+    "open_menu": "Open sheet menu"
   },
   "formula_input": {
     "update": "Update",

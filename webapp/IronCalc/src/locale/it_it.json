@@ -83,7 +83,8 @@
     "rename": "Rinomina",
     "change_color": "Cambia colore",
     "delete": "Elimina",
-    "hide_sheet": "Nascondi foglio"
+    "hide_sheet": "Nascondi foglio",
+    "open_menu": "Apri menu del foglio"
   },
   "formula_input": {
     "update": "Aggiorna",

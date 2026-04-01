@@ -83,7 +83,8 @@
     "rename": "Umbenennen",
     "change_color": "Farbe ändern",
     "delete": "Löschen",
-    "hide_sheet": "Tabellenblatt ausblenden"
+    "hide_sheet": "Tabellenblatt ausblenden",
+    "open_menu": "Tabellenblattmenü öffnen"
   },
   "formula_input": {
     "update": "Aktualisieren",
