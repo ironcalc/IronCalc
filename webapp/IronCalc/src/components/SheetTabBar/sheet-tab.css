@@ -24,7 +24,7 @@
   margin-right: 5px;
   font-size: 12px;
   text-align: center;
-  text-wrap: nowrap;
+  white-space: nowrap;
   user-select: none;
 }
 

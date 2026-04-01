@@ -257,17 +257,21 @@ function SheetTab(props: SheetTabProps) {
 
   return (
     <>
-      {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
-      {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
       <div
         className={`ic-sheet-tab${selected ? " ic-sheet-tab--selected" : ""}`}
         style={{ borderBottomColor: color }}
+        role="tab"
+        tabIndex={selected ? 0 : -1}
+        aria-selected={selected}
         onClick={(event) => {
           if (!isEditing) {
             onSelected();
           }
           event.stopPropagation();
           event.preventDefault();
+        }}
+        onKeyDown={(_) => {
+          // not handling enter/space to open menu or start editing here,
         }}
         onDoubleClick={(event) => {
           event.stopPropagation();
@@ -295,6 +299,7 @@ function SheetTab(props: SheetTabProps) {
               onChange={(e) => setEditingName(e.target.value)}
               style={{ width: `${inputWidth}px` }}
               className="ic-sheet-tab-input"
+              aria-label={t("sheet_tab.rename")}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
