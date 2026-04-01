@@ -34,7 +34,26 @@ const FormatMenu = (properties: FormatMenuProperties) => {
   const anchorElement = useRef<HTMLDivElement>(null);
   const menuElement = useRef<HTMLDivElement>(null);
 
+  // We need to keep track of the previously focused element before opening the menu
+  // This is so when you press ESC whatever was focused before opening the menu gets focused again
+  const previousFocusedElement = useRef<HTMLElement | null>(null);
+  const onTriggerMouseDownCapture = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      previousFocusedElement.current =
+        document.activeElement as HTMLElement | null;
+      event.preventDefault();
+    },
+    [],
+  );
+
   const formatOptions = properties.formatOptions;
+
+  const closeMenu = useCallback((restorePreviousFocus = false) => {
+    setMenuOpen(false);
+    if (restorePreviousFocus) {
+      previousFocusedElement.current?.focus();
+    }
+  }, []);
 
   const focusMenuItem = useCallback((index: number) => {
     const items =
@@ -75,10 +94,9 @@ const FormatMenu = (properties: FormatMenuProperties) => {
   const onSelect = useCallback(
     (s: string) => {
       properties.onChange(s);
-      setMenuOpen(false);
-      anchorElement.current?.focus();
+      closeMenu(true);
     },
-    [properties.onChange],
+    [properties.onChange, closeMenu],
   );
 
   const onMenuKeyDown = useCallback(
@@ -100,8 +118,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
       switch (event.key) {
         case "Escape":
           event.preventDefault();
-          setMenuOpen(false);
-          anchorElement.current?.focus();
+          closeMenu(true);
           break;
         case "ArrowDown":
           event.preventDefault();
@@ -128,13 +145,13 @@ const FormatMenu = (properties: FormatMenuProperties) => {
           focusMenuItem(items.length - 1);
           break;
         case "Tab":
-          setMenuOpen(false);
+          closeMenu(false);
           break;
         default:
           break;
       }
     },
-    [focusMenuItem, focusSelectedOrFirstItem],
+    [closeMenu, focusMenuItem, focusSelectedOrFirstItem],
   );
 
   useEffect(() => {
@@ -152,7 +169,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
         return;
       }
 
-      setMenuOpen(false);
+      closeMenu(true);
     };
 
     document.addEventListener("pointerdown", onDocumentPointerDown, true);
@@ -160,7 +177,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
     return () => {
       document.removeEventListener("pointerdown", onDocumentPointerDown, true);
     };
-  }, [isMenuOpen]);
+  }, [closeMenu, isMenuOpen]);
 
   useLayoutEffect(() => {
     if (!isMenuOpen || !anchorElement.current) {
@@ -224,6 +241,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
         className="ic-format-menu-anchor"
         onClick={() => setMenuOpen((prev) => !prev)}
         ref={anchorElement}
+        onMouseDownCapture={onTriggerMouseDownCapture}
       >
         {properties.children}
       </div>
@@ -343,7 +361,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
           <button
             className={isCustomFormat ? "is-selected" : undefined}
             onClick={() => {
-              setMenuOpen(false);
+              closeMenu(false);
               setPickerOpen(true);
             }}
             type="button"
