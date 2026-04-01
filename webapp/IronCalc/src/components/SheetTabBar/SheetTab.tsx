@@ -8,6 +8,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -35,6 +36,8 @@ interface SheetTabProps {
 function SheetTab(props: SheetTabProps) {
   const { name, color, selected, workbookState, onSelected } = props;
   const { t } = useTranslation();
+  const menuButtonId = useId();
+  const menuId = useId();
 
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<{
@@ -50,8 +53,12 @@ function SheetTab(props: SheetTabProps) {
 
   const tabRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
+  const lastMenuStyleRef = useRef<{ left: number; bottom: number } | null>(
+    null,
+  );
 
   const focusMenuItem = useCallback((index: number) => {
     const items =
@@ -78,6 +85,17 @@ function SheetTab(props: SheetTabProps) {
     }
   }, [name, isEditing]);
 
+  const handleCloseMenu = useCallback((restoreFocus = false) => {
+    setMenuOpen(false);
+    lastMenuStyleRef.current = null;
+
+    if (restoreFocus) {
+      requestAnimationFrame(() => {
+        menuButtonRef.current?.focus();
+      });
+    }
+  }, []);
+
   // We want to change the layout only when editingName changes, but the layout is controlled by the hidden measure element.
   // biome-ignore lint/correctness/useExhaustiveDependencies: false
   useLayoutEffect(() => {
@@ -92,6 +110,8 @@ function SheetTab(props: SheetTabProps) {
       return;
     }
 
+    let frameId: number | null = null;
+
     const updateMenuPosition = () => {
       const rect = tabRef.current?.getBoundingClientRect();
 
@@ -99,10 +119,33 @@ function SheetTab(props: SheetTabProps) {
         return;
       }
 
-      setMenuStyle({
+      const nextStyle = {
         // I try to align it with the left side of the chevron down
         left: rect.right - 24,
         bottom: window.innerHeight - rect.top,
+      };
+
+      const previousStyle = lastMenuStyleRef.current;
+
+      if (
+        previousStyle?.left === nextStyle.left &&
+        previousStyle?.bottom === nextStyle.bottom
+      ) {
+        return;
+      }
+
+      lastMenuStyleRef.current = nextStyle;
+      setMenuStyle(nextStyle);
+    };
+
+    const scheduleUpdateMenuPosition = () => {
+      if (frameId !== null) {
+        return;
+      }
+
+      frameId = requestAnimationFrame(() => {
+        frameId = null;
+        updateMenuPosition();
       });
     };
 
@@ -112,12 +155,16 @@ function SheetTab(props: SheetTabProps) {
       focusMenuItem(0);
     });
 
-    window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
+    window.addEventListener("resize", scheduleUpdateMenuPosition);
+    window.addEventListener("scroll", scheduleUpdateMenuPosition, true);
 
     return () => {
-      window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
+      window.removeEventListener("resize", scheduleUpdateMenuPosition);
+      window.removeEventListener("scroll", scheduleUpdateMenuPosition, true);
+
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
     };
   }, [isMenuOpen, focusMenuItem]);
 
@@ -136,7 +183,7 @@ function SheetTab(props: SheetTabProps) {
         return;
       }
 
-      setMenuOpen(false);
+      handleCloseMenu(true);
     };
 
     document.addEventListener("pointerdown", onDocumentPointerDown, true);
@@ -144,16 +191,12 @@ function SheetTab(props: SheetTabProps) {
     return () => {
       document.removeEventListener("pointerdown", onDocumentPointerDown, true);
     };
-  }, [isMenuOpen]);
+  }, [isMenuOpen, handleCloseMenu]);
 
   const handleOpenMenu = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
     setMenuOpen(true);
-  };
-
-  const handleCloseMenu = () => {
-    setMenuOpen(false);
   };
 
   const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -254,10 +297,15 @@ function SheetTab(props: SheetTabProps) {
           <>
             <div className="ic-sheet-tab-name">{name}</div>
             <button
+              ref={menuButtonRef}
+              id={menuButtonId}
               className={`ic-sheet-tab-menu-button${isMenuOpen ? " ic-sheet-tab-menu-button--active" : ""}`}
               onClick={handleOpenMenu}
               type="button"
               aria-label={t("sheet_tab.open_menu")}
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+              aria-controls={isMenuOpen ? menuId : undefined}
             >
               <ChevronDown />
             </button>
@@ -269,9 +317,10 @@ function SheetTab(props: SheetTabProps) {
         <div
           className="ic-sheet-tab-menu"
           ref={menuRef}
+          id={menuId}
           style={menuStyle}
           role="menu"
-          aria-label={t("sheet_tab.open_menu")}
+          aria-labelledby={menuButtonId}
           onKeyDown={(event) => {
             const items =
               menuRef.current?.querySelectorAll<HTMLButtonElement>(
@@ -290,7 +339,7 @@ function SheetTab(props: SheetTabProps) {
             switch (event.key) {
               case "Escape":
                 event.preventDefault();
-                handleCloseMenu();
+                handleCloseMenu(true);
                 break;
               case "ArrowDown":
                 event.preventDefault();
@@ -309,7 +358,7 @@ function SheetTab(props: SheetTabProps) {
                 focusMenuItem(items.length - 1);
                 break;
               case "Tab":
-                handleCloseMenu();
+                handleCloseMenu(true);
                 break;
               default:
                 break;
@@ -317,6 +366,7 @@ function SheetTab(props: SheetTabProps) {
           }}
         >
           <button
+            role="menuitem"
             className="ic-sheet-tab-menu-item"
             onClick={() => {
               handleStartEditing();
@@ -329,6 +379,7 @@ function SheetTab(props: SheetTabProps) {
           </button>
 
           <button
+            role="menuitem"
             className="ic-sheet-tab-menu-item"
             onClick={() => {
               setColorPickerOpen(true);
@@ -341,6 +392,7 @@ function SheetTab(props: SheetTabProps) {
           </button>
 
           <button
+            role="menuitem"
             className="ic-sheet-tab-menu-item"
             disabled={!props.canDelete}
             onClick={() => {
@@ -356,6 +408,7 @@ function SheetTab(props: SheetTabProps) {
           <div className="ic-sheet-tab-menu-divider" />
 
           <button
+            role="menuitem"
             className="ic-sheet-tab-menu-item ic-sheet-tab-menu-item--delete"
             disabled={!props.canDelete}
             onClick={() => {
