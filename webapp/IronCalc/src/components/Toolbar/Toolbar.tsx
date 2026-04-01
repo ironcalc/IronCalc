@@ -255,10 +255,6 @@ function Toolbar(properties: ToolbarProperties) {
               properties.onNumberFormatPicked(numberFmt);
             }}
             onExited={(): void => {}}
-            anchorOrigin={{
-              horizontal: 20, // Aligning the menu to the middle of FormatButton
-              vertical: "bottom",
-            }}
             formatOptions={properties.formatOptions}
           >
             <Tooltip title={t("toolbar.format_number")}>
