@@ -83,7 +83,8 @@
     "rename": "Renombrar",
     "change_color": "Cambiar color",
     "delete": "Eliminar",
-    "hide_sheet": "Ocultar hoja"
+    "hide_sheet": "Ocultar hoja",
+    "open_menu": "Abrir menú de hoja"
   },
   "formula_input": {
     "update": "Actualizar",
