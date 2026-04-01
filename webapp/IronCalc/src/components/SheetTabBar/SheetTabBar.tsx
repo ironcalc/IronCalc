@@ -32,7 +32,7 @@ function SheetTabBar(props: SheetTabBarProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
   const open = Boolean(anchorEl);
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
+    setAnchorEl((current) => (current ? null : event.currentTarget));
   };
   const handleClose = () => {
     setAnchorEl(null);

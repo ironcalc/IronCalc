@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { SheetOptions } from "./types";
 import "./sheet-list-menu.css";
+import { useTranslation } from "react-i18next";
 
 function isWhiteColor(color: string): boolean {
   return ["#FFF", "#FFFFFF"].includes(color);
@@ -31,6 +32,8 @@ const SheetListMenu = (properties: SheetListMenuProps) => {
     sheetOptionsList,
     selectedIndex,
   } = properties;
+
+  const { t } = useTranslation();
 
   const [menuStyle, setMenuStyle] = useState<{
     left?: number;
@@ -117,10 +120,6 @@ const SheetListMenu = (properties: SheetListMenuProps) => {
         return;
       }
 
-      if (anchorEl && path.includes(anchorEl)) {
-        return;
-      }
-
       onClose();
     };
 
@@ -129,7 +128,7 @@ const SheetListMenu = (properties: SheetListMenuProps) => {
     return () => {
       document.removeEventListener("pointerdown", onDocumentPointerDown, true);
     };
-  }, [open, anchorEl, onClose]);
+  }, [open, onClose]);
 
   if (!open) {
     return null;
@@ -141,7 +140,7 @@ const SheetListMenu = (properties: SheetListMenuProps) => {
       ref={menuRef}
       style={menuStyle}
       role="menu"
-      aria-label="Sheet list"
+      aria-label={t("navigation.sheet_list")}
       onKeyDown={(event) => {
         const items = getMenuItems();
 
@@ -207,10 +206,6 @@ const SheetListMenu = (properties: SheetListMenuProps) => {
           className="ic-sheet-list-menu-item"
           onClick={() => {
             onSheetSelected(index);
-            onClose();
-            requestAnimationFrame(() => {
-              anchorEl?.focus();
-            });
           }}
           type="button"
         >
