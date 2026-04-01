@@ -60,17 +60,25 @@ function SheetTab(props: SheetTabProps) {
     null,
   );
 
-  const focusMenuItem = useCallback((index: number) => {
+  const getEnabledMenuItems = useCallback(() => {
     const items =
       menuRef.current?.querySelectorAll<HTMLButtonElement>(":scope > button");
 
-    if (!items || items.length === 0) {
-      return;
-    }
+    if (!items) return [];
 
-    const safeIndex = Math.max(0, Math.min(index, items.length - 1));
-    items[safeIndex]?.focus();
+    return Array.from(items).filter((el) => !el.disabled);
   }, []);
+
+  const focusMenuItem = useCallback(
+    (index: number) => {
+      const items = getEnabledMenuItems();
+      if (items.length === 0) return;
+
+      const safeIndex = Math.max(0, Math.min(index, items.length - 1));
+      items[safeIndex]?.focus();
+    },
+    [getEnabledMenuItems],
+  );
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -342,17 +350,10 @@ function SheetTab(props: SheetTabProps) {
           role="menu"
           aria-labelledby={menuButtonId}
           onKeyDown={(event) => {
-            const items =
-              menuRef.current?.querySelectorAll<HTMLButtonElement>(
-                ":scope > button",
-              );
+            const items = getEnabledMenuItems();
+            if (items.length === 0) return;
 
-            if (!items || items.length === 0) {
-              return;
-            }
-
-            const itemsArray = Array.from(items);
-            const currentIndex = itemsArray.indexOf(
+            const currentIndex = items.indexOf(
               document.activeElement as HTMLButtonElement,
             );
 
