@@ -100,10 +100,6 @@
   border-color: var(--palette-primary-main);
 }
 
-.ic-sheet-tab-input input:focus {
-  border-color: var(--palette-primary-main);
-}
-
 .ic-sheet-tab-menu {
   position: fixed;
   z-index: 1300;
