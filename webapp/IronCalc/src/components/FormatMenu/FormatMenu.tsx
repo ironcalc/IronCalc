@@ -142,7 +142,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
       return;
     }
 
-    const onDocumentPointerDown = (event: PointerEvent): void => {
+    const onDocumentPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
 
       if (
@@ -167,7 +167,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
       return;
     }
 
-    const updateMenuPosition = (): void => {
+    const updateMenuPosition = () => {
       const rect = anchorElement.current?.getBoundingClientRect();
 
       if (!rect) {
@@ -218,25 +218,12 @@ const FormatMenu = (properties: FormatMenuProperties) => {
 
   return (
     <div className="ic-format-menu-root">
-      {/** biome-ignore lint/a11y/useSemanticElements: FIXME */}
+      {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
+      {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
       <div
         className="ic-format-menu-anchor"
-        onClick={(): void => setMenuOpen(true)}
-        onKeyDown={(event): void => {
-          if (
-            event.key === "Enter" ||
-            event.key === " " ||
-            event.key === "ArrowDown"
-          ) {
-            event.preventDefault();
-            setMenuOpen(true);
-          }
-        }}
+        onClick={() => setMenuOpen((prev) => !prev)}
         ref={anchorElement}
-        role="button"
-        tabIndex={0}
-        aria-haspopup="menu"
-        aria-expanded={isMenuOpen}
       >
         {properties.children}
       </div>
@@ -252,7 +239,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
         >
           <button
             className={isAutoFormat ? "is-selected" : undefined}
-            onClick={(): void => onSelect(NumberFormats.AUTO)}
+            onClick={() => onSelect(NumberFormats.AUTO)}
             type="button"
           >
             <span>
@@ -265,7 +252,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
 
           <button
             className={isNumberFormat ? "is-selected" : undefined}
-            onClick={(): void => onSelect(formatOptions.number_fmt)}
+            onClick={() => onSelect(formatOptions.number_fmt)}
             type="button"
           >
             <span>
@@ -277,7 +264,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
 
           <button
             className={isPercentageFormat ? "is-selected" : undefined}
-            onClick={(): void => onSelect(NumberFormats.PERCENTAGE)}
+            onClick={() => onSelect(NumberFormats.PERCENTAGE)}
             type="button"
           >
             <span>
@@ -291,7 +278,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
 
           <button
             className={isCurrencyEurosFormat ? "is-selected" : undefined}
-            onClick={(): void => onSelect(NumberFormats.CURRENCY_EUR)}
+            onClick={() => onSelect(NumberFormats.CURRENCY_EUR)}
             type="button"
           >
             <span>
@@ -303,7 +290,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
 
           <button
             className={isCurrencyUsdFormat ? "is-selected" : undefined}
-            onClick={(): void => onSelect(NumberFormats.CURRENCY_USD)}
+            onClick={() => onSelect(NumberFormats.CURRENCY_USD)}
             type="button"
           >
             <span>
@@ -315,7 +302,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
 
           <button
             className={isCurrencyGbpFormat ? "is-selected" : undefined}
-            onClick={(): void => onSelect(NumberFormats.CURRENCY_GBP)}
+            onClick={() => onSelect(NumberFormats.CURRENCY_GBP)}
             type="button"
           >
             <span>
@@ -329,7 +316,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
 
           <button
             className={isShortDateFormat ? "is-selected" : undefined}
-            onClick={(): void => onSelect(formatOptions.short_date)}
+            onClick={() => onSelect(formatOptions.short_date)}
             type="button"
           >
             <span>
@@ -341,7 +328,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
 
           <button
             className={isLongDateFormat ? "is-selected" : undefined}
-            onClick={(): void => onSelect(formatOptions.long_date)}
+            onClick={() => onSelect(formatOptions.long_date)}
             type="button"
           >
             <span>
@@ -355,7 +342,10 @@ const FormatMenu = (properties: FormatMenuProperties) => {
 
           <button
             className={isCustomFormat ? "is-selected" : undefined}
-            onClick={(): void => setPickerOpen(true)}
+            onClick={() => {
+              setMenuOpen(false);
+              setPickerOpen(true);
+            }}
             type="button"
           >
             <span>
@@ -370,7 +360,7 @@ const FormatMenu = (properties: FormatMenuProperties) => {
         numFmt={properties.numFmt}
         onChange={onSelect}
         open={isPickerOpen}
-        onClose={(): void => setPickerOpen(false)}
+        onClose={() => setPickerOpen(false)}
         onExited={properties.onExited}
       />
     </div>
