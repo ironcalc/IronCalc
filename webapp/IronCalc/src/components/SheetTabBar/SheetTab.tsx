@@ -174,12 +174,20 @@ function SheetTab(props: SheetTabProps) {
     }
 
     const onDocumentPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
+      if (!menuRef.current || !tabRef.current || !menuButtonRef.current) {
+        return;
+      }
+      const path = event.composedPath();
 
       if (
-        tabRef.current?.contains(target) ||
-        menuRef.current?.contains(target)
+        path.includes(menuRef.current) ||
+        path.includes(menuButtonRef.current)
       ) {
+        return;
+      }
+
+      if (path.includes(tabRef.current)) {
+        handleCloseMenu(false);
         return;
       }
 
@@ -196,7 +204,19 @@ function SheetTab(props: SheetTabProps) {
   const handleOpenMenu = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
-    setMenuOpen(true);
+
+    setMenuOpen((prev) => {
+      const next = !prev;
+
+      // if closing via click on trigger, restore focus
+      if (!next) {
+        requestAnimationFrame(() => {
+          menuButtonRef.current?.focus();
+        });
+      }
+
+      return next;
+    });
   };
 
   const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
