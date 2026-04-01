@@ -1,6 +1,8 @@
-import { Button, Dialog, styled } from "@mui/material";
 import { Trash2 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../Button/Button";
+import "./sheet-delete-dialog.css";
 
 interface SheetDeleteDialogProps {
   open: boolean;
@@ -16,105 +18,124 @@ function SheetDeleteDialog({
   sheetName,
 }: SheetDeleteDialogProps) {
   const { t } = useTranslation();
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusedElement = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    previousFocusedElement.current =
+      document.activeElement as HTMLElement | null;
+
+    requestAnimationFrame(() => {
+      deleteButtonRef.current?.focus();
+    });
+  }, [open]);
+
+  const closeDialog = (): void => {
+    onClose();
+    previousFocusedElement.current?.focus();
+  };
+
+  const handleDelete = (): void => {
+    onDelete();
+    previousFocusedElement.current?.focus();
+  };
+
+  if (!open) {
+    return null;
+  }
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogWrapper>
-        <IconWrapper>
+    // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
+    <div
+      className="ic-sheet-delete-dialog-backdrop"
+      onClick={closeDialog}
+      role="presentation"
+    >
+      <div
+        className="ic-sheet-delete-dialog"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.stopPropagation();
+            closeDialog();
+            return;
+          }
+
+          if (event.key === "Tab") {
+            const focusable = [
+              deleteButtonRef.current,
+              cancelButtonRef.current,
+            ].filter(
+              (element): element is HTMLButtonElement => element !== null,
+            );
+
+            if (focusable.length === 0) {
+              event.preventDefault();
+              return;
+            }
+
+            const currentIndex = focusable.indexOf(
+              document.activeElement as HTMLButtonElement,
+            );
+
+            if (event.shiftKey) {
+              if (currentIndex <= 0) {
+                event.preventDefault();
+                focusable[focusable.length - 1]?.focus();
+              }
+            } else if (currentIndex === focusable.length - 1) {
+              event.preventDefault();
+              focusable[0]?.focus();
+            }
+          }
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("sheet_delete.title")}
+      >
+        <div className="ic-sheet-delete-dialog-icon">
           <Trash2 />
-        </IconWrapper>
-        <Title>{t("sheet_delete.title")}</Title>
-        <Body>
+        </div>
+
+        <h2 className="ic-sheet-delete-dialog-title">
+          {t("sheet_delete.title")}
+        </h2>
+
+        <p className="ic-sheet-delete-dialog-body">
           {t("sheet_delete.message", {
             sheetName,
           })}
-        </Body>
-        <ButtonGroup>
-          <DeleteButton onClick={onDelete} autoFocus>
+        </p>
+
+        <div className="ic-sheet-delete-dialog-buttons">
+          <Button
+            ref={deleteButtonRef}
+            size="md"
+            variant="destructive"
+            onClick={handleDelete}
+            className="ic-sheet-delete-dialog-delete-button"
+          >
             {t("sheet_delete.confirm")}
-          </DeleteButton>
-          <CancelButton onClick={onClose}>
+          </Button>
+
+          <Button
+            ref={cancelButtonRef}
+            size="md"
+            variant="secondary"
+            onClick={closeDialog}
+            className="ic-sheet-delete-dialog-cancel-button"
+          >
             {t("sheet_delete.cancel")}
-          </CancelButton>
-        </ButtonGroup>
-      </DialogWrapper>
-    </Dialog>
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
-
-const DialogWrapper = styled("div")(({ theme }) => ({
-  position: "fixed",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  background: theme.palette.common.white,
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-  padding: 12,
-  borderRadius: 8,
-  boxShadow: `0px 1px 3px 0px ${theme.palette.common.black}1A`,
-  width: 280,
-  maxWidth: "calc(100% - 40px)",
-  zIndex: 50,
-  fontFamily: '"Inter", sans-serif',
-}));
-
-const IconWrapper = styled("div")(({ theme }) => ({
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  width: 36,
-  height: 36,
-  borderRadius: 4,
-  backgroundColor: `${theme.palette.error.main}1A`,
-  margin: "12px auto 8px auto",
-  color: theme.palette.error.main,
-  "& svg": {
-    width: 16,
-    height: 16,
-  },
-}));
-
-const Title = styled("h2")(({ theme }) => ({
-  margin: 0,
-  fontSize: 14,
-  fontWeight: 600,
-  color: theme.palette.grey[900],
-  textAlign: "center",
-}));
-
-const Body = styled("p")(({ theme }) => ({
-  margin: 0,
-  textAlign: "center",
-  color: theme.palette.grey[900],
-  fontSize: 12,
-}));
-
-const ButtonGroup = styled("div")({
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-  marginTop: 8,
-  width: "100%",
-});
-
-const DeleteButton = styled(Button)(({ theme }) => ({
-  backgroundColor: theme.palette.error.main,
-  color: theme.palette.common.white,
-  textTransform: "none",
-  "&:hover": {
-    backgroundColor: theme.palette.error.dark,
-  },
-}));
-
-const CancelButton = styled(Button)(({ theme }) => ({
-  backgroundColor: theme.palette.grey[200],
-  color: theme.palette.grey[700],
-  textTransform: "none",
-  "&:hover": {
-    backgroundColor: theme.palette.grey[300],
-  },
-}));
 
 export default SheetDeleteDialog;
