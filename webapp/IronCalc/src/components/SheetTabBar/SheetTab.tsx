@@ -462,6 +462,7 @@ function SheetTab(props: SheetTabProps) {
         }}
         anchorEl={tabRef}
         open={colorPickerOpen}
+        placement="top"
       />
 
       <SheetDeleteDialog

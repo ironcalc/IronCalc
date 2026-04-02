@@ -1,0 +1,91 @@
+.ic-line-style-picker {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 92px;
+  padding: 4px;
+  background: var(--palette-common-white);
+  border-radius: 8px;
+  box-shadow: 1px 2px 8px rgba(139, 143, 173, 0.5);
+}
+
+.ic-line-style-picker button {
+  justify-content: center;
+}
+
+.ic-line-style-picker span {
+  display: block;
+  width: 68px;
+  color: var(--palette-grey-900);
+
+  &.thin {
+    border-top: 1px solid currentColor;
+  }
+
+  &.medium {
+    border-top: 2px solid currentColor;
+  }
+
+  &.thick {
+    border-top: 3px solid currentColor;
+  }
+
+  &.double {
+    height: 3px;
+    background: linear-gradient(
+      to bottom,
+      currentColor 0,
+      currentColor 1px,
+      transparent 1px,
+      transparent 2px,
+      currentColor 2px,
+      currentColor 3px
+    );
+  }
+
+  &.dotted {
+    border-top: 1px dotted currentColor;
+  }
+
+  &.medium-dashed {
+    border-top: 2px dashed currentColor;
+  }
+
+  &.slant-dash-dot {
+    height: 1px;
+    background: repeating-linear-gradient(
+      90deg,
+      currentColor 0 4px,
+      transparent 4px 6px,
+      currentColor 6px 7px,
+      transparent 7px 9px
+    );
+  }
+
+  &.medium-dash-dot {
+    height: 2px;
+    background: repeating-linear-gradient(
+      90deg,
+      currentColor 0 4px,
+      transparent 4px 6px,
+      currentColor 6px 7px,
+      transparent 7px 9px
+    );
+  }
+
+  &.medium-dash-dot-dot {
+    height: 2px;
+    background: repeating-linear-gradient(
+      90deg,
+      currentColor 0 4px,
+      transparent 4px 6px,
+      currentColor 6px 7px,
+      transparent 7px 9px,
+      currentColor 9px 10px,
+      transparent 10px 12px
+    );
+  }
+}

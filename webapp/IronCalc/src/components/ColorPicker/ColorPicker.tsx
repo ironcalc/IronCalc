@@ -18,6 +18,7 @@ type ColorPickerProps = {
   onClose: () => void;
   anchorEl: React.RefObject<HTMLElement | null>;
   open: boolean;
+  placement?: Placement;
 };
 
 const FALLBACK_COLOR = "#272525"; // --palette-common-black
@@ -104,7 +105,13 @@ function getCheckColor(color: string): string {
   return isLightColor(color) ? "#272525" : "#FFFFFF";
 }
 
-function getMenuPosition(anchor: HTMLElement, panel: HTMLElement) {
+type Placement = "bottom" | "top" | "right" | "left";
+
+function getMenuPosition(
+  anchor: HTMLElement,
+  panel: HTMLElement,
+  placement: Placement,
+) {
   const anchorRect = anchor.getBoundingClientRect();
   const panelWidth = panel.offsetWidth;
   const panelHeight = panel.offsetHeight;
@@ -114,8 +121,22 @@ function getMenuPosition(anchor: HTMLElement, panel: HTMLElement) {
   const offset = 4;
   const margin = 8;
 
-  let left = anchorRect.left - 4;
-  let top = anchorRect.bottom + offset;
+  let left = 0;
+  let top = 0;
+
+  if (placement === "bottom") {
+    left = anchorRect.left;
+    top = anchorRect.bottom + offset;
+  } else if (placement === "top") {
+    left = anchorRect.left;
+    top = anchorRect.top - panelHeight - offset;
+  } else if (placement === "right") {
+    left = anchorRect.right;
+    top = anchorRect.top;
+  } else {
+    left = anchorRect.left - panelWidth - offset;
+    top = anchorRect.top;
+  }
 
   if (left + panelWidth > viewportWidth - margin) {
     left = viewportWidth - panelWidth - margin;
@@ -126,7 +147,7 @@ function getMenuPosition(anchor: HTMLElement, panel: HTMLElement) {
   }
 
   if (top + panelHeight > viewportHeight - margin) {
-    top = anchorRect.top - panelHeight - offset;
+    top = viewportHeight - panelHeight - margin;
   }
 
   if (top < margin) {
@@ -144,6 +165,7 @@ const ColorPicker = ({
   onClose,
   anchorEl,
   open,
+  placement = "bottom",
 }: ColorPickerProps) => {
   const [selectedColor, setSelectedColor] = useState<string>(color);
   const [isPickerOpen, setPickerOpen] = useState(false);
@@ -170,7 +192,7 @@ const ColorPicker = ({
     }
 
     const updatePosition = () => {
-      setPosition(getMenuPosition(anchor, panel));
+      setPosition(getMenuPosition(anchor, panel, placement));
     };
 
     updatePosition();
@@ -181,7 +203,7 @@ const ColorPicker = ({
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [anchorEl, open, isPickerOpen]);
+  }, [anchorEl, open, isPickerOpen, placement]);
 
   useEffect(() => {
     if (!open || isPickerOpen) {

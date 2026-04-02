@@ -535,7 +535,6 @@ function Toolbar(properties: ToolbarProperties) {
           open={fillColorPickerOpen}
         />
         <BorderPicker
-          placement="bottom-start"
           onChange={(border): void => {
             properties.onBorderChanged(border);
           }}
