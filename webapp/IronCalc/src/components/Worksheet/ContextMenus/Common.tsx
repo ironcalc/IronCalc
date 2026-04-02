@@ -3,6 +3,7 @@ import {
   type ReactNode,
   useEffect,
   useRef,
+  useState,
 } from "react";
 import "./common.css";
 
@@ -20,22 +21,78 @@ export function StyledMenu({
   anchorPosition,
 }: StyledMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const focusedIndexRef = useRef(0);
+  const [focusedIndex, setFocusedIndex] = useState(0);
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    function handleKeyDown(event: KeyboardEvent) {
-      event.stopPropagation();
+    setFocusedIndex(0);
+  }, [open]);
+
+  useEffect(() => {
+    focusedIndexRef.current = focusedIndex;
+  }, [focusedIndex]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleDocumentKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
         onClose();
+        return;
+      }
+
+      const items = getEnabledMenuItems(menuRef.current);
+      if (items.length === 0) {
+        return;
+      }
+
+      const index = focusedIndexRef.current;
+
+      switch (event.key) {
+        case "ArrowDown":
+        case "Tab": {
+          setFocusedIndex((index + 1) % items.length);
+          break;
+        }
+        case "ArrowUp": {
+          event.preventDefault();
+          event.stopPropagation();
+          setFocusedIndex((index - 1 + items.length) % items.length);
+          break;
+        }
+        case "Home": {
+          event.preventDefault();
+          event.stopPropagation();
+          setFocusedIndex(0);
+          break;
+        }
+        case "End": {
+          event.preventDefault();
+          event.stopPropagation();
+          setFocusedIndex(items.length - 1);
+          break;
+        }
+        case "Enter":
+        case " ": {
+          event.preventDefault();
+          event.stopPropagation();
+          items[index]?.click();
+          break;
+        }
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown, true);
+    document.addEventListener("keydown", handleDocumentKeyDown, true);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown, true);
+      document.removeEventListener("keydown", handleDocumentKeyDown, true);
     };
   }, [open, onClose]);
 
@@ -46,6 +103,24 @@ export function StyledMenu({
 
     menuRef.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const items = getEnabledMenuItems(menuRef.current);
+    if (items.length === 0) {
+      return;
+    }
+
+    const safeIndex = Math.min(focusedIndex, items.length - 1);
+    items[safeIndex]?.focus();
+
+    if (safeIndex !== focusedIndex) {
+      setFocusedIndex(safeIndex);
+    }
+  }, [open, focusedIndex]);
 
   if (!open || !anchorPosition) {
     return null;
@@ -73,12 +148,25 @@ export function StyledMenu({
   );
 }
 
+function getEnabledMenuItems(menu: HTMLDivElement | null): HTMLButtonElement[] {
+  if (!menu) {
+    return [];
+  }
+
+  return Array.from(
+    menu.querySelectorAll<HTMLButtonElement>(
+      ".ic-context-menu-item:not(:disabled)",
+    ),
+  );
+}
+
 type StyledMenuItemProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
 export function StyledMenuItem({
   className = "",
   children,
   onClick,
+  disabled,
 }: StyledMenuItemProps) {
   return (
     <button
@@ -86,6 +174,7 @@ export function StyledMenuItem({
       className={`ic-context-menu-item ${className}`.trim()}
       role="menuitem"
       onClick={onClick}
+      disabled={disabled}
     >
       {children}
     </button>
@@ -96,11 +185,13 @@ export function DeleteButton({
   className = "",
   children,
   onClick,
+  disabled,
 }: StyledMenuItemProps) {
   return (
     <StyledMenuItem
       className={`ic-context-menu-item--delete ${className}`.trim()}
       onClick={onClick}
+      disabled={disabled}
     >
       {children}
     </StyledMenuItem>
