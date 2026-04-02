@@ -57,9 +57,19 @@ export function StyledMenu({
       const index = focusedIndexRef.current;
 
       switch (event.key) {
-        case "ArrowDown":
-        case "Tab": {
+        case "ArrowDown": {
+          event.preventDefault();
+          event.stopPropagation();
           setFocusedIndex((index + 1) % items.length);
+          break;
+        }
+        case "Tab": {
+          event.preventDefault();
+          event.stopPropagation();
+          const nextIndex = event.shiftKey
+            ? (index - 1 + items.length) % items.length
+            : (index + 1) % items.length;
+          setFocusedIndex(nextIndex);
           break;
         }
         case "ArrowUp": {

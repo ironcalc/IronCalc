@@ -74,7 +74,7 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
         </div>
       </StyledMenuItem>
 
-      <div className="ic-context-menu-divider" />
+      <hr aria-orientation="horizontal" />
 
       <StyledMenuItem onClick={onMoveRowsUp}>
         <ArrowUp />
@@ -89,7 +89,7 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
         </div>
       </StyledMenuItem>
 
-      <div className="ic-context-menu-divider" />
+      <hr aria-orientation="horizontal" />
 
       <StyledMenuItem onClick={onHideRows}>
         <EyeOff />
@@ -106,7 +106,7 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
         </div>
       </StyledMenuItem>
 
-      <div className="ic-context-menu-divider" />
+      <hr aria-orientation="horizontal" />
 
       <StyledMenuItem onClick={onFreezeRows}>
         <Snowflake />
@@ -123,7 +123,7 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
         </StyledMenuItem>
       )}
 
-      <div className="ic-context-menu-divider" />
+      <hr aria-orientation="horizontal" />
 
       <DeleteButton onClick={onDeleteRows}>
         <Trash2 />
