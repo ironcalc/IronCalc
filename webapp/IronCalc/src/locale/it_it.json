@@ -168,7 +168,8 @@
     "add": "Aggiungi nuovo colore",
     "default": "Colore predefinito",
     "no_fill": "Nessun riempimento",
-    "recent": "Recenti"
+    "recent": "Recenti",
+    "title": "Selettore di colore"
   },
   "right_drawer": {
     "resize_drawer": "Ridimensiona pannello",

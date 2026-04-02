@@ -168,7 +168,8 @@
     "add": "Neue Farbe hinzufügen",
     "default": "Standardfarbe",
     "no_fill": "Keine Füllung",
-    "recent": "Zuletzt verwendet"
+    "recent": "Zuletzt verwendet",
+    "title": "Farbwähler"
   },
   "right_drawer": {
     "resize_drawer": "Größe der Seitenleiste ändern",

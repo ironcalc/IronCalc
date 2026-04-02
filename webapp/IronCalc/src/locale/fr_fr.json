@@ -168,7 +168,8 @@
     "add": "Ajouter une nouvelle couleur",
     "default": "Couleur par défaut",
     "no_fill": "Sans remplissage",
-    "recent": "Récentes"
+    "recent": "Récentes",
+    "title": "Sélecteur de couleur"
   },
   "right_drawer": {
     "resize_drawer": "Redimensionner le panneau",
