@@ -8,13 +8,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  DeleteButton,
-  ItemNameStyled,
-  MenuDivider,
-  StyledMenu,
-  StyledMenuItem,
-} from "./Common";
+import { DeleteButton, StyledMenu, StyledMenuItem } from "./Common";
 
 interface RowHeaderContextMenuProps {
   open: boolean;
@@ -65,82 +59,79 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
     <StyledMenu
       open={open}
       onClose={onClose}
-      transitionDuration={0}
-      autoFocus={false}
-      anchorReference="anchorPosition"
       anchorPosition={anchorPosition ?? undefined}
     >
       <StyledMenuItem onClick={onInsertRowsAbove}>
         <Plus />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.row_header.insert_rows_above", { count: rowCount })}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
       <StyledMenuItem onClick={onInsertRowsBelow}>
         <Plus />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.row_header.insert_rows_below", { count: rowCount })}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
 
-      <MenuDivider />
+      <div className="ic-context-menu-divider" />
 
       <StyledMenuItem onClick={onMoveRowsUp}>
         <ArrowUp />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.row_header.move_rows_up")}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
       <StyledMenuItem onClick={onMoveRowsDown}>
         <ArrowDown />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.row_header.move_rows_down")}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
 
-      <MenuDivider />
+      <div className="ic-context-menu-divider" />
 
       <StyledMenuItem onClick={onHideRows}>
         <EyeOff />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {rowCount === 1
             ? t("context_menu.row_header.hide_row", { row: rowStart })
             : t("context_menu.row_header.hide_rows", { rowStart, rowEnd })}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
       <StyledMenuItem onClick={onShowHiddenRows}>
         <Eye />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.row_header.show_hidden_rows")}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
 
-      <MenuDivider />
+      <div className="ic-context-menu-divider" />
 
       <StyledMenuItem onClick={onFreezeRows}>
         <Snowflake />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.row_header.freeze_rows", { row: rowStart })}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
       {frozenRowsCount > 0 && (
         <StyledMenuItem onClick={onUnfreezeRows}>
           <Snowflake />
-          <ItemNameStyled>
+          <div className="ic-context-menu-item-name">
             {t("context_menu.row_header.unfreeze_rows")}
-          </ItemNameStyled>
+          </div>
         </StyledMenuItem>
       )}
 
-      <MenuDivider />
+      <div className="ic-context-menu-divider" />
 
       <DeleteButton onClick={onDeleteRows}>
         <Trash2 />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {rowCount === 1
             ? t("context_menu.row_header.delete_row", { row: rowStart })
             : t("context_menu.row_header.delete_rows", { rowStart, rowEnd })}
-        </ItemNameStyled>
+        </div>
       </DeleteButton>
     </StyledMenu>
   );

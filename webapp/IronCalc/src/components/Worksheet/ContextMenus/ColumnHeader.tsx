@@ -8,13 +8,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  DeleteButton,
-  ItemNameStyled,
-  MenuDivider,
-  StyledMenu,
-  StyledMenuItem,
-} from "./Common";
+import { DeleteButton, StyledMenu, StyledMenuItem } from "./Common";
 
 interface Range {
   rowStart: number;
@@ -68,47 +62,44 @@ const ColumnHeaderContextMenu = (properties: ColumnHeaderContextMenuProps) => {
     <StyledMenu
       open={open}
       onClose={onClose}
-      transitionDuration={0}
-      autoFocus={false}
-      anchorReference="anchorPosition"
       anchorPosition={anchorPosition ?? undefined}
     >
       <StyledMenuItem onClick={onInsertColumnsLeft}>
         <Plus />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.column_header.insert_columns_before", {
             count: columnCount,
           })}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
       <StyledMenuItem onClick={onInsertColumnsRight}>
         <Plus />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.column_header.insert_columns_after", {
             count: columnCount,
           })}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
 
-      <MenuDivider />
+      <div className="ic-context-menu-divider" />
 
       <StyledMenuItem onClick={onMoveColumnsLeft}>
         <ArrowLeft />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.column_header.move_columns_left")}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
       <StyledMenuItem onClick={onMoveColumnsRight}>
         <ArrowRight />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.column_header.move_columns_right")}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
 
-      <MenuDivider />
+      <div className="ic-context-menu-divider" />
       <StyledMenuItem onClick={onHideColumns}>
         <EyeOff />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {columnCount === 1
             ? t("context_menu.column_header.hide_column", {
                 column: columnStart,
@@ -117,40 +108,40 @@ const ColumnHeaderContextMenu = (properties: ColumnHeaderContextMenuProps) => {
                 columnStart,
                 columnEnd,
               })}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
       {hiddenColumnsCount > 0 && (
         <StyledMenuItem onClick={onShowHiddenColumns}>
           <Eye />
-          <ItemNameStyled>
+          <div className="ic-context-menu-item-name">
             {t("context_menu.column_header.show_hidden_columns")}
-          </ItemNameStyled>
+          </div>
         </StyledMenuItem>
       )}
-      <MenuDivider />
+      <div className="ic-context-menu-divider" />
 
       <StyledMenuItem onClick={onFreezeColumns}>
         <Snowflake />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {t("context_menu.column_header.freeze_columns", {
             column: columnStart,
           })}
-        </ItemNameStyled>
+        </div>
       </StyledMenuItem>
       {frozenColumnsCount > 0 && (
         <StyledMenuItem onClick={onUnfreezeColumns}>
           <Snowflake />
-          <ItemNameStyled>
+          <div className="ic-context-menu-item-name">
             {t("context_menu.column_header.unfreeze_columns")}
-          </ItemNameStyled>
+          </div>
         </StyledMenuItem>
       )}
 
-      <MenuDivider />
+      <div className="ic-context-menu-divider" />
 
       <DeleteButton onClick={onDeleteColumns}>
         <Trash2 />
-        <ItemNameStyled>
+        <div className="ic-context-menu-item-name">
           {columnCount === 1
             ? t("context_menu.column_header.delete_column", {
                 column: columnStart,
@@ -159,7 +150,7 @@ const ColumnHeaderContextMenu = (properties: ColumnHeaderContextMenuProps) => {
                 columnStart,
                 columnEnd,
               })}
-        </ItemNameStyled>
+        </div>
       </DeleteButton>
     </StyledMenu>
   );
