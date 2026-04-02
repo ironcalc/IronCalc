@@ -1,70 +1,108 @@
-import { Menu, MenuItem, type MenuItemProps, styled } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-import { ChevronRight } from "lucide-react";
+import {
+  type ButtonHTMLAttributes,
+  type ReactNode,
+  useEffect,
+  useRef,
+} from "react";
+import "./common.css";
 
-export const StyledMenu = styled(Menu)({
-  "& .MuiPaper-root": {
-    borderRadius: 8,
-    paddingTop: 4,
-    paddingBottom: 4,
-  },
-  "& .MuiList-padding": {
-    padding: 0,
-  },
-});
+interface StyledMenuProps {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+  anchorPosition?: { top: number; left: number };
+}
 
-export const StyledMenuItem = styled((props: MenuItemProps) => (
-  <MenuItem disableRipple {...props} />
-))(({ theme }) => ({
-  display: "flex",
-  justifyContent: "flex-start",
-  fontSize: 12,
-  width: "calc(100% - 8px)",
-  minWidth: 172,
-  margin: "0px 4px",
-  borderRadius: 4,
-  padding: 8,
-  height: 32,
-  gap: 8,
-  "& svg": {
-    width: 16,
-    height: 16,
-    color: theme.palette.grey[600],
-  },
-}));
+export function StyledMenu({
+  open,
+  onClose,
+  children,
+  anchorPosition,
+}: StyledMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
 
-export const DeleteButton = styled(StyledMenuItem)(({ theme }) => ({
-  color: theme.palette.error.main,
-  div: {
-    color: theme.palette.error.main,
-  },
-  "& svg": {
-    color: theme.palette.error.main,
-  },
-  "&:hover": {
-    backgroundColor: alpha(theme.palette.error.main, 0.1),
-  },
-  "&:active": {
-    backgroundColor: alpha(theme.palette.error.main, 0.1),
-  },
-}));
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
 
-export const MenuDivider = styled("div")(({ theme }) => ({
-  width: "100%",
-  margin: "auto",
-  marginTop: 4,
-  marginBottom: 4,
-  borderTop: `1px solid ${theme.palette.grey[200]}`,
-}));
+    function handleKeyDown(event: KeyboardEvent) {
+      event.stopPropagation();
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
 
-export const ItemNameStyled = styled("div")(({ theme }) => ({
-  fontSize: 12,
-  color: theme.palette.grey[900],
-  flexGrow: 2,
-}));
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [open, onClose]);
 
-export const ChevronRightStyled = styled(ChevronRight)(({ theme }) => ({
-  width: 16,
-  height: 16,
-  color: theme.palette.grey[900],
-}));
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    menuRef.current?.focus();
+  }, [open]);
+
+  if (!open || !anchorPosition) {
+    return null;
+  }
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
+    <div className="ic-context-menu-backdrop" onMouseDown={onClose}>
+      <div
+        ref={menuRef}
+        className="ic-context-menu"
+        role="menu"
+        tabIndex={-1}
+        style={{
+          top: anchorPosition.top,
+          left: anchorPosition.left,
+        }}
+        onMouseDown={(event) => {
+          event.stopPropagation();
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+type StyledMenuItemProps = ButtonHTMLAttributes<HTMLButtonElement>;
+
+export function StyledMenuItem({
+  className = "",
+  children,
+  onClick,
+}: StyledMenuItemProps) {
+  return (
+    <button
+      type="button"
+      className={`ic-context-menu-item ${className}`.trim()}
+      role="menuitem"
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function DeleteButton({
+  className = "",
+  children,
+  onClick,
+}: StyledMenuItemProps) {
+  return (
+    <StyledMenuItem
+      className={`ic-context-menu-item--delete ${className}`.trim()}
+      onClick={onClick}
+    >
+      {children}
+    </StyledMenuItem>
+  );
+}
