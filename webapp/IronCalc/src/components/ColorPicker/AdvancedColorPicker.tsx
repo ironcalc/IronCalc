@@ -156,6 +156,7 @@ const AdvancedColorPicker = ({
         }}
         role="dialog"
         aria-modal="true"
+        aria-label={t("color_picker.title")}
       >
         <div className="ic-advanced-color-picker">
           <HexColorPicker

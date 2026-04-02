@@ -168,7 +168,8 @@
     "add": "Add new color",
     "default": "Default color",
     "no_fill": "No fill",
-    "recent": "Recent"
+    "recent": "Recent",
+    "title": "Color Picker"
   },
   "right_drawer": {
     "resize_drawer": "Resize drawer",

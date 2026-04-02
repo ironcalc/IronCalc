@@ -168,7 +168,8 @@
     "add": "Añadir nuevo color",
     "default": "Color predeterminado",
     "no_fill": "Sin relleno",
-    "recent": "Recientes"
+    "recent": "Recientes",
+    "title": "Selector de color"
   },
   "right_drawer": {
     "resize_drawer": "Cambiar tamaño del panel",

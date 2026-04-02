@@ -20,7 +20,7 @@ type ColorPickerProps = {
   open: boolean;
 };
 
-const FALLBACK_COLOR = "#272525";
+const FALLBACK_COLOR = "#272525"; // --palette-common-black
 
 const mainColors = [
   "#FFFFFF",
@@ -36,19 +36,19 @@ const mainColors = [
 ];
 
 const lightTones = [
-  "var(--palette-grey-50)",
-  "var(--palette-grey-100)",
-  "var(--palette-grey-200)",
-  "var(--palette-grey-300)",
-  "var(--palette-grey-400)",
+  "#F5F5F5", // --palette-grey-50
+  "#F2F2F2", // --palette-grey-100
+  "#EEEEEE", // --palette-grey-200
+  "#E0E0E0", // --palette-grey-300
+  "#BDBDBD", // --palette-grey-400
 ];
 
 const darkTones = [
-  "var(--palette-grey-500)",
-  "var(--palette-grey-600)",
-  "var(--palette-grey-700)",
-  "var(--palette-grey-800)",
-  "var(--palette-grey-900)",
+  "#9E9E9E", // --palette-grey-500
+  "#757575", // --palette-grey-600
+  "#616161", // --palette-grey-700
+  "#424242", // --palette-grey-800
+  "#333333", // --palette-grey-900
 ];
 
 const tealTones = ["#BBD4D8", "#82B1B8", "#498D98", "#1E5A63", "#224348"];
@@ -100,9 +100,8 @@ function isWhiteColor(color: string): boolean {
 }
 
 function getCheckColor(color: string): string {
-  return isLightColor(color)
-    ? "var(--palette-common-black)"
-    : "var(--palette-common-white)";
+  // --palette-common-black: #272525;
+  return isLightColor(color) ? "#272525" : "#FFFFFF";
 }
 
 function getMenuPosition(anchor: HTMLElement, panel: HTMLElement) {
@@ -216,11 +215,11 @@ const ColorPicker = ({
       }
     };
 
-    document.addEventListener("mousedown", handlePointerDown, true);
+    document.addEventListener("pointerdown", handlePointerDown, true);
     document.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown, true);
+      document.removeEventListener("pointerdown", handlePointerDown, true);
       document.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [anchorEl, isPickerOpen, onClose, open]);
