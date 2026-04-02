@@ -1,247 +1,229 @@
-import { Popover, type PopoverOrigin, styled } from "@mui/material";
 import { Check } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "../Button/Button";
+import "./advanced-color-picker.css";
 
 type AdvancedColorPickerProps = {
   color: string;
   onAccept: (color: string) => void;
   onCancel: () => void;
-  anchorEl: React.RefObject<HTMLElement | null>;
-  anchorOrigin: PopoverOrigin;
-  transformOrigin: PopoverOrigin;
+  anchorEl: RefObject<HTMLElement | null>;
   open: boolean;
 };
+
+type Position = {
+  top: number;
+  left: number;
+};
+
+const MAX_RECENT_COLORS = 14;
 
 const AdvancedColorPicker = ({
   color,
   onAccept,
   onCancel,
   anchorEl,
-  anchorOrigin,
-  transformOrigin,
   open,
 }: AdvancedColorPickerProps) => {
   const [selectedColor, setSelectedColor] = useState<string>(color);
+  const [position, setPosition] = useState<Position>({ top: 0, left: 0 });
   const recentColors = useRef<string[]>([]);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
     setSelectedColor(color);
   }, [color]);
 
-  const handleColorSelect = (color: string) => {
-    if (!recentColors.current.includes(color)) {
-      const maxRecentColors = 14;
-      recentColors.current = [color, ...recentColors.current].slice(
+  // poor person's popover positioning logic
+  useLayoutEffect(() => {
+    if (!open || !anchorEl.current) {
+      return;
+    }
+
+    const updatePosition = () => {
+      const anchor = anchorEl.current;
+      const panel = panelRef.current;
+
+      if (!anchor || !panel) {
+        return;
+      }
+
+      const anchorRect = anchor.getBoundingClientRect();
+      const panelWidth = panel.offsetWidth;
+      const panelHeight = panel.offsetHeight;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // space between anchor and popup
+      const offset = 4;
+
+      // minimum margin from screen edges
+      const margin = 8;
+
+      let left = anchorRect.left - offset;
+      let top = anchorRect.bottom + offset;
+
+      // If we are too much on the right, clamp to the right edge
+      if (left + panelWidth > viewportWidth - margin) {
+        left = viewportWidth - panelWidth - margin;
+      }
+
+      // If we are too much on the left, clamp to the left edge
+      if (left < margin) {
+        left = margin;
+      }
+
+      // If we are too much on the bottom, show above the anchor
+      if (top + panelHeight > viewportHeight - margin) {
+        top = anchorRect.top - panelHeight - offset;
+      }
+
+      // If we are too much on the top, clamp to the top edge
+      if (top < margin) {
+        top = margin;
+      }
+
+      setPosition({ top, left });
+    };
+
+    updatePosition();
+
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, anchorEl]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCancel();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [open, onCancel]);
+
+  const handleColorSelect = (newColor: string) => {
+    if (!recentColors.current.includes(newColor)) {
+      recentColors.current = [newColor, ...recentColors.current].slice(
         0,
-        maxRecentColors,
+        MAX_RECENT_COLORS,
       );
     }
-    setSelectedColor(color);
-    onAccept(color);
+
+    setSelectedColor(newColor);
+    onAccept(newColor);
   };
 
-  return (
-    <StylePopover
-      open={open}
-      onClose={onCancel}
-      anchorEl={anchorEl.current}
-      anchorOrigin={anchorOrigin}
-      transformOrigin={transformOrigin}
-    >
-      <ColorPickerDialog>
-        <HexColorPicker
-          color={selectedColor}
-          onChange={(newColor): void => {
-            setSelectedColor(newColor);
-          }}
-        />
-        <HorizontalDivider />
-        <ColorPickerInput>
-          <HexWrapper>
-            <HexLabel>{"Hex"}</HexLabel>
-            <HexColorInputBox>
-              <HashLabel>{"#"}</HashLabel>
-              <StyledHexColorInput
-                color={selectedColor}
-                onChange={(newColor): void => {
-                  setSelectedColor(newColor);
-                }}
-                tabIndex={0}
-              />
-            </HexColorInputBox>
-          </HexWrapper>
-          <Swatch $color={selectedColor} />
-        </ColorPickerInput>
-        <HorizontalDivider />
-        <ButtonsWrapper>
-          <Button size="sm" variant="secondary" onClick={onCancel}>
-            {t("color_picker.cancel")}
-          </Button>
-          <Button
-            size="sm"
-            startIcon={<Check />}
-            onClick={(): void => {
-              handleColorSelect(selectedColor);
-              onCancel();
+  const isWhiteSwatch = selectedColor.toUpperCase() === "#FFFFFF";
+
+  if (!open) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="ic-advanced-color-picker-layer">
+      <div
+        className="ic-advanced-color-picker-backdrop"
+        onClick={onCancel}
+        aria-hidden="true"
+      />
+
+      <div
+        ref={panelRef}
+        className="ic-advanced-color-picker-panel"
+        style={{
+          top: `${position.top}px`,
+          left: `${position.left}px`,
+        }}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="ic-advanced-color-picker">
+          <HexColorPicker
+            color={selectedColor}
+            onChange={(newColor): void => {
+              setSelectedColor(newColor);
             }}
-          >
-            {t("color_picker.apply")}
-          </Button>
-        </ButtonsWrapper>
-      </ColorPickerDialog>
-    </StylePopover>
+          />
+
+          <div className="ic-advanced-color-picker-divider" />
+
+          <div className="ic-advanced-color-picker-input-row">
+            <div className="ic-advanced-color-picker-hex-wrapper">
+              <div className="ic-advanced-color-picker-hex-label">Hex</div>
+
+              <div className="ic-advanced-color-picker-hex-input-box">
+                <div className="ic-advanced-color-picker-hash-label">#</div>
+
+                <HexColorInput
+                  className="ic-advanced-color-picker-hex-input"
+                  color={selectedColor}
+                  onChange={(newColor): void => {
+                    setSelectedColor(newColor);
+                  }}
+                  tabIndex={0}
+                />
+              </div>
+            </div>
+
+            <div
+              className={[
+                "ic-advanced-color-picker-swatch",
+                isWhiteSwatch ? "ic-advanced-color-picker-swatch--white" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={{
+                backgroundColor: selectedColor,
+                borderColor: isWhiteSwatch
+                  ? "var(--palette-grey-300)"
+                  : selectedColor,
+              }}
+            />
+          </div>
+
+          <div className="ic-advanced-color-picker-divider" />
+
+          <div className="ic-advanced-color-picker-buttons">
+            <Button size="sm" variant="secondary" onClick={onCancel}>
+              {t("color_picker.cancel")}
+            </Button>
+
+            <Button
+              size="sm"
+              startIcon={<Check />}
+              onClick={(): void => {
+                handleColorSelect(selectedColor);
+                onCancel();
+              }}
+            >
+              {t("color_picker.apply")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 };
-
-const StylePopover = styled(Popover)({
-  "& .MuiPaper-root": {
-    borderRadius: 8,
-    padding: 0,
-    marginLeft: -4,
-    maxWidth: 220,
-  },
-});
-
-const HorizontalDivider = styled("div")(({ theme }) => ({
-  height: 0,
-  width: "100%",
-  borderTop: `1px solid ${theme.palette.grey[200]}`,
-}));
-
-// Color Picker Dialog Styles
-const ColorPickerDialog = styled("div")(({ theme }) => ({
-  background: theme.palette.background.default,
-  width: 240,
-  padding: 0,
-  display: "flex",
-  flexDirection: "column",
-  maxWidth: "100%",
-
-  "& .react-colorful": {
-    height: 160,
-    width: "100%",
-  },
-  "& .react-colorful__saturation": {
-    borderBottom: "none",
-    borderRadius: "8px 8px 0px 0px",
-  },
-  "& .react-colorful__hue": {
-    height: 8,
-    margin: 8,
-    borderRadius: 5,
-  },
-  "& .react-colorful__saturation-pointer": {
-    width: 14,
-    height: 14,
-  },
-  "& .react-colorful__hue-pointer": {
-    borderRadius: 8,
-    height: 16,
-    width: 16,
-  },
-}));
-
-const ButtonsWrapper = styled("div")({
-  display: "flex",
-  justifyContent: "space-between",
-  margin: 8,
-  gap: 8,
-});
-
-const HashLabel = styled("div")(({ theme }) => ({
-  margin: "auto 0px auto 10px",
-  fontSize: 13,
-  color: "#333",
-  fontFamily: theme.typography.button.fontFamily,
-}));
-
-const HexLabel = styled("div")(({ theme }) => ({
-  margin: "auto 0px",
-  fontSize: 12,
-  display: "inline-flex",
-  fontFamily: theme.typography.button.fontFamily,
-}));
-
-const HexColorInputBox = styled("div")(({ theme }) => ({
-  display: "inline-flex",
-  flexGrow: 1,
-  width: "100%",
-  height: 28,
-  border: `1px solid ${theme.palette.grey[300]}`,
-  borderRadius: 5,
-
-  "&:hover": {
-    border: `1px solid ${theme.palette.grey[600]}`,
-  },
-
-  "&:focus-within": {
-    outline: `2px solid ${theme.palette.secondary.main}`,
-    outlineOffset: 1,
-  },
-}));
-
-const StyledHexColorInput = styled(HexColorInput)(({ theme }) => ({
-  width: "100%",
-  border: "none",
-  background: "transparent",
-  outline: "none",
-  fontFamily: theme.typography.button.fontFamily,
-  fontSize: 12,
-  textTransform: "uppercase",
-  textAlign: "right",
-  paddingRight: 10,
-  borderRadius: 5,
-
-  "&:focus": {
-    borderColor: "#4298ef",
-  },
-}));
-
-const HexWrapper = styled("div")(({ theme }) => ({
-  display: "flex",
-  gap: 8,
-  flexGrow: 1,
-
-  "& input": {
-    minWidth: 0,
-    border: 0,
-    background: theme.palette.background.default,
-    outline: "none",
-    fontFamily: theme.typography.button.fontFamily,
-    fontSize: 12,
-    textTransform: "uppercase",
-    textAlign: "right",
-    paddingRight: 10,
-    borderRadius: 5,
-  },
-
-  "& input:focus": {
-    borderColor: "#4298ef",
-  },
-}));
-
-const Swatch = styled("div")<{ $color: string }>(({ $color, theme }) => ({
-  display: "inline-flex",
-  border:
-    $color.toUpperCase() === "#FFFFFF"
-      ? `1px solid ${theme.palette.grey[300]}`
-      : `1px solid ${$color}`,
-  backgroundColor: $color,
-  minWidth: 28,
-  height: 28,
-  borderRadius: 5,
-}));
-
-const ColorPickerInput = styled("div")({
-  display: "flex",
-  flexDirection: "row",
-  alignItems: "center",
-  margin: 8,
-  gap: 8,
-});
 
 export default AdvancedColorPicker;

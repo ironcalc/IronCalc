@@ -288,14 +288,6 @@ const BorderPicker = (properties: BorderPickerProps) => {
             }}
             anchorEl={borderColorButton}
             open={colorPickerOpen}
-            anchorOrigin={{
-              vertical: "top",
-              horizontal: "right",
-            }}
-            transformOrigin={{
-              vertical: "top",
-              horizontal: "left",
-            }}
           />
           {borderStyleButton.current && (
             <StyledPopper

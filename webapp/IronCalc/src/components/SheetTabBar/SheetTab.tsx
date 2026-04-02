@@ -462,8 +462,6 @@ function SheetTab(props: SheetTabProps) {
         }}
         anchorEl={tabRef}
         open={colorPickerOpen}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "bottom", horizontal: "left" }}
       />
 
       <SheetDeleteDialog
