@@ -1,11 +1,13 @@
 import { Check } from "lucide-react";
 import type { RefObject } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "../Button/Button";
 import "./advanced-color-picker.css";
+import { getFocusableElements } from "../util";
+import { useKeyDown } from "./useKeyDown";
 
 type AdvancedColorPickerProps = {
   color: string;
@@ -33,11 +35,20 @@ const AdvancedColorPicker = ({
   const [position, setPosition] = useState<Position>({ top: 0, left: 0 });
   const recentColors = useRef<string[]>([]);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const hexInputId = useId();
   const { t } = useTranslation();
 
   useEffect(() => {
     setSelectedColor(color);
   }, [color]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    panelRef.current?.querySelector<HTMLElement>("input, button")?.focus();
+  }, [open]);
 
   // poor person's popover positioning logic
   useLayoutEffect(() => {
@@ -102,24 +113,10 @@ const AdvancedColorPicker = ({
     };
   }, [open, anchorEl]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCancel();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown, true);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown, true);
-    };
-  }, [open, onCancel]);
+  const { onKeyDown } = useKeyDown({
+    onEscape: onCancel,
+    getFocusableElements: () => getFocusableElements(panelRef.current),
+  });
 
   const handleColorSelect = (newColor: string) => {
     if (!recentColors.current.includes(newColor)) {
@@ -140,12 +137,8 @@ const AdvancedColorPicker = ({
   }
 
   return createPortal(
-    <div className="ic-advanced-color-picker-layer">
-      <div
-        className="ic-advanced-color-picker-backdrop"
-        onClick={onCancel}
-        aria-hidden="true"
-      />
+    <div className="ic-menu-layer">
+      <div className="ic-menu-backdrop" onClick={onCancel} aria-hidden="true" />
 
       <div
         ref={panelRef}
@@ -157,8 +150,17 @@ const AdvancedColorPicker = ({
         role="dialog"
         aria-modal="true"
         aria-label={t("color_picker.title")}
+        onKeyDown={onKeyDown}
       >
-        <div className="ic-advanced-color-picker">
+        {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
+        {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
+        <div
+          className="ic-advanced-color-picker"
+          onClick={(event) => {
+            // Otherwise the sheet would grab the keyboard focus
+            event.stopPropagation();
+          }}
+        >
           <HexColorPicker
             color={selectedColor}
             onChange={(newColor): void => {
@@ -170,18 +172,23 @@ const AdvancedColorPicker = ({
 
           <div className="ic-advanced-color-picker-input-row">
             <div className="ic-advanced-color-picker-hex-wrapper">
-              <div className="ic-advanced-color-picker-hex-label">Hex</div>
+              <label
+                className="ic-advanced-color-picker-hex-label"
+                htmlFor={hexInputId}
+              >
+                Hex
+              </label>
 
               <div className="ic-advanced-color-picker-hex-input-box">
                 <div className="ic-advanced-color-picker-hash-label">#</div>
 
                 <HexColorInput
+                  id={hexInputId}
                   className="ic-advanced-color-picker-hex-input"
                   color={selectedColor}
                   onChange={(newColor): void => {
                     setSelectedColor(newColor);
                   }}
-                  tabIndex={0}
                 />
               </div>
             </div>
@@ -199,6 +206,7 @@ const AdvancedColorPicker = ({
                   ? "var(--palette-grey-300)"
                   : selectedColor,
               }}
+              aria-hidden="true"
             />
           </div>
 

@@ -61,6 +61,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     },
   );
   const focusWorkbook = useCallback(() => {
+    const active = document.activeElement as HTMLElement | null;
+    // FIXME: Horrible HACK for now
+    // Basically prevents the workbook from stealing focus when the user is interacting with the color picker, border picker or advanced color picker
+    if (
+      active?.closest(
+        ".ic-color-picker, .ic-advanced-color-picker-panel, .ic-border-picker",
+      )
+    ) {
+      return;
+    }
+
     if (rootRef.current) {
       rootRef.current.focus({ preventScroll: true });
       // HACK: We need to select something inside the root for onCopy to work

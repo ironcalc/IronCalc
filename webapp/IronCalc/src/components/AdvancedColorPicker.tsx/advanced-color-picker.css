@@ -77,7 +77,7 @@
 }
 
 .ic-advanced-color-picker-hex-input-box:focus-within {
-  outline: 2px solid var(--palette-secondary-main);
+  outline: 2px solid var(--palette-primary-main);
   outline-offset: 1px;
 }
 
@@ -119,17 +119,6 @@
   justify-content: space-between;
   margin: 8px;
   gap: 8px;
-}
-
-.ic-advanced-color-picker-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 1300;
-}
-
-.ic-advanced-color-picker-backdrop {
-  position: fixed;
-  inset: 0;
 }
 
 .ic-advanced-color-picker-panel {
