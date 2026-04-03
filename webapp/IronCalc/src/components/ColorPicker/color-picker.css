@@ -21,6 +21,15 @@
   box-sizing: border-box;
 }
 
+.ic-color-picker *:focus {
+  outline: none;
+}
+
+.ic-color-picker *:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+}
+
 .ic-color-picker__menu-item {
   display: flex;
   flex-direction: row;

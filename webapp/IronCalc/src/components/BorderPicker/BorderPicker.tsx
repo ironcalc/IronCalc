@@ -289,10 +289,10 @@ export default function BorderPicker({
 
       <div className="ic-border-picker__menu">
         {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
+        {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
         <div
           className="ic-border-picker__submenu-anchor"
-          onMouseEnter={() => setColorPickerOpen(true)}
-          onMouseLeave={() => setColorPickerOpen(false)}
+          onClick={() => setColorPickerOpen((prev) => !prev)}
         >
           <button
             ref={borderColorButtonRef}
