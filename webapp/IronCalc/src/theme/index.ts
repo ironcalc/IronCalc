@@ -1,5 +1,4 @@
 export {
-  createIronCalcTheme,
   defaultThemeVariables,
   setThemeVariables,
 } from "./theme";
