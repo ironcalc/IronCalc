@@ -131,6 +131,7 @@ function getMenuPosition(
     left = anchorRect.left;
     top = anchorRect.top - panelHeight - offset;
   } else if (placement === "right") {
+    // This is used in the BorderPicker to be aligned with the line picker
     left = anchorRect.right;
     top = anchorRect.top;
   } else {
