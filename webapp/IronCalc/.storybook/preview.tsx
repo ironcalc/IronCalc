@@ -1,14 +1,9 @@
-import { ThemeProvider } from "@mui/material/styles";
 import type { Preview } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../src/i18n";
 import type { PartialIronCalcThemeVariables } from "../src/theme";
-import {
-  createIronCalcTheme,
-  defaultThemeVariables,
-  setThemeVariables,
-} from "../src/theme/theme";
+import { defaultThemeVariables, setThemeVariables } from "../src/theme/theme";
 import "../src/theme/theme.css";
 
 const crazyThemeVariables: PartialIronCalcThemeVariables = {
@@ -52,15 +47,11 @@ function PreviewProviders({
 }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const [theme, setTheme] = useState(() =>
-    createIronCalcTheme(themes[themeName]),
-  );
 
   useEffect(() => {
     const themeVariables = themes[themeName];
     if (rootRef.current && themeVariables) {
       setThemeVariables(themeVariables, rootRef.current);
-      setTheme(createIronCalcTheme(themeVariables));
     }
   }, [themeName]);
 
@@ -81,9 +72,7 @@ function PreviewProviders({
 
   return (
     <div ref={rootRef} className="ic-root">
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider theme={theme}>{children}</ThemeProvider>
-      </I18nextProvider>
+      <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
     </div>
   );
 }

@@ -31,9 +31,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.7",
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
-    "@mui/material": "^7.3.9",
     "@storybook/react": "^10.3.0",
     "@storybook/react-vite": "^10.3.0",
     "@vitejs/plugin-react": "^6.0.1",
@@ -52,9 +49,6 @@
     "vitest": "^4.1.0"
   },
   "peerDependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
-    "@mui/material": "^7.3.9",
     "i18next": "^25.7.4",
     "lucide-react": "^0.562.0",
     "react": "^18 || ^19",
