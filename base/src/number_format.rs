@@ -28,6 +28,9 @@ const DEFAULT_NUM_FMTS: &[&str] = &[
     "h:mm",
     "h:mm:ss",
     "m / d / yy h:mm",
+    // 23-36: not defined in ECMA-376 spec, filled with "general"
+    "general", "general", "general", "general", "general", "general", "general",
+    "general", "general", "general", "general", "general", "general", "general",
     "#,##0;()#,##0)",
     "#,##0; [Red]()#,##0)",
     "#,##0.00;()#,##0.00)",
