@@ -110,7 +110,7 @@ export function getFocusableElements(root: HTMLElement | null): HTMLElement[] {
   ).filter(
     (el) =>
       !el.hasAttribute("disabled") &&
-      !el.getAttribute("aria-hidden") &&
+      el.getAttribute("aria-hidden") !== "true" &&
       el.tabIndex !== -1,
   );
 }
