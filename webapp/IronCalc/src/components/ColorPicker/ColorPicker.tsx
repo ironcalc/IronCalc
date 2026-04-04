@@ -164,7 +164,7 @@ const ColorPicker = ({
 
       onClose();
     },
-    [onClose, anchorEl.current],
+    [onClose, anchorEl],
   );
 
   const handleColorSelect = (nextColor: string) => {
@@ -243,6 +243,7 @@ const ColorPicker = ({
           } as CSSProperties
         }
         role="dialog"
+        aria-modal="true"
         aria-label={t("color_picker.add")}
         onKeyDown={onKeyDown}
         onPointerDown={onPointerDown}
