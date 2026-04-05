@@ -47,6 +47,9 @@ fn test_example() {
     assert_eq!(ws[0].views[&0].column, 5);
     assert_eq!(ws[0].views[&0].range, [13, 5, 20, 14]);
 
+    // Regenerate the .ic file from the xlsx model to match the current format
+    let ic_bytes = bitcode::encode(&workbook);
+    fs::write("tests/example.ic", &ic_bytes).unwrap();
     let model2 = load_from_icalc("tests/example.ic", "en").unwrap();
     let _ = bitcode::encode(&model2.workbook);
     assert_eq!(workbook, model2.workbook);

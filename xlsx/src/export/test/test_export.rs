@@ -209,8 +209,9 @@ fn test_existing_file() {
     let file_name = "existing_file.xlsx";
     fs::File::create(file_name).unwrap();
 
+    let model = new_empty_model();
     assert_eq!(
-        save_to_xlsx(&new_empty_model(), file_name),
+        save_to_xlsx(&model, file_name),
         Err(XlsxError::IO(
             "file existing_file.xlsx already exists".to_string()
         )),

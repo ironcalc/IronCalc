@@ -12,6 +12,7 @@ use ironcalc_base::{
         types::CellReferenceRC,
         utils::{column_to_number, parse_reference_a1},
     },
+    intern_pool::InternPool,
     types::{
         Cell, Col, Comment, DefinedName, Row, SheetData, SheetState, Table, Worksheet,
         WorksheetView,
@@ -336,7 +337,8 @@ fn get_cell_from_excel(
     formula_index: i32,
     sheet_name: &str,
     cell_ref: &str,
-    shared_strings: &mut Vec<String>,
+    index_to_hash: &[u64],
+    shared_strings: &mut InternPool<String>,
     rich_text_inline: Option<String>,
 ) -> Cell {
     // Possible cell types:
@@ -375,20 +377,22 @@ fn get_cell_from_excel(
                     s: cell_style,
                 }
             }
-            "s" => Cell::SharedString {
-                si: cell_value.unwrap_or("0").parse::<i32>().unwrap_or(0),
-                s: cell_style,
-            },
+            "s" => {
+                let idx = cell_value
+                    .unwrap_or("0")
+                    .parse::<usize>()
+                    .unwrap_or(0);
+                let si = index_to_hash.get(idx).copied().unwrap_or(0);
+                Cell::SharedString { si, s: cell_style }
+            }
             "str" => {
                 let s = cell_value.unwrap_or("");
-                let si = if let Some(i) = shared_strings.iter().position(|r| r == s) {
-                    i
-                } else {
-                    shared_strings.push(s.to_string());
-                    shared_strings.len() - 1
-                } as i32;
-
-                Cell::SharedString { si, s: cell_style }
+                let hash = ironcalc_base::intern_pool::content_hash(s);
+                shared_strings.insert(s.to_string());
+                Cell::SharedString {
+                    si: hash,
+                    s: cell_style,
+                }
             }
             "d" => {
                 // Not implemented
@@ -400,14 +404,12 @@ fn get_cell_from_excel(
             }
             "inlineStr" => {
                 let s = rich_text_inline.unwrap_or_default();
-                let si = if let Some(i) = shared_strings.iter().position(|r| r == &s) {
-                    i
-                } else {
-                    shared_strings.push(s.to_string());
-                    shared_strings.len() - 1
-                } as i32;
-
-                Cell::SharedString { si, s: cell_style }
+                let hash = ironcalc_base::intern_pool::content_hash(&s);
+                shared_strings.insert(s.clone());
+                Cell::SharedString {
+                    si: hash,
+                    s: cell_style,
+                }
             }
             "empty" => Cell::EmptyCell { s: cell_style },
             _ => {
@@ -702,7 +704,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     settings: SheetSettings,
     worksheets: &[String],
     tables: &HashMap<String, Table>,
-    shared_strings: &mut Vec<String>,
+    index_to_hash: &[u64],
+    shared_strings: &mut InternPool<String>,
     defined_names: Vec<DefinedNameS>,
 ) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
@@ -995,6 +998,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                 formula_index,
                 sheet_name,
                 cell_ref,
+                index_to_hash,
                 shared_strings,
                 cell_rich_text,
             );
@@ -1058,7 +1062,8 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     rels: &HashMap<String, Relationship>,
     workbook: &WorkbookXML,
     tables: &mut HashMap<String, Table>,
-    shared_strings: &mut Vec<String>,
+    index_to_hash: &[u64],
+    shared_strings: &mut InternPool<String>,
 ) -> Result<(Vec<Worksheet>, u32), XlsxError> {
     // load comments and tables
     let mut comments = HashMap::new();
@@ -1113,6 +1118,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 settings,
                 worksheets,
                 tables,
+                index_to_hash,
                 shared_strings,
                 defined_names.clone(),
             )?;

@@ -42,33 +42,27 @@ impl Worksheet {
         self.sheet_data.get_mut(&row)?.get_mut(&column)
     }
 
+    /// Inserts `new_cell` at (`row`, `column`), returning the previous cell if any.
     pub(crate) fn update_cell(
         &mut self,
         row: i32,
         column: i32,
         new_cell: Cell,
-    ) -> Result<(), String> {
-        // validate row and column arg before updating cell of worksheet
+    ) -> Result<Option<Cell>, String> {
         if !is_valid_row(row) || !is_valid_column_number(column) {
             return Err("Incorrect row or column".to_string());
         }
 
-        match self.sheet_data.get_mut(&row) {
-            Some(column_data) => match column_data.get(&column) {
-                Some(_cell) => {
-                    column_data.insert(column, new_cell);
-                }
-                None => {
-                    column_data.insert(column, new_cell);
-                }
-            },
+        let old = match self.sheet_data.get_mut(&row) {
+            Some(column_data) => column_data.insert(column, new_cell),
             None => {
                 let mut column_data = HashMap::new();
                 column_data.insert(column, new_cell);
                 self.sheet_data.insert(row, column_data);
+                None
             }
-        }
-        Ok(())
+        };
+        Ok(old)
     }
 
     // See: get_style_for_cell
@@ -251,7 +245,7 @@ impl Worksheet {
         column: i32,
         index: i32,
         style: i32,
-    ) -> Result<(), String> {
+    ) -> Result<Option<Cell>, String> {
         let cell = Cell::new_formula(index, style);
         self.update_cell(row, column, cell)
     }
@@ -262,7 +256,7 @@ impl Worksheet {
         column: i32,
         value: f64,
         style: i32,
-    ) -> Result<(), String> {
+    ) -> Result<Option<Cell>, String> {
         let cell = Cell::new_number(value, style);
         self.update_cell(row, column, cell)
     }
@@ -271,10 +265,10 @@ impl Worksheet {
         &mut self,
         row: i32,
         column: i32,
-        index: i32,
+        key: u64,
         style: i32,
-    ) -> Result<(), String> {
-        let cell = Cell::new_string(index, style);
+    ) -> Result<Option<Cell>, String> {
+        let cell = Cell::new_string(key, style);
         self.update_cell(row, column, cell)
     }
 
@@ -284,7 +278,7 @@ impl Worksheet {
         column: i32,
         value: bool,
         style: i32,
-    ) -> Result<(), String> {
+    ) -> Result<Option<Cell>, String> {
         let cell = Cell::new_boolean(value, style);
         self.update_cell(row, column, cell)
     }
@@ -295,12 +289,12 @@ impl Worksheet {
         column: i32,
         error: Error,
         style: i32,
-    ) -> Result<(), String> {
+    ) -> Result<Option<Cell>, String> {
         let cell = Cell::new_error(error, style);
         self.update_cell(row, column, cell)
     }
 
-    pub fn cell_clear_contents(&mut self, row: i32, column: i32) -> Result<(), String> {
+    pub fn cell_clear_contents(&mut self, row: i32, column: i32) -> Result<Option<Cell>, String> {
         let s = self.get_style(row, column);
         let cell = Cell::EmptyCell { s };
         self.update_cell(row, column, cell)
@@ -311,7 +305,7 @@ impl Worksheet {
         row: i32,
         column: i32,
         style: i32,
-    ) -> Result<(), String> {
+    ) -> Result<Option<Cell>, String> {
         let cell = Cell::EmptyCell { s: style };
         self.update_cell(row, column, cell)
     }

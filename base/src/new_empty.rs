@@ -17,8 +17,8 @@ use crate::{
     locale::{get_default_locale, get_locale},
     model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
     types::{
-        DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
-        WorksheetView,
+        Cell, DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView,
+        Worksheet, WorksheetView,
     },
     utils::ParsedReference,
 };
@@ -339,7 +339,20 @@ impl<'a> Model<'a> {
         if sheet_index >= sheet_count {
             return Err("Sheet index too large".to_string());
         };
+        // Release shared-string refs for all cells in the deleted sheet
+        let worksheet = &self.workbook.worksheets[sheet_index as usize];
+        let mut keys_to_release: Vec<u64> = Vec::new();
+        for row_data in worksheet.sheet_data.values() {
+            for cell in row_data.values() {
+                if let Cell::SharedString { si, .. } = cell {
+                    keys_to_release.push(*si);
+                }
+            }
+        }
         self.workbook.worksheets.remove(sheet_index as usize);
+        for key in keys_to_release {
+            self.release_string(key);
+        }
         self.reset_parsed_structures();
         Ok(())
     }
@@ -426,7 +439,7 @@ impl<'a> Model<'a> {
 
         // String versions of the locale are added here to simplify the serialize/deserialize logic
         let workbook = Workbook {
-            shared_strings: vec![],
+            string_pool: Default::default(),
             defined_names: vec![],
             worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, &[&0])],
             styles: Default::default(),
@@ -454,7 +467,6 @@ impl<'a> Model<'a> {
 
         let mut model = Model {
             workbook,
-            shared_strings: HashMap::new(),
             parsed_formulas,
             parsed_defined_names: HashMap::new(),
             parser,
