@@ -169,16 +169,22 @@ export function createNewModel(): Model {
 }
 
 export function loadSelectedModelFromStorage(): Model | null {
-  const uuid = localStorage.getItem("selected");
-  if (uuid) {
-    // We try to load the selected model
-    const modelBytesString = localStorage.getItem(uuid);
-    const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
-    if (modelBytesString) {
-      return Model.from_bytes(base64ToBytes(modelBytesString), language);
+  try {
+    const uuid = localStorage.getItem("selected");
+    if (uuid) {
+      // We try to load the selected model
+      const modelBytesString = localStorage.getItem(uuid);
+      const language = getLanguageFromLocale(loadDefaultLocaleFromStorage());
+      if (modelBytesString) {
+        return Model.from_bytes(base64ToBytes(modelBytesString), language);
+      }
     }
+    return null;
+  } catch (e) {
+    localStorage.clear();
+    console.warn("Failed to load selected model from storage", e);
+    return null;
   }
-  return null;
 }
 
 // check if storage is empty
