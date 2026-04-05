@@ -1,3 +1,4 @@
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -7,8 +8,18 @@ import {
   useRef,
   useState,
 } from "react";
+
 import "./select.css";
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
+
+/**
+ * Reusable Select with label, helper text, error state, and size variants.
+ * Sizes: sm, md
+ * States: default, hover, focused, error, disabled.
+ */
+
+export type SelectVariant = "default" | "ghost";
+
+export type SelectSize = "sm" | "md";
 
 export interface SelectOption {
   value: string;
@@ -16,17 +27,20 @@ export interface SelectOption {
   triggerLabel?: ReactNode;
 }
 
-interface SelectProps {
+export interface SelectProperties {
   value: string;
+  variant?: SelectVariant;
   options: SelectOption[];
   onChange: (value: string) => void;
   id?: string;
   name?: string;
+  size?: SelectSize;
+  label?: ReactNode;
+  helperText?: ReactNode;
+  error?: boolean;
+  required?: boolean;
   disabled?: boolean;
-  ariaLabelledBy?: string;
-  ariaDescribedBy?: string;
   className?: string;
-  compact?: boolean;
 }
 
 export function Select({
@@ -35,14 +49,18 @@ export function Select({
   onChange,
   id,
   name,
+  size = "md",
+  variant = "default",
+  label,
+  helperText,
+  error = false,
+  required,
   disabled = false,
-  compact = false,
-  ariaLabelledBy,
-  ariaDescribedBy,
-  className = "",
-}: SelectProps) {
+  className,
+}: SelectProperties) {
   const autoId = useId();
   const selectId = id ?? autoId;
+  const helperId = `${selectId}-helper`;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -88,17 +106,18 @@ export function Select({
 
   const listboxId = `${selectId}-listbox`;
 
-  const rootClassName = useMemo(() => {
+  const controlClassName = useMemo(() => {
     return [
-      "ic-select",
+      "ic-select-control",
+      size,
+      variant !== "default" && `variant-${variant}`,
       open && "is-open",
+      error && "is-error",
       disabled && "is-disabled",
-      compact && "compact",
-      className,
     ]
       .filter(Boolean)
       .join(" ");
-  }, [open, disabled, compact, className]);
+  }, [open, error, disabled, size, variant]);
 
   function closeMenu() {
     setOpen(false);
@@ -209,75 +228,85 @@ export function Select({
   }
 
   return (
-    <div ref={rootRef} className={rootClassName}>
-      {name ? <input type="hidden" name={name} value={value} /> : null}
+    <div className={["ic-select", className].filter(Boolean).join(" ")}>
+      {label && (
+        <label htmlFor={selectId} data-required={required || undefined}>
+          {label}
+        </label>
+      )}
 
-      <button
-        ref={triggerRef}
-        id={selectId}
-        type="button"
-        className="ic-select-trigger"
-        aria-haspopup="listbox"
-        aria-expanded={open ? "true" : "false"}
-        aria-controls={listboxId}
-        aria-labelledby={ariaLabelledBy}
-        aria-describedby={ariaDescribedBy}
-        disabled={disabled}
-        onClick={toggleMenu}
-        onKeyDown={handleTriggerKeyDown}
-      >
-        <span className="ic-select-trigger-value">
-          {selectedOption?.triggerLabel ?? selectedOption?.label}
-        </span>
-        <span className="ic-select-trigger-icon" aria-hidden="true">
-          {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-        </span>
-      </button>
+      <div ref={rootRef} className={controlClassName}>
+        {name ? <input type="hidden" name={name} value={value} /> : null}
 
-      {open ? (
-        <div className="ic-select-menu-wrapper">
-          <div
-            id={listboxId}
-            className="ic-select-menu"
-            role="listbox"
-            aria-labelledby={ariaLabelledBy}
-          >
-            {options.map((option, index) => {
-              const isSelected = option.value === value;
-              const isActive = index === activeIndex;
+        <button
+          ref={triggerRef}
+          id={selectId}
+          type="button"
+          role="combobox"
+          aria-autocomplete="none"
+          className="ic-select-trigger"
+          aria-haspopup="listbox"
+          aria-expanded={open ? "true" : "false"}
+          aria-controls={listboxId}
+          aria-invalid={error || undefined}
+          aria-describedby={helperText ? helperId : undefined}
+          aria-required={required || undefined}
+          disabled={disabled}
+          onClick={toggleMenu}
+          onKeyDown={handleTriggerKeyDown}
+        >
+          <span className="ic-select-trigger-value">
+            {selectedOption?.triggerLabel ?? selectedOption?.label}
+          </span>
+          <span className="ic-select-trigger-icon" aria-hidden="true">
+            {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </span>
+        </button>
 
-              return (
-                <button
-                  key={option.value}
-                  ref={(element) => {
-                    optionRefs.current[index] = element;
-                  }}
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected ? "true" : "false"}
-                  className={[
-                    "ic-select-option",
-                    isSelected && "is-selected",
-                    isActive && "is-active",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={() => commit(index)}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                >
-                  <span className="ic-select-option-check" aria-hidden="true">
-                    {isSelected ? <Check size={14} /> : null}
-                  </span>
-                  <span className="ic-select-option-content">
-                    {option.label}
-                  </span>
-                </button>
-              );
-            })}
+        {open ? (
+          <div className="ic-select-menu-wrapper">
+            <div id={listboxId} className="ic-select-menu" role="listbox">
+              {options.map((option, index) => {
+                const isSelected = option.value === value;
+                const isActive = index === activeIndex;
+
+                return (
+                  <button
+                    key={option.value}
+                    ref={(element) => {
+                      optionRefs.current[index] = element;
+                    }}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected ? "true" : "false"}
+                    className={[
+                      "ic-select-option",
+                      isSelected && "is-selected",
+                      isActive && "is-active",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={() => commit(index)}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                  >
+                    <span className="ic-select-option-check" aria-hidden="true">
+                      {isSelected ? <Check size={16} /> : null}
+                    </span>
+                    <span className="ic-select-option-content">
+                      {option.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
+
+      {helperText && <p id={helperId}>{helperText}</p>}
     </div>
   );
 }
+
+Select.displayName = "Select";
