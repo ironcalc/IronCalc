@@ -11,11 +11,20 @@
 .ic-select > label {
   display: block;
   align-self: flex-start;
+  color: var(--palette-common-black);
 }
 
 .ic-select > label[data-required]::after {
   content: " *";
   color: var(--palette-error-main);
+}
+
+.ic-select:has(.ic-select-control.is-disabled) > label {
+  color: var(--palette-grey-400);
+}
+
+.ic-select:has(.ic-select-control.is-disabled) > label[data-required]::after {
+  color: var(--palette-grey-400);
 }
 
 /* Helper text */
@@ -30,6 +39,10 @@
 
 .ic-select-control.is-error + p {
   color: var(--palette-error-main);
+}
+
+.ic-select:has(.ic-select-control.is-disabled) > p {
+  color: var(--palette-grey-400);
 }
 
 /* Control wrapper */
@@ -80,7 +93,7 @@
 /* Sizes */
 .ic-select-control.sm .ic-select-trigger {
   height: 28px;
-  padding: 8px 32px 8px 8px;
+  padding: 8px 28px 8px 8px;
 }
 
 .ic-select-control.sm .ic-select-trigger-icon {
