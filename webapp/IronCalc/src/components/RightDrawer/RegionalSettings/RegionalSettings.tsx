@@ -1,6 +1,6 @@
 import { getAllTimezones, getSupportedLocales } from "@ironcalc/wasm";
 import { Check, X } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
@@ -74,10 +74,6 @@ export const getLocaleDisplayName = (locale: string): string => {
 const RegionalSettings = (properties: RegionalSettingsProps) => {
   const { t } = useTranslation();
   const locales = getSupportedLocales();
-
-  const timezoneId = useId();
-  const languageId = useId();
-
   const timezones = getAllTimezones();
 
   const [selectedLocale, setSelectedLocale] = useState(
@@ -126,51 +122,46 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             {t("regional_settings.locale.title")}
           </div>
           <div className="ic-regional-settings-field-wrapper">
-            <label className="ic-regional-settings-label" htmlFor={languageId}>
-              {t("regional_settings.locale.locale_label")}
-            </label>
-            <div className="ic-regional-settings-form-control">
-              <Select
-                id={languageId}
-                value={selectedLocale}
-                onChange={setSelectedLocale}
-                options={locales.map((locale) => ({
-                  value: locale,
-                  label: getLocaleDisplayName(locale),
-                  triggerLabel: getLocaleDisplayName(locale),
-                }))}
-              />
-              <div className="ic-regional-settings-helper-box">
-                <div className="ic-regional-settings-row">
-                  {t("regional_settings.locale.locale_example1")}
-                  <span className="ic-regional-settings-row-value">
-                    {localeFormatExamples[selectedLocale]?.number ?? "1,234.56"}
-                  </span>
-                </div>
-                <div className="ic-regional-settings-row">
-                  {t("regional_settings.locale.locale_example2")}
-                  <span className="ic-regional-settings-row-value">
-                    {localeFormatExamples[selectedLocale]?.dateTime ??
-                      "10/17/2026 09:21:06 PM"}
-                  </span>
-                </div>
-                <div className="ic-regional-settings-row">
-                  {t("regional_settings.locale.locale_example3")}
-                  <span className="ic-regional-settings-row-value">
-                    {(() => {
-                      const delimiterType =
-                        localeFormatExamples[selectedLocale]?.delimiterType ??
-                        "comma";
-                      const delimiterChar =
-                        localeFormatExamples[selectedLocale]?.delimiterChar ??
-                        ",";
-                      const delimiterLabel = t(
-                        `regional_settings.locale.delimiter_${delimiterType}`,
-                      );
-                      return `${delimiterLabel} (${delimiterChar})`;
-                    })()}
-                  </span>
-                </div>
+            <Select
+              label={t("regional_settings.locale.locale_label")}
+              value={selectedLocale}
+              onChange={setSelectedLocale}
+              options={locales.map((locale) => ({
+                value: locale,
+                label: getLocaleDisplayName(locale),
+                triggerLabel: getLocaleDisplayName(locale),
+              }))}
+            />
+            <div className="ic-regional-settings-helper-box">
+              <div className="ic-regional-settings-row">
+                {t("regional_settings.locale.locale_example1")}
+                <span className="ic-regional-settings-row-value">
+                  {localeFormatExamples[selectedLocale]?.number ?? "1,234.56"}
+                </span>
+              </div>
+              <div className="ic-regional-settings-row">
+                {t("regional_settings.locale.locale_example2")}
+                <span className="ic-regional-settings-row-value">
+                  {localeFormatExamples[selectedLocale]?.dateTime ??
+                    "10/17/2026 09:21:06 PM"}
+                </span>
+              </div>
+              <div className="ic-regional-settings-row">
+                {t("regional_settings.locale.locale_example3")}
+                <span className="ic-regional-settings-row-value">
+                  {(() => {
+                    const delimiterType =
+                      localeFormatExamples[selectedLocale]?.delimiterType ??
+                      "comma";
+                    const delimiterChar =
+                      localeFormatExamples[selectedLocale]?.delimiterChar ??
+                      ",";
+                    const delimiterLabel = t(
+                      `regional_settings.locale.delimiter_${delimiterType}`,
+                    );
+                    return `${delimiterLabel} (${delimiterChar})`;
+                  })()}
+                </span>
               </div>
             </div>
           </div>
@@ -180,26 +171,17 @@ const RegionalSettings = (properties: RegionalSettingsProps) => {
             {t("regional_settings.timezone.title")}
           </div>
           <div className="ic-regional-settings-field-wrapper">
-            <label className="ic-regional-settings-label" htmlFor={timezoneId}>
-              {t("regional_settings.timezone.timezone_label")}
-            </label>
-            <div className="ic-regional-settings-form-control">
-              <Select
-                id={timezoneId}
-                value={selectedTimezone}
-                onChange={setSelectedTimezone}
-                options={timezones.map((timezone) => ({
-                  value: timezone,
-                  label: timezone,
-                  triggerLabel: timezone,
-                }))}
-                compact
-              />
-              {/* FIXME: https://github.com/ironcalc/IronCalc/pull/824#discussion_r3003370209 */}
-              <p className="ic-regional-settings-helper-text">
-                {t("regional_settings.timezone.timezone_helper")}
-              </p>
-            </div>
+            <Select
+              label={t("regional_settings.timezone.timezone_label")}
+              helperText={t("regional_settings.timezone.timezone_helper")}
+              value={selectedTimezone}
+              onChange={setSelectedTimezone}
+              options={timezones.map((timezone) => ({
+                value: timezone,
+                label: timezone,
+                triggerLabel: timezone,
+              }))}
+            />
           </div>
         </div>
       </div>

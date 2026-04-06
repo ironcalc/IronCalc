@@ -79,7 +79,6 @@ const EditNamedRange = ({
   const isSelected = (value: string) => scope === value;
 
   const nameId = useId();
-  const scopeId = useId();
   const formulaId = useId();
 
   // Validate name (format and duplicates)
@@ -133,71 +132,58 @@ const EditNamedRange = ({
             onKeyDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           />
-          <div className="ic-edit-range-field-wrapper">
-            <label className="ic-edit-range-label" htmlFor={scopeId}>
-              {t("name_manager_dialog.scope_label")}
-            </label>
-            <div className="ic-edit-range-form-control">
-              <Select
-                id={scopeId}
-                value={scope}
-                onChange={setScope}
-                options={[
-                  {
-                    value: "[Global]",
-                    label: (
-                      <>
-                        <span
-                          className={
-                            isSelected("[Global]")
-                              ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
-                              : "ic-edit-range-menu-span"
-                          }
-                        >
-                          {t("name_manager_dialog.workbook")}
-                        </span>
-                        <span className="ic-edit-range-menu-span-grey">{` ${t(
-                          "name_manager_dialog.global",
-                        )}`}</span>
-                      </>
-                    ),
-                    triggerLabel: (
-                      <>
-                        <span className="ic-edit-range-menu-span">
-                          {t("name_manager_dialog.workbook")}
-                        </span>
-                        <span className="ic-edit-range-menu-span-grey">{` ${t(
-                          "name_manager_dialog.global",
-                        )}`}</span>
-                      </>
-                    ),
-                  },
-                  ...model.getWorksheetsProperties().map((option) => ({
-                    value: option.name,
-                    label: (
-                      <span
-                        className={
-                          isSelected(option.name)
-                            ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
-                            : "ic-edit-range-menu-span"
-                        }
-                      >
-                        {option.name}
-                      </span>
-                    ),
-                    triggerLabel: <span>{option.name}</span>,
-                  })),
-                ]}
-                ariaDescribedBy={`${scopeId}-helper`}
-              />
-              <span
-                id={`${scopeId}-helper`}
-                className="ic-edit-range-helper-text"
-              >
-                {t("name_manager_dialog.scope_helper")}
-              </span>
-            </div>
-          </div>
+          <Select
+            label={t("name_manager_dialog.scope_label")}
+            helperText={t("name_manager_dialog.scope_helper")}
+            value={scope}
+            onChange={setScope}
+            options={[
+              {
+                value: "[Global]",
+                label: (
+                  <>
+                    <span
+                      className={
+                        isSelected("[Global]")
+                          ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
+                          : "ic-edit-range-menu-span"
+                      }
+                    >
+                      {t("name_manager_dialog.workbook")}
+                    </span>
+                    <span className="ic-edit-range-menu-span-grey">{` ${t(
+                      "name_manager_dialog.global",
+                    )}`}</span>
+                  </>
+                ),
+                triggerLabel: (
+                  <>
+                    <span className="ic-edit-range-menu-span">
+                      {t("name_manager_dialog.workbook")}
+                    </span>
+                    <span className="ic-edit-range-menu-span-grey">{` ${t(
+                      "name_manager_dialog.global",
+                    )}`}</span>
+                  </>
+                ),
+              },
+              ...model.getWorksheetsProperties().map((option) => ({
+                value: option.name,
+                label: (
+                  <span
+                    className={
+                      isSelected(option.name)
+                        ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
+                        : "ic-edit-range-menu-span"
+                    }
+                  >
+                    {option.name}
+                  </span>
+                ),
+                triggerLabel: <span>{option.name}</span>,
+              })),
+            ]}
+          />
           <div className="ic-edit-range-field-wrapper">
             <div className="ic-edit-range-line-wrapper">
               <label className="ic-edit-range-label" htmlFor={formulaId}>
