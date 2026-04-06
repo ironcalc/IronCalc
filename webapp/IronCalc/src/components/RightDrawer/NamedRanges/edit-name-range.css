@@ -32,18 +32,6 @@
   color: var(--palette-grey-400);
 }
 
-.ic-edit-range-check-icon {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-}
-
-.ic-edit-range-icon-placeholder {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-}
-
 .ic-edit-range-header-box {
   font-size: 14px;
   font-family: var(--typography-font-family);
@@ -97,6 +85,7 @@
   }
 }
 
+/* Used by the formula textarea field which is not an Input component */
 .ic-edit-range-field-wrapper {
   display: flex;
   flex-direction: column;
@@ -114,7 +103,6 @@
 
 .ic-edit-range-helper-text {
   margin: 0;
-  margin-top: 6px;
   padding: 0;
   font-size: var(--typography-font-size);
   font-family: var(--typography-font-family);
@@ -124,6 +112,11 @@
 
 .ic-edit-range-error-text {
   color: var(--palette-error-main);
+}
+
+.ic-edit-range-form-control {
+  display: flex;
+  flex-direction: column;
 }
 
 .ic-edit-range-footer {
@@ -164,9 +157,4 @@
 
 .ic-edit-range-textarea--error {
   border: 2px solid var(--palette-error-main);
-}
-
-.ic-edit-range-form-control {
-  display: flex;
-  flex-direction: column;
 }
