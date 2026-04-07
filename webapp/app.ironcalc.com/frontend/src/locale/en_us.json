@@ -28,6 +28,7 @@
     "new_workbook": "New workbook",
     "search_workbook": "Search workbooks",
     "search_placeholder": "Search workbook...",
+    "clear_search": "Clear search",
     "search_no_results": "Your search does not match any workbooks.",
     "pinned": "Pinned",
     "today": "Today",
