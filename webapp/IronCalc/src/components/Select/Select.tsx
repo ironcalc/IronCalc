@@ -242,15 +242,12 @@ export function Select({
           ref={triggerRef}
           id={selectId}
           type="button"
-          role="combobox"
-          aria-autocomplete="none"
           className="ic-select-trigger"
           aria-haspopup="listbox"
           aria-expanded={open ? "true" : "false"}
           aria-controls={listboxId}
           aria-invalid={error || undefined}
           aria-describedby={helperText ? helperId : undefined}
-          aria-required={required || undefined}
           disabled={disabled}
           onClick={toggleMenu}
           onKeyDown={handleTriggerKeyDown}

@@ -14,7 +14,7 @@
   color: var(--palette-common-black);
 }
 
-.ic-select > label[data-required]::after {
+.ic-select > label[data-required="true"]::after {
   content: " *";
   color: var(--palette-error-main);
 }
@@ -23,7 +23,8 @@
   color: var(--palette-grey-400);
 }
 
-.ic-select:has(.ic-select-control.is-disabled) > label[data-required]::after {
+.ic-select:has(.ic-select-control.is-disabled)
+  > label[data-required="true"]::after {
   color: var(--palette-grey-400);
 }
 
@@ -53,6 +54,7 @@
 
 /* Trigger button */
 .ic-select-trigger {
+  box-sizing: border-box;
   width: 100%;
   border: 1px solid var(--palette-grey-300);
   border-radius: 6px;
@@ -75,8 +77,10 @@
 .ic-select-trigger-value {
   flex: 1;
   min-width: 0;
-  display: inline-flex;
-  align-items: baseline;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ic-select-trigger-icon {
@@ -93,7 +97,7 @@
 /* Sizes */
 .ic-select-control.sm .ic-select-trigger {
   height: 28px;
-  padding: 8px 28px 8px 8px;
+  padding: 0 28px 0 8px;
 }
 
 .ic-select-control.sm .ic-select-trigger-icon {
@@ -102,7 +106,7 @@
 
 .ic-select-control.md .ic-select-trigger {
   height: 32px;
-  padding: 8px 32px 8px 10px;
+  padding: 0 32px 0 10px;
 }
 
 /* Focused / open */
@@ -189,8 +193,6 @@
   min-width: 0;
   display: inline-flex;
   align-items: baseline;
-  text-wrap: nowrap;
-  text-overflow: ellipsis;
 }
 
 .ic-select-option.is-selected .ic-select-option-content {
