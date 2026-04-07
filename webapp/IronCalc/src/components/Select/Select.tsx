@@ -235,7 +235,11 @@ export function Select({
       className={["ic-select", className].filter(Boolean).join(" ")}
     >
       {label && (
-        <label htmlFor={selectId} data-required={required || undefined}>
+        <label
+          id={labelId}
+          htmlFor={selectId}
+          data-required={required || undefined}
+        >
           {label}
         </label>
       )}
@@ -247,10 +251,12 @@ export function Select({
           id={selectId}
           type="button"
           className="ic-select-trigger"
+          role="combobox"
           aria-haspopup="listbox"
           aria-expanded={open ? "true" : "false"}
           aria-controls={listboxId}
           aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
+          aria-required={required || undefined}
           aria-invalid={error || undefined}
           aria-describedby={helperText ? helperId : undefined}
           disabled={disabled}
@@ -271,7 +277,7 @@ export function Select({
               id={listboxId}
               className="ic-select-menu"
               role="listbox"
-              aria-labelledby={label ? labelId : undefined}
+              aria-labelledby={label ? labelId : valueId}
             >
               {options.map((option, index) => {
                 const isSelected = option.value === value;
