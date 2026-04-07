@@ -6,17 +6,9 @@ import { Select } from "./Select";
 const fruitOptions = [
   { value: "apple", label: "Apple" },
   { value: "banana", label: "Banana" },
-  { value: "cherry", label: "Cherry" },
   { value: "durian", label: "Durian" },
   { value: "elderberry", label: "Elderberry" },
-];
-
-const countryOptions = [
-  { value: "it", label: "Italy" },
-  { value: "gb", label: "United Kingdom" },
-  { value: "de", label: "Germany" },
-  { value: "fr", label: "France" },
-  { value: "es", label: "Spain" },
+  { value: "macadamiaNut", label: "Macadamia Nut" },
 ];
 
 type SelectStoryProps = Omit<SelectProperties, "value" | "onChange"> & {
@@ -35,7 +27,7 @@ function SelectStory({
 }
 
 const defaultArgs: SelectStoryProps = {
-  options: countryOptions,
+  options: fruitOptions,
 };
 
 const meta = {
@@ -87,10 +79,10 @@ export const Default: Story = {
   render: () => {
     const [value, setValue] = useState("de");
     return (
-      <div style={{ width: 160 }}>
+      <div style={{ width: 120 }}>
         <Select
-          label="Country"
-          options={countryOptions}
+          label="Breakfast"
+          options={fruitOptions}
           value={value}
           onChange={setValue}
         />
@@ -169,12 +161,11 @@ export const Sizes: Story = {
 export const Ghost: Story = {
   args: defaultArgs,
   render: () => {
-    const [value, setValue] = useState("de");
+    const [value, setValue] = useState("durian");
     return (
       <Select
         variant="ghost"
-        size="sm"
-        options={countryOptions}
+        options={fruitOptions}
         value={value}
         onChange={setValue}
       />
