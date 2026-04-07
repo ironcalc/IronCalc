@@ -497,11 +497,14 @@ impl<'a> UserModel<'a> {
     ///
     /// See also:
     /// * [Model::new_sheet]
-    pub fn new_sheet(&mut self) -> Result<(), String> {
+    pub fn new_sheet(&mut self) -> Result<(String, u32), String> {
         let (name, index) = self.model.new_sheet();
         self.set_selected_sheet(index)?;
-        self.push_diff_list(vec![Diff::NewSheet { index, name }]);
-        Ok(())
+        self.push_diff_list(vec![Diff::NewSheet {
+            index,
+            name: name.clone(),
+        }]);
+        Ok((name, index))
     }
 
     /// Deletes sheet by index
