@@ -34,7 +34,8 @@ COS returns a unitless [number](/features/value-types#numbers) that is the trigo
 <center><img src="/functions/images/cosine-curve.png" width="350" alt="Graph showing cos(x) for x between -2π and +2π radians."></center>
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=cos).
+
+<IronCalcEmbed src="/examples/cos.ic"/>
 
 ## Links
 * For more information about trigonometric cosine, visit Wikipedia's [Sine and cosine](https://en.wikipedia.org/wiki/Sine_and_cosine) page.

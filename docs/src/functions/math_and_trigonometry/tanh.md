@@ -30,7 +30,8 @@ TANH returns a real [number](/features/value-types#numbers) in the range (-1,+1)
 <center><img src="/functions/images/hyperbolictangent-curve.png" width="350" alt="Graph showing tanh(x)."></center>
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=tanh).
+
+<IronCalcEmbed src="/examples/tanh.ic"/>
 
 ## Links
 * For more information about hyperbolic functions, visit Wikipedia's [Hyperbolic functions](https://en.wikipedia.org/wiki/Hyperbolic_functions) page.

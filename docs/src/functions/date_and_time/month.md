@@ -29,7 +29,8 @@ MONTH returns an integer [number](/features/value-types#numbers) in the range [1
 ## Details
 IronCalc utilizes Rust's [chrono](https://docs.rs/chrono/latest/chrono/) crate to implement the MONTH function.
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=month).
+
+<IronCalcEmbed src="/examples/month.ic"/>
 
 ## Links
 * See also IronCalc's [DAY](/functions/date_and_time/day.md) and [YEAR](/functions/date_and_time/year.md) functions.

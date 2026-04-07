@@ -31,7 +31,8 @@ ATANH returns a real [number](/features/value-types#numbers) in the range (-∞,
 <center><img src="/functions/images/hyperbolicarctangent-curve.png" width="350" alt="Graph showing atanh(x)."></center>
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=atanh).
+
+<IronCalcEmbed src="/examples/atanh.ic"/>
 
 ## Links
 * For more information about inverse hyperbolic functions, visit Wikipedia's [Inverse hyperbolic functions](https://en.wikipedia.org/wiki/Inverse_hyperbolic_functions) page.

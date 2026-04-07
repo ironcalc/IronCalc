@@ -28,7 +28,9 @@ ATAN returns a number in radians in the range [-$\pi$/2 to +$\pi$/2] that is the
 <center><img src="/functions/images/arctangent-curve.png" width="350" alt="Graph showing atan(x) for x between [-$\infty$, +$\infty$]."></center>
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=atan).
+
+<IronCalcEmbed src="/examples/atan2.ic"/>
+
 
 ## Links
 * For more information about inverse trigonometric functions, visit Wikipedia's [Inverse trigonometric functions](https://en.wikipedia.org/wiki/Inverse_trigonometric_functions) page.

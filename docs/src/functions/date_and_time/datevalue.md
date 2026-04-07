@@ -31,12 +31,6 @@ DATEVALUE returns a [number](/features/value-types#numbers) that represents the 
 * If the *date_text* argument cannot be recognized as a valid date format, then DATEVALUE returns the [`#VALUE!`](/features/error-types.md#value) error.
 <!--@include: ../markdown-snippets/error-type-details.txt-->
 
-<!-- ## Details
-For more information on how IronCalc processes Date and Time functions and values, visit [Date and Time](/features/serial-numbers.md) 
-
-## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=datevalue).
--->
 
 ## Links
 * See also IronCalc's [TIMEVALUE](/functions/date_and_time/timevalue.md) function for converting time text to serial numbers.

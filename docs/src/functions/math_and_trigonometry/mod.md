@@ -36,10 +36,7 @@ $$
 \operatorname{MOD}(n, d) = n - d \times \operatorname{INT}\!\left(\dfrac{n}{d}\right)
 $$
 Since `INT` returns the greatest integer less than or equal to its argument (it rounds down), the remainder's sign matches the divisor, even though this might appear counterintuitive when the dividend and divisor have different signs.
-<!--
-## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=mod).
--->
+
 ## Links
 * For more information about the modulo operation, visit Wikipedia's [Modulo](https://en.wikipedia.org/wiki/Modulo) page.
 * See also IronCalc's [QUOTIENT](/functions/math_and_trigonometry/quotient) function.
