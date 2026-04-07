@@ -77,7 +77,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: defaultArgs,
   render: () => {
-    const [value, setValue] = useState("de");
+    const [value, setValue] = useState("durian");
     return (
       <div style={{ width: 120 }}>
         <Select
@@ -118,7 +118,7 @@ export const AllStates: Story = {
         <Select
           label="Error"
           options={fruitOptions}
-          value="cherry"
+          value="durian"
           onChange={() => {}}
           error
           helperText="This value is invalid."

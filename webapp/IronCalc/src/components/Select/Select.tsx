@@ -61,6 +61,8 @@ export function Select({
   const autoId = useId();
   const selectId = id ?? autoId;
   const helperId = `${selectId}-helper`;
+  const labelId = `${selectId}-label`;
+  const valueId = `${selectId}-value`;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -228,14 +230,16 @@ export function Select({
   }
 
   return (
-    <div className={["ic-select", className].filter(Boolean).join(" ")}>
+    <div
+      ref={rootRef}
+      className={["ic-select", className].filter(Boolean).join(" ")}
+    >
       {label && (
         <label htmlFor={selectId} data-required={required || undefined}>
           {label}
         </label>
       )}
-
-      <div ref={rootRef} className={controlClassName}>
+      <div className={controlClassName}>
         {name ? <input type="hidden" name={name} value={value} /> : null}
 
         <button
@@ -246,13 +250,14 @@ export function Select({
           aria-haspopup="listbox"
           aria-expanded={open ? "true" : "false"}
           aria-controls={listboxId}
+          aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
           aria-invalid={error || undefined}
           aria-describedby={helperText ? helperId : undefined}
           disabled={disabled}
           onClick={toggleMenu}
           onKeyDown={handleTriggerKeyDown}
         >
-          <span className="ic-select-trigger-value">
+          <span id={valueId} className="ic-select-trigger-value">
             {selectedOption?.triggerLabel ?? selectedOption?.label}
           </span>
           <span className="ic-select-trigger-icon" aria-hidden="true">
@@ -262,7 +267,12 @@ export function Select({
 
         {open ? (
           <div className="ic-select-menu-wrapper">
-            <div id={listboxId} className="ic-select-menu" role="listbox">
+            <div
+              id={listboxId}
+              className="ic-select-menu"
+              role="listbox"
+              aria-labelledby={label ? labelId : undefined}
+            >
               {options.map((option, index) => {
                 const isSelected = option.value === value;
                 const isActive = index === activeIndex;

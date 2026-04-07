@@ -11,6 +11,8 @@
 .ic-select > label {
   display: block;
   align-self: flex-start;
+  font-size: var(--typography-font-size);
+  font-weight: 500;
   color: var(--palette-common-black);
 }
 
