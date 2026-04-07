@@ -38,15 +38,21 @@ function DrawerHeader({
 
       <ActionsWrapper className={isSearching ? "hidden" : ""}>
         <Tooltip title={t("left_drawer.search_workbook")}>
-          <AddButton onClick={() => setIsSearching(true)}>
+          <HeaderButton
+            onClick={() => setIsSearching(true)}
+            aria-label={t("left_drawer.search_workbook")}
+          >
             <Search />
-          </AddButton>
+          </HeaderButton>
         </Tooltip>
 
         <Tooltip title={t("left_drawer.new_workbook")}>
-          <AddButton onClick={onNewModel}>
+          <HeaderButton
+            onClick={onNewModel}
+            aria-label={t("left_drawer.new_workbook")}
+          >
             <Plus />
-          </AddButton>
+          </HeaderButton>
         </Tooltip>
       </ActionsWrapper>
 
@@ -73,14 +79,16 @@ function DrawerHeader({
             inputRef: searchInputRef,
           }}
         />
-        <ClearIcon
+        <ClearButton
           onClick={() => {
             setSearchQuery("");
             setIsSearching(false);
           }}
+          disableRipple
+          aria-label={t("left_drawer.clear_search")}
         >
           <X />
-        </ClearIcon>
+        </ClearButton>
       </SearchOverlay>
     </HeaderContainer>
   );
@@ -109,7 +117,7 @@ const ActionsWrapper = styled("div")`
   gap: 2px;
 `;
 
-const AddButton = styled(IconButton)`
+const HeaderButton = styled(IconButton)`
   height: 32px;
   width: 32px;
   padding: 8px;
@@ -191,22 +199,27 @@ const SearchInput = styled(TextField)`
   }
 `;
 
-const ClearIcon = styled("div")`
-  display: flex;
-  
+const ClearButton = styled(IconButton)`  
+height: 20px;
+width: 20px;
+padding: 0px;
+border-radius: 6px;
+
+svg {
+  stroke-width: 2px;
+  stroke: #757575;
   width: 16px;
-  cursor: pointer;
-
-  svg {
-    stroke: #757575;
-    width: 16px;
-    height: 16px;
-    }
-
-    &:hover svg {
-      stroke: #272525;
-    }
+  height: 16px;
+}
+&:hover {
+  background-color: transparent;
+    svg {
+    stroke: #000;
   }
+}
+&:active {
+  background-color: transparent;
+}
 `;
 
 export default DrawerHeader;
