@@ -44,7 +44,8 @@ $$
 
 * The complementary error function is a [transcendental](https://en.wikipedia.org/wiki/Transcendental_function), non-algebraic mathematical function. IronCalc implements the ERFC.PRECISE function by numerical approximation using a power series.
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=erfc-precise).
+
+<IronCalcEmbed src="/examples/erfc-precise.ic"/>
 
 ## Links
 * See also IronCalc's [ERF](/functions/engineering/erf.md), [ERFC](/functions/engineering/erfc.md) and [ERF.PRECISE](/functions/engineering/erf-precise.md) functions.

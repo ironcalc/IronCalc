@@ -34,7 +34,8 @@ SIN returns a unitless [number](/features/value-types#numbers) that is the trigo
 <center><img src="/functions/images/sine-curve.png" width="350" alt="Graph showing sin(x) for x between -2π and +2π."></center>
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=sin).
+
+<IronCalcEmbed src="/examples/sin.ic"/>
 
 ## Links
 * For more information about trigonometric sine, visit Wikipedia's [Sine and cosine](https://en.wikipedia.org/wiki/Sine_and_cosine) page.

@@ -231,7 +231,8 @@ Link to interactive examples in IronCalc:
 ```markdown
 ## Examples
 
-[See some examples in IronCalc](https://app.ironcalc.com/?example=functionname).
+<IronCalcEmbed src="/examples/function-name.ic"/>
+
 ```
 
 Replace `functionname` with the actual function name (lowercase).
@@ -374,7 +375,7 @@ FUNCTION_NAME returns a [type](/features/value-types#type) representing [descrip
 
 ## Examples
 
-[See some examples in IronCalc](https://app.ironcalc.com/?example=functionname).
+<IronCalcEmbed src="/examples/function-name.ic"/>
 
 ## Links
 

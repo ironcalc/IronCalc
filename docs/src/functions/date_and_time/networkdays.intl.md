@@ -68,7 +68,8 @@ NETWORKDAYS.INTL returns a [number](/features/value-types#numbers) representing 
 IronCalc utilizes Rust's [chrono](https://docs.rs/chrono/latest/chrono/) crate to implement the NETWORKDAYS.INTL function. This function provides more flexibility than NETWORKDAYS by allowing custom weekend definitions.
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=networkdays-intl).
+
+<IronCalcEmbed src="/examples/networkdays-int.ic"/>
 
 ## Links
 * See also IronCalc's [NETWORKDAYS](/functions/date_and_time/networkdays.md) function for the basic version with fixed weekends.

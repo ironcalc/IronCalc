@@ -29,7 +29,8 @@ YEAR returns an integer [number](/features/value-types#numbers) in the range [18
 ## Details
 IronCalc utilizes Rust's [chrono](https://docs.rs/chrono/latest/chrono/) crate to implement the YEAR function.
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=year).
+
+<IronCalcEmbed src="/examples/year.ic"/>
 
 ## Links
 * See also IronCalc's [DAY](/functions/date_and_time/day.md) and [MONTH](/functions/date_and_time/month.md) functions.

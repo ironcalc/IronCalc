@@ -46,7 +46,8 @@ NETWORKDAYS returns a [number](/features/value-types#numbers) representing the c
 IronCalc utilizes Rust's [chrono](https://docs.rs/chrono/latest/chrono/) crate to implement the NETWORKDAYS function. The function treats Saturday and Sunday as weekend days.
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=networkdays).
+
+<IronCalcEmbed src="/examples/networkdays.ic"/>
 
 ## Links
 * See also IronCalc's [NETWORKDAYS.INTL](/functions/date_and_time/networkdays.intl.md) function for custom weekend definitions.
