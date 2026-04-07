@@ -120,7 +120,9 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
   };
 
   // Group workbooks by pinned status and creation date
-  const groupWorkbooks = () => {
+  const groupWorkbooks = (
+    modelsMetadata: ReturnType<typeof getModelsMetadata>,
+  ) => {
     const now = Date.now();
     const millisecondsInDay = 24 * 60 * 60 * 1000;
     const millisecondsIn30Days = 30 * millisecondsInDay;
@@ -129,7 +131,6 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
     const modelsCreatedToday = [];
     const modelsCreatedThisMonth = [];
     const olderModels = [];
-    const modelsMetadata = getModelsMetadata();
 
     for (const uuid in modelsMetadata) {
       const createdAt = modelsMetadata[uuid].createdAt;
@@ -160,17 +161,18 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
     };
   };
 
+  const modelsMetadata = getModelsMetadata();
+
   const {
     pinnedModels,
     modelsCreatedToday,
     modelsCreatedThisMonth,
     olderModels,
-  } = groupWorkbooks();
+  } = groupWorkbooks(modelsMetadata);
 
   const renderWorkbookItem = (uuid: string) => {
     const isMenuOpen = menuAnchorEl !== null && selectedWorkbookUuid === uuid;
     const isAnyMenuOpen = menuAnchorEl !== null;
-    const models = getModelsMetadata();
 
     return (
       <WorkbookListItem
@@ -189,7 +191,7 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
         <StorageIndicator>
           <Table2 />
         </StorageIndicator>
-        <WorkbookListText>{models[uuid].name}</WorkbookListText>
+        <WorkbookListText>{modelsMetadata[uuid].name}</WorkbookListText>
         <EllipsisButton
           onClick={(e) => handleMenuOpen(e, uuid)}
           isOpen={isMenuOpen}
@@ -216,19 +218,17 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
     );
   };
 
-  const models = getModelsMetadata();
-
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
-  const allModelsSorted = Object.keys(models).sort(
-    (a, b) => models[b].createdAt - models[a].createdAt,
+  const allModelsSorted = Object.keys(modelsMetadata).sort(
+    (a, b) => modelsMetadata[b].createdAt - modelsMetadata[a].createdAt,
   );
 
   const isSearchMode = normalizedQuery.length > 0;
 
   const filteredModels = isSearchMode
     ? allModelsSorted.filter((uuid) =>
-        models[uuid].name.toLowerCase().includes(normalizedQuery),
+        modelsMetadata[uuid].name.toLowerCase().includes(normalizedQuery),
       )
     : [];
 
@@ -335,7 +335,9 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
         <DeleteWorkbookDialog
           onClose={handleDeleteCancel}
           onConfirm={handleDeleteConfirm}
-          workbookName={workbookToDelete ? models[workbookToDelete].name : ""}
+          workbookName={
+            workbookToDelete ? modelsMetadata[workbookToDelete].name : ""
+          }
         />
       </Modal>
     </>
@@ -444,11 +446,10 @@ const SectionTitle = styled("div")`
 `;
 
 const NoResultsContainer = styled("div")`
-  padding: 12px 8px;
+  padding: 0 8px;
   color: #9e9e9e;
   font-size: 12px;
   line-height: 18px;
-  padding: 0 8px;
 `;
 
 export default WorkbookList;
