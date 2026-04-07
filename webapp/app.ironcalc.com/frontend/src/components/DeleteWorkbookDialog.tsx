@@ -7,11 +7,15 @@ interface DeleteWorkbookDialogProperties {
   onClose: () => void;
   onConfirm: () => void;
   workbookName: string;
+  titleId?: string;
+  descriptionId?: string;
 }
 
 function DeleteWorkbookDialog(properties: DeleteWorkbookDialogProperties) {
   const { t } = useTranslation();
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
+  const titleId = properties.titleId ?? "delete-dialog-title";
+  const descriptionId = properties.descriptionId ?? "delete-dialog-description";
 
   useEffect(() => {
     if (deleteButtonRef.current) {
@@ -27,15 +31,17 @@ function DeleteWorkbookDialog(properties: DeleteWorkbookDialogProperties) {
           properties.onClose();
         }
       }}
-      aria-labelledby="delete-dialog-title"
-      aria-describedby="delete-dialog-description"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
     >
       <IconWrapper>
         <Trash2 />
       </IconWrapper>
       <ContentWrapper>
-        <Title>{t("file_bar.file_menu.delete_workbook.title")}</Title>
-        <Body>
+        <Title id={titleId}>
+          {t("file_bar.file_menu.delete_workbook.title")}
+        </Title>
+        <Body id={descriptionId}>
           <Trans
             i18nKey="file_bar.file_menu.delete_workbook.subtitle"
             components={{ bold: <strong /> }}

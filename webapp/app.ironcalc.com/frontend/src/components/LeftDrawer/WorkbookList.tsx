@@ -163,12 +163,13 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
 
   const modelsMetadata = getModelsMetadata();
 
-  const {
-    pinnedModels,
-    modelsCreatedToday,
-    modelsCreatedThisMonth,
-    olderModels,
-  } = groupWorkbooks(modelsMetadata);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const isSearchMode = normalizedQuery.length > 0;
+
+  let pinnedModels: string[] = [];
+  let modelsCreatedToday: string[] = [];
+  let modelsCreatedThisMonth: string[] = [];
+  let olderModels: string[] = [];
 
   const renderWorkbookItem = (uuid: string) => {
     const isMenuOpen = menuAnchorEl !== null && selectedWorkbookUuid === uuid;
@@ -218,19 +219,18 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
     );
   };
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
+  let filteredModels: string[] = [];
 
-  const allModelsSorted = Object.keys(modelsMetadata).sort(
-    (a, b) => modelsMetadata[b].createdAt - modelsMetadata[a].createdAt,
-  );
-
-  const isSearchMode = normalizedQuery.length > 0;
-
-  const filteredModels = isSearchMode
-    ? allModelsSorted.filter((uuid) =>
+  if (isSearchMode) {
+    filteredModels = Object.keys(modelsMetadata)
+      .sort((a, b) => modelsMetadata[b].createdAt - modelsMetadata[a].createdAt)
+      .filter((uuid) =>
         modelsMetadata[uuid].name.toLowerCase().includes(normalizedQuery),
-      )
-    : [];
+      );
+  } else {
+    ({ pinnedModels, modelsCreatedToday, modelsCreatedThisMonth, olderModels } =
+      groupWorkbooks(modelsMetadata));
+  }
 
   const isNoResults = isSearchMode && filteredModels.length === 0;
 
@@ -331,7 +331,12 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
         </DeleteButton>
       </StyledMenu>
 
-      <Modal open={isDeleteDialogOpen} onClose={handleDeleteCancel}>
+      <Modal
+        open={isDeleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
         <DeleteWorkbookDialog
           onClose={handleDeleteCancel}
           onConfirm={handleDeleteConfirm}
