@@ -1,5 +1,6 @@
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import {
+  type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
   useEffect,
@@ -8,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 
 import "./select.css";
 
@@ -63,6 +65,7 @@ export function Select({
   const helperId = `${selectId}-helper`;
   const labelId = `${selectId}-label`;
   const valueId = `${selectId}-value`;
+  const listboxId = `${selectId}-listbox`;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -79,6 +82,7 @@ export function Select({
 
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(selectedIndex);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
 
   useEffect(() => {
     if (!open) {
@@ -88,7 +92,14 @@ export function Select({
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node | null;
+      const root = rootRef.current;
+
+      if (!target || !root) {
+        return;
+      }
+
+      if (!root.contains(target)) {
         setOpen(false);
       }
     }
@@ -103,10 +114,41 @@ export function Select({
     if (!open) {
       return;
     }
+
     optionRefs.current[activeIndex]?.focus();
   }, [open, activeIndex]);
 
-  const listboxId = `${selectId}-listbox`;
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function updateMenuPosition() {
+      const trigger = triggerRef.current;
+      if (!trigger) {
+        return;
+      }
+
+      const rect = trigger.getBoundingClientRect();
+
+      setMenuStyle({
+        position: "absolute",
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+
+    updateMenuPosition();
+
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open]);
 
   const controlClassName = useMemo(() => {
     return [
@@ -119,7 +161,7 @@ export function Select({
     ]
       .filter(Boolean)
       .join(" ");
-  }, [open, error, disabled, size, variant]);
+  }, [disabled, error, open, size, variant]);
 
   function closeMenu() {
     setOpen(false);
@@ -127,17 +169,19 @@ export function Select({
   }
 
   function openMenu() {
-    if (disabled) {
+    if (disabled || options.length === 0) {
       return;
     }
+
     setActiveIndex(selectedIndex);
     setOpen(true);
   }
 
   function toggleMenu() {
-    if (disabled) {
+    if (disabled || options.length === 0) {
       return;
     }
+
     setOpen((current) => !current);
   }
 
@@ -146,6 +190,7 @@ export function Select({
     if (!option) {
       return;
     }
+
     onChange(option.value);
     setOpen(false);
     triggerRef.current?.focus();
@@ -160,6 +205,7 @@ export function Select({
       case "ArrowDown":
       case "ArrowUp": {
         event.preventDefault();
+
         if (!open) {
           openMenu();
         } else {
@@ -170,12 +216,14 @@ export function Select({
         }
         break;
       }
+
       case "Enter":
       case " ": {
         event.preventDefault();
         toggleMenu();
         break;
       }
+
       case "Escape": {
         if (open) {
           event.preventDefault();
@@ -196,32 +244,38 @@ export function Select({
         setActiveIndex((index + 1) % options.length);
         break;
       }
+
       case "ArrowUp": {
         event.preventDefault();
         setActiveIndex((index - 1 + options.length) % options.length);
         break;
       }
+
       case "Home": {
         event.preventDefault();
         setActiveIndex(0);
         break;
       }
+
       case "End": {
         event.preventDefault();
         setActiveIndex(options.length - 1);
         break;
       }
+
       case "Enter":
       case " ": {
         event.preventDefault();
         commit(index);
         break;
       }
+
       case "Escape": {
         event.preventDefault();
         closeMenu();
         break;
       }
+
       case "Tab": {
         setOpen(false);
         break;
@@ -243,6 +297,7 @@ export function Select({
           {label}
         </label>
       )}
+
       <div className={controlClassName}>
         {name ? <input type="hidden" name={name} value={value} /> : null}
 
@@ -266,55 +321,63 @@ export function Select({
           <span id={valueId} className="ic-select-trigger-value">
             {selectedOption?.triggerLabel ?? selectedOption?.label}
           </span>
+
           <span className="ic-select-trigger-icon" aria-hidden="true">
             {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </span>
         </button>
 
-        {open ? (
-          <div className="ic-select-menu-wrapper">
-            <div
-              id={listboxId}
-              className="ic-select-menu"
-              role="listbox"
-              aria-labelledby={label ? labelId : valueId}
-            >
-              {options.map((option, index) => {
-                const isSelected = option.value === value;
-                const isActive = index === activeIndex;
+        {open
+          ? createPortal(
+              <div className="ic-select-menu-wrapper" style={menuStyle}>
+                <div
+                  id={listboxId}
+                  className="ic-select-menu"
+                  role="listbox"
+                  aria-labelledby={label ? labelId : valueId}
+                >
+                  {options.map((option, index) => {
+                    const isSelected = option.value === value;
+                    const isActive = index === activeIndex;
 
-                return (
-                  <button
-                    key={option.value}
-                    ref={(element) => {
-                      optionRefs.current[index] = element;
-                    }}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected ? "true" : "false"}
-                    className={[
-                      "ic-select-option",
-                      isSelected && "is-selected",
-                      isActive && "is-active",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    onClick={() => commit(index)}
-                    onMouseEnter={() => setActiveIndex(index)}
-                    onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                  >
-                    <span className="ic-select-option-check" aria-hidden="true">
-                      {isSelected ? <Check size={16} /> : null}
-                    </span>
-                    <span className="ic-select-option-content">
-                      {option.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
+                    return (
+                      <button
+                        key={option.value}
+                        ref={(element) => {
+                          optionRefs.current[index] = element;
+                        }}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected ? "true" : "false"}
+                        className={[
+                          "ic-select-option",
+                          isSelected && "is-selected",
+                          isActive && "is-active",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        onClick={() => commit(index)}
+                        onMouseEnter={() => setActiveIndex(index)}
+                        onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                      >
+                        <span
+                          className="ic-select-option-check"
+                          aria-hidden="true"
+                        >
+                          {isSelected ? <Check size={16} /> : null}
+                        </span>
+
+                        <span className="ic-select-option-content">
+                          {option.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
 
       {helperText && <p id={helperId}>{helperText}</p>}
