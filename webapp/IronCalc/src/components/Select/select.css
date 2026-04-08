@@ -1,10 +1,10 @@
 /* Outer wrapper */
 .ic-select {
-  font-family: var(--typography-font-family);
-  font-size: var(--typography-font-size);
   display: flex;
   flex-direction: column;
   gap: 6px;
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
 }
 
 /* Label */
@@ -34,8 +34,8 @@
 .ic-select > p {
   margin: 0;
   padding: 0;
-  font-size: var(--typography-font-size);
   font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
   line-height: 1.4;
   color: var(--palette-grey-500);
 }
@@ -56,8 +56,11 @@
 
 /* Trigger button */
 .ic-select-trigger {
+  position: relative;
   box-sizing: border-box;
+  display: flex;
   width: 100%;
+  align-items: center;
   border: 1px solid var(--palette-grey-300);
   border-radius: 6px;
   background: var(--palette-common-white);
@@ -65,10 +68,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  display: flex;
-  align-items: center;
   outline: none;
-  position: relative;
 }
 
 .ic-select-trigger:hover:not(:disabled) {
@@ -77,18 +77,18 @@
 
 /* Trigger internals */
 .ic-select-trigger-value {
-  flex: 1;
   min-width: 0;
+  flex: 1;
   display: block;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ic-select-trigger-icon {
   position: absolute;
-  right: 10px;
   top: 50%;
+  right: 10px;
   width: 16px;
   height: 16px;
   transform: translateY(-50%);
@@ -125,8 +125,8 @@
 /* Disabled state */
 .ic-select-control.is-disabled .ic-select-trigger,
 .ic-select-trigger:disabled {
-  background: var(--palette-grey-200);
   border-color: var(--palette-grey-300);
+  background: var(--palette-grey-200);
   color: var(--palette-grey-400);
   cursor: not-allowed;
 }
@@ -139,19 +139,16 @@
 /* Dropdown menu */
 .ic-select-menu-wrapper {
   position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 100%;
-  width: max-content;
-  z-index: 1000;
 }
 
 .ic-select-menu {
-  padding: 4px;
-  background: var(--palette-common-white);
+  box-sizing: border-box;
+  width: 100%;
   max-height: 240px;
   overflow-y: auto;
   border-radius: 8px;
+  background: var(--palette-common-white);
+  padding: 4px;
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.12),
     0 8px 24px rgba(0, 0, 0, 0.12);
@@ -159,19 +156,19 @@
 
 /* Options */
 .ic-select-option {
+  display: flex;
   width: 100%;
   min-height: 32px;
-  padding: 8px 12px;
+  align-items: center;
+  gap: 8px;
   border: 0;
   border-radius: 4px;
   background: transparent;
+  padding: 8px 12px;
   color: var(--palette-common-black);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   outline: none;
 }
 
@@ -182,18 +179,18 @@
 }
 
 .ic-select-option-check {
+  display: inline-flex;
   width: 16px;
   height: 16px;
   flex: 0 0 16px;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--palette-common-black);
 }
 
 .ic-select-option-content {
-  min-width: 0;
   display: inline-flex;
+  min-width: 0;
   align-items: baseline;
 }
 
@@ -215,6 +212,6 @@
 .ic-select-control.variant-ghost.is-open .ic-select-trigger,
 .ic-select-control.variant-ghost .ic-select-trigger:focus-visible {
   border-color: transparent;
-  box-shadow: none;
   background: var(--palette-grey-50);
+  box-shadow: none;
 }
