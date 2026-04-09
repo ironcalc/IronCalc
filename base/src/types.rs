@@ -1,9 +1,8 @@
+use crate::expressions::token::Error;
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
-
-use crate::expressions::token::Error;
-
+use uuid::Uuid;
 fn default_as_false() -> bool {
     false
 }
@@ -51,6 +50,7 @@ pub struct Workbook {
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
     pub views: HashMap<u32, WorkbookView>,
+    pub persons: Vec<Person>,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -117,6 +117,7 @@ pub struct Worksheet {
     pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
+    pub threaded_comments: Vec<ThreadedComment>,
 }
 
 /// Internal representation of Excel's sheet_data
@@ -657,4 +658,139 @@ pub struct SheetProperties {
     pub sheet_id: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
+}
+
+// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/6274371e-7c5c-46e3-b661-cbeb4abfe968
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Person {
+    pub ext_lst: Vec<String>, // TODO make this its own type
+    pub display_name: String,
+    pub person_id: Uuid,
+    pub user_id: Option<String>,
+    pub provider: Provider,
+}
+
+impl Person {
+    pub fn new(
+        ext_lst: Vec<String>,
+        display_name: &str,
+        person_id: Uuid,
+        user_id: Option<&str>,
+        provider: Provider,
+    ) -> Person {
+        let display_name = display_name.to_string();
+        let user_id = user_id.map(|s| s.to_string());
+        Person {
+            ext_lst,
+            display_name,
+            person_id,
+            user_id,
+            provider,
+        }
+    }
+}
+
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum Provider {
+    NoProvider,
+    ActiveDirectory,
+    WindowsLiveID,
+    Office365,
+    PeoplePicker,
+}
+impl Provider {
+    pub fn from_str_and_user_id(
+        provider_str: &str,
+        maybe_user_id: Option<&str>,
+    ) -> Result<Provider, String> {
+        match provider_str {
+            "AD" => match maybe_user_id {
+                Some(user_id) => match user_id.split("::").count() {
+                    3 => Ok(Provider::Office365),
+                    _ => Ok(Provider::ActiveDirectory),
+                },
+                None => Ok(Provider::ActiveDirectory),
+            },
+            "Windows Live" => Ok(Provider::WindowsLiveID),
+            "PeoplePicker" => Ok(Provider::PeoplePicker),
+            "None" => Ok(Provider::NoProvider),
+            _ => Err("unknown provider".to_string()),
+        }
+    }
+}
+
+impl From<Provider> for &str {
+    fn from(value: Provider) -> Self {
+        match value {
+            Provider::NoProvider => "None",
+            Provider::ActiveDirectory => "AD",
+            Provider::Office365 => "AD",
+            Provider::PeoplePicker => "PeoplePicker",
+            Provider::WindowsLiveID => "Windows Live",
+        }
+    }
+}
+
+// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/42f9b03d-9662-4204-9783-dbeb324a691c
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct ThreadedComment {
+    pub text: String, // Technically occurs between 0 and 1 time so maybe should use Option or Vec but in practice it's always there, if not use empty string.
+    pub mentions: Vec<Mention>,
+    pub ext_lst: Vec<String>,
+    pub rref: Option<String>, // really named ref
+    pub dt: Option<String>,
+    pub person_id: Uuid, // this joins with the person_id in Person
+    pub id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub done: Option<bool>,
+}
+impl ThreadedComment {
+    pub fn new(
+        text: String,
+        mentions: Vec<Mention>,
+        ext_lst: Vec<String>,
+        rref: Option<&str>,
+        dt: Option<String>,
+        person_id: Uuid,
+        id: Uuid,
+        parent_id: Option<Uuid>,
+        done: Option<bool>,
+    ) -> ThreadedComment {
+        let rref = rref.map(|s| s.to_string());
+        ThreadedComment {
+            text,
+            mentions,
+            ext_lst,
+            rref,
+            dt,
+            person_id,
+            id,
+            parent_id,
+            done,
+        }
+    }
+}
+
+// https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/b03ed619-e307-4d3e-9c67-b68612274128
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Mention {
+    pub mention_person_id: Uuid,
+    pub mention_id: Uuid,
+    pub start_index: u32,
+    pub length: u32,
+}
+impl Mention {
+    pub fn new(
+        mention_person_id: Uuid,
+        mention_id: Uuid,
+        start_index: u32,
+        length: u32,
+    ) -> Mention {
+        Mention {
+            mention_person_id,
+            mention_id,
+            start_index,
+            length,
+        }
+    }
 }
