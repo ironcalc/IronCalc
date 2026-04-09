@@ -21,11 +21,11 @@
   color: var(--palette-error-main);
 }
 
-.ic-select:has(.ic-select-control.is-disabled) > label {
+.ic-select:has(.ic-select-control.disabled) > label {
   color: var(--palette-grey-400);
 }
 
-.ic-select:has(.ic-select-control.is-disabled)
+.ic-select:has(.ic-select-control.disabled)
   > label[data-required="true"]::after {
   color: var(--palette-grey-400);
 }
@@ -44,7 +44,7 @@
   color: var(--palette-error-main);
 }
 
-.ic-select:has(.ic-select-control.is-disabled) > p {
+.ic-select:has(.ic-select-control.disabled) > p {
   color: var(--palette-grey-400);
 }
 
@@ -123,7 +123,7 @@
 }
 
 /* Disabled state */
-.ic-select-control.is-disabled .ic-select-trigger,
+.ic-select-control.disabled .ic-select-trigger,
 .ic-select-trigger:disabled {
   border-color: var(--palette-grey-300);
   background: var(--palette-grey-200);
@@ -131,7 +131,7 @@
   cursor: not-allowed;
 }
 
-.ic-select-control.is-disabled .ic-select-trigger-icon,
+.ic-select-control.disabled .ic-select-trigger-icon,
 .ic-select-trigger:disabled .ic-select-trigger-icon {
   color: var(--palette-grey-400);
 }
@@ -139,6 +139,8 @@
 /* Dropdown menu */
 .ic-select-menu-wrapper {
   position: absolute;
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
 }
 
 .ic-select-menu {

@@ -4,8 +4,6 @@
   --toolbar-height: 40px;
   width: 100%;
   height: 100%;
-  font-family: var(--typography-font-family);
-  font-size: var(--typography-font-size);
 }
 
 .ic-menu-layer {
