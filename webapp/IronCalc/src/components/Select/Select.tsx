@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -12,6 +13,7 @@ import {
 import { createPortal } from "react-dom";
 
 import "./select.css";
+import { useKeyDown } from "./useKeyDown";
 
 /**
  * Reusable Select with label, helper text, error state, and size variants.
@@ -45,6 +47,38 @@ export interface SelectProperties {
   className?: string;
 }
 
+function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
+  const triggerRect = trigger.getBoundingClientRect();
+  const menuWidth = Math.max(menu.offsetWidth, triggerRect.width);
+  const menuHeight = menu.offsetHeight;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const offset = 4;
+  const margin = 8;
+
+  let left = triggerRect.left;
+  let top = triggerRect.bottom + offset;
+
+  if (left + menuWidth > viewportWidth - margin) {
+    left = viewportWidth - menuWidth - margin;
+  }
+
+  if (left < margin) {
+    left = margin;
+  }
+
+  if (top + menuHeight > viewportHeight - margin) {
+    top = viewportHeight - menuHeight - margin;
+  }
+
+  if (top < margin) {
+    top = margin;
+  }
+
+  return { top, left, minWidth: triggerRect.width };
+}
+
 export function Select({
   value,
   options,
@@ -69,6 +103,7 @@ export function Select({
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const selectedIndex = Math.max(
@@ -76,8 +111,7 @@ export function Select({
     options.findIndex((option) => option.value === value),
   );
 
-  // FIXME: This fallback to 0 can cause issues if the value is not in options.
-  // See: https://github.com/ironcalc/IronCalc/pull/834#discussion_r3015897822
+  // Clamp missing values (-1) to 0 to keep a valid, focusable selection.
   const selectedOption = options[selectedIndex] ?? options[0];
 
   const [open, setOpen] = useState(false);
@@ -94,12 +128,16 @@ export function Select({
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as Node | null;
       const root = rootRef.current;
+      const menu = menuRef.current;
 
       if (!target || !root) {
         return;
       }
 
-      if (!root.contains(target)) {
+      const isInside =
+        root.contains(target) || (menu ? menu.contains(target) : false);
+
+      if (!isInside) {
         setOpen(false);
       }
     }
@@ -118,24 +156,25 @@ export function Select({
     optionRefs.current[activeIndex]?.focus();
   }, [open, activeIndex]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) {
       return;
     }
 
     function updateMenuPosition() {
       const trigger = triggerRef.current;
-      if (!trigger) {
+      const menu = menuRef.current;
+      if (!trigger || !menu) {
         return;
       }
 
-      const rect = trigger.getBoundingClientRect();
+      const { top, left, minWidth } = getMenuPosition(trigger, menu);
 
       setMenuStyle({
-        position: "absolute",
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
-        width: rect.width,
+        position: "fixed",
+        top,
+        left,
+        minWidth,
       });
     }
 
@@ -157,7 +196,7 @@ export function Select({
       variant !== "default" && `variant-${variant}`,
       open && "is-open",
       error && "is-error",
-      disabled && "is-disabled",
+      disabled && "disabled",
     ]
       .filter(Boolean)
       .join(" ");
@@ -275,13 +314,17 @@ export function Select({
         closeMenu();
         break;
       }
-
-      case "Tab": {
-        setOpen(false);
-        break;
-      }
     }
   }
+
+  const { onKeyDown: handleMenuKeyDown } = useKeyDown({
+    open,
+    onEscape: closeMenu,
+    getFocusableElements: () =>
+      optionRefs.current.filter(
+        (element): element is HTMLButtonElement => element !== null,
+      ),
+  });
 
   return (
     <div
@@ -329,12 +372,17 @@ export function Select({
 
         {open
           ? createPortal(
-              <div className="ic-select-menu-wrapper" style={menuStyle}>
+              <div
+                ref={menuRef}
+                className="ic-select-menu-wrapper"
+                style={menuStyle}
+              >
                 <div
                   id={listboxId}
                   className="ic-select-menu"
                   role="listbox"
                   aria-labelledby={label ? labelId : valueId}
+                  onKeyDown={handleMenuKeyDown}
                 >
                   {options.map((option, index) => {
                     const isSelected = option.value === value;
