@@ -96,6 +96,7 @@ export const AllStates: Story = {
   render: () => {
     const [value1, setValue1] = useState("apple");
     const [value2, setValue2] = useState("banana");
+    const [value3, setValue3] = useState("durian");
 
     return (
       <div
@@ -118,15 +119,15 @@ export const AllStates: Story = {
         <Select
           label="Error"
           options={fruitOptions}
-          value="durian"
-          onChange={() => {}}
+          value={value3}
+          onChange={setValue3}
           error
           helperText="This value is invalid."
         />
         <Select
           label="Disabled"
           options={fruitOptions}
-          value="apple"
+          value="elderberry"
           onChange={() => {}}
           disabled
           helperText="This field is locked."
@@ -161,7 +162,7 @@ export const Sizes: Story = {
 export const Ghost: Story = {
   args: defaultArgs,
   render: () => {
-    const [value, setValue] = useState("durian");
+    const [value, setValue] = useState("apple");
     return (
       <Select
         variant="ghost"
@@ -169,6 +170,67 @@ export const Ghost: Story = {
         value={value}
         onChange={setValue}
       />
+    );
+  },
+};
+
+export const CornerPositioning: Story = {
+  args: defaultArgs,
+  parameters: {
+    layout: "fullscreen",
+  },
+  render: () => {
+    const [tl, setTl] = useState("apple");
+    const [tr, setTr] = useState("banana");
+    const [bl, setBl] = useState("durian");
+    const [br, setBr] = useState("elderberry");
+
+    return (
+      <div
+        style={{
+          position: "relative",
+          height: "100vh",
+          boxSizing: "border-box",
+        }}
+      >
+        <div style={{ position: "absolute", top: 16, left: 16, width: 120 }}>
+          <Select
+            label="Top-left"
+            options={fruitOptions}
+            value={tl}
+            onChange={setTl}
+          />
+        </div>
+
+        <div style={{ position: "absolute", top: 16, right: 16, width: 120 }}>
+          <Select
+            label="Top-right"
+            options={fruitOptions}
+            value={tr}
+            onChange={setTr}
+          />
+        </div>
+
+        <div style={{ position: "absolute", bottom: 16, left: 16, width: 120 }}>
+          <Select
+            label="Bottom-left"
+            options={fruitOptions}
+            value={bl}
+            onChange={setBl}
+          />
+        </div>
+
+        <div
+          style={{ position: "absolute", bottom: 16, right: 16, width: 120 }}
+        >
+          <Select
+            label="Bottom-right"
+            options={fruitOptions}
+            value={br}
+            onChange={setBr}
+          />
+        </div>
+      </div>
     );
   },
 };
