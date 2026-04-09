@@ -48,6 +48,9 @@ export interface SelectProperties {
 }
 
 function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
+  // Select menu positioning:
+  // - Opens above when there's not enough space below.
+  // - Aligns to the trigger edge based on viewport side (left half → left edge, right half → right edge).
   const triggerRect = trigger.getBoundingClientRect();
   const menuWidth = Math.max(menu.offsetWidth, triggerRect.width);
   const menuHeight = menu.offsetHeight;
@@ -57,8 +60,23 @@ function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
   const offset = 4;
   const margin = 8;
 
-  let left = triggerRect.left;
-  let top = triggerRect.bottom + offset;
+  const spaceBelow = viewportHeight - triggerRect.bottom - margin;
+  const spaceAbove = triggerRect.top - margin;
+  const openBelow =
+    spaceBelow >= menuHeight + offset || spaceBelow >= spaceAbove;
+
+  const triggerCenterX = triggerRect.left + triggerRect.width / 2;
+  const isRightSide = triggerCenterX > viewportWidth / 2;
+
+  const alignToRightEdge = isRightSide;
+
+  let left = alignToRightEdge
+    ? triggerRect.right - menuWidth
+    : triggerRect.left;
+
+  let top = openBelow
+    ? triggerRect.bottom + offset
+    : triggerRect.top - menuHeight - offset;
 
   if (left + menuWidth > viewportWidth - margin) {
     left = viewportWidth - menuWidth - margin;
