@@ -297,22 +297,29 @@ impl Model {
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "moveColumn")]
-    pub fn move_column_action(
+    #[wasm_bindgen(js_name = "moveColumns")]
+    pub fn move_columns_action(
         &mut self,
         sheet: u32,
         column: i32,
+        column_count: i32,
         delta: i32,
     ) -> Result<(), JsError> {
         self.model
-            .move_column_action(sheet, column, delta)
+            .move_columns_action(sheet, column, column_count, delta)
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "moveRow")]
-    pub fn move_row_action(&mut self, sheet: u32, row: i32, delta: i32) -> Result<(), JsError> {
+    #[wasm_bindgen(js_name = "moveRows")]
+    pub fn move_rows_action(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        row_count: i32,
+        delta: i32,
+    ) -> Result<(), JsError> {
         self.model
-            .move_row_action(sheet, row, delta)
+            .move_rows_action(sheet, row, row_count, delta)
             .map_err(to_js_error)
     }
 
@@ -339,6 +346,32 @@ impl Model {
     ) -> Result<(), JsError> {
         self.model
             .set_columns_width(sheet, column_start, column_end, width)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setColumnsHidden")]
+    pub fn set_columns_hidden(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        hidden: bool,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_columns_hidden(sheet, column_start, column_end, hidden)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "setRowsHidden")]
+    pub fn set_rows_hidden(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        hidden: bool,
+    ) -> Result<(), JsError> {
+        self.model
+            .set_rows_hidden(sheet, row_start, row_end, hidden)
             .map_err(to_js_error)
     }
 

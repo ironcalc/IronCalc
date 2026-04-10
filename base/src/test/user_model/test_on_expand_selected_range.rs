@@ -2,6 +2,7 @@
 
 use crate::{
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_WINDOW_WIDTH, LAST_COLUMN},
+    expressions::utils::number_to_column,
     test::util::new_empty_model,
     UserModel,
 };
@@ -148,4 +149,58 @@ fn arrow_left_scrolls_left() {
     assert_eq!(view.range, [1, 48, 1, 50]);
     assert_eq!(view.left_column, 48);
     assert_eq!(view.column, 50);
+}
+
+#[test]
+fn arrow_right_with_hidden_columns() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+
+    // Hide columns 2 and 3
+    model.set_columns_hidden(0, 2, 3, true).unwrap();
+
+    // Select cell A1
+    model.set_selected_cell(1, 1).unwrap();
+
+    // Shift + right arrow should select A1:D1, skipping the hidden columns
+    model.on_expand_selected_range("ArrowRight").unwrap();
+    let view = model.get_selected_view();
+    assert_eq!(view.range, [1, 1, 1, 4]);
+
+    // Now go left
+    model.on_expand_selected_range("ArrowLeft").unwrap();
+    let view = model.get_selected_view();
+    assert_eq!(view.range, [1, 1, 1, 1]);
+}
+
+#[test]
+fn arrow_right_decreases_hidden_columns() {
+    // if the selected cell is on the upper right corner, right-arrow will decrease the size of the area
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    // Hide column D
+    model.set_columns_hidden(0, 4, 4, true).unwrap();
+    // Range from C5:H10
+    let (start_row, start_column, end_row, end_column) = (5, 3, 10, 8);
+    assert_eq!(number_to_column(start_column).unwrap(), "C");
+    assert_eq!(number_to_column(end_column).unwrap(), "H");
+
+    // Select cell H5 and the range C5:H10
+    model.set_selected_cell(start_row, end_column).unwrap();
+    model
+        .set_selected_range(start_row, start_column, end_row, end_column)
+        .unwrap();
+
+    model.on_expand_selected_range("ArrowRight").unwrap();
+    let view = model.get_selected_view();
+    // Selected range should now be E5:H10, skipping the hidden column D
+    assert_eq!(
+        view.range,
+        [start_row, start_column + 2, end_row, end_column]
+    );
+
+    model.on_expand_selected_range("ArrowLeft").unwrap();
+    let view = model.get_selected_view();
+    // Selected range should now be C5:H10 again
+    assert_eq!(view.range, [start_row, start_column, end_row, end_column]);
 }

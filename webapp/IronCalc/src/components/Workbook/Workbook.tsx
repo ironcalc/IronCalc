@@ -4,13 +4,11 @@ import type {
   Model,
   WorksheetProperties,
 } from "@ironcalc/wasm";
-import { styled } from "@mui/material/styles";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
 } from "../clipboard";
-import { TOOLBAR_HEIGHT } from "../constants";
 import FormulaBar from "../FormulaBar/FormulaBar";
 import RightDrawer, {
   DEFAULT_DRAWER_WIDTH,
@@ -34,6 +32,7 @@ import type WorksheetCanvas from "../WorksheetCanvas/worksheetCanvas";
 import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
+import "./workbook.css";
 
 const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const { model, workbookState } = props;
@@ -62,6 +61,17 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     },
   );
   const focusWorkbook = useCallback(() => {
+    const active = document.activeElement as HTMLElement | null;
+    // FIXME: Horrible HACK for now
+    // Basically prevents the workbook from stealing focus when the user is interacting with the color picker, border picker or advanced color picker
+    if (
+      active?.closest(
+        ".ic-color-picker, .ic-advanced-color-picker-panel, .ic-border-picker",
+      )
+    ) {
+      return;
+    }
+
     if (rootRef.current) {
       rootRef.current.focus({ preventScroll: true });
       // HACK: We need to select something inside the root for onCopy to work
@@ -167,7 +177,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     }
     workbookState.setCopyStyles(styles);
     // FIXME: This is so that the cursor indicates there are styles to be pasted
-    const el = rootRef.current?.getElementsByClassName("sheet-container")[0];
+    const el = rootRef.current?.getElementsByClassName(
+      "ic-worksheet-sheet-container",
+    )[0];
     if (el) {
       // Taken from lucide icons: <PaintRoller /> and rotated.
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paint-roller" style="transform:rotate(-8deg)"><rect width="16" height="6" x="2" y="2" rx="2"></rect><path d="M10 16v-2a2 2 0 0 1 2-2h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect width="4" height="6" x="8" y="16" rx="1"></rect></svg>`;
@@ -334,7 +346,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     onEscape: (): void => {
       workbookState.clearCutRange();
       workbookState.setCopyStyles(null);
-      const el = rootRef.current?.getElementsByClassName("sheet-container")[0];
+      const el = rootRef.current?.getElementsByClassName(
+        "ic-worksheet-sheet-container",
+      )[0];
       if (el) {
         (el as HTMLElement).style.cursor = "auto";
       }
@@ -391,9 +405,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const style = getCellStyle();
 
   return (
-    <Container
+    // biome-ignore lint/a11y/noStaticElementInteractions: This div needs to be focusable to handle keyboard events for the workbook
+    <div
+      className="ic-workbook-container"
       ref={rootRef}
       onKeyDown={onKeyDown}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: This div needs to be focusable to handle keyboard events for the workbook
       tabIndex={0}
       onClick={(event: React.MouseEvent) => {
         if (!workbookState.getEditingCell()) {
@@ -683,7 +700,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
         formatOptions={fmtSettings}
       />
-      <WorksheetAreaLeft $drawerWidth={isDrawerOpen ? drawerWidth : 0}>
+      <div
+        className="ic-workbook-worksheet-area-left"
+        style={{
+          width: isDrawerOpen ? `calc(100% - ${drawerWidth}px)` : "100%",
+        }}
+      >
         <FormulaBar
           cellAddress={cellAddress()}
           formulaValue={formulaValue()}
@@ -758,7 +780,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           }}
           model={model}
         />
-      </WorksheetAreaLeft>
+      </div>
       <RightDrawer
         isOpen={isDrawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -786,30 +808,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setRedrawId((id) => id + 1);
         }}
       />
-    </Container>
+    </div>
   );
 };
-
-type WorksheetAreaLeftProps = { $drawerWidth: number };
-const WorksheetAreaLeft = styled("div")<WorksheetAreaLeftProps>(
-  ({ $drawerWidth }) => ({
-    position: "absolute",
-    top: `${TOOLBAR_HEIGHT}px`,
-    width: `calc(100% - ${$drawerWidth}px)`,
-    height: `calc(100% - ${TOOLBAR_HEIGHT}px)`,
-  }),
-);
-
-const Container = styled("div")`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  position: relative;
-  font-family: ${({ theme }) => theme.typography.fontFamily};
-
-  &:focus {
-    outline: none;
-  }
-`;
 
 export default Workbook;

@@ -1,5 +1,5 @@
 import { AreaType } from "../workbookState";
-import { LAST_COLUMN, LAST_ROW, outlineColor } from "./constants";
+import { LAST_COLUMN, LAST_ROW } from "./constants";
 import type WorksheetCanvas from "./worksheetCanvas";
 
 export function attachOutlineHandle(
@@ -23,7 +23,7 @@ export function attachOutlineHandle(
     position: "absolute",
     width: "5px",
     height: "5px",
-    background: outlineColor,
+    background: worksheet.theme.outlineColor,
     cursor: "crosshair",
     borderRadius: "1px",
     border: `1px solid white`,

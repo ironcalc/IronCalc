@@ -13,6 +13,7 @@ fn test_column_width() {
         min: 1,
         style: Some(6),
         width: 8.7,
+        hidden: false,
     }];
     model.workbook.worksheets[0].cols = cols;
     model
@@ -38,6 +39,7 @@ fn test_column_width_lower_edge() {
         min: 5,
         style: Some(1),
         width: 10.0,
+        hidden: false,
     }];
     model.workbook.worksheets[0].cols = cols;
     model
@@ -65,6 +67,7 @@ fn test_column_width_higher_edge() {
         min: 5,
         style: Some(1),
         width: 10.0,
+        hidden: false,
     }];
     model.workbook.worksheets[0].cols = cols;
     model

@@ -1,0 +1,147 @@
+/* Spacer */
+.ic-worksheet-spacer {
+  position: absolute;
+  height: 5000px;
+  width: 5000px;
+}
+
+/* Sheet container */
+.ic-worksheet-sheet-container {
+  position: sticky;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
+/* Column resize handle */
+.ic-worksheet-sheet-container .column-resize-handle {
+  position: absolute;
+  top: 0;
+  width: 3px;
+  opacity: 0;
+  background: var(--palette-sheet-outline-color);
+  border-radius: 5px;
+  cursor: col-resize;
+}
+
+.ic-worksheet-sheet-container .column-resize-handle:hover {
+  opacity: 1;
+}
+
+/* Row resize handle */
+.ic-worksheet-sheet-container .row-resize-handle {
+  position: absolute;
+  left: 0;
+  height: 3px;
+  opacity: 0;
+  background: var(--palette-sheet-outline-color);
+  border-radius: 5px;
+  cursor: row-resize;
+}
+
+.ic-worksheet-sheet-container .row-resize-handle:hover {
+  opacity: 1;
+}
+
+/* Wrapper */
+.ic-worksheet-wrapper {
+  position: absolute;
+  overflow: scroll;
+  top: calc(var(--formula-bar-height) + 1px);
+  left: 0;
+  right: 0;
+  bottom: calc(var(--navigation-height) + 1px);
+  overscroll-behavior: none;
+}
+
+/* Canvas */
+.ic-worksheet-sheet-canvas {
+  position: relative;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--navigation-height) + 1px);
+}
+
+/* Column resize guide */
+.ic-worksheet-column-resize-guide {
+  position: absolute;
+  top: 0;
+  display: none;
+  height: 100%;
+  width: 0;
+  border-left: 1px dashed var(--palette-sheet-outline-color);
+}
+
+/* Column headers */
+.ic-worksheet-column-headers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+.ic-worksheet-column-headers .column-header {
+  display: inline-block;
+  text-align: center;
+  overflow: hidden;
+  height: 100%;
+  user-select: none;
+}
+
+/* Row resize guide */
+.ic-worksheet-row-resize-guide {
+  position: absolute;
+  display: none;
+  left: 0;
+  height: 0;
+  width: 100%;
+  border-top: 1px dashed var(--palette-sheet-outline-color);
+}
+
+/* Area outline */
+.ic-worksheet-area-outline {
+  position: absolute;
+  border: 0px solid var(--palette-sheet-outline-color);
+  border-radius: 1px;
+  background-color: var(--palette-sheet-outline-background-color);
+}
+
+/* Cell outline */
+.ic-worksheet-cell-outline {
+  position: absolute;
+  border: 2px solid var(--palette-sheet-outline-color);
+  border-radius: 3px;
+  word-break: break-word;
+  font-size: 13px;
+  display: flex;
+  box-shadow: inset 0 0 0 1px var(--palette-common-white);
+}
+
+/* Extend-to outline */
+.ic-worksheet-extend-to-outline {
+  position: absolute;
+  border: 1px dashed var(--palette-sheet-outline-color);
+  border-radius: 3px;
+}
+
+/* Editor wrapper */
+.ic-worksheet-editor-wrapper {
+  position: absolute;
+  width: 100%;
+  padding: 0;
+  outline: 3px solid var(--palette-sheet-outline-editing-color);
+  resize: none;
+  white-space: pre-wrap;
+  vertical-align: bottom;
+  overflow: hidden;
+  text-align: left;
+  z-index: 1000;
+  font-family: monospace;
+  border: 2px solid var(--palette-sheet-outline-color);
+}
+
+.ic-worksheet-editor-wrapper span {
+  min-width: 1px;
+}

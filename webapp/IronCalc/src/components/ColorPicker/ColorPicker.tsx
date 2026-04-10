@@ -1,10 +1,19 @@
-import styled from "@emotion/styled";
-import { Menu, MenuItem, type PopoverOrigin } from "@mui/material";
 import { Check, Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import React, {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
-import AdvancedColorPicker from "./AdvancedColorPicker";
+import AdvancedColorPicker from "../AdvancedColorPicker.tsx/AdvancedColorPicker";
+import { getFocusableElements } from "../util";
+import "./color-picker.css";
+import { createPortal } from "react-dom";
+import useKeyDown from "./useKeyDown";
+import { getCheckColor, isWhiteColor, mainColors, toneArrays } from "./util";
 
 type ColorPickerProps = {
   color: string;
@@ -13,10 +22,64 @@ type ColorPickerProps = {
   onChange: (color: string) => void;
   onClose: () => void;
   anchorEl: React.RefObject<HTMLElement | null>;
-  anchorOrigin: PopoverOrigin;
-  transformOrigin: PopoverOrigin;
   open: boolean;
+  placement?: Placement;
 };
+
+const FALLBACK_COLOR = "#272525"; // --palette-common-black
+
+type Placement = "bottom" | "top" | "right" | "left";
+
+function getMenuPosition(
+  anchor: HTMLElement,
+  panel: HTMLElement,
+  placement: Placement,
+) {
+  const anchorRect = anchor.getBoundingClientRect();
+  const panelWidth = panel.offsetWidth;
+  const panelHeight = panel.offsetHeight;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const offset = 4;
+  const margin = 8;
+
+  let left = 0;
+  let top = 0;
+
+  if (placement === "bottom") {
+    left = anchorRect.left;
+    top = anchorRect.bottom + offset;
+  } else if (placement === "top") {
+    left = anchorRect.left;
+    top = anchorRect.top - panelHeight - offset;
+  } else if (placement === "right") {
+    // This is used in the BorderPicker to be aligned with the line picker
+    left = anchorRect.right;
+    top = anchorRect.top;
+  } else {
+    left = anchorRect.left - panelWidth - offset;
+    top = anchorRect.top;
+  }
+
+  if (left + panelWidth > viewportWidth - margin) {
+    left = viewportWidth - panelWidth - margin;
+  }
+
+  if (left < margin) {
+    left = margin;
+  }
+
+  if (top + panelHeight > viewportHeight - margin) {
+    top = viewportHeight - panelHeight - margin;
+  }
+
+  if (top < margin) {
+    top = margin;
+  }
+
+  return { top, left };
+}
 
 const ColorPicker = ({
   color,
@@ -25,102 +88,127 @@ const ColorPicker = ({
   onChange,
   onClose,
   anchorEl,
-  anchorOrigin,
-  transformOrigin,
   open,
+  placement = "bottom",
 }: ColorPickerProps) => {
   const [selectedColor, setSelectedColor] = useState<string>(color);
   const [isPickerOpen, setPickerOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
   const recentColors = useRef<string[]>([]);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
     setSelectedColor(color);
   }, [color]);
 
-  const handleColorSelect = (color: string) => {
-    if (!recentColors.current.includes(color)) {
-      const maxRecentColors = 14;
-      recentColors.current = [color, ...recentColors.current].slice(
-        0,
-        maxRecentColors,
-      );
+  const { onKeyDown } = useKeyDown({
+    onEscape: () => {
+      setPickerOpen(false);
+      onClose();
+    },
+    getFocusableElements: () => getFocusableElements(panelRef.current),
+  });
+
+  // focus the first button when the menu opens or when the advanced picker closes
+  useEffect(() => {
+    if (open && !isPickerOpen) {
+      panelRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
     }
-    setSelectedColor(color || theme.palette.common.black);
-    onChange(color);
+  }, [open, isPickerOpen]);
+
+  useLayoutEffect(() => {
+    if (!open || isPickerOpen) {
+      return;
+    }
+
+    const anchor = anchorEl.current;
+    const panel = panelRef.current;
+
+    if (!anchor || !panel) {
+      return;
+    }
+
+    const updatePosition = () => {
+      setPosition(getMenuPosition(anchor, panel, placement));
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [anchorEl, open, isPickerOpen, placement]);
+
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent) => {
+      const target = event.target as Node | null;
+      const panel = panelRef.current;
+      const anchor = anchorEl.current;
+
+      if (!target || !panel) {
+        return;
+      }
+
+      if (panel.contains(target)) {
+        return;
+      }
+
+      if (anchor?.contains(target)) {
+        return;
+      }
+
+      onClose();
+    },
+    [onClose, anchorEl],
+  );
+
+  const handleColorSelect = (nextColor: string) => {
+    if (!recentColors.current.includes(nextColor)) {
+      recentColors.current = [nextColor, ...recentColors.current].slice(0, 14);
+    }
+
+    setSelectedColor(nextColor || FALLBACK_COLOR);
+    onChange(nextColor);
     setPickerOpen(false);
   };
 
-  const handleClose = () => {
-    setPickerOpen(false);
-    onClose();
-  };
-
-  const renderColorSwatch = (presetColor: string) => {
+  const renderColorSwatch = (presetColor: string, row: number, col: number) => {
     const isSelected =
       selectedColor.toUpperCase() === presetColor.toUpperCase();
+
+    const swatchClassName = [
+      "ic-color-picker__swatch",
+      "ic-color-picker__swatch--selectable",
+      isWhiteColor(presetColor) ? "ic-color-picker__swatch--white" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     return (
-      <SelectableColorSwatch
+      <button
         key={presetColor}
-        $color={presetColor}
+        type="button"
+        className={swatchClassName}
+        style={{ backgroundColor: presetColor }}
         onClick={() => handleColorSelect(presetColor)}
+        aria-label={presetColor}
+        data-nav-row={row}
+        data-nav-col={col}
       >
-        {isSelected && <CheckIcon $color={presetColor} />}
-      </SelectableColorSwatch>
+        {isSelected ? (
+          <Check
+            className="ic-color-picker__check-icon"
+            style={{ color: getCheckColor(presetColor) }}
+          />
+        ) : null}
+      </button>
     );
   };
-
-  // Colors definitions
-  const mainColors = [
-    "#FFFFFF",
-    "#272525",
-    "#1B717E",
-    "#3BB68A",
-    "#8CB354",
-    "#F8CD3C",
-    "#F2994A",
-    "#EC5753",
-    "#523E93",
-    "#3358B7",
-  ];
-
-  const lightTones = [
-    theme.palette.grey[50],
-    theme.palette.grey[100],
-    theme.palette.grey[200],
-    theme.palette.grey[300],
-    theme.palette.grey[400],
-  ];
-
-  const darkTones = [
-    theme.palette.grey[500],
-    theme.palette.grey[600],
-    theme.palette.grey[700],
-    theme.palette.grey[800],
-    theme.palette.grey[900],
-  ];
-
-  const tealTones = ["#BBD4D8", "#82B1B8", "#498D98", "#1E5A63", "#224348"];
-  const greenTones = ["#C4E9DC", "#93D7BF", "#62C5A1", "#358A6C", "#2F5F4D"];
-  const limeTones = ["#DDE8CC", "#C0D5A1", "#A3C276", "#6E8846", "#4F5E38"];
-  const yellowTones = ["#FDF0C5", "#FBE394", "#F9D764", "#B99A36", "#7A682E"];
-  const orangeTones = ["#FBE0C9", "#F8C79B", "#F5AD6E", "#B5763F", "#785334"];
-  const redTones = ["#F9CDCB", "#F5A3A0", "#F07975", "#B14845", "#763937"];
-  const purpleTones = ["#CBC5DF", "#A095C4", "#7565A9", "#453672", "#382F51"];
-  const blueTones = ["#C2CDE9", "#8FA3D7", "#5D79C5", "#30498B", "#2C395F"];
-
-  const toneArrays = [
-    lightTones,
-    darkTones,
-    tealTones,
-    greenTones,
-    limeTones,
-    yellowTones,
-    orangeTones,
-    redTones,
-    purpleTones,
-    blueTones,
-  ];
 
   if (!open) {
     return null;
@@ -133,239 +221,125 @@ const ColorPicker = ({
         onAccept={handleColorSelect}
         onCancel={() => setPickerOpen(false)}
         anchorEl={anchorEl}
-        anchorOrigin={anchorOrigin}
-        transformOrigin={transformOrigin}
         open={true}
       />
     );
   }
 
-  return (
-    <StyledMenu
-      anchorEl={anchorEl.current}
-      open={true}
-      onClose={handleClose}
-      anchorOrigin={anchorOrigin}
-      transformOrigin={transformOrigin}
-    >
-      <MenuItemWrapper onClick={() => handleColorSelect(defaultColor)}>
-        <MenuItemSquare style={{ backgroundColor: defaultColor }} />
-        <MenuItemText>{title}</MenuItemText>
-      </MenuItemWrapper>
-      <HorizontalDivider />
-      <ColorsWrapper>
-        <ColorList>{mainColors.map(renderColorSwatch)}</ColorList>
-        <ColorGrid>
-          {toneArrays.map((tones) => (
-            <ColorGridCol key={tones.join("-")}>
-              {tones.map(renderColorSwatch)}
-            </ColorGridCol>
-          ))}
-        </ColorGrid>
-      </ColorsWrapper>
-      <HorizontalDivider />
-      <RecentLabel>{t("color_picker.recent")}</RecentLabel>
-      <RecentColorsList>
-        {recentColors.current.length > 0 ? (
-          recentColors.current.map((recentColor) => (
-            <ColorSwatch
-              key={recentColor}
-              $color={recentColor}
-              onClick={(): void => {
-                setSelectedColor(recentColor);
-                handleColorSelect(recentColor);
-              }}
-            />
-          ))
-        ) : (
-          <EmptyContainer />
-        )}
-        <StyledPlusButton
-          onClick={() => setPickerOpen(true)}
-          title={t("color_picker.add")}
+  return createPortal(
+    <div className="ic-menu-layer">
+      <div
+        className="ic-menu-backdrop"
+        onPointerDown={onClose}
+        aria-hidden="true"
+      />
+      <div
+        ref={panelRef}
+        className="ic-color-picker"
+        style={
+          {
+            top: `${position.top}px`,
+            left: `${position.left}px`,
+          } as CSSProperties
+        }
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("color_picker.add")}
+        onKeyDown={onKeyDown}
+        onPointerDown={onPointerDown}
+        onClick={(event) => {
+          // Otherwise the sheet would grab the keyboard focus
+          event.stopPropagation();
+        }}
+      >
+        <button
+          type="button"
+          className="ic-color-picker__menu-item"
+          onClick={() => handleColorSelect(defaultColor)}
+          data-nav-row={0}
+          data-nav-col={0}
         >
-          <Plus />
-        </StyledPlusButton>
-      </RecentColorsList>
-    </StyledMenu>
+          <span
+            className="ic-color-picker__menu-item-square"
+            style={{ backgroundColor: defaultColor }}
+            aria-hidden="true"
+          />
+          <span className="ic-color-picker__menu-item-text">{title}</span>
+        </button>
+
+        <div className="ic-color-picker__divider" />
+
+        <div className="ic-color-picker__colors-wrapper">
+          <div className="ic-color-picker__color-list">
+            {mainColors.map((presetColor, col) =>
+              renderColorSwatch(presetColor, 1, col),
+            )}
+          </div>
+
+          <div className="ic-color-picker__color-grid">
+            {toneArrays.map((tones, col) => (
+              <div
+                className="ic-color-picker__color-grid-col"
+                key={tones.join("-")}
+              >
+                {tones.map((presetColor, toneIndex) =>
+                  renderColorSwatch(presetColor, 2 + toneIndex, col),
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="ic-color-picker__divider" />
+
+        <div className="ic-color-picker__recent-label">
+          {t("color_picker.recent")}
+        </div>
+
+        <div className="ic-color-picker__recent-colors-list">
+          {recentColors.current.length > 0 ? (
+            recentColors.current.map((recentColor, col) => (
+              <button
+                key={recentColor}
+                type="button"
+                className={[
+                  "ic-color-picker__swatch",
+                  isWhiteColor(recentColor)
+                    ? "ic-color-picker__swatch--white"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                style={{ backgroundColor: recentColor }}
+                onClick={() => {
+                  setSelectedColor(recentColor);
+                  handleColorSelect(recentColor);
+                }}
+                aria-label={recentColor}
+                data-nav-row={7}
+                data-nav-col={col}
+              />
+            ))
+          ) : (
+            <div className="ic-color-picker__empty" />
+          )}
+
+          <button
+            type="button"
+            className="ic-color-picker__plus-button"
+            onClick={() => setPickerOpen(true)}
+            title={t("color_picker.add")}
+            aria-label={t("color_picker.add")}
+            data-nav-row={7}
+            data-nav-col={recentColors.current.length}
+          >
+            <Plus />
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 };
-
-const StyledMenu = styled(Menu)`
-  & .MuiPaper-root {
-    border-radius: 8px;
-    padding: 4px 0px;
-    margin-left: -4px;
-    max-width: 220px;
-  }
-  & .MuiList-root {
-    padding: 0;
-  }
-`;
-
-const MenuItemWrapper = styled(MenuItem)`
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  font-size: 12px;
-  gap: 8px;
-  width: calc(100% - 8px);
-  min-width: 172px;
-  margin: 0px 4px 4px 4px;
-  border-radius: 4px;
-  padding: 8px;
-  height: 32px;
-`;
-
-const MenuItemText = styled("div")`
-  color: ${theme.palette.text.primary};
-`;
-
-const MenuItemSquare = styled.div`
-  width: 16px;
-  height: 16px;
-  box-sizing: border-box;
-  margin-top: 0px;
-  border: 1px solid ${theme.palette.grey["300"]};
-  border-radius: 4px;
-`;
-
-const ColorsWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  margin: 4px;
-`;
-
-const ColorList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  flex-direction: row;
-  margin: 8px 8px 0px 8px;
-  justify-content: flex-start;
-  gap: 4px;
-`;
-
-const ColorGrid = styled.div`
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  margin: 8px;
-  gap: 4px;
-`;
-
-const ColorGridCol = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 4px;
-`;
-
-const ColorSwatch = styled.button<{ $color: string }>`
-  width: 16px;
-  height: 16px;
-  padding: 0px;
-  ${({ $color }): string => {
-    const upperColor = $color.toUpperCase();
-    if (upperColor === "#FFFFFF" || upperColor === "#FFF") {
-      return `border: 1px solid ${theme.palette.grey["300"]};`;
-    }
-    return "border: none;";
-  }}
-  background-color: ${({ $color }): string => {
-    return $color === "transparent" ? "none" : $color;
-  }};
-  box-sizing: border-box;
-  margin-top: 0px;
-  border-radius: 4px;
-  &:hover {
-    cursor: pointer;
-    outline: 1px solid ${theme.palette.grey["300"]};
-    outline-offset: 1px;
-  }
-`;
-
-const SelectableColorSwatch = styled(ColorSwatch)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-// This function checks if a color is light or dark.
-// This is needed to determine the text color for the check icon, as it's not visible on light colors.
-const isLightColor = (hex: string): boolean => {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-
-  // We use luminance weighting to determine if the color is light or dark
-  // (https://en.wikipedia.org/wiki/Relative_luminance). The threshold of 160 (out of max ~255)
-  // means: if the calculated luminance is above 160, the color is considered "light" and a black
-  // checkmark is used. Otherwise, a white checkmark ensures visibility on darker backgrounds.
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return luminance > 160;
-};
-
-const CheckIcon = styled(Check)<{ $color: string }>`
-  width: 10px;
-  height: 10px;
-  stroke-width: 3px;
-  color: ${({ $color }) =>
-    isLightColor($color)
-      ? theme.palette.common.black
-      : theme.palette.common.white};
-`;
-
-const HorizontalDivider = styled.div`
-  height: 0px;
-  width: 100%;
-  border-top: 1px solid ${theme.palette.grey["200"]};
-`;
-
-const RecentLabel = styled.div`
-  font-family: "Inter";
-  font-size: 12px;
-  font-family: Inter;
-  margin: 8px 12px 0px 12px;
-  color: ${theme.palette.text.secondary};
-`;
-
-const RecentColorsList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  flex-direction: row;
-  padding: 8px;
-  margin: 0px 4px;
-  justify-content: flex-start;
-  gap: 4px;
-`;
-
-const StyledPlusButton = styled("button")`
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  align-items: center;
-  border: none;
-  background: none;
-  font-size: 12px;
-  height: 16px;
-  width: 16px;
-  margin: 0;
-  padding: 0;
-  border-radius: 4px;
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-  &:hover {
-    cursor: pointer;
-    outline: 1px solid ${theme.palette.grey["300"]};
-    outline-offset: 1px;
-  }
-`;
-
-const EmptyContainer = styled.div`
-  display: none;
-`;
 
 export default ColorPicker;

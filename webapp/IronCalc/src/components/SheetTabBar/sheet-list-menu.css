@@ -1,0 +1,68 @@
+.ic-sheet-list-menu {
+  position: fixed;
+  z-index: 1300;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--palette-common-white);
+  box-shadow:
+    0px 5px 5px -3px rgb(0 0 0 / 20%),
+    0px 8px 10px 1px rgb(0 0 0 / 14%),
+    0px 3px 14px 2px rgb(0 0 0 / 12%);
+}
+
+.ic-sheet-list-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.ic-sheet-list-menu-item:hover {
+  background: var(--palette-grey-100);
+}
+
+.ic-sheet-list-menu-item:focus-visible {
+  outline: none;
+  background: var(--palette-grey-100);
+}
+
+.ic-sheet-list-menu-check,
+.ic-sheet-list-menu-check-placeholder {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.ic-sheet-list-menu-check {
+  color: var(--palette-common-black);
+}
+
+.ic-sheet-list-menu-color {
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.ic-sheet-list-menu-name {
+  font-size: 12px;
+  color: var(--palette-grey-900);
+  white-space: nowrap;
+}
+
+.ic-sheet-list-menu-name--selected {
+  font-weight: 700;
+}
+
+.ic-sheet-list-menu-name--hidden {
+  color: #888;
+}

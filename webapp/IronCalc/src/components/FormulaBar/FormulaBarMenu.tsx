@@ -1,13 +1,19 @@
 import type { Model } from "@ironcalc/wasm";
-import { Menu, MenuItem, styled } from "@mui/material";
 import { Tag } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
 import { parseRangeInSheet } from "../Editor/util";
+import "./formula-bar-menu.css";
 
 type FormulaBarMenuProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   onMenuOpenChange: (isOpen: boolean) => void;
   openDrawer: () => void;
   canEdit: boolean;
@@ -18,153 +24,143 @@ type FormulaBarMenuProps = {
 const FormulaBarMenu = (properties: FormulaBarMenuProps) => {
   const { t } = useTranslation();
   const [isMenuOpen, setMenuOpen] = useState(false);
-  const anchorElement = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
 
-  const handleMenuOpen = useCallback((): void => {
+  const definedNameList = properties.model.getDefinedNameList();
+
+  const openMenu = useCallback((): void => {
     setMenuOpen(true);
     properties.onMenuOpenChange(true);
   }, [properties.onMenuOpenChange]);
 
-  const handleMenuClose = useCallback((): void => {
+  const closeMenu = useCallback((): void => {
     setMenuOpen(false);
     properties.onMenuOpenChange(false);
+    triggerRef.current?.focus();
   }, [properties.onMenuOpenChange]);
 
-  const definedNameList = properties.model.getDefinedNameList();
+  const toggleMenu = useCallback((): void => {
+    if (isMenuOpen) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  }, [closeMenu, isMenuOpen, openMenu]);
+
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent): void {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        closeMenu();
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [closeMenu, isMenuOpen]);
 
   return (
-    <>
-      <ChildrenWrapper onClick={handleMenuOpen} ref={anchorElement}>
-        {properties.children}
-      </ChildrenWrapper>
-      <StyledMenu
-        open={isMenuOpen}
-        onClose={handleMenuClose}
-        anchorEl={anchorElement.current}
-        marginThreshold={0}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "left",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "left",
-        }}
+    <div className="ic-formula-bar-menu" ref={rootRef}>
+      {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
+      {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
+      <div
+        ref={triggerRef}
+        className="ic-formula-bar-menu-trigger"
+        onClick={toggleMenu}
       >
-        {definedNameList.length > 0 ? (
-          <>
-            {definedNameList.map((definedName) => {
-              return (
-                <MenuItemWrapper
-                  key={`${definedName.name}-${definedName.scope}`}
-                  disableRipple
-                  onClick={() => {
-                    // select the area corresponding to the defined name
-                    const formula = definedName.formula;
-                    const range = parseRangeInSheet(properties.model, formula);
-                    if (range) {
-                      const [
-                        sheetIndex,
-                        rowStart,
-                        columnStart,
-                        rowEnd,
-                        columnEnd,
-                      ] = range;
-                      properties.model.setSelectedSheet(sheetIndex);
-                      properties.model.setSelectedCell(rowStart, columnStart);
-                      properties.model.setSelectedRange(
-                        rowStart,
-                        columnStart,
-                        rowEnd,
-                        columnEnd,
+        {properties.children}
+      </div>
+
+      {isMenuOpen ? (
+        <div id={menuId} className="ic-formula-bar-menu-popover" role="menu">
+          {definedNameList.length > 0 ? (
+            <>
+              {definedNameList.map((definedName) => {
+                // FIXME: Implement the WAI-ARIA menu pattern
+                // (see Select.tsx).
+                return (
+                  <button
+                    key={`${definedName.name}-${definedName.scope}`}
+                    type="button"
+                    className="ic-formula-bar-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      const formula = definedName.formula;
+                      const range = parseRangeInSheet(
+                        properties.model,
+                        formula,
                       );
-                    }
-                    properties.onUpdate();
-                    handleMenuClose();
-                  }}
-                >
-                  <Tag />
-                  <MenuItemText>{definedName.name}</MenuItemText>
-                  <MenuItemExample>{definedName.formula}</MenuItemExample>
-                </MenuItemWrapper>
-              );
-            })}
-            <MenuDivider />
-          </>
-        ) : null}
-        <MenuItemWrapper
-          onClick={() => {
-            properties.openDrawer();
-            handleMenuClose();
-          }}
-          disabled={!properties.canEdit}
-          disableRipple
-        >
-          <MenuItemText>{t("formula_bar.manage_named_ranges")}</MenuItemText>
-        </MenuItemWrapper>
-      </StyledMenu>
-    </>
+
+                      if (range) {
+                        const [
+                          sheetIndex,
+                          rowStart,
+                          columnStart,
+                          rowEnd,
+                          columnEnd,
+                        ] = range;
+                        properties.model.setSelectedSheet(sheetIndex);
+                        properties.model.setSelectedCell(rowStart, columnStart);
+                        properties.model.setSelectedRange(
+                          rowStart,
+                          columnStart,
+                          rowEnd,
+                          columnEnd,
+                        );
+                      }
+
+                      properties.onUpdate();
+                      closeMenu();
+                    }}
+                  >
+                    <Tag className="ic-formula-bar-menu-item-icon" />
+                    <span className="ic-formula-bar-menu-item-text">
+                      {definedName.name}
+                    </span>
+                    <span className="ic-formula-bar-menu-item-example">
+                      {definedName.formula}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="ic-formula-bar-menu-divider" />
+            </>
+          ) : null}
+
+          <button
+            type="button"
+            className="ic-formula-bar-menu-item"
+            role="menuitem"
+            disabled={!properties.canEdit}
+            onClick={() => {
+              properties.openDrawer();
+              closeMenu();
+            }}
+          >
+            <span className="ic-formula-bar-menu-item-text">
+              {t("formula_bar.manage_named_ranges")}
+            </span>
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 };
-
-const StyledMenu = styled(Menu)`
-  top: 4px;
-  min-width: 260px;
-  max-width: 460px;
-  & .MuiPaper-root {
-    border-radius: 8px;
-    padding: 4px 0px;
-    margin-left: -4px;
-  }
-  & .MuiList-root {
-    padding: 0;
-  }
-`;
-
-const MenuItemWrapper = styled(MenuItem)`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  gap: 8px;
-  width: calc(100% - 8px);
-  min-width: 172px;
-  margin: 0px 4px;
-  border-radius: 4px;
-  padding: 8px;
-  height: 32px;
-  & svg {
-    width: 12px;
-    height: 12px;
-    flex-shrink: 0;
-    color: ${theme.palette.grey[600]};
-  }
-`;
-
-const ChildrenWrapper = styled("div")`
-  display: flex;
-`;
-
-const MenuDivider = styled("div")`
-  width: 100%;
-  margin: auto;
-  margin-top: 4px;
-  margin-bottom: 4px;
-  border-top: 1px solid ${theme.palette.grey[200]};
-`;
-
-const MenuItemText = styled("div")`
-  flex: 1;
-  min-width: 0;
-  color: ${theme.palette.common.black};
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const MenuItemExample = styled("div")`
-  color: ${theme.palette.grey[400]};
-  margin-left: 12px;
-`;
 
 export default FormulaBarMenu;

@@ -994,6 +994,7 @@ impl<'a> UserModel<'a> {
                         width: col.width,
                         custom_width: col.custom_width,
                         style: col.style,
+                        hidden: col.hidden,
                     });
                     break;
                 }
@@ -1026,28 +1027,116 @@ impl<'a> UserModel<'a> {
     }
 
     /// Moves a column horizontally and adjusts formulas
-    pub fn move_column_action(
+    pub fn move_columns_action(
         &mut self,
         sheet: u32,
         column: i32,
+        column_count: i32,
         delta: i32,
     ) -> Result<(), String> {
-        let diff_list = vec![Diff::MoveColumn {
-            sheet,
-            column,
-            delta,
-        }];
+        let mut diff_list = vec![];
+        if delta == 0 || column_count <= 0 {
+            return Ok(());
+        }
+        if delta > 0 {
+            let mut new_delta = delta;
+            let worksheet = self.model.workbook.worksheet(sheet)?;
+            // skip hidden columns
+            for col in column + column_count..=column + column_count + delta {
+                if worksheet.is_column_hidden(col)? {
+                    new_delta += 1;
+                }
+            }
+
+            // Moving to the right, we need to process columns from right to left
+            for col in (column..column + column_count).rev() {
+                let diff = Diff::MoveColumn {
+                    sheet,
+                    column: col,
+                    delta: new_delta,
+                };
+                diff_list.push(diff);
+                self.model.move_column_action(sheet, col, new_delta)?;
+            }
+        } else {
+            let mut new_delta = delta;
+            let worksheet = self.model.workbook.worksheet(sheet)?;
+            // skip hidden columns
+            for col in column - delta..column {
+                if worksheet.is_column_hidden(col)? {
+                    new_delta -= 1;
+                }
+            }
+            // Moving to the left, we need to process columns from left to right
+            for col in column..column + column_count {
+                let diff = Diff::MoveColumn {
+                    sheet,
+                    column: col,
+                    delta: new_delta,
+                };
+                diff_list.push(diff);
+                self.model.move_column_action(sheet, col, new_delta)?;
+            }
+        }
+
         self.push_diff_list(diff_list);
-        self.model.move_column_action(sheet, column, delta)?;
+
         self.evaluate_if_not_paused();
         Ok(())
     }
 
     /// Moves a row vertically and adjusts formulas
-    pub fn move_row_action(&mut self, sheet: u32, row: i32, delta: i32) -> Result<(), String> {
-        let diff_list = vec![Diff::MoveRow { sheet, row, delta }];
+    pub fn move_rows_action(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        row_count: i32,
+        delta: i32,
+    ) -> Result<(), String> {
+        let mut diff_list = vec![];
+        if delta == 0 || row_count <= 0 {
+            return Ok(());
+        }
+        if delta > 0 {
+            let mut new_delta = delta;
+            let worksheet = self.model.workbook.worksheet(sheet)?;
+            // skip hidden rows
+            for r in row + row_count..=row + row_count + delta {
+                if worksheet.is_row_hidden(r)? {
+                    new_delta += 1;
+                }
+            }
+            // Moving down, we need to process rows from bottom to top
+            for r in (row..row + row_count).rev() {
+                let diff = Diff::MoveRow {
+                    sheet,
+                    row: r,
+                    delta: new_delta,
+                };
+                diff_list.push(diff);
+                self.model.move_row_action(sheet, r, new_delta)?;
+            }
+        } else {
+            let mut new_delta = delta;
+            let worksheet = self.model.workbook.worksheet(sheet)?;
+            // skip hidden rows
+            for r in row - delta..row {
+                if worksheet.is_row_hidden(r)? {
+                    new_delta -= 1;
+                }
+            }
+            // Moving up, we need to process rows from top to bottom
+            for r in row..row + row_count {
+                let diff = Diff::MoveRow {
+                    sheet,
+                    row: r,
+                    delta: new_delta,
+                };
+                diff_list.push(diff);
+                self.model.move_row_action(sheet, r, new_delta)?;
+            }
+        }
         self.push_diff_list(diff_list);
-        self.model.move_row_action(sheet, row, delta)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
@@ -1073,6 +1162,129 @@ impl<'a> UserModel<'a> {
                 old_value,
             });
             self.model.set_column_width(sheet, column, width)?;
+        }
+        self.push_diff_list(diff_list);
+        Ok(())
+    }
+
+    /// Sets the hidden state of a range of columns in a single diff list
+    ////
+    /// See also:
+    /// * [Model::set_column_hidden]
+    pub fn set_columns_hidden(
+        &mut self,
+        sheet: u32,
+        column_start: i32,
+        column_end: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        for column in column_start..=column_end {
+            let old_value = self
+                .model
+                .workbook
+                .worksheet(sheet)?
+                .is_column_hidden(column)?;
+            diff_list.push(Diff::SetColumnHidden {
+                sheet,
+                column,
+                new_value: hidden,
+                old_value,
+            });
+            self.model.set_column_hidden(sheet, column, hidden)?;
+        }
+        // If we are hiding columns we might need to adjust the selected column
+        if hidden {
+            if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+                if view.sheet == sheet {
+                    // We select the next visible column
+                    let mut column = column_end + 1;
+                    while self
+                        .model
+                        .workbook
+                        .worksheet(sheet)?
+                        .is_column_hidden(column)?
+                    {
+                        column += 1;
+                        if column > LAST_COLUMN {
+                            break;
+                        }
+                    }
+                    if column > LAST_COLUMN {
+                        // We select the previous visible column
+                        column = column_start - 1;
+                        while self
+                            .model
+                            .workbook
+                            .worksheet(sheet)?
+                            .is_column_hidden(column)?
+                        {
+                            column -= 1;
+                            if column <= 0 {
+                                // We can't find a visible column
+                                column = 1;
+                                break;
+                            }
+                        }
+                    }
+                    self.set_selected_cell(1, column)?;
+                    self.set_selected_range(1, column, LAST_ROW, column)?;
+                }
+            };
+        }
+        self.push_diff_list(diff_list);
+        Ok(())
+    }
+
+    /// Sets the hidden state of a range of rows in a single diff list
+    ///// See also:
+    /// * [Model::set_row_hidden]
+    pub fn set_rows_hidden(
+        &mut self,
+        sheet: u32,
+        row_start: i32,
+        row_end: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        let mut diff_list = Vec::new();
+        for row in row_start..=row_end {
+            let old_value = self.model.workbook.worksheet(sheet)?.is_row_hidden(row)?;
+            diff_list.push(Diff::SetRowHidden {
+                sheet,
+                row,
+                new_value: hidden,
+                old_value,
+            });
+            self.model.set_row_hidden(sheet, row, hidden)?;
+        }
+        // Select the next visible row if needed
+        if hidden {
+            if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
+                if view.sheet == sheet {
+                    // We select the next visible row
+                    let mut row = row_end + 1;
+                    while self.model.workbook.worksheet(sheet)?.is_row_hidden(row)? {
+                        row += 1;
+                        if row > LAST_ROW {
+                            break;
+                        }
+                    }
+                    if row > LAST_ROW {
+                        // We select the previous visible row
+                        row = row_start - 1;
+                        while self.model.workbook.worksheet(sheet)?.is_row_hidden(row)? {
+                            row -= 1;
+                            if row <= 0 {
+                                // We can't find a visible row
+                                row = 1;
+                                break;
+                            }
+                        }
+                    }
+                    self.set_selected_cell(row, 1)?;
+                    self.set_selected_range(row, 1, row, LAST_COLUMN)?;
+                }
+            };
         }
         self.push_diff_list(diff_list);
         Ok(())
@@ -2148,6 +2360,22 @@ impl<'a> UserModel<'a> {
                     new_value: _,
                     old_value,
                 } => self.model.set_column_width(*sheet, *column, *old_value)?,
+                Diff::SetColumnHidden {
+                    sheet,
+                    column,
+                    new_value: _,
+                    old_value,
+                } => {
+                    self.model.set_column_hidden(*sheet, *column, *old_value)?;
+                }
+                Diff::SetRowHidden {
+                    sheet,
+                    row,
+                    new_value: _,
+                    old_value,
+                } => {
+                    self.model.set_row_hidden(*sheet, *row, *old_value)?;
+                }
                 Diff::SetRowHeight {
                     sheet,
                     row,
@@ -2248,7 +2476,8 @@ impl<'a> UserModel<'a> {
                         if let Some(col) = &col_data.column {
                             let width = col.width * constants::COLUMN_WIDTH_FACTOR;
                             let style = col.style;
-                            worksheet.set_column_width_and_style(c, width, style)?;
+                            let hidden = col.hidden;
+                            worksheet.set_column_width_and_style(c, width, hidden, style)?;
                         }
                     }
                 }
@@ -2412,13 +2641,11 @@ impl<'a> UserModel<'a> {
                     column,
                     delta,
                 } => {
-                    // For undo, we apply the opposite move
                     self.model
                         .move_column_action(*sheet, *column + *delta, -*delta)?;
                     needs_evaluation = true;
                 }
                 Diff::MoveRow { sheet, row, delta } => {
-                    // For undo, we apply the opposite move
                     self.model.move_row_action(*sheet, *row + *delta, -*delta)?;
                     needs_evaluation = true;
                 }
@@ -2465,6 +2692,22 @@ impl<'a> UserModel<'a> {
                     old_value: _,
                 } => {
                     self.model.set_column_width(*sheet, *column, *new_value)?;
+                }
+                Diff::SetColumnHidden {
+                    sheet,
+                    column,
+                    new_value,
+                    old_value: _,
+                } => {
+                    self.model.set_column_hidden(*sheet, *column, *new_value)?;
+                }
+                Diff::SetRowHidden {
+                    sheet,
+                    row,
+                    new_value,
+                    old_value: _,
+                } => {
+                    self.model.set_row_hidden(*sheet, *row, *new_value)?;
                 }
                 Diff::SetRowHeight {
                     sheet,

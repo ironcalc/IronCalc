@@ -1,0 +1,67 @@
+.ic-drawer-container {
+  position: absolute;
+  overflow: hidden;
+  background-color: var(--palette-common-white);
+  right: 0;
+  top: var(--toolbar-height);
+  bottom: 0;
+  border-left: 1px solid var(--palette-grey-300);
+  display: flex;
+  flex-direction: column;
+  /* width can be overridden by setting the --ic-runtime-drawer-width CSS variable */
+  /* default width is 360px and must be kept in sync with DEFAULT_DRAWER_WIDTH in RightDrawer.tsx */
+  width: var(--ic-runtime-drawer-width, 360px);
+}
+
+@media (max-width: 600px) {
+  .ic-drawer-container {
+    width: 100%;
+    border-left: none;
+    top: 0;
+    z-index: 1000;
+  }
+}
+
+.ic-drawer-divider {
+  height: 1px;
+  width: 100%;
+  background-color: var(--palette-grey-300);
+  margin: 0;
+}
+
+.ic-drawer-content {
+  flex: 1;
+  height: 100%;
+}
+
+.ic-drawer-resize-handle {
+  /* all: unset is used to reset the default styles of the hr element */
+  /* We probably should do this for all elements */
+  all: unset;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background-color: transparent;
+  z-index: 10;
+  transition: background-color 0.2s ease;
+}
+
+.ic-drawer-resize-handle:is(:hover, :focus-visible) {
+  background-color: var(--palette-primary-main);
+  opacity: 0.5;
+}
+
+.ic-drawer-resize-handle--resizing {
+  background-color: var(--palette-primary-main);
+  transition: none;
+}
+
+/* On mobile we hide the resize handle */
+@media (max-width: 600px) {
+  .ic-drawer-resize-handle {
+    display: none;
+  }
+}

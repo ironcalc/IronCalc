@@ -95,3 +95,22 @@ export function getFullRangeToString(
     columnStart,
   )}$${rowStart}:$${columnNameFromNumber(columnEnd)}$${rowEnd}`;
 }
+
+/**
+ * Returns all focusable elements inside a container in DOM order.
+ * Used for keyboard navigation (Tab/arrow keys) and focus management.
+ */
+export function getFocusableElements(root: HTMLElement | null): HTMLElement[] {
+  if (!root) return [];
+
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'button, input, [href], [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter(
+    (el) =>
+      !el.hasAttribute("disabled") &&
+      el.getAttribute("aria-hidden") !== "true" &&
+      el.tabIndex !== -1,
+  );
+}

@@ -21,12 +21,16 @@ test-js:
 	cd bindings/wasm/ && wasm-pack build --target nodejs && node tests/test.mjs && make
 	cd webapp/IronCalc/ && npm install && npm run test
 
+.PHONY: test-nodejs
+test-nodejs:
+	cd bindings/nodejs/ && pnpm install && pnpm run build && pnpm run test
+
 .PHONY: test-python
 test-python:
 	cd bindings/python && ./run_tests.sh && ./run_examples.sh
 
 .PHONY: tests
-tests: lint test-rust test-js test-python
+tests: lint test-rust test-js test-python test-nodejs
 
 .PHONY: remove-artifacts
 remove-artifacts:

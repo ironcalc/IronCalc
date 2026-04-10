@@ -52,9 +52,11 @@ export const useKeyDown = (
             cell.column,
             cell.text + (cell.referencedRange?.str || ""),
           );
-          const sign = shiftKey ? -1 : 1;
-          model.setSelectedSheet(cell.sheet);
-          model.setSelectedCell(cell.row + sign, cell.column);
+          if (shiftKey) {
+            model.onArrowUp();
+          } else {
+            model.onArrowDown();
+          }
           workbookState.clearEditingCell();
           onEditEnd();
           return;
@@ -68,9 +70,11 @@ export const useKeyDown = (
             cell.column,
             cell.text + (cell.referencedRange?.str || ""),
           );
-          const sign = shiftKey ? -1 : 1;
-          model.setSelectedSheet(cell.sheet);
-          model.setSelectedCell(cell.row, cell.column + sign);
+          if (shiftKey) {
+            model.onArrowLeft();
+          } else {
+            model.onArrowRight();
+          }
           if (textareaRef.current) {
             textareaRef.current.value = "";
           }
@@ -152,7 +156,7 @@ export const useKeyDown = (
           if (shiftKey) {
             // TODO: ShiftKey
           } else {
-            model.setSelectedCell(cell.row, cell.column + 1);
+            model.onArrowRight();
           }
           if (textareaRef.current) {
             textareaRef.current.value = "";
@@ -220,7 +224,7 @@ export const useKeyDown = (
           if (shiftKey) {
             // TODO: ShiftKey
           } else {
-            model.setSelectedCell(cell.row, cell.column - 1);
+            model.onArrowLeft();
           }
           if (textareaRef.current) {
             textareaRef.current.value = "";
@@ -293,7 +297,7 @@ export const useKeyDown = (
           if (shiftKey) {
             // TODO: ShiftKey
           } else {
-            model.setSelectedCell(cell.row - 1, cell.column);
+            model.onArrowUp();
           }
           if (textareaRef.current) {
             textareaRef.current.value = "";
@@ -362,7 +366,7 @@ export const useKeyDown = (
           if (shiftKey) {
             // TODO: ShiftKey
           } else {
-            model.setSelectedCell(cell.row + 1, cell.column);
+            model.onArrowDown();
           }
           if (textareaRef.current) {
             textareaRef.current.value = "";

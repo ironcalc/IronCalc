@@ -112,6 +112,6 @@ export declare class UserModel {
   newDefinedName(name: string, scope: number | undefined | null, formula: string): void
   updateDefinedName(name: string, scope: number | undefined | null, newName: string, newScope: number | undefined | null, newFormula: string): void
   deleteDefinedName(name: string, scope?: number | undefined | null): void
-  moveColumn(sheet: number, column: number, delta: number): void
-  moveRow(sheet: number, row: number, delta: number): void
+  moveColumns(sheet: number, column: number, columnCount: number, delta: number): void
+  moveRows(sheet: number, row: number, rowCount: number, delta: number): void
 }

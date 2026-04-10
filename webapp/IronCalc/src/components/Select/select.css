@@ -1,0 +1,136 @@
+.ic-select {
+  position: relative;
+  width: 100%;
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+}
+
+.ic-select-trigger {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--palette-grey-300);
+  border-radius: 4px;
+  background: var(--palette-common-white);
+  color: var(--palette-common-black);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  outline: none;
+  position: relative;
+}
+
+.ic-select-trigger:hover {
+  border-color: var(--palette-grey-400);
+}
+
+.ic-select-trigger:focus-visible,
+.ic-select.is-open .ic-select-trigger {
+  border-color: var(--palette-primary-main);
+  box-shadow: 0 0 0 1px var(--palette-primary-main);
+}
+
+.ic-select.is-disabled .ic-select-trigger,
+.ic-select-trigger:disabled {
+  background: var(--palette-grey-50);
+  color: var(--palette-grey-500);
+  cursor: not-allowed;
+}
+
+.ic-select-trigger-value {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.ic-select-trigger-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  color: var(--palette-grey-600);
+  pointer-events: none;
+}
+
+.ic-select-menu-wrapper {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.ic-select-menu {
+  padding: 4px;
+  background: var(--palette-common-white);
+  max-height: 240px;
+  overflow-y: auto;
+  border-radius: 8px;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.ic-select-option {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--palette-common-black);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  outline: none;
+}
+
+.ic-select-option:hover,
+.ic-select-option:focus-visible,
+.ic-select-option.is-active {
+  background: var(--palette-grey-50);
+}
+
+.ic-select-option-check {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--palette-common-black);
+}
+
+.ic-select-option-content {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.ic-select-option.is-selected .ic-select-option-content {
+  font-weight: 600;
+}
+
+/* Only used for very long lists like the timezones */
+.compact {
+  .ic-select-trigger {
+    min-height: 24px;
+    padding: 8px 24px 8px 8px;
+  }
+
+  .ic-select-option {
+    min-height: 24px;
+    padding: 4px;
+  }
+
+  .ic-select-trigger-icon {
+    right: 4px;
+  }
+}

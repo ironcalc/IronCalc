@@ -197,6 +197,9 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         // we are extending values
         return;
       }
+      if (event.button === 2) {
+        return;
+      }
       let x = event.clientX;
       let y = event.clientY;
       const {

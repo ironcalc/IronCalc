@@ -1,9 +1,14 @@
-import styled from "@emotion/styled";
-import { Dialog, TextField } from "@mui/material";
 import { Check, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { Button } from "../Button/Button";
+import { IconButton } from "../Button/IconButton";
+import { Input } from "../Input/Input";
+import "./format-picker.css";
+
+// FIXME: This control should be a modal prompt
+// FIXME: the stopPropagation everywhere is because of my bad implementation
+// of keyboard handling in the spreadsheet
 
 type FormatPickerProps = {
   className?: string;
@@ -14,161 +19,153 @@ type FormatPickerProps = {
   onChange: (numberFmt: string) => void;
 };
 
+// Returns a list of focusable elements inside the dialog.
+function getDialogElements(dialog: HTMLDivElement | null): HTMLElement[] {
+  if (!dialog) {
+    return [];
+  }
+
+  return Array.from(dialog.querySelectorAll<HTMLElement>("button, input"));
+}
+
 const FormatPicker = (properties: FormatPickerProps) => {
   const { t } = useTranslation();
   const [formatCode, setFormatCode] = useState(properties.numFmt);
+  const dialogElement = useRef<HTMLDivElement>(null);
+  const previousFocusedElement = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (properties.open) {
+      setFormatCode(properties.numFmt);
+    }
+  }, [properties.numFmt, properties.open]);
+
+  const closeDialog = (): void => {
+    properties.onClose();
+    previousFocusedElement.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!properties.open) {
+      return;
+    }
+
+    previousFocusedElement.current =
+      document.activeElement as HTMLElement | null;
+
+    requestAnimationFrame(() => {
+      const focusable = getDialogElements(dialogElement.current);
+      focusable[0]?.focus();
+    });
+  }, [properties.open]);
 
   const handleClose = () => {
-    properties.onClose();
+    closeDialog();
   };
 
   const onSubmit = (format_code: string): void => {
     properties.onChange(format_code);
-    properties.onClose();
+    closeDialog();
   };
-  return (
-    <Dialog
-      open={properties.open}
-      onClose={properties.onClose}
-      PaperProps={{
-        style: { minWidth: "280px" },
-      }}
-    >
-      <StyledDialogTitle>
-        {t("num_fmt.title")}
-        <Cross
-          onClick={handleClose}
-          title={t("num_fmt.close")}
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              properties.onClose();
-            }
-          }}
-        >
-          <X />
-        </Cross>
-      </StyledDialogTitle>
 
-      <StyledDialogContent>
-        <StyledTextField
-          autoFocus
-          defaultValue={properties.numFmt}
-          name="format_code"
-          onChange={(event) => setFormatCode(event.target.value)}
-          onKeyDown={(event) => {
+  if (!properties.open) {
+    return null;
+  }
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
+    <div
+      className="ic-format-picker-backdrop"
+      onClick={closeDialog}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          closeDialog();
+        }
+      }}
+      role="presentation"
+    >
+      <div
+        className={`ic-format-picker-dialog${properties.className ? ` ${properties.className}` : ""}`}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Tab") {
+            const focusable = getDialogElements(dialogElement.current);
+
+            if (focusable.length === 0) {
+              event.preventDefault();
+              return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            const activeElement = document.activeElement;
+
+            if (event.shiftKey) {
+              if (activeElement === first) {
+                event.preventDefault();
+                last?.focus();
+              }
+            } else if (activeElement === last) {
+              event.preventDefault();
+              first?.focus();
+            }
+          } else if (event.key === "Escape") {
             event.stopPropagation();
-            if (event.key === "Enter") {
-              onSubmit(formatCode);
-              properties.onClose();
-            }
-          }}
-          spellCheck="false"
-          onClick={(event) => event.stopPropagation()}
-          onFocus={(event) => event.target.select()}
-          onPaste={(event) => event.stopPropagation()}
-          onCopy={(event) => event.stopPropagation()}
-          onCut={(event) => event.stopPropagation()}
-        />
-      </StyledDialogContent>
-      <DialogFooter>
-        <StyledButton
-          onClick={() => onSubmit(formatCode)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              onSubmit(formatCode);
-              properties.onClose();
-            }
-          }}
-          tabIndex={0}
-        >
-          <Check
-            style={{ width: "16px", height: "16px", marginRight: "8px" }}
+            closeDialog();
+          }
+        }}
+        ref={dialogElement}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("num_fmt.title")}
+      >
+        <div className="ic-format-picker-title">
+          {t("num_fmt.title")}
+          <IconButton
+            icon={<X />}
+            onClick={handleClose}
+            title={t("num_fmt.close")}
+            aria-label={t("num_fmt.close")}
           />
-          {t("num_fmt.save")}
-        </StyledButton>
-      </DialogFooter>
-    </Dialog>
+        </div>
+
+        <div className="ic-format-picker-content">
+          <Input
+            autoFocus
+            value={formatCode}
+            name="format_code"
+            onChange={(event) => setFormatCode(event.target.value)}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === "Enter") {
+                onSubmit(formatCode);
+              } else if (event.key === "Escape") {
+                event.stopPropagation();
+                closeDialog();
+              }
+            }}
+            spellCheck={false}
+            onClick={(event) => event.stopPropagation()}
+            onFocus={(event) => event.target.select()}
+            onPaste={(event) => event.stopPropagation()}
+            onCopy={(event) => event.stopPropagation()}
+            onCut={(event) => event.stopPropagation()}
+          />
+        </div>
+
+        <div className="ic-format-picker-footer">
+          <Button
+            size="md"
+            startIcon={<Check />}
+            onClick={() => onSubmit(formatCode)}
+          >
+            {t("num_fmt.save")}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 };
-
-const StyledDialogTitle = styled("div")`
-  display: flex;
-  align-items: center;
-  height: 44px;
-  font-size: 14px;
-  font-weight: 500;
-  font-family: Inter;
-  padding: 0px 12px;
-  justify-content: space-between;
-  border-bottom: 1px solid ${theme.palette.grey["300"]};
-`;
-
-const Cross = styled("div")`
-  &:hover {
-    background-color: ${theme.palette.grey["50"]};
-  }
-  display: flex;
-  border-radius: 4px;
-  height: 24px;
-  width: 24px;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  svg {
-    width: 16px;
-    height: 16px;
-    stroke-width: 1.5;
-  }
-`;
-
-const StyledDialogContent = styled("div")`
-  font-size: 12px;
-  margin: 12px;
-`;
-
-const StyledTextField = styled(TextField)`
-  width: 100%;
-  border-radius: 4px;
-  overflow: hidden;
-  & .MuiInputBase-input {
-    font-size: 14px;
-    padding: 10px;
-    border: 1px solid ${theme.palette.grey["300"]};
-    border-radius: 4px;
-    color: ${theme.palette.common.black};
-    background-color: ${theme.palette.common.white};
-  }
-  &:hover .MuiInputBase-input {
-    border: 1px solid ${theme.palette.grey["500"]};
-  }
-`;
-
-const DialogFooter = styled("div")`
-  color: #757575;
-  display: flex;
-  align-items: center;
-  border-top: 1px solid ${theme.palette.grey["300"]};
-  font-family: Inter;
-  justify-content: flex-end;
-  padding: 12px;
-`;
-
-const StyledButton = styled("div")`
-  cursor: pointer;
-  color: #ffffff;
-  background: #f2994a;
-  padding: 0px 10px;
-  height: 36px;
-  line-height: 36px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  font-family: "Inter";
-  font-size: 14px;
-  &:hover {
-    background: #d68742;
-  }
-`;
 
 export default FormatPicker;

@@ -59,11 +59,23 @@ pub(crate) enum Diff {
         new_value: f64,
         old_value: f64,
     },
+    SetColumnHidden {
+        sheet: u32,
+        column: i32,
+        new_value: bool,
+        old_value: bool,
+    },
     SetRowHeight {
         sheet: u32,
         row: i32,
         new_value: f64,
         old_value: f64,
+    },
+    SetRowHidden {
+        sheet: u32,
+        row: i32,
+        new_value: bool,
+        old_value: bool,
     },
     SetColumnStyle {
         sheet: u32,

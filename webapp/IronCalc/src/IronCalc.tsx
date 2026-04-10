@@ -1,14 +1,16 @@
 import type { Model } from "@ironcalc/wasm";
-import { ThemeProvider } from "@mui/material";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { I18nextProvider } from "react-i18next";
 import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
 import i18n from "./i18n";
-import { theme } from "./theme.ts";
+import "./theme/theme.css";
+import "./index.css";
+import { type PartialIronCalcThemeVariables, setThemeVariables } from "./theme";
 
 interface IronCalcProperties {
   model: Model;
+  themeVariables?: PartialIronCalcThemeVariables;
 }
 
 export interface IronCalcHandle {
@@ -16,25 +18,31 @@ export interface IronCalcHandle {
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
-  (properties, ref) => {
+  ({ themeVariables, model }, ref) => {
+    const rootRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (rootRef.current && themeVariables) {
+        setThemeVariables(themeVariables, rootRef.current);
+      }
+    }, [themeVariables]);
+
     useImperativeHandle(ref, () => ({
       setLanguage(language: string) {
         if (i18n.language !== language) {
           i18n.changeLanguage(language);
           const lang = language.split("-")[0];
-          properties.model.setLanguage(lang);
+          model.setLanguage(lang);
         }
       },
     }));
+
     return (
-      <ThemeProvider theme={theme}>
+      <div ref={rootRef} className="ic-root">
         <I18nextProvider i18n={i18n}>
-          <Workbook
-            model={properties.model}
-            workbookState={new WorkbookState()}
-          />
+          <Workbook model={model} workbookState={new WorkbookState()} />
         </I18nextProvider>
-      </ThemeProvider>
+      </div>
     );
   },
 );

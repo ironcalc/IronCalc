@@ -280,6 +280,24 @@ impl<'a> Model<'a> {
         }
     }
 
+    fn formula_without_prefix<'b>(&self, value: &'b str) -> Option<&'b str> {
+        if let Some(stripped) = value.strip_prefix('=') {
+            if stripped.is_empty() {
+                None
+            } else {
+                Some(stripped)
+            }
+        } else if let Some(stripped) = value.strip_prefix(['+', '-']) {
+            if stripped.is_empty() || self.cast_number(stripped).is_some() {
+                None
+            } else {
+                Some(value)
+            }
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn evaluate_node_in_context(
         &mut self,
         node: &Node,
@@ -1076,7 +1094,7 @@ impl<'a> Model<'a> {
             .worksheet(target.sheet)
             .map_err(|e| format!("Could not find target worksheet: {e}"))?
             .get_name();
-        if let Some(formula) = value.strip_prefix('=') {
+        if let Some(formula) = self.formula_without_prefix(value) {
             let cell_reference = CellReferenceRC {
                 sheet: source_sheet_name.to_owned(),
                 row: source.row,
@@ -1194,7 +1212,8 @@ impl<'a> Model<'a> {
                 return Err("Invalid worksheet index".to_owned());
             }
         };
-        if let Some(formula_str) = value.strip_prefix('=') {
+
+        if let Some(formula_str) = self.formula_without_prefix(value) {
             let cell_reference = CellReferenceRC {
                 sheet: source_sheet_name.to_string(),
                 row: source.row,
@@ -1210,7 +1229,7 @@ impl<'a> Model<'a> {
                 "={}",
                 to_localized_string(formula, &cell_reference, self.locale, self.language)
             ));
-        };
+        }
         Ok(value.to_string())
     }
 
@@ -1477,11 +1496,13 @@ impl<'a> Model<'a> {
                 .styles
                 .get_style_without_quote_prefix(style_index)?;
         }
-        let formula = formula
-            .strip_prefix('=')
-            .ok_or_else(|| format!("\"{formula}\" is not a valid formula"))?;
-        self.set_cell_with_formula(sheet, row, column, formula, style_index)?;
-        Ok(())
+
+        if let Some(new_formula) = self.formula_without_prefix(&formula) {
+            self.set_cell_with_formula(sheet, row, column, new_formula, style_index)?;
+            Ok(())
+        } else {
+            Err(format!("\"{formula}\" is not a valid formula"))
+        }
     }
 
     /// Sets a cell parametrized by (`sheet`, `row`, `column`) with `value`.
@@ -1525,14 +1546,10 @@ impl<'a> Model<'a> {
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         if let Some(new_value) = value.strip_prefix('\'') {
-            // First check if it needs quoting
-            let new_style = if common::value_needs_quoting(new_value, self.language) {
-                self.workbook
-                    .styles
-                    .get_style_with_quote_prefix(style_index)?
-            } else {
-                style_index
-            };
+            let new_style = self
+                .workbook
+                .styles
+                .get_style_with_quote_prefix(style_index)?;
             self.set_cell_with_string(sheet, row, column, new_value, new_style)?;
         } else {
             let mut new_style_index = style_index;
@@ -1542,7 +1559,7 @@ impl<'a> Model<'a> {
                     .styles
                     .get_style_without_quote_prefix(style_index)?;
             }
-            if let Some(formula) = value.strip_prefix('=') {
+            if let Some(formula) = self.formula_without_prefix(&value) {
                 let formula_index =
                     self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
                 // Update the style if needed
@@ -1828,6 +1845,8 @@ impl<'a> Model<'a> {
     /// If there is a formula returns the formula
     /// If the cell is empty returns the empty string
     /// Returns an error if there is no worksheet
+    /// If the cell has quote prefix style it adds a ' at the beginning of the value
+    /// If the cell is date formatted it tries to format it as date
     pub fn get_localized_cell_content(
         &self,
         sheet: u32,
@@ -1852,11 +1871,36 @@ impl<'a> Model<'a> {
                     to_localized_string(formula, &cell_ref, self.locale, self.language)
                 ))
             }
-            None => Ok(cell.get_localized_text(
-                &self.workbook.shared_strings,
-                self.locale,
-                self.language,
-            )),
+            None => {
+                let style_index = cell.get_style();
+                let style = self.workbook.styles.get_style(style_index)?;
+                if style.quote_prefix {
+                    Ok(format!(
+                        "'{}",
+                        cell.get_localized_text(
+                            &self.workbook.shared_strings,
+                            self.locale,
+                            self.language,
+                        )
+                    ))
+                } else {
+                    // If it is a date formatted cell we try to format it as date, if it fails we return the raw value
+                    if is_likely_date_number_format(&style.num_fmt) {
+                        let value = cell.value(&self.workbook.shared_strings, self.language);
+                        if let CellValue::Number(n) = value {
+                            let formatted = format_number(n, &style.num_fmt, self.locale);
+                            if formatted.error.is_none() {
+                                return Ok(formatted.text);
+                            }
+                        }
+                    }
+                    Ok(cell.get_localized_text(
+                        &self.workbook.shared_strings,
+                        self.locale,
+                        self.language,
+                    ))
+                }
+            }
         }
     }
 
@@ -2123,6 +2167,39 @@ impl<'a> Model<'a> {
         self.workbook
             .worksheet_mut(sheet)?
             .set_column_width(column, width)
+    }
+
+    /// Sets whether a column is hidden
+    #[inline]
+    pub fn set_column_hidden(
+        &mut self,
+        sheet: u32,
+        column: i32,
+        hidden: bool,
+    ) -> Result<(), String> {
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_column_hidden(column, hidden)
+    }
+
+    /// Sets whether a row is hidden
+    #[inline]
+    pub fn set_row_hidden(&mut self, sheet: u32, row: i32, hidden: bool) -> Result<(), String> {
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_row_hidden(row, hidden)
+    }
+
+    /// Returns whether a column is hidden
+    #[inline]
+    pub fn is_column_hidden(&self, sheet: u32, column: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_column_hidden(column)
+    }
+
+    /// Returns whether a row is hidden
+    #[inline]
+    pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
+        self.workbook.worksheet(sheet)?.is_row_hidden(row)
     }
 
     /// Returns the height of a row
@@ -2546,5 +2623,15 @@ mod tests {
             model.workbook.worksheet(5),
             Err("Invalid sheet index".to_string()),
         )
+    }
+
+    #[test]
+    fn test_update_cell_with_sign_prefixed_formulas() {
+        let mut model = new_empty_model();
+
+        let update_result = model.update_cell_with_formula(0, 1, 1, "-A2*2".to_string());
+        model.evaluate();
+        assert_eq!(update_result, Ok(()));
+        assert_eq!(model._get_formula("A1"), *"=-A2*2");
     }
 }

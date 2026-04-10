@@ -61,3 +61,56 @@ export function computeWrappedLines(
   }
   return wrappedLines;
 }
+
+function readCSSVar(name: string, style: CSSStyleDeclaration): string {
+  return style.getPropertyValue(name).trim();
+}
+
+export function readThemeFromCSS(root: Element): Theme {
+  const style = getComputedStyle(root);
+  return {
+    backgroundColor: readCSSVar("--palette-common-white", style),
+    commonWhite: readCSSVar("--palette-common-white", style),
+    gridColor: readCSSVar("--palette-sheet-grid-color", style),
+    cellFontFamily: readCSSVar(
+      "--palette-sheet-default-cell-font-family",
+      style,
+    ),
+    primaryMain: readCSSVar("--palette-primary-main", style),
+    headerTextColor: readCSSVar("--palette-sheet-header-text-color", style),
+    headerBackground: readCSSVar("--palette-sheet-header-background", style),
+    headerSelectedBackground: readCSSVar(
+      "--palette-sheet-header-selected-background",
+      style,
+    ),
+    headerBorderColor: readCSSVar("--palette-sheet-header-border-color", style),
+    outlineColor: readCSSVar("--palette-sheet-outline-color", style),
+    headerFont: readCSSVar("--palette-sheet-header-font", style),
+    gridSeparatorColor: readCSSVar(
+      "--palette-sheet-grid-separator-color",
+      style,
+    ),
+    defaultTextColor: readCSSVar("--palette-sheet-default-text-color", style),
+    headerSelectedColor: readCSSVar(
+      "--palette-sheet-header-selected-color",
+      style,
+    ),
+  };
+}
+
+export interface Theme {
+  backgroundColor: string;
+  gridColor: string;
+  cellFontFamily: string;
+  primaryMain: string;
+  headerTextColor: string;
+  headerBackground: string;
+  headerSelectedBackground: string;
+  headerBorderColor: string;
+  outlineColor: string;
+  headerFont: string;
+  gridSeparatorColor: string;
+  defaultTextColor: string;
+  commonWhite: string;
+  headerSelectedColor: string;
+}

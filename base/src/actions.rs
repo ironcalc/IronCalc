@@ -511,8 +511,12 @@ impl<'a> Model<'a> {
             self.cell_clear_all(sheet, r.row, column)?;
         }
 
-        let width = self.workbook.worksheet(sheet)?.get_column_width(column)?;
+        let width = self
+            .workbook
+            .worksheet(sheet)?
+            .get_actual_column_width(column)?;
         let style = self.workbook.worksheet(sheet)?.get_column_style(column)?;
+        let hidden = self.workbook.worksheet(sheet)?.is_column_hidden(column)?;
 
         if delta > 0 {
             for c in column + 1..=target_column {
@@ -521,11 +525,12 @@ impl<'a> Model<'a> {
                     self.move_cell(sheet, r.row, c, r.row, c - 1)?;
                 }
 
-                let w = self.workbook.worksheet(sheet)?.get_column_width(c)?;
+                let w = self.workbook.worksheet(sheet)?.get_actual_column_width(c)?;
                 let s = self.workbook.worksheet(sheet)?.get_column_style(c)?;
+                let h = self.workbook.worksheet(sheet)?.is_column_hidden(c)?;
                 self.workbook
                     .worksheet_mut(sheet)?
-                    .set_column_width_and_style(c - 1, w, s)?;
+                    .set_column_width_and_style(c - 1, w, h, s)?;
             }
         } else {
             for c in (target_column..=column - 1).rev() {
@@ -534,11 +539,12 @@ impl<'a> Model<'a> {
                     self.move_cell(sheet, r.row, c, r.row, c + 1)?;
                 }
 
-                let w = self.workbook.worksheet(sheet)?.get_column_width(c)?;
+                let w = self.workbook.worksheet(sheet)?.get_actual_column_width(c)?;
                 let s = self.workbook.worksheet(sheet)?.get_column_style(c)?;
+                let h = self.workbook.worksheet(sheet)?.is_column_hidden(c)?;
                 self.workbook
                     .worksheet_mut(sheet)?
-                    .set_column_width_and_style(c + 1, w, s)?;
+                    .set_column_width_and_style(c + 1, w, h, s)?;
             }
         }
 
@@ -550,7 +556,7 @@ impl<'a> Model<'a> {
         }
         self.workbook
             .worksheet_mut(sheet)?
-            .set_column_width_and_style(target_column, width, style)?;
+            .set_column_width_and_style(target_column, width, hidden, style)?;
 
         // Update all formulas in the workbook
         self.displace_cells(

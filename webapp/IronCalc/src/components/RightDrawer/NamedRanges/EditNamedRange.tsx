@@ -1,20 +1,12 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
-import {
-  Box,
-  FormControl,
-  FormHelperText,
-  MenuItem,
-  Paper,
-  Select,
-  styled,
-  TextField,
-} from "@mui/material";
 import { Check, MousePointerClick, Tag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../../theme";
+import { Button } from "../../Button/Button";
+import { Input } from "../../Input/Input";
+import { Select } from "../../Select/Select";
 import { getFullRangeToString } from "../../util";
-import { Footer, NewButton } from "./NamedRanges";
+import "./edit-name-range.css";
 
 export interface SaveError {
   nameError: string;
@@ -86,6 +78,10 @@ const EditNamedRange = ({
 
   const isSelected = (value: string) => scope === value;
 
+  const nameId = useId();
+  const scopeId = useId();
+  const formulaId = useId();
+
   // Validate name (format and duplicates)
   useEffect(() => {
     const worksheets = model.getWorksheetsProperties();
@@ -113,110 +109,100 @@ const EditNamedRange = ({
   const hasAnyError = nameError !== "" || formulaError !== "";
 
   return (
-    <Container>
-      <ContentArea>
-        <HeaderBox>
-          <HeaderIcon>
+    <div className="ic-edit-range-container">
+      <div className="ic-edit-range-content-area">
+        <div className="ic-edit-range-header-box">
+          <div className="ic-edit-range-header-icon">
             <Tag />
-          </HeaderIcon>
-          <HeaderBoxText>
+          </div>
+          <span className="ic-edit-range-header-box-text">
             {name || t("name_manager_dialog.new_named_range")}
-          </HeaderBoxText>
-        </HeaderBox>
-        <StyledBox>
-          <FieldWrapper>
-            <StyledLabel htmlFor="name">
-              {t("name_manager_dialog.range_name")}
-            </StyledLabel>
-            <FormControl fullWidth size="small" error={!!nameError}>
-              <StyledTextField
-                autoFocus={true}
-                id="name"
-                variant="outlined"
-                size="small"
-                margin="none"
-                placeholder={t("name_manager_dialog.enter_range_name")}
-                fullWidth
-                error={!!nameError}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              />
-              {nameError && <StyledErrorText>{nameError}</StyledErrorText>}
-            </FormControl>
-          </FieldWrapper>
-          <FieldWrapper>
-            <StyledLabel htmlFor="scope">
+          </span>
+        </div>
+        <div className="ic-edit-range-styled-box">
+          <Input
+            id={nameId}
+            autoFocus
+            type="text"
+            label={t("name_manager_dialog.range_name")}
+            placeholder={t("name_manager_dialog.enter_range_name")}
+            value={name}
+            error={!!nameError}
+            helperText={nameError}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="ic-edit-range-field-wrapper">
+            <label className="ic-edit-range-label" htmlFor={scopeId}>
               {t("name_manager_dialog.scope_label")}
-            </StyledLabel>
-            <FormControl fullWidth size="small">
-              <StyledSelect
-                id="scope"
+            </label>
+            <div className="ic-edit-range-form-control">
+              <Select
+                id={scopeId}
                 value={scope}
-                onChange={(event) => {
-                  setScope(event.target.value as string);
-                }}
-                renderValue={(value: unknown) => {
-                  const stringValue = value as string;
-                  return stringValue === "[Global]" ? (
-                    <>
-                      <MenuSpan>{t("name_manager_dialog.workbook")}</MenuSpan>
-                      <MenuSpanGrey>{` ${t(
-                        "name_manager_dialog.global",
-                      )}`}</MenuSpanGrey>
-                    </>
-                  ) : (
-                    stringValue
-                  );
-                }}
-                MenuProps={{
-                  PaperProps: {
-                    component: StyledMenuPaper,
+                onChange={setScope}
+                options={[
+                  {
+                    value: "[Global]",
+                    label: (
+                      <>
+                        <span
+                          className={
+                            isSelected("[Global]")
+                              ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
+                              : "ic-edit-range-menu-span"
+                          }
+                        >
+                          {t("name_manager_dialog.workbook")}
+                        </span>
+                        <span className="ic-edit-range-menu-span-grey">{` ${t(
+                          "name_manager_dialog.global",
+                        )}`}</span>
+                      </>
+                    ),
+                    triggerLabel: (
+                      <>
+                        <span className="ic-edit-range-menu-span">
+                          {t("name_manager_dialog.workbook")}
+                        </span>
+                        <span className="ic-edit-range-menu-span-grey">{` ${t(
+                          "name_manager_dialog.global",
+                        )}`}</span>
+                      </>
+                    ),
                   },
-                  anchorOrigin: {
-                    vertical: "bottom",
-                    horizontal: "center",
-                  },
-                  transformOrigin: {
-                    vertical: "top",
-                    horizontal: "center",
-                  },
-                  marginThreshold: 0,
-                }}
+                  ...model.getWorksheetsProperties().map((option) => ({
+                    value: option.name,
+                    label: (
+                      <span
+                        className={
+                          isSelected(option.name)
+                            ? "ic-edit-range-menu-span ic-edit-range-menu-span--selected"
+                            : "ic-edit-range-menu-span"
+                        }
+                      >
+                        {option.name}
+                      </span>
+                    ),
+                    triggerLabel: <span>{option.name}</span>,
+                  })),
+                ]}
+                ariaDescribedBy={`${scopeId}-helper`}
+              />
+              <span
+                id={`${scopeId}-helper`}
+                className="ic-edit-range-helper-text"
               >
-                <StyledMenuItem value={"[Global]"}>
-                  {isSelected("[Global]") ? <CheckIcon /> : <IconPlaceholder />}
-                  <MenuSpan $selected={isSelected("[Global]")}>
-                    {t("name_manager_dialog.workbook")}
-                  </MenuSpan>
-                  <MenuSpanGrey>{` ${t(
-                    "name_manager_dialog.global",
-                  )}`}</MenuSpanGrey>
-                </StyledMenuItem>
-                {model.getWorksheetsProperties().map((option) => (
-                  <StyledMenuItem key={option.name} value={option.name}>
-                    {isSelected(option.name) ? (
-                      <CheckIcon />
-                    ) : (
-                      <IconPlaceholder />
-                    )}
-                    <MenuSpan $selected={isSelected(option.name)}>
-                      {option.name}
-                    </MenuSpan>
-                  </StyledMenuItem>
-                ))}
-              </StyledSelect>
-              <StyledHelperText>
                 {t("name_manager_dialog.scope_helper")}
-              </StyledHelperText>
-            </FormControl>
-          </FieldWrapper>
-          <FieldWrapper>
-            <LineWrapper>
-              <StyledLabel htmlFor="formula">
+              </span>
+            </div>
+          </div>
+          <div className="ic-edit-range-field-wrapper">
+            <div className="ic-edit-range-line-wrapper">
+              <label className="ic-edit-range-label" htmlFor={formulaId}>
                 {t("name_manager_dialog.refers_to")}
-              </StyledLabel>
+              </label>
               <MousePointerClick
                 size={16}
                 onClick={() => {
@@ -231,18 +217,15 @@ const EditNamedRange = ({
                   setFormula(formula);
                 }}
               />
-            </LineWrapper>
-            <FormControl fullWidth size="small" error={!!formulaError}>
-              <StyledTextField
-                id="formula"
-                variant="outlined"
-                size="small"
-                margin="none"
+            </div>
+            <div className="ic-edit-range-form-control">
+              <textarea
+                id={formulaId}
+                className={`ic-edit-range-textarea ${
+                  formulaError ? "ic-edit-range-textarea--error" : ""
+                }`}
                 placeholder={t("name_manager_dialog.enter_formula")}
-                fullWidth
-                multiline
                 rows={3}
-                error={!!formulaError}
                 value={formula}
                 onChange={(e) => {
                   setFormula(e.target.value);
@@ -250,28 +233,24 @@ const EditNamedRange = ({
                 }}
                 onKeyDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
+                aria-invalid={formulaError ? "true" : "false"}
               />
               {formulaError && (
-                <StyledErrorText>{formulaError}</StyledErrorText>
+                <span className="ic-edit-range-helper-text ic-edit-range-error-text">
+                  {formulaError}
+                </span>
               )}
-            </FormControl>
-          </FieldWrapper>
-        </StyledBox>
-      </ContentArea>
-      <Footer>
-        <NewButton
-          variant="contained"
-          color="secondary"
-          disableElevation
-          onClick={onCancel}
-        >
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="ic-edit-range-footer">
+        <Button variant="secondary" onClick={onCancel}>
           {t("name_manager_dialog.cancel")}
-        </NewButton>
-        <NewButton
-          variant="contained"
-          disableElevation
+        </Button>
+        <Button
+          startIcon={<Check />}
           disabled={hasAnyError}
-          startIcon={<Check size={16} />}
           onClick={() => {
             const error = onSave(name.trim(), scope, formula);
             if (error.nameError) {
@@ -283,183 +262,10 @@ const EditNamedRange = ({
           }}
         >
           {t("name_manager_dialog.apply")}
-        </NewButton>
-      </Footer>
-    </Container>
+        </Button>
+      </div>
+    </div>
   );
 };
-
-const LineWrapper = styled("div")({
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-});
-
-const Container = styled("div")({
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-});
-
-const ContentArea = styled("div")({
-  flex: 1,
-  overflow: "auto",
-});
-
-const MenuSpan = styled("span")<{ $selected?: boolean }>`
-  font-size: 12px;
-  font-family: "Inter";
-  font-weight: ${(props) => (props.$selected ? "bold" : "normal")};
-`;
-
-const MenuSpanGrey = styled("span")`
-  white-space: pre;
-  font-size: 12px;
-  font-family: "Inter";
-  color: ${theme.palette.grey[400]};
-`;
-
-const CheckIcon = () => (
-  <Check style={{ width: "16px", height: "16px", marginRight: "8px" }} />
-);
-
-const IconPlaceholder = styled("div")`
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-`;
-
-const HeaderBox = styled(Box)`
-  font-size: 14px;
-  font-family: "Inter";
-  font-weight: 600;
-  width: auto;
-  gap: 8px;
-  padding: 24px 12px;
-  color: ${theme.palette.text.primary};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  border-bottom: 1px solid ${theme.palette.grey["200"]};
-`;
-
-const HeaderBoxText = styled("span")`
-  max-width: 100%;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-`;
-
-const HeaderIcon = styled(Box)`
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  background-color: ${theme.palette.grey["100"]};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  svg {
-    width: 16px;
-    height: 16px;
-    color: ${theme.palette.grey["600"]};
-  }
-`;
-
-const StyledBox = styled(Box)`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  width: auto;
-  padding: 16px 12px;
-
-  @media (max-width: 600px) {
-    padding: 12px;
-  }
-`;
-
-const StyledTextField = styled(TextField)(() => ({
-  "& .MuiInputBase-root": {
-    width: "100%",
-    margin: 0,
-    fontFamily: "Inter",
-    fontSize: "12px",
-    padding: "8px",
-  },
-  "& .MuiInputBase-input": {
-    padding: "0px",
-  },
-  "& .MuiInputBase-inputMultiline": {
-    padding: "0px",
-  },
-}));
-
-const StyledSelect = styled(Select)(() => ({
-  fontFamily: "Inter",
-  fontSize: "12px",
-  "& .MuiSelect-select": {
-    padding: "8px",
-  },
-}));
-
-const StyledMenuPaper = styled(Paper)(() => ({
-  padding: 4,
-  marginTop: "4px",
-  "&.MuiPaper-root": {
-    borderRadius: "8px",
-  },
-  "& .MuiList-padding": {
-    padding: 0,
-  },
-  "& .MuiList-root": {
-    padding: 0,
-  },
-}));
-
-const StyledMenuItem = styled(MenuItem)(() => ({
-  padding: 8,
-  borderRadius: 4,
-  display: "flex",
-  alignItems: "center",
-  "&.Mui-selected": {
-    backgroundColor: "transparent",
-    "&:hover": {
-      backgroundColor: theme.palette.grey[50],
-    },
-  },
-  "&:hover": {
-    backgroundColor: theme.palette.grey[50],
-  },
-}));
-
-const FieldWrapper = styled(Box)`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 6px;
-`;
-
-const StyledLabel = styled("label")`
-  font-size: 12px;
-  font-family: "Inter";
-  font-weight: 500;
-  color: ${theme.palette.text.primary};
-  display: block;
-`;
-
-const StyledHelperText = styled(FormHelperText)(() => ({
-  fontSize: "12px",
-  fontFamily: "Inter",
-  color: theme.palette.grey[500],
-  margin: 0,
-  marginTop: "6px",
-  padding: 0,
-  lineHeight: 1.4,
-}));
-
-const StyledErrorText = styled(StyledHelperText)(() => ({
-  color: theme.palette.error.main,
-}));
 
 export default EditNamedRange;
