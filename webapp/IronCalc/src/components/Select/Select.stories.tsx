@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import type { SelectProperties } from "./Select";
+import type { SelectOption, SelectProperties } from "./Select";
 import { Select } from "./Select";
 
 const fruitOptions = [
@@ -188,9 +188,13 @@ export const CornerPositioning: Story = {
     return (
       <div
         style={{
-          position: "relative",
-          height: "100vh",
+          position: "absolute",
+          top: "10%",
+          left: "10%",
+          width: "80%",
+          height: "80%",
           boxSizing: "border-box",
+          border: "1px dashed lightgray",
         }}
       >
         <div style={{ position: "absolute", top: 16, left: 16, width: 120 }}>
@@ -230,6 +234,41 @@ export const CornerPositioning: Story = {
             onChange={setBr}
           />
         </div>
+      </div>
+    );
+  },
+};
+
+export const NoOptions: Story = {
+  args: defaultArgs,
+  render: () => {
+    const [value, setValue] = useState("durian");
+    const options: SelectOption[] = [];
+    return (
+      <div style={{ width: 120 }}>
+        <Select
+          label="No options"
+          options={options}
+          value={value}
+          onChange={setValue}
+        />
+      </div>
+    );
+  },
+};
+
+export const Invalid: Story = {
+  args: defaultArgs,
+  render: () => {
+    const [value, setValue] = useState("orange");
+    return (
+      <div style={{ width: 120 }}>
+        <Select
+          label="Breakfast"
+          options={fruitOptions}
+          value={value}
+          onChange={setValue}
+        />
       </div>
     );
   },
