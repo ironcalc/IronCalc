@@ -13,7 +13,7 @@ import {
 import { createPortal } from "react-dom";
 
 import "./select.css";
-import { useKeyDown } from "./useKeyDown";
+import "./dropdown-menu.css";
 
 /**
  * Reusable Select with label, helper text, error state, and size variants.
@@ -124,13 +124,8 @@ export function Select({
   const menuRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  const selectedIndex = Math.max(
-    0,
-    options.findIndex((option) => option.value === value),
-  );
-
-  // Clamp missing values (-1) to 0 to keep a valid, focusable selection.
-  const selectedOption = options[selectedIndex] ?? options[0];
+  const selectedIndex = options.findIndex((option) => option.value === value);
+  const selectedOption = options[selectedIndex];
 
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(selectedIndex);
@@ -138,7 +133,7 @@ export function Select({
 
   useEffect(() => {
     if (!open) {
-      setActiveIndex(selectedIndex);
+      setActiveIndex(Math.max(0, selectedIndex));
     }
   }, [open, selectedIndex]);
 
@@ -188,12 +183,7 @@ export function Select({
 
       const { top, left, minWidth } = getMenuPosition(trigger, menu);
 
-      setMenuStyle({
-        position: "fixed",
-        top,
-        left,
-        minWidth,
-      });
+      setMenuStyle({ top, left, minWidth });
     }
 
     updateMenuPosition();
@@ -225,15 +215,6 @@ export function Select({
     triggerRef.current?.focus();
   }
 
-  function openMenu() {
-    if (disabled || options.length === 0) {
-      return;
-    }
-
-    setActiveIndex(selectedIndex);
-    setOpen(true);
-  }
-
   function toggleMenu() {
     if (disabled || options.length === 0) {
       return;
@@ -254,38 +235,24 @@ export function Select({
   }
 
   function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (disabled || options.length === 0) {
+    if (disabled || options.length === 0 || open) {
       return;
     }
 
     switch (event.key) {
       case "ArrowDown":
-      case "ArrowUp": {
-        event.preventDefault();
-
-        if (!open) {
-          openMenu();
-        } else {
-          const delta = event.key === "ArrowDown" ? 1 : -1;
-          const nextIndex =
-            (activeIndex + delta + options.length) % options.length;
-          setActiveIndex(nextIndex);
-        }
-        break;
-      }
-
       case "Enter":
       case " ": {
         event.preventDefault();
-        toggleMenu();
+        setActiveIndex(Math.max(0, selectedIndex));
+        setOpen(true);
         break;
       }
 
-      case "Escape": {
-        if (open) {
-          event.preventDefault();
-          closeMenu();
-        }
+      case "ArrowUp": {
+        event.preventDefault();
+        setActiveIndex(options.length - 1);
+        setOpen(true);
         break;
       }
     }
@@ -334,15 +301,6 @@ export function Select({
       }
     }
   }
-
-  const { onKeyDown: handleMenuKeyDown } = useKeyDown({
-    open,
-    onEscape: closeMenu,
-    getFocusableElements: () =>
-      optionRefs.current.filter(
-        (element): element is HTMLButtonElement => element !== null,
-      ),
-  });
 
   return (
     <div
@@ -400,7 +358,6 @@ export function Select({
                   className="ic-select-menu"
                   role="listbox"
                   aria-labelledby={label ? labelId : valueId}
-                  onKeyDown={handleMenuKeyDown}
                 >
                   {options.map((option, index) => {
                     const isSelected = option.value === value;
