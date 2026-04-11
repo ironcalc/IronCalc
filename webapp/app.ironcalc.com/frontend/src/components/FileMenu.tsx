@@ -220,6 +220,14 @@ export function FileMenu(props: {
           )}
           Italiano (it-IT)
         </MenuItemWrapper>
+        <MenuItemWrapper onClick={() => handleLanguageItemSelect("uk-UA")}>
+          {i18n.language === "uk-UA" ? (
+              <Check size={16} />
+          ) : (
+              <IconPlaceholder />
+          )}
+          Українська (uk-UA)
+        </MenuItemWrapper>
       </Menu>
       <Modal
         open={isImportMenuOpen}

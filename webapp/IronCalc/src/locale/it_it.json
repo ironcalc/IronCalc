@@ -197,14 +197,16 @@
         "es": "Español",
         "fr": "Français",
         "de": "Deutsch",
-        "it": "Italiano"
+        "it": "Italiano",
+        "uk": "Українська"
       },
       "display_language_current_lang": {
         "en": "Inglese",
         "es": "Spagnolo",
         "fr": "Francese",
         "de": "Tedesco",
-        "it": "Italiano"
+        "it": "Italiano",
+        "uk": "Ucraino"
       }
     },
     "timezone": {
