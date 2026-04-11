@@ -184,6 +184,10 @@ export const CornerPositioning: Story = {
     const [tr, setTr] = useState("banana");
     const [bl, setBl] = useState("durian");
     const [br, setBr] = useState("elderberry");
+    const [lc, setLc] = useState("apple");
+    const [tc, setTc] = useState("banana");
+    const [rc, setRc] = useState("durian");
+    const [bc, setBc] = useState("elderberry");
 
     return (
       <div
@@ -232,6 +236,74 @@ export const CornerPositioning: Story = {
             options={fruitOptions}
             value={br}
             onChange={setBr}
+          />
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: 16,
+            transform: "translateY(-50%)",
+            width: 120,
+          }}
+        >
+          <Select
+            label="Left-center"
+            options={fruitOptions}
+            value={lc}
+            onChange={setLc}
+          />
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            top: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 120,
+          }}
+        >
+          <Select
+            label="Top-center"
+            options={fruitOptions}
+            value={tc}
+            onChange={setTc}
+          />
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            right: 16,
+            transform: "translateY(-50%)",
+            width: 120,
+          }}
+        >
+          <Select
+            label="Right-center"
+            options={fruitOptions}
+            value={rc}
+            onChange={setRc}
+          />
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            bottom: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 120,
+          }}
+        >
+          <Select
+            label="Bottom-center"
+            options={fruitOptions}
+            value={bc}
+            onChange={setBc}
           />
         </div>
       </div>

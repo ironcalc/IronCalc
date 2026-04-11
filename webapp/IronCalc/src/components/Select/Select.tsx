@@ -47,10 +47,11 @@ export interface SelectProperties {
   className?: string;
 }
 
+// This function computes `position: fixed` coordinates for a portal-rendered dropdown anchored to a trigger.
+// The menu is always above/below (never to the side) with width >= trigger width.
+// Below is preferred but stays above when there's no suficient space.
+// Aligns horizontally to the trigger's nearest viewport edge (keeping a 8px margin).
 function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
-  // Select menu positioning:
-  // - Opens above when there's not enough space below.
-  // - Aligns to the trigger edge based on viewport side (left half → left edge, right half → right edge).
   const triggerRect = trigger.getBoundingClientRect();
   const menuWidth = Math.max(menu.offsetWidth, triggerRect.width);
   const menuHeight = menu.offsetHeight;
