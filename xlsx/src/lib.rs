@@ -15,7 +15,7 @@
 //! A simple example with some numbers, a new sheet and a formula:
 //!
 //!
-//! ```rust
+//! ```rust,no_run
 #![doc = include_str!("../examples/hello_calc.rs")]
 //! ```
 //!
@@ -28,13 +28,13 @@
 //!
 //! Adding colors, to cells, full columns or full rows is easy
 //!
-//! ```rust
+//! ```rust,no_run
 #![doc = include_str!("../examples/hello_styles.rs")]
 //! ```
 //!
 //! ### Changing column width and row heigh
 //!
-//! ```rust
+//! ```rust,no_run
 #![doc = include_str!("../examples/widths_and_heights.rs")]
 //! ```
 
