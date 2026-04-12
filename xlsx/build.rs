@@ -1,3 +1,7 @@
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
+
 use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::path::Path;
