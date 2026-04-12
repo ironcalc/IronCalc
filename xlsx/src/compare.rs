@@ -157,26 +157,43 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
     Ok(diffs)
 }
 
+fn cell_display(cell: &Cell) -> String {
+    match cell {
+        Cell::EmptyCell { .. } => "(empty)".to_string(),
+        Cell::NumberCell { v, .. } => format!("{v}"),
+        Cell::BooleanCell { v, .. } => format!("{v}"),
+        Cell::ErrorCell { ei, .. } => format!("{ei} (error)"),
+        Cell::SharedString { si, .. } => format!("shared_string[{si}]"),
+        Cell::CellFormula { .. } => "(unevaluated formula)".to_string(),
+        Cell::CellFormulaBoolean { v, .. } => format!("{v} (bool)"),
+        Cell::CellFormulaNumber { v, .. } => format!("{v} (number)"),
+        Cell::CellFormulaString { v, .. } => format!("\"{v}\" (string)"),
+        Cell::CellFormulaError { ei, .. } => format!("{ei} (error)"),
+    }
+}
+
 pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
     match compare(m1, m2) {
         Ok(diffs) => {
             if diffs.is_empty() {
                 Ok(())
             } else {
-                let mut message = "".to_string();
+                let count = diffs.len();
+                let mut lines = format!(
+                    "Models are different ({count} diff{}):\n",
+                    if count == 1 { "" } else { "s" }
+                );
                 for diff in diffs {
-                    message = format!(
-                        "{}\n.Diff: {}!{}{}, value1: {:?}, value2 {:?}\n {}",
-                        message,
-                        diff.sheet_name,
-                        number_to_column(diff.column).unwrap(),
-                        diff.row,
-                        &diff.value1,
-                        &diff.value2,
+                    let col = number_to_column(diff.column).unwrap();
+                    let cell_ref = format!("{}!{}{}", diff.sheet_name, col, diff.row);
+                    let excel = cell_display(&diff.value1);
+                    let ironcalc = cell_display(&diff.value2);
+                    lines.push_str(&format!(
+                        "\n  {cell_ref:<16}  Excel: {excel:<30}  IronCalc: {ironcalc:<30}  [{}]",
                         diff.reason
-                    );
+                    ));
                 }
-                Err(format!("Models are different: {message}"))
+                Err(lines)
             }
         }
         Err(r) => Err(format!("Models are different: {}", r.message)),
