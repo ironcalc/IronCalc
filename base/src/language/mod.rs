@@ -195,6 +195,7 @@ pub struct Functions {
     pub db: String,
     pub cumprinc: String,
     pub cumipmt: String,
+    pub accrintm: String,
     pub besseli: String,
     pub besselj: String,
     pub besselk: String,
@@ -413,4 +414,5 @@ mod tests {
             assert_eq!(code, &language.code);
         }
     }
+
 }
