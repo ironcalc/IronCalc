@@ -108,9 +108,9 @@ fn {fn_name}() {{
     let dir = temp_folder.join(format!("{{}}", uuid::Uuid::new_v4()));
     std::fs::create_dir(&dir).unwrap();
     let result = std::panic::catch_unwind(|| {{
-        ironcalc::compare::test_file("{file_path}").expect("test_file failed");
+        ironcalc::compare::test_file("{file_path}").unwrap_or_else(|e| panic!("{{}}", e));
         ironcalc::compare::test_load_and_saving("{file_path}", &dir)
-            .expect("test_load_and_saving failed");
+            .unwrap_or_else(|e| panic!("{{}}", e));
     }});
     std::fs::remove_dir_all(&dir).unwrap();
     result.unwrap();
@@ -124,7 +124,7 @@ fn {fn_name}() {{
                     r#"#[allow(non_snake_case)]
 #[test]
 fn {fn_name}() {{
-    ironcalc::compare::test_file("{file_path}").expect("test_file failed");
+    ironcalc::compare::test_file("{file_path}").unwrap_or_else(|e| panic!("{{}}", e));
 }}
 "#
                 )
