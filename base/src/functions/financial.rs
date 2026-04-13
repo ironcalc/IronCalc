@@ -1834,9 +1834,55 @@ impl<'a> Model<'a> {
     // ACCRINTM(issue, settlement, rate, [par], [basis])
     pub(crate) fn fn_accrintm(
         &mut self,
-        _args: &[Node],
-        _cell: CellReferenceIndex,
+        args: &[Node],
+        cell: CellReferenceIndex,
     ) -> CalcResult {
-        todo!()
+        let arg_count = args.len();
+        if !(3..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let issue_serial = match self.get_number(&args[0], cell) {
+            Ok(c) => c.floor() as i64,
+            Err(s) => return s,
+        };
+        let settlement_serial = match self.get_number(&args[1], cell) {
+            Ok(c) => c.floor() as i64,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let par = if arg_count > 3 {
+            match self.get_number(&args[3], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            1000.0
+        };
+        if rate <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "rate must be > 0".to_string());
+        }
+        if par <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "par must be > 0".to_string());
+        }
+        if issue_serial >= settlement_serial {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "issue must be before settlement".to_string(),
+            );
+        }
+        let basis_node = if arg_count > 4 {
+            args[4].clone()
+        } else {
+            Node::NumberKind(0.0)
+        };
+        let yearfrac_args = [args[0].clone(), args[1].clone(), basis_node];
+        match self.fn_yearfrac(&yearfrac_args, cell) {
+            CalcResult::Number(yf) => CalcResult::Number(par * rate * yf),
+            error => error,
+        }
     }
 }
