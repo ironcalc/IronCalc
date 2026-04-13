@@ -202,23 +202,23 @@ fn basic_format() {
     };
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.num_fmt, "general");
+    assert_eq!(style.num_fmt.format_code, "General");
 
     model
         .update_range_style(&range, "num_fmt", "$#,##0.0000")
         .unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.num_fmt, "$#,##0.0000");
+    assert_eq!(style.num_fmt.format_code, "$#,##0.0000");
 
     model.undo().unwrap();
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.num_fmt, "general");
+    assert_eq!(style.num_fmt.format_code, "General");
 
     model.redo().unwrap();
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.num_fmt, "$#,##0.0000");
+    assert_eq!(style.num_fmt.format_code, "$#,##0.0000");
 
     let send_queue = model.flush_send_queue();
 
@@ -226,7 +226,7 @@ fn basic_format() {
     model2.apply_external_diffs(&send_queue).unwrap();
 
     let style = model2.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.num_fmt, "$#,##0.0000");
+    assert_eq!(style.num_fmt.format_code, "$#,##0.0000");
 }
 
 #[test]

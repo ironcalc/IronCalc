@@ -6,7 +6,7 @@ use std::vec::Vec;
 use crate::{
     calc_result::{CalcResult, Range},
     cell::CellValue,
-    constants::{self, LAST_COLUMN, LAST_ROW},
+    constants::{self, LAST_COLUMN, LAST_ROW, SHORT_DATETIME_ID, SHORT_DATE_ID},
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -26,7 +26,9 @@ use crate::{
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_locale, Locale},
+    number_format::DefaultFmts,
     types::*,
+    units::Units,
     utils as common,
 };
 
@@ -61,6 +63,25 @@ pub fn get_milliseconds_since_epoch() -> i64 {
 pub fn get_milliseconds_since_epoch() -> i64 {
     use js_sys::Date;
     Date::now() as i64
+}
+
+fn locale_short_datetime_fmt(locale: &Locale) -> String {
+    let date_short = &locale.dates.date_formats.short;
+    // Normalise CLDR narrow no-break space (U+202F) and meridiem token 'a' → "AM/PM".
+    // TODO: only "…space-a" CLDR pattern handled; leading/no-space 'a' renders raw.
+    let time_short = locale
+        .dates
+        .time_formats
+        .short
+        .replace('\u{202f}', " ")
+        .replace(" a", " AM/PM");
+    let fmt = locale
+        .dates
+        .date_time_formats
+        .short
+        .replace("{0}", time_short.trim())
+        .replace("{1}", date_short);
+    fmt.replace('\u{202f}', " ")
 }
 
 /// A cell might be evaluated or being evaluated
@@ -1566,10 +1587,26 @@ impl<'a> Model<'a> {
                 let cell = CellReferenceIndex { sheet, row, column };
                 let parsed_formula = &self.parsed_formulas[sheet as usize][formula_index as usize];
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
-                    let new_style_index = self
-                        .workbook
-                        .styles
-                        .get_style_with_format(new_style_index, &units.get_num_fmt())?;
+                    let new_style_index = match units {
+                        Units::LocaleDate => self
+                            .workbook
+                            .styles
+                            .get_style_with_num_fmt_id(new_style_index, SHORT_DATE_ID)?,
+                        Units::LocaleDateTime => self
+                            .workbook
+                            .styles
+                            .get_style_with_num_fmt_id(new_style_index, SHORT_DATETIME_ID)?,
+                        Units::Number { num_fmt, .. }
+                        | Units::Currency { num_fmt, .. }
+                        | Units::Percentage { num_fmt, .. } => self
+                            .workbook
+                            .styles
+                            .get_style_with_format(new_style_index, &num_fmt)?,
+                        Units::Date(fmt) => self
+                            .workbook
+                            .styles
+                            .get_style_with_format(new_style_index, &fmt)?,
+                    };
                     let style = self.workbook.styles.get_style(new_style_index)?;
                     self.set_cell_style(sheet, row, column, &style)?
                 }
@@ -1585,17 +1622,28 @@ impl<'a> Model<'a> {
                 if let Ok((v, number_format)) =
                     parse_formatted_number(&value, &currencies, self.locale)
                 {
-                    if let Some(num_fmt) = number_format {
-                        // Should not apply the format in the following cases:
-                        // - we assign a date to already date-formatted cell
-                        let should_apply_format = !(is_likely_date_number_format(
-                            &self.workbook.styles.get_style(new_style_index)?.num_fmt,
-                        ) && is_likely_date_number_format(&num_fmt));
+                    if let Some(num_fmt_spec) = number_format {
+                        // Don't overwrite a user-set date format when a date is re-entered.
+                        let new_is_date = match &num_fmt_spec {
+                            NumFmtSpec::LocaleDate => true,
+                            NumFmtSpec::Literal(s) => is_likely_date_number_format(s),
+                        };
+                        let existing_style = self.workbook.styles.get_style(new_style_index)?;
+                        let existing_id = existing_style.num_fmt.num_fmt_id;
+                        let existing_is_date = DefaultFmts::is_locale_date(existing_id)
+                            || is_likely_date_number_format(&existing_style.num_fmt.format_code);
+                        let should_apply_format = !(existing_is_date && new_is_date);
                         if should_apply_format {
-                            new_style_index = self
-                                .workbook
-                                .styles
-                                .get_style_with_format(new_style_index, &num_fmt)?;
+                            new_style_index = match num_fmt_spec {
+                                NumFmtSpec::LocaleDate => self
+                                    .workbook
+                                    .styles
+                                    .get_style_with_num_fmt_id(new_style_index, SHORT_DATE_ID)?,
+                                NumFmtSpec::Literal(s) => self
+                                    .workbook
+                                    .styles
+                                    .get_style_with_format(new_style_index, &s)?,
+                            };
                         }
                     }
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
@@ -1822,7 +1870,20 @@ impl<'a> Model<'a> {
     ) -> Result<String, String> {
         match self.workbook.worksheet(sheet_index)?.cell(row, column) {
             Some(cell) => {
-                let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
+                let style_index = self.get_cell_style_index(sheet_index, row, column)?;
+                let num_fmt_id = self.workbook.styles.get_num_fmt_id(style_index)?;
+                // Locale IDs 14/22 derive the pattern from the active locale; others use stored string.
+                let format = match num_fmt_id {
+                    SHORT_DATE_ID => self.locale.dates.date_formats.short.clone(),
+                    SHORT_DATETIME_ID => locale_short_datetime_fmt(self.locale),
+                    _ => {
+                        self.workbook
+                            .styles
+                            .get_style(style_index)?
+                            .num_fmt
+                            .format_code
+                    }
+                };
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
                         format_number(value, &format, self.locale).text
@@ -1872,8 +1933,9 @@ impl<'a> Model<'a> {
                 ))
             }
             None => {
-                let style_index = cell.get_style();
+                let style_index = self.get_cell_style_index(sheet, row, column)?;
                 let style = self.workbook.styles.get_style(style_index)?;
+                let num_fmt_id = style.num_fmt.num_fmt_id;
                 if style.quote_prefix {
                     Ok(format!(
                         "'{}",
@@ -1884,11 +1946,19 @@ impl<'a> Model<'a> {
                         )
                     ))
                 } else {
-                    // If it is a date formatted cell we try to format it as date, if it fails we return the raw value
-                    if is_likely_date_number_format(&style.num_fmt) {
+                    // Locale IDs 14/22 derive the pattern from the active locale; others use stored string.
+                    let date_fmt = match num_fmt_id {
+                        SHORT_DATE_ID => Some(self.locale.dates.date_formats.short.clone()),
+                        SHORT_DATETIME_ID => Some(locale_short_datetime_fmt(self.locale)),
+                        _ if is_likely_date_number_format(&style.num_fmt.format_code) => {
+                            Some(style.num_fmt.format_code.clone())
+                        }
+                        _ => None,
+                    };
+                    if let Some(fmt_str) = date_fmt {
                         let value = cell.value(&self.workbook.shared_strings, self.language);
                         if let CellValue::Number(n) = value {
-                            let formatted = format_number(n, &style.num_fmt, self.locale);
+                            let formatted = format_number(n, &fmt_str, self.locale);
                             if formatted.error.is_none() {
                                 return Ok(formatted.text);
                             }
@@ -2520,7 +2590,7 @@ impl<'a> Model<'a> {
             .replace("¤", &format!("\"{}\"", currency_symbol))
             .replace(" ", " ");
 
-        let number_fmt = "#,##0.00".to_string();
+        let number_fmt = DefaultFmts::comma_dec(); //"#,##0.00"
         let number_example = format_number(1234.567, &number_fmt, self.locale).text;
         FmtSettings {
             currency,

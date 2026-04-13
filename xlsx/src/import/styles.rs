@@ -71,10 +71,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         for num_fmt in num_fmts_nodes[0].children() {
             let num_fmt_id = get_number(num_fmt, "numFmtId");
             let format_code = num_fmt.attribute("formatCode").unwrap_or("").to_string();
-            num_fmts.push(NumFmt {
-                num_fmt_id,
-                format_code,
-            });
+            num_fmts.push(NumFmt::new(num_fmt_id, format_code));
         }
     }
 
