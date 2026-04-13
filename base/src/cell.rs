@@ -1,5 +1,5 @@
 use crate::{
-    expressions::token::Error, language::Language, locale::Locale,
+    expressions::token::Error, intern_pool::InternPool, language::Language, locale::Locale,
     number_format::to_excel_precision_str, types::*,
 };
 
@@ -37,8 +37,8 @@ impl From<bool> for CellValue {
 }
 
 impl Cell {
-    /// Creates a new Cell with a shared string (`si` is the string index)
-    pub fn new_string(si: i32, s: i32) -> Cell {
+    /// Creates a new Cell with a shared string (`si` is the content hash key)
+    pub fn new_string(si: u64, s: i32) -> Cell {
         Cell::SharedString { si, s }
     }
 
@@ -125,11 +125,11 @@ impl Cell {
 
     pub fn get_localized_text(
         &self,
-        shared_strings: &[String],
+        string_pool: &InternPool<String>,
         locale: &Locale,
         language: &Language,
     ) -> String {
-        match self.value(shared_strings, language) {
+        match self.value(string_pool, language) {
             CellValue::None => "".to_string(),
             CellValue::String(v) => v,
             CellValue::Boolean(v) => {
@@ -151,7 +151,7 @@ impl Cell {
         }
     }
 
-    pub fn value(&self, shared_strings: &[String], language: &Language) -> CellValue {
+    pub fn value(&self, string_pool: &InternPool<String>, language: &Language) -> CellValue {
         match self {
             Cell::EmptyCell { .. } => CellValue::None,
             Cell::BooleanCell { v, s: _ } => CellValue::Boolean(*v),
@@ -161,11 +161,7 @@ impl Cell {
                 CellValue::String(v)
             }
             Cell::SharedString { si, .. } => {
-                let s = shared_strings.get(*si as usize);
-                let v = match s {
-                    Some(str) => str.clone(),
-                    None => "".to_string(),
-                };
+                let v = string_pool.get(*si).cloned().unwrap_or_default();
                 CellValue::String(v)
             }
             Cell::CellFormula { .. } => CellValue::String("#ERROR!".to_string()),
@@ -181,14 +177,14 @@ impl Cell {
 
     pub fn formatted_value<F>(
         &self,
-        shared_strings: &[String],
+        string_pool: &InternPool<String>,
         language: &Language,
         format_number: F,
     ) -> String
     where
         F: Fn(f64) -> String,
     {
-        match self.value(shared_strings, language) {
+        match self.value(string_pool, language) {
             CellValue::None => "".to_string(),
             CellValue::String(value) => value,
             CellValue::Boolean(value) => {

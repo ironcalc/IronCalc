@@ -112,7 +112,7 @@ impl<'a> Model<'a> {
             .get_cell_formula(sheet, source_row, source_column)?
             .unwrap_or_else(|| {
                 source_cell.get_localized_text(
-                    &self.workbook.shared_strings,
+                    &self.workbook.string_pool,
                     self.locale,
                     self.language,
                 )
@@ -502,7 +502,7 @@ impl<'a> Model<'a> {
                 self.get_cell_formula(sheet, r.row, column)?
                     .unwrap_or_else(|| {
                         cell.get_localized_text(
-                            &self.workbook.shared_strings,
+                            &self.workbook.string_pool,
                             self.locale,
                             self.language,
                         )
@@ -598,7 +598,7 @@ impl<'a> Model<'a> {
                 .ok_or("Expected Cell to exist")?;
             let style_idx = cell.get_style();
             let formula_or_value = self.get_cell_formula(sheet, row, *c)?.unwrap_or_else(|| {
-                cell.get_localized_text(&self.workbook.shared_strings, self.locale, self.language)
+                cell.get_localized_text(&self.workbook.string_pool, self.locale, self.language)
             });
             original_cells.push((*c, formula_or_value, style_idx));
             self.cell_clear_all(sheet, row, *c)?;

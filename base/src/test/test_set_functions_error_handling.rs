@@ -370,7 +370,7 @@ fn test_worksheet_cell_clear_contents() {
         .worksheet_mut(0)
         .unwrap()
         .cell_clear_contents(1, 1);
-    assert_eq!(update_result, Ok(()))
+    assert!(update_result.is_ok())
 }
 
 #[test]
@@ -407,7 +407,7 @@ fn test_worksheet_cell_clear_contents_with_style() {
         .worksheet_mut(0)
         .unwrap()
         .cell_clear_contents_with_style(1, 1, 1);
-    assert_eq!(update_result, Ok(()))
+    assert!(update_result.is_ok())
 }
 
 #[test]

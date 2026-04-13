@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 use crate::expressions::token::Error;
+use crate::intern_pool::InternPool;
 
 fn default_as_false() -> bool {
     false
@@ -42,7 +43,7 @@ pub struct WorkbookView {
 /// An internal representation of an IronCalc Workbook
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Workbook {
-    pub shared_strings: Vec<String>,
+    pub string_pool: InternPool<String>,
     pub defined_names: Vec<DefinedName>,
     pub worksheets: Vec<Worksheet>,
     pub styles: Styles,
@@ -180,9 +181,9 @@ pub enum Cell {
         ei: Error,
         s: i32,
     },
-    // Always a shared string
+    // Always a shared string (si is a content hash key into shared_strings)
     SharedString {
-        si: i32,
+        si: u64,
         s: i32,
     },
     // Non evaluated Formula

@@ -122,8 +122,6 @@ pub struct Model<'a> {
     pub parsed_formulas: Vec<Vec<Node>>,
     /// A list of parsed defined names
     pub(crate) parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
-    /// An optimization to lookup strings faster
-    pub(crate) shared_strings: HashMap<String, usize>,
     /// An instance of the parser
     pub(crate) parser: Parser<'a>,
     /// The list of cells with formulas that are evaluated or being evaluated
@@ -769,7 +767,7 @@ impl<'a> Model<'a> {
                 CalcResult::new_error(ei.clone(), cell_reference, message)
             }
             SharedString { si, .. } => {
-                if let Some(s) = self.workbook.shared_strings.get(*si as usize) {
+                if let Some(s) = self.workbook.string_pool.get(*si) {
                     CalcResult::String(s.clone())
                 } else {
                     let message = "Invalid shared string".to_string();
@@ -920,7 +918,7 @@ impl<'a> Model<'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_workbook(workbook: Workbook, language_id: &str) -> Result<Model<'_>, String> {
+    pub fn from_workbook(mut workbook: Workbook, language_id: &str) -> Result<Model<'_>, String> {
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
 
@@ -957,15 +955,19 @@ impl<'a> Model<'a> {
             locale,
             language,
         );
-        let mut shared_strings = HashMap::new();
-        for (index, s) in workbook.shared_strings.iter().enumerate() {
-            shared_strings.insert(s.to_string(), index);
-        }
+        let cell_keys = workbook.worksheets.iter().flat_map(|ws| {
+            ws.sheet_data.values().flat_map(|row| {
+                row.values().filter_map(|cell| match cell {
+                    Cell::SharedString { si, .. } => Some(*si),
+                    _ => None,
+                })
+            })
+        });
+        workbook.string_pool.rebuild_ref_counts(cell_keys);
 
         let mut model = Model {
             workbook,
             parsed_formulas,
-            shared_strings,
             parsed_defined_names: HashMap::new(),
             parser,
             cells,
@@ -1152,7 +1154,7 @@ impl<'a> Model<'a> {
         let result = match cell {
             Some(cell) => match cell.get_formula() {
                 None => cell.get_localized_text(
-                    &self.workbook.shared_strings,
+                    &self.workbook.string_pool,
                     self.locale,
                     self.language,
                 ),
@@ -1598,22 +1600,31 @@ impl<'a> Model<'a> {
                                 .get_style_with_format(new_style_index, &num_fmt)?;
                         }
                     }
-                    let worksheet = self.workbook.worksheet_mut(sheet)?;
-                    worksheet.set_cell_with_number(row, column, v, new_style_index)?;
+                    let old = self
+                        .workbook
+                        .worksheet_mut(sheet)?
+                        .set_cell_with_number(row, column, v, new_style_index)?;
+                    self.release_old_cell(old.as_ref());
                     return Ok(());
                 }
                 // We try to parse as boolean
                 if let Ok(v) = value.to_lowercase().parse::<bool>() {
-                    let worksheet = self.workbook.worksheet_mut(sheet)?;
-                    worksheet.set_cell_with_boolean(row, column, v, new_style_index)?;
+                    let old = self
+                        .workbook
+                        .worksheet_mut(sheet)?
+                        .set_cell_with_boolean(row, column, v, new_style_index)?;
+                    self.release_old_cell(old.as_ref());
                     return Ok(());
                 }
                 // Check is it is error value
                 let upper = value.to_uppercase();
-                let worksheet = self.workbook.worksheet_mut(sheet)?;
                 match get_error_by_name(&upper, self.language) {
                     Some(error) => {
-                        worksheet.set_cell_with_error(row, column, error, new_style_index)?;
+                        let old = self
+                            .workbook
+                            .worksheet_mut(sheet)?
+                            .set_cell_with_error(row, column, error, new_style_index)?;
+                        self.release_old_cell(old.as_ref());
                     }
                     None => {
                         self.set_cell_with_string(sheet, row, column, &value, new_style_index)?;
@@ -1660,7 +1671,8 @@ impl<'a> Model<'a> {
             self.parsed_formulas[sheet as usize].push(parsed_formula);
             formula_index = (shared_formulas.len() as i32) - 1;
         }
-        worksheet.set_cell_with_formula(row, column, formula_index, style)?;
+        let old = worksheet.set_cell_with_formula(row, column, formula_index, style)?;
+        self.release_old_cell(old.as_ref());
         Ok(formula_index)
     }
 
@@ -1672,28 +1684,36 @@ impl<'a> Model<'a> {
         value: &str,
         style: i32,
     ) -> Result<(), String> {
-        match self.shared_strings.get(value) {
-            Some(string_index) => {
-                self.workbook.worksheet_mut(sheet)?.set_cell_with_string(
-                    row,
-                    column,
-                    *string_index as i32,
-                    style,
-                )?;
-            }
-            None => {
-                let string_index = self.workbook.shared_strings.len();
-                self.workbook.shared_strings.push(value.to_string());
-                self.shared_strings.insert(value.to_string(), string_index);
-                self.workbook.worksheet_mut(sheet)?.set_cell_with_string(
-                    row,
-                    column,
-                    string_index as i32,
-                    style,
-                )?;
-            }
-        }
+        let key = self.workbook.string_pool.insert(value.to_string());
+        let old_cell = self
+            .workbook
+            .worksheet_mut(sheet)?
+            .set_cell_with_string(row, column, key, style)?;
+        self.release_old_cell(old_cell.as_ref());
         Ok(())
+    }
+
+    /// If `cell` is a SharedString, decrement its reference count and remove
+    /// the string from the pool when the count reaches zero.
+    pub(crate) fn release_old_cell(&mut self, cell: Option<&Cell>) {
+        if let Some(Cell::SharedString { si, .. }) = cell {
+            self.release_string(*si);
+        }
+    }
+
+    /// Increment the shared-string reference count for `cell` if it is a SharedString.
+    pub(crate) fn retain_cell(&mut self, cell: &Cell) {
+        if let Cell::SharedString { si, .. } = cell {
+            self.retain_string(*si);
+        }
+    }
+
+    pub(crate) fn release_string(&mut self, key: u64) {
+        self.workbook.string_pool.release(key);
+    }
+
+    pub(crate) fn retain_string(&mut self, key: u64) {
+        self.workbook.string_pool.retain(key);
     }
 
     fn set_cell_with_boolean(
@@ -1704,9 +1724,12 @@ impl<'a> Model<'a> {
         value: bool,
         style: i32,
     ) -> Result<(), String> {
-        self.workbook
+        let old = self
+            .workbook
             .worksheet_mut(sheet)?
-            .set_cell_with_boolean(row, column, value, style)
+            .set_cell_with_boolean(row, column, value, style)?;
+        self.release_old_cell(old.as_ref());
+        Ok(())
     }
 
     fn set_cell_with_number(
@@ -1717,9 +1740,12 @@ impl<'a> Model<'a> {
         value: f64,
         style: i32,
     ) -> Result<(), String> {
-        self.workbook
+        let old = self
+            .workbook
             .worksheet_mut(sheet)?
-            .set_cell_with_number(row, column, value, style)
+            .set_cell_with_number(row, column, value, style)?;
+        self.release_old_cell(old.as_ref());
+        Ok(())
     }
 
     // Helper function that returns a defined name given the name and scope
@@ -1790,7 +1816,7 @@ impl<'a> Model<'a> {
             .cell(row, column)
             .cloned()
             .unwrap_or_default();
-        let cell_value = cell.value(&self.workbook.shared_strings, self.language);
+        let cell_value = cell.value(&self.workbook.string_pool, self.language);
         Ok(cell_value)
     }
 
@@ -1824,7 +1850,7 @@ impl<'a> Model<'a> {
             Some(cell) => {
                 let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
                 let formatted_value =
-                    cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
+                    cell.formatted_value(&self.workbook.string_pool, self.language, |value| {
                         format_number(value, &format, self.locale).text
                     });
                 Ok(formatted_value)
@@ -1878,7 +1904,7 @@ impl<'a> Model<'a> {
                     Ok(format!(
                         "'{}",
                         cell.get_localized_text(
-                            &self.workbook.shared_strings,
+                            &self.workbook.string_pool,
                             self.locale,
                             self.language,
                         )
@@ -1886,7 +1912,7 @@ impl<'a> Model<'a> {
                 } else {
                     // If it is a date formatted cell we try to format it as date, if it fails we return the raw value
                     if is_likely_date_number_format(&style.num_fmt) {
-                        let value = cell.value(&self.workbook.shared_strings, self.language);
+                        let value = cell.value(&self.workbook.string_pool, self.language);
                         if let CellValue::Number(n) = value {
                             let formatted = format_number(n, &style.num_fmt, self.locale);
                             if formatted.error.is_none() {
@@ -1895,7 +1921,7 @@ impl<'a> Model<'a> {
                         }
                     }
                     Ok(cell.get_localized_text(
-                        &self.workbook.shared_strings,
+                        &self.workbook.string_pool,
                         self.locale,
                         self.language,
                     ))
@@ -1963,9 +1989,11 @@ impl<'a> Model<'a> {
     /// # }
     /// ```
     pub fn cell_clear_contents(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
-        self.workbook
+        let old = self
+            .workbook
             .worksheet_mut(sheet)?
             .cell_clear_contents(row, column)?;
+        self.release_old_cell(old.as_ref());
         Ok(())
     }
 
@@ -1990,12 +2018,13 @@ impl<'a> Model<'a> {
     /// # }
     pub fn cell_clear_all(&mut self, sheet: u32, row: i32, column: i32) -> Result<(), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
-
         let sheet_data = &mut worksheet.sheet_data;
-        if let Some(row_data) = sheet_data.get_mut(&row) {
-            row_data.remove(&column);
-        }
-
+        let old_cell = if let Some(row_data) = sheet_data.get_mut(&row) {
+            row_data.remove(&column)
+        } else {
+            None
+        };
+        self.release_old_cell(old_cell.as_ref());
         Ok(())
     }
 
@@ -2609,9 +2638,10 @@ mod tests {
             Some(&Cell::NumberCell { v: 35.0, s: 0 })
         );
 
+        let hash = crate::intern_pool::content_hash("");
         assert_eq!(
             worksheet.cell(2, 1),
-            Some(&Cell::SharedString { si: 0, s: 0 })
+            Some(&Cell::SharedString { si: hash, s: 0 })
         );
         assert_eq!(worksheet.cell(3, 1), None)
     }

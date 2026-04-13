@@ -96,7 +96,9 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
 
     zip.add_directory("xl", options)?;
     zip.start_file("xl/sharedStrings.xml", options)?;
-    zip.write_all(shared_strings::get_shared_strings_xml(workbook).as_bytes())?;
+    let (shared_strings_xml, hash_to_index) =
+        shared_strings::get_shared_strings_xml(workbook);
+    zip.write_all(shared_strings_xml.as_bytes())?;
     zip.start_file("xl/styles.xml", options)?;
     zip.write_all(styles::get_styles_xml(workbook).as_bytes())?;
     zip.start_file("xl/workbook.xml", options)?;
@@ -127,6 +129,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
                 &model.parsed_formulas[sheet_index],
                 sheet_dimension_str,
                 is_sheet_selected,
+                &hash_to_index,
             )
             .as_bytes(),
         )?;
@@ -142,7 +145,7 @@ pub fn save_to_icalc(model: &Model, file_name: &str) -> Result<(), XlsxError> {
     if file_path.exists() {
         return Err(XlsxError::IO(format!("file {file_name} already exists")));
     }
-    let s = bitcode::encode(&model.workbook);
+    let s = model.to_bytes();
     let mut file = fs::File::create(file_path)?;
     file.write_all(&s)?;
 

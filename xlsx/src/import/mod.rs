@@ -16,6 +16,7 @@ use std::{
 use roxmltree::Node;
 
 use ironcalc_base::{
+    intern_pool::{content_hash, InternPool},
     types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
     Model,
 };
@@ -62,7 +63,15 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
 ) -> Result<Workbook, XlsxError> {
     let mut archive = zip::ZipArchive::new(reader)?;
 
-    let mut shared_strings = read_shared_strings(&mut archive)?;
+    let raw_strings = read_shared_strings(&mut archive)?;
+    let index_to_hash: Vec<u64> = raw_strings
+        .iter()
+        .map(|s| content_hash(s.as_str()))
+        .collect();
+    let mut string_pool = InternPool::new();
+    for s in raw_strings {
+        string_pool.insert(s);
+    }
     let workbook = load_workbook(&mut archive)?;
     let rels = load_relationships(&mut archive)?;
     let mut tables = HashMap::new();
@@ -71,7 +80,8 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         &rels,
         &workbook,
         &mut tables,
-        &mut shared_strings,
+        &index_to_hash,
+        &mut string_pool,
     )?;
     let styles = load_styles(&mut archive)?;
     let metadata = match load_metadata(&mut archive) {
@@ -98,7 +108,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         },
     );
     Ok(Workbook {
-        shared_strings,
+        string_pool,
         defined_names: workbook.defined_names,
         worksheets,
         styles,

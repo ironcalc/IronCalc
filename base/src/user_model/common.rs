@@ -428,6 +428,7 @@ impl<'a> UserModel<'a> {
             .worksheet(sheet)?
             .cell(row, column)
             .cloned();
+        Self::retain_optional_cell(&mut self.model, &old_value);
         self.model
             .set_user_input(sheet, row, column, value.to_string())?;
 
@@ -510,14 +511,21 @@ impl<'a> UserModel<'a> {
     /// * [Model::delete_sheet]
     pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
+        let ws_clone = worksheet.clone();
+
+        // Retain cells from the worksheet for the diff before the model frees them
+        for row_data in ws_clone.sheet_data.values() {
+            for cell in row_data.values() {
+                self.model.retain_cell(cell);
+            }
+        }
 
         self.push_diff_list(vec![Diff::DeleteSheet {
             sheet,
-            old_data: Box::new(worksheet.clone()),
+            old_data: Box::new(ws_clone),
         }]);
 
         let sheet_count = self.model.workbook.worksheets.len() as u32;
-        // If we are deleting the last sheet we need to change the selected sheet
         if sheet == sheet_count - 1 && sheet_count > 1 {
             if let Some(view) = self.model.workbook.views.get_mut(&self.model.view_id) {
                 view.sheet = sheet_count - 2;
@@ -626,6 +634,7 @@ impl<'a> UserModel<'a> {
                     .cell(row, column)
                     .cloned();
                 let old_style = self.model.get_style_for_cell(sheet, row, column)?;
+                Self::retain_optional_cell(&mut self.model, &old_value);
                 self.model.cell_clear_all(sheet, row, column)?;
                 diff_list.push(Diff::CellClearAll {
                     sheet,
@@ -657,6 +666,7 @@ impl<'a> UserModel<'a> {
                     .worksheet(sheet)?
                     .cell(row, column)
                     .cloned();
+                Self::retain_optional_cell(&mut self.model, &old_value);
                 self.model.cell_clear_contents(sheet, row, column)?;
                 diff_list.push(Diff::CellClearContents {
                     sheet,
@@ -955,6 +965,11 @@ impl<'a> UserModel<'a> {
             });
         }
 
+        for rd in &old_data {
+            for cell in rd.data.values() {
+                self.model.retain_cell(cell);
+            }
+        }
         self.model.delete_rows(sheet, row, row_count)?;
 
         let diff_list = vec![Diff::DeleteRows {
@@ -1013,6 +1028,11 @@ impl<'a> UserModel<'a> {
             });
         }
 
+        for cd in &old_data {
+            for cell in cd.data.values() {
+                self.model.retain_cell(cell);
+            }
+        }
         self.model.delete_columns(sheet, column, column_count)?;
 
         let diff_list = vec![Diff::DeleteColumns {
@@ -1747,7 +1767,6 @@ impl<'a> UserModel<'a> {
                 let source_row = anchor_row + index;
                 let target_value;
 
-                // compute the new value and set it
                 if let Some(ref detected_progression) = possible_progression {
                     target_value = detected_progression.next(range_idx);
                 } else {
@@ -1756,14 +1775,13 @@ impl<'a> UserModel<'a> {
                         .extend_to(sheet, source_row, column, row, column)?;
                 }
 
+                Self::retain_optional_cell(&mut self.model, &old_value);
                 self.model
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
-                // Compute the new style and set it
                 let new_style = self.model.get_style_for_cell(sheet, source_row, column)?;
                 self.model.set_cell_style(sheet, row, column, &new_style)?;
 
-                // Add the diffs
                 diff_list.push(Diff::SetCellStyle {
                     sheet,
                     row,
@@ -1852,20 +1870,17 @@ impl<'a> UserModel<'a> {
                     .cloned();
                 let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
 
-                // compute the new value and set it
                 let source_column = anchor_column + index;
                 let target_value = self
                     .model
                     .extend_to(sheet, row, source_column, row, column)?;
+                Self::retain_optional_cell(&mut self.model, &old_value);
                 self.model
                     .set_user_input(sheet, row, column, target_value.to_string())?;
 
                 let new_style = self.model.get_style_for_cell(sheet, row, source_column)?;
-                // Compute the new style and set it
-
                 self.model.set_cell_style(sheet, row, column, &new_style)?;
 
-                // Add the diffs
                 diff_list.push(Diff::SetCellStyle {
                     sheet,
                     row,
@@ -2090,6 +2105,7 @@ impl<'a> UserModel<'a> {
                     self.model
                         .get_cell_style_or_none(sheet, target_row, target_column)?;
 
+                Self::retain_optional_cell(&mut self.model, &old_value);
                 self.model
                     .set_user_input(sheet, target_row, target_column, new_value.clone())?;
                 self.model
@@ -2126,13 +2142,14 @@ impl<'a> UserModel<'a> {
                         .cell(row, column)
                         .cloned();
 
+                    Self::retain_optional_cell(&mut self.model, &old_value);
+                    self.model.cell_clear_contents(source_sheet, row, column)?;
                     diff_list.push(Diff::CellClearContents {
                         sheet: source_sheet,
                         row,
                         column,
                         old_value: Box::new(old_value),
                     });
-                    self.model.cell_clear_contents(source_sheet, row, column)?;
                 }
             }
         }
@@ -2166,7 +2183,7 @@ impl<'a> UserModel<'a> {
                             .worksheet(sheet)?
                             .cell(row, column)
                             .cloned();
-                        // let old_style = self.model.get_style_for_cell(sheet, row, column)?;
+                        Self::retain_optional_cell(&mut self.model, &old_value);
                         self.model
                             .set_user_input(sheet, row, column, value.to_string())?;
 
@@ -2321,7 +2338,59 @@ impl<'a> UserModel<'a> {
             r#type: DiffType::Redo,
             list: diff_list.clone(),
         });
-        self.history.push(diff_list);
+        let discarded = self.history.push(diff_list);
+        for old_diff_list in &discarded {
+            Self::release_diff_cells(&mut self.model, old_diff_list);
+        }
+    }
+
+    /// Retain shared-string refs for every `Cell` stored in `cell`.
+    fn retain_optional_cell(model: &mut Model, cell: &Option<Cell>) {
+        if let Some(c) = cell {
+            model.retain_cell(c);
+        }
+    }
+
+    /// Release shared-string refs for all `Cell` values captured in a diff list.
+    /// Called when diffs are discarded from history.
+    fn release_diff_cells(model: &mut Model, diff_list: &DiffList) {
+        for diff in diff_list {
+            match diff {
+                Diff::SetCellValue { old_value, .. }
+                | Diff::CellClearContents { old_value, .. } => {
+                    if let Some(c) = old_value.as_ref() {
+                        model.release_old_cell(Some(c));
+                    }
+                }
+                Diff::CellClearAll { old_value, .. } => {
+                    if let Some(c) = old_value.as_ref() {
+                        model.release_old_cell(Some(c));
+                    }
+                }
+                Diff::DeleteRows { old_data, .. } => {
+                    for row_data in old_data {
+                        for cell in row_data.data.values() {
+                            model.release_old_cell(Some(cell));
+                        }
+                    }
+                }
+                Diff::DeleteColumns { old_data, .. } => {
+                    for col_data in old_data {
+                        for cell in col_data.data.values() {
+                            model.release_old_cell(Some(cell));
+                        }
+                    }
+                }
+                Diff::DeleteSheet { old_data, .. } => {
+                    for row_data in old_data.sheet_data.values() {
+                        for cell in row_data.values() {
+                            model.release_old_cell(Some(cell));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 
     fn evaluate_if_not_paused(&mut self) {
@@ -2344,10 +2413,13 @@ impl<'a> UserModel<'a> {
                     needs_evaluation = true;
                     match *old_value.clone() {
                         Some(value) => {
-                            self.model
+                            self.model.retain_cell(&value);
+                            let old = self
+                                .model
                                 .workbook
                                 .worksheet_mut(*sheet)?
                                 .update_cell(*row, *column, value)?;
+                            self.model.release_old_cell(old.as_ref());
                         }
                         None => {
                             self.model.cell_clear_all(*sheet, *row, *column)?;
@@ -2390,10 +2462,13 @@ impl<'a> UserModel<'a> {
                 } => {
                     needs_evaluation = true;
                     if let Some(value) = *old_value.clone() {
-                        self.model
+                        self.model.retain_cell(&value);
+                        let old = self
+                            .model
                             .workbook
                             .worksheet_mut(*sheet)?
                             .update_cell(*row, *column, value)?;
+                        self.model.release_old_cell(old.as_ref());
                     }
                 }
                 Diff::CellClearAll {
@@ -2405,10 +2480,13 @@ impl<'a> UserModel<'a> {
                 } => {
                     needs_evaluation = true;
                     if let Some(value) = *old_value.clone() {
-                        self.model
+                        self.model.retain_cell(&value);
+                        let old = self
+                            .model
                             .workbook
                             .worksheet_mut(*sheet)?
                             .update_cell(*row, *column, value)?;
+                        self.model.release_old_cell(old.as_ref());
                         self.model
                             .set_cell_style(*sheet, *row, *column, old_style)?;
                     }
@@ -2441,13 +2519,25 @@ impl<'a> UserModel<'a> {
                     needs_evaluation = true;
                     self.model
                         .insert_rows(*sheet, *row, old_data.len() as i32)?;
-                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     for (i, row_data) in old_data.iter().enumerate() {
                         let r = *row + i as i32;
+                        // Retain shared-string refs for all restored cells
+                        for cell in row_data.data.values() {
+                            self.model.retain_cell(cell);
+                        }
+                        let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                         if let Some(row_style) = row_data.row.clone() {
                             worksheet.rows.push(row_style);
                         }
-                        worksheet.sheet_data.insert(r, row_data.data.clone());
+                        // Release any cells that were in these positions after insert_rows shifted
+                        let old_row_data = worksheet
+                            .sheet_data
+                            .insert(r, row_data.data.clone());
+                        if let Some(old_cells) = old_row_data {
+                            for cell in old_cells.values() {
+                                self.model.release_old_cell(Some(cell));
+                            }
+                        }
                     }
                 }
                 Diff::InsertColumns {
@@ -2467,17 +2557,25 @@ impl<'a> UserModel<'a> {
                     needs_evaluation = true;
                     self.model
                         .insert_columns(*sheet, *column, old_data.len() as i32)?;
-                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     for (i, col_data) in old_data.iter().enumerate() {
                         let c = *column + i as i32;
                         for (row, cell) in &col_data.data {
-                            worksheet.update_cell(*row, c, cell.clone())?;
+                            self.model.retain_cell(cell);
+                            let old = self
+                                .model
+                                .workbook
+                                .worksheet_mut(*sheet)?
+                                .update_cell(*row, c, cell.clone())?;
+                            self.model.release_old_cell(old.as_ref());
                         }
                         if let Some(col) = &col_data.column {
                             let width = col.width * constants::COLUMN_WIDTH_FACTOR;
                             let style = col.style;
                             let hidden = col.hidden;
-                            worksheet.set_column_width_and_style(c, width, hidden, style)?;
+                            self.model
+                                .workbook
+                                .worksheet_mut(*sheet)?
+                                .set_column_width_and_style(c, width, hidden, style)?;
                         }
                     }
                 }
@@ -2572,12 +2670,18 @@ impl<'a> UserModel<'a> {
                     let sheet_id = old_data.sheet_id;
                     self.model
                         .insert_sheet(sheet_name, sheet_index, Some(sheet_id))?;
-                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     for (row, row_data) in &old_data.sheet_data {
                         for (column, cell) in row_data {
-                            worksheet.update_cell(*row, *column, cell.clone())?;
+                            self.model.retain_cell(cell);
+                            let old = self
+                                .model
+                                .workbook
+                                .worksheet_mut(*sheet)?
+                                .update_cell(*row, *column, cell.clone())?;
+                            self.model.release_old_cell(old.as_ref());
                         }
                     }
+                    let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     worksheet.rows = old_data.rows.clone();
                     worksheet.cols = old_data.cols.clone();
                     worksheet.show_grid_lines = old_data.show_grid_lines;

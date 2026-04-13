@@ -207,9 +207,12 @@ pub(crate) struct History {
 }
 
 impl History {
-    pub fn push(&mut self, diff_list: DiffList) {
+    /// Push a new diff list onto the undo stack and clear the redo stack.
+    /// Returns the discarded redo stack so the caller can release any
+    /// shared-string references held by those diffs.
+    pub fn push(&mut self, diff_list: DiffList) -> Vec<DiffList> {
         self.undo_stack.push(diff_list);
-        self.redo_stack = vec![];
+        std::mem::take(&mut self.redo_stack)
     }
 
     pub fn undo(&mut self) -> Option<Vec<Diff>> {

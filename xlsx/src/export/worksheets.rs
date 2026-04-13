@@ -59,6 +59,7 @@ pub(crate) fn get_worksheet_xml(
     parsed_formulas: &[Node],
     dimension: &str,
     is_sheet_selected: bool,
+    hash_to_index: &HashMap<u64, usize>,
 ) -> String {
     let mut sheet_data_str: Vec<String> = vec![];
     let mut cols_str: Vec<String> = vec![];
@@ -135,9 +136,10 @@ pub(crate) fn get_worksheet_xml(
                     //    <v>5</v>
                     // </c>
                     // Cell on A1 contains a string (t="s") of style="1". The string is the 6th in the list of shared strings
+                    let sequential_index = hash_to_index.get(si).copied().unwrap_or(0);
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"s\"{style}><v>{si}</v></c>"
+                        "<c r=\"{cell_name}\" t=\"s\"{style}><v>{sequential_index}</v></c>"
                     ));
                 }
                 Cell::CellFormula { f: _, s: _ } => {
