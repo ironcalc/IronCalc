@@ -47,33 +47,27 @@ export interface SelectProperties {
   className?: string;
 }
 
-// This function computes `position: fixed` coordinates for a portal-rendered dropdown anchored to a trigger.
-// The menu is always above/below (never to the side) with width >= trigger width.
-// Below is preferred but stays above when there's no suficient space.
-// Aligns horizontally to the trigger's nearest viewport edge (keeping a 8px margin).
 function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
   const triggerRect = trigger.getBoundingClientRect();
-  const menuWidth = Math.max(menu.offsetWidth, triggerRect.width);
+  const menuWidth = Math.max(menu.offsetWidth, triggerRect.width); // Menu is always at least as wide as the trigger
   const menuHeight = menu.offsetHeight;
-  const viewportWidth = window.innerWidth;
+  const viewportWidth = window.innerWidth; // Uses window width to determine menu positioning
   const viewportHeight = window.innerHeight;
 
-  const offset = 4;
-  const margin = 8;
+  const offset = 4; // Distance between trigger and menu
+  const margin = 8; // Safety margin when menu os too close to the window's edge
 
+  // Menu will stay below but falls back to above when there's not enough space
   const spaceBelow = viewportHeight - triggerRect.bottom - margin;
   const spaceAbove = triggerRect.top - margin;
   const openBelow =
     spaceBelow >= menuHeight + offset || spaceBelow >= spaceAbove;
 
-  const triggerCenterX = triggerRect.left + triggerRect.width / 2;
-  const isRightSide = triggerCenterX > viewportWidth / 2;
+  // Menu is left-align by default but right-align when the menu would overflow the right edge
+  const leftAligned = triggerRect.left;
+  const overflowsRight = leftAligned + menuWidth > viewportWidth - margin;
 
-  const alignToRightEdge = isRightSide;
-
-  let left = alignToRightEdge
-    ? triggerRect.right - menuWidth
-    : triggerRect.left;
+  let left = overflowsRight ? triggerRect.right - menuWidth : leftAligned;
 
   let top = openBelow
     ? triggerRect.bottom + offset
@@ -130,7 +124,7 @@ export function Select({
 
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(selectedIndex);
-  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+  const [menuPosition, setMenuPosition] = useState<CSSProperties>({});
 
   useEffect(() => {
     if (!open) {
@@ -184,7 +178,7 @@ export function Select({
 
       const { top, left, minWidth } = getMenuPosition(trigger, menu);
 
-      setMenuStyle({ top, left, minWidth });
+      setMenuPosition({ top, left, minWidth });
     }
 
     updateMenuPosition();
@@ -242,17 +236,11 @@ export function Select({
 
     switch (event.key) {
       case "ArrowDown":
+      case "ArrowUp":
       case "Enter":
       case " ": {
         event.preventDefault();
         setActiveIndex(Math.max(0, selectedIndex));
-        setOpen(true);
-        break;
-      }
-
-      case "ArrowUp": {
-        event.preventDefault();
-        setActiveIndex(options.length - 1);
         setOpen(true);
         break;
       }
@@ -351,12 +339,12 @@ export function Select({
           ? createPortal(
               <div
                 ref={menuRef}
-                className="ic-select-menu-wrapper"
-                style={menuStyle}
+                className="ic-dropdown-menu-wrapper"
+                style={menuPosition}
               >
                 <div
                   id={listboxId}
-                  className="ic-select-menu"
+                  className="ic-dropdown-menu"
                   role="listbox"
                   aria-labelledby={label ? labelId : valueId}
                 >
@@ -374,7 +362,7 @@ export function Select({
                         role="option"
                         aria-selected={isSelected ? "true" : "false"}
                         className={[
-                          "ic-select-option",
+                          "ic-dropdown-menu-option",
                           isSelected && "is-selected",
                           isActive && "is-active",
                         ]
@@ -385,13 +373,13 @@ export function Select({
                         onKeyDown={(event) => handleOptionKeyDown(event, index)}
                       >
                         <span
-                          className="ic-select-option-check"
+                          className="ic-dropdown-menu-option-check"
                           aria-hidden="true"
                         >
                           {isSelected ? <Check size={16} /> : null}
                         </span>
 
-                        <span className="ic-select-option-content">
+                        <span className="ic-dropdown-menu-option-content">
                           {option.label}
                         </span>
                       </button>

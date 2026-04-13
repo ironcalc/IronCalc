@@ -190,17 +190,7 @@ export const CornerPositioning: Story = {
     const [bc, setBc] = useState("elderberry");
 
     return (
-      <div
-        style={{
-          position: "absolute",
-          top: "10%",
-          left: "10%",
-          width: "80%",
-          height: "80%",
-          boxSizing: "border-box",
-          border: "1px dashed lightgray",
-        }}
-      >
+      <div>
         <div style={{ position: "absolute", top: 16, left: 16, width: 120 }}>
           <Select
             label="Top-left"
@@ -210,32 +200,29 @@ export const CornerPositioning: Story = {
           />
         </div>
 
+        <div
+          style={{
+            position: "absolute",
+            top: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 120,
+          }}
+        >
+          <Select
+            label="Top-center"
+            options={fruitOptions}
+            value={tc}
+            onChange={setTc}
+          />
+        </div>
+
         <div style={{ position: "absolute", top: 16, right: 16, width: 120 }}>
           <Select
             label="Top-right"
             options={fruitOptions}
             value={tr}
             onChange={setTr}
-          />
-        </div>
-
-        <div style={{ position: "absolute", bottom: 16, left: 16, width: 120 }}>
-          <Select
-            label="Bottom-left"
-            options={fruitOptions}
-            value={bl}
-            onChange={setBl}
-          />
-        </div>
-
-        <div
-          style={{ position: "absolute", bottom: 16, right: 16, width: 120 }}
-        >
-          <Select
-            label="Bottom-right"
-            options={fruitOptions}
-            value={br}
-            onChange={setBr}
           />
         </div>
 
@@ -259,23 +246,6 @@ export const CornerPositioning: Story = {
         <div
           style={{
             position: "absolute",
-            top: 16,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 120,
-          }}
-        >
-          <Select
-            label="Top-center"
-            options={fruitOptions}
-            value={tc}
-            onChange={setTc}
-          />
-        </div>
-
-        <div
-          style={{
-            position: "absolute",
             top: "50%",
             right: 16,
             transform: "translateY(-50%)",
@@ -287,6 +257,15 @@ export const CornerPositioning: Story = {
             options={fruitOptions}
             value={rc}
             onChange={setRc}
+          />
+        </div>
+
+        <div style={{ position: "absolute", bottom: 16, left: 16, width: 120 }}>
+          <Select
+            label="Bottom-left"
+            options={fruitOptions}
+            value={bl}
+            onChange={setBl}
           />
         </div>
 
@@ -304,6 +283,17 @@ export const CornerPositioning: Story = {
             options={fruitOptions}
             value={bc}
             onChange={setBc}
+          />
+        </div>
+
+        <div
+          style={{ position: "absolute", bottom: 16, right: 16, width: 120 }}
+        >
+          <Select
+            label="Bottom-right"
+            options={fruitOptions}
+            value={br}
+            onChange={setBr}
           />
         </div>
       </div>
