@@ -121,6 +121,7 @@
     "scope_label": "Ámbito",
     "scope_helper": "El ámbito del rango con nombre determina dónde está disponible.",
     "refers_to": "Hace referencia a",
+    "use_selection": "Usar rango seleccionado",
     "enter_formula": "Introduce la fórmula",
     "cancel": "Cancelar",
     "apply": "Aplicar cambios",

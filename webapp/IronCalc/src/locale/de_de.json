@@ -121,6 +121,7 @@
     "scope_label": "Geltungsbereich",
     "scope_helper": "Der Geltungsbereich bestimmt, wo der benannte Bereich verfügbar ist.",
     "refers_to": "Bezieht sich auf",
+    "use_selection": "Auswahl übernehmen",
     "enter_formula": "Formel eingeben",
     "cancel": "Abbrechen",
     "apply": "Änderungen übernehmen",

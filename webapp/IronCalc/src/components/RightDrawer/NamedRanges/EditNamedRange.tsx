@@ -1,8 +1,9 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
-import { Check, MousePointerClick, Tag } from "lucide-react";
+import { Check, SquareMousePointer, Tag } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
+import { IconButton } from "../../Button/IconButton";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { getFullRangeToString } from "../../util";
@@ -187,8 +188,12 @@ const EditNamedRange = ({
               <label className="ic-edit-range-label" htmlFor={formulaId}>
                 {t("name_manager_dialog.refers_to")}
               </label>
-              <MousePointerClick
-                size={16}
+              <IconButton
+                title={t("name_manager_dialog.use_selection")}
+                aria-label={t("name_manager_dialog.use_selection")}
+                size="sm"
+                variant="ghost"
+                icon={<SquareMousePointer />}
                 onClick={() => {
                   const worksheetNames = model
                     .getWorksheetsProperties()
