@@ -16,6 +16,27 @@
   flex-direction: column;
 }
 
+.ic-named-ranges-search-input {
+  flex: 1;
+}
+
+.ic-named-ranges-search-input .ic-input-control {
+  border: none;
+  border-radius: 0;
+  width: 100%;
+}
+
+.ic-named-ranges-search-container {
+  height: 40px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  gap: 8px;
+  border-bottom: 1px solid var(--palette-grey-300);
+}
+
 .ic-named-ranges-list-item {
   display: flex;
   align-items: flex-start;
