@@ -7,14 +7,16 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "check": "biome check ./src",
-    "check-write": "biome check --write ./src"
+    "check-write": "biome check --write ./src",
+    "storybook": "storybook dev -p 6007 --no-open",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@ironcalc/workbook": "file:../../IronCalc/",
-    "i18next": "^25.7.4",
     "@mui/material": "^7.3.9",
+    "i18next": "^25.7.4",
     "lucide-react": "^0.562.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
@@ -23,9 +25,12 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.7",
+    "@storybook/react": "^10.3.5",
+    "@storybook/react-vite": "^10.3.5",
     "@types/react": "^19.2.4",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "storybook": "^10.3.5",
     "typescript": "~5.9.3",
     "vite": "^8.0.2",
     "vite-plugin-svgr": "^4.5.0"
