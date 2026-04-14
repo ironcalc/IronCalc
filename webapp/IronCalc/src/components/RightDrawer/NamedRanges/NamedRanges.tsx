@@ -233,7 +233,6 @@ const NamedRanges = ({
             <div className="ic-named-ranges-search-container">
               <Input
                 ref={searchRef}
-                autoFocus
                 type="text"
                 size="sm"
                 value={searchQuery}
@@ -242,13 +241,18 @@ const NamedRanges = ({
                 className="ic-named-ranges-search-input"
                 startAdornment={<Search />}
               />
-              <Select
-                size="sm"
-                variant="ghost"
-                value={scopeFilter}
-                options={scopeOptions}
-                onChange={setScopeFilter}
-              />
+              <div className="ic-named-ranges-scope-filter">
+                <span className="ic-named-ranges-scope-filter-label">
+                  {t("name_manager_dialog.scope_label")}
+                </span>
+                <Select
+                  size="sm"
+                  variant="ghost"
+                  value={scopeFilter}
+                  options={scopeOptions}
+                  onChange={setScopeFilter}
+                />
+              </div>
             </div>
             {/* biome-ignore lint/a11y/noStaticElementInteractions: prevents search input from losing focus on list click */}
             <div onMouseDown={(e) => e.preventDefault()}>
