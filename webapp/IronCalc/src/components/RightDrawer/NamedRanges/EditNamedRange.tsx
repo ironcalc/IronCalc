@@ -129,8 +129,6 @@ const EditNamedRange = ({
             error={!!nameError}
             helperText={nameError}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
           />
           <Select
             label={t("name_manager_dialog.scope_label")}

@@ -84,6 +84,8 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
             required={required}
             aria-invalid={error || undefined}
             aria-describedby={helperText ? helperId : undefined}
+            onKeyDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             {...rest}
           />
 
