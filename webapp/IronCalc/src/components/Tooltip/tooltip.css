@@ -1,0 +1,33 @@
+.ic-tooltip-trigger {
+  display: inline-flex;
+}
+
+.ic-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: var(--typography-font-family);
+  font-size: calc(var(--typography-font-size) - 1px);
+  color: var(--palette-common-white);
+  background-color: color-mix(
+    in srgb,
+    var(--palette-common-black) 80%,
+    transparent
+  );
+  border-radius: 4px;
+  padding: 4px 8px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 150ms ease-out,
+    visibility 0s linear 150ms;
+}
+
+.ic-tooltip[data-visible="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 150ms ease-out,
+    visibility 0s;
+}
