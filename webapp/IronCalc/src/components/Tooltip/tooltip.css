@@ -4,7 +4,6 @@
 
 .ic-tooltip {
   position: fixed;
-  z-index: 9999;
   pointer-events: none;
   white-space: nowrap;
   font-family: var(--typography-font-family);
