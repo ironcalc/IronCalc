@@ -81,8 +81,6 @@ const RightDrawer = ({
         return;
       }
 
-      e.preventDefault();
-      e.stopPropagation();
       setDrawerWidth(nextWidth);
       onWidthChange(nextWidth);
     },
