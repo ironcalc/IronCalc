@@ -5,6 +5,7 @@ import {
   PencilLine,
   Plus,
   Search,
+  SearchX,
   Trash2,
   X,
 } from "lucide-react";
@@ -174,8 +175,8 @@ const NamedRanges = ({
   const definedNameList = model.getDefinedNameList();
   const worksheetNames = model.getWorksheetsProperties().map((s) => s.name);
   const scopeOptions = [
-    { value: "all", label: "All" },
-    { value: "global", label: "Global" },
+    { value: "all", label: t("name_manager_dialog.scope_filter_all") },
+    { value: "global", label: t("name_manager_dialog.scope_filter_global") },
     ...worksheetNames.map((name) => ({ value: name, label: name })),
   ];
   const filteredDefinedNameList = definedNameList.filter((definedName) => {
@@ -238,13 +239,10 @@ const NamedRanges = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("name_manager_dialog.search_placeholder")}
-                className="ic-named-ranges-search-input"
                 startAdornment={<Search />}
               />
               <div className="ic-named-ranges-scope-filter">
-                <span className="ic-named-ranges-scope-filter-label">
-                  {t("name_manager_dialog.scope_label")}
-                </span>
+                <span>{t("name_manager_dialog.scope_label")}</span>
                 <Select
                   size="sm"
                   variant="ghost"
@@ -255,7 +253,18 @@ const NamedRanges = ({
               </div>
             </div>
             {/* biome-ignore lint/a11y/noStaticElementInteractions: prevents search input from losing focus on list click */}
-            <div onMouseDown={(e) => e.preventDefault()}>
+            <div
+              className="ic-named-ranges-list-body"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {filteredDefinedNameList.length === 0 ? (
+                <div className="ic-named-ranges-empty-state-message">
+                  <div className="ic-named-ranges-icon-wrapper">
+                    <SearchX />
+                  </div>
+                  {t("name_manager_dialog.no_search_results")}
+                </div>
+              ) : null}
               {filteredDefinedNameList.map((definedName) => {
                 const worksheets = model.getWorksheetsProperties();
                 const scopeName =
