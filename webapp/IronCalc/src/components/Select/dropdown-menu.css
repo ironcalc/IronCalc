@@ -1,6 +1,7 @@
 /* Dropdown menu */
 .ic-dropdown-menu-wrapper {
   position: fixed;
+  z-index: 9999;
   font-family: var(--typography-font-family);
   font-size: var(--typography-font-size);
 }
