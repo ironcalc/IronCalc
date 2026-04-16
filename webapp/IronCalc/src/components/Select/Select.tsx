@@ -10,8 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
-
+import { Portal } from "../PortalContext";
 import "./select.css";
 import "./dropdown-menu.css";
 
@@ -335,61 +334,60 @@ export function Select({
           </span>
         </button>
 
-        {open
-          ? createPortal(
+        {open ? (
+          <Portal>
+            <div
+              ref={menuRef}
+              className="ic-dropdown-menu-wrapper"
+              style={menuPosition}
+            >
               <div
-                ref={menuRef}
-                className="ic-dropdown-menu-wrapper"
-                style={menuPosition}
+                id={listboxId}
+                className="ic-dropdown-menu"
+                role="listbox"
+                aria-labelledby={label ? labelId : valueId}
               >
-                <div
-                  id={listboxId}
-                  className="ic-dropdown-menu"
-                  role="listbox"
-                  aria-labelledby={label ? labelId : valueId}
-                >
-                  {options.map((option, index) => {
-                    const isSelected = option.value === value;
-                    const isActive = index === activeIndex;
+                {options.map((option, index) => {
+                  const isSelected = option.value === value;
+                  const isActive = index === activeIndex;
 
-                    return (
-                      <button
-                        key={option.value}
-                        ref={(element) => {
-                          optionRefs.current[index] = element;
-                        }}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected ? "true" : "false"}
-                        className={[
-                          "ic-dropdown-menu-option",
-                          isSelected && "is-selected",
-                          isActive && "is-active",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                        onClick={() => commit(index)}
-                        onMouseEnter={() => setActiveIndex(index)}
-                        onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                  return (
+                    <button
+                      key={option.value}
+                      ref={(element) => {
+                        optionRefs.current[index] = element;
+                      }}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected ? "true" : "false"}
+                      className={[
+                        "ic-dropdown-menu-option",
+                        isSelected && "is-selected",
+                        isActive && "is-active",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={() => commit(index)}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                    >
+                      <span
+                        className="ic-dropdown-menu-option-check"
+                        aria-hidden="true"
                       >
-                        <span
-                          className="ic-dropdown-menu-option-check"
-                          aria-hidden="true"
-                        >
-                          {isSelected ? <Check size={16} /> : null}
-                        </span>
+                        {isSelected ? <Check size={16} /> : null}
+                      </span>
 
-                        <span className="ic-dropdown-menu-option-content">
-                          {option.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>,
-              document.body,
-            )
-          : null}
+                      <span className="ic-dropdown-menu-option-content">
+                        {option.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </Portal>
+        ) : null}
       </div>
 
       {helperText && <p id={helperId}>{helperText}</p>}
