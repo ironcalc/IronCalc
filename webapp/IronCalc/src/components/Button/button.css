@@ -1,4 +1,4 @@
-:root {
+.ic-root {
   --black-04: color-mix(in srgb, var(--palette-common-black) 4%, transparent);
   --black-12: color-mix(in srgb, var(--palette-common-black) 12%, transparent);
 }
