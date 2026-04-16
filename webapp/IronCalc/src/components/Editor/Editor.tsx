@@ -187,7 +187,7 @@ const Editor = (options: EditorOptions) => {
         overflow: "hidden",
         display: showEditor,
         background: "#FFF",
-        fontFamily: "Inter",
+        fontFamily: "var(--palette-sheet-default-cell-font-family)",
         fontSize: "13px",
       }}
     >
