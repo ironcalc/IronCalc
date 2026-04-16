@@ -254,7 +254,6 @@ function Toolbar(properties: ToolbarProperties) {
             onChange={(numberFmt): void => {
               properties.onNumberFormatPicked(numberFmt);
             }}
-            onExited={(): void => {}}
             formatOptions={properties.formatOptions}
           >
             <Tooltip title={t("toolbar.format_number")}>
