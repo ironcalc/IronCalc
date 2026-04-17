@@ -121,6 +121,7 @@
     "scope_label": "Portée",
     "scope_filter_all": "Tous",
     "scope_filter_global": "Global",
+    "scope_filter_current": "Feuille actuelle",
     "scope_helper": "La portée de la plage nommée détermine où elle est disponible.",
     "refers_to": "Fait référence à",
     "use_selection": "Utiliser la plage sélectionnée",

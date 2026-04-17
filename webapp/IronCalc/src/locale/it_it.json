@@ -121,6 +121,7 @@
     "scope_label": "Ambito",
     "scope_filter_all": "Tutti",
     "scope_filter_global": "Globale",
+    "scope_filter_current": "Foglio corrente",
     "scope_helper": "L'ambito dell'intervallo denominato determina dove è disponibile.",
     "refers_to": "Fa riferimento a",
     "use_selection": "Usa intervallo selezionato",

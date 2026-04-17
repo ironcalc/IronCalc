@@ -43,7 +43,7 @@ const NamedRanges = ({
   const [editingDefinedName, setEditingDefinedName] =
     useState<DefinedName | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
-  const [scopeFilter, setScopeFilter] = useState("all");
+  const [scopeFilter, setScopeFilter] = useState("[all]");
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
@@ -173,20 +173,19 @@ const NamedRanges = ({
 
   const currentSelectedArea = getSelectedArea();
   const definedNameList = model.getDefinedNameList();
-  const worksheetNames = model.getWorksheetsProperties().map((s) => s.name);
+  const currentSheetIndex = model.getSelectedView().sheet;
   const scopeOptions = [
-    { value: "all", label: t("name_manager_dialog.scope_filter_all") },
-    { value: "global", label: t("name_manager_dialog.scope_filter_global") },
-    ...worksheetNames.map((name) => ({ value: name, label: name })),
+    { value: "[all]", label: t("name_manager_dialog.scope_filter_all") },
+    { value: "[global]", label: t("name_manager_dialog.scope_filter_global") },
+    {
+      value: "[current]",
+      label: t("name_manager_dialog.scope_filter_current"),
+    },
   ];
   const filteredDefinedNameList = definedNameList.filter((definedName) => {
-    if (scopeFilter !== "all") {
-      if (scopeFilter === "global" && definedName.scope != null) return false;
-      if (scopeFilter !== "global") {
-        const sheetIndex = worksheetNames.indexOf(scopeFilter);
-        if (definedName.scope !== sheetIndex) return false;
-      }
-    }
+    if (scopeFilter === "[global]" && definedName.scope != null) return false;
+    if (scopeFilter === "[current]" && definedName.scope !== currentSheetIndex)
+      return false;
     if (searchQuery.trim()) {
       return definedName.name
         .toLowerCase()

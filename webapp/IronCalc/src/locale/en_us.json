@@ -121,6 +121,7 @@
     "scope_label": "Scope",
     "scope_filter_all": "All",
     "scope_filter_global": "Global",
+    "scope_filter_current": "Current sheet",
     "scope_helper": "The scope of the named range determines where it is available.",
     "refers_to": "Refers to",
     "use_selection": "Use selected range",

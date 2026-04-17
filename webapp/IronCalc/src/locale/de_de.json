@@ -121,6 +121,7 @@
     "scope_label": "Scope",
     "scope_filter_all": "Alle",
     "scope_filter_global": "Global",
+    "scope_filter_current": "Aktuelles Blatt",
     "scope_helper": "Der Geltungsbereich bestimmt, wo der benannte Bereich verfügbar ist.",
     "refers_to": "Bezieht sich auf",
     "use_selection": "Auswahl übernehmen",

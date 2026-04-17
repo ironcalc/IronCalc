@@ -111,11 +111,16 @@ const EditNamedRange = ({
   const handleSave = () => {
     if (hasAnyError) return;
     const error = onSave(name.trim(), scope, formula);
-    if (error.nameError) setNameError(error.nameError);
-    if (error.formulaError) setFormulaError(error.formulaError);
+    if (error.nameError) {
+      setNameError(error.nameError);
+    }
+    if (error.formulaError) {
+      setFormulaError(error.formulaError);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
       handleSave();
@@ -235,10 +240,7 @@ const EditNamedRange = ({
                   setFormula(e.target.value);
                   setFormulaError("");
                 }}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  handleKeyDown(e);
-                }}
+                onKeyDown={handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
                 aria-invalid={formulaError ? "true" : "false"}
               />

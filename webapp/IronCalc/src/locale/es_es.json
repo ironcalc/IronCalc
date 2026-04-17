@@ -121,6 +121,7 @@
     "scope_label": "Ámbito",
     "scope_filter_all": "Todo",
     "scope_filter_global": "Global",
+    "scope_filter_current": "Hoja actual",
     "scope_helper": "El ámbito del rango con nombre determina dónde está disponible.",
     "refers_to": "Hace referencia a",
     "use_selection": "Usar rango seleccionado",
