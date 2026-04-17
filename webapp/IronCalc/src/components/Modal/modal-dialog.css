@@ -1,4 +1,4 @@
-.ic-dialog-backdrop {
+.ic-modal-dialog-backdrop {
   position: fixed;
   inset: 0;
   display: flex;
@@ -7,7 +7,7 @@
   background: rgb(0 0 0 / 32%);
 }
 
-.ic-dialog {
+.ic-modal-dialog {
   width: 280px;
   max-width: calc(100% - 40px);
   display: flex;
@@ -18,12 +18,12 @@
   font-family: var(--typography-font-family);
 }
 
-.ic-dialog:focus-visible {
+.ic-modal-dialog:focus-visible {
   outline: 3px solid
     color-mix(in srgb, var(--palette-common-black) 8%, transparent);
 }
 
-.ic-dialog-header {
+.ic-modal-dialog-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -31,7 +31,7 @@
   padding: 0 12px;
 }
 
-.ic-dialog-header h2 {
+.ic-modal-dialog-header h2 {
   margin: 0;
   min-width: 0;
   font-size: calc(var(--typography-font-size) + 1px);
@@ -42,7 +42,7 @@
   white-space: nowrap;
 }
 
-.ic-dialog-body {
+.ic-modal-dialog-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -51,11 +51,11 @@
   color: var(--palette-grey-900);
 }
 
-.ic-dialog-body > p {
+.ic-modal-dialog-body > p {
   margin: 0;
 }
 
-.ic-dialog-footer {
+.ic-modal-dialog-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -64,7 +64,7 @@
 }
 
 @media (max-width: 600px) {
-  .ic-dialog-footer {
+  .ic-modal-dialog-footer {
     flex-direction: column-reverse;
     align-items: stretch;
   }

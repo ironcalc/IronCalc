@@ -1,0 +1,92 @@
+import { X } from "lucide-react";
+import { type ReactNode, useId } from "react";
+import { createPortal } from "react-dom";
+import { Button } from "../Button/Button";
+import { IconButton } from "../Button/IconButton";
+import "./modal-dialog.css";
+import { useModalFocus } from "./useModalFocus";
+import { useModalKeyDown } from "./useModalKeyDown";
+
+export interface ConfirmProperties {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: "default" | "destructive";
+}
+
+export function Confirm({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmLabel = "OK",
+  cancelLabel = "Cancel",
+  variant = "default",
+}: ConfirmProperties) {
+  const modalId = useId();
+  const titleId = `${modalId}-title`;
+  const { modalRef, restoreFocus } = useModalFocus(open);
+
+  const closeModal = (): void => {
+    onClose();
+    restoreFocus();
+  };
+
+  const handleConfirm = (): void => {
+    onConfirm();
+    closeModal();
+  };
+
+  const { onKeyDown } = useModalKeyDown({
+    modalRef,
+    onClose: closeModal,
+    onConfirm: handleConfirm,
+  });
+
+  if (!open) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="ic-modal-dialog-backdrop" onClick={closeModal} role="none">
+      <div
+        ref={modalRef}
+        className="ic-modal-dialog"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={onKeyDown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
+        <div className="ic-modal-dialog-header">
+          <h2 id={titleId}>{title}</h2>
+          <IconButton icon={<X />} aria-label="Close" onClick={closeModal} />
+        </div>
+        <div className="ic-modal-dialog-body">
+          {typeof message === "string" ? <p>{message}</p> : message}
+        </div>
+        <div className="ic-modal-dialog-footer">
+          <Button size="md" variant="secondary" onClick={closeModal}>
+            {cancelLabel}
+          </Button>
+          <Button
+            size="md"
+            variant={variant === "destructive" ? "destructive" : undefined}
+            onClick={handleConfirm}
+          >
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+Confirm.displayName = "Confirm";

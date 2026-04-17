@@ -4,12 +4,12 @@ const FOCUSABLE_SELECTORS =
   ':is(a[href], button, input, select, textarea, [tabindex]):not([disabled]):not([tabindex="-1"])';
 
 interface Options {
-  dialogRef: RefObject<HTMLDivElement | null>;
+  modalRef: RefObject<HTMLDivElement | null>;
   onClose: () => void;
   onConfirm?: () => void;
 }
 
-export function useDialogKeyDown({ dialogRef, onClose, onConfirm }: Options) {
+export function useModalKeyDown({ modalRef, onClose, onConfirm }: Options) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -34,13 +34,13 @@ export function useDialogKeyDown({ dialogRef, onClose, onConfirm }: Options) {
       }
 
       if (event.key === "Tab") {
-        const dialog = dialogRef.current;
-        if (!dialog) {
+        const modal = modalRef.current;
+        if (!modal) {
           return;
         }
 
         const focusable = Array.from(
-          dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS),
+          modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS),
         );
 
         if (focusable.length === 0) {
@@ -62,7 +62,7 @@ export function useDialogKeyDown({ dialogRef, onClose, onConfirm }: Options) {
         }
       }
     },
-    [dialogRef, onClose, onConfirm],
+    [modalRef, onClose, onConfirm],
   );
 
   return { onKeyDown };

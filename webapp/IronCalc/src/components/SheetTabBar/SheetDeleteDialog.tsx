@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Button } from "../Button/Button";
-import { Dialog } from "../Dialog/Dialog";
+import { Confirm } from "../Modal/Confirm";
 
 interface SheetDeleteDialogProps {
   open: boolean;
@@ -17,31 +16,17 @@ function SheetDeleteDialog({
 }: SheetDeleteDialogProps) {
   const { t } = useTranslation();
 
-  const handleDelete = (): void => {
-    onDelete();
-    onClose();
-  };
-
   return (
-    <Dialog
+    <Confirm
       open={open}
       onClose={onClose}
-      onConfirm={handleDelete}
+      onConfirm={onDelete}
       title={t("sheet_delete.title")}
-      showHeader
-      footer={
-        <>
-          <Button size="md" variant="secondary" onClick={onClose}>
-            {t("sheet_delete.cancel")}
-          </Button>
-          <Button size="md" variant="destructive" onClick={handleDelete}>
-            {t("sheet_delete.confirm")}
-          </Button>
-        </>
-      }
-    >
-      <p>{t("sheet_delete.message", { sheetName })}</p>
-    </Dialog>
+      message={t("sheet_delete.message", { sheetName })}
+      confirmLabel={t("sheet_delete.confirm")}
+      cancelLabel={t("sheet_delete.cancel")}
+      variant="destructive"
+    />
   );
 }
 
