@@ -55,12 +55,7 @@ export function Dialog({
   }
 
   return createPortal(
-    // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
-    <div
-      className="ic-dialog-backdrop"
-      onClick={closeDialog}
-      role="presentation"
-    >
+    <div className="ic-dialog-backdrop" onClick={closeDialog} role="none">
       <div
         ref={dialogRef}
         className={["ic-dialog", className].filter(Boolean).join(" ")}
