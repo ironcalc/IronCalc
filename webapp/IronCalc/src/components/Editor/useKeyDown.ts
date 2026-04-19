@@ -1,6 +1,7 @@
 import type { Model } from "@ironcalc/wasm";
 import { type KeyboardEvent, type RefObject, useCallback } from "react";
 import { rangeToStr } from "../util";
+import { LAST_COLUMN, LAST_ROW } from "../WorksheetCanvas/constants";
 import type { WorkbookState } from "../workbookState";
 import { isInReferenceMode } from "./util";
 
@@ -10,6 +11,32 @@ interface Options {
   onTextUpdated: () => void;
   workbookState: WorkbookState;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
+}
+
+interface ReferencedRange {
+  sheet: number;
+  rowStart: number;
+  rowEnd: number;
+  columnStart: number;
+  columnEnd: number;
+}
+
+function isValidRange(range: ReferencedRange): boolean {
+  const { rowStart, rowEnd, columnStart, columnEnd } = range;
+  if (rowStart < 1 || rowStart > LAST_ROW) {
+    return false;
+  }
+  if (rowEnd < 1 || rowEnd > LAST_ROW) {
+    return false;
+  }
+  if (columnStart < 1 || columnStart > LAST_COLUMN) {
+    return false;
+  }
+  if (columnEnd < 1 || columnEnd > LAST_COLUMN) {
+    return false;
+  }
+
+  return true;
 }
 
 export const useKeyDown = (
@@ -110,18 +137,35 @@ export const useKeyDown = (
               .getWorksheetsProperties()
               .map((s) => s.name);
             const range = cell.referencedRange.range;
+            let { anchorRow, anchorColumn } = cell.referencedRange;
             if (shiftKey) {
-              range.columnEnd += 1;
+              const activeColumn =
+                anchorColumn === range.columnStart
+                  ? range.columnEnd
+                  : range.columnStart;
+              const newActiveColumn = activeColumn + 1;
+              if (newActiveColumn > LAST_COLUMN) {
+                return;
+              }
+              range.columnStart = Math.min(anchorColumn, newActiveColumn);
+              range.columnEnd = Math.max(anchorColumn, newActiveColumn);
             } else {
               const column = range.columnStart + 1;
+              if (column > LAST_COLUMN) {
+                return;
+              }
               const row = range.rowStart;
               range.columnStart = column;
               range.columnEnd = column;
               range.rowEnd = row;
+              anchorRow = row;
+              anchorColumn = column;
             }
             cell.referencedRange = {
               range,
               str: rangeToStr(range, cell.sheet, sheetNames[range.sheet]),
+              anchorRow,
+              anchorColumn,
             };
             workbookState.setEditingCell(cell);
             onTextUpdated();
@@ -140,9 +184,14 @@ export const useKeyDown = (
               columnStart: cell.column + 1,
               columnEnd: cell.column + 1,
             };
+            if (!isValidRange(range)) {
+              return;
+            }
             cell.referencedRange = {
               range,
               str: rangeToStr(range, cell.sheet, sheetNames[range.sheet]),
+              anchorRow: range.rowStart,
+              anchorColumn: range.columnStart,
             };
             workbookState.setEditingCell(cell);
             onTextUpdated();
@@ -172,24 +221,41 @@ export const useKeyDown = (
           event.stopPropagation();
           event.preventDefault();
           if (cell.referencedRange) {
-            // There is already a reference range we move it to the right
+            // There is already a reference range we move it to the left
             // (or expand if shift is pressed)
             const sheetNames = model
               .getWorksheetsProperties()
               .map((s) => s.name);
             const range = cell.referencedRange.range;
+            let { anchorRow, anchorColumn } = cell.referencedRange;
             if (shiftKey) {
-              range.columnEnd -= 1;
+              const activeColumn =
+                anchorColumn === range.columnStart
+                  ? range.columnEnd
+                  : range.columnStart;
+              const newActiveColumn = activeColumn - 1;
+              if (newActiveColumn < 1) {
+                return;
+              }
+              range.columnStart = Math.min(anchorColumn, newActiveColumn);
+              range.columnEnd = Math.max(anchorColumn, newActiveColumn);
             } else {
               const column = range.columnStart - 1;
+              if (column < 1) {
+                return;
+              }
               const row = range.rowStart;
               range.columnStart = column;
               range.columnEnd = column;
               range.rowEnd = row;
+              anchorRow = row;
+              anchorColumn = column;
             }
             cell.referencedRange = {
               range,
               str: rangeToStr(range, cell.sheet, sheetNames[range.sheet]),
+              anchorRow,
+              anchorColumn,
             };
             workbookState.setEditingCell(cell);
             onTextUpdated();
@@ -208,9 +274,14 @@ export const useKeyDown = (
               columnStart: cell.column - 1,
               columnEnd: cell.column - 1,
             };
+            if (!isValidRange(range)) {
+              return;
+            }
             cell.referencedRange = {
               range,
               str: rangeToStr(range, cell.sheet, sheetNames[range.sheet]),
+              anchorRow: range.rowStart,
+              anchorColumn: range.columnStart,
             };
             workbookState.setEditingCell(cell);
             onTextUpdated();
@@ -240,29 +311,40 @@ export const useKeyDown = (
           event.stopPropagation();
           event.preventDefault();
           if (cell.referencedRange) {
-            // There is already a reference range we move it to the right
+            // There is already a reference range we move it up
             // (or expand if shift is pressed)
             const sheetNames = model
               .getWorksheetsProperties()
               .map((s) => s.name);
             const range = cell.referencedRange.range;
+            let { anchorRow, anchorColumn } = cell.referencedRange;
             if (shiftKey) {
-              if (range.rowEnd > range.rowStart) {
-                range.rowEnd -= 1;
-              } else {
-                range.rowStart -= 1;
+              const activeRow =
+                anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
+              const newActiveRow = activeRow - 1;
+              if (newActiveRow < 1) {
+                return;
               }
+              range.rowStart = Math.min(anchorRow, newActiveRow);
+              range.rowEnd = Math.max(anchorRow, newActiveRow);
             } else {
               const column = range.columnStart;
               const row = range.rowStart - 1;
+              if (row < 1) {
+                return;
+              }
               range.columnStart = column;
               range.columnEnd = column;
               range.rowStart = row;
               range.rowEnd = row;
+              anchorRow = row;
+              anchorColumn = column;
             }
             cell.referencedRange = {
               range,
               str: rangeToStr(range, cell.sheet, sheetNames[range.sheet]),
+              anchorRow,
+              anchorColumn,
             };
             workbookState.setEditingCell(cell);
             onTextUpdated();
@@ -281,9 +363,14 @@ export const useKeyDown = (
               columnStart: cell.column,
               columnEnd: cell.column,
             };
+            if (!isValidRange(range)) {
+              return;
+            }
             cell.referencedRange = {
               range,
               str: rangeToStr(range, cell.sheet, sheetNames[range.sheet]),
+              anchorRow: range.rowStart,
+              anchorColumn: range.columnStart,
             };
             workbookState.setEditingCell(cell);
             onTextUpdated();
@@ -313,25 +400,40 @@ export const useKeyDown = (
           event.stopPropagation();
           event.preventDefault();
           if (cell.referencedRange) {
-            // There is already a reference range we move it to the right
+            // There is already a reference range we move it down
             // (or expand if shift is pressed)
             const sheetNames = model
               .getWorksheetsProperties()
               .map((s) => s.name);
             const range = cell.referencedRange.range;
+            let { anchorRow, anchorColumn } = cell.referencedRange;
             if (shiftKey) {
-              range.rowEnd += 1;
+              const activeRow =
+                anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
+              const newActiveRow = activeRow + 1;
+              if (newActiveRow > LAST_ROW) {
+                return;
+              }
+              range.rowStart = Math.min(anchorRow, newActiveRow);
+              range.rowEnd = Math.max(anchorRow, newActiveRow);
             } else {
               const column = range.columnStart;
               const row = range.rowStart + 1;
+              if (row > LAST_ROW) {
+                return;
+              }
               range.columnStart = column;
               range.columnEnd = column;
               range.rowStart = row;
               range.rowEnd = row;
+              anchorRow = row;
+              anchorColumn = column;
             }
             cell.referencedRange = {
               range,
               str: rangeToStr(range, cell.sheet, sheetNames[range.sheet]),
+              anchorRow,
+              anchorColumn,
             };
             workbookState.setEditingCell(cell);
             onTextUpdated();
@@ -350,9 +452,14 @@ export const useKeyDown = (
               columnStart: cell.column,
               columnEnd: cell.column,
             };
+            if (!isValidRange(range)) {
+              return;
+            }
             cell.referencedRange = {
               range,
               str: rangeToStr(range, cell.sheet, sheetNames[range.sheet]),
+              anchorRow: range.rowStart,
+              anchorColumn: range.columnStart,
             };
             workbookState.setEditingCell(cell);
             onTextUpdated();
