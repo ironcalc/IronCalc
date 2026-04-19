@@ -313,6 +313,8 @@ const usePointer = (options: PointerSettings): PointerEvents => {
                 editingCell.sheet,
                 sheetNames[range.sheet],
               ),
+              anchorRow: range.rowStart,
+              anchorColumn: range.columnStart,
             };
             workbookState.setEditingCell(editingCell);
             event.stopPropagation();

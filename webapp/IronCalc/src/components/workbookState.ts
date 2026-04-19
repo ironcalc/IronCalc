@@ -57,6 +57,8 @@ export interface ReferencedRange {
     columnEnd: number;
   };
   str: string;
+  anchorRow: number;
+  anchorColumn: number;
 }
 
 type Focus = "cell" | "formula-bar";
