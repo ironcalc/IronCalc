@@ -2,7 +2,7 @@ import type { Model } from "@ironcalc/wasm";
 import { type KeyboardEvent, type RefObject, useCallback } from "react";
 import { rangeToStr } from "../util";
 import { LAST_COLUMN, LAST_ROW } from "../WorksheetCanvas/constants";
-import type { WorkbookState } from "../workbookState";
+import type { SheetRange, WorkbookState } from "../workbookState";
 import { isInReferenceMode } from "./util";
 
 interface Options {
@@ -13,15 +13,7 @@ interface Options {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
-interface ReferencedRange {
-  sheet: number;
-  rowStart: number;
-  rowEnd: number;
-  columnStart: number;
-  columnEnd: number;
-}
-
-function isValidRange(range: ReferencedRange): boolean {
+function isValidRange(range: SheetRange): boolean {
   const { rowStart, rowEnd, columnStart, columnEnd } = range;
   if (rowStart < 1 || rowStart > LAST_ROW) {
     return false;
@@ -150,15 +142,21 @@ export const useKeyDown = (
               range.columnStart = Math.min(anchorColumn, newActiveColumn);
               range.columnEnd = Math.max(anchorColumn, newActiveColumn);
             } else {
-              const column = range.columnStart + 1;
+              const activeRow =
+                anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
+              const activeColumn =
+                anchorColumn === range.columnStart
+                  ? range.columnEnd
+                  : range.columnStart;
+              const column = activeColumn + 1;
               if (column > LAST_COLUMN) {
                 return;
               }
-              const row = range.rowStart;
               range.columnStart = column;
               range.columnEnd = column;
-              range.rowEnd = row;
-              anchorRow = row;
+              range.rowStart = activeRow;
+              range.rowEnd = activeRow;
+              anchorRow = activeRow;
               anchorColumn = column;
             }
             cell.referencedRange = {
@@ -240,15 +238,21 @@ export const useKeyDown = (
               range.columnStart = Math.min(anchorColumn, newActiveColumn);
               range.columnEnd = Math.max(anchorColumn, newActiveColumn);
             } else {
-              const column = range.columnStart - 1;
+              const activeRow =
+                anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
+              const activeColumn =
+                anchorColumn === range.columnStart
+                  ? range.columnEnd
+                  : range.columnStart;
+              const column = activeColumn - 1;
               if (column < 1) {
                 return;
               }
-              const row = range.rowStart;
               range.columnStart = column;
               range.columnEnd = column;
-              range.rowEnd = row;
-              anchorRow = row;
+              range.rowStart = activeRow;
+              range.rowEnd = activeRow;
+              anchorRow = activeRow;
               anchorColumn = column;
             }
             cell.referencedRange = {
@@ -328,17 +332,22 @@ export const useKeyDown = (
               range.rowStart = Math.min(anchorRow, newActiveRow);
               range.rowEnd = Math.max(anchorRow, newActiveRow);
             } else {
-              const column = range.columnStart;
-              const row = range.rowStart - 1;
+              const activeRow =
+                anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
+              const activeColumn =
+                anchorColumn === range.columnStart
+                  ? range.columnEnd
+                  : range.columnStart;
+              const row = activeRow - 1;
               if (row < 1) {
                 return;
               }
-              range.columnStart = column;
-              range.columnEnd = column;
+              range.columnStart = activeColumn;
+              range.columnEnd = activeColumn;
               range.rowStart = row;
               range.rowEnd = row;
               anchorRow = row;
-              anchorColumn = column;
+              anchorColumn = activeColumn;
             }
             cell.referencedRange = {
               range,
@@ -417,17 +426,22 @@ export const useKeyDown = (
               range.rowStart = Math.min(anchorRow, newActiveRow);
               range.rowEnd = Math.max(anchorRow, newActiveRow);
             } else {
-              const column = range.columnStart;
-              const row = range.rowStart + 1;
+              const activeRow =
+                anchorRow === range.rowStart ? range.rowEnd : range.rowStart;
+              const activeColumn =
+                anchorColumn === range.columnStart
+                  ? range.columnEnd
+                  : range.columnStart;
+              const row = activeRow + 1;
               if (row > LAST_ROW) {
                 return;
               }
-              range.columnStart = column;
-              range.columnEnd = column;
+              range.columnStart = activeColumn;
+              range.columnEnd = activeColumn;
               range.rowStart = row;
               range.rowEnd = row;
               anchorRow = row;
-              anchorColumn = column;
+              anchorColumn = activeColumn;
             }
             cell.referencedRange = {
               range,
