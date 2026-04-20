@@ -1,15 +1,13 @@
 import { type KeyboardEvent, type RefObject, useCallback } from "react";
 
-const FOCUSABLE_SELECTORS =
-  ':is(a[href], button, input, select, textarea, [tabindex]):not([disabled]):not([tabindex="-1"])';
-
 interface Options {
-  modalRef: RefObject<HTMLDivElement | null>;
+  first: RefObject<HTMLElement | null>;
+  last: RefObject<HTMLElement | null>;
   onClose: () => void;
   onConfirm?: () => void;
 }
 
-export function useModalKeyDown({ modalRef, onClose, onConfirm }: Options) {
+export function useModalKeyDown({ first, last, onClose, onConfirm }: Options) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -34,35 +32,24 @@ export function useModalKeyDown({ modalRef, onClose, onConfirm }: Options) {
       }
 
       if (event.key === "Tab") {
-        const modal = modalRef.current;
-        if (!modal) {
+        const firstEl = first.current;
+        const lastEl = last.current;
+        if (!firstEl || !lastEl) {
           return;
         }
-
-        const focusable = Array.from(
-          modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS),
-        );
-
-        if (focusable.length === 0) {
-          event.preventDefault();
-          return;
-        }
-
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
 
         if (event.shiftKey) {
-          if (document.activeElement === first) {
+          if (document.activeElement === firstEl) {
             event.preventDefault();
-            last?.focus();
+            lastEl.focus();
           }
-        } else if (document.activeElement === last) {
+        } else if (document.activeElement === lastEl) {
           event.preventDefault();
-          first?.focus();
+          firstEl.focus();
         }
       }
     },
-    [modalRef, onClose, onConfirm],
+    [first, last, onClose, onConfirm],
   );
 
   return { onKeyDown };

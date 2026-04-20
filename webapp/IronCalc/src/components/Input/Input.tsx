@@ -84,8 +84,14 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
             required={required}
             aria-invalid={error || undefined}
             aria-describedby={helperText ? helperId : undefined}
+            // FIXME: the stopPropagation everywhere is because of my bad implementation
+            // of keyboard handling in the spreadsheet
             onKeyDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
+            onPaste={(e) => e.stopPropagation()}
+            onCopy={(e) => e.stopPropagation()}
+            onCut={(e) => e.stopPropagation()}
+            onFocus={(e) => e.target.select()}
             {...rest}
           />
 

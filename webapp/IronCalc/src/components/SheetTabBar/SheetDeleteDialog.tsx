@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Confirm } from "../Modal/Confirm";
+import { Confirm } from "../Modal";
 
 interface SheetDeleteDialogProps {
   open: boolean;

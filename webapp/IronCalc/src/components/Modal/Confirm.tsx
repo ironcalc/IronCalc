@@ -1,9 +1,8 @@
 import { X } from "lucide-react";
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
-import "./modal-dialog.css";
 import { useModalFocus } from "./useModalFocus";
 import { useModalKeyDown } from "./useModalKeyDown";
 
@@ -31,6 +30,8 @@ export function Confirm({
   const modalId = useId();
   const titleId = `${modalId}-title`;
   const { modalRef, restoreFocus } = useModalFocus(open);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
   const closeModal = (): void => {
     onClose();
@@ -43,7 +44,8 @@ export function Confirm({
   };
 
   const { onKeyDown } = useModalKeyDown({
-    modalRef,
+    first: closeButtonRef,
+    last: confirmButtonRef,
     onClose: closeModal,
     onConfirm: handleConfirm,
   });
@@ -66,7 +68,12 @@ export function Confirm({
       >
         <div className="ic-modal-dialog-header">
           <h2 id={titleId}>{title}</h2>
-          <IconButton icon={<X />} aria-label="Close" onClick={closeModal} />
+          <IconButton
+            ref={closeButtonRef}
+            icon={<X />}
+            aria-label="Close"
+            onClick={closeModal}
+          />
         </div>
         <div className="ic-modal-dialog-body">
           {typeof message === "string" ? <p>{message}</p> : message}
@@ -76,6 +83,7 @@ export function Confirm({
             {cancelLabel}
           </Button>
           <Button
+            ref={confirmButtonRef}
             size="md"
             variant={variant === "destructive" ? "destructive" : undefined}
             onClick={handleConfirm}

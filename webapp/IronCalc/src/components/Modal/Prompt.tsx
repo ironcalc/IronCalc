@@ -1,10 +1,9 @@
 import { X } from "lucide-react";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
 import { Input, type InputProperties } from "../Input/Input";
-import "./modal-dialog.css";
 import { useModalFocus } from "./useModalFocus";
 import { useModalKeyDown } from "./useModalKeyDown";
 
@@ -36,6 +35,8 @@ export function Prompt({
   const modalId = useId();
   const titleId = `${modalId}-title`;
   const { modalRef, restoreFocus } = useModalFocus(open);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
   const [value, setValue] = useState(defaultValue);
 
   useEffect(() => {
@@ -55,7 +56,8 @@ export function Prompt({
   };
 
   const { onKeyDown } = useModalKeyDown({
-    modalRef,
+    first: closeButtonRef,
+    last: submitButtonRef,
     onClose: closeModal,
     onConfirm: handleSubmit,
   });
@@ -78,7 +80,12 @@ export function Prompt({
       >
         <div className="ic-modal-dialog-header">
           <h2 id={titleId}>{title}</h2>
-          <IconButton icon={<X />} aria-label="Close" onClick={closeModal} />
+          <IconButton
+            ref={closeButtonRef}
+            icon={<X />}
+            aria-label="Close"
+            onClick={closeModal}
+          />
         </div>
         <div className="ic-modal-dialog-body">
           {message &&
@@ -111,7 +118,7 @@ export function Prompt({
           <Button size="md" variant="secondary" onClick={closeModal}>
             {cancelLabel}
           </Button>
-          <Button size="md" onClick={handleSubmit}>
+          <Button ref={submitButtonRef} size="md" onClick={handleSubmit}>
             {confirmLabel}
           </Button>
         </div>

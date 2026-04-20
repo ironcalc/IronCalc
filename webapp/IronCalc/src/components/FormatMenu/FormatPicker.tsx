@@ -1,8 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Prompt } from "../Modal/Prompt";
-
-// FIXME: the stopPropagation everywhere is because of my bad implementation
-// of keyboard handling in the spreadsheet
+import { Prompt } from "../Modal";
 
 type FormatPickerProps = {
   className?: string;
@@ -28,10 +25,6 @@ const FormatPicker = (properties: FormatPickerProps) => {
         name: "format_code",
         autoFocus: true,
         spellCheck: false,
-        onFocus: (event) => event.target.select(),
-        onPaste: (event) => event.stopPropagation(),
-        onCopy: (event) => event.stopPropagation(),
-        onCut: (event) => event.stopPropagation(),
       }}
     />
   );
