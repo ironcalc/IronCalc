@@ -58,8 +58,7 @@ export function Prompt({
   };
 
   const { onKeyDown } = useModalKeyDown({
-    first: closeButtonRef,
-    last: submitButtonRef,
+    focusableElements: [closeButtonRef, submitButtonRef],
     onClose: closeModal,
     onConfirm: handleSubmit,
   });

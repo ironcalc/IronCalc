@@ -1,13 +1,12 @@
 import { type KeyboardEvent, type RefObject, useCallback } from "react";
 
 interface Options {
-  first: RefObject<HTMLElement | null>;
-  last: RefObject<HTMLElement | null>;
+  focusableElements: RefObject<HTMLElement | null>[];
   onClose: () => void;
   onConfirm?: () => void;
 }
 
-export function useModalKeyDown({ first, last, onClose, onConfirm }: Options) {
+export function useModalKeyDown({ focusableElements, onClose, onConfirm }: Options) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -32,8 +31,8 @@ export function useModalKeyDown({ first, last, onClose, onConfirm }: Options) {
       }
 
       if (event.key === "Tab") {
-        const firstEl = first.current;
-        const lastEl = last.current;
+        const firstEl = focusableElements[0]?.current;
+        const lastEl = focusableElements[focusableElements.length - 1]?.current;
         if (!firstEl || !lastEl) {
           return;
         }
@@ -49,7 +48,7 @@ export function useModalKeyDown({ first, last, onClose, onConfirm }: Options) {
         }
       }
     },
-    [first, last, onClose, onConfirm],
+    [focusableElements, onClose, onConfirm],
   );
 
   return { onKeyDown };

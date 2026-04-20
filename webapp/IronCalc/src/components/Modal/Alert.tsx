@@ -35,8 +35,7 @@ export function Alert({
   };
 
   const { onKeyDown } = useModalKeyDown({
-    first: closeButtonRef,
-    last: confirmButtonRef,
+    focusableElements: [closeButtonRef, confirmButtonRef],
     onClose: closeModal,
     onConfirm: closeModal,
   });

@@ -46,8 +46,7 @@ export function Confirm({
   };
 
   const { onKeyDown } = useModalKeyDown({
-    first: closeButtonRef,
-    last: confirmButtonRef,
+    focusableElements: [closeButtonRef, confirmButtonRef],
     onClose: closeModal,
     onConfirm: handleConfirm,
   });
