@@ -9,7 +9,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
@@ -47,6 +47,13 @@ const NamedRanges = ({
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
+
+  const isListView = !editingDefinedName && !isCreatingNew;
+  useEffect(() => {
+    if (isListView) {
+      searchRef.current?.focus();
+    }
+  }, [isListView]);
 
   const handleListItemClick = (definedName: DefinedName) => {
     setEditingDefinedName(definedName);
@@ -187,9 +194,16 @@ const NamedRanges = ({
     if (scopeFilter === "[current]" && definedName.scope !== currentSheetIndex)
       return false;
     if (searchQuery.trim()) {
-      return definedName.name
-        .toLowerCase()
-        .includes(searchQuery.trim().toLowerCase());
+      const q = searchQuery.trim().toLowerCase();
+      const worksheets = model.getWorksheetsProperties();
+      const scopeName =
+        definedName.scope != null
+          ? (worksheets[definedName.scope]?.name ?? "")
+          : t("name_manager_dialog.scope_filter_global");
+      return (
+        definedName.name.toLowerCase().includes(q) ||
+        scopeName.toLowerCase().includes(q)
+      );
     }
     return true;
   });

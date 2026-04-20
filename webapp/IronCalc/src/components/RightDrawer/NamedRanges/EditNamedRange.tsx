@@ -150,6 +150,7 @@ const EditNamedRange = ({
             error={!!nameError}
             helperText={nameError}
             onChange={(e) => setName(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
           <Select
             label={t("name_manager_dialog.scope_label")}
