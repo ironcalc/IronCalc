@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import ColorPicker from "../ColorPicker/ColorPicker";
 import { isInReferenceMode } from "../Editor/util";
 import type { WorkbookState } from "../workbookState";
-import SheetDeleteDialog from "./SheetDeleteDialog";
+import SheetDeleteModal from "./SheetDeleteModal";
 import "./sheet-tab.css";
 
 interface SheetTabProps {
@@ -465,7 +465,7 @@ function SheetTab(props: SheetTabProps) {
         placement="top"
       />
 
-      <SheetDeleteDialog
+      <SheetDeleteModal
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         onDelete={() => {

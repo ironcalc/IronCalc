@@ -20,7 +20,9 @@ const FormatPicker = (properties: FormatPickerProps) => {
       title={t("num_fmt.title")}
       className={properties.className}
       defaultValue={properties.numFmt}
+      cancelLabel={t("num_fmt.cancel")}
       confirmLabel={t("num_fmt.save")}
+      closeLabel={t("num_fmt.close")}
       inputProps={{
         name: "format_code",
         autoFocus: true,

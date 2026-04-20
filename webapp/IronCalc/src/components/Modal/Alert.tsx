@@ -12,6 +12,7 @@ export interface AlertProperties {
   title: string;
   message: ReactNode;
   confirmLabel?: string;
+  closeLabel?: string;
 }
 
 export function Alert({
@@ -20,6 +21,7 @@ export function Alert({
   title,
   message,
   confirmLabel = "OK",
+  closeLabel = "Close",
 }: AlertProperties) {
   const modalId = useId();
   const titleId = `${modalId}-title`;
@@ -60,7 +62,7 @@ export function Alert({
           <IconButton
             ref={closeButtonRef}
             icon={<X />}
-            aria-label="Close"
+            aria-label={closeLabel}
             onClick={closeModal}
           />
         </div>

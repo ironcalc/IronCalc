@@ -14,6 +14,7 @@ export interface ConfirmProperties {
   message: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
+  closeLabel?: string;
   variant?: "default" | "destructive";
 }
 
@@ -25,6 +26,7 @@ export function Confirm({
   message,
   confirmLabel = "OK",
   cancelLabel = "Cancel",
+  closeLabel = "Close",
   variant = "default",
 }: ConfirmProperties) {
   const modalId = useId();
@@ -71,7 +73,7 @@ export function Confirm({
           <IconButton
             ref={closeButtonRef}
             icon={<X />}
-            aria-label="Close"
+            aria-label={closeLabel}
             onClick={closeModal}
           />
         </div>

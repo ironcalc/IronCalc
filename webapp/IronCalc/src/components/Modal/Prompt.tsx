@@ -16,6 +16,7 @@ export interface PromptProperties {
   defaultValue?: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  closeLabel?: string;
   className?: string;
   inputProps?: Omit<InputProperties, "value" | "onChange">;
 }
@@ -29,6 +30,7 @@ export function Prompt({
   defaultValue = "",
   confirmLabel = "OK",
   cancelLabel = "Cancel",
+  closeLabel = "Close",
   className,
   inputProps,
 }: PromptProperties) {
@@ -83,7 +85,7 @@ export function Prompt({
           <IconButton
             ref={closeButtonRef}
             icon={<X />}
-            aria-label="Close"
+            aria-label={closeLabel}
             onClick={closeModal}
           />
         </div>

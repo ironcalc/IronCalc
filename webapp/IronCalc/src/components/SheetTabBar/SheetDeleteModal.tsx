@@ -1,19 +1,19 @@
 import { useTranslation } from "react-i18next";
 import { Confirm } from "../Modal";
 
-interface SheetDeleteDialogProps {
+interface SheetDeleteModalProps {
   open: boolean;
   onClose: () => void;
   onDelete: () => void;
   sheetName: string;
 }
 
-function SheetDeleteDialog({
+function SheetDeleteModal({
   open,
   onClose,
   onDelete,
   sheetName,
-}: SheetDeleteDialogProps) {
+}: SheetDeleteModalProps) {
   const { t } = useTranslation();
 
   return (
@@ -30,4 +30,4 @@ function SheetDeleteDialog({
   );
 }
 
-export default SheetDeleteDialog;
+export default SheetDeleteModal;
