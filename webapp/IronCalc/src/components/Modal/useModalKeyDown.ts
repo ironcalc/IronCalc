@@ -6,7 +6,11 @@ interface Options {
   onConfirm?: () => void;
 }
 
-export function useModalKeyDown({ focusableElements, onClose, onConfirm }: Options) {
+export function useModalKeyDown({
+  focusableElements,
+  onClose,
+  onConfirm,
+}: Options) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === "Escape") {
