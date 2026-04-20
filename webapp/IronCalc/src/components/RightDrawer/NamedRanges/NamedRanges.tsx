@@ -4,14 +4,18 @@ import {
   PackageOpen,
   PencilLine,
   Plus,
+  Search,
+  SearchX,
   Trash2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { parseRangeInSheet } from "../../Editor/util";
+import { Input } from "../../Input/Input";
+import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
 import EditNamedRange, {
   formatOnSaveError,
@@ -39,7 +43,17 @@ const NamedRanges = ({
   const [editingDefinedName, setEditingDefinedName] =
     useState<DefinedName | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [scopeFilter, setScopeFilter] = useState("[all]");
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
+
+  const isListView = !editingDefinedName && !isCreatingNew;
+  useEffect(() => {
+    if (isListView) {
+      searchRef.current?.focus();
+    }
+  }, [isListView]);
 
   const handleListItemClick = (definedName: DefinedName) => {
     setEditingDefinedName(definedName);
@@ -166,6 +180,33 @@ const NamedRanges = ({
 
   const currentSelectedArea = getSelectedArea();
   const definedNameList = model.getDefinedNameList();
+  const currentSheetIndex = model.getSelectedView().sheet;
+  const scopeOptions = [
+    { value: "[all]", label: t("name_manager_dialog.scope_filter_all") },
+    { value: "[global]", label: t("name_manager_dialog.scope_filter_global") },
+    {
+      value: "[current]",
+      label: t("name_manager_dialog.scope_filter_current"),
+    },
+  ];
+  const filteredDefinedNameList = definedNameList.filter((definedName) => {
+    if (scopeFilter === "[global]" && definedName.scope != null) return false;
+    if (scopeFilter === "[current]" && definedName.scope !== currentSheetIndex)
+      return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const worksheets = model.getWorksheetsProperties();
+      const scopeName =
+        definedName.scope != null
+          ? (worksheets[definedName.scope]?.name ?? "")
+          : t("name_manager_dialog.scope_filter_global");
+      return (
+        definedName.name.toLowerCase().includes(q) ||
+        scopeName.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
   const onNameSelected = (formula: string) => {
     const range = parseRangeInSheet(model, formula);
     if (range) {
@@ -203,94 +244,129 @@ const NamedRanges = ({
           </div>
         ) : (
           <div className="ic-named-ranges-list-container">
-            {definedNameList.map((definedName) => {
-              const worksheets = model.getWorksheetsProperties();
-              const scopeName =
-                definedName.scope != null
-                  ? worksheets[definedName.scope]?.name || "[Unknown]"
-                  : "[Global]";
-              const isSelected =
-                currentSelectedArea !== null &&
-                normalizeRangeString(definedName.formula) ===
-                  normalizeRangeString(currentSelectedArea);
-              return (
-                // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
-                <div
-                  className={`ic-named-ranges-list-item ${isSelected ? "ic-named-ranges-list-item--selected" : ""}`}
-                  key={`${definedName.name}-${definedName.scope}`}
-                  // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
-                  tabIndex={0}
-                  onClick={() => {
-                    // select the area corresponding to the defined name
-                    const formula = definedName.formula;
-                    const range = parseRangeInSheet(model, formula);
-                    if (range) {
-                      const [
-                        sheetIndex,
-                        rowStart,
-                        columnStart,
-                        rowEnd,
-                        columnEnd,
-                      ] = range;
-                      model.setSelectedSheet(sheetIndex);
-                      model.setSelectedCell(rowStart, columnStart);
-                      model.setSelectedRange(
-                        rowStart,
-                        columnStart,
-                        rowEnd,
-                        columnEnd,
-                      );
-                    }
-                    onUpdate();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onNameSelected(definedName.formula);
-                    }
-                  }}
-                >
-                  <div className="ic-named-ranges-list-item-text">
-                    <div className="ic-named-ranges-name-text">
-                      {definedName.name}
-                    </div>
-                    <div className="ic-named-ranges-scope-text">
-                      {scopeName}
-                    </div>
-                    <div className="ic-named-ranges-formula-text">
-                      {definedName.formula}
-                    </div>
+            <div className="ic-named-ranges-search-container">
+              <Input
+                ref={searchRef}
+                type="text"
+                size="sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t("name_manager_dialog.search_placeholder")}
+                startAdornment={<Search />}
+              />
+              <div className="ic-named-ranges-scope-filter">
+                <span>{t("name_manager_dialog.scope_label")}</span>
+                <Select
+                  size="sm"
+                  variant="ghost"
+                  value={scopeFilter}
+                  options={scopeOptions}
+                  onChange={setScopeFilter}
+                />
+              </div>
+            </div>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: prevents search input from losing focus on list click */}
+            <div
+              className="ic-named-ranges-list-body"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {filteredDefinedNameList.length === 0 ? (
+                <div className="ic-named-ranges-empty-state-message">
+                  <div className="ic-named-ranges-icon-wrapper">
+                    <SearchX />
                   </div>
-
-                  <div className="ic-named-ranges-icons-wrapper">
-                    <Tooltip title={t("name_manager_dialog.edit")}>
-                      <IconButton
-                        icon={<PencilLine />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleListItemClick(definedName);
-                        }}
-                        aria-label={t("name_manager_dialog.edit")}
-                      />
-                    </Tooltip>
-                    <Tooltip title={t("name_manager_dialog.delete")}>
-                      <IconButton
-                        icon={<Trash2 />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          model.deleteDefinedName(
-                            definedName.name,
-                            definedName.scope ?? null,
-                          );
-                          onUpdate();
-                        }}
-                        aria-label={t("name_manager_dialog.delete")}
-                      />
-                    </Tooltip>
-                  </div>
+                  {t("name_manager_dialog.no_search_results")}
                 </div>
-              );
-            })}
+              ) : null}
+              {filteredDefinedNameList.map((definedName) => {
+                const worksheets = model.getWorksheetsProperties();
+                const scopeName =
+                  definedName.scope != null
+                    ? worksheets[definedName.scope]?.name || "[Unknown]"
+                    : "[Global]";
+                const isSelected =
+                  currentSelectedArea !== null &&
+                  normalizeRangeString(definedName.formula) ===
+                    normalizeRangeString(currentSelectedArea);
+                return (
+                  // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
+                  <div
+                    className={`ic-named-ranges-list-item ${isSelected ? "ic-named-ranges-list-item--selected" : ""}`}
+                    key={`${definedName.name}-${definedName.scope}`}
+                    // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
+                    tabIndex={0}
+                    onClick={() => {
+                      // select the area corresponding to the defined name
+                      const formula = definedName.formula;
+                      const range = parseRangeInSheet(model, formula);
+                      if (range) {
+                        const [
+                          sheetIndex,
+                          rowStart,
+                          columnStart,
+                          rowEnd,
+                          columnEnd,
+                        ] = range;
+                        model.setSelectedSheet(sheetIndex);
+                        model.setSelectedCell(rowStart, columnStart);
+                        model.setSelectedRange(
+                          rowStart,
+                          columnStart,
+                          rowEnd,
+                          columnEnd,
+                        );
+                      }
+                      onUpdate();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onNameSelected(definedName.formula);
+                      }
+                    }}
+                  >
+                    <div className="ic-named-ranges-list-item-text">
+                      <div className="ic-named-ranges-name-text">
+                        {definedName.name}
+                      </div>
+                      <div className="ic-named-ranges-scope-text">
+                        {scopeName}
+                      </div>
+                      <div className="ic-named-ranges-formula-text">
+                        {definedName.formula}
+                      </div>
+                    </div>
+
+                    <div className="ic-named-ranges-icons-wrapper">
+                      <Tooltip title={t("name_manager_dialog.edit")}>
+                        <IconButton
+                          icon={<PencilLine />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleListItemClick(definedName);
+                          }}
+                          aria-label={t("name_manager_dialog.edit")}
+                        />
+                      </Tooltip>
+                      <Tooltip title={t("name_manager_dialog.delete")}>
+                        <IconButton
+                          icon={<Trash2 />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            model.deleteDefinedName(
+                              definedName.name,
+                              definedName.scope ?? null,
+                            );
+                            onUpdate();
+                          }}
+                          aria-label={t("name_manager_dialog.delete")}
+                        />
+                      </Tooltip>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

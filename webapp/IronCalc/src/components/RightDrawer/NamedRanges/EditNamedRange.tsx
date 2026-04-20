@@ -1,8 +1,9 @@
 import type { DefinedName, Model } from "@ironcalc/wasm";
-import { Check, MousePointerClick, Tag } from "lucide-react";
+import { Check, SquareMousePointer, Tag } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
+import { IconButton } from "../../Button/IconButton";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { getFullRangeToString } from "../../util";
@@ -107,8 +108,28 @@ const EditNamedRange = ({
 
   const hasAnyError = nameError !== "" || formulaError !== "";
 
+  const handleSave = () => {
+    if (hasAnyError) return;
+    const error = onSave(name.trim(), scope, formula);
+    if (error.nameError) {
+      setNameError(error.nameError);
+    }
+    if (error.formulaError) {
+      setFormulaError(error.formulaError);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
   return (
-    <div className="ic-edit-range-container">
+    // biome-ignore lint/a11y/noStaticElementInteractions: container captures Cmd/Ctrl+Enter shortcut bubbling from child inputs
+    <div className="ic-edit-range-container" onKeyDown={handleKeyDown}>
       <div className="ic-edit-range-content-area">
         <div className="ic-edit-range-header-box">
           <div className="ic-edit-range-header-icon">
@@ -129,6 +150,7 @@ const EditNamedRange = ({
             error={!!nameError}
             helperText={nameError}
             onChange={(e) => setName(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
           <Select
             label={t("name_manager_dialog.scope_label")}
@@ -187,8 +209,12 @@ const EditNamedRange = ({
               <label className="ic-edit-range-label" htmlFor={formulaId}>
                 {t("name_manager_dialog.refers_to")}
               </label>
-              <MousePointerClick
-                size={16}
+              <IconButton
+                title={t("name_manager_dialog.use_selection")}
+                aria-label={t("name_manager_dialog.use_selection")}
+                size="sm"
+                variant="ghost"
+                icon={<SquareMousePointer />}
                 onClick={() => {
                   const worksheetNames = model
                     .getWorksheetsProperties()
@@ -215,7 +241,7 @@ const EditNamedRange = ({
                   setFormula(e.target.value);
                   setFormulaError("");
                 }}
-                onKeyDown={(e) => e.stopPropagation()}
+                onKeyDown={handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
                 aria-invalid={formulaError ? "true" : "false"}
               />
@@ -235,15 +261,7 @@ const EditNamedRange = ({
         <Button
           startIcon={<Check />}
           disabled={hasAnyError}
-          onClick={() => {
-            const error = onSave(name.trim(), scope, formula);
-            if (error.nameError) {
-              setNameError(error.nameError);
-            }
-            if (error.formulaError) {
-              setFormulaError(error.formulaError);
-            }
-          }}
+          onClick={handleSave}
         >
           {t("name_manager_dialog.apply")}
         </Button>

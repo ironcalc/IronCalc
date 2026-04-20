@@ -6,14 +6,63 @@
 
 .ic-named-ranges-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   color: var(--palette-grey-700);
   line-height: 1.5;
   overflow: auto;
 }
 
 .ic-named-ranges-list-container {
+  flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+.ic-named-ranges-list-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ic-named-ranges-scope-filter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ic-named-ranges-scope-filter .ic-select {
+  max-width: 100px;
+}
+
+.ic-named-ranges-scope-filter > span {
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-grey-600);
+  white-space: nowrap;
+}
+
+.ic-named-ranges-search-container .ic-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ic-named-ranges-search-container .ic-input-control {
+  border: none;
+  border-radius: 0;
+  width: 100%;
+}
+
+.ic-named-ranges-search-container {
+  height: 40px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  gap: 8px;
+  border-bottom: 1px solid var(--palette-grey-300);
 }
 
 .ic-named-ranges-list-item {
@@ -117,20 +166,18 @@
 }
 
 .ic-named-ranges-empty-state-message {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: center;
   justify-content: center;
   text-align: center;
-  width: 100%;
-  height: 100%;
   font-size: 12px;
+  padding: 0 20px;
   color: var(--palette-grey-600);
   font-family: var(--typography-font-family);
-  z-index: 0;
-  margin: auto 0;
-  position: relative;
+  text-wrap: balance;
 }
 
 .ic-named-ranges-icon-wrapper {
