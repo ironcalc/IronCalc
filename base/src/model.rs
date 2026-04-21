@@ -710,6 +710,7 @@ impl<'a> Model<'a> {
                             }
                         }
                     }
+                    let worksheet = &mut self.workbook.worksheets[sheet as usize];
                     // Dynamic formula: spill the array into adjacent cells.
                     // Cells are created on demand via update_cell since they may not exist yet.
                     for r in row..row + array_height {
@@ -724,13 +725,14 @@ impl<'a> Model<'a> {
                                     v: array_node_to_formula_value(value),
                                 }
                             } else {
+                                let existing_style = worksheet.get_style(r, c);
                                 Cell::SpillCell {
                                     a: (row, column),
-                                    s,
+                                    s: existing_style,
                                     v: array_node_to_spill_value(value),
                                 }
                             };
-                            self.workbook.worksheets[sheet as usize].update_cell(r, c, cell)?;
+                            worksheet.update_cell(r, c, cell)?;
                         }
                     }
                     return Ok(());
@@ -764,8 +766,10 @@ impl<'a> Model<'a> {
                                     Some(node) => array_node_to_spill_value(node),
                                     None => SpillValue::Error(Error::VALUE),
                                 };
+                                let existing_style =
+                                    self.workbook.worksheets[sheet as usize].get_style(r, c);
                                 Cell::SpillCell {
-                                    s,
+                                    s: existing_style,
                                     a: (row, column),
                                     v: sv,
                                 }
