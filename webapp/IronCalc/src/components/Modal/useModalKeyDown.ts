@@ -19,18 +19,9 @@ export function useModalKeyDown({
         return;
       }
 
-      if (event.key === "Enter") {
-        if (event.metaKey || event.ctrlKey) {
-          event.preventDefault();
-          onConfirm?.();
-          return;
-        }
-
-        // Prevent Enter from submitting when focus is not on a button
-        const target = event.target as HTMLElement;
-        if (target.tagName !== "BUTTON") {
-          event.preventDefault();
-        }
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        onConfirm?.();
         return;
       }
 
