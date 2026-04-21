@@ -3,6 +3,104 @@
 use crate::test::util::new_empty_model;
 use crate::types::{ArrayKind, Cell, FormulaValue, SpillValue};
 
+// ── Dynamic formula: spill does not overwrite existing cell background colors ─
+
+#[test]
+fn spill_preserves_background_color_in_column_direction() {
+    let mut model = new_empty_model();
+
+    // Put values in A4:A8
+    model._set("A4", "10");
+    model._set("A5", "20");
+    model._set("A6", "30");
+    model._set("A7", "40");
+    model._set("A8", "50");
+
+    // Set background color on D5 and D6 (which will be in the spill range of D2)
+    // D2 + 5 rows = D2:D6, so D5 and D6 are in the spill area
+    let mut style_d5 = model.get_style_for_cell(0, 5, 4).unwrap();
+    style_d5.fill.bg_color = Some("#FF0000".to_string());
+    style_d5.fill.pattern_type = "solid".to_string();
+    model.set_cell_style(0, 5, 4, &style_d5).unwrap();
+
+    let mut style_d6 = model.get_style_for_cell(0, 6, 4).unwrap();
+    style_d6.fill.bg_color = Some("#00FF00".to_string());
+    style_d6.fill.pattern_type = "solid".to_string();
+    model.set_cell_style(0, 6, 4, &style_d6).unwrap();
+
+    // Enter =A4:A8 in D2 — it spills into D3:D6
+    model._set("D2", "=A4:A8");
+    model.evaluate();
+
+    // Spill values should be correct
+    assert_eq!(model._get_text("D2"), "10");
+    assert_eq!(model._get_text("D5"), "40");
+    assert_eq!(model._get_text("D6"), "50");
+
+    // Background colors in the spill area must be preserved
+    let style_d5_after = model.get_style_for_cell(0, 5, 4).unwrap();
+    assert_eq!(
+        style_d5_after.fill.bg_color,
+        Some("#FF0000".to_string()),
+        "D5 background color should be preserved after spill"
+    );
+
+    let style_d6_after = model.get_style_for_cell(0, 6, 4).unwrap();
+    assert_eq!(
+        style_d6_after.fill.bg_color,
+        Some("#00FF00".to_string()),
+        "D6 background color should be preserved after spill"
+    );
+}
+
+#[test]
+fn spill_preserves_background_color_in_row_direction() {
+    let mut model = new_empty_model();
+
+    // Put values in A1:E1
+    model._set("A1", "10");
+    model._set("B1", "20");
+    model._set("C1", "30");
+    model._set("D1", "40");
+    model._set("E1", "50");
+
+    // Set background color on D3 and E3 (which will be in the spill range of B3)
+    // =A1:E1 entered in B3 spills right: B3:F3, so D3 and E3 are spill cells
+    let mut style_d3 = model.get_style_for_cell(0, 3, 4).unwrap();
+    style_d3.fill.bg_color = Some("#0000FF".to_string());
+    style_d3.fill.pattern_type = "solid".to_string();
+    model.set_cell_style(0, 3, 4, &style_d3).unwrap();
+
+    let mut style_e3 = model.get_style_for_cell(0, 3, 5).unwrap();
+    style_e3.fill.bg_color = Some("#FFFF00".to_string());
+    style_e3.fill.pattern_type = "solid".to_string();
+    model.set_cell_style(0, 3, 5, &style_e3).unwrap();
+
+    // Enter =A1:E1 in B3 — it spills right into C3:F3
+    model._set("B3", "=A1:E1");
+    model.evaluate();
+
+    // Spill values should be correct
+    assert_eq!(model._get_text("B3"), "10");
+    assert_eq!(model._get_text("D3"), "30");
+    assert_eq!(model._get_text("E3"), "40");
+
+    // Background colors in the spill area must be preserved
+    let style_d3_after = model.get_style_for_cell(0, 3, 4).unwrap();
+    assert_eq!(
+        style_d3_after.fill.bg_color,
+        Some("#0000FF".to_string()),
+        "D3 background color should be preserved after horizontal spill"
+    );
+
+    let style_e3_after = model.get_style_for_cell(0, 3, 5).unwrap();
+    assert_eq!(
+        style_e3_after.fill.bg_color,
+        Some("#FFFF00".to_string()),
+        "E3 background color should be preserved after horizontal spill"
+    );
+}
+
 #[test]
 fn dynamic_formula_spills_array() {
     let mut model = new_empty_model();
