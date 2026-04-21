@@ -2136,8 +2136,7 @@ impl<'a> Model<'a> {
                         if r == row && c == column {
                             continue;
                         }
-                        let mut new_style_index_spill =
-                            self.get_cell_style_index(sheet, r, c)?;
+                        let mut new_style_index_spill = self.get_cell_style_index(sheet, r, c)?;
                         if self
                             .workbook
                             .styles
