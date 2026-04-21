@@ -2686,6 +2686,9 @@ impl<'a> Model<'a> {
                     }
                     row_data.remove(&column);
                 }
+                if row_data.is_empty() {
+                    sheet_data.remove(&row);
+                };
             }
         }
         for (row, column) in cells_to_clear {
@@ -2742,9 +2745,7 @@ impl<'a> Model<'a> {
                     if r == row && c == column {
                         continue;
                     }
-                    if let Some(row_data) = ws.sheet_data.get_mut(&r) {
-                        row_data.remove(&c);
-                    }
+                    ws.remove_cell(r, c)?;
                 }
             }
         }

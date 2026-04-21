@@ -643,6 +643,16 @@ impl Worksheet {
         Ok(column_cell_references)
     }
 
+    pub(crate) fn remove_cell(&mut self, row: i32, column: i32) -> Result<(), String> {
+        if let Some(row_data) = self.sheet_data.get_mut(&row) {
+            row_data.remove(&column);
+            if row_data.is_empty() {
+                self.sheet_data.remove(&row);
+            }
+        }
+        Ok(())
+    }
+
     /// Returns the height of a row in pixels
     pub fn row_height(&self, row: i32) -> Result<f64, String> {
         if !is_valid_row(row) {
