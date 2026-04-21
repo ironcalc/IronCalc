@@ -883,18 +883,23 @@ impl<'a> Model<'a> {
 
         // If the cell is the anchor of a CSE array formula, fill all spill cells
         if let Some((false, (width, height))) = original_range {
-            let spill_cell = Cell::SpillCell {
-                a: (row, column),
-                s,
-                v: formula_value_to_spill_value(&formula_value),
-            };
+            let spill_value = formula_value_to_spill_value(&formula_value);
             let ws = &mut self.workbook.worksheets[sheet as usize];
             for r in row..row + height {
                 for c in column..column + width {
                     if r == row && c == column {
                         continue;
                     }
-                    ws.update_cell(r, c, spill_cell.clone())?;
+                    let existing_style = ws.get_style(r, c);
+                    ws.update_cell(
+                        r,
+                        c,
+                        Cell::SpillCell {
+                            a: (row, column),
+                            s: existing_style,
+                            v: spill_value.clone(),
+                        },
+                    )?;
                 }
             }
         }
@@ -2132,7 +2137,7 @@ impl<'a> Model<'a> {
                             continue;
                         }
                         let mut new_style_index_spill =
-                            self.get_cell_style_index(sheet, row, column)?;
+                            self.get_cell_style_index(sheet, r, c)?;
                         if self
                             .workbook
                             .styles
