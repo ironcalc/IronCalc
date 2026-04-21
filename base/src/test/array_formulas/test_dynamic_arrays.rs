@@ -321,3 +321,83 @@ fn cse_cannot_user_input_anchor() {
     assert_eq!(model._get_text("A2"), "2");
     assert_eq!(model._get_text("A3"), "2");
 }
+
+// ── CSE array formula: existing styles in the selected range are preserved ────
+
+#[test]
+fn cse_array_formula_preserves_background_color_in_column_direction() {
+    let mut model = new_empty_model();
+
+    // Set background colors on A2 and A3 before entering the CSE formula A1:A3
+    let mut style_a2 = model.get_style_for_cell(0, 2, 1).unwrap();
+    style_a2.fill.bg_color = Some("#FF0000".to_string());
+    style_a2.fill.pattern_type = "solid".to_string();
+    model.set_cell_style(0, 2, 1, &style_a2).unwrap();
+
+    let mut style_a3 = model.get_style_for_cell(0, 3, 1).unwrap();
+    style_a3.fill.bg_color = Some("#00FF00".to_string());
+    style_a3.fill.pattern_type = "solid".to_string();
+    model.set_cell_style(0, 3, 1, &style_a3).unwrap();
+
+    // Enter CSE formula =123 over A1:A3
+    model.set_user_array_formula(0, 1, 1, 1, 3, "=123").unwrap();
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "123");
+    assert_eq!(model._get_text("A2"), "123");
+    assert_eq!(model._get_text("A3"), "123");
+
+    // Background colors on A2 and A3 must be preserved
+    let style_a2_after = model.get_style_for_cell(0, 2, 1).unwrap();
+    assert_eq!(
+        style_a2_after.fill.bg_color,
+        Some("#FF0000".to_string()),
+        "A2 background color should be preserved after CSE array formula"
+    );
+
+    let style_a3_after = model.get_style_for_cell(0, 3, 1).unwrap();
+    assert_eq!(
+        style_a3_after.fill.bg_color,
+        Some("#00FF00".to_string()),
+        "A3 background color should be preserved after CSE array formula"
+    );
+}
+
+#[test]
+fn cse_array_formula_preserves_background_color_in_row_direction() {
+    let mut model = new_empty_model();
+
+    // Set background colors on B1 and C1 before entering the CSE formula A1:C1
+    let mut style_b1 = model.get_style_for_cell(0, 1, 2).unwrap();
+    style_b1.fill.bg_color = Some("#0000FF".to_string());
+    style_b1.fill.pattern_type = "solid".to_string();
+    model.set_cell_style(0, 1, 2, &style_b1).unwrap();
+
+    let mut style_c1 = model.get_style_for_cell(0, 1, 3).unwrap();
+    style_c1.fill.bg_color = Some("#FFFF00".to_string());
+    style_c1.fill.pattern_type = "solid".to_string();
+    model.set_cell_style(0, 1, 3, &style_c1).unwrap();
+
+    // Enter CSE formula =456 over A1:C1
+    model.set_user_array_formula(0, 1, 1, 3, 1, "=456").unwrap();
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "456");
+    assert_eq!(model._get_text("B1"), "456");
+    assert_eq!(model._get_text("C1"), "456");
+
+    // Background colors on B1 and C1 must be preserved
+    let style_b1_after = model.get_style_for_cell(0, 1, 2).unwrap();
+    assert_eq!(
+        style_b1_after.fill.bg_color,
+        Some("#0000FF".to_string()),
+        "B1 background color should be preserved after CSE array formula"
+    );
+
+    let style_c1_after = model.get_style_for_cell(0, 1, 3).unwrap();
+    assert_eq!(
+        style_c1_after.fill.bg_color,
+        Some("#FFFF00".to_string()),
+        "C1 background color should be preserved after CSE array formula"
+    );
+}
