@@ -45,7 +45,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import ErrorDialog from "../ErrorDialog/ErrorDialog";
+import { Alert } from "../Modal";
 import type { WorkbookState } from "../workbookState";
 import useKeyDown from "./useKeyDown";
 import getFormulaHTML from "./util";
@@ -192,7 +192,7 @@ const Editor = (options: EditorOptions) => {
 
   return (
     <>
-      <ErrorDialog
+      <Alert
         open={formulaError !== null}
         onClose={() => setFormulaError(null)}
         title={t("error_dialog.error_editing_formula")}
