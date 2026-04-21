@@ -23,11 +23,6 @@ const FormatPicker = (properties: FormatPickerProps) => {
       cancelLabel={t("num_fmt.cancel")}
       confirmLabel={t("num_fmt.save")}
       closeLabel={t("num_fmt.close")}
-      inputProps={{
-        name: "format_code",
-        autoFocus: true,
-        spellCheck: false,
-      }}
     />
   );
 };

@@ -92,6 +92,7 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
             onCopy={(e) => e.stopPropagation()}
             onCut={(e) => e.stopPropagation()}
             onFocus={(e) => e.target.select()}
+            spellCheck={false}
             {...rest}
           />
 
