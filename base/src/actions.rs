@@ -130,10 +130,7 @@ impl<'a> Model<'a> {
                 // This the spill of an array formula. Because dynamic arrays spills have been deleted
                 // We delete the spill
                 let worksheet = self.workbook.worksheet_mut(sheet)?;
-                let sheet_data = &mut worksheet.sheet_data;
-                if let Some(row_data) = sheet_data.get_mut(&source_row) {
-                    row_data.remove(&source_column);
-                };
+                worksheet.remove_cell(source_row, source_column)?;
                 return Ok(());
             }
             Cell::ArrayFormula {
@@ -184,10 +181,7 @@ impl<'a> Model<'a> {
         worksheet.set_cell_style(target_row, target_column, style)?;
 
         // delete source cell content and style
-        let sheet_data = &mut worksheet.sheet_data;
-        if let Some(row_data) = sheet_data.get_mut(&source_row) {
-            row_data.remove(&source_column);
-        };
+        worksheet.remove_cell(source_row, source_column)?;
         Ok(())
     }
 
@@ -324,12 +318,7 @@ impl<'a> Model<'a> {
                     if col > column_end {
                         self.move_cell(sheet, r, col, r, col - column_count)?;
                     } else {
-                        let ws = self.workbook.worksheet_mut(sheet)?;
-                        let sheet_data = &mut ws.sheet_data;
-
-                        if let Some(row_data) = sheet_data.get_mut(&r) {
-                            row_data.remove(&col);
-                        }
+                        self.workbook.worksheet_mut(sheet)?.remove_cell(r, col)?;
                     }
                 }
             }
@@ -628,15 +617,7 @@ impl<'a> Model<'a> {
                     }
                 } else {
                     // remove all cells in row
-                    // FIXME: We could just remove the entire row in one go
-                    let ws = self.workbook.worksheet_mut(sheet)?;
-                    let sheet_data = &mut ws.sheet_data;
-
-                    if let Some(row_data) = sheet_data.get_mut(&r) {
-                        for column in columns {
-                            row_data.remove(&column);
-                        }
-                    }
+                    self.workbook.worksheet_mut(sheet)?.sheet_data.remove(&r);
                 }
             }
         }
@@ -707,10 +688,7 @@ impl<'a> Model<'a> {
                     // This the spill of an array formula. Because dynamic arrays spills have been deleted
                     // We delete the spill
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
-                    let sheet_data = &mut worksheet.sheet_data;
-                    if let Some(row_data) = sheet_data.get_mut(&r.row) {
-                        row_data.remove(&column);
-                    };
+                    worksheet.remove_cell(r.row, column)?;
                     continue;
                 }
                 Cell::ArrayFormula {
@@ -735,10 +713,7 @@ impl<'a> Model<'a> {
 
             original_cells.push((r.row, formula_or_value, style_idx, array));
             let ws = self.workbook.worksheet_mut(sheet)?;
-            let sheet_data = &mut ws.sheet_data;
-            if let Some(row_data) = sheet_data.get_mut(&r.row) {
-                row_data.remove(&column);
-            }
+            ws.remove_cell(r.row, column)?;
         }
         let width = self
             .workbook
@@ -826,10 +801,7 @@ impl<'a> Model<'a> {
                     // This the spill of an array formula. Because dynamic arrays spills have been deleted
                     // We delete the spill
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
-                    let sheet_data = &mut worksheet.sheet_data;
-                    if let Some(row_data) = sheet_data.get_mut(&row) {
-                        row_data.remove(c);
-                    };
+                    worksheet.remove_cell(row, *c)?;
                     continue;
                 }
                 Cell::ArrayFormula {
@@ -853,10 +825,7 @@ impl<'a> Model<'a> {
             }
             original_cells.push((*c, formula_or_value, style_idx, array));
             let ws = self.workbook.worksheet_mut(sheet)?;
-            let sheet_data = &mut ws.sheet_data;
-            if let Some(row_data) = sheet_data.get_mut(&row) {
-                row_data.remove(c);
-            }
+            ws.remove_cell(row, *c)?;
         }
         if delta > 0 {
             for r in row + 1..=target_row {
