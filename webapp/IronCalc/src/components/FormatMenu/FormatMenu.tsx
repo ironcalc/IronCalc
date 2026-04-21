@@ -18,7 +18,6 @@ type FormatMenuProperties = {
   children: ReactNode;
   numFmt: string;
   onChange: (numberFmt: string) => void;
-  onExited: () => void;
   formatOptions: FmtSettings;
 };
 
@@ -379,7 +378,6 @@ const FormatMenu = (properties: FormatMenuProperties) => {
         onChange={onSelect}
         open={isPickerOpen}
         onClose={() => setPickerOpen(false)}
-        onExited={properties.onExited}
       />
     </div>
   );

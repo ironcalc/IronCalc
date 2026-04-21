@@ -65,6 +65,7 @@
     "title": "Format de nombre personnalisé",
     "label": "Format de nombre",
     "close": "Fermer la boîte de dialogue",
+    "cancel": "Annuler",
     "save": "Enregistrer"
   },
   "sheet_rename": {

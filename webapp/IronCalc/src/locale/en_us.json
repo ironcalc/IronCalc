@@ -65,6 +65,7 @@
     "title": "Custom number format",
     "label": "Number format",
     "close": "Close dialog",
+    "cancel": "Cancel",
     "save": "Save"
   },
   "sheet_rename": {

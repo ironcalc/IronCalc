@@ -65,6 +65,7 @@
     "title": "Benutzerdefiniertes Zahlenformat",
     "label": "Zahlenformat",
     "close": "Dialog schließen",
+    "cancel": "Abbrechen",
     "save": "Speichern"
   },
   "sheet_rename": {

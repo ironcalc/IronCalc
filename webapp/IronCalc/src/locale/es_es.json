@@ -65,6 +65,7 @@
     "title": "Formato de número personalizado",
     "label": "Formato de número",
     "close": "Cerrar diálogo",
+    "cancel": "Cancelar",
     "save": "Guardar"
   },
   "sheet_rename": {

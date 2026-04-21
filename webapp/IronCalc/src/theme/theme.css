@@ -59,6 +59,9 @@
   --palette-grey-a400: #bdbdbd;
   --palette-grey-a700: #616161;
 
+  /* shadows */
+  --shadow-sm: 0px 1px 3px 0px rgb(39 37 37 / 10%);
+
   /* sheet */
   --palette-sheet-header-corner-background: #fff;
   --palette-sheet-header-text-color: #333;
