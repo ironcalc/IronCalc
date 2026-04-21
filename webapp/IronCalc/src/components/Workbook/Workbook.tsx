@@ -510,8 +510,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             width: Math.abs(columnEnd - columnStart) + 1,
             height: Math.abs(rowEnd - rowStart) + 1,
           };
-          model.pasteCsvText(range, value);
-          setRedrawId((id) => id + 1);
+          try {
+            model.pasteCsvText(range, value);
+            setRedrawId((id) => id + 1);
+          } catch (_) {
+            setDeleteCellsErrorOpen(true);
+          }
         } else {
           // NOT IMPLEMENTED
         }
