@@ -253,8 +253,10 @@ pub enum Function {
     Phi,
     PoissonDist,
     // Prob,
-    // QuartileExc,
-    // QuartileInc,
+    Quartile,
+    QuartileExc,
+    QuartileInc,
+    Rank,
     RankAvg,
     RankEq,
     Skew,
@@ -428,6 +430,14 @@ macro_rules! impl_function_lookup {
         impl Functions {
             pub fn lookup(&self, name: &str) -> Option<Function> {
                 let key = name.to_uppercase();
+                // New functions without localization support
+                match key.as_str() {
+                    "RANK" => return Some(Function::Rank),
+                    "QUARTILE" => return Some(Function::Quartile),
+                    "QUARTILE.INC" => return Some(Function::QuartileInc),
+                    "QUARTILE.EXC" => return Some(Function::QuartileExc),
+                    _ => {}
+                }
                 $(
                     if self.$field == key {
                         return Some(Function::$variant);
@@ -1019,6 +1029,10 @@ impl Function {
             Function::Pearson => functions.pearson.clone(),
             Function::Phi => functions.phi.clone(),
             Function::PoissonDist => functions.poissondist.clone(),
+            Function::Quartile => "QUARTILE".to_string(),
+            Function::QuartileExc => "QUARTILE.EXC".to_string(),
+            Function::QuartileInc => "QUARTILE.INC".to_string(),
+            Function::Rank => "RANK".to_string(),
             Function::RankAvg => functions.rankavg.clone(),
             Function::RankEq => functions.rankeq.clone(),
             Function::Skew => functions.skew.clone(),
@@ -1168,7 +1182,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 345> {
+    pub fn into_iter() -> IntoIter<Function, 349> {
         [
             Function::And,
             Function::False,
@@ -1506,6 +1520,10 @@ impl Function {
             Function::Large,
             Function::Median,
             Function::Small,
+            Function::Quartile,
+            Function::QuartileExc,
+            Function::QuartileInc,
+            Function::Rank,
             Function::RankAvg,
             Function::RankEq,
             Function::Skew,
@@ -2001,6 +2019,10 @@ impl<'a> Model<'a> {
             Function::MaxA => self.fn_maxa(args, cell),
             Function::Median => self.fn_median(args, cell),
             Function::MinA => self.fn_mina(args, cell),
+            Function::Quartile => self.fn_quartile(args, cell),
+            Function::QuartileExc => self.fn_quartile_exc(args, cell),
+            Function::QuartileInc => self.fn_quartile_inc(args, cell),
+            Function::Rank => self.fn_rank(args, cell),
             Function::RankAvg => self.fn_rank_avg(args, cell),
             Function::RankEq => self.fn_rank_eq(args, cell),
             Function::Skew => self.fn_skew(args, cell),
