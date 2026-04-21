@@ -9,7 +9,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import Editor from "../Editor/Editor";
-import ErrorDialog from "../ErrorDialog/ErrorDialog";
 import type { Cell } from "../types";
 import {
   COLUMN_WIDTH_SCALE,
@@ -26,6 +25,7 @@ import ColumnHeaderContextMenu from "./ContextMenus/ColumnHeader";
 import RowHeaderContextMenu from "./ContextMenus/RowHeader";
 import usePointer from "./usePointer";
 import "./worksheet.css";
+import { Alert } from "../Modal";
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -688,10 +688,11 @@ const Worksheet = forwardRef(
           })()}
           frozenRowsCount={model.getFrozenRowsCount(model.getSelectedSheet())}
         />
-        <ErrorDialog
+        <Alert
           open={rowColErrorTitle !== null}
           onClose={() => setRowColErrorTitle(null)}
           title={rowColErrorTitle ?? ""}
+          message={rowColErrorTitle ?? ""}
         />
       </div>
     );

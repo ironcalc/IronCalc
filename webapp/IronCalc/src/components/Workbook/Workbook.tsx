@@ -10,7 +10,6 @@ import {
   CLIPBOARD_ID_SESSION_STORAGE_KEY,
   getNewClipboardId,
 } from "../clipboard";
-import ErrorDialog from "../ErrorDialog/ErrorDialog";
 import FormulaBar from "../FormulaBar/FormulaBar";
 import RightDrawer, {
   DEFAULT_DRAWER_WIDTH,
@@ -35,6 +34,7 @@ import { devicePixelRatio } from "../WorksheetCanvas/worksheetCanvas";
 import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 import "./workbook.css";
+import { Alert } from "../Modal";
 
 const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const { model, workbookState } = props;
@@ -48,7 +48,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
 
-  const [deleteCellsErrorOpen, setDeleteCellsErrorOpen] = useState(false);
+  const [alertDialogMessage, setAlertDialogMessage] = useState<string | null>(
+    null,
+  );
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
   const [drawerType, setDrawerType] = useState<DrawerType>("namedRanges");
@@ -215,8 +217,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           row + height,
           column + width,
         );
-      } catch (_e) {
-        setDeleteCellsErrorOpen(true);
+      } catch (e) {
+        setAlertDialogMessage(`${e}`);
       }
       setRedrawId((id) => id + 1);
     },
@@ -493,8 +495,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
               source.type === "cut",
             );
             setRedrawId((id) => id + 1);
-          } catch (_) {
-            setDeleteCellsErrorOpen(true);
+          } catch (e) {
+            setAlertDialogMessage(`${e}`);
           }
         } else if (mimeType === "text/plain") {
           const {
@@ -513,8 +515,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           try {
             model.pasteCsvText(range, value);
             setRedrawId((id) => id + 1);
-          } catch (_) {
-            setDeleteCellsErrorOpen(true);
+          } catch (e) {
+            setAlertDialogMessage(`${e}`);
           }
         } else {
           // NOT IMPLEMENTED
@@ -842,10 +844,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setRedrawId((id) => id + 1);
         }}
       />
-      <ErrorDialog
-        open={deleteCellsErrorOpen}
-        onClose={() => setDeleteCellsErrorOpen(false)}
+      <Alert
+        open={alertDialogMessage !== null}
+        onClose={() => setAlertDialogMessage(null)}
         title={t("error_dialog.error_deleting_cells")}
+        message={alertDialogMessage}
       />
     </div>
   );
