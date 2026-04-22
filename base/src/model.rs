@@ -16,7 +16,7 @@ use crate::{
             stringify::{rename_defined_name_in_node, to_localized_string, to_rc_format},
             ArrayNode, Node, Parser,
         },
-        token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
+        token::{get_error_by_name, Error, OpProduct, OpSum, OpUnary},
         types::*,
         utils::{self, is_valid_column_number, is_valid_identifier, is_valid_row},
     },
@@ -24,7 +24,6 @@ use crate::{
         format::{format_number, parse_formatted_number},
         lexer::is_likely_date_number_format,
     },
-    functions::util::compare_values,
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_locale, Locale},
@@ -140,6 +139,7 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
             o: String::new(),
             m: String::new(),
         },
+        ArrayNode::Empty => FormulaValue::Number(0.0),
     }
 }
 
@@ -149,6 +149,7 @@ fn array_node_to_spill_value(node: ArrayNode) -> SpillValue {
         ArrayNode::Number(n) => SpillValue::Number(n),
         ArrayNode::String(s) => SpillValue::Text(s),
         ArrayNode::Error(ei) => SpillValue::Error(ei),
+        ArrayNode::Empty => SpillValue::Number(0.0),
     }
 }
 
@@ -515,61 +516,7 @@ impl<'a> Model<'a> {
                 cell,
                 format!("Variable name \"{s}\" not found."),
             ),
-            CompareKind { kind, left, right } => {
-                let l = self.evaluate_node_in_context(left, cell);
-                if l.is_error() {
-                    return l;
-                }
-                let r = self.evaluate_node_in_context(right, cell);
-                if r.is_error() {
-                    return r;
-                }
-                let compare = compare_values(&l, &r);
-                match kind {
-                    OpCompare::Equal => {
-                        if compare == 0 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
-                    }
-                    OpCompare::LessThan => {
-                        if compare == -1 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
-                    }
-                    OpCompare::GreaterThan => {
-                        if compare == 1 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
-                    }
-                    OpCompare::LessOrEqualThan => {
-                        if compare < 1 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
-                    }
-                    OpCompare::GreaterOrEqualThan => {
-                        if compare > -1 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
-                    }
-                    OpCompare::NonEqual => {
-                        if compare != 0 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
-                    }
-                }
-            }
+            CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
             UnaryKind { kind, right } => {
                 let r = match self.get_number(right, cell) {
                     Ok(f) => f,
@@ -1127,7 +1074,7 @@ impl<'a> Model<'a> {
                     CalcResult::Boolean(b) => ArrayNode::Boolean(b),
                     CalcResult::String(s) => ArrayNode::String(s),
                     CalcResult::Error { error, .. } => ArrayNode::Error(error),
-                    CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Number(0.0),
+                    CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
                     CalcResult::Range { .. } | CalcResult::Array(_) => {
                         // This should never happen, but we need to handle it anyway
                         debug_assert!(false, "Unexpected array result in non-array formula");
@@ -1285,6 +1232,7 @@ impl<'a> Model<'a> {
                                 let message = error.to_localized_error_string(self.language);
                                 CalcResult::new_error(error.clone(), cell_reference, message)
                             }
+                            ArrayNode::Empty => CalcResult::EmptyCell,
                         }
                     }
                     _ => result,

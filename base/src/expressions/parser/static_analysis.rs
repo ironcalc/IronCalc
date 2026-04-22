@@ -524,6 +524,51 @@ fn args_signature_xlookup(arg_count: usize) -> Vec<Signature> {
     result
 }
 
+fn args_signature_sort(arg_count: usize) -> Vec<Signature> {
+    if !(1..=4).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_sortby(arg_count: usize) -> Vec<Signature> {
+    // Valid: 2, 3, 5, 7, ... (n==2 || n==3 || n>=5 with odd count)
+    if arg_count < 2 || (arg_count > 3 && arg_count.is_multiple_of(2)) {
+        return vec![Signature::Error; arg_count];
+    }
+    // arg[0] = array (Vector), arg[1] = by_array1 (Vector),
+    // optional arg[2] = sort_order1 (Scalar), then pairs (Vector, Scalar)
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    let mut i = 1;
+    while i < arg_count {
+        result[i] = Signature::Vector; // by_array
+        i += 2; // skip the sort_order (Scalar)
+    }
+    result
+}
+
+fn args_signature_unique(arg_count: usize) -> Vec<Signature> {
+    if !(1..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_filter(arg_count: usize) -> Vec<Signature> {
+    if !(2..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result[1] = Signature::Vector;
+    result
+}
+
 fn args_signature_textafter(arg_count: usize) -> Vec<Signature> {
     if !(2..=6).contains(&arg_count) {
         vec![Signature::Scalar; arg_count]
@@ -701,6 +746,10 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Rows => args_signature_one_vector(arg_count),
         Function::Vlookup => args_signature_hlookup(arg_count),
         Function::Xlookup => args_signature_xlookup(arg_count),
+        Function::Sort => args_signature_sort(arg_count),
+        Function::Sortby => args_signature_sortby(arg_count),
+        Function::Unique => args_signature_unique(arg_count),
+        Function::Filter => args_signature_filter(arg_count),
         Function::Concat => vec![Signature::Vector; arg_count],
         Function::Concatenate => vec![Signature::Scalar; arg_count],
         Function::Exact => args_signature_scalars(arg_count, 2, 0),
@@ -1095,6 +1144,10 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Rows => not_implemented(args),
         Function::Vlookup => not_implemented(args),
         Function::Xlookup => not_implemented(args),
+        Function::Sort => StaticResult::Unknown,
+        Function::Sortby => StaticResult::Unknown,
+        Function::Unique => StaticResult::Unknown,
+        Function::Filter => StaticResult::Unknown,
         Function::Concat => not_implemented(args),
         Function::Concatenate => not_implemented(args),
         Function::Exact => not_implemented(args),

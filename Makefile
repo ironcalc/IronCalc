@@ -9,6 +9,13 @@ lint:
 format:
 	cargo fmt
 
+.PHONY: test-language-bin
+test-language-bin:
+	cd generate_language && cargo build -q && cargo run -q
+	diff generate_language/language.bin base/src/language/language.bin
+	rm generate_language/language.bin
+	@echo "language.bin is up to date"
+
 .PHONY: test-rust
 test-rust:
 	cargo test

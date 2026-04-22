@@ -2,9 +2,23 @@
 use regex_lite as regex;
 
 use crate::{
-    calc_result::CalcResult, expressions::token::is_english_error_string,
+    calc_result::CalcResult,
+    expressions::token::{is_english_error_string, Error},
     number_format::to_excel_precision,
 };
+
+fn error_sort_rank(e: &Error) -> u8 {
+    match e {
+        Error::NULL => 1,
+        Error::DIV => 2,
+        Error::VALUE => 3,
+        Error::REF => 4,
+        Error::NAME => 5,
+        Error::NUM => 6,
+        Error::NA => 7,
+        _ => 8,
+    }
+}
 
 /// This test for exact match (modulo case).
 ///   * strings are not cast into bools or numbers
@@ -81,7 +95,20 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
             compare_values(left, &CalcResult::Number(0.0))
         }
         (CalcResult::EmptyCell, CalcResult::EmptyCell) => 0,
-        // NOTE: Errors and Ranges are not covered
+        // Errors sort after everything else, ordered by Excel's canonical rank
+        (CalcResult::Error { error: e1, .. }, CalcResult::Error { error: e2, .. }) => {
+            let r1 = error_sort_rank(e1);
+            let r2 = error_sort_rank(e2);
+            if r1 < r2 {
+                -1
+            } else if r1 > r2 {
+                1
+            } else {
+                0
+            }
+        }
+        (CalcResult::Error { .. }, _) => 1,
+        (_, CalcResult::Error { .. }) => -1,
         (_, _) => 1,
     }
 }

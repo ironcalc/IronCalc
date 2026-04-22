@@ -149,6 +149,7 @@ impl<'a> Model<'a> {
                                         message: "Error in array".to_string(),
                                     });
                                 }
+                                ArrayNode::Empty => {}
                             }
                         }
                     }

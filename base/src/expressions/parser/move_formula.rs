@@ -99,6 +99,7 @@ pub(crate) fn to_string_array_node(
         ArrayNode::Number(number) => format_number_locale(*number, locale),
         ArrayNode::String(value) => format!("\"{value}\""),
         ArrayNode::Error(kind) => format!("{kind}"),
+        ArrayNode::Empty => "0".to_string(),
     }
 }
 
