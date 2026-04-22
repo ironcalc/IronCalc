@@ -14,6 +14,12 @@ pub(crate) enum NumberOrArray {
     Array(Vec<Vec<ArrayNode>>),
 }
 
+/// A scalar CalcResult or a 2-D array, used for element-wise comparison.
+pub(crate) enum ValueOrArray {
+    Value(CalcResult),
+    Array(Vec<Vec<ArrayNode>>),
+}
+
 impl<'a> Model<'a> {
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
         match s.trim().parse::<f64>() {
@@ -81,8 +87,8 @@ impl<'a> Model<'a> {
                                     // the evaluation of a cell should never return a range
                                     ArrayNode::Number(0.0)
                                 }
-                                CalcResult::EmptyCell => ArrayNode::Number(0.0),
-                                CalcResult::EmptyArg => ArrayNode::Number(0.0),
+                                CalcResult::EmptyCell => ArrayNode::Empty,
+                                CalcResult::EmptyArg => ArrayNode::Empty,
                                 CalcResult::Array(_) => {
                                     // if we do things right this can never happen.
                                     // the evaluation of a cell should never return an array
@@ -99,6 +105,24 @@ impl<'a> Model<'a> {
             error @ CalcResult::Error { .. } => Err(error),
         }
     }
+
+    /// Like `get_number_or_array` but preserves the full CalcResult type (no coercion to f64).
+    /// Used for element-wise comparison operators.
+    pub(crate) fn get_value_or_array(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<ValueOrArray, CalcResult> {
+        match self.evaluate_node_in_context(node, cell) {
+            error @ CalcResult::Error { .. } => Err(error),
+            CalcResult::Range { left, right } => {
+                Ok(ValueOrArray::Array(self.evaluate_range(left, right)))
+            }
+            CalcResult::Array(arr) => Ok(ValueOrArray::Array(arr)),
+            other => Ok(ValueOrArray::Value(other)),
+        }
+    }
+
     pub(crate) fn get_number(
         &mut self,
         node: &Node,

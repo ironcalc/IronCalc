@@ -20,6 +20,7 @@ mod macros;
 mod math_util;
 mod mathematical;
 mod mathematical_sum;
+mod spill_functions;
 mod statistical;
 mod subtotal;
 mod text;
@@ -145,6 +146,7 @@ pub enum Function {
     Info,
 
     // Lookup and reference
+    Filter,
     Hlookup,
     Index,
     Indirect,
@@ -153,6 +155,9 @@ pub enum Function {
     Offset,
     Row,
     Rows,
+    Sort,
+    Sortby,
+    Unique,
     Vlookup,
     Xlookup,
 
@@ -555,6 +560,7 @@ impl_function_lookup! {
     info        => Info,
 
     // Lookup and reference
+    filter  => Filter,
     hlookup => Hlookup,
     index   => Index,
     indirect=> Indirect,
@@ -563,6 +569,9 @@ impl_function_lookup! {
     offset  => Offset,
     row     => Row,
     rows    => Rows,
+    sort    => Sort,
+    sortby  => Sortby,
+    unique  => Unique,
     vlookup => Vlookup,
     xlookup => Xlookup,
 
@@ -928,6 +937,7 @@ impl Function {
             Function::N => functions.n.clone(),
             Function::Cell => functions.cell.clone(),
             Function::Info => functions.info.clone(),
+            Function::Filter => functions.filter.clone(),
             Function::Hlookup => functions.hlookup.clone(),
             Function::Index => functions.index.clone(),
             Function::Indirect => functions.indirect.clone(),
@@ -936,6 +946,9 @@ impl Function {
             Function::Offset => functions.offset.clone(),
             Function::Row => functions.row.clone(),
             Function::Rows => functions.rows.clone(),
+            Function::Sort => functions.sort.clone(),
+            Function::Sortby => functions.sortby.clone(),
+            Function::Unique => functions.unique.clone(),
             Function::Vlookup => functions.vlookup.clone(),
             Function::Xlookup => functions.xlookup.clone(),
             Function::Concat => functions.concat.clone(),
@@ -1168,7 +1181,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 345> {
+    pub fn into_iter() -> IntoIter<Function, 349> {
         [
             Function::And,
             Function::False,
@@ -1254,11 +1267,15 @@ impl Function {
             Function::Index,
             Function::Indirect,
             Function::Hlookup,
+            Function::Filter,
             Function::Lookup,
             Function::Match,
             Function::Offset,
             Function::Row,
             Function::Rows,
+            Function::Sort,
+            Function::Sortby,
+            Function::Unique,
             Function::Vlookup,
             Function::Xlookup,
             Function::Concatenate,
@@ -1521,7 +1538,9 @@ impl Function {
 }
 
 impl Function {
-    /// Some functions in Excel like CONCAT are stringified as `_xlfn.CONCAT`.
+    /// Some functions in Excel like CONCAT are stringified as `_xlfn.CONCAT`. (known as "future functions")
+    /// FILTER and SORT are stringified as `_xlfn._xlws.FILTER`. (known as "worksheet only functions")
+    /// See <https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/3d025add-118d-4413-9856-ab65712ec1b0>
     pub fn to_xlsx_string(&self) -> String {
         match self {
             Function::Concat => "_xlfn.CONCAT".to_string(),
@@ -1530,6 +1549,10 @@ impl Function {
             Function::Maxifs => "_xlfn.MAXIFS".to_string(),
             Function::Minifs => "_xlfn.MINIFS".to_string(),
             Function::Switch => "_xlfn.SWITCH".to_string(),
+            Function::Filter => "_xlfn._xlws.FILTER".to_string(),
+            Function::Sort => "_xlfn._xlws.SORT".to_string(),
+            Function::Sortby => "_xlfn.SORTBY".to_string(),
+            Function::Unique => "_xlfn.UNIQUE".to_string(),
             Function::Xlookup => "_xlfn.XLOOKUP".to_string(),
             Function::Xor => "_xlfn.XOR".to_string(),
             Function::Textbefore => "_xlfn.TEXTBEFORE".to_string(),
@@ -1715,6 +1738,10 @@ impl<'a> Model<'a> {
             Function::Offset => self.fn_offset(args, cell),
             Function::Row => self.fn_row(args, cell),
             Function::Rows => self.fn_rows(args, cell),
+            Function::Filter => self.fn_filter(args, cell),
+            Function::Sort => self.fn_sort(args, cell),
+            Function::Sortby => self.fn_sortby(args, cell),
+            Function::Unique => self.fn_unique(args, cell),
             Function::Vlookup => self.fn_vlookup(args, cell),
             Function::Xlookup => self.fn_xlookup(args, cell),
             Function::Concatenate => self.fn_concatenate(args, cell),

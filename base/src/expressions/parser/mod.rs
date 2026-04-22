@@ -104,6 +104,8 @@ pub enum ArrayNode {
     Number(f64),
     String(String),
     Error(token::Error),
+    /// An empty (blank) cell from a range reference.
+    Empty,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -804,6 +806,17 @@ impl<'a> Parser<'a> {
                         };
                     }
                     // We should do this *only* importing functions from xlsx
+                    if let Some(function_kind) = self
+                        .language
+                        .functions
+                        .lookup(name.trim_start_matches("_xlfn._xlws."))
+                    {
+                        return Node::FunctionKind {
+                            kind: function_kind,
+                            args,
+                        };
+                    }
+
                     if let Some(function_kind) = self
                         .language
                         .functions

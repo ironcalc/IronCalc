@@ -1,14 +1,15 @@
-use std::{collections::HashMap, sync::OnceLock};
+use std::collections::BTreeMap;
 
 use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Serialize, Deserialize, Clone)]
 pub struct Booleans {
     pub r#true: String,
     pub r#false: String,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Serialize, Deserialize, Clone)]
 pub struct Errors {
     pub r#ref: String,
     pub name: String,
@@ -24,7 +25,7 @@ pub struct Errors {
     pub null: String,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Serialize, Deserialize, Clone)]
 pub struct Functions {
     pub and: String,
     pub r#false: String,
@@ -377,7 +378,7 @@ pub struct Functions {
     pub small: String,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Serialize, Deserialize, Clone)]
 pub struct Language {
     pub name: String,
     pub code: String,
@@ -386,35 +387,9 @@ pub struct Language {
     pub functions: Functions,
 }
 
-pub fn get_default_language() -> &'static Language {
-    #[allow(clippy::unwrap_used)]
-    get_language("en").unwrap()
-}
-
-static LANGUAGES: OnceLock<HashMap<String, Language>> = OnceLock::new();
-
-#[allow(clippy::expect_used)]
-fn get_languages() -> &'static HashMap<String, Language> {
-    LANGUAGES.get_or_init(|| {
-        bitcode::decode(include_bytes!("language.bin")).expect("Failed parsing language file")
-    })
-}
-
-pub fn get_language(id: &str) -> Result<&'static Language, String> {
-    get_languages()
-        .get(id)
-        .ok_or_else(|| format!("Language is not supported: '{id}'"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_load_languages() {
-        let languages = get_languages();
-        assert!(!languages.is_empty());
-        for (code, language) in languages.iter() {
-            assert_eq!(code, &language.code);
-        }
-    }
+fn main() {
+    let languages: BTreeMap<String, Language> = serde_json::from_str(include_str!("languages.json"))
+        .expect("Failed parsing languages.json");
+    let encoded = bitcode::encode(&languages);
+    std::fs::write("language.bin", encoded).expect("Failed writing language.bin");
 }
