@@ -10,6 +10,7 @@ mod test_cut_n_paste;
 mod test_defined_names;
 mod test_delete_row_column_formatting;
 mod test_diff_queue;
+mod test_dynamic_arrays;
 mod test_evaluation;
 mod test_fn_formulatext;
 mod test_general;
