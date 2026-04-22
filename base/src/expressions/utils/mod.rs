@@ -161,12 +161,8 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
 
     for ch in chars {
         match ch {
-            'A'..='Z' => {
-                if state == 1 {
-                    column.push(ch);
-                } else {
-                    return None;
-                }
+            'A'..='Z' if state == 1 => {
+                column.push(ch);
             }
             '0'..='9' => {
                 if state == 1 {

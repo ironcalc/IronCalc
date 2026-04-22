@@ -94,7 +94,7 @@ impl<'a> Model<'a> {
         let mut xs: Vec<f64> = Vec::with_capacity(count1);
         let mut ys: Vec<f64> = Vec::with_capacity(count2);
 
-        for (v1_opt, v2_opt) in values1_opts.into_iter().zip(values2_opts.into_iter()) {
+        for (v1_opt, v2_opt) in values1_opts.into_iter().zip(values2_opts) {
             if let (Some(x), Some(y)) = (v1_opt, v2_opt) {
                 xs.push(x);
                 ys.push(y);
@@ -223,7 +223,7 @@ impl<'a> Model<'a> {
         let mut xs: Vec<f64> = Vec::with_capacity(count1);
         let mut ys: Vec<f64> = Vec::with_capacity(count2);
 
-        for (v1_opt, v2_opt) in values1_opts.into_iter().zip(values2_opts.into_iter()) {
+        for (v1_opt, v2_opt) in values1_opts.into_iter().zip(values2_opts) {
             if let (Some(x), Some(y)) = (v1_opt, v2_opt) {
                 xs.push(x);
                 ys.push(y);

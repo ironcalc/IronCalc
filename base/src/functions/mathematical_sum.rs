@@ -24,7 +24,7 @@ impl<'a> Model<'a> {
         let (_, _, values_left, values_right) = result;
 
         let mut sum = 0.0;
-        for (x_opt, y_opt) in values_left.into_iter().zip(values_right.into_iter()) {
+        for (x_opt, y_opt) in values_left.into_iter().zip(values_right) {
             let x = x_opt.unwrap_or(0.0);
             let y = y_opt.unwrap_or(0.0);
             sum += x * x - y * y;
@@ -43,7 +43,7 @@ impl<'a> Model<'a> {
         let (_rows, _cols, values_left, values_right) = result;
 
         let mut sum = 0.0;
-        for (x_opt, y_opt) in values_left.into_iter().zip(values_right.into_iter()) {
+        for (x_opt, y_opt) in values_left.into_iter().zip(values_right) {
             let x = x_opt.unwrap_or(0.0);
             let y = y_opt.unwrap_or(0.0);
             sum += x * x + y * y;
@@ -62,7 +62,7 @@ impl<'a> Model<'a> {
         let (_, _, values_left, values_right) = result;
 
         let mut sum = 0.0;
-        for (x_opt, y_opt) in values_left.into_iter().zip(values_right.into_iter()) {
+        for (x_opt, y_opt) in values_left.into_iter().zip(values_right) {
             let x = x_opt.unwrap_or(0.0);
             let y = y_opt.unwrap_or(0.0);
             let diff = x - y;

@@ -22,22 +22,18 @@ impl<'a> Model<'a> {
                 CalcResult::Number(value) => {
                     f(value);
                 }
-                CalcResult::Boolean(value) => {
-                    if !matches!(arg, Node::ReferenceKind { .. }) {
-                        f(if value { 1.0 } else { 0.0 });
-                    }
+                CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                    f(if value { 1.0 } else { 0.0 });
                 }
-                CalcResult::String(value) => {
-                    if !matches!(arg, Node::ReferenceKind { .. }) {
-                        if let Some(parsed) = self.cast_number(&value) {
-                            f(parsed);
-                        } else {
-                            return Err(CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "Argument cannot be cast into number".to_string(),
-                            ));
-                        }
+                CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                    if let Some(parsed) = self.cast_number(&value) {
+                        f(parsed);
+                    } else {
+                        return Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Argument cannot be cast into number".to_string(),
+                        ));
                     }
                 }
                 CalcResult::Array(array) => {
@@ -119,22 +115,18 @@ impl<'a> Model<'a> {
                 CalcResult::Number(value) => {
                     f(value);
                 }
-                CalcResult::Boolean(value) => {
-                    if !matches!(arg, Node::ReferenceKind { .. }) {
-                        f(if value { 1.0 } else { 0.0 });
-                    }
+                CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                    f(if value { 1.0 } else { 0.0 });
                 }
-                CalcResult::String(value) => {
-                    if !matches!(arg, Node::ReferenceKind { .. }) {
-                        if let Some(parsed) = self.cast_number(&value) {
-                            f(parsed);
-                        } else {
-                            return Err(CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "Argument cannot be cast into number".to_string(),
-                            ));
-                        }
+                CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                    if let Some(parsed) = self.cast_number(&value) {
+                        f(parsed);
+                    } else {
+                        return Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Argument cannot be cast into number".to_string(),
+                        ));
                     }
                 }
                 CalcResult::Array(array) => {
@@ -341,15 +333,13 @@ impl<'a> Model<'a> {
                 CalcResult::Number(_) => {
                     result += 1.0;
                 }
-                CalcResult::Boolean(_) => {
-                    if !matches!(arg, Node::ReferenceKind { .. }) {
-                        result += 1.0;
-                    }
+                CalcResult::Boolean(_) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                    result += 1.0;
                 }
-                CalcResult::String(s) => {
-                    if !matches!(arg, Node::ReferenceKind { .. }) && s.parse::<f64>().is_ok() {
-                        result += 1.0;
-                    }
+                CalcResult::String(s)
+                    if !matches!(arg, Node::ReferenceKind { .. }) && s.parse::<f64>().is_ok() =>
+                {
+                    result += 1.0;
                 }
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
@@ -427,11 +417,7 @@ impl<'a> Model<'a> {
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
-                CalcResult::String(s) => {
-                    if s.is_empty() {
-                        result += 1.0
-                    }
-                }
+                CalcResult::String(s) if s.is_empty() => result += 1.0,
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -448,11 +434,7 @@ impl<'a> Model<'a> {
                                 column,
                             }) {
                                 CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
-                                CalcResult::String(s) => {
-                                    if s.is_empty() {
-                                        result += 1.0
-                                    }
-                                }
+                                CalcResult::String(s) if s.is_empty() => result += 1.0,
                                 _ => {}
                             }
                         }

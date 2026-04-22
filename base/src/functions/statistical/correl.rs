@@ -18,7 +18,7 @@ impl<'a> Model<'a> {
         let mut sum_y2 = 0.0;
         let mut sum_xy = 0.0;
 
-        for (x_opt, y_opt) in values_left.into_iter().zip(values_right.into_iter()) {
+        for (x_opt, y_opt) in values_left.into_iter().zip(values_right) {
             if let (Some(x), Some(y)) = (x_opt, y_opt) {
                 n += 1.0;
                 sum_x += x;
