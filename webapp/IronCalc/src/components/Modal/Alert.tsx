@@ -1,3 +1,4 @@
+import "./modal-dialog.css";
 import { X } from "lucide-react";
 import { type ReactNode, useId, useRef } from "react";
 import { createPortal } from "react-dom";
