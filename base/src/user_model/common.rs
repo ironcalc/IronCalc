@@ -443,6 +443,12 @@ impl<'a> UserModel<'a> {
             .worksheet(sheet)?
             .cell(row, column)
             .cloned();
+        // If it is a spill cell we want to save the old value as None, because the value of a spill cell is determined by the anchor cell
+        let old_value = if matches!(old_value, Some(Cell::SpillCell { .. })) {
+            None
+        } else {
+            old_value
+        };
         self.model
             .set_user_input(sheet, row, column, value.to_string())?;
 
@@ -2050,12 +2056,22 @@ impl<'a> UserModel<'a> {
         height: i32,
         formula: &str,
     ) -> Result<(), String> {
-        let old_value = self
-            .model
-            .workbook
-            .worksheet(sheet)?
-            .cell(row, column)
-            .cloned();
+        let ws = self.model.workbook.worksheet(sheet)?;
+        let mut old_values = Vec::new();
+        for r in row..row + height {
+            let mut row_vals = Vec::new();
+            for c in column..column + width {
+                let cell = ws.cell(r, c).cloned();
+                // SpillCells are transient — restored by re-evaluation, so store as None.
+                let cell = if matches!(cell, Some(Cell::SpillCell { .. })) {
+                    None
+                } else {
+                    cell
+                };
+                row_vals.push(cell);
+            }
+            old_values.push(row_vals);
+        }
         self.model
             .set_user_array_formula(sheet, row, column, width, height, formula)?;
         self.push_diff_list(vec![Diff::SetArrayValue {
@@ -2065,7 +2081,7 @@ impl<'a> UserModel<'a> {
             width,
             height,
             new_value: formula.to_string(),
-            old_value: Box::new(old_value),
+            old_values,
         }]);
         self.evaluate_if_not_paused();
         Ok(())
@@ -2514,24 +2530,29 @@ impl<'a> UserModel<'a> {
                     width,
                     height,
                     new_value: _,
-                    old_value,
+                    old_values,
                 } => {
                     needs_evaluation = true;
                     // Clear all cells in the array formula range (anchor + spill cells).
-                    // We use worksheet's cell_clear_contents directly to bypass the
-                    // SpillArray guard that cell_clear_all has.
                     let ws = self.model.workbook.worksheet_mut(*sheet)?;
                     for r in *row..*row + *height {
                         for c in *column..*column + *width {
                             let _ = ws.cell_clear_contents(r, c);
                         }
                     }
-                    // Restore the anchor cell if it had a value before the array formula.
-                    if let Some(value) = *old_value.clone() {
-                        self.model
-                            .workbook
-                            .worksheet_mut(*sheet)?
-                            .update_cell(*row, *column, value)?;
+                    // Restore all cells that existed before the array formula was placed.
+                    for (ri, row_vals) in old_values.iter().enumerate() {
+                        for (ci, cell) in row_vals.iter().enumerate() {
+                            if let Some(cell) = cell {
+                                let r = *row + ri as i32;
+                                let c = *column + ci as i32;
+                                self.model.workbook.worksheet_mut(*sheet)?.update_cell(
+                                    r,
+                                    c,
+                                    cell.clone(),
+                                )?;
+                            }
+                        }
                     }
                 }
                 Diff::SetColumnWidth {
@@ -2913,7 +2934,7 @@ impl<'a> UserModel<'a> {
                     width,
                     height,
                     new_value,
-                    old_value: _,
+                    old_values: _,
                 } => {
                     needs_evaluation = true;
                     self.model.set_user_array_formula(

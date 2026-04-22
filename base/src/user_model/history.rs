@@ -33,7 +33,7 @@ pub(crate) enum Diff {
         width: i32,
         height: i32,
         new_value: String,
-        old_value: Box<Option<Cell>>,
+        old_values: Vec<Vec<Option<Cell>>>,
     },
     RangeClearContents {
         sheet: u32,

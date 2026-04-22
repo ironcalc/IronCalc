@@ -1178,7 +1178,21 @@ impl<'a> Model<'a> {
                             if r == cell_reference.row && c == cell_reference.column {
                                 continue;
                             }
-                            let _ = ws.cell_clear_contents(r, c);
+                            // Only clear cells that are spill cells belonging to this anchor.
+                            // Non-SpillCell content must remain
+                            // so they can block the spill on re-evaluation.
+                            let is_own_spill = ws
+                                .sheet_data
+                                .get(&r)
+                                .and_then(|row_data| row_data.get(&c))
+                                .map(|cell| {
+                                    matches!(cell, Cell::SpillCell { a, .. }
+                                        if *a == (cell_reference.row, cell_reference.column))
+                                })
+                                .unwrap_or(false);
+                            if is_own_spill {
+                                let _ = ws.cell_clear_contents(r, c);
+                            }
                         }
                     }
                 }
