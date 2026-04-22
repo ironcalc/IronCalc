@@ -91,10 +91,11 @@ impl<'a> Model<'a> {
     pub(crate) fn fn_isna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Error { error, .. }
-                    if error == Error::NA => {
-                        return CalcResult::Boolean(true);
-                    }
+                CalcResult::Error {
+                    error: Error::NA, ..
+                } => {
+                    return CalcResult::Boolean(true);
+                }
                 _ => {
                     return CalcResult::Boolean(false);
                 }
