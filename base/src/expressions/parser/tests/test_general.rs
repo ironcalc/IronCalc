@@ -125,8 +125,8 @@ fn test_parser_bad_formula() {
             position,
         } => {
             assert_eq!(formula, "#Value");
-            assert_eq!(message, "Invalid error.");
-            assert_eq!(*position, 1);
+            assert_eq!(message, "Unexpected token: 'Spill'");
+            assert_eq!(*position, 0);
         }
         _ => {
             panic!("Expected error in formula");
@@ -212,8 +212,8 @@ fn test_parser_bad_formula_3() {
             position,
         } => {
             assert_eq!(formula, "SUM(#VALVE!)");
-            assert_eq!(message, "Invalid error.");
-            assert_eq!(*position, 5);
+            assert_eq!(message, "Unexpected token: 'Spill'");
+            assert_eq!(*position, 0);
         }
         _ => {
             panic!("Expected error in formula");

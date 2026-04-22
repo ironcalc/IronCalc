@@ -80,6 +80,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 *node = new_node
             }
         }
+        Node::SpillRangeOperator { child } => {
+            add_implicit_intersection(child, add);
+        }
         Node::RangeKind {
             row1,
             column1,
@@ -285,6 +288,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::TableNameKind(_) => StaticResult::Unknown,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
+        Node::SpillRangeOperator { .. } => StaticResult::Unknown,
     }
 }
 

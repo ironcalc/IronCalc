@@ -711,6 +711,7 @@ fn stringify(
                 | OpSumKind { .. }
                 | CompareKind { .. }
                 | ImplicitIntersection { .. }
+                | SpillRangeOperator { .. }
                 | EmptyArgKind => format!(
                     "({})",
                     stringify(
@@ -754,6 +755,7 @@ fn stringify(
                 | OpSumKind { .. }
                 | CompareKind { .. }
                 | ImplicitIntersection { .. }
+                | SpillRangeOperator { .. }
                 | EmptyArgKind => format!(
                     "({})",
                     stringify(
@@ -846,6 +848,7 @@ fn stringify(
                     | TableNameKind(_)
                     | WrongVariableKind(_)
                     | ImplicitIntersection { .. }
+                    | SpillRangeOperator { .. }
                     | CompareKind { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
@@ -900,6 +903,32 @@ fn stringify(
             message: _,
         } => formula.to_string(),
         EmptyArgKind => "".to_string(),
+        SpillRangeOperator { child } => {
+            if export_to_excel {
+                return format!(
+                    "_xlfn.ANCHORARRAY({})",
+                    stringify(
+                        child,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
+                );
+            };
+            format!(
+                "{}#",
+                stringify(
+                    child,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language
+                )
+            )
+        }
         ImplicitIntersection {
             automatic: _,
             child,
@@ -1037,6 +1066,9 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
+        Node::SpillRangeOperator { child } => {
+            rename_sheet_in_node(child, sheet_index, new_name);
+        }
 
         // Do nothing
         Node::BooleanKind(_) => {}
@@ -1121,7 +1153,9 @@ pub(crate) fn rename_defined_name_in_node(
         } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
-
+        Node::SpillRangeOperator { child } => {
+            rename_defined_name_in_node(child, name, scope, new_name);
+        }
         // Do nothing
         Node::BooleanKind(_) => {}
         Node::NumberKind(_) => {}

@@ -593,6 +593,51 @@ impl<'a> Model<'a> {
                 format!("Error parsing {formula}: {message}"),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
+            SpillRangeOperator { child } => match self.evaluate_node_with_reference(child, cell) {
+                CalcResult::Range { left, right } => {
+                    if left != right {
+                        return CalcResult::new_error(
+                            Error::ERROR,
+                            cell,
+                            format!("Error with Spill Range Operator in cell {cell:?}"),
+                        );
+                    }
+                    //
+                    let sheet = left.sheet;
+                    let row = left.row;
+                    let column = left.column;
+                    let worksheet = match self.workbook.worksheet(sheet) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            return CalcResult::new_error(
+                                Error::REF,
+                                cell,
+                                format!("Sheet index {sheet} not found: {e}"),
+                            );
+                        }
+                    };
+                    match worksheet.get_cell_spill(row, column) {
+                        Ok((width, height)) => CalcResult::Range {
+                            left: CellReferenceIndex { sheet, row, column },
+                            right: CellReferenceIndex {
+                                sheet,
+                                row: row + height - 1,
+                                column: column + width - 1,
+                            },
+                        },
+                        Err(e) => CalcResult::new_error(
+                            Error::REF,
+                            cell,
+                            format!("Cell {sheet}!{row},{column} not found: {e}"),
+                        ),
+                    }
+                }
+                _ => CalcResult::new_error(
+                    Error::ERROR,
+                    cell,
+                    format!("Error with Spill Range Operator in cell {cell:?}"),
+                ),
+            },
             ImplicitIntersection {
                 automatic: _,
                 child,
