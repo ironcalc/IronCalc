@@ -307,12 +307,15 @@ fn from_a1_to_rc(
     context: String,
     tables: HashMap<String, Table>,
     defined_names: Vec<DefinedNameS>,
+    is_array_formula: bool,
 ) -> Result<String, XlsxError> {
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
     let mut t = parser.parse(&formula, &cell_reference);
-    add_implicit_intersection(&mut t, true);
+    if !is_array_formula {
+        add_implicit_intersection(&mut t, true);
+    }
 
     Ok(to_rc_format(&t))
 }
@@ -958,6 +961,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                                     context,
                                     tables.clone(),
                                     defined_names.clone(),
+                                    false,
                                 )?;
                                 match index_map.get(&si) {
                                     Some(index) => {
@@ -1047,6 +1051,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                             context,
                             tables.clone(),
                             defined_names.clone(),
+                            true,
                         )?;
 
                         match get_formula_index(&formula, &shared_formulas) {
@@ -1067,6 +1072,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                             context,
                             tables.clone(),
                             defined_names.clone(),
+                            false,
                         )?;
 
                         match get_formula_index(&formula, &shared_formulas) {

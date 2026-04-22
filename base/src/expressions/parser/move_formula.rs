@@ -508,5 +508,11 @@ fn to_string_moved(
                 to_string_moved(child, move_context, locale, language)
             )
         }
+        SpillRangeOperator { child } => {
+            format!(
+                "{}#",
+                to_string_moved(child, move_context, locale, language)
+            )
+        }
     }
 }

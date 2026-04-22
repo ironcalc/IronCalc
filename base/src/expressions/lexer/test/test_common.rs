@@ -336,6 +336,7 @@ fn test_error_circ() {
 #[test]
 fn test_error_invalid() {
     let mut lx = new_lexer("#VALU!", true);
+    assert!(matches!(lx.next_token(), Spill));
     assert!(matches!(lx.next_token(), Illegal(_)));
     assert_eq!(lx.next_token(), EOF);
 }

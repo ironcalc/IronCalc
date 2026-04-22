@@ -300,6 +300,7 @@ impl<'a> Model<'a> {
             Node::CompareKind { .. } => None,
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,
+            Node::SpillRangeOperator { .. } => None,
         }
     }
 

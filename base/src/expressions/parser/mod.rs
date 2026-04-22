@@ -13,7 +13,7 @@ factor  => prod (opProd prod)*
 prod    => power ('^' power)*
 power   => (unaryOp)* range '%'*
 range   => implicit (':' primary)?
-implicit=> '@' primary | primary
+implicit=> '@' primary | primary '#' | primary
 primary => '(' expr ')'
         => number
         => function '(' f_args ')'
@@ -185,6 +185,9 @@ pub enum Node {
     WrongVariableKind(String),
     ImplicitIntersection {
         automatic: bool,
+        child: Box<Node>,
+    },
+    SpillRangeOperator {
         child: Box<Node>,
     },
     CompareKind {
@@ -503,7 +506,18 @@ impl<'a> Parser<'a> {
                 child: Box::new(t),
             };
         }
-        self.parse_primary()
+        let primary = self.parse_primary();
+        if let Node::ParseErrorKind { .. } = primary {
+            return primary;
+        }
+        let next_token = self.lexer.peek_token();
+        if next_token == TokenType::Spill {
+            self.lexer.advance_token();
+            return Node::SpillRangeOperator {
+                child: Box::new(primary),
+            };
+        }
+        primary
     }
 
     fn parse_array_row(&mut self) -> Result<Vec<ArrayNode>, Node> {
@@ -761,7 +775,7 @@ impl<'a> Parser<'a> {
                             message: err.message,
                         };
                     }
-                    // We should do this *only* importing functions from xlsx
+                    // We should do this *only* importing functions from xlsx: Implicit Intersection
                     if &name == "_xlfn.SINGLE" {
                         if args.len() != 1 {
                             return Node::ParseErrorKind {
@@ -773,6 +787,19 @@ impl<'a> Parser<'a> {
                         }
                         return Node::ImplicitIntersection {
                             automatic: false,
+                            child: Box::new(args[0].clone()),
+                        };
+                    }
+                    // We should do this *only* importing functions from xlsx: Spill Range Operator
+                    if &name == "_xlfn.ANCHORARRAY" {
+                        if args.len() != 1 {
+                            return Node::ParseErrorKind {
+                                formula: self.lexer.get_formula(),
+                                position: self.lexer.get_position() as usize,
+                                message: "ANCHORARRAY requires one argument".to_string(),
+                            };
+                        }
+                        return Node::SpillRangeOperator {
                             child: Box::new(args[0].clone()),
                         };
                     }
@@ -906,6 +933,7 @@ impl<'a> Parser<'a> {
             | TokenType::Comma
             | TokenType::Bang
             | TokenType::And
+            | TokenType::Spill
             | TokenType::Percent => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
                 position: 0,

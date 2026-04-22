@@ -748,6 +748,29 @@ impl Worksheet {
         Ok(is_empty)
     }
 
+    // Returns:
+    // - If it is an anchor for a dynamic array => full range
+    // - If it is an anchor for an array formula => full range
+    // - If it is a single cell with a formula => SingleCell
+    // - If it is a single cell without formula => Error
+    // - If it is a spill cell => Error
+    // - Any other case => Error
+    pub(crate) fn get_cell_spill(&self, row: i32, column: i32) -> Result<(i32, i32), String> {
+        if !is_valid_column_number(column) || !is_valid_row(row) {
+            return Err("Row or column is outside valid range.".to_string());
+        }
+
+        let cell = match self.cell(row, column) {
+            Some(c) => c,
+            None => return Err("Cell does not exist.".to_string()),
+        };
+        match cell {
+            Cell::ArrayFormula { r, .. } => Ok((r.0, r.1)),
+            Cell::CellFormula { .. } => Ok((1, 1)),
+            _ => Err("Cell does not contain a formula.".to_string()),
+        }
+    }
+
     /// Returns true if cell is part of an array formula. This includes both anchor and spill cells.
     pub(crate) fn get_cell_structure(
         &self,
