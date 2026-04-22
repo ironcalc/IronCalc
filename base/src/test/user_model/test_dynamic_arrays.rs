@@ -31,7 +31,7 @@ fn undo_redo_dynamic_array() {
         Ok("#SPILL!".to_string())
     );
 
-    // Undo the formula entry
+    // Undo the spill-blocking entry so the dynamic array can spill again
     model.undo().unwrap();
     assert_eq!(
         model.get_formatted_cell_value(0, 1, 1),
@@ -44,6 +44,13 @@ fn undo_redo_dynamic_array() {
     assert_eq!(
         model.get_formatted_cell_value(0, 3, 1),
         Ok("30".to_string())
+    );
+
+    // Redo the blocking entry
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 1),
+        Ok("#SPILL!".to_string())
     );
 }
 
@@ -81,7 +88,7 @@ fn undo_redo_dynamic_array_with_cse() {
         Ok("#SPILL!".to_string())
     );
 
-    // Undo the formula entry
+    // Undo the CSE entry
     model.undo().unwrap();
     assert_eq!(
         model.get_formatted_cell_value(0, 1, 1),
@@ -94,6 +101,13 @@ fn undo_redo_dynamic_array_with_cse() {
     assert_eq!(
         model.get_formatted_cell_value(0, 3, 1),
         Ok("30".to_string())
+    );
+
+    // Redo the CSE entry
+    model.redo().unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 1),
+        Ok("#SPILL!".to_string())
     );
 }
 
