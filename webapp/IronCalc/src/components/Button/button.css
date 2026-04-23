@@ -102,7 +102,11 @@
   background-color: var(--palette-grey-100);
 }
 
-.ic-button--ghost:not(:disabled):is(:active, [aria-pressed="true"]) {
+.ic-button--ghost:not(:disabled):is(
+    :active,
+    [aria-pressed="true"],
+    [aria-expanded="true"]
+  ) {
   background-color: var(--palette-grey-200);
 }
 
