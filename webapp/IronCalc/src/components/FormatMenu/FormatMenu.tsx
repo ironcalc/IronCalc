@@ -1,9 +1,9 @@
 import type { FmtSettings } from "@ironcalc/wasm";
-import { Check } from "lucide-react";
-import { type ReactNode, useContext, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Menu, MenuContext } from "../Menu/Menu";
+import { Menu } from "../Menu/Menu";
 import { MenuDivider } from "../Menu/MenuDivider";
+import { MenuItem } from "../Menu/MenuItem";
 import FormatPicker from "./FormatPicker";
 import { NumberFormats } from "./formatUtil";
 import "./format-menu.css";
@@ -31,12 +31,10 @@ function FormatMenuItems({
   previousFocusedElementRef,
 }: FormatMenuItemsProperties) {
   const { t } = useTranslation();
-  const menu = useContext(MenuContext);
 
   function onSelect(s: string) {
     onChange(s);
     const prev = previousFocusedElementRef.current;
-    menu?.close();
     requestAnimationFrame(() => prev?.focus());
   }
 
@@ -61,154 +59,76 @@ function FormatMenuItems({
 
   return (
     <>
-      <button
-        className={`ic-menu-item ic-format-menu-item${isAutoFormat ? " is-selected" : ""}`}
-        role="menuitemradio"
-        aria-checked={isAutoFormat}
+      <MenuItem
+        checked={isAutoFormat}
         onClick={() => onSelect(NumberFormats.AUTO)}
-        type="button"
       >
-        <span className="ic-format-menu-item-label">
-          <Check className="ic-format-menu-item-check" />
-          {t("toolbar.format_menu.auto")}
-        </span>
-      </button>
+        {t("toolbar.format_menu.auto")}
+      </MenuItem>
 
       <MenuDivider />
 
-      <button
-        className={`ic-menu-item ic-format-menu-item${isNumberFormat ? " is-selected" : ""}`}
-        role="menuitemradio"
-        aria-checked={isNumberFormat}
+      <MenuItem
+        checked={isNumberFormat}
         onClick={() => onSelect(formatOptions.number_fmt)}
-        type="button"
+        secondaryText={formatOptions.number_example}
       >
-        <span className="ic-format-menu-item-label">
-          <Check className="ic-format-menu-item-check" />
-          {t("toolbar.format_menu.number")}
-        </span>
-        <span className="ic-format-menu-item-example">
-          {formatOptions.number_example}
-        </span>
-      </button>
-
-      <button
-        className={`ic-menu-item ic-format-menu-item${isPercentageFormat ? " is-selected" : ""}`}
-        role="menuitemradio"
-        aria-checked={isPercentageFormat}
+        {t("toolbar.format_menu.number")}
+      </MenuItem>
+      <MenuItem
+        checked={isPercentageFormat}
         onClick={() => onSelect(NumberFormats.PERCENTAGE)}
-        type="button"
+        secondaryText={t("toolbar.format_menu.percentage_example")}
       >
-        <span className="ic-format-menu-item-label">
-          <Check className="ic-format-menu-item-check" />
-          {t("toolbar.format_menu.percentage")}
-        </span>
-        <span className="ic-format-menu-item-example">
-          {t("toolbar.format_menu.percentage_example")}
-        </span>
-      </button>
+        {t("toolbar.format_menu.percentage")}
+      </MenuItem>
 
       <MenuDivider />
 
-      <button
-        className={`ic-menu-item ic-format-menu-item${isCurrencyEurosFormat ? " is-selected" : ""}`}
-        role="menuitemradio"
-        aria-checked={isCurrencyEurosFormat}
+      <MenuItem
+        checked={isCurrencyEurosFormat}
         onClick={() => onSelect(NumberFormats.CURRENCY_EUR)}
-        type="button"
+        secondaryText={t("toolbar.format_menu.currency_eur_example")}
       >
-        <span className="ic-format-menu-item-label">
-          <Check className="ic-format-menu-item-check" />
-          {t("toolbar.format_menu.currency_eur")}
-        </span>
-        <span className="ic-format-menu-item-example">
-          {t("toolbar.format_menu.currency_eur_example")}
-        </span>
-      </button>
-
-      <button
-        className={`ic-menu-item ic-format-menu-item${isCurrencyUsdFormat ? " is-selected" : ""}`}
-        role="menuitemradio"
-        aria-checked={isCurrencyUsdFormat}
+        {t("toolbar.format_menu.currency_eur")}
+      </MenuItem>
+      <MenuItem
+        checked={isCurrencyUsdFormat}
         onClick={() => onSelect(NumberFormats.CURRENCY_USD)}
-        type="button"
+        secondaryText={t("toolbar.format_menu.currency_usd_example")}
       >
-        <span className="ic-format-menu-item-label">
-          <Check className="ic-format-menu-item-check" />
-          {t("toolbar.format_menu.currency_usd")}
-        </span>
-        <span className="ic-format-menu-item-example">
-          {t("toolbar.format_menu.currency_usd_example")}
-        </span>
-      </button>
-
-      <button
-        className={`ic-menu-item ic-format-menu-item${isCurrencyGbpFormat ? " is-selected" : ""}`}
-        role="menuitemradio"
-        aria-checked={isCurrencyGbpFormat}
+        {t("toolbar.format_menu.currency_usd")}
+      </MenuItem>
+      <MenuItem
+        checked={isCurrencyGbpFormat}
         onClick={() => onSelect(NumberFormats.CURRENCY_GBP)}
-        type="button"
+        secondaryText={t("toolbar.format_menu.currency_gbp_example")}
       >
-        <span className="ic-format-menu-item-label">
-          <Check className="ic-format-menu-item-check" />
-          {t("toolbar.format_menu.currency_gbp")}
-        </span>
-        <span className="ic-format-menu-item-example">
-          {t("toolbar.format_menu.currency_gbp_example")}
-        </span>
-      </button>
+        {t("toolbar.format_menu.currency_gbp")}
+      </MenuItem>
 
       <MenuDivider />
 
-      <button
-        className={`ic-menu-item ic-format-menu-item${isShortDateFormat ? " is-selected" : ""}`}
-        role="menuitemradio"
-        aria-checked={isShortDateFormat}
+      <MenuItem
+        checked={isShortDateFormat}
         onClick={() => onSelect(formatOptions.short_date)}
-        type="button"
+        secondaryText={formatOptions.short_date_example}
       >
-        <span className="ic-format-menu-item-label">
-          <Check className="ic-format-menu-item-check" />
-          {t("toolbar.format_menu.date_short")}
-        </span>
-        <span className="ic-format-menu-item-example">
-          {formatOptions.short_date_example}
-        </span>
-      </button>
-
-      <button
-        className={`ic-menu-item ic-format-menu-item${isLongDateFormat ? " is-selected" : ""}`}
-        role="menuitemradio"
-        aria-checked={isLongDateFormat}
+        {t("toolbar.format_menu.date_short")}
+      </MenuItem>
+      <MenuItem
+        checked={isLongDateFormat}
         onClick={() => onSelect(formatOptions.long_date)}
-        type="button"
+        secondaryText={formatOptions.long_date_example}
       >
-        <span className="ic-format-menu-item-label">
-          <Check className="ic-format-menu-item-check" />
-          {t("toolbar.format_menu.date_long")}
-        </span>
-        <span className="ic-format-menu-item-example">
-          {formatOptions.long_date_example}
-        </span>
-      </button>
+        {t("toolbar.format_menu.date_long")}
+      </MenuItem>
 
       <MenuDivider />
 
-      <button
-        className={`ic-menu-item ic-format-menu-item${isCustomFormat ? " is-selected" : ""}`}
-        role="menuitemradio"
-        aria-checked={isCustomFormat}
-        onClick={() => {
-          menu?.close();
-          onOpenPicker();
-        }}
-        type="button"
-      >
-        <span className="ic-format-menu-item-label">
-          <Check className="ic-format-menu-item-check" />
-          {t("toolbar.format_menu.custom")}
-        </span>
-      </button>
+      <MenuItem checked={isCustomFormat} onClick={onOpenPicker}>
+        {t("toolbar.format_menu.custom")}
+      </MenuItem>
     </>
   );
 }

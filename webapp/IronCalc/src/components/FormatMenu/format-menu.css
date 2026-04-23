@@ -11,31 +11,3 @@
 .ic-format-menu-anchor[aria-expanded="true"] .ic-button--ghost {
   background-color: var(--palette-grey-200);
 }
-
-.ic-format-menu-item {
-  justify-content: space-between;
-}
-
-.ic-format-menu-item-label {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.ic-format-menu-item-check {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  flex-shrink: 0;
-  visibility: hidden;
-}
-
-.is-selected .ic-format-menu-item-check {
-  visibility: visible;
-}
-
-.ic-format-menu-item-example {
-  margin-left: 20px;
-  color: var(--palette-grey-400);
-  white-space: nowrap;
-}
