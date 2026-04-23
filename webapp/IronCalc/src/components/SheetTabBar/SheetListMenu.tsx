@@ -1,6 +1,5 @@
-import { Check } from "lucide-react";
-import { useContext, useEffect, useRef } from "react";
-import { MenuContext } from "../Menu/Menu";
+import { useEffect, useRef } from "react";
+import { MenuItem } from "../Menu/MenuItem";
 import type { SheetOptions } from "./types";
 import "./sheet-list-menu.css";
 
@@ -19,7 +18,6 @@ const SheetListMenu = ({
   sheetOptionsList,
   selectedIndex,
 }: SheetListMenuProps) => {
-  const menuContext = useContext(MenuContext);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasColors = sheetOptionsList.some((tab) => !isWhiteColor(tab.color));
 
@@ -36,40 +34,32 @@ const SheetListMenu = ({
   return (
     <div ref={containerRef}>
       {sheetOptionsList.map((tab, index) => (
-        <button
+        <MenuItem
           key={tab.sheetId}
-          role="menuitemradio"
-          aria-checked={index === selectedIndex}
-          className="ic-menu-item"
-          onClick={() => {
-            onSheetSelected(index);
-            menuContext?.close();
-          }}
-          type="button"
+          checked={index === selectedIndex}
+          icon={
+            hasColors ? (
+              <span
+                className="ic-sheet-list-menu-color"
+                style={{ backgroundColor: tab.color }}
+              />
+            ) : undefined
+          }
+          onClick={() => onSheetSelected(index)}
         >
-          {index === selectedIndex ? (
-            <Check className="ic-sheet-list-menu-check" />
-          ) : (
-            <div className="ic-sheet-list-menu-check-placeholder" />
-          )}
-
-          {hasColors ? (
-            <div
-              className="ic-sheet-list-menu-color"
-              style={{ backgroundColor: tab.color }}
-            />
-          ) : null}
-
-          <div
-            className={`ic-sheet-list-menu-name${
-              index === selectedIndex
-                ? " ic-sheet-list-menu-name--selected"
-                : ""
-            }${tab.state === "visible" ? "" : " ic-sheet-list-menu-name--hidden"}`}
+          <span
+            className={
+              [
+                index === selectedIndex && "ic-sheet-list-menu-name--selected",
+                tab.state !== "visible" && "ic-sheet-list-menu-name--hidden",
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
           >
             {tab.name}
-          </div>
-        </button>
+          </span>
+        </MenuItem>
       ))}
     </div>
   );
