@@ -5,12 +5,12 @@ use crate::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn get_system() -> String {
+fn get_system() -> String {
     std::env::consts::OS.to_string()
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn get_system() -> String {
+fn get_system() -> String {
     "browser".to_string()
 }
 
@@ -490,7 +490,7 @@ impl<'a> Model<'a> {
             // At the moment we always do automatic recalc
             "RECALC" => CalcResult::String("Automatic".to_string()),
             "RELEASE" => CalcResult::String(release.to_string()),
-            "SYSTEM" => CalcResult::String(Self::get_system().to_string()),
+            "SYSTEM" => CalcResult::String(get_system()),
             _ => CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,

@@ -17,20 +17,5 @@ fn main() {
         .or_else(|| run_git(&["describe", "--tags", "--dirty", "--always"]))
         .unwrap_or_else(|| "unknown".into());
 
-    let commit = run_git(&["rev-parse", "HEAD"]).unwrap_or_else(|| "unknown".into());
-    let branch =
-        run_git(&["rev-parse", "--abbrev-ref", "HEAD"]).unwrap_or_else(|| "unknown".into());
-
-    let dirty = run_git(&["status", "--porcelain"])
-        .map(|s| if s.is_empty() { "false" } else { "true" })
-        .unwrap_or("unknown");
-
-    let build_time = {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let secs = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        secs.to_string()
-    };
+    println!("cargo:rustc-env=GIT_VERSION={}", version);
 }
