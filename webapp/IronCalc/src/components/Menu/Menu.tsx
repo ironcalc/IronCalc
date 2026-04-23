@@ -64,6 +64,9 @@ export function Menu(props: MenuProperties) {
   // Close on outside pointer down
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
+      if (!open) {
+        return;
+      }
       const target = event.target as Node | null;
       if (!target) {
         return;
