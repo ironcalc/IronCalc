@@ -1,15 +1,9 @@
 import type { FmtSettings } from "@ironcalc/wasm";
 import { Check } from "lucide-react";
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useContext, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Menu, MenuContext } from "../Menu/Menu";
+import { MenuDivider } from "../Menu/MenuDivider";
 import FormatPicker from "./FormatPicker";
 import { NumberFormats } from "./formatUtil";
 import "./format-menu.css";
@@ -21,206 +15,39 @@ type FormatMenuProperties = {
   formatOptions: FmtSettings;
 };
 
-const FormatMenu = (properties: FormatMenuProperties) => {
+interface FormatMenuItemsProperties {
+  numFmt: string;
+  onChange: (numberFmt: string) => void;
+  formatOptions: FmtSettings;
+  onOpenPicker: () => void;
+  previousFocusedElementRef: React.RefObject<HTMLElement | null>;
+}
+
+function FormatMenuItems({
+  numFmt,
+  onChange,
+  formatOptions,
+  onOpenPicker,
+  previousFocusedElementRef,
+}: FormatMenuItemsProperties) {
   const { t } = useTranslation();
-  const [isMenuOpen, setMenuOpen] = useState(false);
-  const [isPickerOpen, setPickerOpen] = useState(false);
-  const [menuStyle, setMenuStyle] = useState<{
-    left?: number;
-    top?: number;
-  }>({});
+  const menu = useContext(MenuContext);
 
-  const anchorElement = useRef<HTMLDivElement>(null);
-  const menuElement = useRef<HTMLDivElement>(null);
+  function onSelect(s: string) {
+    onChange(s);
+    const prev = previousFocusedElementRef.current;
+    menu?.close();
+    requestAnimationFrame(() => prev?.focus());
+  }
 
-  // We need to keep track of the previously focused element before opening the menu
-  // This is so when you press ESC whatever was focused before opening the menu gets focused again
-  const previousFocusedElement = useRef<HTMLElement | null>(null);
-  const onTriggerMouseDownCapture = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      previousFocusedElement.current =
-        document.activeElement as HTMLElement | null;
-      event.preventDefault();
-    },
-    [],
-  );
-
-  const formatOptions = properties.formatOptions;
-
-  const closeMenu = useCallback((restorePreviousFocus = false) => {
-    setMenuOpen(false);
-    if (restorePreviousFocus) {
-      previousFocusedElement.current?.focus();
-    }
-  }, []);
-
-  const focusMenuItem = useCallback((index: number) => {
-    const items =
-      menuElement.current?.querySelectorAll<HTMLButtonElement>(
-        ":scope > button",
-      );
-
-    if (!items || items.length === 0) {
-      return;
-    }
-
-    const safeIndex = Math.max(0, Math.min(index, items.length - 1));
-    items[safeIndex]?.focus();
-  }, []);
-
-  const focusSelectedOrFirstItem = useCallback(() => {
-    const items =
-      menuElement.current?.querySelectorAll<HTMLButtonElement>(
-        ":scope > button",
-      );
-
-    if (!items || items.length === 0) {
-      return;
-    }
-
-    const selectedIndex = Array.from(items).findIndex((item) =>
-      item.classList.contains("is-selected"),
-    );
-
-    if (selectedIndex >= 0) {
-      items[selectedIndex]?.focus();
-      return;
-    }
-
-    items[0]?.focus();
-  }, []);
-
-  const onSelect = useCallback(
-    (s: string) => {
-      properties.onChange(s);
-      closeMenu(true);
-    },
-    [properties.onChange, closeMenu],
-  );
-
-  const onMenuKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      const items =
-        menuElement.current?.querySelectorAll<HTMLButtonElement>(
-          ":scope > button",
-        );
-
-      if (!items || items.length === 0) {
-        return;
-      }
-
-      const itemsArray = Array.from(items);
-      const currentIndex = itemsArray.indexOf(
-        document.activeElement as HTMLButtonElement,
-      );
-
-      switch (event.key) {
-        case "Escape":
-          event.preventDefault();
-          closeMenu(true);
-          break;
-        case "ArrowDown":
-          event.preventDefault();
-          if (currentIndex < 0) {
-            focusSelectedOrFirstItem();
-          } else {
-            focusMenuItem((currentIndex + 1) % items.length);
-          }
-          break;
-        case "ArrowUp":
-          event.preventDefault();
-          if (currentIndex < 0) {
-            focusSelectedOrFirstItem();
-          } else {
-            focusMenuItem((currentIndex - 1 + items.length) % items.length);
-          }
-          break;
-        case "Home":
-          event.preventDefault();
-          focusMenuItem(0);
-          break;
-        case "End":
-          event.preventDefault();
-          focusMenuItem(items.length - 1);
-          break;
-        case "Tab":
-          closeMenu(false);
-          break;
-        default:
-          break;
-      }
-    },
-    [closeMenu, focusMenuItem, focusSelectedOrFirstItem],
-  );
-
-  useEffect(() => {
-    if (!isMenuOpen) {
-      return;
-    }
-
-    const onDocumentPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-
-      if (
-        anchorElement.current?.contains(target) ||
-        menuElement.current?.contains(target)
-      ) {
-        return;
-      }
-
-      closeMenu(true);
-    };
-
-    document.addEventListener("pointerdown", onDocumentPointerDown, true);
-
-    return () => {
-      document.removeEventListener("pointerdown", onDocumentPointerDown, true);
-    };
-  }, [closeMenu, isMenuOpen]);
-
-  useLayoutEffect(() => {
-    if (!isMenuOpen || !anchorElement.current) {
-      return;
-    }
-
-    const updateMenuPosition = () => {
-      const rect = anchorElement.current?.getBoundingClientRect();
-
-      if (!rect) {
-        return;
-      }
-
-      setMenuStyle({
-        left: rect.left,
-        top: rect.bottom,
-      });
-    };
-
-    updateMenuPosition();
-
-    requestAnimationFrame(() => {
-      focusSelectedOrFirstItem();
-    });
-
-    window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
-
-    return () => {
-      window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
-    };
-  }, [isMenuOpen, focusSelectedOrFirstItem]);
-
-  const isAutoFormat = properties.numFmt === NumberFormats.AUTO;
-  const isNumberFormat = properties.numFmt === formatOptions.number_fmt;
-  const isPercentageFormat = properties.numFmt === NumberFormats.PERCENTAGE;
-  const isCurrencyEurosFormat =
-    properties.numFmt === NumberFormats.CURRENCY_EUR;
-  const isCurrencyUsdFormat = properties.numFmt === NumberFormats.CURRENCY_USD;
-  const isCurrencyGbpFormat = properties.numFmt === NumberFormats.CURRENCY_GBP;
-  const isShortDateFormat = properties.numFmt === formatOptions.short_date;
-  const isLongDateFormat = properties.numFmt === formatOptions.long_date;
-
+  const isAutoFormat = numFmt === NumberFormats.AUTO;
+  const isNumberFormat = numFmt === formatOptions.number_fmt;
+  const isPercentageFormat = numFmt === NumberFormats.PERCENTAGE;
+  const isCurrencyEurosFormat = numFmt === NumberFormats.CURRENCY_EUR;
+  const isCurrencyUsdFormat = numFmt === NumberFormats.CURRENCY_USD;
+  const isCurrencyGbpFormat = numFmt === NumberFormats.CURRENCY_GBP;
+  const isShortDateFormat = numFmt === formatOptions.short_date;
+  const isLongDateFormat = numFmt === formatOptions.long_date;
   const isCustomFormat = !(
     isAutoFormat ||
     isNumberFormat ||
@@ -233,149 +60,193 @@ const FormatMenu = (properties: FormatMenuProperties) => {
   );
 
   return (
-    <div className="ic-format-menu-root">
-      {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
-      {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
-      <div
-        className="ic-format-menu-anchor"
-        onClick={() => setMenuOpen((prev) => !prev)}
-        ref={anchorElement}
-        onMouseDownCapture={onTriggerMouseDownCapture}
+    <>
+      <button
+        className={`ic-menu-item ic-format-menu-item${isAutoFormat ? " is-selected" : ""}`}
+        role="menuitemradio"
+        aria-checked={isAutoFormat}
+        onClick={() => onSelect(NumberFormats.AUTO)}
+        type="button"
       >
-        {properties.children}
-      </div>
+        <span className="ic-format-menu-item-label">
+          <Check className="ic-format-menu-item-check" />
+          {t("toolbar.format_menu.auto")}
+        </span>
+      </button>
 
-      {isMenuOpen ? (
-        <div
-          className="ic-format-menu"
-          ref={menuElement}
-          style={menuStyle}
-          role="menu"
-          aria-label={t("toolbar.format_number")}
-          onKeyDown={onMenuKeyDown}
-        >
-          <button
-            className={isAutoFormat ? "is-selected" : undefined}
-            onClick={() => onSelect(NumberFormats.AUTO)}
-            type="button"
-          >
-            <span>
-              <Check />
-              {t("toolbar.format_menu.auto")}
-            </span>
-          </button>
+      <MenuDivider />
 
-          <div className="ic-format-menu-divider" />
+      <button
+        className={`ic-menu-item ic-format-menu-item${isNumberFormat ? " is-selected" : ""}`}
+        role="menuitemradio"
+        aria-checked={isNumberFormat}
+        onClick={() => onSelect(formatOptions.number_fmt)}
+        type="button"
+      >
+        <span className="ic-format-menu-item-label">
+          <Check className="ic-format-menu-item-check" />
+          {t("toolbar.format_menu.number")}
+        </span>
+        <span className="ic-format-menu-item-example">
+          {formatOptions.number_example}
+        </span>
+      </button>
 
-          <button
-            className={isNumberFormat ? "is-selected" : undefined}
-            onClick={() => onSelect(formatOptions.number_fmt)}
-            type="button"
-          >
-            <span>
-              <Check />
-              {t("toolbar.format_menu.number")}
-            </span>
-            <span>{formatOptions.number_example}</span>
-          </button>
+      <button
+        className={`ic-menu-item ic-format-menu-item${isPercentageFormat ? " is-selected" : ""}`}
+        role="menuitemradio"
+        aria-checked={isPercentageFormat}
+        onClick={() => onSelect(NumberFormats.PERCENTAGE)}
+        type="button"
+      >
+        <span className="ic-format-menu-item-label">
+          <Check className="ic-format-menu-item-check" />
+          {t("toolbar.format_menu.percentage")}
+        </span>
+        <span className="ic-format-menu-item-example">
+          {t("toolbar.format_menu.percentage_example")}
+        </span>
+      </button>
 
-          <button
-            className={isPercentageFormat ? "is-selected" : undefined}
-            onClick={() => onSelect(NumberFormats.PERCENTAGE)}
-            type="button"
-          >
-            <span>
-              <Check />
-              {t("toolbar.format_menu.percentage")}
-            </span>
-            <span>{t("toolbar.format_menu.percentage_example")}</span>
-          </button>
+      <MenuDivider />
 
-          <div className="ic-format-menu-divider" />
+      <button
+        className={`ic-menu-item ic-format-menu-item${isCurrencyEurosFormat ? " is-selected" : ""}`}
+        role="menuitemradio"
+        aria-checked={isCurrencyEurosFormat}
+        onClick={() => onSelect(NumberFormats.CURRENCY_EUR)}
+        type="button"
+      >
+        <span className="ic-format-menu-item-label">
+          <Check className="ic-format-menu-item-check" />
+          {t("toolbar.format_menu.currency_eur")}
+        </span>
+        <span className="ic-format-menu-item-example">
+          {t("toolbar.format_menu.currency_eur_example")}
+        </span>
+      </button>
 
-          <button
-            className={isCurrencyEurosFormat ? "is-selected" : undefined}
-            onClick={() => onSelect(NumberFormats.CURRENCY_EUR)}
-            type="button"
-          >
-            <span>
-              <Check />
-              {t("toolbar.format_menu.currency_eur")}
-            </span>
-            <span>{t("toolbar.format_menu.currency_eur_example")}</span>
-          </button>
+      <button
+        className={`ic-menu-item ic-format-menu-item${isCurrencyUsdFormat ? " is-selected" : ""}`}
+        role="menuitemradio"
+        aria-checked={isCurrencyUsdFormat}
+        onClick={() => onSelect(NumberFormats.CURRENCY_USD)}
+        type="button"
+      >
+        <span className="ic-format-menu-item-label">
+          <Check className="ic-format-menu-item-check" />
+          {t("toolbar.format_menu.currency_usd")}
+        </span>
+        <span className="ic-format-menu-item-example">
+          {t("toolbar.format_menu.currency_usd_example")}
+        </span>
+      </button>
 
-          <button
-            className={isCurrencyUsdFormat ? "is-selected" : undefined}
-            onClick={() => onSelect(NumberFormats.CURRENCY_USD)}
-            type="button"
-          >
-            <span>
-              <Check />
-              {t("toolbar.format_menu.currency_usd")}
-            </span>
-            <span>{t("toolbar.format_menu.currency_usd_example")}</span>
-          </button>
+      <button
+        className={`ic-menu-item ic-format-menu-item${isCurrencyGbpFormat ? " is-selected" : ""}`}
+        role="menuitemradio"
+        aria-checked={isCurrencyGbpFormat}
+        onClick={() => onSelect(NumberFormats.CURRENCY_GBP)}
+        type="button"
+      >
+        <span className="ic-format-menu-item-label">
+          <Check className="ic-format-menu-item-check" />
+          {t("toolbar.format_menu.currency_gbp")}
+        </span>
+        <span className="ic-format-menu-item-example">
+          {t("toolbar.format_menu.currency_gbp_example")}
+        </span>
+      </button>
 
-          <button
-            className={isCurrencyGbpFormat ? "is-selected" : undefined}
-            onClick={() => onSelect(NumberFormats.CURRENCY_GBP)}
-            type="button"
-          >
-            <span>
-              <Check />
-              {t("toolbar.format_menu.currency_gbp")}
-            </span>
-            <span>{t("toolbar.format_menu.currency_gbp_example")}</span>
-          </button>
+      <MenuDivider />
 
-          <div className="ic-format-menu-divider" />
+      <button
+        className={`ic-menu-item ic-format-menu-item${isShortDateFormat ? " is-selected" : ""}`}
+        role="menuitemradio"
+        aria-checked={isShortDateFormat}
+        onClick={() => onSelect(formatOptions.short_date)}
+        type="button"
+      >
+        <span className="ic-format-menu-item-label">
+          <Check className="ic-format-menu-item-check" />
+          {t("toolbar.format_menu.date_short")}
+        </span>
+        <span className="ic-format-menu-item-example">
+          {formatOptions.short_date_example}
+        </span>
+      </button>
 
-          <button
-            className={isShortDateFormat ? "is-selected" : undefined}
-            onClick={() => onSelect(formatOptions.short_date)}
-            type="button"
-          >
-            <span>
-              <Check />
-              {t("toolbar.format_menu.date_short")}
-            </span>
-            <span>{formatOptions.short_date_example}</span>
-          </button>
+      <button
+        className={`ic-menu-item ic-format-menu-item${isLongDateFormat ? " is-selected" : ""}`}
+        role="menuitemradio"
+        aria-checked={isLongDateFormat}
+        onClick={() => onSelect(formatOptions.long_date)}
+        type="button"
+      >
+        <span className="ic-format-menu-item-label">
+          <Check className="ic-format-menu-item-check" />
+          {t("toolbar.format_menu.date_long")}
+        </span>
+        <span className="ic-format-menu-item-example">
+          {formatOptions.long_date_example}
+        </span>
+      </button>
 
-          <button
-            className={isLongDateFormat ? "is-selected" : undefined}
-            onClick={() => onSelect(formatOptions.long_date)}
-            type="button"
-          >
-            <span>
-              <Check />
-              {t("toolbar.format_menu.date_long")}
-            </span>
-            <span>{formatOptions.long_date_example}</span>
-          </button>
+      <MenuDivider />
 
-          <div className="ic-format-menu-divider" />
+      <button
+        className={`ic-menu-item ic-format-menu-item${isCustomFormat ? " is-selected" : ""}`}
+        role="menuitemradio"
+        aria-checked={isCustomFormat}
+        onClick={() => {
+          menu?.close();
+          onOpenPicker();
+        }}
+        type="button"
+      >
+        <span className="ic-format-menu-item-label">
+          <Check className="ic-format-menu-item-check" />
+          {t("toolbar.format_menu.custom")}
+        </span>
+      </button>
+    </>
+  );
+}
 
-          <button
-            className={isCustomFormat ? "is-selected" : undefined}
-            onClick={() => {
-              closeMenu(false);
-              setPickerOpen(true);
+const FormatMenu = (properties: FormatMenuProperties) => {
+  const [isPickerOpen, setPickerOpen] = useState(false);
+  const previousFocusedElement = useRef<HTMLElement | null>(null);
+
+  return (
+    <div className="ic-format-menu-root">
+      <Menu
+        trigger={
+          <div
+            className="ic-format-menu-anchor"
+            onMouseDownCapture={() => {
+              previousFocusedElement.current =
+                document.activeElement as HTMLElement | null;
             }}
-            type="button"
           >
-            <span>
-              <Check />
-              {t("toolbar.format_menu.custom")}
-            </span>
-          </button>
-        </div>
-      ) : null}
+            {properties.children}
+          </div>
+        }
+      >
+        <FormatMenuItems
+          numFmt={properties.numFmt}
+          onChange={properties.onChange}
+          formatOptions={properties.formatOptions}
+          onOpenPicker={() => setPickerOpen(true)}
+          previousFocusedElementRef={previousFocusedElement}
+        />
+      </Menu>
 
       <FormatPicker
         numFmt={properties.numFmt}
-        onChange={onSelect}
+        onChange={(s) => {
+          properties.onChange(s);
+          requestAnimationFrame(() => previousFocusedElement.current?.focus());
+        }}
         open={isPickerOpen}
         onClose={() => setPickerOpen(false)}
       />
