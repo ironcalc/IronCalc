@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
-use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::worksheet::WorksheetDimension;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -69,8 +69,18 @@ impl<'a> Model<'a> {
                         ));
                     }
 
-                    for row in left.row..=right.row {
-                        for column in left.column..=right.column {
+                    let dx = self
+                        .get_max_rc(left.sheet, left.row, left.column, right.row, right.column)
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                "Invalid worksheet index".to_string(),
+                            )
+                        })?;
+
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -162,8 +172,18 @@ impl<'a> Model<'a> {
                         ));
                     }
 
-                    for row in left.row..=right.row {
-                        for column in left.column..=right.column {
+                    let dx = self
+                        .get_max_rc(left.sheet, left.row, left.column, right.row, right.column)
+                        .map_err(|_| {
+                            CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                "Invalid worksheet index".to_string(),
+                            )
+                        })?;
+
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -349,8 +369,24 @@ impl<'a> Model<'a> {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
+                    let dx = match self.get_max_rc(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => {
+                            return CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                "Invalid worksheet index".to_string(),
+                            )
+                        }
+                    };
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             if let CalcResult::Number(_) = self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -385,8 +421,24 @@ impl<'a> Model<'a> {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
+                    let dx = match self.get_max_rc(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => {
+                            return CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                "Invalid worksheet index".to_string(),
+                            )
+                        }
+                    };
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -426,8 +478,24 @@ impl<'a> Model<'a> {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
+                    let dx = match self.get_max_rc(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => {
+                            return CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                "Invalid worksheet index".to_string(),
+                            )
+                        }
+                    };
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -476,38 +544,21 @@ impl<'a> Model<'a> {
                         );
                     }
 
-                    let row1 = left.row;
-                    let mut row2 = right.row;
-                    let column1 = left.column;
-                    let mut column2 = right.column;
+                    let dx: WorksheetDimension = match self.get_max_rc(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => {
+                            return CalcResult::new_error(Error::ERROR, cell, "...".to_string())
+                        }
+                    };
 
-                    if row1 == 1 && row2 == LAST_ROW {
-                        row2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_row,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-                    if column1 == 1 && column2 == LAST_COLUMN {
-                        column2 = match self.workbook.worksheet(left.sheet) {
-                            Ok(s) => s.dimension().max_column,
-                            Err(_) => {
-                                return CalcResult::new_error(
-                                    Error::ERROR,
-                                    cell,
-                                    format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
-                            }
-                        };
-                    }
-
-                    for row in row1..=row2 {
-                        for column in column1..=column2 {
+                    for row in dx.min_row..=dx.max_row {
+                        for column in dx.min_column..=dx.max_column {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,

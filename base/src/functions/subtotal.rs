@@ -7,6 +7,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
+    worksheet::WorksheetDimension,
 };
 
 /// Excel has a complicated way of filtering + hidden rows
@@ -142,14 +143,21 @@ impl<'a> Model<'a> {
                                 ));
                             }
                             // We are not expecting subtotal to have open ranges
-                            let row1 = left.row;
-                            let row2 = right.row;
-                            let column1 = left.column;
-                            let column2 = right.column;
+                            let dx: WorksheetDimension = self
+                                .get_max_rc(
+                                    left.sheet,
+                                    left.row,
+                                    left.column,
+                                    right.row,
+                                    right.column,
+                                )
+                                .map_err(|_| {
+                                    CalcResult::new_error(Error::ERROR, cell, "...".to_string())
+                                })?;
 
-                            for row in row1..=row2 {
+                            for row in dx.min_row..=dx.max_row {
                                 let cell_status = self
-                                    .cell_hidden_status(left.sheet, row, column1)
+                                    .cell_hidden_status(left.sheet, row, dx.min_column)
                                     .map_err(|message| {
                                         CalcResult::new_error(Error::ERROR, cell, message)
                                     })?;
@@ -161,7 +169,8 @@ impl<'a> Model<'a> {
                                 {
                                     continue;
                                 }
-                                for column in column1..=column2 {
+                                // for column in column1..=column2 {
+                                for column in dx.min_column..=dx.max_column {
                                     if self.cell_is_subtotal(left.sheet, row, column) {
                                         continue;
                                     }
@@ -389,21 +398,36 @@ impl<'a> Model<'a> {
                                     "Ranges are in different sheets".to_string(),
                                 );
                             }
-                            // We are not expecting subtotal to have open ranges
-                            let row1 = left.row;
-                            let row2 = right.row;
-                            let column1 = left.column;
-                            let column2 = right.column;
 
-                            for row in row1..=row2 {
-                                let cell_status = match self
-                                    .cell_hidden_status(left.sheet, row, column1)
-                                {
-                                    Ok(s) => s,
-                                    Err(message) => {
-                                        return CalcResult::new_error(Error::ERROR, cell, message);
-                                    }
-                                };
+                            let dx: WorksheetDimension = match self.get_max_rc(
+                                left.sheet,
+                                left.row,
+                                left.column,
+                                right.row,
+                                right.column,
+                            ) {
+                                Ok(d) => d,
+                                Err(_) => {
+                                    return CalcResult::new_error(
+                                        Error::ERROR,
+                                        cell,
+                                        "...".to_string(),
+                                    )
+                                }
+                            };
+
+                            for row in dx.min_row..=dx.max_row {
+                                let cell_status =
+                                    match self.cell_hidden_status(left.sheet, row, dx.min_column) {
+                                        Ok(s) => s,
+                                        Err(message) => {
+                                            return CalcResult::new_error(
+                                                Error::ERROR,
+                                                cell,
+                                                message,
+                                            );
+                                        }
+                                    };
                                 if cell_status == CellTableStatus::Filtered {
                                     continue;
                                 }
@@ -412,7 +436,7 @@ impl<'a> Model<'a> {
                                 {
                                     continue;
                                 }
-                                for column in column1..=column2 {
+                                for column in dx.min_column..=dx.max_column {
                                     if self.cell_is_subtotal(left.sheet, row, column) {
                                         continue;
                                     }
@@ -472,21 +496,37 @@ impl<'a> Model<'a> {
                                     "Ranges are in different sheets".to_string(),
                                 );
                             }
-                            // We are not expecting subtotal to have open ranges
-                            let row1 = left.row;
-                            let row2 = right.row;
-                            let column1 = left.column;
-                            let column2 = right.column;
 
-                            for row in row1..=row2 {
-                                let cell_status = match self
-                                    .cell_hidden_status(left.sheet, row, column1)
-                                {
-                                    Ok(s) => s,
-                                    Err(message) => {
-                                        return CalcResult::new_error(Error::ERROR, cell, message);
-                                    }
-                                };
+                            // We are not expecting subtotal to have open ranges
+                            let dx: WorksheetDimension = match self.get_max_rc(
+                                left.sheet,
+                                left.row,
+                                left.column,
+                                right.row,
+                                right.column,
+                            ) {
+                                Ok(d) => d,
+                                Err(_) => {
+                                    return CalcResult::new_error(
+                                        Error::ERROR,
+                                        cell,
+                                        "...".to_string(),
+                                    )
+                                }
+                            };
+
+                            for row in dx.min_row..=dx.max_row {
+                                let cell_status =
+                                    match self.cell_hidden_status(left.sheet, row, dx.min_column) {
+                                        Ok(s) => s,
+                                        Err(message) => {
+                                            return CalcResult::new_error(
+                                                Error::ERROR,
+                                                cell,
+                                                message,
+                                            );
+                                        }
+                                    };
                                 if cell_status == CellTableStatus::Filtered {
                                     continue;
                                 }
@@ -495,7 +535,7 @@ impl<'a> Model<'a> {
                                 {
                                     continue;
                                 }
-                                for column in column1..=column2 {
+                                for column in dx.min_column..=dx.max_column {
                                     if self.cell_is_subtotal(left.sheet, row, column) {
                                         continue;
                                     }
