@@ -19,6 +19,10 @@ export function Tooltip({ title, children }: TooltipProperties) {
   const [visible, setVisible] = useState(false);
   const { triggerRef, tooltipRef, position } = useTooltipPosition(visible);
 
+  function isMenuOpen() {
+    return !!triggerRef.current?.querySelector('[aria-expanded="true"]');
+  }
+
   return (
     <>
       <span
@@ -26,9 +30,14 @@ export function Tooltip({ title, children }: TooltipProperties) {
         role="none"
         className="ic-tooltip-trigger"
         aria-describedby={visible ? tooltipId : undefined}
-        onMouseEnter={() => setVisible(true)}
+        onMouseEnter={() => {
+          if (!isMenuOpen()) setVisible(true);
+        }}
         onMouseLeave={() => setVisible(false)}
-        onFocus={() => setVisible(true)}
+        onPointerDown={() => setVisible(false)}
+        onFocus={() => {
+          if (!isMenuOpen()) setVisible(true);
+        }}
         onBlur={() => setVisible(false)}
       >
         {children}
