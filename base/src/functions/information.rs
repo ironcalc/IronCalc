@@ -4,6 +4,16 @@ use crate::{
     model::{Model, ParsedDefinedName},
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+pub fn get_system() -> String {
+    std::env::consts::OS.to_string()
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn get_system() -> String {
+    "browser".to_string()
+}
+
 impl<'a> Model<'a> {
     pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
@@ -371,7 +381,7 @@ impl<'a> Model<'a> {
         CalcResult::Number(sheet_count)
     }
 
-    /// INFO(info_type, [reference])
+    /// CELL(info_type, [reference])
     /// NB: In Excel "info_type" is localized. Here it is always in English.
     pub(crate) fn fn_cell(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
@@ -456,14 +466,36 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// INFO(text_type)
+    /// NB: In Excel "text_type" is localized. Here it is always in English.
     pub(crate) fn fn_info(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 2 {
+        if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        CalcResult::Error {
-            error: Error::NIMPL,
-            origin: cell,
-            message: "Info function not implemented".to_string(),
+        let type_text = match self.get_string(&args[0], cell) {
+            Ok(s) => s.to_uppercase(),
+            Err(e) => return e,
+        };
+        let release = env!("GIT_VERSION");
+        match type_text.as_str() {
+            "DIRECTORY" | "ORIGIN" | "OSVERSION" => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "type_text not implemented".to_string(),
+            },
+
+            // For now we just show the count of sheets in the current workbook
+            "NUMFILE" => CalcResult::Number(self.workbook.worksheets.len() as f64),
+
+            // At the moment we always do automatic recalc
+            "RECALC" => CalcResult::String("Automatic".to_string()),
+            "RELEASE" => CalcResult::String(release.to_string()),
+            "SYSTEM" => CalcResult::String(Self::get_system().to_string()),
+            _ => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Invalid type_text".to_string(),
+            },
         }
     }
 }
