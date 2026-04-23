@@ -1,9 +1,9 @@
 import type { Model } from "@ironcalc/wasm";
-import { Menu, Plus } from "lucide-react";
-import { useState } from "react";
+import { Menu as MenuIcon, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
+import { Menu } from "../Menu/Menu";
 import { getLocaleDisplayName } from "../RightDrawer/RegionalSettings/RegionalSettings";
 import { Tooltip } from "../Tooltip/Tooltip";
 import type { WorkbookState } from "../workbookState";
@@ -29,15 +29,6 @@ export interface SheetTabBarProps {
 function SheetTabBar(props: SheetTabBarProps) {
   const { t } = useTranslation();
   const { workbookState, onSheetSelected, sheets, selectedIndex } = props;
-  const [anchorEl, setAnchorEl] = useState<null | HTMLButtonElement>(null);
-  const open = Boolean(anchorEl);
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl((current) => (current ? null : event.currentTarget));
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
   const nonHiddenSheets = sheets
     .map((s, index) => {
       return {
@@ -61,11 +52,20 @@ function SheetTabBar(props: SheetTabBarProps) {
           />
         </Tooltip>
         <Tooltip title={t("navigation.sheet_list")}>
-          <IconButton
-            aria-label={t("navigation.sheet_list")}
-            icon={<Menu />}
-            onClick={handleClick}
-          />
+          <Menu
+            trigger={
+              <IconButton
+                aria-label={t("navigation.sheet_list")}
+                icon={<MenuIcon />}
+              />
+            }
+          >
+            <SheetListMenu
+              sheetOptionsList={sheets}
+              onSheetSelected={onSheetSelected}
+              selectedIndex={selectedIndex}
+            />
+          </Menu>
         </Tooltip>
       </div>
       <div className="ic-sheet-tab-bar-vertical-divider" />
@@ -112,17 +112,6 @@ function SheetTabBar(props: SheetTabBarProps) {
           </Button>
         </Tooltip>
       </div>
-      <SheetListMenu
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        sheetOptionsList={sheets}
-        onSheetSelected={(index) => {
-          onSheetSelected(index);
-          handleClose();
-        }}
-        selectedIndex={selectedIndex}
-      />
     </div>
   );
 }
