@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     calc_result::CalcResult,
@@ -67,27 +68,61 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
-fn array_nodes_equal(a: &ArrayNode, b: &ArrayNode) -> bool {
-    match (a, b) {
-        (ArrayNode::Number(n1), ArrayNode::Number(n2)) => (n1 - n2).abs() < f64::EPSILON,
-        (ArrayNode::Boolean(b1), ArrayNode::Boolean(b2)) => b1 == b2,
-        (ArrayNode::String(s1), ArrayNode::String(s2)) => s1.to_uppercase() == s2.to_uppercase(),
-        (ArrayNode::Error(e1), ArrayNode::Error(e2)) => e1 == e2,
-        (ArrayNode::Empty, ArrayNode::Empty) => true,
-        _ => false,
-    }
-}
-
-fn rows_equal(a: &[ArrayNode], b: &[ArrayNode]) -> bool {
-    a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| array_nodes_equal(x, y))
-}
-
 fn array_node_is_truthy(node: &ArrayNode) -> bool {
     match node {
         ArrayNode::Boolean(b) => *b,
         ArrayNode::Number(n) => *n != 0.0,
         _ => false,
     }
+}
+
+/// A hashable, equality-normalised representation of a single cell value.
+/// Strings are uppercased (matching case-insensitive array_nodes_equal).
+/// Numbers use bit-level identity (f64::to_bits), which is exact for all
+/// values that actually appear in spreadsheet cells.
+#[derive(Hash, Eq, PartialEq)]
+enum CellKey {
+    Number(u64),
+    Boolean(bool),
+    Str(String),
+    Error(u8),
+    Empty,
+}
+
+fn cell_key(node: &ArrayNode) -> CellKey {
+    match node {
+        ArrayNode::Number(n) => CellKey::Number(n.to_bits()),
+        ArrayNode::Boolean(b) => CellKey::Boolean(*b),
+        ArrayNode::String(s) => CellKey::Str(s.to_uppercase()),
+        ArrayNode::Error(e) => CellKey::Error(error_discriminant(e)),
+        ArrayNode::Empty => CellKey::Empty,
+    }
+}
+
+fn error_discriminant(e: &crate::expressions::token::Error) -> u8 {
+    use crate::expressions::token::Error;
+    match e {
+        Error::REF => 0,
+        Error::NAME => 1,
+        Error::VALUE => 2,
+        Error::DIV => 3,
+        Error::NA => 4,
+        Error::NUM => 5,
+        Error::ERROR => 6,
+        Error::NIMPL => 7,
+        Error::SPILL => 8,
+        Error::CALC => 9,
+        Error::CIRC => 10,
+        Error::NULL => 11,
+    }
+}
+
+fn row_key(row: &[ArrayNode]) -> Vec<CellKey> {
+    row.iter().map(cell_key).collect()
+}
+
+fn col_key(data: &[Vec<ArrayNode>], j: usize) -> Vec<CellKey> {
+    data.iter().map(|row| cell_key(&row[j])).collect()
 }
 
 // Extract a 1-D column key from a 2-D by_array.
@@ -399,23 +434,26 @@ impl<'a> Model<'a> {
 
         if !by_col {
             let num_rows = data.len();
-            let mut result_indices: Vec<usize> = Vec::new();
 
-            for i in 0..num_rows {
-                let count = data.iter().filter(|row| rows_equal(row, &data[i])).count();
-                if exactly_once {
-                    if count == 1 {
-                        result_indices.push(i);
-                    }
-                } else if !result_indices
-                    .iter()
-                    .any(|&j| rows_equal(&data[j], &data[i]))
-                {
-                    result_indices.push(i);
-                }
+            // First pass: count how many times each row key appears.
+            let mut counts: HashMap<Vec<CellKey>, usize> = HashMap::with_capacity(num_rows);
+            for row in &data {
+                *counts.entry(row_key(row)).or_insert(0) += 1;
             }
 
-            if result_indices.is_empty() {
+            // Second pass: collect rows in original order.
+            let result: Vec<Vec<ArrayNode>> = if exactly_once {
+                data.into_iter()
+                    .filter(|row| counts[&row_key(row)] == 1)
+                    .collect()
+            } else {
+                let mut seen: HashSet<Vec<CellKey>> = HashSet::with_capacity(num_rows);
+                data.into_iter()
+                    .filter(|row| seen.insert(row_key(row)))
+                    .collect()
+            };
+
+            if result.is_empty() {
                 return CalcResult::new_error(
                     Error::CALC,
                     cell,
@@ -423,29 +461,29 @@ impl<'a> Model<'a> {
                 );
             }
 
-            CalcResult::Array(result_indices.iter().map(|&r| data[r].clone()).collect())
+            CalcResult::Array(result)
         } else {
-            let num_rows = data.len();
             let num_cols = data[0].len();
 
-            let col_equal = |j: usize, k: usize| -> bool {
-                (0..num_rows).all(|r| array_nodes_equal(&data[r][j], &data[r][k]))
-            };
-
-            let mut result_col_indices: Vec<usize> = Vec::new();
-
+            // First pass: count how many times each column key appears.
+            let mut counts: HashMap<Vec<CellKey>, usize> = HashMap::with_capacity(num_cols);
             for j in 0..num_cols {
-                let count = (0..num_cols).filter(|&k| col_equal(j, k)).count();
-                if exactly_once {
-                    if count == 1 {
-                        result_col_indices.push(j);
-                    }
-                } else if !result_col_indices.iter().any(|&k| col_equal(j, k)) {
-                    result_col_indices.push(j);
-                }
+                *counts.entry(col_key(&data, j)).or_insert(0) += 1;
             }
 
-            if result_col_indices.is_empty() {
+            // Second pass: collect column indices in original order.
+            let result_cols: Vec<usize> = if exactly_once {
+                (0..num_cols)
+                    .filter(|&j| counts[&col_key(&data, j)] == 1)
+                    .collect()
+            } else {
+                let mut seen: HashSet<Vec<CellKey>> = HashSet::with_capacity(num_cols);
+                (0..num_cols)
+                    .filter(|&j| seen.insert(col_key(&data, j)))
+                    .collect()
+            };
+
+            if result_cols.is_empty() {
                 return CalcResult::new_error(
                     Error::CALC,
                     cell,
@@ -455,7 +493,7 @@ impl<'a> Model<'a> {
 
             CalcResult::Array(
                 data.iter()
-                    .map(|row| result_col_indices.iter().map(|&c| row[c].clone()).collect())
+                    .map(|row| result_cols.iter().map(|&c| row[c].clone()).collect())
                     .collect(),
             )
         }
