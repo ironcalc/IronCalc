@@ -1,3 +1,5 @@
+// At build time, we grab the release version from the git tag.
+// This is used by INFO("release")
 use std::process::Command;
 
 fn run_git(args: &[&str]) -> Option<String> {

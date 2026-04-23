@@ -476,10 +476,12 @@ impl<'a> Model<'a> {
             Ok(s) => s.to_uppercase(),
             Err(e) => return e,
         };
+        // We take the release version from the git tag at build time.
+        // See build.rs
         let release = env!("GIT_VERSION");
         match type_text.as_str() {
             "DIRECTORY" | "ORIGIN" | "OSVERSION" => CalcResult::Error {
-                error: Error::VALUE,
+                error: Error::NIMPL,
                 origin: cell,
                 message: "type_text not implemented".to_string(),
             },
