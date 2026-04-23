@@ -78,13 +78,22 @@ export function Menu(props: MenuProperties) {
       }
     }
 
-    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("pointerdown", handlePointerDown, true);
     return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("pointerdown", handlePointerDown, true);
     };
   });
 
   const { handleMenuKeyDown } = useMenuKeyDown(menuRef, close);
+
+  // Focus first item when menu opens so keyboard navigation works immediately.
+  useEffect(() => {
+    if (!open) return;
+    const firstItem = menuRef.current?.querySelector<HTMLButtonElement>(
+      ':is([role="menuitem"],[role="menuitemradio"],[role="menuitemcheckbox"]):not([disabled])',
+    );
+    firstItem?.focus();
+  }, [open, menuRef]);
 
   const menu = open
     ? createPortal(

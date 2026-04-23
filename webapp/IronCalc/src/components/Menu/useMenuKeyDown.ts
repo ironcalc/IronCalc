@@ -3,6 +3,7 @@ import type { KeyboardEvent, RefObject } from "react";
 export function useMenuKeyDown(
   menuRef: RefObject<HTMLDivElement | null>,
   close: () => void,
+  isSubmenu = false,
 ) {
   function handleMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const items = Array.from(
@@ -41,6 +42,14 @@ export function useMenuKeyDown(
       case "End": {
         event.preventDefault();
         items[items.length - 1]?.focus();
+        break;
+      }
+
+      case "ArrowLeft": {
+        if (isSubmenu) {
+          event.preventDefault();
+          close();
+        }
         break;
       }
 
