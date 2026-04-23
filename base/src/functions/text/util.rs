@@ -110,9 +110,8 @@ fn text_sensitive_reverse(
 
 #[cfg(test)]
 mod tests {
-    use crate::functions::text_util::Case;
 
-    use super::{text_after, text_before};
+    use super::{text_after, text_before, Case};
     #[test]
     fn test_text_after_sensitive() {
         assert_eq!(

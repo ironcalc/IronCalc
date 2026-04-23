@@ -24,7 +24,6 @@ mod spill_functions;
 mod statistical;
 mod subtotal;
 mod text;
-mod text_util;
 pub(crate) mod util;
 mod xlookup;
 
@@ -161,8 +160,13 @@ pub enum Function {
     Vlookup,
     Xlookup,
 
+    // Dynamic array
+    Sequence,
+    Randarray,
+
     // Text
     Concat,
+    Textsplit,
     Concatenate,
     Exact,
     Find,
@@ -575,8 +579,13 @@ impl_function_lookup! {
     vlookup => Vlookup,
     xlookup => Xlookup,
 
+    // Dynamic array
+    sequence  => Sequence,
+    randarray => Randarray,
+
     // Text
     concat      => Concat,
+    textsplit   => Textsplit,
     concatenate => Concatenate,
     exact       => Exact,
     find        => Find,
@@ -951,7 +960,10 @@ impl Function {
             Function::Unique => functions.unique.clone(),
             Function::Vlookup => functions.vlookup.clone(),
             Function::Xlookup => functions.xlookup.clone(),
+            Function::Sequence => functions.sequence.clone(),
+            Function::Randarray => functions.randarray.clone(),
             Function::Concat => functions.concat.clone(),
+            Function::Textsplit => functions.textsplit.clone(),
             Function::Concatenate => functions.concatenate.clone(),
             Function::Exact => functions.exact.clone(),
             Function::Find => functions.find.clone(),
@@ -1181,7 +1193,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 349> {
+    pub fn into_iter() -> IntoIter<Function, 352> {
         [
             Function::And,
             Function::False,
@@ -1278,6 +1290,8 @@ impl Function {
             Function::Unique,
             Function::Vlookup,
             Function::Xlookup,
+            Function::Sequence,
+            Function::Randarray,
             Function::Concatenate,
             Function::Exact,
             Function::Value,
@@ -1365,6 +1379,7 @@ impl Function {
             Function::Rept,
             Function::Textafter,
             Function::Textbefore,
+            Function::Textsplit,
             Function::Textjoin,
             Function::Substitute,
             Function::Ispmt,
@@ -1557,7 +1572,10 @@ impl Function {
             Function::Xor => "_xlfn.XOR".to_string(),
             Function::Textbefore => "_xlfn.TEXTBEFORE".to_string(),
             Function::Textafter => "_xlfn.TEXTAFTER".to_string(),
+            Function::Textsplit => "_xlfn.TEXTSPLIT".to_string(),
             Function::Textjoin => "_xlfn.TEXTJOIN".to_string(),
+            Function::Sequence => "_xlfn.SEQUENCE".to_string(),
+            Function::Randarray => "_xlfn.RANDARRAY".to_string(),
             Function::Unicode => "_xlfn.UNICODE".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
@@ -1744,6 +1762,8 @@ impl<'a> Model<'a> {
             Function::Unique => self.fn_unique(args, cell),
             Function::Vlookup => self.fn_vlookup(args, cell),
             Function::Xlookup => self.fn_xlookup(args, cell),
+            Function::Sequence => self.fn_sequence(args, cell),
+            Function::Randarray => self.fn_randarray(args, cell),
             Function::Concatenate => self.fn_concatenate(args, cell),
             Function::Exact => self.fn_exact(args, cell),
             Function::Value => self.fn_value(args, cell),
@@ -1831,6 +1851,7 @@ impl<'a> Model<'a> {
             Function::Rept => self.fn_rept(args, cell),
             Function::Textafter => self.fn_textafter(args, cell),
             Function::Textbefore => self.fn_textbefore(args, cell),
+            Function::Textsplit => self.fn_textsplit(args, cell),
             Function::Textjoin => self.fn_textjoin(args, cell),
             Function::Substitute => self.fn_substitute(args, cell),
             Function::Ispmt => self.fn_ispmt(args, cell),

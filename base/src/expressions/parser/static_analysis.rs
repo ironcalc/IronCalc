@@ -569,6 +569,33 @@ fn args_signature_filter(arg_count: usize) -> Vec<Signature> {
     result
 }
 
+fn args_signature_sequence(arg_count: usize) -> Vec<Signature> {
+    if !(1..=4).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    vec![Signature::Scalar; arg_count]
+}
+
+fn args_signature_randarray(arg_count: usize) -> Vec<Signature> {
+    if arg_count > 5 {
+        return vec![Signature::Error; arg_count];
+    }
+    vec![Signature::Scalar; arg_count]
+}
+
+fn args_signature_textsplit(arg_count: usize) -> Vec<Signature> {
+    if !(2..=6).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    // col_delimiter (index 1) and row_delimiter (index 2) can be arrays
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[1] = Signature::Vector;
+    if arg_count >= 3 {
+        result[2] = Signature::Vector;
+    }
+    result
+}
+
 fn args_signature_textafter(arg_count: usize) -> Vec<Signature> {
     if !(2..=6).contains(&arg_count) {
         vec![Signature::Scalar; arg_count]
@@ -750,6 +777,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sortby => args_signature_sortby(arg_count),
         Function::Unique => args_signature_unique(arg_count),
         Function::Filter => args_signature_filter(arg_count),
+        Function::Sequence => args_signature_sequence(arg_count),
+        Function::Randarray => args_signature_randarray(arg_count),
+        Function::Textsplit => args_signature_textsplit(arg_count),
         Function::Concat => vec![Signature::Vector; arg_count],
         Function::Concatenate => vec![Signature::Scalar; arg_count],
         Function::Exact => args_signature_scalars(arg_count, 2, 0),
@@ -1148,6 +1178,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sortby => StaticResult::Unknown,
         Function::Unique => StaticResult::Unknown,
         Function::Filter => StaticResult::Unknown,
+        Function::Sequence => StaticResult::Unknown,
+        Function::Randarray => StaticResult::Unknown,
+        Function::Textsplit => StaticResult::Unknown,
         Function::Concat => not_implemented(args),
         Function::Concatenate => not_implemented(args),
         Function::Exact => not_implemented(args),
