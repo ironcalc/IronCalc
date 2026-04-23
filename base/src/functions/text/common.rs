@@ -3,13 +3,12 @@ use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     formatter::format::{format_number, parse_formatted_number},
+    functions::{
+        text::util::{substitute, text_after, text_before, Case},
+        util::from_wildcard_to_regex,
+    },
     model::Model,
     number_format::to_precision,
-};
-
-use super::{
-    text_util::{substitute, text_after, text_before, Case},
-    util::from_wildcard_to_regex,
 };
 
 /// Finds the first instance of 'search_for' in text starting at char index start

@@ -1521,6 +1521,102 @@ impl<'a> Model<'a> {
         CalcResult::Number((x + random() * (y - x)).floor())
     }
 
+    /// `=RANDARRAY([rows], [cols], [min], [max], [whole_number])`
+    ///
+    /// Returns a 2-D array of random numbers.
+    ///   * rows         – number of rows (default 1)
+    ///   * cols         – number of columns (default 1)
+    ///   * min          – minimum value (default 0)
+    ///   * max          – maximum value (default 1)
+    ///   * whole_number – FALSE = decimal, TRUE = integer (default FALSE)
+    pub(crate) fn fn_randarray(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() > 5 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let rows = if !args.is_empty() {
+            match self.get_number(&args[0], cell) {
+                Ok(n) => {
+                    let n = n.floor() as i64;
+                    if n < 1 {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "rows must be >= 1".to_string(),
+                        );
+                    }
+                    n as usize
+                }
+                Err(e) => return e,
+            }
+        } else {
+            1
+        };
+
+        let cols: usize = if args.len() >= 2 {
+            match self.get_number(&args[1], cell) {
+                Ok(n) => {
+                    let n = n.floor() as i64;
+                    if n < 1 {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "cols must be >= 1".to_string(),
+                        );
+                    }
+                    n as usize
+                }
+                Err(e) => return e,
+            }
+        } else {
+            1
+        };
+
+        let min: f64 = if args.len() >= 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(n) => n,
+                Err(e) => return e,
+            }
+        } else {
+            0.0
+        };
+
+        let max: f64 = if args.len() >= 4 {
+            match self.get_number(&args[3], cell) {
+                Ok(n) => n,
+                Err(e) => return e,
+            }
+        } else {
+            1.0
+        };
+
+        if min > max {
+            return CalcResult::new_error(Error::VALUE, cell, "min must be <= max".to_string());
+        }
+
+        let whole_number: bool = if args.len() >= 5 {
+            match self.get_boolean(&args[4], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+
+        let mut result = Vec::with_capacity(rows);
+        for _ in 0..rows {
+            let mut row = Vec::with_capacity(cols);
+            for _ in 0..cols {
+                let val = min + random() * (max - min);
+                let val = if whole_number { val.floor() } else { val };
+                row.push(ArrayNode::Number(val));
+            }
+            result.push(row);
+        }
+
+        CalcResult::Array(result)
+    }
+
     pub(crate) fn fn_roman(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
@@ -1670,5 +1766,96 @@ impl<'a> Model<'a> {
             result *= (n + t) / (t + 1.0);
         }
         CalcResult::Number(result)
+    }
+
+    /// `=SEQUENCE(rows, [cols], [start], [step])`
+    ///
+    /// Returns a 2-D array of sequential numbers.
+    ///   * rows  – number of rows (required, ≥ 1)
+    ///   * cols  – number of columns (default 1)
+    ///   * start – first value (default 1)
+    ///   * step  – increment between values (default 1)
+    pub(crate) fn fn_sequence(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let rows = match self.get_number(&args[0], cell) {
+            Ok(n) => {
+                let n = n.floor() as i64;
+                if n < 1 {
+                    if n == 0 {
+                        return CalcResult::new_error(
+                            Error::CALC,
+                            cell,
+                            "rows must be >= 1".to_string(),
+                        );
+                    }
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "rows must be >= 1".to_string(),
+                    );
+                }
+                n as usize
+            }
+            Err(e) => return e,
+        };
+
+        let columns = if args.len() >= 2 {
+            match self.get_number(&args[1], cell) {
+                Ok(n) => {
+                    let n = n.floor() as i64;
+                    if n < 1 {
+                        if n == 0 {
+                            return CalcResult::new_error(
+                                Error::CALC,
+                                cell,
+                                "columns must be >= 1".to_string(),
+                            );
+                        }
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "columns must be >= 1".to_string(),
+                        );
+                    }
+                    n as usize
+                }
+                Err(e) => return e,
+            }
+        } else {
+            1
+        };
+
+        let start: f64 = if args.len() >= 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(n) => n,
+                Err(e) => return e,
+            }
+        } else {
+            1.0
+        };
+
+        let step: f64 = if args.len() >= 4 {
+            match self.get_number(&args[3], cell) {
+                Ok(n) => n,
+                Err(e) => return e,
+            }
+        } else {
+            1.0
+        };
+
+        let mut result = Vec::with_capacity(rows);
+        for r in 0..rows {
+            let mut row = Vec::with_capacity(columns);
+            for c in 0..columns {
+                let idx = (r * columns + c) as f64;
+                row.push(ArrayNode::Number(start + idx * step));
+            }
+            result.push(row);
+        }
+
+        CalcResult::Array(result)
     }
 }
