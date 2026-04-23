@@ -144,3 +144,19 @@ fn test_arguments() {
     assert_eq!(model._get_text("D5"), *"0.003652521");
     assert_eq!(model._get_text("D6"), *"#ERROR!");
 }
+
+#[test]
+fn test_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BINOM.DIST(1,TRUE,0.7,TRUE)");
+    model._set("A2", "=BINOM.DIST.RANGE(TRUE,0.3,0,1)");
+    model._set("A3", "=BINOM.INV(TRUE,0.5,0.8)");
+    model._set("A4", "=NEGBINOM.DIST(0,TRUE,0.7,TRUE)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"1");
+    assert_eq!(model._get_text("A3"), *"1");
+    assert_eq!(model._get_text("A4"), *"0.7");
+}
