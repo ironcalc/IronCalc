@@ -1,0 +1,101 @@
+.ic-menu-wrapper {
+  position: fixed;
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+  z-index: 1000;
+}
+
+.ic-menu {
+  box-sizing: border-box;
+  min-width: 160px;
+  border-radius: 8px;
+  background: var(--palette-common-white);
+  padding: 4px;
+  box-shadow: var(--shadow-md);
+}
+
+/* Divider */
+.ic-menu > hr {
+  height: 1px;
+  margin: 4px -4px;
+  border: none;
+  background: var(--palette-grey-200);
+}
+
+/* Item */
+.ic-menu-item {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  padding: 8px;
+  color: var(--palette-common-black);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  white-space: nowrap;
+}
+
+.ic-menu-item:hover:not([disabled]),
+.ic-menu-item:focus-visible:not([disabled]) {
+  background: var(--palette-grey-50);
+}
+
+.ic-menu-item[disabled] {
+  color: var(--palette-grey-400);
+  cursor: not-allowed;
+}
+
+/* Destructive variant */
+.ic-menu-item.destructive {
+  color: var(--palette-error-main);
+}
+
+.ic-menu-item.destructive:hover:not([disabled]),
+.ic-menu-item.destructive:focus-visible:not([disabled]) {
+  background: color-mix(in srgb, var(--palette-error-main) 8%, transparent);
+}
+
+.ic-menu-item.destructive[disabled] {
+  color: var(--palette-grey-400);
+}
+
+/* Icon slot */
+.ic-menu-item-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+/* Label */
+.ic-menu-item-label {
+  display: inline-flex;
+  flex: 1;
+  min-width: 0;
+  align-items: baseline;
+}
+
+/* Secondary text */
+.ic-menu-item-secondary {
+  display: inline-flex;
+  align-items: baseline;
+  color: var(--palette-grey-400);
+  white-space: nowrap;
+}
+
+.ic-menu-item.destructive .ic-menu-item-secondary {
+  color: var(--palette-error-light);
+}
+
+.ic-menu-item[disabled] .ic-menu-item-secondary {
+  color: var(--palette-grey-400);
+}
