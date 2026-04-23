@@ -94,6 +94,12 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
         (CalcResult::Number(_value1), CalcResult::EmptyCell) => {
             compare_values(left, &CalcResult::Number(0.0))
         }
+        (CalcResult::EmptyCell, CalcResult::Boolean(_)) => {
+            compare_values(&CalcResult::Boolean(false), right)
+        }
+        (CalcResult::Boolean(_), CalcResult::EmptyCell) => {
+            compare_values(left, &CalcResult::Boolean(false))
+        }
         (CalcResult::EmptyCell, CalcResult::EmptyCell) => 0,
         // Errors sort after everything else, ordered by Excel's canonical rank
         (CalcResult::Error { error: e1, .. }, CalcResult::Error { error: e2, .. }) => {

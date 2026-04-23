@@ -506,6 +506,38 @@ fn test_xlfn() {
     );
 }
 
+// Empty cell compared to Boolean should treat the empty cell as FALSE (0).
+// Before the fix, both (EmptyCell, Boolean(_)) and (Boolean(_), EmptyCell)
+// fell through to the catch-all `(_, _) => 1`, which returned "greater-than"
+// in both directions — violating antisymmetry and producing wrong comparisons.
+#[test]
+fn test_compare_empty_cell_and_boolean() {
+    let mut model = new_empty_model();
+    // A1 is intentionally left empty.
+
+    // empty == FALSE  → TRUE  (empty coerces to FALSE)
+    model._set("B1", "=A1=FALSE");
+    // empty == TRUE   → FALSE
+    model._set("B2", "=A1=TRUE");
+    // empty < TRUE    → TRUE  (FALSE < TRUE)
+    model._set("B3", "=A1<TRUE");
+    // empty > FALSE   → FALSE (FALSE is not greater than FALSE)
+    model._set("B4", "=A1>FALSE");
+    // FALSE > empty   → FALSE (symmetric: empty == FALSE)
+    model._set("B5", "=FALSE>A1");
+    // TRUE > empty    → TRUE  (TRUE > FALSE)
+    model._set("B6", "=TRUE>A1");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), "TRUE");
+    assert_eq!(model._get_text("B2"), "FALSE");
+    assert_eq!(model._get_text("B3"), "TRUE");
+    assert_eq!(model._get_text("B4"), "FALSE");
+    assert_eq!(model._get_text("B5"), "FALSE");
+    assert_eq!(model._get_text("B6"), "TRUE");
+}
+
 #[test]
 fn test_letter_case() {
     let mut model = new_empty_model();
