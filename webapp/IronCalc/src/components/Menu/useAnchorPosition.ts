@@ -2,7 +2,7 @@ import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 
 export function useAnchorPosition(
   open: boolean,
-  anchor: { x: number; y: number } | undefined,
+  anchor: { x: number; y: number; flipX?: number } | undefined,
 ) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<CSSProperties>({});
@@ -36,7 +36,10 @@ export function useAnchorPosition(
       }
 
       if (left + menuWidth > viewportWidth - margin) {
-        left = viewportWidth - menuWidth - margin;
+        left =
+          anchor.flipX !== undefined
+            ? anchor.flipX - menuWidth
+            : viewportWidth - menuWidth - margin;
       }
       if (left < margin) {
         left = margin;
