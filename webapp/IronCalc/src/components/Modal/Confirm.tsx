@@ -87,6 +87,7 @@ export function Confirm({
           <Button
             ref={confirmButtonRef}
             size="md"
+            autoFocus
             variant={variant === "destructive" ? "destructive" : undefined}
             onClick={handleConfirm}
           >
