@@ -4,14 +4,12 @@ interface Options {
   focusableElements: RefObject<HTMLElement | null>[];
   onClose: () => void;
   onConfirm?: () => void;
-  enterConfirm?: boolean;
 }
 
 export function useModalKeyDown({
   focusableElements,
   onClose,
   onConfirm,
-  enterConfirm,
 }: Options) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -21,10 +19,7 @@ export function useModalKeyDown({
         return;
       }
 
-      if (
-        event.key === "Enter" &&
-        (event.metaKey || event.ctrlKey || enterConfirm)
-      ) {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         onConfirm?.();
         return;
@@ -48,7 +43,7 @@ export function useModalKeyDown({
         }
       }
     },
-    [focusableElements, onClose, onConfirm, enterConfirm],
+    [focusableElements, onClose, onConfirm],
   );
 
   return { onKeyDown };

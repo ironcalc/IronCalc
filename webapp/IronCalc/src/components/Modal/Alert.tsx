@@ -39,7 +39,6 @@ export function Alert({
     focusableElements: [closeButtonRef, confirmButtonRef],
     onClose: closeModal,
     onConfirm: closeModal,
-    enterConfirm: true,
   });
 
   if (!open) {
@@ -71,7 +70,12 @@ export function Alert({
           {typeof message === "string" ? <p>{message}</p> : message}
         </div>
         <div className="ic-modal-dialog-footer">
-          <Button ref={confirmButtonRef} size="md" onClick={closeModal}>
+          <Button
+            ref={confirmButtonRef}
+            size="md"
+            onClick={closeModal}
+            autoFocus
+          >
             {confirmLabel}
           </Button>
         </div>

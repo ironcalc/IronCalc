@@ -50,7 +50,6 @@ export function Confirm({
     focusableElements: [closeButtonRef, confirmButtonRef],
     onClose: closeModal,
     onConfirm: handleConfirm,
-    enterConfirm: true,
   });
 
   if (!open) {
@@ -88,6 +87,7 @@ export function Confirm({
           <Button
             ref={confirmButtonRef}
             size="md"
+            autoFocus
             variant={variant === "destructive" ? "destructive" : undefined}
             onClick={handleConfirm}
           >
