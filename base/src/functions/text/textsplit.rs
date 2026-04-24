@@ -60,7 +60,15 @@ impl<'a> Model<'a> {
             vec![]
         };
 
-        let ignore_empty: bool = if args.len() >= 4 {
+        if col_delims.is_empty() && row_delims.is_empty() {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "TEXTSPLIT requires at least one delimiter".to_string(),
+            );
+        }
+
+        let ignore_empty = if args.len() >= 4 {
             match self.get_boolean(&args[3], cell) {
                 Ok(b) => b,
                 Err(e) => return e,
@@ -69,7 +77,7 @@ impl<'a> Model<'a> {
             false
         };
 
-        let case_insensitive: bool = if args.len() >= 5 {
+        let case_insensitive = if args.len() >= 5 {
             match self.get_number(&args[4], cell) {
                 Ok(n) => n != 0.0,
                 Err(e) => return e,

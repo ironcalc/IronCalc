@@ -1,5 +1,10 @@
+use crate::expressions::types::CellReferenceIndex;
+use crate::{
+    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+};
+
 /// Parse Roman (classic or Excel variants) → number
-pub fn from_roman(s: &str) -> Result<u32, String> {
+fn from_roman(s: &str) -> Result<u32, String> {
     if s.is_empty() {
         return Err("empty numeral".into());
     }
@@ -118,7 +123,7 @@ fn to_roman(mut n: u32) -> Result<String, String> {
 
 /// Excel/Google Sheets compatible ROMAN(number, [form]) encoder.
 /// `form`: 0..=4 (0=Classic, 4=Simplified).
-pub fn to_roman_with_form(n: u32, form: i32) -> Result<String, String> {
+fn to_roman_with_form(n: u32, form: i32) -> Result<String, String> {
     let mut s = to_roman(n)?;
     if form == 0 {
         return Ok(s);
@@ -197,4 +202,94 @@ pub fn to_roman_with_form(n: u32, form: i32) -> Result<String, String> {
         s = apply_rules(s, lvl4_rules);
     }
     Ok(s)
+}
+
+impl<'a> Model<'a> {
+    pub(crate) fn fn_roman(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let number = match self.get_number(&args[0], cell) {
+            Ok(f) => f.floor(),
+            Err(s) => return s,
+        };
+
+        if number == 0.0 {
+            return CalcResult::String(String::new());
+        }
+        if !(0.0..=3999.0).contains(&number) {
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Number must be between 0 and 3999".to_string(),
+            };
+        }
+        let form = if args.len() == 2 {
+            let mut t = match self.get_number(&args[1], cell) {
+                Ok(f) => f as i32,
+                Err(s) => return s,
+            };
+            // If the value is a boolean TRUE/FALSE, convert to 0/4
+            if t == 0 || t == 1 {
+                if let CalcResult::Boolean(b) = self.evaluate_node_in_context(&args[1], cell) {
+                    if b {
+                        // classic form
+                        t = 0;
+                    } else {
+                        // simplified form
+                        t = 4;
+                    }
+                }
+            }
+            t
+        } else {
+            0
+        };
+        if !(0..=4).contains(&form) {
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Form must be between 0 and 4".to_string(),
+            };
+        }
+        let roman_numeral = match to_roman_with_form(number as u32, form) {
+            Ok(s) => s,
+            Err(e) => {
+                return CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: format!("Could not convert to Roman numeral: {e}"),
+                }
+            }
+        };
+        CalcResult::String(roman_numeral)
+    }
+
+    pub(crate) fn fn_arabic(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let roman_numeral = match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::String(s) => s,
+            error @ CalcResult::Error { .. } => return error,
+            _ => {
+                return CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Argument must be a text string".to_string(),
+                }
+            }
+        };
+        if roman_numeral.is_empty() {
+            return CalcResult::Number(0.0);
+        }
+        match from_roman(&roman_numeral) {
+            Ok(value) => CalcResult::Number(value as f64),
+            Err(e) => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: format!("Invalid Roman numeral: {e}"),
+            },
+        }
+    }
 }
