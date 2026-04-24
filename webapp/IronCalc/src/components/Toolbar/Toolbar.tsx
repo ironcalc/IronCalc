@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowMiddleFromLine } from "../../icons";
+import { ArrowMiddleFromLine, ConditionalFormatIcon } from "../../icons";
 import BorderPicker from "../BorderPicker/BorderPicker";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
@@ -88,6 +88,8 @@ type ToolbarProperties = {
   showGridLines: boolean;
   onToggleShowGridLines: (show: boolean) => void;
   formatOptions: FmtSettings;
+  onOpenConditionalFormatting: () => void;
+  isConditionalFormattingOpen: boolean;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -392,6 +394,15 @@ function Toolbar(properties: ToolbarProperties) {
               onClick={() => setBorderPickerOpen(true)}
               disabled={!canEdit}
               icon={<Grid2X2 />}
+            />
+          </Tooltip>
+          <Tooltip title={t("toolbar.conditional_formatting")}>
+            <IconButton
+              icon={<ConditionalFormatIcon />}
+              aria-label={t("toolbar.conditional_formatting")}
+              pressed={properties.isConditionalFormattingOpen}
+              onClick={properties.onOpenConditionalFormatting}
+              disabled={!canEdit}
             />
           </Tooltip>
         </div>

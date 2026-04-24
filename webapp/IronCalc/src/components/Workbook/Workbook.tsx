@@ -734,6 +734,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setRedrawId((id) => id + 1);
         }}
         formatOptions={fmtSettings}
+        onOpenConditionalFormatting={() => openDrawer("conditionalFormatting")}
+        isConditionalFormattingOpen={
+          isDrawerOpen && drawerType === "conditionalFormatting"
+        }
       />
       <div
         className="ic-workbook-worksheet-area-left"
