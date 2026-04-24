@@ -38,6 +38,7 @@ pub struct Functions {
     pub r#true: String,
     pub xor: String,
     pub r#let: String,
+    pub lambda: String,
     pub log: String,
     pub log10: String,
     pub ln: String,
