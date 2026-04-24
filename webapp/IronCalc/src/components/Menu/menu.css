@@ -34,7 +34,7 @@
   background: transparent;
   padding: 8px;
   color: var(--palette-common-black);
-  font: inherit;
+  font-family: inherit;
   text-align: left;
   cursor: pointer;
   outline: none;

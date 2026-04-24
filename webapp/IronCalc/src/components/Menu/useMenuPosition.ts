@@ -7,14 +7,16 @@ function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
-  const offset = 4;
-  const margin = 8;
+  const offset = 4; // Distance between trigger and menu
+  const margin = 8; // Safety margin from viewport edges
 
+  // Below by default, falls back to above when there's more space there
   const spaceBelow = viewportHeight - triggerRect.bottom - margin;
   const spaceAbove = triggerRect.top - margin;
   const openBelow =
     spaceBelow >= menuHeight + offset || spaceBelow >= spaceAbove;
 
+  // Left-aligned with the trigger by default, right-aligned when it would overflow
   const leftAligned = triggerRect.left;
   const overflowsRight = leftAligned + menuWidth > viewportWidth - margin;
 
@@ -23,6 +25,7 @@ function getMenuPosition(trigger: HTMLElement, menu: HTMLElement) {
     ? triggerRect.bottom + offset
     : triggerRect.top - menuHeight - offset;
 
+  // Keep the menu within the viewport edges
   if (left + menuWidth > viewportWidth - margin) {
     left = viewportWidth - menuWidth - margin;
   }
