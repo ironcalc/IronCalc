@@ -465,6 +465,8 @@ impl<'a> Model<'a> {
             language,
             tz,
             view_id: 0,
+            variable_stack: HashMap::new(),
+            last_variable_id: 0,
         };
         model.parse_formulas();
         Ok(model)

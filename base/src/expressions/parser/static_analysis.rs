@@ -404,10 +404,22 @@ fn args_signature_scalars(
 
 fn args_signature_let(arg_count: usize) -> Vec<Signature> {
     // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
-    if arg_count < 3 || arg_count % 2 == 0 {
+    if arg_count < 3 || arg_count.is_multiple_of(2) {
         return vec![Signature::Error; arg_count];
     }
-    vec![Signature::Scalar; arg_count]
+    (0..arg_count)
+        .map(|i| {
+            // Odd indices are value expressions; last index is the body.
+            // Both should be Vector so range references are not implicitly intersected.
+            // Even indices (except last) are name declarations — Scalar is fine since
+            // they are never actually evaluated as range expressions.
+            if i % 2 == 1 || i == arg_count - 1 {
+                Signature::Vector
+            } else {
+                Signature::Scalar
+            }
+        })
+        .collect()
 }
 
 fn args_signature_one_vector(arg_count: usize) -> Vec<Signature> {

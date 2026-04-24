@@ -524,7 +524,17 @@ impl<'a> Model<'a> {
                 cell,
                 format!("table name \"{s}\" not supported."),
             ),
-            NamedVariableKind { name, id: _ } => CalcResult::new_error(
+            NamedVariableKind { name, id: Some(id) } => {
+                match self.variable_stack.get(&(*id as usize)) {
+                    Some(v) => v.clone(),
+                    None => CalcResult::new_error(
+                        Error::NAME,
+                        cell,
+                        format!("Variable \"{name}\" not found in scope."),
+                    ),
+                }
+            }
+            NamedVariableKind { name, id: None } => CalcResult::new_error(
                 Error::NAME,
                 cell,
                 format!("Variable name \"{name}\" not found."),
@@ -1363,6 +1373,8 @@ impl<'a> Model<'a> {
             locale,
             tz,
             view_id: 0,
+            variable_stack: HashMap::new(),
+            last_variable_id: 0,
         };
 
         model.parse_formulas();
