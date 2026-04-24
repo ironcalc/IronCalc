@@ -304,7 +304,7 @@ impl<'a> Model<'a> {
                     }
                 }
             }
-            Node::WrongVariableKind(name) => {
+            Node::NamedVariableKind { name, id: _ } => {
                 return CalcResult::Error {
                     error: Error::NAME,
                     origin: cell,

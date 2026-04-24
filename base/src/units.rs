@@ -296,7 +296,7 @@ impl<'a> Model<'a> {
             Node::ArrayKind(_) => None,
             Node::DefinedNameKind(_) => None,
             Node::TableNameKind(_) => None,
-            Node::WrongVariableKind(_) => None,
+            Node::NamedVariableKind { .. } => None,
             Node::CompareKind { .. } => None,
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,

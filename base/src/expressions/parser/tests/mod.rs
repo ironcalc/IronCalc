@@ -5,6 +5,7 @@ mod test_implicit_intersection;
 mod test_issue_155;
 mod test_issue_483;
 mod test_languages;
+mod test_let;
 mod test_locales;
 mod test_move_formula;
 mod test_ranges;
