@@ -35,6 +35,7 @@ pub enum Function {
     Iferror,
     Ifna,
     Ifs,
+    Lambda,
     Let,
     Not,
     Or,
@@ -455,6 +456,7 @@ impl_function_lookup! {
     iferror     => Iferror,
     ifna        => Ifna,
     ifs         => Ifs,
+    lambda      => Lambda,
     r#let       => Let,
     not         => Not,
     or          => Or,
@@ -845,6 +847,7 @@ impl Function {
             Function::Iferror => functions.iferror.clone(),
             Function::Ifna => functions.ifna.clone(),
             Function::Ifs => functions.ifs.clone(),
+            Function::Lambda => functions.lambda.clone(),
             Function::Let => functions.r#let.clone(),
             Function::Not => functions.not.clone(),
             Function::Or => functions.or.clone(),
@@ -1194,7 +1197,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 353> {
+    pub fn into_iter() -> IntoIter<Function, 354> {
         [
             Function::And,
             Function::False,
@@ -1202,6 +1205,7 @@ impl Function {
             Function::Iferror,
             Function::Ifna,
             Function::Ifs,
+            Function::Lambda,
             Function::Let,
             Function::Not,
             Function::Or,
@@ -1563,6 +1567,7 @@ impl Function {
             Function::Concat => "_xlfn.CONCAT".to_string(),
             Function::Ifna => "_xlfn.IFNA".to_string(),
             Function::Ifs => "_xlfn.IFS".to_string(),
+            Function::Lambda => "_xlfn.LAMBDA".to_string(),
             Function::Let => "_xlfn.LET".to_string(),
             Function::Maxifs => "_xlfn.MAXIFS".to_string(),
             Function::Minifs => "_xlfn.MINIFS".to_string(),
@@ -1711,6 +1716,7 @@ impl<'a> Model<'a> {
             Function::Iferror => self.fn_iferror(args, cell),
             Function::Ifna => self.fn_ifna(args, cell),
             Function::Ifs => self.fn_ifs(args, cell),
+            Function::Lambda => self.fn_lambda(args, cell),
             Function::Let => self.fn_let(args, cell),
             Function::Not => self.fn_not(args, cell),
             Function::Or => self.fn_or(args, cell),

@@ -1,4 +1,5 @@
 mod and_or_xor_not;
+mod lambda;
 mod r#let;
 mod switch;
 

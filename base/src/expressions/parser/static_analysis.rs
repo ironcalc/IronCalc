@@ -402,6 +402,17 @@ fn args_signature_scalars(
     }
 }
 
+fn args_signature_lambda(arg_count: usize) -> Vec<Signature> {
+    // LAMBDA([param1, param2, ...], body) — at least 1 arg (the body)
+    if arg_count == 0 {
+        return vec![Signature::Error; arg_count];
+    }
+    // All parameter names are Scalar; the final body argument is Vector.
+    let mut sig = vec![Signature::Scalar; arg_count];
+    sig[arg_count - 1] = Signature::Vector;
+    sig
+}
+
 fn args_signature_let(arg_count: usize) -> Vec<Signature> {
     // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
     if arg_count < 3 || arg_count.is_multiple_of(2) {
@@ -732,6 +743,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Iferror => args_signature_scalars(arg_count, 2, 0),
         Function::Ifna => args_signature_scalars(arg_count, 2, 0),
         Function::Ifs => vec![Signature::Scalar; arg_count],
+        Function::Lambda => args_signature_lambda(arg_count),
         Function::Let => args_signature_let(arg_count),
         Function::Not => args_signature_scalars(arg_count, 1, 0),
         Function::Or => vec![Signature::Vector; arg_count],
@@ -1134,6 +1146,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Iferror => scalar_arguments(args),
         Function::Ifna => scalar_arguments(args),
         Function::Ifs => not_implemented(args),
+        Function::Lambda => StaticResult::Unknown,
         Function::Let => StaticResult::Unknown,
         Function::Not => StaticResult::Scalar,
         Function::Or => StaticResult::Scalar,
