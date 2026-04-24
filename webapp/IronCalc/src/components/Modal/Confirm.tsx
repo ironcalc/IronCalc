@@ -50,6 +50,7 @@ export function Confirm({
     focusableElements: [closeButtonRef, confirmButtonRef],
     onClose: closeModal,
     onConfirm: handleConfirm,
+    enterConfirm: true,
   });
 
   if (!open) {

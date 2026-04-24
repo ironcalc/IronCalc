@@ -39,6 +39,7 @@ export function Alert({
     focusableElements: [closeButtonRef, confirmButtonRef],
     onClose: closeModal,
     onConfirm: closeModal,
+    enterConfirm: true,
   });
 
   if (!open) {
