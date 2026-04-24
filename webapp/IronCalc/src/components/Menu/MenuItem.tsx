@@ -1,5 +1,5 @@
 import { Check, ChevronRight } from "lucide-react";
-import { type ReactNode, useContext, useRef, useState } from "react";
+import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MenuContext } from "./Menu";
 import { useAnchorPosition } from "./useAnchorPosition";
@@ -93,13 +93,26 @@ export function MenuItemWithSubmenu({
   >();
   const itemRef = useRef<HTMLButtonElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusOnOpenRef = useRef(false);
 
   const { menuRef, position } = useAnchorPosition(open, anchor);
   const { handleMenuKeyDown } = useMenuKeyDown(
     menuRef,
-    () => setOpen(false),
+    () => {
+      setOpen(false);
+      itemRef.current?.focus();
+    },
     true,
   );
+
+  useEffect(() => {
+    if (!open || !focusOnOpenRef.current) return;
+    focusOnOpenRef.current = false;
+    const firstItem = menuRef.current?.querySelector<HTMLButtonElement>(
+      ':is([role="menuitem"],[role="menuitemradio"],[role="menuitemcheckbox"]):not([disabled])',
+    );
+    firstItem?.focus();
+  }, [open, menuRef]);
 
   function show() {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
@@ -137,8 +150,9 @@ export function MenuItemWithSubmenu({
         onMouseEnter={show}
         onMouseLeave={scheduleHide}
         onKeyDown={(e) => {
-          if (e.key === "ArrowRight") {
+          if (e.key === "ArrowRight" || e.key === "Enter") {
             e.preventDefault();
+            focusOnOpenRef.current = true;
             show();
           }
         }}
@@ -170,7 +184,10 @@ export function MenuItemWithSubmenu({
                   className="ic-menu"
                   onMouseEnter={cancelHide}
                   onMouseLeave={scheduleHide}
-                  onKeyDown={handleMenuKeyDown}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    handleMenuKeyDown(e);
+                  }}
                 >
                   {submenu}
                 </div>

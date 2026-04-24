@@ -3,6 +3,7 @@ import {
   createContext,
   type ReactElement,
   type ReactNode,
+  useCallback,
   useEffect,
   useState,
 } from "react";
@@ -52,21 +53,21 @@ export function Menu(props: MenuProperties) {
     ? triggerPosition.position
     : anchorPosition.position;
 
-  function close() {
+  const onClose = !isTriggerMode ? props.onClose : undefined;
+  const close = useCallback(() => {
     if (isTriggerMode) {
       setUncontrolledOpen(false);
       triggerPosition.triggerRef.current?.focus();
     } else {
-      props.onClose();
+      onClose?.();
     }
-  }
+  }, [isTriggerMode, onClose, triggerPosition.triggerRef]);
 
   // Close on outside pointer down
   useEffect(() => {
+    if (!open) return;
+
     function handlePointerDown(event: MouseEvent) {
-      if (!open) {
-        return;
-      }
       const target = event.target as Node | null;
       if (!target) {
         return;
@@ -85,7 +86,7 @@ export function Menu(props: MenuProperties) {
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true);
     };
-  });
+  }, [open, close, isTriggerMode, triggerPosition.triggerRef, menuRef]);
 
   const { handleMenuKeyDown } = useMenuKeyDown(menuRef, close);
 
