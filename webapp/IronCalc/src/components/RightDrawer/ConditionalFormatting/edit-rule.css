@@ -46,6 +46,41 @@
   text-overflow: ellipsis;
 }
 
+.ic-edit-rule-tabs {
+  display: flex;
+  flex-direction: row;
+  height: 44px;
+  border-bottom: 1px solid var(--palette-grey-300);
+  flex-shrink: 0;
+}
+
+.ic-edit-rule-tab.ic-button {
+  flex: 1;
+  height: 100%;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--palette-grey-600);
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  padding: 0 4px;
+}
+
+.ic-edit-rule-tab.ic-button:hover {
+  background: transparent;
+  color: var(--palette-common-black);
+}
+
+.ic-edit-rule-tab--active.ic-button {
+  font-weight: 600;
+  color: var(--palette-common-black);
+  border-bottom: 2px solid var(--palette-primary-main);
+}
+
+.ic-edit-rule-content--placeholder {
+  flex: 1;
+}
+
 .ic-edit-rule-section {
   display: flex;
   flex-direction: column;

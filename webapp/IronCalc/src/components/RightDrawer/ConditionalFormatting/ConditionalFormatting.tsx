@@ -109,7 +109,6 @@ const ConditionalFormatting = ({
             onSave={handleSave}
             onCancel={handleCancel}
             getSelectedArea={getSelectedArea}
-            model={model}
             initialValues={
               editingRule ?? {
                 applyTo: getSelectedArea(),
