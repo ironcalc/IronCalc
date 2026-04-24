@@ -148,11 +148,14 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 }
             }
         }
-        Node::WrongVariableKind(v) => {
+        Node::NamedVariableKind { name, id } => {
             if add {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
-                    child: Box::new(Node::WrongVariableKind(v.to_owned())),
+                    child: Box::new(Node::NamedVariableKind {
+                        name: name.clone(),
+                        id: *id,
+                    }),
                 }
             }
         }
@@ -284,7 +287,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             // TODO: We could do better if we tracked the defined names
             StaticResult::Unknown
         }
-        Node::WrongVariableKind(_) => StaticResult::Scalar,
+        Node::NamedVariableKind { .. } => StaticResult::Scalar,
         Node::TableNameKind(_) => StaticResult::Unknown,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,

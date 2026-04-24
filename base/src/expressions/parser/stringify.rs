@@ -690,7 +690,7 @@ fn stringify(
                 | WrongReferenceKind { .. }
                 | DefinedNameKind(_)
                 | TableNameKind(_)
-                | WrongVariableKind(_)
+                | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     left,
                     context,
@@ -733,7 +733,7 @@ fn stringify(
                 | WrongReferenceKind { .. }
                 | DefinedNameKind(_)
                 | TableNameKind(_)
-                | WrongVariableKind(_)
+                | NamedVariableKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     right,
                     context,
@@ -827,7 +827,7 @@ fn stringify(
         }
         TableNameKind(value) => value.to_string(),
         DefinedNameKind((name, ..)) => name.to_string(),
-        WrongVariableKind(name) => name.to_string(),
+        NamedVariableKind { name, id: _ } => name.to_string(),
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
                 let needs_parentheses = match **right {
@@ -846,7 +846,7 @@ fn stringify(
                     | ArrayKind(_)
                     | DefinedNameKind(_)
                     | TableNameKind(_)
-                    | WrongVariableKind(_)
+                    | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
                     | SpillRangeOperator { .. }
                     | CompareKind { .. }
@@ -1079,7 +1079,7 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ArrayKind(_) => {}
         Node::DefinedNameKind(_) => {}
         Node::TableNameKind(_) => {}
-        Node::WrongVariableKind(_) => {}
+        Node::NamedVariableKind { .. } => {}
         Node::EmptyArgKind => {}
     }
 }
@@ -1169,6 +1169,6 @@ pub(crate) fn rename_defined_name_in_node(
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
         Node::TableNameKind(_) => {}
-        Node::WrongVariableKind(_) => {}
+        Node::NamedVariableKind { .. } => {}
     }
 }

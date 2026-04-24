@@ -184,7 +184,10 @@ pub enum Node {
     ArrayKind(Vec<Vec<ArrayNode>>),
     DefinedNameKind(DefinedNameS),
     TableNameKind(String),
-    WrongVariableKind(String),
+    NamedVariableKind {
+        name: String,
+        id: Option<u32>,
+    },
     ImplicitIntersection {
         automatic: bool,
         child: Box<Node>,
@@ -852,7 +855,7 @@ impl<'a> Parser<'a> {
                         return Node::TableNameKind(name);
                     }
                 }
-                Node::WrongVariableKind(name)
+                Node::NamedVariableKind { name, id: None }
             }
             TokenType::Error(kind) => Node::ErrorKind(kind),
             TokenType::Illegal(error) => Node::ParseErrorKind {

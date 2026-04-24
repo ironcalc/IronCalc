@@ -511,10 +511,10 @@ impl<'a> Model<'a> {
                 cell,
                 format!("table name \"{s}\" not supported."),
             ),
-            WrongVariableKind(s) => CalcResult::new_error(
+            NamedVariableKind { name, id: _ } => CalcResult::new_error(
                 Error::NAME,
                 cell,
-                format!("Variable name \"{s}\" not found."),
+                format!("Variable name \"{name}\" not found."),
             ),
             CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
             UnaryKind { kind, right } => {
