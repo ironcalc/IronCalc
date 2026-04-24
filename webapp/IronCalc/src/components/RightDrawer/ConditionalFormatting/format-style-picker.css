@@ -1,0 +1,86 @@
+.ic-fsp-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ic-fsp-editor {
+  border: 1px solid var(--palette-grey-300);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ic-fsp-preview {
+  height: 32px;
+  padding: 0 12px;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  text-align: center;
+  border-bottom: 1px solid var(--palette-grey-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ic-fsp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px;
+}
+
+.ic-fsp-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ic-fsp-color-bar {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 3px;
+  border-radius: 1px;
+}
+
+.ic-fsp-presets-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ic-fsp-presets-label {
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-common-black);
+}
+
+.ic-fsp-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ic-fsp-preset {
+  flex: 1;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--palette-common-black) 12%, transparent);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--typography-font-family);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.15s ease;
+}
+
+.ic-fsp-preset:hover {
+  outline: 0 0 0 2px var(--palette-grey-400);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--palette-common-black) 40%, transparent);
+}
