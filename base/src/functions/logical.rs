@@ -284,4 +284,12 @@ impl<'a> Model<'a> {
             message: "Did not find a match".to_string(),
         }
     }
+
+    pub(crate) fn fn_let(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
+        if args.len() < 3 || args.len() % 2 == 0 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        todo!()
+    }
 }

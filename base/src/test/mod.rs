@@ -82,6 +82,7 @@ mod test_extend;
 mod test_floor;
 mod test_fn_datevalue_timevalue;
 mod test_fn_fv;
+mod test_fn_let;
 mod test_fn_round;
 mod test_fn_type;
 mod test_frozen_rows_and_columns;

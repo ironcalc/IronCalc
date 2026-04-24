@@ -35,6 +35,7 @@ pub enum Function {
     Iferror,
     Ifna,
     Ifs,
+    Let,
     Not,
     Or,
     Switch,
@@ -454,6 +455,7 @@ impl_function_lookup! {
     iferror     => Iferror,
     ifna        => Ifna,
     ifs         => Ifs,
+    r#let       => Let,
     not         => Not,
     or          => Or,
     switch      => Switch,
@@ -843,6 +845,7 @@ impl Function {
             Function::Iferror => functions.iferror.clone(),
             Function::Ifna => functions.ifna.clone(),
             Function::Ifs => functions.ifs.clone(),
+            Function::Let => functions.r#let.clone(),
             Function::Not => functions.not.clone(),
             Function::Or => functions.or.clone(),
             Function::Switch => functions.switch.clone(),
@@ -1191,7 +1194,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 352> {
+    pub fn into_iter() -> IntoIter<Function, 353> {
         [
             Function::And,
             Function::False,
@@ -1199,6 +1202,7 @@ impl Function {
             Function::Iferror,
             Function::Ifna,
             Function::Ifs,
+            Function::Let,
             Function::Not,
             Function::Or,
             Function::Switch,
@@ -1559,6 +1563,7 @@ impl Function {
             Function::Concat => "_xlfn.CONCAT".to_string(),
             Function::Ifna => "_xlfn.IFNA".to_string(),
             Function::Ifs => "_xlfn.IFS".to_string(),
+            Function::Let => "_xlfn.LET".to_string(),
             Function::Maxifs => "_xlfn.MAXIFS".to_string(),
             Function::Minifs => "_xlfn.MINIFS".to_string(),
             Function::Switch => "_xlfn.SWITCH".to_string(),
@@ -1706,6 +1711,7 @@ impl<'a> Model<'a> {
             Function::Iferror => self.fn_iferror(args, cell),
             Function::Ifna => self.fn_ifna(args, cell),
             Function::Ifs => self.fn_ifs(args, cell),
+            Function::Let => self.fn_let(args, cell),
             Function::Not => self.fn_not(args, cell),
             Function::Or => self.fn_or(args, cell),
             Function::Switch => self.fn_switch(args, cell),
