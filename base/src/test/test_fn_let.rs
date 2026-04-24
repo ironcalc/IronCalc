@@ -43,3 +43,19 @@ fn test_let_nested() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "60");
 }
+
+#[test]
+fn test_let_inner_binding_references_outer_value() {
+    let mut model = new_empty_model();
+    // LET(x,1,LET(x,x+1,x)) → inner x is bound from outer x+1 = 2, result = 2
+    model._set("A1", "=LET(x,1,LET(x,x+1,x))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+}
+#[test]
+fn test_let_rebind_same_name_within_single_let() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(x,1,x,2,x)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+}

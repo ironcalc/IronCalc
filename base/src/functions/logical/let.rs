@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -75,18 +77,32 @@ impl<'a> Model<'a> {
         let mut cloned: Vec<Node> = args.to_vec();
         let mut bound_ids: Vec<usize> = Vec::with_capacity(pair_count);
 
+        let mut seen_names = HashSet::new();
+
         for i in 0..pair_count {
             // Extract the variable name from the declaration node.
             let name = match &cloned[2 * i] {
                 Node::NamedVariableKind { name, .. } => name.clone(),
                 _ => {
+                    // Remove only the ids introduced by this LET frame.
+                    for id in bound_ids {
+                        self.variable_stack.remove(&id);
+                    }
                     return CalcResult::new_error(
                         Error::VALUE,
                         cell,
                         format!("LET: argument {} must be a variable name", 2 * i + 1),
-                    )
+                    );
                 }
             };
+
+            if !seen_names.insert(name.clone()) {
+                return CalcResult::new_error(
+                    Error::ERROR,
+                    cell,
+                    format!("LET: variable name '{}' is already bound", name),
+                );
+            }
 
             let raw_id = self.get_next_variable_id();
             let id = raw_id as u32;
