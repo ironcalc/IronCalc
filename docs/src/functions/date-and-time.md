@@ -24,7 +24,7 @@ All Date and Time functions are already supported in IronCalc.
 | MONTH            | <Badge type="tip" text="Available" />          | [MONTH](date_and_time/month) |
 | NETWORKDAYS      | <Badge type="tip" text="Available" />          | [NETWORKDAYS](date_and_time/networkdays) |
 | NETWORKDAYS.INTL | <Badge type="tip" text="Available" />          | [NETWORKDAYS.INTL](date_and_time/networkdays.intl) |
-| NOW              | <Badge type="tip" text="Available" />          | –             |
+| NOW              | <Badge type="tip" text="Available" />          | [NOW](date_and_time/now)             |
 | SECOND           | <Badge type="tip" text="Available" />          | –             |
 | TIME             | <Badge type="tip" text="Available" />          | –             |
 | TIMEVALUE        | <Badge type="tip" text="Available" />          | [TIMEVALUE](date_and_time/timevalue) |
