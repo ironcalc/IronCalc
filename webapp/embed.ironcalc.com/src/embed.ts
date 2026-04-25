@@ -34,8 +34,18 @@ function resolveTarget(target: MountTarget): HTMLElement {
   return target;
 }
 
-function toUint8Array(bytes: Uint8Array | ArrayBuffer): Uint8Array {
-  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+function toTransferableBuffer(bytes: Uint8Array | ArrayBuffer): ArrayBuffer {
+  if (bytes instanceof ArrayBuffer) {
+    return bytes;
+  }
+  if (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
+    return bytes.buffer;
+  }
+  // Uint8Array sub-view: copy only the relevant slice into a standalone buffer.
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  );
 }
 
 function mount(
@@ -56,6 +66,13 @@ function mount(
   const iframeUrl = new URL(iframe.src, window.location.href);
   const targetOrigin = iframeUrl.origin;
 
+  const controller = new AbortController();
+  const { signal } = controller;
+
+  // Guard against the iframe never posting ironcalc-ready (e.g. network
+  // failure), which would otherwise leave this listener attached indefinitely.
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
   function onMessage(event: MessageEvent) {
     if (event.source !== iframe.contentWindow) {
       return;
@@ -70,14 +87,16 @@ function mount(
       return;
     }
 
+    clearTimeout(timeoutId);
+    controller.abort();
+
     const workbookBytes = options.workbookBytes;
     if (workbookBytes) {
+      const buffer = toTransferableBuffer(workbookBytes);
       iframe.contentWindow?.postMessage(
-        {
-          type: "ironcalc-load-workbook",
-          workbookBytes: toUint8Array(workbookBytes),
-        },
+        { type: "ironcalc-load-workbook", workbookBytes: buffer },
         targetOrigin,
+        [buffer],
       );
     } else {
       iframe.contentWindow?.postMessage(
@@ -87,10 +106,11 @@ function mount(
         targetOrigin,
       );
     }
-    window.removeEventListener("message", onMessage);
   }
 
-  window.addEventListener("message", onMessage);
+  // { signal } ensures the listener is removed both after a successful load
+  // (controller.abort() above) and on timeout.
+  window.addEventListener("message", onMessage, { signal });
 
   element.replaceChildren(iframe);
 
@@ -99,6 +119,12 @@ function mount(
 
 const api: IronCalcEmbedApi = { mount };
 
-window.IronCalcEmbed = api;
+if (window.IronCalcEmbed) {
+  console.warn(
+    "IronCalcEmbed: already defined — remove duplicate script tags to avoid this.",
+  );
+} else {
+  window.IronCalcEmbed = api;
+}
 
 export { mount };
