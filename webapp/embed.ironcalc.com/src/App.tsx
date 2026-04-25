@@ -23,16 +23,33 @@ function App() {
   const [model, setModel] = useState<Model | null>(null);
 
   useEffect(() => {
-    let isCancelled = false;
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    // Derive the parent's origin from document.referrer so we can restrict
+    // postMessage targets and validate incoming message origins. Falls back to
+    // null when the referrer is absent (e.g. referrerpolicy="no-referrer").
+    const parentOrigin = document.referrer
+      ? new URL(document.referrer).origin
+      : null;
 
     async function start() {
       await init();
 
-      if (isCancelled) {
+      if (signal.aborted) {
         return;
       }
 
       function onMessage(event: MessageEvent<IronCalcMessage>) {
+        // Only accept messages sent by the direct parent frame.
+        if (event.source !== window.parent) {
+          return;
+        }
+        // When we know the parent origin, reject messages from anywhere else.
+        if (parentOrigin && event.origin !== parentOrigin) {
+          return;
+        }
+
         const data = event.data;
         if (!data || typeof data !== "object" || !("type" in data)) {
           return;
@@ -42,31 +59,33 @@ function App() {
           const workbookBytes = toUint8Array(data.workbookBytes);
           const loadedModel = Model.from_bytes(workbookBytes, "en");
           setModel(loadedModel);
-          window.removeEventListener("message", onMessage);
+          controller.abort();
           return;
         }
 
         if (data.type === "ironcalc-load-empty-workbook") {
           const emptyModel = new Model("Workbook", "en", "UTC", "en");
           setModel(emptyModel);
-          window.removeEventListener("message", onMessage);
+          controller.abort();
         }
       }
 
-      window.addEventListener("message", onMessage);
+      // { signal } means the listener is removed automatically on abort,
+      // covering both successful load (above) and effect cleanup (below).
+      window.addEventListener("message", onMessage, { signal });
 
       window.parent.postMessage(
         {
           type: "ironcalc-ready",
         },
-        "*",
+        parentOrigin ?? "*",
       );
     }
 
     start();
 
     return () => {
-      isCancelled = true;
+      controller.abort();
     };
   }, []);
 
