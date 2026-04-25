@@ -72,7 +72,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | MAX                      | <Badge type="tip" text="Available" />            | –             |
 | MAXA                     | <Badge type="tip" text="Available" />            | –             |
 | MAXIFS                   | <Badge type="tip" text="Available" />            | –             |
-| MEDIAN                   | <Badge type="info" text="Not implemented yet" /> | –             |
+| MEDIAN                   | <Badge type="tip" text="Available" />            | –             |
 | MIN                      | <Badge type="tip" text="Available" />            | –             |
 | MINA                     | <Badge type="tip" text="Available" />            | –             |
 | MINIFS                   | <Badge type="tip" text="Available" />            | –             |
