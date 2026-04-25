@@ -3,89 +3,62 @@ import { IronCalc, init, Model } from "@ironcalc/workbook";
 import "@ironcalc/workbook/style.css";
 import { useEffect, useRef, useState } from "react";
 
-type LoadWorkbookMessage = {
-  type: "ironcalc-load-workbook";
-  workbookBytes: Uint8Array | ArrayBuffer;
-};
-
-type LoadEmptyWorkbookMessage = {
-  type: "ironcalc-load-empty-workbook";
-};
-
-type IronCalcMessage = LoadWorkbookMessage | LoadEmptyWorkbookMessage;
-
-function toUint8Array(bytes: Uint8Array | ArrayBuffer): Uint8Array {
-  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-}
+type IronCalcMessage =
+  | { type: "ironcalc:init:v1" }
+  | { type: "ironcalc:ready:v1" }
+  | { type: "ironcalc:load-workbook:v1"; workbookBytes: ArrayBuffer }
+  | { type: "ironcalc:load-empty:v1" };
 
 function App() {
   const ironCalcRef = useRef<IronCalcHandle>(null);
   const [model, setModel] = useState<Model | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
-    const { signal } = controller;
+    let active = true;
+    let parentOrigin: string | null = null;
 
-    // Derive the parent's origin from document.referrer so we can restrict
-    // postMessage targets and validate incoming message origins. Falls back to
-    // null when the referrer is absent (e.g. referrerpolicy="no-referrer").
-    const parentOrigin = document.referrer
-      ? new URL(document.referrer).origin
-      : null;
-
-    async function start() {
-      await init();
-
-      if (signal.aborted) {
+    function onMessage(event: MessageEvent<IronCalcMessage>) {
+      if (event.source !== window.parent) {
+        return;
+      }
+      if (parentOrigin && event.origin !== parentOrigin) {
         return;
       }
 
-      function onMessage(event: MessageEvent<IronCalcMessage>) {
-        // Only accept messages sent by the direct parent frame.
-        if (event.source !== window.parent) {
-          return;
-        }
-        // When we know the parent origin, reject messages from anywhere else.
-        if (parentOrigin && event.origin !== parentOrigin) {
-          return;
-        }
+      const data = event.data;
 
-        const data = event.data;
-        if (!data || typeof data !== "object" || !("type" in data)) {
-          return;
-        }
+      if (data.type === "ironcalc:init:v1") {
+        parentOrigin = event.origin;
 
-        if (data.type === "ironcalc-load-workbook") {
-          const workbookBytes = toUint8Array(data.workbookBytes);
-          const loadedModel = Model.from_bytes(workbookBytes, "en");
-          setModel(loadedModel);
-          controller.abort();
-          return;
-        }
-
-        if (data.type === "ironcalc-load-empty-workbook") {
-          const emptyModel = new Model("Workbook", "en", "UTC", "en");
-          setModel(emptyModel);
-          controller.abort();
-        }
+        window.parent.postMessage({ type: "ironcalc:ready:v1" }, parentOrigin);
+        return;
       }
 
-      // { signal } means the listener is removed automatically on abort,
-      // covering both successful load (above) and effect cleanup (below).
-      window.addEventListener("message", onMessage, { signal });
+      if (parentOrigin && event.origin !== parentOrigin) {
+        return;
+      }
 
-      window.parent.postMessage(
-        {
-          type: "ironcalc-ready",
-        },
-        parentOrigin ?? "*",
-      );
+      if (data.type === "ironcalc:load-workbook:v1") {
+        setModel(Model.from_bytes(new Uint8Array(data.workbookBytes), "en"));
+      }
+      if (data.type === "ironcalc:load-empty:v1") {
+        setModel(new Model("Workbook", "en", "UTC", "en"));
+      }
+    }
+
+    async function start() {
+      await init();
+      if (!active) {
+        return;
+      }
+      window.addEventListener("message", onMessage);
     }
 
     start();
 
     return () => {
-      controller.abort();
+      active = false;
+      window.removeEventListener("message", onMessage);
     };
   }, []);
 

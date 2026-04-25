@@ -13,6 +13,6 @@ export default defineConfig({
     },
   },
   resolve: {
-    dedupe: Object.keys(workbookPkg.peerDependencies).filter(dep => dep in pkg.dependencies)
+    dedupe: Object.keys(workbookPkg.peerDependencies ?? {}).filter(dep => dep in pkg.dependencies)
   }
 })
