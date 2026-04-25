@@ -581,6 +581,7 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
         .first_child()
         .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?
         .children()
+        .filter(|n| n.has_tag_name("Relationship"))
         .collect::<Vec<Node>>();
     for rel in rels {
         let t = get_attribute(&rel, "Type")?.to_string();
