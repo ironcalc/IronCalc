@@ -272,6 +272,8 @@ export function MobileMenu(props: MobileMenuProps) {
           onClose={() => setMobileDeleteDialogOpen(false)}
           onConfirm={props.onDelete}
           workbookName={(selectedUuid && models[selectedUuid]?.name) || ""}
+          titleId="mobile-delete-dialog-title"
+          descriptionId="mobile-delete-dialog-description"
         />
       </Modal>
     </>

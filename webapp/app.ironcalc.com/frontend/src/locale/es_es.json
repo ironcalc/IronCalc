@@ -26,6 +26,10 @@
   },
   "left_drawer": {
     "new_workbook": "Nuevo libro",
+    "search_workbook": "Buscar libros",
+    "search_placeholder": "Buscar libro...",
+    "clear_search": "Borrar búsqueda",
+    "search_no_results": "Tu búsqueda no coincide con ningún libro.",
     "pinned": "Fijados",
     "today": "Hoy",
     "last_30_days": "Últimos 30 días",
