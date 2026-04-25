@@ -6,7 +6,7 @@
   },
   "devDependencies": {
     "markdown-it-mathjax3": "^4",
-    "vitepress": "^v2.0.0-alpha.15",
+    "vitepress": "^v2.0.0-alpha.17",
     "vue": "^3.5.25"
   }
 }
