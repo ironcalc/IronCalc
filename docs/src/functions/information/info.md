@@ -18,7 +18,7 @@ The `type_text` argument is **always in English**, regardless of the workbook's 
 
 ### Syntax
 
-**INFO(<span title="Text" style="color:#E53935">type_text</span>) => <span title="Text" style="color:#E53935">text</span>**
+**INFO(<span title="Text" style="color:#E53935">type_text</span>) => <span title="Text" style="color:#E53935">text</span> | <span title="Number" style="color:#1E88E5">number</span>**
 
 ### Argument descriptions
 
@@ -53,7 +53,7 @@ INFO returns a [text](/features/value-types#text) string, or a number for `"numf
 
 | Formula | Result | Comment |
 |---|---|---|
-| `=INFO("release")` | `"0.7.1"` | IronCalc version (example) |
+| `=INFO("release")` | `"v0.7.1-202-g847240b0"` | IronCalc version (example; actual output depends on the build and may include a leading `v` and additional suffixes) |
 | `=INFO("system")` | `"browser"` | Running in the web app |
 | `=INFO("numfile")` | `3` | Workbook has 3 sheets |
 | `=INFO("recalc")` | `"Automatic"` | Always automatic in IronCalc |
