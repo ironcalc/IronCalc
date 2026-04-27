@@ -33,8 +33,7 @@ async fn download(data: Data<'_>) -> io::Result<FileResponder> {
     let bytes = data
         .open(MAX_SIZE_MB.megabytes())
         .into_bytes()
-        .await
-        .unwrap();
+        .await?;
     if !bytes.is_complete() {
         return Err(io::Error::other(
             "The file was not fully uploaded",
@@ -52,7 +51,7 @@ async fn download(data: Data<'_>) -> io::Result<FileResponder> {
         save_xlsx_to_writer(&model, &mut writer).map_err(|e| {
             io::Error::other(format!("Error saving model: '{e}'"))
         })?;
-        writer.flush().unwrap();
+        writer.flush()?;
     }
 
     let content_type = ContentType::new(
@@ -91,15 +90,15 @@ async fn share(db: Connection<IronCalcDB>, data: Data<'_>) -> io::Result<String>
 }
 
 #[get("/api/model/<hash>")]
-async fn get_model(db: Connection<IronCalcDB>, hash: &str) -> io::Result<Vec<u8>> {
-    let bytes = select_model(db, hash).await.unwrap();
+async fn get_model(db: Connection<IronCalcDB>, hash: &str) -> io::Result<Option<Vec<u8>>> {
+    let bytes = select_model(db, hash).await?;
     println!("Select model: '{}'", hash);
     Ok(bytes)
 }
 
 #[get("/api/list")]
 async fn get_model_list(db: Connection<IronCalcDB>) -> io::Result<String> {
-    let model_list = get_model_list_from_db(db).await.unwrap();
+    let model_list = get_model_list_from_db(db).await?;
     println!("Model list: '{:?}'", model_list);
     Ok(model_list.join(","))
 }
