@@ -39,6 +39,7 @@ mod test_fn_textjoin;
 mod test_fn_time;
 mod test_fn_unicode;
 mod test_frozen_rows_columns;
+mod test_gcd_lcm;
 mod test_general;
 mod test_inverted_ranges;
 mod test_issue_623;
