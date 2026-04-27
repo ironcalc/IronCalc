@@ -476,7 +476,7 @@ fn to_string_moved(
         }
         DefinedNameKind((name, ..)) => name.to_string(),
         TableNameKind(name) => name.to_string(),
-        WrongVariableKind(name) => name.to_string(),
+        NamedVariableKind { name, id: _ } => name.to_string(),
         CompareKind { kind, left, right } => format!(
             "{}{}{}",
             to_string_moved(left, move_context, locale, language),

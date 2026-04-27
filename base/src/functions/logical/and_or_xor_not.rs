@@ -4,71 +4,7 @@ use crate::{
     model::Model,
 };
 
-use super::util::compare_values;
-
 impl<'a> Model<'a> {
-    pub(crate) fn fn_true(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() {
-            CalcResult::Boolean(true)
-        } else {
-            CalcResult::new_args_number_error(cell)
-        }
-    }
-
-    pub(crate) fn fn_false(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() {
-            CalcResult::Boolean(false)
-        } else {
-            CalcResult::new_args_number_error(cell)
-        }
-    }
-
-    pub(crate) fn fn_if(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 2 || args.len() == 3 {
-            let cond_result = self.get_boolean(&args[0], cell);
-            let cond = match cond_result {
-                Ok(f) => f,
-                Err(s) => {
-                    return s;
-                }
-            };
-            if cond {
-                return self.evaluate_node_in_context(&args[1], cell);
-            } else if args.len() == 3 {
-                return self.evaluate_node_in_context(&args[2], cell);
-            } else {
-                return CalcResult::Boolean(false);
-            }
-        }
-        CalcResult::new_args_number_error(cell)
-    }
-
-    pub(crate) fn fn_iferror(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 2 {
-            let value = self.evaluate_node_in_context(&args[0], cell);
-            match value {
-                CalcResult::Error { .. } => {
-                    return self.evaluate_node_in_context(&args[1], cell);
-                }
-                _ => return value,
-            }
-        }
-        CalcResult::new_args_number_error(cell)
-    }
-
-    pub(crate) fn fn_ifna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 2 {
-            let value = self.evaluate_node_in_context(&args[0], cell);
-            if let CalcResult::Error { error, .. } = &value {
-                if error == &Error::NA {
-                    return self.evaluate_node_in_context(&args[1], cell);
-                }
-            }
-            return value;
-        }
-        CalcResult::new_args_number_error(cell)
-    }
-
     pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.get_boolean(&args[0], cell) {
@@ -217,71 +153,6 @@ impl<'a> Model<'a> {
                 cell,
                 "No logical values in argument list".to_string(),
             )
-        }
-    }
-
-    /// =SWITCH(expression, case1, value1, [case, value]*, [default])
-    pub(crate) fn fn_switch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count < 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // TODO add implicit intersection
-        let expr = self.evaluate_node_in_context(&args[0], cell);
-        if expr.is_error() {
-            return expr;
-        }
-
-        // How many cases we have?
-        // 3, 4 args -> 1 case
-        let case_count = (args_count - 1) / 2;
-        for case_index in 0..case_count {
-            let case = self.evaluate_node_in_context(&args[2 * case_index + 1], cell);
-            if case.is_error() {
-                return case;
-            }
-            if compare_values(&expr, &case) == 0 {
-                return self.evaluate_node_in_context(&args[2 * case_index + 2], cell);
-            }
-        }
-        // None of the cases matched so we return the default
-        // If there is an even number of args is the last one otherwise is #N/A
-        if args_count.is_multiple_of(2) {
-            return self.evaluate_node_in_context(&args[args_count - 1], cell);
-        }
-        CalcResult::Error {
-            error: Error::NA,
-            origin: cell,
-            message: "Did not find a match".to_string(),
-        }
-    }
-
-    /// =IFS(condition1, value, [condition, value]*)
-    pub(crate) fn fn_ifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count < 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        if !args_count.is_multiple_of(2) {
-            // Missing value for last condition
-            return CalcResult::new_args_number_error(cell);
-        }
-        let case_count = args_count / 2;
-        for case_index in 0..case_count {
-            let value = self.get_boolean(&args[2 * case_index], cell);
-            match value {
-                Ok(b) => {
-                    if b {
-                        return self.evaluate_node_in_context(&args[2 * case_index + 1], cell);
-                    }
-                }
-                Err(s) => return s,
-            }
-        }
-        CalcResult::Error {
-            error: Error::NA,
-            origin: cell,
-            message: "Did not find a match".to_string(),
         }
     }
 }

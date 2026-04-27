@@ -45,7 +45,7 @@ fn test_randarray_whole_number() {
     model.evaluate();
     let val: f64 = model._get_text("A1").parse().unwrap();
     assert_eq!(val, val.floor());
-    assert!((1.0..6.0).contains(&val));
+    assert!((1.0..=6.0).contains(&val));
 }
 
 #[test]

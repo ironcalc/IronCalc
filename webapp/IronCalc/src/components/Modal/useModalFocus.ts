@@ -17,7 +17,9 @@ export function useModalFocus(open: boolean) {
     previousFocusRef.current = document.activeElement as HTMLElement | null;
 
     requestAnimationFrame(() => {
-      modalRef.current?.focus();
+      if (!modalRef.current?.contains(document.activeElement)) {
+        modalRef.current?.focus();
+      }
     });
   }, [open]);
 

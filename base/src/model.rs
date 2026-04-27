@@ -196,6 +196,10 @@ pub struct Model<'a> {
     pub(crate) tz: Tz,
     /// The view id. A view consists of a selected sheet and ranges.
     pub(crate) view_id: u32,
+    /// A stack of variables used for LET function evaluation. The key is the variable id, and the value is the variable value.
+    pub(crate) variable_stack: HashMap<usize, CalcResult>,
+    /// Last variable id used. It is incremented every time a new variable is created (for example, when evaluating a LET function).
+    pub(crate) last_variable_id: usize,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -210,6 +214,15 @@ pub struct CellIndex {
 }
 
 impl<'a> Model<'a> {
+    pub(crate) fn get_next_variable_id(&mut self) -> usize {
+        let id = self.last_variable_id;
+        self.last_variable_id += 1;
+        id
+    }
+    fn clear_variable_stack(&mut self) {
+        self.variable_stack.clear();
+        self.last_variable_id = 0;
+    }
     pub(crate) fn evaluate_node_with_reference(
         &mut self,
         node: &Node,
@@ -511,10 +524,20 @@ impl<'a> Model<'a> {
                 cell,
                 format!("table name \"{s}\" not supported."),
             ),
-            WrongVariableKind(s) => CalcResult::new_error(
+            NamedVariableKind { name, id: Some(id) } => {
+                match self.variable_stack.get(&(*id as usize)) {
+                    Some(v) => v.clone(),
+                    None => CalcResult::new_error(
+                        Error::NAME,
+                        cell,
+                        format!("Variable \"{name}\" not found in scope."),
+                    ),
+                }
+            }
+            NamedVariableKind { name, id: None } => CalcResult::new_error(
                 Error::NAME,
                 cell,
-                format!("Variable name \"{s}\" not found."),
+                format!("Variable name \"{name}\" not found."),
             ),
             CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
             UnaryKind { kind, right } => {
@@ -1350,6 +1373,8 @@ impl<'a> Model<'a> {
             locale,
             tz,
             view_id: 0,
+            variable_stack: HashMap::new(),
+            last_variable_id: 0,
         };
 
         model.parse_formulas();
@@ -2538,6 +2563,7 @@ impl<'a> Model<'a> {
     pub fn evaluate(&mut self) {
         // clear all computation artifacts
         self.cells.clear();
+        self.clear_variable_stack();
 
         let cells = self.get_all_cells();
 

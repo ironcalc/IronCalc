@@ -148,11 +148,14 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 }
             }
         }
-        Node::WrongVariableKind(v) => {
+        Node::NamedVariableKind { name, id } => {
             if add {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
-                    child: Box::new(Node::WrongVariableKind(v.to_owned())),
+                    child: Box::new(Node::NamedVariableKind {
+                        name: name.clone(),
+                        id: *id,
+                    }),
                 }
             }
         }
@@ -284,7 +287,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             // TODO: We could do better if we tracked the defined names
             StaticResult::Unknown
         }
-        Node::WrongVariableKind(_) => StaticResult::Scalar,
+        Node::NamedVariableKind { .. } => StaticResult::Scalar,
         Node::TableNameKind(_) => StaticResult::Unknown,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
@@ -397,6 +400,26 @@ fn args_signature_scalars(
     } else {
         vec![Signature::Error; arg_count]
     }
+}
+
+fn args_signature_let(arg_count: usize) -> Vec<Signature> {
+    // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
+    if arg_count < 3 || arg_count.is_multiple_of(2) {
+        return vec![Signature::Error; arg_count];
+    }
+    (0..arg_count)
+        .map(|i| {
+            // Odd indices are value expressions; last index is the body.
+            // Both should be Vector so range references are not implicitly intersected.
+            // Even indices (except last) are name declarations — Scalar is fine since
+            // they are never actually evaluated as range expressions.
+            if i % 2 == 1 || i == arg_count - 1 {
+                Signature::Vector
+            } else {
+                Signature::Scalar
+            }
+        })
+        .collect()
 }
 
 fn args_signature_one_vector(arg_count: usize) -> Vec<Signature> {
@@ -709,6 +732,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Iferror => args_signature_scalars(arg_count, 2, 0),
         Function::Ifna => args_signature_scalars(arg_count, 2, 0),
         Function::Ifs => vec![Signature::Scalar; arg_count],
+        Function::Let => args_signature_let(arg_count),
         Function::Not => args_signature_scalars(arg_count, 1, 0),
         Function::Or => vec![Signature::Vector; arg_count],
         Function::Switch => vec![Signature::Scalar; arg_count],
@@ -1110,6 +1134,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Iferror => scalar_arguments(args),
         Function::Ifna => scalar_arguments(args),
         Function::Ifs => not_implemented(args),
+        Function::Let => StaticResult::Unknown,
         Function::Not => StaticResult::Scalar,
         Function::Or => StaticResult::Scalar,
         Function::Switch => not_implemented(args),

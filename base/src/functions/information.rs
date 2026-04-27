@@ -304,7 +304,7 @@ impl<'a> Model<'a> {
                     }
                 }
             }
-            Node::WrongVariableKind(name) => {
+            Node::NamedVariableKind { name, id: _ } => {
                 return CalcResult::Error {
                     error: Error::NAME,
                     origin: cell,
@@ -436,7 +436,7 @@ impl<'a> Model<'a> {
                 CalcResult::String(address)
             }
             "COL" => CalcResult::Number(reference.column as f64),
-            "COLOR" | "FILENAME" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {
+            "COLOR" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {
                 CalcResult::Error {
                     error: Error::VALUE,
                     origin: cell,
@@ -444,6 +444,20 @@ impl<'a> Model<'a> {
                 }
             }
             "CONTENTS" => self.evaluate_cell(reference),
+            "FILENAME" => {
+                let workbook_name = &self.workbook.name;
+                let worksheet_name = match self.workbook.worksheet(reference.sheet) {
+                    Ok(ws) => &ws.name,
+                    Err(_) => {
+                        return CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: "Invalid sheet".to_string(),
+                        }
+                    }
+                };
+                CalcResult::String(format!("[{}.xlsx]{}", workbook_name, worksheet_name))
+            }
             "ROW" => CalcResult::Number(reference.row as f64),
             "TYPE" => {
                 let cell_type = match self.evaluate_cell(reference) {
