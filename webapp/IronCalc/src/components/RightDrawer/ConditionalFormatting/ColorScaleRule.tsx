@@ -33,6 +33,7 @@ interface ColorScaleRuleProps {
   onSave: (data: ColorScaleRuleData) => void;
   onCancel: () => void;
   applyTo: string;
+  onApplyToChange: (val: string) => void;
   initialValues?: ColorScaleRuleData;
   onPreviewChange?: (colors: [string, string, string]) => void;
   getSelectedArea: () => string;
@@ -58,10 +59,22 @@ const PRESETS: ColorScalePreset[] = [
   { id: "lg-g", colors: ["#E8F0DD", "#8CB354"] },
   { id: "r-lr", colors: ["#EC5753", "#FBDDDD"] },
   { id: "lr-r", colors: ["#FBDDDD", "#EC5753"] },
-  { id: "r-y-b", colors: ["#EC5753", "#F2994A", "#F8CD3D", "#8CB354", "#3458B7"] },
-  { id: "b-y-r", colors: ["#3458B7", "#8CB354", "#F8CD3D", "#F2994A", "#EC5753"] },
-  { id: "dp-m-r", colors: ["#35193E", "#AC0070", "#E13342", "#F37651", "#F6B48F"] },
-  { id: "r-m-dp", colors: ["#F6B48F", "#F37651", "#E13342", "#AC0070", "#35193E"] },
+  {
+    id: "r-y-b",
+    colors: ["#EC5753", "#F2994A", "#F8CD3D", "#8CB354", "#3458B7"],
+  },
+  {
+    id: "b-y-r",
+    colors: ["#3458B7", "#8CB354", "#F8CD3D", "#F2994A", "#EC5753"],
+  },
+  {
+    id: "dp-m-r",
+    colors: ["#35193E", "#AC0070", "#E13342", "#F37651", "#F6B48F"],
+  },
+  {
+    id: "r-m-dp",
+    colors: ["#F6B48F", "#F37651", "#E13342", "#AC0070", "#35193E"],
+  },
 ];
 
 const STEPS = 5;
@@ -129,6 +142,28 @@ const StopRow = ({ label, stop, onChange, getSelectedArea }: StopRowProps) => {
     <div className="ic-edit-rule-field-wrapper">
       <span className="ic-edit-rule-label">{label}</span>
       <div className="ic-cs-settings-row">
+        <div className="ic-input-control md ic-cs-color-swatch-wrapper">
+          <button
+            ref={colorRef}
+            type="button"
+            className="ic-cs-color-swatch"
+            style={{ backgroundColor: stop.color }}
+            onClick={() => setColorOpen(true)}
+            aria-label={label}
+          />
+        </div>
+        <ColorPicker
+          color={stop.color}
+          defaultColor={stop.color}
+          title={t("color_picker.default")}
+          onChange={(c) => {
+            onChange({ ...stop, color: c });
+            setColorOpen(false);
+          }}
+          onClose={() => setColorOpen(false)}
+          anchorEl={colorRef}
+          open={colorOpen}
+        />
         <Select
           value={stop.type}
           options={typeOptions}
@@ -147,43 +182,52 @@ const StopRow = ({ label, stop, onChange, getSelectedArea }: StopRowProps) => {
                   variant="secondary"
                   icon={<SquareMousePointer />}
                   aria-label={t("conditional_formatting.use_selection")}
-                  onClick={() => onChange({ ...stop, value: getSelectedArea() })}
+                  onClick={() =>
+                    onChange({ ...stop, value: getSelectedArea() })
+                  }
                   className="ic-edit-rule-range-button"
                 />
               </Tooltip>
             }
           />
         )}
-        <div className="ic-input-control md ic-cs-color-swatch-wrapper">
-          <button
-            ref={colorRef}
-            type="button"
-            className="ic-cs-color-swatch"
-            style={{ backgroundColor: stop.color }}
-            onClick={() => setColorOpen(true)}
-            aria-label={label}
-          />
-        </div>
-        <ColorPicker
-          color={stop.color}
-          defaultColor={stop.color}
-          title={t("color_picker.default")}
-          onChange={(c) => { onChange({ ...stop, color: c }); setColorOpen(false); }}
-          onClose={() => setColorOpen(false)}
-          anchorEl={colorRef}
-          open={colorOpen}
-        />
       </div>
     </div>
   );
 };
 
-const ColorScaleRule = ({ onSave, onCancel, applyTo, initialValues, onPreviewChange, getSelectedArea }: ColorScaleRuleProps) => {
+const ColorScaleRule = ({
+  onSave,
+  onCancel,
+  applyTo,
+  onApplyToChange,
+  initialValues,
+  onPreviewChange,
+  getSelectedArea,
+}: ColorScaleRuleProps) => {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<string>(PRESETS[0].id);
-  const [minimum, setMinimum] = useState<ColorScaleStop>(initialValues?.minimum ?? { type: "auto", value: "", color: sampleColorAt(PRESETS[0].colors, 0) });
-  const [midpoint, setMidpoint] = useState<ColorScaleStop>(initialValues?.midpoint ?? { type: "auto", value: "", color: sampleColorAt(PRESETS[0].colors, 0.5) });
-  const [maximum, setMaximum] = useState<ColorScaleStop>(initialValues?.maximum ?? { type: "auto", value: "", color: sampleColorAt(PRESETS[0].colors, 1) });
+  const [minimum, setMinimum] = useState<ColorScaleStop>(
+    initialValues?.minimum ?? {
+      type: "auto",
+      value: "",
+      color: sampleColorAt(PRESETS[0].colors, 0),
+    },
+  );
+  const [midpoint, setMidpoint] = useState<ColorScaleStop>(
+    initialValues?.midpoint ?? {
+      type: "auto",
+      value: "",
+      color: sampleColorAt(PRESETS[0].colors, 0.5),
+    },
+  );
+  const [maximum, setMaximum] = useState<ColorScaleStop>(
+    initialValues?.maximum ?? {
+      type: "auto",
+      value: "",
+      color: sampleColorAt(PRESETS[0].colors, 1),
+    },
+  );
 
   const applyPreset = (colors: string[]) => {
     setMinimum((s) => ({ ...s, color: sampleColorAt(colors, 0) }));
@@ -209,6 +253,34 @@ const ColorScaleRule = ({ onSave, onCancel, applyTo, initialValues, onPreviewCha
       <div className="ic-edit-rule-content">
         <div className="ic-edit-rule-section">
           <div className="ic-edit-rule-section-title">
+            {t("conditional_formatting.apply_to")}
+          </div>
+          <div className="ic-edit-rule-field-wrapper">
+            <span className="ic-edit-rule-label">
+              {t("conditional_formatting.apply_to_range")}
+            </span>
+            <Input
+              type="text"
+              placeholder={t("conditional_formatting.apply_to_placeholder")}
+              value={applyTo}
+              onChange={(e) => onApplyToChange(e.target.value)}
+              endAdornment={
+                <Tooltip title={t("conditional_formatting.use_selection")}>
+                  <IconButton
+                    size="sm"
+                    variant="secondary"
+                    icon={<SquareMousePointer />}
+                    aria-label={t("conditional_formatting.use_selection")}
+                    onClick={() => onApplyToChange(getSelectedArea())}
+                    className="ic-edit-rule-range-button"
+                  />
+                </Tooltip>
+              }
+            />
+          </div>
+        </div>
+        <div className="ic-edit-rule-section">
+          <div className="ic-edit-rule-section-title">
             {t("conditional_formatting.tab_color_scale")}
           </div>
           <div className="ic-fsp-presets-section">
@@ -223,7 +295,10 @@ const ColorScaleRule = ({ onSave, onCancel, applyTo, initialValues, onPreviewCha
                   aria-pressed={selected === preset.id}
                   className="ic-fsp-preset"
                   style={{ background: steppedGradient(preset.colors) }}
-                  onClick={() => { setSelected(preset.id); applyPreset(preset.colors); }}
+                  onClick={() => {
+                    setSelected(preset.id);
+                    applyPreset(preset.colors);
+                  }}
                 />
               ))}
             </div>

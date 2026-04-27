@@ -100,7 +100,6 @@
   min-width: 0;
 }
 
-
 .ic-input-control.ic-cs-color-swatch-wrapper {
   flex: none;
   width: 32px;
@@ -124,7 +123,7 @@
   box-shadow:
     0 0 0 2px var(--palette-common-black),
     inset 0 0 0 1px
-      color-mix(in srgb, var(--palette-common-black) 12%, transparent);
+    color-mix(in srgb, var(--palette-common-black) 12%, transparent);
 }
 
 .ic-edit-rule-section {
@@ -199,6 +198,93 @@
   --button-height: 24px;
   margin-right: -2px;
   border-radius: 3px;
+}
+
+.ic-db-swatch.ic-fsp-preset {
+  height: 32px;
+  padding: 2px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 0;
+  background-color: var(--palette-common-white);
+}
+
+.ic-db-swatch-inner {
+  height: 100%;
+  border-radius: 4px;
+  border: 1px solid var(--palette-grey-200);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ic-db-swatch-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.ic-db-swatch-row + .ic-db-swatch-row {
+  border-top: 1px solid #e0e0e0;
+}
+
+.ic-db-swatch-bar {
+  height: 100%;
+}
+
+.ic-db-mini-chart {
+  position: absolute;
+  inset: 1px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ic-edit-rule-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-common-black);
+  cursor: pointer;
+  margin: 4px 0;
+}
+
+.ic-edit-rule-checkbox-row input[type="checkbox"] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--palette-grey-400);
+  border-radius: 4px;
+  background: var(--palette-common-white);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.ic-edit-rule-checkbox-row input[type="checkbox"]:checked {
+  background: var(--palette-primary-main);
+  border-color: var(--palette-primary-main);
+}
+
+.ic-edit-rule-checkbox-row input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 4px;
+  height: 7px;
+  border: 2px solid var(--palette-common-white);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.ic-fsp-preset[aria-pressed="true"] {
+  outline: 1px solid
+    color-mix(in srgb, var(--palette-common-black) 12%, transparent);
 }
 
 .ic-edit-rule-footer {

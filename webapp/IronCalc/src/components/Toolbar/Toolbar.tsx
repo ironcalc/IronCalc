@@ -23,6 +23,7 @@ import {
   Grid2x2X,
   ImageDown,
   Italic,
+  Layers2,
   Minus,
   PaintBucket,
   PaintRoller,
@@ -39,7 +40,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowMiddleFromLine, ConditionalFormatIcon } from "../../icons";
+import { ArrowMiddleFromLine } from "../../icons";
 import BorderPicker from "../BorderPicker/BorderPicker";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
@@ -398,7 +399,7 @@ function Toolbar(properties: ToolbarProperties) {
           </Tooltip>
           <Tooltip title={t("toolbar.conditional_formatting")}>
             <IconButton
-              icon={<ConditionalFormatIcon />}
+              icon={<Layers2 />}
               aria-label={t("toolbar.conditional_formatting")}
               pressed={properties.isConditionalFormattingOpen}
               onClick={properties.onOpenConditionalFormatting}

@@ -16,8 +16,9 @@ import { IconButton } from "../../Button/IconButton";
 import { parseRangeInSheet } from "../../Editor/util";
 import { Input } from "../../Input/Input";
 import { Tooltip } from "../../Tooltip/Tooltip";
-import EditRule, { type RuleData } from "./EditRule";
 import { steppedGradient } from "./ColorScaleRule";
+import { DataBarMiniChart } from "./DataBarsRule";
+import EditRule, { type RuleData } from "./EditRule";
 import { getRuleDescription } from "./ruleDescription";
 import "./conditional-formatting.css";
 
@@ -211,9 +212,15 @@ const ConditionalFormatting = ({
                   };
 
                   const isColorScale = rule.ruleType === "color_scale";
-                  const colorScaleGradient = isColorScale && rule.colorScale
-                    ? steppedGradient([rule.colorScale.minimum.color, rule.colorScale.midpoint.color, rule.colorScale.maximum.color])
-                    : undefined;
+                  const colorScaleGradient =
+                    isColorScale && rule.colorScale
+                      ? steppedGradient([
+                          rule.colorScale.minimum.color,
+                          rule.colorScale.midpoint.color,
+                          rule.colorScale.maximum.color,
+                        ])
+                      : undefined;
+                  const isDataBars = rule.ruleType === "data_bars";
 
                   return (
                     // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
@@ -232,9 +239,22 @@ const ConditionalFormatting = ({
                     >
                       <div
                         className="ic-cf-list-item-preview"
-                        style={isColorScale ? { background: colorScaleGradient } : previewStyle}
+                        style={
+                          isColorScale
+                            ? { background: colorScaleGradient }
+                            : isDataBars
+                              ? { position: "relative", overflow: "hidden" }
+                              : previewStyle
+                        }
                       >
-                        {!isColorScale && "Aa"}
+                        {isDataBars && rule.dataBars ? (
+                          <DataBarMiniChart
+                            color={rule.dataBars.color}
+                            gradient={rule.dataBars.gradient}
+                          />
+                        ) : (
+                          !isColorScale && "Aa"
+                        )}
                       </div>
                       <div className="ic-cf-list-item-text">
                         <div className="ic-cf-list-item-rule">

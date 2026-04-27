@@ -1,13 +1,15 @@
-import { SquareMousePointer } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
-import { IconButton } from "../../Button/IconButton";
-import { Input } from "../../Input/Input";
-import { Tooltip } from "../../Tooltip/Tooltip";
 import ClassicRule from "./ClassicRule";
-import ColorScaleRule, { type ColorScaleRuleData, steppedGradient } from "./ColorScaleRule";
-import DataBarsRule from "./DataBarsRule";
+import ColorScaleRule, {
+  type ColorScaleRuleData,
+  steppedGradient,
+} from "./ColorScaleRule";
+import DataBarsRule, {
+  DataBarMiniChart,
+  type DataBarsRuleData,
+} from "./DataBarsRule";
 import type { FormatStyle } from "./FormatStylePicker";
 import IconSetsRule from "./IconSetsRule";
 import "./edit-rule.css";
@@ -20,6 +22,7 @@ export interface RuleData {
   ruleValue2: string;
   formatStyle: FormatStyle;
   colorScale?: ColorScaleRuleData;
+  dataBars?: DataBarsRuleData;
 }
 
 interface EditRuleProps {
@@ -50,19 +53,39 @@ const EditRule = ({
 }: EditRuleProps) => {
   const { t } = useTranslation();
   const initialTab: TabId =
-    initialValues?.ruleType === "color_scale" ? "color_scale" :
-    initialValues?.ruleType === "data_bars" ? "data_bars" :
-    initialValues?.ruleType === "icon_sets" ? "icon_sets" :
-    "classic";
+    initialValues?.ruleType === "color_scale"
+      ? "color_scale"
+      : initialValues?.ruleType === "data_bars"
+        ? "data_bars"
+        : initialValues?.ruleType === "icon_sets"
+          ? "icon_sets"
+          : "classic";
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [applyTo, setApplyTo] = useState(initialValues?.applyTo ?? "");
   const [formatStyle, setFormatStyle] = useState<FormatStyle>(
     initialValues?.formatStyle ?? DEFAULT_FORMAT_STYLE,
   );
   const [classicDescription, setClassicDescription] = useState("");
-  const [csPreviewColors, setCsPreviewColors] = useState<[string, string, string]>(
+  const [dbPreview, setDbPreview] = useState<DataBarsRuleData>(
+    initialValues?.dataBars ?? {
+      color: "#6AAB42",
+      gradient: false,
+      positiveColor: "#6AAB42",
+      negativeColor: "#E05C53",
+      showBorders: false,
+      hideCellContent: false,
+      roundCorners: false,
+    },
+  );
+  const [csPreviewColors, setCsPreviewColors] = useState<
+    [string, string, string]
+  >(
     initialValues?.colorScale
-      ? [initialValues.colorScale.minimum.color, initialValues.colorScale.midpoint.color, initialValues.colorScale.maximum.color]
+      ? [
+          initialValues.colorScale.minimum.color,
+          initialValues.colorScale.midpoint.color,
+          initialValues.colorScale.maximum.color,
+        ]
       : ["#8CB354", "#F8CD3D", "#EC5753"],
   );
 
@@ -92,11 +115,22 @@ const EditRule = ({
       <div className="ic-edit-rule-header-box">
         <div
           className="ic-edit-rule-header-preview"
-          style={activeTab === "color_scale"
-            ? { background: steppedGradient(csPreviewColors) }
-            : headerPreviewStyle}
+          style={
+            activeTab === "color_scale"
+              ? { background: steppedGradient(csPreviewColors) }
+              : activeTab === "data_bars"
+                ? { position: "relative" }
+                : headerPreviewStyle
+          }
         >
-          {activeTab !== "color_scale" && "Aa"}
+          {activeTab === "data_bars" ? (
+            <DataBarMiniChart
+              color={dbPreview.color}
+              gradient={dbPreview.gradient}
+            />
+          ) : (
+            activeTab !== "color_scale" && "Aa"
+          )}
         </div>
         <span className="ic-edit-rule-header-box-text">
           {activeTab === "classic" && classicDescription
@@ -117,35 +151,6 @@ const EditRule = ({
           </Button>
         ))}
       </div>
-      <div className="ic-edit-rule-section">
-        <div className="ic-edit-rule-section-title">
-          {t("conditional_formatting.apply_to")}
-        </div>
-        <div className="ic-edit-rule-field-wrapper">
-          <span className="ic-edit-rule-label">
-            {t("conditional_formatting.apply_to_range")}
-          </span>
-          <Input
-            autoFocus
-            type="text"
-            placeholder={t("conditional_formatting.apply_to_placeholder")}
-            value={applyTo}
-            onChange={(e) => setApplyTo(e.target.value)}
-            endAdornment={
-              <Tooltip title={t("conditional_formatting.use_selection")}>
-                <IconButton
-                  size="sm"
-                  variant="secondary"
-                  icon={<SquareMousePointer />}
-                  aria-label={t("conditional_formatting.use_selection")}
-                  onClick={() => setApplyTo(getSelectedArea())}
-                  className="ic-edit-rule-range-button"
-                />
-              </Tooltip>
-            }
-          />
-        </div>
-      </div>
       {activeTab === "classic" && (
         <ClassicRule
           onSave={onSave}
@@ -153,6 +158,7 @@ const EditRule = ({
           initialValues={initialValues}
           getSelectedArea={getSelectedArea}
           applyTo={applyTo}
+          onApplyToChange={setApplyTo}
           formatStyle={formatStyle}
           onFormatStyleChange={setFormatStyle}
           onDescriptionChange={setClassicDescription}
@@ -174,13 +180,41 @@ const EditRule = ({
           }
           onCancel={onCancel}
           applyTo={applyTo}
+          onApplyToChange={setApplyTo}
           initialValues={initialValues?.colorScale}
           onPreviewChange={setCsPreviewColors}
           getSelectedArea={getSelectedArea}
         />
       )}
-      {activeTab === "data_bars" && <DataBarsRule onCancel={onCancel} />}
-      {activeTab === "icon_sets" && <IconSetsRule onCancel={onCancel} />}
+      {activeTab === "data_bars" && (
+        <DataBarsRule
+          onSave={(dataBars) =>
+            onSave({
+              applyTo,
+              ruleType: "data_bars",
+              ruleOperator: "",
+              ruleValue: "",
+              ruleValue2: "",
+              formatStyle: DEFAULT_FORMAT_STYLE,
+              dataBars,
+            })
+          }
+          onCancel={onCancel}
+          applyTo={applyTo}
+          onApplyToChange={setApplyTo}
+          getSelectedArea={getSelectedArea}
+          initialValues={initialValues?.dataBars}
+          onPreviewChange={setDbPreview}
+        />
+      )}
+      {activeTab === "icon_sets" && (
+        <IconSetsRule
+          applyTo={applyTo}
+          onApplyToChange={setApplyTo}
+          getSelectedArea={getSelectedArea}
+          onCancel={onCancel}
+        />
+      )}
     </div>
   );
 };

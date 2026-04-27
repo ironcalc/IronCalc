@@ -19,6 +19,7 @@ interface ClassicRuleProps {
   initialValues?: RuleData;
   getSelectedArea: () => string;
   applyTo: string;
+  onApplyToChange: (val: string) => void;
   formatStyle: FormatStyle;
   onFormatStyleChange: (style: FormatStyle) => void;
   onDescriptionChange?: (description: string) => void;
@@ -31,6 +32,7 @@ const ClassicRule = ({
   initialValues,
   getSelectedArea,
   applyTo,
+  onApplyToChange,
   formatStyle,
   onFormatStyleChange,
   onDescriptionChange,
@@ -171,12 +173,56 @@ const ClassicRule = ({
   }, [currentOperatorOptions[0]?.value]);
 
   useEffect(() => {
-    onDescriptionChange?.(getRuleDescription({ ruleType, ruleOperator, ruleValue, ruleValue2, resolveValue }));
-  }, [ruleType, ruleOperator, ruleValue, ruleValue2, resolveValue, onDescriptionChange]);
+    onDescriptionChange?.(
+      getRuleDescription({
+        ruleType,
+        ruleOperator,
+        ruleValue,
+        ruleValue2,
+        resolveValue,
+      }),
+    );
+  }, [
+    ruleType,
+    ruleOperator,
+    ruleValue,
+    ruleValue2,
+    resolveValue,
+    onDescriptionChange,
+  ]);
 
   return (
     <>
       <div className="ic-edit-rule-content">
+        <div className="ic-edit-rule-section">
+          <div className="ic-edit-rule-section-title">
+            {t("conditional_formatting.apply_to")}
+          </div>
+          <div className="ic-edit-rule-field-wrapper">
+            <span className="ic-edit-rule-label">
+              {t("conditional_formatting.apply_to_range")}
+            </span>
+            <Input
+              autoFocus
+              type="text"
+              placeholder={t("conditional_formatting.apply_to_placeholder")}
+              value={applyTo}
+              onChange={(e) => onApplyToChange(e.target.value)}
+              endAdornment={
+                <Tooltip title={t("conditional_formatting.use_selection")}>
+                  <IconButton
+                    size="sm"
+                    variant="secondary"
+                    icon={<SquareMousePointer />}
+                    aria-label={t("conditional_formatting.use_selection")}
+                    onClick={() => onApplyToChange(getSelectedArea())}
+                    className="ic-edit-rule-range-button"
+                  />
+                </Tooltip>
+              }
+            />
+          </div>
+        </div>
         <div className="ic-edit-rule-section">
           <div className="ic-edit-rule-section-title">
             {t("conditional_formatting.format_rules")}

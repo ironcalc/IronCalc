@@ -9,7 +9,6 @@ import BorderOuterIcon from "./border-outer.svg?react";
 import BorderRightIcon from "./border-right.svg?react";
 import BorderStyleIcon from "./border-style.svg?react";
 import BorderTopIcon from "./border-top.svg?react";
-import ConditionalFormatIcon from "./conditional-format.svg?react";
 import DeleteColumnIcon from "./delete-column.svg?react";
 import DeleteRowIcon from "./delete-row.svg?react";
 import Fx from "./fx.svg?react";
@@ -33,7 +32,6 @@ export {
   BorderRightIcon,
   BorderStyleIcon,
   BorderTopIcon,
-  ConditionalFormatIcon,
   DeleteColumnIcon,
   DeleteRowIcon,
   Fx,

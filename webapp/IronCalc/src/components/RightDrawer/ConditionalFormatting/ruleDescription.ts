@@ -85,6 +85,10 @@ export function getRuleDescription({
     return "Color Scale";
   }
 
+  if (ruleType === "data_bars") {
+    return "Data Bars";
+  }
+
   const simpleLabels: Record<string, string> = {
     duplicate_values: "Duplicated Values",
     unique_values: "Unique Values",
