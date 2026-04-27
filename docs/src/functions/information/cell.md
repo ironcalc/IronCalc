@@ -50,7 +50,7 @@ The return type depends on the `info_type` argument. It may be a number or text 
 - If no argument or more than two arguments are supplied, CELL returns the [`#ERROR!`](/features/error-types.md#error) error.
 - If `info_type` is not a recognized string, CELL returns the [`#VALUE!`](/features/error-types.md#value) error.
 - If the `reference` argument is not a cell reference, CELL returns the [`#VALUE!`](/features/error-types.md#value) error.
-- If `info_type` is `"address"` and `reference` is on a different sheet than the formula cell, CELL returns the [`#NIMPL!`](/features/error-types.md#nimpl) error (cross-sheet address not yet implemented).
+- If `info_type` is `"address"` and `reference` is on a different sheet than the formula cell, CELL returns the [`#N/IMPL!`](/features/error-types.md#nimpl) error (cross-sheet address not yet implemented).
 - If `info_type` is one of the unimplemented values (`"color"`, `"filename"`, etc.), CELL returns the [`#VALUE!`](/features/error-types.md#value) error.
 
 ## Examples

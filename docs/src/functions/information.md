@@ -13,7 +13,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ---------- | ---------------------------------------------- | ------------- |
 | CELL        | <Badge type="tip" text="Available" />          | [CELL](information/cell)             |
 | ERROR.TYPE  | <Badge type="tip" text="Available" />          | –             |
-| FORMULATEXT | <Badge type="tip" text="Available" />          | –             |
+| FORMULATEXT | <Badge type="tip" text="Available" />          | [FORMULATEXT](lookup_and_reference/formulatext)             |
 | INFO        | <Badge type="tip" text="Available" />          | [INFO](information/info)             |
 | ISBLANK    | <Badge type="tip" text="Available" />          | –             |
 | ISERR      | <Badge type="tip" text="Available" />          | –             |
