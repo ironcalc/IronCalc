@@ -459,3 +459,11 @@ fn test_dynamic_arrays() {
     fs::remove_file(temp_file_name).unwrap();
     assert_eq_ignoring_metadata_and_name(model.workbook, model2.workbook);
 }
+
+#[test]
+// This tests the `xl/worksheets/_rels/sheet*` are parsed correctly
+// libreoffice sometimes exports .xlsx file with whitespace in the <Relationships> element
+fn test_relationship_whitespace_example() {
+    let mut model = load_from_xlsx("tests/libreoffice_888_example.xlsx", "en", "UTC", "en").unwrap();
+    model.evaluate();
+}
