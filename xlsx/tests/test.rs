@@ -464,6 +464,7 @@ fn test_dynamic_arrays() {
 // This tests the `xl/worksheets/_rels/sheet*` are parsed correctly
 // libreoffice sometimes exports .xlsx file with whitespace in the <Relationships> element
 fn test_relationship_whitespace_example() {
-    let mut model = load_from_xlsx("tests/libreoffice_888_example.xlsx", "en", "UTC", "en").unwrap();
+    let mut model =
+        load_from_xlsx("tests/libreoffice_888_example.xlsx", "en", "UTC", "en").unwrap();
     model.evaluate();
 }
