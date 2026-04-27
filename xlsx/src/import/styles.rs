@@ -8,9 +8,10 @@ use roxmltree::Node;
 
 use crate::error::XlsxError;
 
+use super::theme::Theme;
 use super::util::{get_attribute, get_bool, get_bool_false, get_color, get_number};
 
-fn get_border(node: Node, name: &str) -> Result<Option<BorderItem>, XlsxError> {
+fn get_border(node: Node, name: &str, theme: &Theme) -> Result<Option<BorderItem>, XlsxError> {
     let style;
     let color;
     let border_nodes = node
@@ -40,7 +41,7 @@ fn get_border(node: Node, name: &str) -> Result<Option<BorderItem>, XlsxError> {
             .filter(|n| n.has_tag_name("color"))
             .collect::<Vec<Node>>();
         if color_node.len() == 1 {
-            color = get_color(color_node[0])?;
+            color = get_color(color_node[0], theme)?;
         } else {
             color = None;
         }
@@ -52,6 +53,7 @@ fn get_border(node: Node, name: &str) -> Result<Option<BorderItem>, XlsxError> {
 
 pub(super) fn load_styles<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
+    theme: &Theme,
 ) -> Result<Styles, XlsxError> {
     let mut file = archive.by_name("xl/styles.xml")?;
     let mut text = String::new();
@@ -107,7 +109,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
                         .unwrap_or(11);
                 }
                 "color" => {
-                    color = get_color(feature)?;
+                    color = get_color(feature, theme)?;
                 }
                 "u" => {
                     u = true;
@@ -190,10 +192,10 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         for feature in pattern_fill.children() {
             match feature.tag_name().name() {
                 "fgColor" => {
-                    fg_color = get_color(feature)?;
+                    fg_color = get_color(feature, theme)?;
                 }
                 "bgColor" => {
-                    bg_color = get_color(feature)?;
+                    bg_color = get_color(feature, theme)?;
                 }
                 _ => {
                     println!("Unexpected pattern");
@@ -216,11 +218,11 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     for border in border_nodes.children() {
         let diagonal_up = get_bool_false(border, "diagonal_up");
         let diagonal_down = get_bool_false(border, "diagonal_down");
-        let left = get_border(border, "left")?;
-        let right = get_border(border, "right")?;
-        let top = get_border(border, "top")?;
-        let bottom = get_border(border, "bottom")?;
-        let diagonal = get_border(border, "diagonal")?;
+        let left = get_border(border, "left", theme)?;
+        let right = get_border(border, "right", theme)?;
+        let top = get_border(border, "top", theme)?;
+        let bottom = get_border(border, "bottom", theme)?;
+        let diagonal = get_border(border, "diagonal", theme)?;
         borders.push(Border {
             diagonal_up,
             diagonal_down,
