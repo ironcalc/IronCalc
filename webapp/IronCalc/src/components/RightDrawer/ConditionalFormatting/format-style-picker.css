@@ -58,13 +58,12 @@
 }
 
 .ic-fsp-presets {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
   gap: 4px;
 }
 
 .ic-fsp-preset {
-  flex: 1;
   height: 32px;
   border-radius: 6px;
   border: none;
@@ -80,7 +79,8 @@
 }
 
 .ic-fsp-preset:hover {
-  outline: 0 0 0 2px var(--palette-grey-400);
+  outline: 1px solid var(--palette-common-black);
+  outline-offset: 1px;
   box-shadow: inset 0 0 0 1px
     color-mix(in srgb, var(--palette-common-black) 40%, transparent);
 }

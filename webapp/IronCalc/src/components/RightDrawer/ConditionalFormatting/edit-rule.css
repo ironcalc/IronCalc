@@ -6,10 +6,12 @@
 
 .ic-edit-rule-content {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   font-size: 12px;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .ic-edit-rule-header-box {
@@ -79,6 +81,50 @@
 
 .ic-edit-rule-content--placeholder {
   flex: 1;
+}
+
+.ic-color-scale-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+
+.ic-cs-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ic-cs-settings-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+
+.ic-input-control.ic-cs-color-swatch-wrapper {
+  flex: none;
+  width: 32px;
+  padding: 2px;
+}
+
+.ic-cs-color-swatch {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  border: none;
+  cursor: pointer;
+}
+
+.ic-color-scale-swatch {
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+
+.ic-color-scale-swatch--selected {
+  box-shadow:
+    0 0 0 2px var(--palette-common-black),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--palette-common-black) 12%, transparent);
 }
 
 .ic-edit-rule-section {

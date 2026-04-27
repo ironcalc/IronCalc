@@ -9,6 +9,7 @@ import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
 import type { RuleData } from "./EditRule";
 import FormatStylePicker, { type FormatStyle } from "./FormatStylePicker";
+import { getRuleDescription } from "./ruleDescription";
 
 const OPERATOR_TYPES_WITH_SECOND_DROPDOWN = ["cell_value", "text", "date"];
 
@@ -17,8 +18,11 @@ interface ClassicRuleProps {
   onCancel: () => void;
   initialValues?: RuleData;
   getSelectedArea: () => string;
+  applyTo: string;
   formatStyle: FormatStyle;
   onFormatStyleChange: (style: FormatStyle) => void;
+  onDescriptionChange?: (description: string) => void;
+  resolveValue?: (val: string) => string;
 }
 
 const ClassicRule = ({
@@ -26,11 +30,13 @@ const ClassicRule = ({
   onCancel,
   initialValues,
   getSelectedArea,
+  applyTo,
   formatStyle,
   onFormatStyleChange,
+  onDescriptionChange,
+  resolveValue,
 }: ClassicRuleProps) => {
   const { t } = useTranslation();
-  const [applyTo, setApplyTo] = useState(initialValues?.applyTo ?? "");
   const [ruleType, setRuleType] = useState(
     initialValues?.ruleType ?? "cell_value",
   );
@@ -164,38 +170,13 @@ const ClassicRule = ({
     setRuleOperator(currentOperatorOptions[0]?.value ?? "");
   }, [currentOperatorOptions[0]?.value]);
 
+  useEffect(() => {
+    onDescriptionChange?.(getRuleDescription({ ruleType, ruleOperator, ruleValue, ruleValue2, resolveValue }));
+  }, [ruleType, ruleOperator, ruleValue, ruleValue2, resolveValue, onDescriptionChange]);
+
   return (
     <>
       <div className="ic-edit-rule-content">
-        <div className="ic-edit-rule-section">
-          <div className="ic-edit-rule-section-title">
-            {t("conditional_formatting.apply_to")}
-          </div>
-          <div className="ic-edit-rule-field-wrapper">
-            <span className="ic-edit-rule-label">
-              {t("conditional_formatting.apply_to_range")}
-            </span>
-            <Input
-              autoFocus
-              type="text"
-              placeholder={t("conditional_formatting.apply_to_placeholder")}
-              value={applyTo}
-              onChange={(e) => setApplyTo(e.target.value)}
-              endAdornment={
-                <Tooltip title={t("conditional_formatting.use_selection")}>
-                  <IconButton
-                    size="sm"
-                    variant="secondary"
-                    icon={<SquareMousePointer />}
-                    aria-label={t("conditional_formatting.use_selection")}
-                    onClick={() => setApplyTo(getSelectedArea())}
-                    className="ic-edit-rule-range-button"
-                  />
-                </Tooltip>
-              }
-            />
-          </div>
-        </div>
         <div className="ic-edit-rule-section">
           <div className="ic-edit-rule-section-title">
             {t("conditional_formatting.format_rules")}

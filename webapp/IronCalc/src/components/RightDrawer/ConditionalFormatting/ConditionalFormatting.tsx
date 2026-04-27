@@ -17,6 +17,7 @@ import { parseRangeInSheet } from "../../Editor/util";
 import { Input } from "../../Input/Input";
 import { Tooltip } from "../../Tooltip/Tooltip";
 import EditRule, { type RuleData } from "./EditRule";
+import { steppedGradient } from "./ColorScaleRule";
 import { getRuleDescription } from "./ruleDescription";
 import "./conditional-formatting.css";
 
@@ -109,6 +110,7 @@ const ConditionalFormatting = ({
             onSave={handleSave}
             onCancel={handleCancel}
             getSelectedArea={getSelectedArea}
+            resolveValue={resolveRef}
             initialValues={
               editingRule ?? {
                 applyTo: getSelectedArea(),
@@ -208,6 +210,11 @@ const ConditionalFormatting = ({
                         .join(" ") || "none",
                   };
 
+                  const isColorScale = rule.ruleType === "color_scale";
+                  const colorScaleGradient = isColorScale && rule.colorScale
+                    ? steppedGradient([rule.colorScale.minimum.color, rule.colorScale.midpoint.color, rule.colorScale.maximum.color])
+                    : undefined;
+
                   return (
                     // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
                     <div
@@ -225,9 +232,9 @@ const ConditionalFormatting = ({
                     >
                       <div
                         className="ic-cf-list-item-preview"
-                        style={previewStyle}
+                        style={isColorScale ? { background: colorScaleGradient } : previewStyle}
                       >
-                        Aa
+                        {!isColorScale && "Aa"}
                       </div>
                       <div className="ic-cf-list-item-text">
                         <div className="ic-cf-list-item-rule">

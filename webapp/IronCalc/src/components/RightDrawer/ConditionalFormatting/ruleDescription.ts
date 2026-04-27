@@ -81,6 +81,10 @@ export function getRuleDescription({
     return v ? `Formula: ${v}` : "Formula";
   }
 
+  if (ruleType === "color_scale") {
+    return "Color Scale";
+  }
+
   const simpleLabels: Record<string, string> = {
     duplicate_values: "Duplicated Values",
     unique_values: "Unique Values",
