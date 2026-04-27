@@ -24,6 +24,7 @@ use crate::error::XlsxError;
 
 use super::{
     tables::load_table,
+    theme::Theme,
     util::{get_attribute, get_color, get_number},
 };
 
@@ -194,7 +195,7 @@ fn load_merge_cells(ws: Node) -> Result<Vec<String>, XlsxError> {
     Ok(merge_cells)
 }
 
-fn load_sheet_color(ws: Node) -> Result<Option<String>, XlsxError> {
+fn load_sheet_color(ws: Node, theme: &Theme) -> Result<Option<String>, XlsxError> {
     // <sheetPr>
     //     <tabColor theme="5" tint="-0.249977111117893"/>
     // </sheetPr>
@@ -209,7 +210,7 @@ fn load_sheet_color(ws: Node) -> Result<Option<String>, XlsxError> {
             .filter(|n| n.has_tag_name("tabColor"))
             .collect::<Vec<Node>>();
         if tabs.len() == 1 {
-            color = get_color(tabs[0])?;
+            color = get_color(tabs[0], theme)?;
         }
     }
     Ok(color)
@@ -742,6 +743,7 @@ pub(super) struct SheetSettings {
     pub comments: Vec<Comment>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn load_sheet<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
     path: &str,
@@ -750,6 +752,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     tables: &HashMap<String, Table>,
     shared_strings: &mut Vec<String>,
     defined_names: Vec<DefinedNameS>,
+    theme: &Theme,
 ) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
@@ -770,7 +773,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let sheet_view = get_sheet_view(ws);
 
     let cols = load_columns(ws)?;
-    let color = load_sheet_color(ws)?;
+    let color = load_sheet_color(ws, theme)?;
 
     // sheetData
     // <row r="1" spans="1:15" x14ac:dyDescent="0.35">
@@ -1165,6 +1168,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     workbook: &WorkbookXML,
     tables: &mut HashMap<String, Table>,
     shared_strings: &mut Vec<String>,
+    theme: &Theme,
 ) -> Result<(Vec<Worksheet>, u32), XlsxError> {
     // load comments and tables
     let mut comments = HashMap::new();
@@ -1221,6 +1225,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 tables,
                 shared_strings,
                 defined_names.clone(),
+                theme,
             )?;
             if is_selected {
                 selected_sheet = sheet_index;

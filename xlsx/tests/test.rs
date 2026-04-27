@@ -459,3 +459,14 @@ fn test_dynamic_arrays() {
     fs::remove_file(temp_file_name).unwrap();
     assert_eq_ignoring_metadata_and_name(model.workbook, model2.workbook);
 }
+
+#[test]
+// This tests theme color resolution against the workbook's `xl/theme/theme1.xml`
+// rather than the hardcoded Office 2013 palette. custom_theme_colors.xlsx ships
+// a custom theme where accent6 = #C9211E; B15 uses <fgColor theme="9"/>, which
+// must resolve to that red.
+fn test_workbook_theme_colors() {
+    let model = load_from_xlsx("tests/custom_theme_colors.xlsx", "en", "UTC", "en").unwrap();
+    let style_b15 = model.get_style_for_cell(0, 15, 2).unwrap();
+    assert_eq!(style_b15.fill.fg_color.as_deref(), Some("#C9211E"));
+}

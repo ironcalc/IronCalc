@@ -110,7 +110,7 @@ pub(crate) fn hsl_to_rgb(hsl: [i32; 3]) -> [i32; 3] {
 }
 
 /* 18.8.3 bgColor tint algorithm */
-fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
+pub(crate) fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
     if tint == 0.0 {
         return hex.to_string();
     }
@@ -125,15 +125,6 @@ fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
         hsl[2] = (l + (100.0 - l) * tint).round() as i32;
     };
     rgb_to_hex(hsl_to_rgb(hsl))
-}
-
-pub fn get_themed_color(theme: i32, tint: f64) -> String {
-    let color_theme = [
-        "#FFFFFF", "#000000", // "window",
-        "#E7E6E6", "#44546A", "#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47",
-        "#0563C1", "#954F72",
-    ];
-    hex_with_tint_to_rgb(color_theme[theme as usize], tint)
 }
 
 pub fn get_indexed_color(index: i32) -> String {
@@ -158,20 +149,6 @@ pub fn get_indexed_color(index: i32) -> String {
 #[cfg(test)]
 mod tests {
     use crate::import::colors::*;
-
-    #[test]
-    fn test_known_colors() {
-        let color1 = get_themed_color(0, -0.05);
-        assert_eq!(color1, "#F2F2F2");
-
-        let color2 = get_themed_color(5, -0.25);
-        // Excel returns "#C65911" (rounding error)
-        assert_eq!(color2, "#C55911");
-
-        let color3 = get_themed_color(4, 0.6);
-        // Excel returns "#b4c6e7" (rounding error)
-        assert_eq!(color3, "#B5C8E8");
-    }
 
     #[test]
     fn test_rgb_hex() {
