@@ -14,7 +14,7 @@ type ModelsMetadata = Record<
 >;
 
 // Returns the default UI language based on the browser settings
-// ['en-US', 'en-GB', 'es-ES', 'fr-FR', 'de-DE', 'it-IT']
+// ['en-US', 'en-GB', 'es-ES', 'fr-FR', 'de-DE', 'it-IT', 'uk-UA']
 function getDefaultUILocale(): string {
   const lang = navigator.language || navigator.languages[0] || "en-US";
   if (lang.startsWith("es")) {
@@ -27,6 +27,8 @@ function getDefaultUILocale(): string {
     return "en-GB";
   } else if (lang.startsWith("it")) {
     return "it-IT";
+  } else if (lang.startsWith("uk")) {
+    return "uk-UA";
   }
 
   return "en-US";
@@ -46,6 +48,9 @@ export function getShortLocaleCode(longCode: string): string {
     }
     case "it-IT": {
       return "it";
+    }
+    case "uk-UA": {
+      return "uk";
     }
     case "en-GB": {
       return "en-GB";

@@ -5,6 +5,7 @@ import translationEN from "./locale/en_us.json";
 import translationES from "./locale/es_es.json";
 import translationFR from "./locale/fr_fr.json";
 import translationIT from "./locale/it_it.json";
+import translationUK from "./locale/uk_ua.json";
 
 const resources = {
   "en-US": { translation: translationEN },
@@ -13,6 +14,7 @@ const resources = {
   "fr-FR": { translation: translationFR },
   "de-DE": { translation: translationDE },
   "it-IT": { translation: translationIT },
+  "uk-UA": { translation: translationUK },
 };
 
 i18n.use(initReactI18next).init({
