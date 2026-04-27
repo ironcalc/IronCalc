@@ -56,6 +56,19 @@ fn load_relationships<R: Read + std::io::Seek>(
     Ok(rels)
 }
 
+fn resolve_theme_path(rels: &HashMap<String, Relationship>) -> Option<String> {
+    let target = rels
+        .values()
+        .find(|r| r.rel_type.ends_with("/theme"))?
+        .target
+        .clone();
+    Some(if let Some(absolute) = target.strip_prefix('/') {
+        absolute.to_string()
+    } else {
+        format!("xl/{target}")
+    })
+}
+
 fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     name: String,
     reader: R,
@@ -67,7 +80,8 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     let mut shared_strings = read_shared_strings(&mut archive)?;
     let workbook = load_workbook(&mut archive)?;
     let rels = load_relationships(&mut archive)?;
-    let theme = Theme::load(&mut archive);
+    let theme_path = resolve_theme_path(&rels);
+    let theme = Theme::load(&mut archive, theme_path.as_deref());
     let mut tables = HashMap::new();
     let (worksheets, selected_sheet) = load_sheets(
         &mut archive,

@@ -62,15 +62,22 @@ impl Theme {
         hex_with_tint_to_rgb(&self.palette[position], tint)
     }
 
-    /// Reads `xl/theme/theme1.xml` from the archive and returns the resulting
-    /// palette. Falls back to [`Theme::default`] (and logs to stderr) when the
-    /// part is missing or cannot be parsed.
-    pub(crate) fn load<R: Read + std::io::Seek>(archive: &mut zip::ZipArchive<R>) -> Theme {
-        match try_load(archive) {
+    /// Reads the theme part at `path` (resolved from the workbook's
+    /// `_rels/workbook.xml.rels`). `None` means the workbook declares no theme
+    /// relationship, so we silently use [`Theme::default`]. A `Some` path that
+    /// fails to parse falls back to the default and logs to stderr.
+    pub(crate) fn load<R: Read + std::io::Seek>(
+        archive: &mut zip::ZipArchive<R>,
+        path: Option<&str>,
+    ) -> Theme {
+        let Some(path) = path else {
+            return Theme::default();
+        };
+        match try_load(archive, path) {
             Ok(theme) => theme,
             Err(e) => {
                 eprintln!(
-                    "IronCalc: falling back to default theme palette (could not read xl/theme/theme1.xml: {e})"
+                    "IronCalc: falling back to default theme palette (could not read {path}: {e})"
                 );
                 Theme::default()
             }
@@ -78,8 +85,11 @@ impl Theme {
     }
 }
 
-fn try_load<R: Read + std::io::Seek>(archive: &mut zip::ZipArchive<R>) -> Result<Theme, XlsxError> {
-    let mut file = archive.by_name("xl/theme/theme1.xml")?;
+fn try_load<R: Read + std::io::Seek>(
+    archive: &mut zip::ZipArchive<R>,
+    path: &str,
+) -> Result<Theme, XlsxError> {
+    let mut file = archive.by_name(path)?;
     let mut text = String::new();
     file.read_to_string(&mut text)?;
     let doc = roxmltree::Document::parse(&text)?;
@@ -87,7 +97,7 @@ fn try_load<R: Read + std::io::Seek>(archive: &mut zip::ZipArchive<R>) -> Result
     let scheme = doc
         .descendants()
         .find(|n| n.has_tag_name("clrScheme"))
-        .ok_or_else(|| XlsxError::Xml("Missing clrScheme in theme1.xml".to_string()))?;
+        .ok_or_else(|| XlsxError::Xml(format!("Missing clrScheme in {path}")))?;
 
     let mut palette: [String; PALETTE_LEN] = DEFAULT_PALETTE.map(String::from);
     for (i, tag) in SCHEME_TAGS.iter().enumerate() {
