@@ -79,7 +79,11 @@ export default defineConfig({
           {
             text: "Serial Numbers",
             link: "/features/serial-numbers",
-          },		  
+          },
+          {
+            text: "Regional Settings",
+            link: "/features/regional-settings",
+          },
           {
             text: "Unsupported Features",
             link: "/features/unsupported-features",

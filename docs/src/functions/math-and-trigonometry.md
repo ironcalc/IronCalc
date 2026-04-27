@@ -39,16 +39,15 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | DEGREES         | <Badge type="tip" text="Available" /> | [DEGREES](math_and_trigonometry/degrees) |
 | EVEN            | <Badge type="tip" text="Available" /> | [EVEN](math_and_trigonometry/even) |
 | EXP             | <Badge type="tip" text="Available" /> | –             |
-| FACT            | <Badge type="info" text="Not implemented yet" /> | –             |
-| FACTDOUBLE      | <Badge type="info" text="Not implemented yet" /> | –             |
+| FACT            | <Badge type="tip" text="Available" />          | –             |
+| FACTDOUBLE      | <Badge type="tip" text="Available" />          | –             |
 | FLOOR           | <Badge type="tip" text="Available" />          | –             |
 | FLOOR.MATH      | <Badge type="tip" text="Available" />          | –             |
 | FLOOR.PRECISE   | <Badge type="tip" text="Available" />          | –             |
-| GCD             | <Badge type="info" text="Not implemented yet" /> | –             |
+| GCD             | <Badge type="tip" text="Available" />          | –             |
 | INT             | <Badge type="tip" text="Available" />          | –             |
 | ISO.CEILING     | <Badge type="tip" text="Available" />          | –             |
-| LCM             | <Badge type="info" text="Not implemented yet" /> | –             |
-| LET             | <Badge type="info" text="Not implemented yet" /> | –             |
+| LCM             | <Badge type="tip" text="Available" />          | –             |
 | LN              | <Badge type="tip" text="Available" />           | –             |
 | LOG             | <Badge type="tip" text="Available" />           | –             |
 | LOG10           | <Badge type="tip" text="Available" />           | –             |
@@ -66,7 +65,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | QUOTIENT        | <Badge type="tip" text="Available" /> | [QUOTIENT](math_and_trigonometry/quotient) |
 | RADIANS         | <Badge type="tip" text="Available" /> | [RADIANS](math_and_trigonometry/radians) |
 | RAND            | <Badge type="tip" text="Available" />          | –             |
-| RANDARRAY       | <Badge type="info" text="Not implemented yet" /> | –             |
+| RANDARRAY       | <Badge type="tip" text="Available" />          | –             |
 | RANDBETWEEN     | <Badge type="tip" text="Available" />          | –             |
 | ROMAN           | <Badge type="tip" text="Available" />          | –             |
 | ROUND           | <Badge type="tip" text="Available" />          | –             |
@@ -75,13 +74,13 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | SEC             | <Badge type="tip" text="Available" />          | –             |
 | SECH            | <Badge type="tip" text="Available" />          | –             |
 | SERIESSUM       | <Badge type="info" text="Not implemented yet" /> | –             |
-| SEQUENCE        | <Badge type="info" text="Not implemented yet" /> | –             |
+| SEQUENCE        | <Badge type="tip" text="Available" />          | –             |
 | SIGN            | <Badge type="tip" text="Available" /> | –             |
 | SIN             | <Badge type="tip" text="Available" />          | [SIN](math_and_trigonometry/sin) |
 | SINH            | <Badge type="tip" text="Available" />          | [SINH](math_and_trigonometry/sinh) |
 | SQRT            | <Badge type="tip" text="Available" />          | –             |
 | SQRTPI          | <Badge type="tip" text="Available" />         | –             |
-| SUBTOTAL        | <Badge type="info" text="Not implemented yet" /> | –             |
+| SUBTOTAL        | <Badge type="tip" text="Available" />          | –             |
 | SUM             | <Badge type="tip" text="Available" />          | –             |
 | SUMIF           | <Badge type="tip" text="Available" />          | –             |
 | SUMIFS          | <Badge type="tip" text="Available" />         | –             |

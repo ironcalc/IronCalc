@@ -11,9 +11,10 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 
 | Function   | Status                                         | Documentation |
 | ---------- | ---------------------------------------------- | ------------- |
-| CELL       | <Badge type="tip" text="Available" />          | –             |
-| ERROR.TYPE | <Badge type="tip" text="Available" />          | –             |
-| INFO       | <Badge type="info" text="Not implemented yet" /> | –             |
+| CELL        | <Badge type="tip" text="Available" />          | [CELL](information/cell)             |
+| ERROR.TYPE  | <Badge type="tip" text="Available" />          | –             |
+| FORMULATEXT | <Badge type="tip" text="Available" />          | [FORMULATEXT](lookup_and_reference/formulatext)             |
+| INFO        | <Badge type="tip" text="Available" />          | [INFO](information/info)             |
 | ISBLANK    | <Badge type="tip" text="Available" />          | –             |
 | ISERR      | <Badge type="tip" text="Available" />          | –             |
 | ISERROR    | <Badge type="tip" text="Available" />          | –             |

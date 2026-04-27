@@ -490,7 +490,7 @@ impl<'a> Model<'a> {
             Ok(s) => s.to_uppercase(),
             Err(e) => return e,
         };
-        // We take the release version from the git tag at build time.
+        // We take the release version from the git tag at build time. (v0.7.1-202-g847240b0 for example)
         // See build.rs
         let release = env!("GIT_VERSION");
         match type_text.as_str() {

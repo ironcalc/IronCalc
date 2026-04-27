@@ -20,7 +20,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | IFNA      | <Badge type="tip" text="Available" />          | –             |
 | IFS       | <Badge type="tip" text="Available" />          | –             |
 | LAMBDA    | <Badge type="info" text="Not implemented yet" /> | –             |
-| LET       | <Badge type="info" text="Not implemented yet" /> | –             |
+| LET       | <Badge type="tip" text="Available" />          | –             |
 | MAKEARRAY | <Badge type="info" text="Not implemented yet" /> | –             |
 | MAP       | <Badge type="info" text="Not implemented yet" /> | –             |
 | NOT       | <Badge type="tip" text="Available" />          | –             |
