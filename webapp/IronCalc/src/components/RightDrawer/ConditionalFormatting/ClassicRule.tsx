@@ -203,7 +203,6 @@ const ClassicRule = ({
               {t("conditional_formatting.apply_to_range")}
             </span>
             <Input
-              autoFocus
               type="text"
               placeholder={t("conditional_formatting.apply_to_placeholder")}
               value={applyTo}

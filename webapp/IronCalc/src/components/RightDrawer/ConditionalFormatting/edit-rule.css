@@ -79,16 +79,6 @@
   border-bottom: 2px solid var(--palette-primary-main);
 }
 
-.ic-edit-rule-content--placeholder {
-  flex: 1;
-}
-
-.ic-color-scale-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 6px;
-}
-
 .ic-cs-settings-row {
   display: flex;
   align-items: center;
@@ -112,18 +102,6 @@
   border-radius: 3px;
   border: none;
   cursor: pointer;
-}
-
-.ic-color-scale-swatch {
-  height: auto;
-  aspect-ratio: 4 / 3;
-}
-
-.ic-color-scale-swatch--selected {
-  box-shadow:
-    0 0 0 2px var(--palette-common-black),
-    inset 0 0 0 1px
-    color-mix(in srgb, var(--palette-common-black) 12%, transparent);
 }
 
 .ic-edit-rule-section {
@@ -150,12 +128,6 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.ic-edit-rule-line-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .ic-edit-rule-condition {
@@ -259,10 +231,6 @@
   justify-content: center;
   gap: 3px;
   height: 100%;
-}
-
-.ic-is-icon {
-  line-height: 1;
 }
 
 .ic-edit-rule-checkbox-row {

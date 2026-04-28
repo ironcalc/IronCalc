@@ -316,7 +316,9 @@ const DataBarsRule = ({
             </div>
           </div>
           <div className="ic-fsp-presets-section">
-            <div className="ic-edit-rule-label">Preferences</div>
+            <div className="ic-edit-rule-label">
+              {t("conditional_formatting.data_bars_preferences")}
+            </div>
             <label className="ic-edit-rule-checkbox-row">
               <input
                 type="checkbox"

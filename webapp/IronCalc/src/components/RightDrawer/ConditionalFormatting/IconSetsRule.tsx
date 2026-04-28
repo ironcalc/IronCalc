@@ -256,7 +256,7 @@ export interface IconSetsRuleData {
   thresholds: {
     operator: "<" | "<=";
     value: string;
-    type: string;
+    type: ThresholdType;
     color: string;
   }[];
 }
@@ -268,7 +268,6 @@ interface IconSetsRuleProps {
   onApplyToChange: (val: string) => void;
   getSelectedArea: () => string;
   onPreviewChange?: (icon: IconPreviewInfo) => void;
-  initialValues?: IconSetsRuleData;
 }
 
 const IconSetsRule = ({
