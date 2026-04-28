@@ -34,7 +34,7 @@ ACOSH returns a [number](/features/value-types#numbers) in the range [0, +∞) t
 
 ## Examples
 
-<IronCalcEmbed src="/examples/acosh.ic"/>.
+<IronCalcEmbed src="/examples/acosh.ic"/>
 
 ## Links
 * For more information about inverse hyperbolic functions, visit Wikipedia's [Inverse hyperbolic functions](https://en.wikipedia.org/wiki/Inverse_hyperbolic_functions) page.

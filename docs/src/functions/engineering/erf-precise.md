@@ -45,7 +45,7 @@ $$
 * The error function is a [transcendental](https://en.wikipedia.org/wiki/Transcendental_function), non-algebraic mathematical function. IronCalc implements the ERF.PRECISE function by numerical approximation using a power series.
 ## Examples
 
-<IronCalcEmbed src="/examples/erf.ic"/>
+<IronCalcEmbed src="/examples/erf-precise.ic"/>
 
 ## Links
 * See also IronCalc's [ERF](/functions/engineering/erf.md), [ERFC](/functions/engineering/erfc.md) and [ERFC.PRECISE](/functions/engineering/erfc-precise.md) functions.

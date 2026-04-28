@@ -29,7 +29,7 @@ ATAN returns a number in radians in the range [-$\pi$/2 to +$\pi$/2] that is the
 
 ## Examples
 
-<IronCalcEmbed src="/examples/atan2.ic"/>
+<IronCalcEmbed src="/examples/atan.ic"/>
 
 
 ## Links

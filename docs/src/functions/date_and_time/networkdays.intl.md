@@ -69,7 +69,7 @@ IronCalc utilizes Rust's [chrono](https://docs.rs/chrono/latest/chrono/) crate t
 
 ## Examples
 
-<IronCalcEmbed src="/examples/networkdays-int.ic"/>
+<IronCalcEmbed src="/examples/networkdays-intl.ic"/>
 
 ## Links
 * See also IronCalc's [NETWORKDAYS](/functions/date_and_time/networkdays.md) function for the basic version with fixed weekends.
