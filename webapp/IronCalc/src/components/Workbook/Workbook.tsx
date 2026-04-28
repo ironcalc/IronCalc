@@ -712,7 +712,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           setRedrawId((id) => id + 1);
         }}
         fillColor={style.fill.fg_color || "#FFFFFF"}
-        fontColor={style.font.color}
+        fontColor={style.font.color || "#000000"}
         fontSize={style.font.sz}
         bold={style.font.b}
         underline={style.font.u}
