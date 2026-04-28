@@ -447,7 +447,12 @@ impl Default for Font {
             b: false,
             i: false,
             sz: 13,
-            color: Some("#000000".to_string()),
+            // No color set means "use the automatic/default color" — equivalent to
+            // <color auto="1"/> in OOXML and to a <font> with no <color> child.
+            // Setting Some("#000000") here would cause the exporter to emit an
+            // explicit <color rgb="FF000000"/>, indistinguishable on reload from
+            // a user-chosen black.
+            color: None,
             name: "Calibri".to_string(),
             family: 2,
             scheme: FontScheme::Minor,
