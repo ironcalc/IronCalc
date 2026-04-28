@@ -31,7 +31,8 @@ ASIN returns a number in radians in the range [-$\pi$/2 to +$\pi$/2] that is the
 <center><img src="/functions/images/arcsine-curve.png" width="350" alt="Graph showing sin(x) for x between -2π and +2π."></center>
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=asin).
+
+<IronCalcEmbed src="/examples/asin.ic"/>
 
 ## Links
 * For more information about inverse trigonometric functions, visit Wikipedia's [Inverse trigonometric functions](https://en.wikipedia.org/wiki/Inverse_trigonometric_functions) page.

@@ -28,8 +28,10 @@ DAY returns an integer [number](/features/value-types#numbers) in the range [1, 
 <!--@include: ../markdown-snippets/error-type-details.txt-->
 ## Details
 IronCalc utilizes Rust's [chrono](https://docs.rs/chrono/latest/chrono/) crate to implement the DAY function.
+
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=day).
+
+<IronCalcEmbed src="/examples/day.ic"/>
 
 ## Links
 * See also IronCalc's [MONTH](/functions/date_and_time/month.md) and [YEAR](/functions/date_and_time/year.md) functions.

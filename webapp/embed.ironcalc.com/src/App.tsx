@@ -16,6 +16,8 @@ function App() {
   useEffect(() => {
     let active = true;
     let parentOrigin: string | null = null;
+    let wasmReady = false;
+    let pendingInit = false;
 
     function onMessage(event: MessageEvent<IronCalcMessage>) {
       if (event.source !== window.parent) {
@@ -29,8 +31,12 @@ function App() {
 
       if (data.type === "ironcalc:init:v1") {
         parentOrigin = event.origin;
-
-        window.parent.postMessage({ type: "ironcalc:ready:v1" }, parentOrigin);
+        if (wasmReady) {
+          window.parent.postMessage({ type: "ironcalc:ready:v1" }, parentOrigin);
+        } else {
+          // WASM still loading — defer the reply until init() completes
+          pendingInit = true;
+        }
         return;
       }
 
@@ -47,11 +53,16 @@ function App() {
     }
 
     async function start() {
+      // Register before awaiting WASM so we never miss ironcalc:init:v1
+      window.addEventListener("message", onMessage);
       await init();
       if (!active) {
         return;
       }
-      window.addEventListener("message", onMessage);
+      wasmReady = true;
+      if (pendingInit && parentOrigin) {
+        window.parent.postMessage({ type: "ironcalc:ready:v1" }, parentOrigin);
+      }
     }
 
     start();
