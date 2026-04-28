@@ -1,11 +1,12 @@
 #![allow(clippy::unwrap_used)]
 
-use colors::{get_indexed_color, get_themed_color};
+use colors::get_indexed_color;
 use roxmltree::{ExpandedName, Node};
 
 use crate::error::XlsxError;
 
 use super::colors;
+use super::theme::Theme;
 
 pub(crate) fn get_number(node: Node, s: &str) -> i32 {
     node.attribute(s).unwrap_or("0").parse::<i32>().unwrap_or(0)
@@ -36,7 +37,7 @@ pub(super) fn get_value_or_default(node: &Node, tag_name: &str, default: &str) -
     }
 }
 
-pub(super) fn get_color(node: Node) -> Result<Option<String>, XlsxError> {
+pub(super) fn get_color(node: Node, theme: &Theme) -> Result<Option<String>, XlsxError> {
     // 18.3.1.15 color (Data Bar Color)
     if node.has_attribute("rgb") {
         let mut val = node.attribute("rgb").unwrap().to_string();
@@ -51,12 +52,12 @@ pub(super) fn get_color(node: Node) -> Result<Option<String>, XlsxError> {
         Ok(Some(rgb))
     // Color::Indexed(val)
     } else if node.has_attribute("theme") {
-        let theme = node.attribute("theme").unwrap().parse::<i32>()?;
+        let theme_index = node.attribute("theme").unwrap().parse::<i32>()?;
         let tint = match node.attribute("tint") {
             Some(t) => t.parse::<f64>().unwrap_or(0.0),
             None => 0.0,
         };
-        let rgb = get_themed_color(theme, tint);
+        let rgb = theme.resolve(theme_index, tint);
         Ok(Some(rgb))
     // Color::Theme { theme, tint }
     } else if node.has_attribute("auto") {
