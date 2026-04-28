@@ -426,7 +426,7 @@ fn to_string_moved(
             to_string_moved(left, move_context, locale, language),
             to_string_moved(right, move_context, locale, language),
         ),
-        InvalidFunctionKind { name, args } => {
+        NamedFunctionKind { name, args, id: _ } => {
             move_function(name, args, move_context, locale, language)
         }
         FunctionKind { kind, args } => {
@@ -515,5 +515,7 @@ fn to_string_moved(
                 to_string_moved(child, move_context, locale, language)
             )
         }
+        LambdaDefKind { .. } => todo!(),
+        LambdaCallKind { .. } => todo!(),
     }
 }

@@ -704,7 +704,9 @@ fn stringify(
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
                 | FunctionKind { .. }
-                | InvalidFunctionKind { .. }
+                | NamedFunctionKind { .. }
+                | LambdaDefKind { .. }
+                | LambdaCallKind { .. }
                 | ArrayKind(_)
                 | ErrorKind(_)
                 | ParseErrorKind { .. }
@@ -747,7 +749,9 @@ fn stringify(
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
                 | FunctionKind { .. }
-                | InvalidFunctionKind { .. }
+                | NamedFunctionKind { .. }
+                | LambdaDefKind { .. }
+                | LambdaCallKind { .. }
                 | ArrayKind(_)
                 | UnaryKind { .. }
                 | ErrorKind(_)
@@ -770,7 +774,7 @@ fn stringify(
             };
             format!("{x}^{y}")
         }
-        InvalidFunctionKind { name, args } => format_function(
+        NamedFunctionKind { name, args, id: _ } => format_function(
             &name.to_lowercase(),
             args,
             context,
@@ -842,7 +846,9 @@ fn stringify(
                     | OpConcatenateKind { .. }
                     | OpProductKind { .. }
                     | FunctionKind { .. }
-                    | InvalidFunctionKind { .. }
+                    | NamedFunctionKind { .. }
+                    | LambdaDefKind { .. }
+                    | LambdaCallKind { .. }
                     | ArrayKind(_)
                     | DefinedNameKind(_)
                     | TableNameKind(_)
@@ -928,6 +934,63 @@ fn stringify(
                     language
                 )
             )
+        }
+        LambdaDefKind { parameters, body } => {
+            let lambda_name = if export_to_excel {
+                "_xlfn.LAMBDA"
+            } else {
+                "LAMBDA"
+            };
+            let arg_sep = if locale.numbers.symbols.decimal == "." {
+                ","
+            } else {
+                ";"
+            };
+            let mut parts: Vec<String> = parameters
+                .iter()
+                .map(|p| {
+                    if export_to_excel {
+                        format!("_xlpm.{}", p.name)
+                    } else {
+                        p.name.clone()
+                    }
+                })
+                .collect();
+            parts.push(stringify(
+                body,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            ));
+            format!("{}({})", lambda_name, parts.join(arg_sep))
+        }
+        LambdaCallKind { lambda, args } => {
+            let arg_sep = if locale.numbers.symbols.decimal == "." {
+                ","
+            } else {
+                ";"
+            };
+            // When the callee is a plain named variable (unknown identifier used as a function),
+            // use lowercase to distinguish from real function calls in R1C1 format and
+            // to match the display behaviour of InvalidFunctionKind.
+            let lambda_str = match lambda.as_ref() {
+                Node::NamedVariableKind { name, id: _ } => name.to_lowercase(),
+                other => stringify(
+                    other,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                ),
+            };
+            let call_args: Vec<String> = args
+                .iter()
+                .map(|a| stringify(a, context, displace_data, export_to_excel, locale, language))
+                .collect();
+            format!("{}({})", lambda_str, call_args.join(arg_sep))
         }
         ImplicitIntersection {
             automatic: _,
@@ -1044,7 +1107,11 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
                 rename_sheet_in_node(arg, sheet_index, new_name);
             }
         }
-        Node::InvalidFunctionKind { name: _, args } => {
+        Node::NamedFunctionKind {
+            name: _,
+            args,
+            id: _,
+        } => {
             for arg in args {
                 rename_sheet_in_node(arg, sheet_index, new_name);
             }
@@ -1081,6 +1148,18 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
         Node::EmptyArgKind => {}
+        Node::LambdaDefKind {
+            parameters: _,
+            body,
+        } => {
+            rename_sheet_in_node(body, sheet_index, new_name);
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            rename_sheet_in_node(lambda, sheet_index, new_name);
+            for arg in args {
+                rename_sheet_in_node(arg, sheet_index, new_name);
+            }
+        }
     }
 }
 
@@ -1131,7 +1210,11 @@ pub(crate) fn rename_defined_name_in_node(
                 rename_defined_name_in_node(arg, name, scope, new_name);
             }
         }
-        Node::InvalidFunctionKind { name: _, args } => {
+        Node::NamedFunctionKind {
+            name: _,
+            args,
+            id: _,
+        } => {
             for arg in args {
                 rename_defined_name_in_node(arg, name, scope, new_name);
             }
@@ -1170,5 +1253,17 @@ pub(crate) fn rename_defined_name_in_node(
         Node::WrongRangeKind { .. } => {}
         Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
+        Node::LambdaDefKind {
+            parameters: _,
+            body,
+        } => {
+            rename_defined_name_in_node(body, name, scope, new_name);
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            rename_defined_name_in_node(lambda, name, scope, new_name);
+            for arg in args {
+                rename_defined_name_in_node(arg, name, scope, new_name);
+            }
+        }
     }
 }

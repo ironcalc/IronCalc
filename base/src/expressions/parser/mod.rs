@@ -17,6 +17,7 @@ implicit=> '@' primary | primary '#' | primary
 primary => '(' expr ')'
         => number
         => function '(' f_args ')'
+        => LAMBDA '(' f_args ')' '(' f_args ')'
         => name
         => string
         => '{' a_args '}'
@@ -49,6 +50,7 @@ use super::utils::number_to_column;
 
 use token::OpCompare;
 
+mod lambda;
 pub mod move_formula;
 pub mod static_analysis;
 pub mod stringify;
@@ -106,6 +108,12 @@ pub enum ArrayNode {
     Error(token::Error),
     /// An empty (blank) cell from a range reference.
     Empty,
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct NamedVariable {
+    name: String,
+    id: Option<u32>,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -177,7 +185,18 @@ pub enum Node {
         kind: Function,
         args: Vec<Node>,
     },
-    InvalidFunctionKind {
+    // LAMBDA(a,b, SQRT(a*a+b*b))
+    LambdaDefKind {
+        parameters: Vec<NamedVariable>,
+        body: Box<Node>,
+    },
+    // LAMBDA(a,b, SQRT(a*a+b*b))(3,4)
+    LambdaCallKind {
+        lambda: Box<Node>,
+        args: Vec<Node>,
+    },
+    NamedFunctionKind {
+        id: Option<u32>,
         name: String,
         args: Vec<Node>,
     },
@@ -767,8 +786,12 @@ impl<'a> Parser<'a> {
             TokenType::Ident(name) => {
                 let next_token = self.lexer.peek_token();
                 if next_token == TokenType::LeftParenthesis {
-                    // It's a function call "SUM(.."
                     self.lexer.advance_token();
+                    // It's a function call "SUM(.."
+                    // _xlfn.LAMBDA(_xlpm.a,_xlpm.b, SQRT(_xlpm.a*_xlpm.a+_xlpm.b*_xlpm.b))(3,4)
+                    if &name == "_xlfn.LAMBDA" || &name.to_uppercase() == "LAMBDA" {
+                        return self.parse_lambda();
+                    }
                     let args = match self.parse_function_args() {
                         Ok(s) => s,
                         Err(e) => return e,
@@ -830,7 +853,11 @@ impl<'a> Parser<'a> {
                             args,
                         };
                     }
-                    return Node::InvalidFunctionKind { name, args };
+                    return Node::NamedFunctionKind {
+                        name,
+                        args,
+                        id: None,
+                    };
                 }
                 let context = &self.context;
 
