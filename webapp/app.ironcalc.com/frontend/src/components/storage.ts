@@ -57,7 +57,7 @@ export function getShortLocaleCode(longCode: string): string {
 }
 
 // en-US => en, en-GB => en, es-ES => es, fr-FR => fr, de-DE => de, it-IT => it
-function getLanguageFromLocale(locale: string): string {
+export function getLanguageFromLocale(locale: string): string {
   return locale.split("-")[0];
 }
 
