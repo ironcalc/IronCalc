@@ -470,3 +470,12 @@ fn test_workbook_theme_colors() {
     let style_b15 = model.get_style_for_cell(0, 15, 2).unwrap();
     assert_eq!(style_b15.fill.fg_color.as_deref(), Some("#C9211E"));
 }
+
+#[test]
+// This tests the `xl/worksheets/_rels/sheet*` are parsed correctly
+// libreoffice sometimes exports .xlsx file with whitespace in the <Relationships> element
+fn test_relationship_whitespace_example() {
+    let mut model =
+        load_from_xlsx("tests/libreoffice_888_example.xlsx", "en", "UTC", "en").unwrap();
+    model.evaluate();
+}

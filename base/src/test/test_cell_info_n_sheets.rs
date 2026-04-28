@@ -33,3 +33,22 @@ fn arguments() {
     assert_eq!(model._get_text("A8"), *"1");
     assert_eq!(model._get_text("A9"), *"#N/IMPL!");
 }
+
+#[test]
+fn cell_filename() {
+    // Default workbook name is model
+    let mut model = new_empty_model();
+
+    model._set("A1", "=CELL(\"filename\")");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"[model.xlsx]Sheet1");
+
+    model.workbook.name = "Expenses".to_string();
+    model.rename_sheet("Sheet1", "2026").unwrap();
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"[Expenses.xlsx]2026");
+}
