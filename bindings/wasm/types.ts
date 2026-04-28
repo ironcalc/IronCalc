@@ -135,7 +135,7 @@ interface CellStyleFont {
   i: boolean;
   strike: boolean;
   sz: number;
-  color: string;
+  color?: string;
   name: string;
   family: number;
   scheme: string;

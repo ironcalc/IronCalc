@@ -348,7 +348,11 @@ export default class WorksheetCanvas {
     let color = this.theme.defaultTextColor;
 
     if (style.font) {
-      color = style.font.color;
+      // Font.color is optional: a missing color means "use the default" — fall back
+      // to the theme's default text color rather than leaving it undefined.
+      if (style.font.color) {
+        color = style.font.color;
+      }
       font = style.font.b ? `bold ${font}` : `400 ${font}`;
       if (style.font.i) {
         font = `italic ${font}`;

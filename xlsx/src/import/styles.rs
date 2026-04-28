@@ -93,8 +93,11 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         let mut b = false;
         let mut i = false;
         let mut strike = false;
-        // Default color is black
-        let mut color = Some("#000000".to_string());
+        // No <color> child is semantically equivalent to <color auto="1"/> in OOXML —
+        // both mean "use the automatic/default color", which we represent as None.
+        // Collapsing this to Some("#000000") would make it indistinguishable from an
+        // explicit <color rgb="FF000000"/>.
+        let mut color: Option<String> = None;
         let mut family = 2;
         let mut scheme = FontScheme::default();
         for feature in font.children() {
