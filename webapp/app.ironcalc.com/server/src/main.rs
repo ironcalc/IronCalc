@@ -123,7 +123,15 @@ async fn upload(data: Data<'_>, name: &str) -> io::Result<Vec<u8>> {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build()
+    let mut rocket = rocket::build()
         .attach(IronCalcDB::init())
-        .mount("/", routes![upload, download, share, get_model, get_model_list])
+        .mount("/", routes![upload, download, share, get_model, get_model_list]);
+
+    if let Ok(frontend_path) = std::env::var("IRONCALC_WEBAPP_DIR") {
+        if !frontend_path.is_empty() {
+            rocket = rocket.mount("/", rocket::fs::FileServer::from(frontend_path));
+        }
+    }
+
+    rocket
 }
