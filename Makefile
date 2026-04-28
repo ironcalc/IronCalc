@@ -37,7 +37,7 @@ test-python:
 	cd bindings/python && ./run_tests.sh && ./run_examples.sh
 
 .PHONY: tests
-tests: lint test-rust test-js test-python test-nodejs
+tests: lint test-rust test-js test-python test-nodejs test-language-bin
 
 .PHONY: remove-artifacts
 remove-artifacts:

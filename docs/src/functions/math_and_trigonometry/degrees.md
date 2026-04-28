@@ -31,11 +31,6 @@ DEGREES returns a [number](/features/value-types#numbers) that represents the va
 * If the value of the *angle* argument is not (or cannot be converted to) a [number](/features/value-types#numbers), then DEGREES returns the [`#VALUE!`](/features/error-types.md#value) error.
 <!--@include: ../markdown-snippets/error-type-details.txt-->
 
-<!--
-## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=degrees).
--->
-
 ## Links
 * For more information about angle conversions, visit Wikipedia's [Degree (angle)](https://en.wikipedia.org/wiki/Degree_(angle)) page.
 * See also IronCalc's [RADIANS](/functions/math_and_trigonometry/radians) function for converting degrees to radians.

@@ -30,7 +30,8 @@ COSH returns a real [number](/features/value-types#numbers) that is the hyperbol
 <center><img src="/functions/images/hyperboliccosine-curve.png" width="350" alt="Graph showing cosh(x)."></center>
 
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=cosh).
+
+<IronCalcEmbed src="/examples/cosh.ic"/>
 
 ## Links
 * For more information about hyperbolic functions, visit Wikipedia's [Hyperbolic functions](https://en.wikipedia.org/wiki/Hyperbolic_functions) page.

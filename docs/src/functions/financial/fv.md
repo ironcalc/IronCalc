@@ -46,7 +46,9 @@ $$ \text{fv} = -\text{pv} \times (1 + \text{rate})^{\text{nper}} - \dfrac{\text{
 * For any $\text{type}$, in the special case of $\text{rate} = 0$, $\text{fv}$ is given by the equation:
 $$ \text{fv} = -\text{pv} - (\text{pmt} \times \text{nper}) $$
 ## Examples
-[See some examples in IronCalc](https://app.ironcalc.com/?example=fv).
+
+<IronCalcEmbed src="/examples/fv.ic"/>
+
 
 ## Links
 * For more information about the concept of "future value" in finance, visit Wikipedia's [Future value](https://en.wikipedia.org/wiki/Future_value) page.

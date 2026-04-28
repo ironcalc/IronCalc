@@ -64,10 +64,6 @@ function mount(
   iframe.title = options.title ?? "IronCalc spreadsheet";
   iframe.loading = options.loading ?? "lazy";
 
-  iframe.onload = () => {
-    iframe.contentWindow?.postMessage({ type: "ironcalc:init:v1" }, "*");
-  };
-
   if (options.style) {
     Object.assign(iframe.style, options.style);
   }
@@ -75,12 +71,29 @@ function mount(
   const iframeUrl = new URL(iframe.src, window.location.href);
   const targetOrigin = iframeUrl.origin;
 
+  // The iframe registers its message listener only after WASM finishes loading,
+  // which happens after onload fires. Retry until we get ironcalc:ready:v1.
+  let retryInterval: ReturnType<typeof setInterval> | null = null;
+
+  iframe.onload = () => {
+    iframe.contentWindow?.postMessage({ type: "ironcalc:init:v1" }, "*");
+    retryInterval = setInterval(() => {
+      iframe.contentWindow?.postMessage({ type: "ironcalc:init:v1" }, "*");
+    }, 200);
+  };
+
+  function cleanup() {
+    if (retryInterval !== null) {
+      clearInterval(retryInterval);
+      retryInterval = null;
+    }
+    clearTimeout(timeoutId);
+    window.removeEventListener("message", onMessage);
+  }
+
   // Guard against the iframe never posting ironcalc-ready (e.g. network
   // failure), which would otherwise leave this listener registered indefinitely.
-  const timeoutId = setTimeout(
-    () => window.removeEventListener("message", onMessage),
-    30_000,
-  );
+  const timeoutId = setTimeout(() => cleanup(), 30_000);
 
   function onMessage(event: MessageEvent<IronCalcMessage>) {
     if (!iframe.contentWindow) {
@@ -98,8 +111,7 @@ function mount(
       return;
     }
 
-    clearTimeout(timeoutId);
-    window.removeEventListener("message", onMessage);
+    cleanup();
 
     if (options.workbookBytes) {
       iframe.contentWindow.postMessage(
