@@ -1,6 +1,7 @@
 import type { Preview } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
 import { I18nextProvider } from "react-i18next";
+import { PortalProvider } from "../src/components/PortalContext";
 import i18n from "../src/i18n";
 import type { PartialIronCalcThemeVariables } from "../src/theme";
 import { defaultThemeVariables, setThemeVariables } from "../src/theme/theme";
@@ -72,7 +73,9 @@ function PreviewProviders({
 
   return (
     <div ref={rootRef} className="ic-root">
-      <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+      <PortalProvider>
+        <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+      </PortalProvider>
     </div>
   );
 }

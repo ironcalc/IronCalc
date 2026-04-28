@@ -9,9 +9,9 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 import AdvancedColorPicker from "../AdvancedColorPicker.tsx/AdvancedColorPicker";
+import { Portal } from "../PortalContext";
 import { getFocusableElements } from "../util";
 import "./color-picker.css";
-import { createPortal } from "react-dom";
 import useKeyDown from "./useKeyDown";
 import { getCheckColor, isWhiteColor, mainColors, toneArrays } from "./util";
 
@@ -226,119 +226,120 @@ const ColorPicker = ({
     );
   }
 
-  return createPortal(
-    <div className="ic-menu-layer">
-      <div
-        className="ic-menu-backdrop"
-        onPointerDown={onClose}
-        aria-hidden="true"
-      />
-      <div
-        ref={panelRef}
-        className="ic-color-picker"
-        style={
-          {
-            top: `${position.top}px`,
-            left: `${position.left}px`,
-          } as CSSProperties
-        }
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("color_picker.add")}
-        onKeyDown={onKeyDown}
-        onPointerDown={onPointerDown}
-        onClick={(event) => {
-          // Otherwise the sheet would grab the keyboard focus
-          event.stopPropagation();
-        }}
-      >
-        <button
-          type="button"
-          className="ic-color-picker__menu-item"
-          onClick={() => handleColorSelect(defaultColor)}
-          data-nav-row={0}
-          data-nav-col={0}
+  return (
+    <Portal>
+      <div className="ic-menu-layer">
+        <div
+          className="ic-menu-backdrop"
+          onPointerDown={onClose}
+          aria-hidden="true"
+        />
+        <div
+          ref={panelRef}
+          className="ic-color-picker"
+          style={
+            {
+              top: `${position.top}px`,
+              left: `${position.left}px`,
+            } as CSSProperties
+          }
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("color_picker.add")}
+          onKeyDown={onKeyDown}
+          onPointerDown={onPointerDown}
+          onClick={(event) => {
+            // Otherwise the sheet would grab the keyboard focus
+            event.stopPropagation();
+          }}
         >
-          <span
-            className="ic-color-picker__menu-item-square"
-            style={{ backgroundColor: defaultColor }}
-            aria-hidden="true"
-          />
-          <span className="ic-color-picker__menu-item-text">{title}</span>
-        </button>
-
-        <div className="ic-color-picker__divider" />
-
-        <div className="ic-color-picker__colors-wrapper">
-          <div className="ic-color-picker__color-list">
-            {mainColors.map((presetColor, col) =>
-              renderColorSwatch(presetColor, 1, col),
-            )}
-          </div>
-
-          <div className="ic-color-picker__color-grid">
-            {toneArrays.map((tones, col) => (
-              <div
-                className="ic-color-picker__color-grid-col"
-                key={tones.join("-")}
-              >
-                {tones.map((presetColor, toneIndex) =>
-                  renderColorSwatch(presetColor, 2 + toneIndex, col),
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="ic-color-picker__divider" />
-
-        <div className="ic-color-picker__recent-label">
-          {t("color_picker.recent")}
-        </div>
-
-        <div className="ic-color-picker__recent-colors-list">
-          {recentColors.current.length > 0 ? (
-            recentColors.current.map((recentColor, col) => (
-              <button
-                key={recentColor}
-                type="button"
-                className={[
-                  "ic-color-picker__swatch",
-                  isWhiteColor(recentColor)
-                    ? "ic-color-picker__swatch--white"
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                style={{ backgroundColor: recentColor }}
-                onClick={() => {
-                  setSelectedColor(recentColor);
-                  handleColorSelect(recentColor);
-                }}
-                aria-label={recentColor}
-                data-nav-row={7}
-                data-nav-col={col}
-              />
-            ))
-          ) : (
-            <div className="ic-color-picker__empty" />
-          )}
-
           <button
             type="button"
-            className="ic-color-picker__plus-button"
-            onClick={() => setPickerOpen(true)}
-            title={t("color_picker.add")}
-            aria-label={t("color_picker.add")}
-            data-nav-row={7}
-            data-nav-col={recentColors.current.length}
+            className="ic-color-picker__menu-item"
+            onClick={() => handleColorSelect(defaultColor)}
+            data-nav-row={0}
+            data-nav-col={0}
           >
-            <Plus />
+            <span
+              className="ic-color-picker__menu-item-square"
+              style={{ backgroundColor: defaultColor }}
+              aria-hidden="true"
+            />
+            <span className="ic-color-picker__menu-item-text">{title}</span>
           </button>
+
+          <div className="ic-color-picker__divider" />
+
+          <div className="ic-color-picker__colors-wrapper">
+            <div className="ic-color-picker__color-list">
+              {mainColors.map((presetColor, col) =>
+                renderColorSwatch(presetColor, 1, col),
+              )}
+            </div>
+
+            <div className="ic-color-picker__color-grid">
+              {toneArrays.map((tones, col) => (
+                <div
+                  className="ic-color-picker__color-grid-col"
+                  key={tones.join("-")}
+                >
+                  {tones.map((presetColor, toneIndex) =>
+                    renderColorSwatch(presetColor, 2 + toneIndex, col),
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="ic-color-picker__divider" />
+
+          <div className="ic-color-picker__recent-label">
+            {t("color_picker.recent")}
+          </div>
+
+          <div className="ic-color-picker__recent-colors-list">
+            {recentColors.current.length > 0 ? (
+              recentColors.current.map((recentColor, col) => (
+                <button
+                  key={recentColor}
+                  type="button"
+                  className={[
+                    "ic-color-picker__swatch",
+                    isWhiteColor(recentColor)
+                      ? "ic-color-picker__swatch--white"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  style={{ backgroundColor: recentColor }}
+                  onClick={() => {
+                    setSelectedColor(recentColor);
+                    handleColorSelect(recentColor);
+                  }}
+                  aria-label={recentColor}
+                  data-nav-row={7}
+                  data-nav-col={col}
+                />
+              ))
+            ) : (
+              <div className="ic-color-picker__empty" />
+            )}
+
+            <button
+              type="button"
+              className="ic-color-picker__plus-button"
+              onClick={() => setPickerOpen(true)}
+              title={t("color_picker.add")}
+              aria-label={t("color_picker.add")}
+              data-nav-row={7}
+              data-nav-col={recentColors.current.length}
+            >
+              <Plus />
+            </button>
+          </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </Portal>
   );
 };
 

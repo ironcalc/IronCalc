@@ -1,6 +1,7 @@
 import type { Model } from "@ironcalc/wasm";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { I18nextProvider } from "react-i18next";
+import { PortalProvider } from "./components/PortalContext";
 import Workbook from "./components/Workbook/Workbook.tsx";
 import { WorkbookState } from "./components/workbookState.ts";
 import i18n from "./i18n";
@@ -39,9 +40,11 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
 
     return (
       <div ref={rootRef} className="ic-root">
-        <I18nextProvider i18n={i18n}>
-          <Workbook model={model} workbookState={new WorkbookState()} />
-        </I18nextProvider>
+        <PortalProvider>
+          <I18nextProvider i18n={i18n}>
+            <Workbook model={model} workbookState={new WorkbookState()} />
+          </I18nextProvider>
+        </PortalProvider>
       </div>
     );
   },
