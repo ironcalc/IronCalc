@@ -20,7 +20,8 @@ fn column_width() {
     assert!(!style.font.b);
     assert!(!style.font.u);
     assert!(!style.font.strike);
-    assert_eq!(style.font.color, Some("#000000".to_owned()));
+    // Default font has no color set — see Font::default() in types.rs.
+    assert_eq!(style.font.color, None);
 
     // Set the whole column style and check it works
     model.update_range_style(&range, "font.b", "true").unwrap();
