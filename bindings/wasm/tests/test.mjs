@@ -50,7 +50,9 @@ test('Styles work', () => {
         fill: { pattern_type: 'none' },
         font: {
             sz: 13,
-            color: '#000000',
+            // Default font has no color set (Font::default().color is None in Rust);
+            // serde_wasm_bindgen surfaces None as `undefined`.
+            color: undefined,
             name: 'Calibri',
             family: 2,
             scheme: 'minor'
@@ -65,7 +67,9 @@ test('Styles work', () => {
         fill: { pattern_type: 'none' },
         font: {
             sz: 13,
-            color: '#000000',
+            // Default font has no color set (Font::default().color is None in Rust);
+            // serde_wasm_bindgen surfaces None as `undefined`.
+            color: undefined,
             name: 'Calibri',
             family: 2,
             scheme: 'minor'
