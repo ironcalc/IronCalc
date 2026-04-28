@@ -22,7 +22,8 @@ fn basic_fonts() {
     assert!(!style.font.b);
     assert!(!style.font.u);
     assert!(!style.font.strike);
-    assert_eq!(style.font.color, Some("#000000".to_owned()));
+    // Default font has no color set — see Font::default() in types.rs.
+    assert_eq!(style.font.color, None);
 
     // bold
     model.update_range_style(&range, "font.b", "true").unwrap();
@@ -62,7 +63,8 @@ fn basic_fonts() {
     assert!(!style.font.b);
     assert!(!style.font.u);
     assert!(!style.font.strike);
-    assert_eq!(style.font.color, Some("#000000".to_owned()));
+    // After undo, font returns to the default — see Font::default() in types.rs.
+    assert_eq!(style.font.color, None);
 
     while model.can_redo() {
         model.redo().unwrap();
