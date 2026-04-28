@@ -89,6 +89,10 @@ export function getRuleDescription({
     return "Data Bars";
   }
 
+  if (ruleType === "icon_sets") {
+    return "Icon Sets";
+  }
+
   const simpleLabels: Record<string, string> = {
     duplicate_values: "Duplicated Values",
     unique_values: "Unique Values",

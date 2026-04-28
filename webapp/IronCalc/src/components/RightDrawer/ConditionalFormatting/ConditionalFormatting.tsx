@@ -19,6 +19,7 @@ import { Tooltip } from "../../Tooltip/Tooltip";
 import { steppedGradient } from "./ColorScaleRule";
 import { DataBarMiniChart } from "./DataBarsRule";
 import EditRule, { type RuleData } from "./EditRule";
+import { ALL_PRESETS } from "./IconSetsRule";
 import { getRuleDescription } from "./ruleDescription";
 import "./conditional-formatting.css";
 
@@ -221,6 +222,13 @@ const ConditionalFormatting = ({
                         ])
                       : undefined;
                   const isDataBars = rule.ruleType === "data_bars";
+                  const isIconSets = rule.ruleType === "icon_sets";
+                  const iconSetsFirstIcon =
+                    isIconSets && rule.iconSets
+                      ? ALL_PRESETS.find(
+                          (p) => p.id === rule.iconSets?.presetId,
+                        )?.icons[0]
+                      : undefined;
 
                   return (
                     // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
@@ -244,13 +252,25 @@ const ConditionalFormatting = ({
                             ? { background: colorScaleGradient }
                             : isDataBars
                               ? { position: "relative", overflow: "hidden" }
-                              : previewStyle
+                              : isIconSets
+                                ? { background: "var(--palette-common-white)" }
+                                : previewStyle
                         }
                       >
                         {isDataBars && rule.dataBars ? (
                           <DataBarMiniChart
                             color={rule.dataBars.color}
                             gradient={rule.dataBars.gradient}
+                          />
+                        ) : isIconSets && iconSetsFirstIcon ? (
+                          <iconSetsFirstIcon.Icon
+                            size={16}
+                            color={iconSetsFirstIcon.color}
+                            fill={
+                              iconSetsFirstIcon.filled
+                                ? iconSetsFirstIcon.color
+                                : "none"
+                            }
                           />
                         ) : (
                           !isColorScale && "Aa"

@@ -11,7 +11,10 @@ import DataBarsRule, {
   type DataBarsRuleData,
 } from "./DataBarsRule";
 import type { FormatStyle } from "./FormatStylePicker";
-import IconSetsRule from "./IconSetsRule";
+import IconSetsRule, {
+  type IconPreviewInfo,
+  type IconSetsRuleData,
+} from "./IconSetsRule";
 import "./edit-rule.css";
 
 export interface RuleData {
@@ -23,6 +26,7 @@ export interface RuleData {
   formatStyle: FormatStyle;
   colorScale?: ColorScaleRuleData;
   dataBars?: DataBarsRuleData;
+  iconSets?: IconSetsRuleData;
 }
 
 interface EditRuleProps {
@@ -77,6 +81,7 @@ const EditRule = ({
       roundCorners: false,
     },
   );
+  const [isPreview, setIsPreview] = useState<IconPreviewInfo | null>(null);
   const [csPreviewColors, setCsPreviewColors] = useState<
     [string, string, string]
   >(
@@ -120,13 +125,21 @@ const EditRule = ({
               ? { background: steppedGradient(csPreviewColors) }
               : activeTab === "data_bars"
                 ? { position: "relative" }
-                : headerPreviewStyle
+                : activeTab === "icon_sets"
+                  ? { background: "var(--palette-common-white)" }
+                  : headerPreviewStyle
           }
         >
           {activeTab === "data_bars" ? (
             <DataBarMiniChart
               color={dbPreview.color}
               gradient={dbPreview.gradient}
+            />
+          ) : activeTab === "icon_sets" && isPreview ? (
+            <isPreview.Icon
+              size={18}
+              color={isPreview.color}
+              fill={isPreview.filled ? isPreview.color : "none"}
             />
           ) : (
             activeTab !== "color_scale" && "Aa"
@@ -209,10 +222,22 @@ const EditRule = ({
       )}
       {activeTab === "icon_sets" && (
         <IconSetsRule
+          onSave={(iconSets) =>
+            onSave({
+              applyTo,
+              ruleType: "icon_sets",
+              ruleOperator: "",
+              ruleValue: "",
+              ruleValue2: "",
+              formatStyle: DEFAULT_FORMAT_STYLE,
+              iconSets,
+            })
+          }
           applyTo={applyTo}
           onApplyToChange={setApplyTo}
           getSelectedArea={getSelectedArea}
           onCancel={onCancel}
+          onPreviewChange={setIsPreview}
         />
       )}
     </div>
