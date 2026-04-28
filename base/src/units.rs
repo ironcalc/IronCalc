@@ -292,7 +292,7 @@ impl<'a> Model<'a> {
             Node::ErrorKind(_) => None,
             Node::ParseErrorKind { .. } => None,
             Node::EmptyArgKind => None,
-            Node::InvalidFunctionKind { .. } => None,
+            Node::NamedFunctionKind { .. } => None,
             Node::ArrayKind(_) => None,
             Node::DefinedNameKind(_) => None,
             Node::TableNameKind(_) => None,
@@ -301,6 +301,8 @@ impl<'a> Model<'a> {
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,
             Node::SpillRangeOperator { .. } => None,
+            Node::LambdaDefKind { .. } => None,
+            Node::LambdaCallKind { .. } => None,
         }
     }
 

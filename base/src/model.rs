@@ -491,7 +491,12 @@ impl<'a> Model<'a> {
                 self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1.powf(f2)))
             }
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
-            InvalidFunctionKind { name, args: _ } => {
+            NamedFunctionKind { name, args: _, id } => {
+                if let Some(_) = id {
+                    // Lookup the named function and evaluate it if found.
+                    todo!()
+                }
+                // If not found, return an error.
                 CalcResult::new_error(Error::NAME, cell, format!("Invalid function: {name}"))
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
@@ -624,6 +629,16 @@ impl<'a> Model<'a> {
                 }
                 _ => self.evaluate_node_in_context(child, cell),
             },
+            LambdaDefKind { .. } => CalcResult::new_error(
+                Error::NAME,
+                cell,
+                "LAMBDA evaluation is not yet implemented".to_string(),
+            ),
+            LambdaCallKind { .. } => CalcResult::new_error(
+                Error::NAME,
+                cell,
+                "LAMBDA call evaluation is not yet implemented".to_string(),
+            ),
         }
     }
 

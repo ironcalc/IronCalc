@@ -69,9 +69,11 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
-        | Node::InvalidFunctionKind { .. }
+        | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
-        | Node::ReferenceKind { .. } => {}
+        | Node::ReferenceKind { .. }
+        | Node::LambdaDefKind { .. }
+        | Node::LambdaCallKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
             // We need to check wether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
@@ -253,7 +255,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             // StaticResult::Unknown or Array is also valid
             StaticResult::Scalar
         }
-        Node::InvalidFunctionKind { .. } => {
+        Node::NamedFunctionKind { .. } => {
             // StaticResult::Unknown is also valid
             StaticResult::Scalar
         }
@@ -292,6 +294,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::SpillRangeOperator { .. } => StaticResult::Unknown,
+        Node::LambdaDefKind { .. } => StaticResult::Unknown,
+        Node::LambdaCallKind { .. } => StaticResult::Unknown,
     }
 }
 
