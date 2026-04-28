@@ -32,7 +32,7 @@ ASIN returns a number in radians in the range [-$\pi$/2 to +$\pi$/2] that is the
 
 ## Examples
 
-<IronCalcEmbed src="/examples/atan2.ic"/>
+<IronCalcEmbed src="/examples/asin.ic"/>
 
 ## Links
 * For more information about inverse trigonometric functions, visit Wikipedia's [Inverse trigonometric functions](https://en.wikipedia.org/wiki/Inverse_trigonometric_functions) page.
