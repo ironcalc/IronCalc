@@ -2,83 +2,12 @@
   position: relative;
 }
 
-.ic-format-menu {
-  position: fixed;
-  z-index: 1300;
-  border-radius: 8px;
-  padding: 4px 0;
-  min-width: 180px;
-  background: var(--palette-common-white);
-  box-shadow:
-    0px 5px 5px -3px rgb(0 0 0 / 20%),
-    0px 8px 10px 1px rgb(0 0 0 / 14%),
-    0px 3px 14px 2px rgb(0 0 0 / 12%);
-}
-
-.ic-format-menu > button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: calc(100% - 8px);
-  min-width: 172px;
-  height: 32px;
-  margin: 0 4px;
-  border: 0;
-  border-radius: 4px;
-  padding: 8px;
-  background: transparent;
-  color: var(--palette-common-black);
-  font-family: var(--typography-font-family);
-  font-size: var(--typography-font-size);
-  text-align: left;
-  cursor: pointer;
-}
-
-.ic-format-menu > button:hover {
-  background: var(--palette-grey-100);
-}
-
-.ic-format-menu > button:focus-visible {
-  outline: none;
-  background: var(--palette-grey-100);
-}
-
-/* left side (text + icon) */
-.ic-format-menu > button > span:first-child {
-  display: flex;
-  align-items: center;
-  color: var(--palette-common-black);
-  white-space: nowrap;
-}
-
-/* right side (example) */
-.ic-format-menu > button > span:nth-child(2) {
-  margin-left: 20px;
-  color: var(--palette-grey-400);
-  white-space: nowrap;
-}
-
-.ic-format-menu-divider {
-  width: 100%;
-  margin: 4px auto;
-  border-top: 1px solid var(--palette-grey-200);
-}
-
-.ic-format-menu > button svg {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  flex-shrink: 0;
-  color: currentColor;
-  visibility: hidden;
-}
-
-.ic-format-menu > button.is-selected svg {
-  visibility: visible;
-}
-
 .ic-format-menu-anchor {
   display: inline-flex;
   width: fit-content;
   flex: 0 0 auto;
+}
+
+.ic-format-menu-anchor[aria-expanded="true"] .ic-button--ghost {
+  background-color: var(--palette-grey-200);
 }
