@@ -32,7 +32,10 @@ function App() {
       if (data.type === "ironcalc:init:v1") {
         parentOrigin = event.origin;
         if (wasmReady) {
-          window.parent.postMessage({ type: "ironcalc:ready:v1" }, parentOrigin);
+          window.parent.postMessage(
+            { type: "ironcalc:ready:v1" },
+            parentOrigin,
+          );
         } else {
           // WASM still loading — defer the reply until init() completes
           pendingInit = true;
