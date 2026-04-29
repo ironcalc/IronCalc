@@ -93,6 +93,7 @@ export function Prompt({
           {message &&
             (typeof message === "string" ? <p>{message}</p> : message)}
           <Input
+            autoFocus
             {...inputProps}
             value={value}
             onChange={(event) => setValue(event.target.value)}
@@ -101,12 +102,9 @@ export function Prompt({
               if (event.key === "Escape") {
                 event.preventDefault();
                 closeModal();
-              } else if (
-                event.key === "Enter" &&
-                (event.metaKey || event.ctrlKey)
-              ) {
+              } else if (event.key === "Enter") {
                 event.preventDefault();
-                handleSubmit();
+                submitButtonRef.current?.focus();
               }
               inputProps?.onKeyDown?.(event);
             }}
