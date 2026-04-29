@@ -14,6 +14,9 @@ import { useAnchorPosition } from "./useAnchorPosition";
 import { useMenuKeyDown } from "./useMenuKeyDown";
 import { useMenuPosition } from "./useMenuPosition";
 
+const focusableSelector =
+  'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
 export const MenuContext = createContext<{ close: () => void } | null>(null);
 
 interface MenuTriggerProperties {
@@ -57,7 +60,13 @@ export function Menu(props: MenuProperties) {
   const close = useCallback(() => {
     if (isTriggerMode) {
       setUncontrolledOpen(false);
-      triggerPosition.triggerRef.current?.focus();
+      const trigger = triggerPosition.triggerRef.current;
+      if (trigger) {
+        const focusable = trigger.matches(focusableSelector)
+          ? trigger
+          : trigger.querySelector<HTMLElement>(focusableSelector);
+        focusable?.focus();
+      }
     } else {
       onClose?.();
     }

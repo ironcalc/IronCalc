@@ -114,6 +114,13 @@ export function MenuItemWithSubmenu({
     firstItem?.focus();
   }, [open, menuRef]);
 
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      if (activeSetOpen === setOpen) activeSetOpen = null;
+    };
+  }, []);
+
   function show() {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     if (activeSetOpen && activeSetOpen !== setOpen) activeSetOpen(false);

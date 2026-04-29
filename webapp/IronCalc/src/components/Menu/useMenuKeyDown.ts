@@ -29,7 +29,9 @@ export function useMenuKeyDown(
 
       case "ArrowUp": {
         event.preventDefault();
-        items[(currentIndex - 1 + items.length) % items.length]?.focus();
+        const prevIndex =
+          currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+        items[prevIndex]?.focus();
         break;
       }
 
