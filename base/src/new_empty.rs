@@ -10,7 +10,7 @@ use crate::{
         parser::{
             static_analysis::run_static_analysis_on_node,
             stringify::{rename_sheet_in_node, to_localized_string, to_rc_format},
-            Parser,
+            Node, Parser,
         },
         types::CellReferenceRC,
     },
@@ -113,15 +113,21 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn parse_defined_names(&mut self) {
+        // Collect first to avoid borrow conflicts when calling self.parser below.
+        let entries: Vec<(String, String, Option<u32>)> = self
+            .workbook
+            .defined_names
+            .iter()
+            .map(|dn| (dn.name.clone(), dn.formula.clone(), dn.sheet_id))
+            .collect();
+
         let mut parsed_defined_names = HashMap::new();
-        for defined_name in &self.workbook.defined_names {
+
+        for (name, formula, sheet_id) in entries {
             let parsed_defined_name_formula = if let Ok(reference) =
-                ParsedReference::parse_reference_formula(
-                    None,
-                    &defined_name.formula,
-                    self.locale,
-                    |name| self.get_sheet_index_by_name(name),
-                ) {
+                ParsedReference::parse_reference_formula(None, &formula, self.locale, |n| {
+                    self.get_sheet_index_by_name(n)
+                }) {
                 match reference {
                     ParsedReference::CellReference(cell_reference) => {
                         ParsedDefinedName::CellReference(cell_reference)
@@ -131,14 +137,33 @@ impl<'a> Model<'a> {
                     }
                 }
             } else {
-                ParsedDefinedName::InvalidDefinedNameFormula
+                // Try the full parser — the formula might be a LAMBDA definition.
+                // Defined-name formulas may carry a leading '='; strip it before parsing.
+                let formula_body = formula.strip_prefix('=').unwrap_or(&formula);
+                let dummy_ref = CellReferenceRC {
+                    sheet: self
+                        .workbook
+                        .worksheets
+                        .first()
+                        .map(|ws| ws.get_name())
+                        .unwrap_or_else(|| "Sheet1".to_string()),
+                    row: 1,
+                    column: 1,
+                };
+                match self.parser.parse(formula_body, &dummy_ref) {
+                    Node::LambdaDefKind { parameters, body } => {
+                        let param_names = parameters.iter().map(|p| p.name.clone()).collect();
+                        ParsedDefinedName::LambdaDefinition(param_names, *body)
+                    }
+                    _ => ParsedDefinedName::InvalidDefinedNameFormula,
+                }
             };
 
-            let local_sheet_index = if let Some(sheet_id) = defined_name.sheet_id {
-                if let Some(sheet_index) = self.get_sheet_index_by_sheet_id(sheet_id) {
-                    Some(sheet_index)
+            let local_sheet_index = if let Some(sid) = sheet_id {
+                if let Some(idx) = self.get_sheet_index_by_sheet_id(sid) {
+                    Some(idx)
                 } else {
-                    // TODO: Error: Sheet with given sheet_id not found.
+                    // Sheet with given sheet_id not found.
                     continue;
                 }
             } else {
@@ -146,7 +171,7 @@ impl<'a> Model<'a> {
             };
 
             parsed_defined_names.insert(
-                (local_sheet_index, defined_name.name.to_lowercase()),
+                (local_sheet_index, name.to_lowercase()),
                 parsed_defined_name_formula,
             );
         }
@@ -467,6 +492,8 @@ impl<'a> Model<'a> {
             view_id: 0,
             variable_stack: HashMap::new(),
             last_variable_id: 0,
+            lambdas: HashMap::new(),
+            last_lambda_id: 0,
         };
         model.parse_formulas();
         Ok(model)

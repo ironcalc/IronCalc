@@ -880,7 +880,7 @@ impl Model {
 
     #[wasm_bindgen(js_name = "isValidDefinedName")]
     pub fn is_valid_defined_name(
-        &self,
+        &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,

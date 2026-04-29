@@ -182,7 +182,7 @@ impl<'a> Model<'a> {
                             }
                         }
                         CalcResult::EmptyCell | CalcResult::EmptyArg => result.push(0.0),
-                        CalcResult::Array(_) => {
+                        CalcResult::Array(_) | CalcResult::Lambda { .. } => {
                             return Err(CalcResult::Error {
                                 error: Error::NIMPL,
                                 origin: cell,
@@ -433,7 +433,7 @@ impl<'a> Model<'a> {
                         | CalcResult::Number(_)
                         | CalcResult::Boolean(_)
                         | CalcResult::Error { .. } => counta += 1,
-                        CalcResult::Array(_) => {
+                        CalcResult::Array(_) | CalcResult::Lambda { .. } => {
                             return CalcResult::Error {
                                 error: Error::NIMPL,
                                 origin: cell,

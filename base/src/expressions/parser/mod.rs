@@ -112,8 +112,8 @@ pub enum ArrayNode {
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct NamedVariable {
-    name: String,
-    id: Option<u32>,
+    pub(crate) name: String,
+    pub(crate) id: Option<u32>,
 }
 
 #[derive(PartialEq, Clone, Debug)]

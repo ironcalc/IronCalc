@@ -12,10 +12,22 @@ use crate::{
 ///
 /// When a nested LET is encountered that binds the same name, the walk stops past that
 /// pair's value expression — the inner LET will assign its own id for subsequent uses.
-fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
+pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
     match node {
         Node::NamedVariableKind { name, id: var_id } if name == target && var_id.is_none() => {
             *var_id = Some(id);
+        }
+        Node::NamedFunctionKind {
+            name,
+            id: var_id,
+            args,
+        } => {
+            if name == target && var_id.is_none() {
+                *var_id = Some(id);
+            }
+            for arg in args.iter_mut() {
+                assign_variable_ids(arg, target, id);
+            }
         }
         Node::FunctionKind { kind, args } => {
             if *kind == Function::Let {

@@ -25,6 +25,10 @@ pub(crate) enum CalcResult {
     EmptyCell,
     EmptyArg,
     Array(Vec<Vec<ArrayNode>>),
+    Lambda {
+        name: Option<String>,
+        id: usize,
+    },
 }
 
 impl CalcResult {
