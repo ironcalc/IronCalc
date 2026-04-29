@@ -1,0 +1,64 @@
+.file-bar {
+  position: relative;
+  height: 60px;
+  min-height: 60px;
+  background: var(--palette-common-white);
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--palette-grey-300);
+  justify-content: space-between;
+}
+
+.file-bar-drawer-button {
+  color: var(--palette-grey-600);
+}
+
+/* Absolutely centered — needs position: relative on .file-bar */
+.file-bar-title-wrapper {
+  position: absolute;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.file-bar-desktop-menu {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Grows to fill remaining space, pushing right-side content to the edge */
+.file-bar-spacer {
+  flex-grow: 1;
+}
+
+.file-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-bar-cloud-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  background-color: transparent;
+  border-radius: 6px;
+  padding: 8px;
+  color: var(--palette-grey-400);
+}
+
+.file-bar-cloud-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.file-bar-cloud-button:hover {
+  color: var(--palette-grey-600);
+}
