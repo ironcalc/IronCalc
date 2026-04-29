@@ -111,7 +111,7 @@ function App() {
       }, 0);
     }
     start();
-  }, [i18n.changeLanguage]);
+  }, [i18n.changeLanguage, t]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: localStorageId needed to detect name changes (model mutates internally)
   useEffect(() => {
