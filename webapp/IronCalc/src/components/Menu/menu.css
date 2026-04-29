@@ -2,7 +2,6 @@
   position: fixed;
   font-family: var(--typography-font-family);
   font-size: var(--typography-font-size);
-  z-index: 1000;
 }
 
 .ic-menu {
@@ -28,6 +27,7 @@
   width: 100%;
   min-height: 32px;
   align-items: center;
+  font-size: var(--typography-font-size);
   gap: 8px;
   border: 0;
   border-radius: 4px;
