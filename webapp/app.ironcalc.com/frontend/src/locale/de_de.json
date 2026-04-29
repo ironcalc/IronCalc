@@ -65,7 +65,7 @@
       "delete_workbook": {
         "button": "Arbeitsmappe löschen",
         "title": "Sind Sie sicher?",
-        "subtitle": "Die Arbeitsmappe <bold>'{{workbookName}}'</bold> wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+        "subtitle": "Die Arbeitsmappe '{{workbookName}}' wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
         "confirm_button": "Ja, Arbeitsmappe löschen",
         "cancel_button": "Abbrechen"
       },

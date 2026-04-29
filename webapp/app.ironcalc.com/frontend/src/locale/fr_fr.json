@@ -65,7 +65,7 @@
       "delete_workbook": {
         "button": "Supprimer le classeur",
         "title": "Êtes-vous sûr ?",
-        "subtitle": "Le classeur <bold>'{{workbookName}}'</bold> sera définitivement supprimé. Cette action ne peut pas être annulée.",
+        "subtitle": "Le classeur '{{workbookName}}' sera définitivement supprimé. Cette action ne peut pas être annulée.",
         "confirm_button": "Oui, supprimer le classeur",
         "cancel_button": "Annuler"
       },

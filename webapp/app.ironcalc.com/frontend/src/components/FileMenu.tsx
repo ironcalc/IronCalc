@@ -236,18 +236,12 @@ export function FileMenu(props: {
           onModelUpload={props.onModelUpload}
         />
       </Modal>
-      <Modal
+      <DeleteWorkbookDialog
         open={isDeleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
-        aria-labelledby="delete-dialog-title"
-        aria-describedby="delete-dialog-description"
-      >
-        <DeleteWorkbookDialog
-          onClose={() => setDeleteDialogOpen(false)}
-          onConfirm={props.onDelete}
-          workbookName={selectedUuid ? models[selectedUuid].name : ""}
-        />
-      </Modal>
+        onConfirm={props.onDelete}
+        workbookName={selectedUuid ? models[selectedUuid].name : ""}
+      />
     </>
   );
 }

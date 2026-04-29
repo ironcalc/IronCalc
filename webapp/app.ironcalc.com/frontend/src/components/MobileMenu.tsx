@@ -262,18 +262,12 @@ export function MobileMenu(props: MobileMenuProps) {
           onModelUpload={props.onModelUpload}
         />
       </Modal>
-      <Modal
+      <DeleteWorkbookDialog
         open={isMobileDeleteDialogOpen}
         onClose={() => setMobileDeleteDialogOpen(false)}
-        aria-labelledby="mobile-delete-dialog-title"
-        aria-describedby="mobile-delete-dialog-description"
-      >
-        <DeleteWorkbookDialog
-          onClose={() => setMobileDeleteDialogOpen(false)}
-          onConfirm={props.onDelete}
-          workbookName={(selectedUuid && models[selectedUuid]?.name) || ""}
-        />
-      </Modal>
+        onConfirm={props.onDelete}
+        workbookName={(selectedUuid && models[selectedUuid]?.name) || ""}
+      />
     </>
   );
 }

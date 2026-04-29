@@ -1,182 +1,34 @@
-import styled from "@emotion/styled";
-import { Trash2 } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { Trans, useTranslation } from "react-i18next";
+import { Confirm } from "@ironcalc/workbook";
+import { useTranslation } from "react-i18next";
 
 interface DeleteWorkbookDialogProperties {
+  open: boolean;
   onClose: () => void;
   onConfirm: () => void;
   workbookName: string;
 }
 
-function DeleteWorkbookDialog(properties: DeleteWorkbookDialogProperties) {
+function DeleteWorkbookDialog({
+  open,
+  onClose,
+  onConfirm,
+  workbookName,
+}: DeleteWorkbookDialogProperties) {
   const { t } = useTranslation();
-  const deleteButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (deleteButtonRef.current) {
-      deleteButtonRef.current.focus();
-    }
-  }, []);
-
   return (
-    <DialogWrapper
-      tabIndex={-1}
-      onKeyDown={(event) => {
-        if (event.code === "Escape") {
-          properties.onClose();
-        }
-      }}
-      aria-labelledby="delete-dialog-title"
-      aria-describedby="delete-dialog-description"
-    >
-      <IconWrapper>
-        <Trash2 />
-      </IconWrapper>
-      <ContentWrapper>
-        <Title>{t("file_bar.file_menu.delete_workbook.title")}</Title>
-        <Body>
-          <Trans
-            i18nKey="file_bar.file_menu.delete_workbook.subtitle"
-            components={{ bold: <strong /> }}
-            values={{
-              workbookName: properties.workbookName,
-            }}
-          />
-        </Body>
-        <ButtonGroup>
-          <DeleteButton
-            onClick={() => {
-              properties.onConfirm();
-              properties.onClose();
-            }}
-            ref={deleteButtonRef}
-          >
-            {t("file_bar.file_menu.delete_workbook.confirm_button")}
-          </DeleteButton>
-          <CancelButton onClick={properties.onClose}>
-            {t("file_bar.file_menu.delete_workbook.cancel_button")}
-          </CancelButton>
-        </ButtonGroup>
-      </ContentWrapper>
-    </DialogWrapper>
+    <Confirm
+      open={open}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      title={t("file_bar.file_menu.delete_workbook.title")}
+      message={t("file_bar.file_menu.delete_workbook.subtitle", {
+        workbookName,
+      })}
+      confirmLabel={t("file_bar.file_menu.delete_workbook.confirm_button")}
+      cancelLabel={t("file_bar.file_menu.delete_workbook.cancel_button")}
+      variant="destructive"
+    />
   );
 }
-
-DeleteWorkbookDialog.displayName = "DeleteWorkbookDialog";
-
-// some colors taken from the IronCalc palette
-const COMMON_WHITE = "#FFF";
-
-const ERROR_MAIN = "#EB5757";
-const ERROR_DARK = "#CB4C4C";
-
-const GREY_200 = "#EEEEEE";
-const GREY_300 = "#E0E0E0";
-const GREY_700 = "#616161";
-const GREY_900 = "#333333";
-
-const PRIMARY_MAIN = "#F2994A";
-const PRIMARY_DARK = "#D68742";
-
-const DialogWrapper = styled.div`
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 12px;
-  border-radius: 8px;
-  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
-  width: 280px;
-  max-width: calc(100% - 40px);
-  z-index: 50;
-  font-family: "Inter", sans-serif;
-`;
-
-const IconWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  background-color: ${ERROR_MAIN}1A;
-  margin: 12px auto 0 auto;
-  color: ${ERROR_MAIN};
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-const ContentWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  word-break: break-word;
-`;
-
-const Title = styled.h2`
-  margin: 0;
-  font-weight: 600;
-  font-size: inherit;
-  color: ${GREY_900};
-`;
-
-const Body = styled.p`
-  margin: 0;
-  text-align: center;
-  color: ${GREY_900};
-  font-size: 12px;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-  width: 100%;
-`;
-
-const Button = styled.button`
-  cursor: pointer;
-  color: ${COMMON_WHITE};
-  background-color: ${PRIMARY_MAIN};
-  padding: 0px 10px;
-  height: 36px;
-  border-radius: 4px;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  transition: background-color 150ms;
-  &:hover {
-    background-color: ${PRIMARY_DARK};
-  }
-`;
-
-const DeleteButton = styled(Button)`
-  background-color: ${ERROR_MAIN};
-  color: ${COMMON_WHITE};
-  &:hover {
-    background-color: ${ERROR_DARK};
-  }
-`;
-
-const CancelButton = styled(Button)`
-  background-color: ${GREY_200};
-  color: ${GREY_700};
-  &:hover {
-    background-color: ${GREY_300};
-  }
-`;
 
 export default DeleteWorkbookDialog;
