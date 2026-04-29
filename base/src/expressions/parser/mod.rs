@@ -112,8 +112,8 @@ pub enum ArrayNode {
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct NamedVariable {
-    name: String,
-    id: Option<u32>,
+    pub(crate) name: String,
+    pub(crate) id: Option<u32>,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -854,7 +854,7 @@ impl<'a> Parser<'a> {
                         };
                     }
                     return Node::NamedFunctionKind {
-                        name,
+                        name: name.trim_start_matches("_xlpm.").to_string(),
                         args,
                         id: None,
                     };
@@ -882,6 +882,7 @@ impl<'a> Parser<'a> {
                         return Node::TableNameKind(name);
                     }
                 }
+                let name = name.trim_start_matches("_xlpm.").to_string();
                 Node::NamedVariableKind { name, id: None }
             }
             TokenType::Error(kind) => Node::ErrorKind(kind),

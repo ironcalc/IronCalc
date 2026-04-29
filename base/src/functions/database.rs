@@ -551,7 +551,7 @@ impl<'a> Model<'a> {
                 })
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
-            CalcResult::Array(_) => {
+            CalcResult::Array(_) | CalcResult::Lambda { .. } => {
                 return Err(CalcResult::Error {
                     error: Error::NIMPL,
                     origin: cell,
@@ -587,7 +587,8 @@ impl<'a> Model<'a> {
                 | CalcResult::Range { .. }
                 | CalcResult::EmptyCell
                 | CalcResult::EmptyArg
-                | CalcResult::Array(_) => {}
+                | CalcResult::Array(_)
+                | CalcResult::Lambda { .. } => {}
             }
         }
 
@@ -748,7 +749,9 @@ impl<'a> Model<'a> {
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
             CalcResult::Error { .. } => return false,
-            CalcResult::Range { .. } | CalcResult::Array(_) => return false,
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+                return false
+            }
         };
 
         // Detect operator prefix

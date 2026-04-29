@@ -53,6 +53,21 @@ pub fn to_rc_format(node: &Node) -> String {
     stringify(node, None, &DisplaceData::None, false, locale, language)
 }
 
+pub fn to_english_string(node: &Node, context: &CellReferenceRC) -> String {
+    #[allow(clippy::expect_used)]
+    let locale = get_locale("en").expect("");
+    #[allow(clippy::expect_used)]
+    let language = get_language("en").expect("");
+    stringify(
+        node,
+        Some(context),
+        &DisplaceData::None,
+        false,
+        locale,
+        language,
+    )
+}
+
 /// This is the mode used to display the formula in the UI
 pub fn to_localized_string(
     node: &Node,

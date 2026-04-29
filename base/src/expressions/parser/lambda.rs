@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
         }
 
         // All args except the last are parameter name declarations; the last is the body.
-        let body = args.last().unwrap().clone();
+        let body = args[args.len() - 1].clone();
         let param_nodes = &args[..args.len() - 1];
 
         let mut parameters = Vec::with_capacity(param_nodes.len());

@@ -159,6 +159,11 @@ impl<'a> Model<'a> {
             CalcResult::String(s) => Ok(vec![vec![ArrayNode::String(s)]]),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![vec![ArrayNode::Number(0.0)]]),
             err @ CalcResult::Error { .. } => Err(err),
+            CalcResult::Lambda { .. } => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "LAMBDA cannot be used as an array".to_string(),
+            )),
         }
     }
 

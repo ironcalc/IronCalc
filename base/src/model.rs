@@ -105,6 +105,8 @@ pub(crate) enum ParsedDefinedName {
     CellReference(CellReferenceIndex),
     /// A Range (`=C4:D6`)
     RangeReference(Range),
+    /// `=LAMBDA(params..., body)`
+    LambdaDefinition(Vec<String>, Node),
     /// `=SomethingElse`
     InvalidDefinedNameFormula,
 }
@@ -200,6 +202,10 @@ pub struct Model<'a> {
     pub(crate) variable_stack: HashMap<usize, CalcResult>,
     /// Last variable id used. It is incremented every time a new variable is created (for example, when evaluating a LET function).
     pub(crate) last_variable_id: usize,
+    /// Lambdas
+    pub(crate) lambdas: HashMap<usize, (Vec<String>, Node)>,
+    /// Last lambda id used. It is incremented every time a new lambda is created.
+    pub(crate) last_lambda_id: usize,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -222,6 +228,15 @@ impl<'a> Model<'a> {
     fn clear_variable_stack(&mut self) {
         self.variable_stack.clear();
         self.last_variable_id = 0;
+    }
+    pub(crate) fn get_next_lambda_id(&mut self) -> usize {
+        let id = self.last_lambda_id;
+        self.last_lambda_id += 1;
+        id
+    }
+    fn clear_lambdas(&mut self) {
+        self.lambdas.clear();
+        self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
         &mut self,
@@ -491,13 +506,45 @@ impl<'a> Model<'a> {
                 self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1.powf(f2)))
             }
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
-            NamedFunctionKind { name, args: _, id } => {
-                if let Some(_) = id {
-                    // Lookup the named function and evaluate it if found.
-                    todo!()
-                }
-                // If not found, return an error.
-                CalcResult::new_error(Error::NAME, cell, format!("Invalid function: {name}"))
+            NamedFunctionKind { name, args, id } => {
+                let lambda_result = if let Some(var_id) = id {
+                    // Bound by LET — look up the variable, which should be a Lambda.
+                    match self.variable_stack.get(&(*var_id as usize)) {
+                        Some(v) => v.clone(),
+                        None => {
+                            return CalcResult::new_error(
+                                Error::NAME,
+                                cell,
+                                format!("Variable \"{name}\" not found in scope."),
+                            )
+                        }
+                    }
+                } else {
+                    // Not bound by LET — look up as a defined-name Lambda.
+                    let name_upper = name.to_uppercase();
+                    let mut found = None;
+                    for (key, val) in &self.parsed_defined_names {
+                        if key.1.to_uppercase() == name_upper {
+                            found = Some(val.clone());
+                            break;
+                        }
+                    }
+                    match found {
+                        Some(ParsedDefinedName::LambdaDefinition(param_names, body)) => {
+                            let lambda_id = self.get_next_lambda_id();
+                            self.lambdas.insert(lambda_id, (param_names, body));
+                            CalcResult::Lambda(lambda_id)
+                        }
+                        _ => {
+                            return CalcResult::new_error(
+                                Error::NAME,
+                                cell,
+                                format!("Invalid function: {name}"),
+                            )
+                        }
+                    }
+                };
+                self.call_lambda(lambda_result, args, cell)
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
@@ -510,6 +557,11 @@ impl<'a> Model<'a> {
                             left: range.left,
                             right: range.right,
                         },
+                        ParsedDefinedName::LambdaDefinition(param_names, body) => {
+                            let lambda_id = self.get_next_lambda_id();
+                            self.lambdas.insert(lambda_id, (param_names, body));
+                            CalcResult::Lambda(lambda_id)
+                        }
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
@@ -629,16 +681,16 @@ impl<'a> Model<'a> {
                 }
                 _ => self.evaluate_node_in_context(child, cell),
             },
-            LambdaDefKind { .. } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                "LAMBDA evaluation is not yet implemented".to_string(),
-            ),
-            LambdaCallKind { .. } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                "LAMBDA call evaluation is not yet implemented".to_string(),
-            ),
+            LambdaDefKind { parameters, body } => {
+                let param_names: Vec<String> = parameters.iter().map(|p| p.name.clone()).collect();
+                let id = self.get_next_lambda_id();
+                self.lambdas.insert(id, (param_names, *body.clone()));
+                CalcResult::Lambda(id)
+            }
+            LambdaCallKind { lambda, args } => {
+                let lambda_result = self.evaluate_node_in_context(lambda, cell);
+                self.call_lambda(lambda_result, args, cell)
+            }
         }
     }
 
@@ -883,7 +935,7 @@ impl<'a> Model<'a> {
                 return self.set_cells_with_result(cell_reference, cell, &CalcResult::Number(0.0));
             }
             // CalcResult::Array is handled before this match (see above); it always returns early.
-            CalcResult::Array(_) => {
+            CalcResult::Array(_) | CalcResult::Lambda { .. } => {
                 debug_assert!(false, "Unexpected array result in non-array formula");
                 return Err("Unexpected array result in non-array formula".to_string());
             }
@@ -1113,7 +1165,7 @@ impl<'a> Model<'a> {
                     CalcResult::String(s) => ArrayNode::String(s),
                     CalcResult::Error { error, .. } => ArrayNode::Error(error),
                     CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-                    CalcResult::Range { .. } | CalcResult::Array(_) => {
+                    CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => {
                         // This should never happen, but we need to handle it anyway
                         debug_assert!(false, "Unexpected array result in non-array formula");
                         ArrayNode::Error(Error::NIMPL)
@@ -1244,6 +1296,12 @@ impl<'a> Model<'a> {
                         let array = self.evaluate_range(left, right);
                         CalcResult::Array(array)
                     }
+                } else if matches!(result, CalcResult::Lambda { .. }) {
+                    CalcResult::new_error(
+                        Error::CALC,
+                        cell_reference,
+                        "A LAMBDA was returned but not called".to_string(),
+                    )
                 } else {
                     result
                 };
@@ -1390,6 +1448,8 @@ impl<'a> Model<'a> {
             view_id: 0,
             variable_stack: HashMap::new(),
             last_variable_id: 0,
+            lambdas: HashMap::new(),
+            last_lambda_id: 0,
         };
 
         model.parse_formulas();
@@ -2579,6 +2639,7 @@ impl<'a> Model<'a> {
         // clear all computation artifacts
         self.cells.clear();
         self.clear_variable_stack();
+        self.clear_lambdas();
 
         let cells = self.get_all_cells();
 
@@ -3025,7 +3086,8 @@ impl<'a> Model<'a> {
             .set_row_height(column, height)
     }
 
-    /// Adds a new defined name
+    /// Adds a new defined name.
+    /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
     pub fn new_defined_name(
         &mut self,
         name: &str,
@@ -3045,7 +3107,7 @@ impl<'a> Model<'a> {
 
     /// Validates if a defined name can be created
     pub fn is_valid_defined_name(
-        &self,
+        &mut self,
         name: &str,
         scope: Option<u32>,
         formula: &str,
@@ -3069,15 +3131,33 @@ impl<'a> Model<'a> {
             }
         }
 
-        // Make sure the formula is valid
-        match common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
-            self.get_sheet_index_by_name(name)
-        }) {
-            Ok(_) => {}
-            Err(_) => {
+        // Make sure the formula is valid — accept cell/range references OR a LAMBDA definition.
+        let is_reference =
+            common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
+                self.get_sheet_index_by_name(name)
+            })
+            .is_ok();
+
+        if !is_reference {
+            // Try the full parser to see if it is a LAMBDA definition.
+            // Defined-name formulas may carry a leading '='; strip it before parsing.
+            use crate::expressions::types::CellReferenceRC;
+            let formula_body = formula.strip_prefix('=').unwrap_or(formula);
+            let dummy_ref = CellReferenceRC {
+                sheet: self
+                    .workbook
+                    .worksheets
+                    .first()
+                    .map(|ws| ws.get_name())
+                    .unwrap_or_else(|| "Sheet1".to_string()),
+                row: 1,
+                column: 1,
+            };
+            let node = self.parser.parse(formula_body, &dummy_ref);
+            if !matches!(node, Node::LambdaDefKind { .. }) {
                 return Err("Formula: Invalid defined name formula".to_string());
             }
-        };
+        }
 
         Ok(sheet_id)
     }

@@ -61,7 +61,6 @@ impl WorkbookXML {
                     })
                     // convert Option<usize> to Option<u32>
                     .map(|pos| pos as u32);
-
                 (dn.name.clone(), index, dn.formula.clone())
             })
             .collect::<Vec<_>>();
