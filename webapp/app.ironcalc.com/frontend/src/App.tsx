@@ -54,6 +54,7 @@ function App() {
 
   const { t, i18n } = useTranslation();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Run only for i18n.language dependency
   useEffect(() => {
     async function start() {
       await init();
@@ -123,6 +124,18 @@ function App() {
     }
   }, [model, localStorageId]);
 
+  useEffect(() => {
+    if (!model) return;
+    // We try to save the model every second
+    const interval = setInterval(() => {
+      const queue = model.flushSendQueue();
+      if (queue.length !== 1) {
+        saveSelectedModelInStorage(model);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [model]);
+
   if (!model) {
     return (
       <Loading>
@@ -131,14 +144,6 @@ function App() {
       </Loading>
     );
   }
-
-  // We try to save the model every second
-  setInterval(() => {
-    const queue = model.flushSendQueue();
-    if (queue.length !== 1) {
-      saveSelectedModelInStorage(model);
-    }
-  }, 1000);
 
   // Handlers for model changes that also update our models state
   const handleNewModel = () => {
