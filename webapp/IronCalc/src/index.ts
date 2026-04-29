@@ -4,6 +4,10 @@ import i18n from "./i18n";
 import { IronCalcIcon, IronCalcIconWhite, IronCalcLogo } from "./icons";
 
 export type { IronCalcHandle } from "./IronCalc";
+export type { ButtonProperties, ButtonVariant, ButtonSize } from "./components/Button/Button";
+export { Button } from "./components/Button/Button";
+export type { InputProperties, InputSize } from "./components/Input/Input";
+export { Input } from "./components/Input/Input";
 export { IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo, Model };
 
 export const init: typeof initWasm = async (module_or_path) => {

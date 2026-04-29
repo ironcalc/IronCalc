@@ -9,8 +9,8 @@ import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
 import { MobileMenu } from "./MobileMenu";
 import { downloadModel } from "./rpc";
-import { ShareButton } from "./ShareButton";
-import ShareWorkbookDialog from "./ShareWorkbookDialog";
+import { ShareButton } from "./ShareWorkbook/ShareButton";
+import ShareWorkbookModal from "./ShareWorkbook/ShareWorkbookModal";
 import { updateNameSelectedWorkbook } from "./storage";
 import { WorkbookTitle } from "./WorkbookTitle";
 
@@ -193,7 +193,7 @@ export function FileBar(properties: {
         <DialogContainer>
           <ShareButton onClick={() => setIsDialogOpen(true)} />
           {isDialogOpen && (
-            <ShareWorkbookDialog
+            <ShareWorkbookModal
               onClose={() => setIsDialogOpen(false)}
               onModelUpload={properties.onModelUpload}
               model={properties.model}
