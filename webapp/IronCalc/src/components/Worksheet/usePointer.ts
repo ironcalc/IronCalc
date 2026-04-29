@@ -139,7 +139,7 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       } else if (isInsertingRef.current) {
         const { workbookState } = options;
         const editingCell = workbookState.getEditingCell();
-        if (!editingCell || !editingCell.referencedRange) {
+        if (!editingCell?.referencedRange) {
           return;
         }
         const range = editingCell.referencedRange.range;

@@ -19,6 +19,7 @@ import {
   createNewModel,
   deleteModelByUuid,
   deleteSelectedModel,
+  getLanguageFromLocale,
   getShortLocaleCode,
   isStorageEmpty,
   loadDefaultLocaleFromStorage,
@@ -53,6 +54,7 @@ function App() {
 
   const { t, i18n } = useTranslation();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Run only for i18n.language dependency
   useEffect(() => {
     async function start() {
       await init();
@@ -61,28 +63,35 @@ function App() {
       const modelHash = urlParams.get("model");
       const exampleFilename = urlParams.get("example");
       const language = loadDefaultLocaleFromStorage();
-      const localeShort = getShortLocaleCode(language);
+      const languageId = getLanguageFromLocale(language);
       // If there is a model name ?model=modelHash we try to load it
       // if there is not, or the loading failed we load an empty model
+      let loadedModel: Model | null = null;
       if (modelHash) {
         // Get a remote model
         try {
           const model_bytes = await get_model(modelHash);
-          const importedModel = Model.from_bytes(model_bytes, localeShort);
+          loadedModel = Model.from_bytes(model_bytes, languageId);
           localStorage.removeItem("selected");
-          setModel(importedModel);
         } catch (_e) {
+          console.error(_e);
+          alert(t("errors.model_not_found"));
           console.log("Failed to load model from hash:", modelHash);
         }
       } else if (exampleFilename) {
         try {
           const model_bytes = await get_documentation_model(exampleFilename);
-          const importedModel = Model.from_bytes(model_bytes, localeShort);
+          loadedModel = Model.from_bytes(model_bytes, languageId);
           localStorage.removeItem("selected");
-          setModel(importedModel);
         } catch (_e) {
+          console.error(_e);
+          alert(t("errors.example_not_found"));
           console.log("Failed to load example model:", exampleFilename);
         }
+      }
+
+      if (loadedModel) {
+        setModel(loadedModel);
       } else {
         // try to load from local storage
         const result = loadSelectedModelFromStorage();
@@ -115,6 +124,18 @@ function App() {
     }
   }, [model, localStorageId]);
 
+  useEffect(() => {
+    if (!model) return;
+    // We try to save the model every second
+    const interval = setInterval(() => {
+      const queue = model.flushSendQueue();
+      if (queue.length !== 1) {
+        saveSelectedModelInStorage(model);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [model]);
+
   if (!model) {
     return (
       <Loading>
@@ -123,14 +144,6 @@ function App() {
       </Loading>
     );
   }
-
-  // We try to save the model every second
-  setInterval(() => {
-    const queue = model.flushSendQueue();
-    if (queue.length !== 1) {
-      saveSelectedModelInStorage(model);
-    }
-  }, 1000);
 
   // Handlers for model changes that also update our models state
   const handleNewModel = () => {
@@ -183,8 +196,8 @@ function App() {
 
             const bytes = new Uint8Array(await blob.arrayBuffer());
             const locale = loadDefaultLocaleFromStorage();
-            const localeShort = getShortLocaleCode(locale);
-            const newModel = Model.from_bytes(bytes, localeShort);
+            const languageId = getLanguageFromLocale(locale);
+            const newModel = Model.from_bytes(bytes, languageId);
             saveModelToStorage(newModel);
 
             setModel(newModel);
@@ -221,11 +234,8 @@ function App() {
               default: {
                 const model_bytes = await get_documentation_model(templateId);
                 const locale = loadDefaultLocaleFromStorage();
-                const localeShort = getShortLocaleCode(locale);
-                const importedModel = Model.from_bytes(
-                  model_bytes,
-                  localeShort,
-                );
+                const languageId = getLanguageFromLocale(locale);
+                const importedModel = Model.from_bytes(model_bytes, languageId);
                 saveModelToStorage(importedModel);
                 setModel(importedModel);
                 break;
@@ -246,8 +256,8 @@ function App() {
           onSelectTemplate={async (fileName) => {
             const model_bytes = await get_documentation_model(fileName);
             const locale = loadDefaultLocaleFromStorage();
-            const localeShort = getShortLocaleCode(locale);
-            const importedModel = Model.from_bytes(model_bytes, localeShort);
+            const languageId = getLanguageFromLocale(locale);
+            const importedModel = Model.from_bytes(model_bytes, languageId);
             saveModelToStorage(importedModel);
             setModel(importedModel);
             setTemplatesDialogOpen(false);

@@ -1,1 +1,1 @@
-CREATE TABLE models (hash TEXT, bytes BLOB);
+CREATE TABLE IF NOT EXISTS models (hash TEXT, bytes BLOB);
