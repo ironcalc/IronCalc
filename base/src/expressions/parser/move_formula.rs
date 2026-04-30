@@ -515,7 +515,18 @@ fn to_string_moved(
                 to_string_moved(child, move_context, locale, language)
             )
         }
-        LambdaDefKind { .. } => todo!(),
-        LambdaCallKind { .. } => todo!(),
+        LambdaDefKind { parameters, body } => {
+            let mut parts: Vec<String> = parameters.iter().map(|p| p.name.clone()).collect();
+            parts.push(to_string_moved(body, move_context, locale, language));
+            format!("LAMBDA({})", parts.join(","))
+        }
+        LambdaCallKind { lambda, args } => {
+            let lambda_str = to_string_moved(lambda, move_context, locale, language);
+            let call_args: Vec<String> = args
+                .iter()
+                .map(|a| to_string_moved(a, move_context, locale, language))
+                .collect();
+            format!("{}({})", lambda_str, call_args.join(","))
+        }
     }
 }
