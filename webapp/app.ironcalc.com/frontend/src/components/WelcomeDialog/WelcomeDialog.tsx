@@ -1,16 +1,14 @@
-import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
-import { styled } from "@mui/material";
+import "./welcome-dialog.css";
+import {
+  Button,
+  IconButton,
+  IronCalcIconWhite as IronCalcIcon,
+} from "@ironcalc/workbook";
 import { Table, X } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import TemplatesList, {
-  Cross,
-  DialogContent,
-  DialogFooter,
-  DialogFooterButton,
-  DialogWrapper,
-  TemplatesListWrapper,
-} from "./TemplatesList";
+import TemplatesList from "./TemplatesList";
 import TemplatesListItem from "./TemplatesListItem";
 
 function WelcomeDialog(properties: {
@@ -20,119 +18,65 @@ function WelcomeDialog(properties: {
   const { t } = useTranslation();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("blank");
 
-  const handleClose = () => {
-    properties.onClose();
-  };
-
-  const handleTemplateSelect = (templateId: string) => {
-    setSelectedTemplate(templateId);
-  };
-
-  return (
-    <DialogWrapper open={true} onClose={() => {}}>
-      <DialogWelcomeHeader>
-        <DialogHeaderTitleWrapper>
-          <DialogHeaderLogoWrapper>
-            <IronCalcIcon />
-          </DialogHeaderLogoWrapper>
-          <DialogHeaderTitle>{t("welcome_dialog.title")}</DialogHeaderTitle>
-          <DialogHeaderTitleSubtitle>
-            {t("welcome_dialog.subtitle")}
-          </DialogHeaderTitleSubtitle>
-        </DialogHeaderTitleWrapper>
-        <Cross
-          onClick={handleClose}
-          title={t("welcome_dialog.close_dialog")}
-          tabIndex={0}
-          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
-        >
-          <X />
-        </Cross>
-      </DialogWelcomeHeader>
-      <DialogContent>
-        <ListTitle>{t("welcome_dialog.new")}</ListTitle>
-        <TemplatesListWrapper>
-          <TemplatesListItem
-            title={t("welcome_dialog.blank_workbook")}
-            description={t("welcome_dialog.blank_workbook_description")}
-            icon={<Table />}
-            iconColor="#F2994A"
-            active={selectedTemplate === "blank"}
-            onClick={() => handleTemplateSelect("blank")}
+  return createPortal(
+    <div className="ic-modal-dialog-backdrop welcome-backdrop" role="none">
+      <div
+        className="ic-modal-dialog welcome-paper"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.code === "Escape" && properties.onClose()}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+      >
+        <div className="welcome-header">
+          <div className="welcome-header-brand">
+            <div className="welcome-header-logo">
+              <IronCalcIcon />
+            </div>
+            <span className="welcome-header-title">
+              {t("welcome_dialog.title")}
+            </span>
+            <span className="welcome-header-subtitle">
+              {t("welcome_dialog.subtitle")}
+            </span>
+          </div>
+          <IconButton
+            icon={<X />}
+            aria-label={t("welcome_dialog.close_dialog")}
+            size="xs"
+            variant="ghost"
+            onClick={properties.onClose}
           />
-        </TemplatesListWrapper>
-        <ListTitle>{t("welcome_dialog.templates.templates")}</ListTitle>
-        <TemplatesList
-          selectedTemplate={selectedTemplate}
-          handleTemplateSelect={handleTemplateSelect}
-        />
-      </DialogContent>
-      <DialogFooter>
-        <DialogFooterButton
-          onClick={() => properties.onSelectTemplate(selectedTemplate)}
-        >
-          {t("welcome_dialog.create_workbook")}
-        </DialogFooterButton>
-      </DialogFooter>
-    </DialogWrapper>
+        </div>
+        <div className="welcome-content">
+          <div className="welcome-list-title">{t("welcome_dialog.new")}</div>
+          <div className="welcome-templates-list">
+            <TemplatesListItem
+              title={t("welcome_dialog.blank_workbook")}
+              description={t("welcome_dialog.blank_workbook_description")}
+              icon={<Table />}
+              iconColor="#F2994A"
+              active={selectedTemplate === "blank"}
+              onClick={() => setSelectedTemplate("blank")}
+            />
+          </div>
+          <div className="welcome-list-title">
+            {t("welcome_dialog.templates.templates")}
+          </div>
+          <TemplatesList
+            selectedTemplate={selectedTemplate}
+            handleTemplateSelect={setSelectedTemplate}
+          />
+        </div>
+        <div className="welcome-footer">
+          <Button onClick={() => properties.onSelectTemplate(selectedTemplate)}>
+            {t("welcome_dialog.create_workbook")}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
-
-const DialogWelcomeHeader = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 16px;
-  font-family: Inter;
-`;
-
-const DialogHeaderTitleWrapper = styled("span")`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 4px 0px;
-  gap: 4px;
-  width: 100%;
-`;
-
-const DialogHeaderTitle = styled("span")`
-  font-weight: 700;
-`;
-
-const DialogHeaderTitleSubtitle = styled("span")`
-  font-size: 12px;
-  color: #757575;
-`;
-
-export const DialogHeaderLogoWrapper = styled("div")`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  max-width: 20px;
-  max-height: 20px;
-  background-color: #f2994a;
-  padding: 10px;
-  margin-bottom: 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 2px;
-  transform: rotate(-8deg);
-  user-select: none;
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
-const ListTitle = styled("div")`
-  font-size: 12px;
-  font-weight: 600;
-  color: #424242;
-`;
 
 export default WelcomeDialog;
