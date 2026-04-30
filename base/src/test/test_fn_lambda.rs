@@ -73,3 +73,13 @@ fn sheet_local_name_takes_precedence_over_global() {
     assert_eq!(model._get_text("A1"), *"10");
     assert_eq!(model._get_text("Sheet2!A1"), *"15");
 }
+
+#[test]
+fn let_bound_variable_captured_in_lambda_body() {
+    let mut model = new_empty_model();
+    // `a` is bound by LET; the LAMBDA body references `a` as a closure variable.
+    // f(2) should return 2 + 1 = 3.
+    model._set("A1", "=LET(a, 1, f, LAMBDA(x, x + a), f(2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"3");
+}

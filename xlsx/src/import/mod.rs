@@ -73,7 +73,9 @@ fn resolve_theme_path(rels: &HashMap<String, Relationship>) -> Option<String> {
     })
 }
 
-fn reparse_formula(formula: &str, worksheets: &[String]) -> Result<String, XlsxError> {
+// FIXME: This is a bit of a HACK. We basically re-parse all the defined names assuming the context is `A1`
+// and there is no tables or defined names.
+fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, XlsxError> {
     let defined_names = Vec::new();
     let tables = HashMap::new();
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables);
@@ -116,7 +118,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         .map(|s| s.name.clone())
         .collect::<Vec<_>>();
     for dn in &mut workbook.defined_names {
-        dn.formula = reparse_formula(&dn.formula, &worksheet_names)?;
+        dn.formula = reparse_formula_hack(&dn.formula, &worksheet_names)?;
     }
     let metadata = match load_metadata(&mut archive) {
         Ok(metadata) => metadata,
