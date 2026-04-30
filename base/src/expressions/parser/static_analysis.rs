@@ -2,6 +2,9 @@ use crate::functions::Function;
 
 use super::Node;
 
+#[cfg(feature = "use_regex_lite")]
+use regex_lite as regex;
+
 use regex::Regex;
 use std::sync::OnceLock;
 
