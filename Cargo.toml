@@ -17,5 +17,3 @@ exclude = [
 
 [profile.release]
 lto = true
-panic = "abort"
-opt-level = "z"
