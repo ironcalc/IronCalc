@@ -31,7 +31,7 @@ use crate::{
     utils as common,
 };
 
-use chrono_tz::Tz;
+use crate::tz::Tz;
 
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -1413,10 +1413,7 @@ impl<'a> Model<'a> {
         let cells = HashMap::new();
         let locale =
             get_locale(&workbook.settings.locale).map_err(|_| "Invalid locale".to_string())?;
-        let tz: Tz = workbook
-            .settings
-            .tz
-            .parse()
+        let tz = Tz::parse(&workbook.settings.tz)
             .map_err(|_| format!("Invalid timezone: {}", workbook.settings.tz))?;
 
         let language = match get_language(language_id) {
@@ -3353,8 +3350,8 @@ impl<'a> Model<'a> {
 
     /// Sets the timezone of the model
     pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
-        let tz: Tz = match &timezone.parse() {
-            Ok(tz) => *tz,
+        let tz = match Tz::parse(timezone) {
+            Ok(tz) => tz,
             Err(_) => return Err(format!("Invalid timezone: {}", &timezone)),
         };
         self.tz = tz;

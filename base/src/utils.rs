@@ -135,10 +135,7 @@ pub(crate) fn value_needs_quoting(value: &str, language: &Language) -> bool {
 
 /// Gets all timezones
 pub fn get_all_timezones() -> Vec<String> {
-    chrono_tz::TZ_VARIANTS
-        .iter()
-        .map(|tz| tz.name().to_string())
-        .collect()
+    crate::tz::get_all_timezone_names()
 }
 
 /// Valid hex colors are #FFAABB

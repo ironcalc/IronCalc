@@ -46,6 +46,7 @@ mod functions;
 mod implicit_intersection;
 mod model;
 mod styles;
+mod tz;
 mod units;
 mod user_model;
 mod utils;

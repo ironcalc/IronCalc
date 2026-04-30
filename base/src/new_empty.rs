@@ -24,7 +24,7 @@ use crate::{
     utils::ParsedReference,
 };
 
-use chrono_tz::Tz;
+use crate::tz::Tz;
 
 pub const APPLICATION: &str = "IronCalc Sheets";
 pub const APP_VERSION: &str = "10.0000";
@@ -410,8 +410,8 @@ impl<'a> Model<'a> {
         timezone: &'a str,
         language_id: &'a str,
     ) -> Result<Model<'a>, String> {
-        let tz: Tz = match &timezone.parse() {
-            Ok(tz) => *tz,
+        let tz = match Tz::parse(timezone) {
+            Ok(tz) => tz,
             Err(_) => return Err(format!("Invalid timezone: {}", &timezone)),
         };
         let locale = match get_locale(locale_id) {

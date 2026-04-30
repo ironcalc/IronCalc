@@ -1,4 +1,4 @@
-#[cfg(feature = "use_regex_lite")]
+#[cfg(target_arch = "wasm32")]
 use regex_lite as regex;
 
 use crate::{

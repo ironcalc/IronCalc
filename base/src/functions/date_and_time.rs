@@ -1,10 +1,10 @@
+use crate::tz::Tz;
 use chrono::DateTime;
 use chrono::Datelike;
 use chrono::Months;
 use chrono::NaiveDateTime;
 use chrono::NaiveTime;
 use chrono::Timelike;
-use chrono_tz::Tz;
 
 const SECONDS_PER_DAY: i32 = 86_400;
 const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
@@ -86,7 +86,6 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
-use crate::model::get_milliseconds_since_epoch;
 use crate::number_format::to_precision;
 use crate::{
     calc_result::CalcResult,
@@ -779,18 +778,6 @@ impl<'a> Model<'a> {
         Ok(values)
     }
 
-    // Returns the current date/time as an Excel serial number in the given timezone.
-    // Used by TODAY() and NOW().
-    pub(crate) fn current_excel_serial_with_timezone(&self, tz: Tz) -> Option<f64> {
-        let seconds = get_milliseconds_since_epoch() / 1000;
-        DateTime::from_timestamp(seconds, 0).map(|dt| {
-            let local_time = dt.with_timezone(&tz);
-            let days_from_1900 = local_time.num_days_from_ce() - EXCEL_DATE_BASE;
-            let fraction = (local_time.num_seconds_from_midnight() as f64) / (60.0 * 60.0 * 24.0);
-            days_from_1900 as f64 + fraction
-        })
-    }
-
     pub(crate) fn fn_networkdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
@@ -987,7 +974,7 @@ impl<'a> Model<'a> {
                 message: "Wrong number of arguments".to_string(),
             };
         }
-        match self.current_excel_serial_with_timezone(self.tz) {
+        match crate::tz::excel_serial_for_now(&self.tz) {
             Some(serial) => CalcResult::Number(serial.floor()),
             None => CalcResult::Error {
                 error: Error::ERROR,
@@ -1005,14 +992,14 @@ impl<'a> Model<'a> {
                 message: "Wrong number of arguments".to_string(),
             };
         }
-        let tz = match args.first() {
+        let tz_owned;
+        let tz: &Tz = match args.first() {
             Some(arg0) => {
-                // Parse timezone argument
                 let tz_str = match self.get_string(arg0, cell) {
                     Ok(s) => s,
                     Err(e) => return e,
                 };
-                let tz: Tz = match tz_str.parse() {
+                tz_owned = match Tz::parse(&tz_str) {
                     Ok(tz) => tz,
                     Err(_) => {
                         return CalcResult::Error {
@@ -1022,11 +1009,11 @@ impl<'a> Model<'a> {
                         }
                     }
                 };
-                tz
+                &tz_owned
             }
-            None => self.tz,
+            None => &self.tz,
         };
-        match self.current_excel_serial_with_timezone(tz) {
+        match crate::tz::excel_serial_for_now(tz) {
             Some(serial) => CalcResult::Number(serial),
             None => CalcResult::Error {
                 error: Error::ERROR,
