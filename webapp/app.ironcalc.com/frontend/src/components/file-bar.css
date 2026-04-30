@@ -44,6 +44,7 @@
 }
 
 .file-bar-cloud-button {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -54,11 +55,36 @@
   color: var(--palette-grey-400);
 }
 
-.file-bar-cloud-button svg {
+.file-bar-cloud-button > svg {
   width: 16px;
   height: 16px;
 }
 
 .file-bar-cloud-button:hover {
   color: var(--palette-grey-600);
+}
+
+.file-bar-cloud-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 240px;
+  padding: 8px;
+  background: var(--palette-common-white);
+  color: var(--palette-grey-900);
+  font-family: var(--typography-font-family);
+  font-size: calc(var(--typography-font-size) - 1px);
+  font-weight: 400;
+  line-height: 1.4;
+  border: 1px solid var(--palette-grey-300);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  flex-direction: column;
+  gap: 4px;
+  z-index: 100;
+}
+
+.file-bar-cloud-button:hover .file-bar-cloud-tooltip {
+  display: flex;
 }

@@ -1,14 +1,19 @@
 import "./file-bar.css";
-import { IconButton, Tooltip } from "@ironcalc/workbook";
 import type { Model } from "@ironcalc/workbook";
-import { ClickAwayListener } from "@mui/material";
+import { IconButton, Tooltip } from "@ironcalc/workbook";
 import { CloudOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
-import { FileMenu } from "./FileMenu";
-import { HelpMenu } from "./HelpMenu";
 import { MobileMenu } from "./MobileMenu";
+import { FileMenu } from "./Navigation/FileMenu";
+import { HelpMenu } from "./Navigation/HelpMenu";
 import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareWorkbook/ShareButton";
 import ShareWorkbookModal from "./ShareWorkbook/ShareWorkbookModal";
@@ -45,10 +50,12 @@ export function FileBar(properties: {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const spacerRef = useRef<HTMLDivElement>(null);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
   const { t } = useTranslation();
-  const cloudWarningText = `${t("file_bar.title_input.warning_text1")} ${t("file_bar.title_input.warning_text2")}`;
+  const cloudWarningText1 = t("file_bar.title_input.warning_text1");
+  const cloudWarningText2 = t("file_bar.title_input.warning_text2");
 
   const handleDownload = async () => {
     const model = properties.model;
@@ -57,7 +64,19 @@ export function FileBar(properties: {
     await downloadModel(bytes, fileName);
   };
 
-  const closeMenus = () => setOpenMenu(null);
+  const closeMenus = useCallback(() => setOpenMenu(null), []);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!desktopMenuRef.current?.contains(event.target as Node)) {
+        closeMenus();
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [openMenu, closeMenus]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -80,7 +99,9 @@ export function FileBar(properties: {
         )}
       >
         <IconButton
-          icon={properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+          icon={
+            properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />
+          }
           aria-label={t(
             properties.isDrawerOpen
               ? "file_bar.close_sidebar"
@@ -102,29 +123,27 @@ export function FileBar(properties: {
           onLanguageChange={properties.onLanguageChange}
         />
       ) : (
-        <ClickAwayListener onClickAway={closeMenus}>
-          <div className="file-bar-desktop-menu">
-            <FileMenu
-              newModel={properties.newModel}
-              newModelFromTemplate={properties.newModelFromTemplate}
-              setModel={properties.setModel}
-              onModelUpload={properties.onModelUpload}
-              onDownload={handleDownload}
-              onDelete={properties.onDelete}
-              isOpen={openMenu === "file"}
-              onOpen={() => setOpenMenu("file")}
-              onClose={closeMenus}
-              onHover={() => openMenu && setOpenMenu("file")}
-              onLanguageChange={properties.onLanguageChange}
-            />
-            <HelpMenu
-              isOpen={openMenu === "help"}
-              onOpen={() => setOpenMenu("help")}
-              onClose={closeMenus}
-              onHover={() => openMenu && setOpenMenu("help")}
-            />
-          </div>
-        </ClickAwayListener>
+        <div ref={desktopMenuRef} className="file-bar-desktop-menu">
+          <FileMenu
+            newModel={properties.newModel}
+            newModelFromTemplate={properties.newModelFromTemplate}
+            setModel={properties.setModel}
+            onModelUpload={properties.onModelUpload}
+            onDownload={handleDownload}
+            onDelete={properties.onDelete}
+            isOpen={openMenu === "file"}
+            onOpen={() => setOpenMenu("file")}
+            onClose={closeMenus}
+            onHover={() => openMenu && setOpenMenu("file")}
+            onLanguageChange={properties.onLanguageChange}
+          />
+          <HelpMenu
+            isOpen={openMenu === "help"}
+            onOpen={() => setOpenMenu("help")}
+            onClose={closeMenus}
+            onHover={() => openMenu && setOpenMenu("help")}
+          />
+        </div>
       )}
       <div className="file-bar-title-wrapper">
         <WorkbookTitle
@@ -139,11 +158,13 @@ export function FileBar(properties: {
       </div>
       <div className="file-bar-spacer" ref={spacerRef} />
       <div className="file-bar-right">
-        <Tooltip title={cloudWarningText}>
-          <div className="file-bar-cloud-button">
-            <CloudOff />
+        <div className="file-bar-cloud-button">
+          <CloudOff />
+          <div className="file-bar-cloud-tooltip" role="tooltip">
+            <span>{cloudWarningText1}</span>
+            <strong>{cloudWarningText2}</strong>
           </div>
-        </Tooltip>
+        </div>
         <div>
           <ShareButton onClick={() => setIsDialogOpen(true)} />
           {isDialogOpen && (

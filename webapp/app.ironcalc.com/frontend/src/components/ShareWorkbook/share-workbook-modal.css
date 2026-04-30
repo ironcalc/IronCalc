@@ -2,12 +2,6 @@
   background-color: transparent;
 }
 
-@media (max-width: 600px) {
-  .share-modal-backdrop {
-    background-color: rgb(0 0 0 / 32%);
-  }
-}
-
 .share-modal-paper {
   position: absolute;
   top: 44px;
@@ -42,6 +36,14 @@
 }
 
 @media (max-width: 600px) {
+  .share-modal-backdrop {
+    background-color: rgb(0 0 0 / 32%);
+  }
+
+  .share-button-label {
+    display: none;
+  }
+
   .share-modal-paper {
     position: static;
     margin: 0;

@@ -6,7 +6,9 @@ export function ShareButton(properties: { onClick: () => void }) {
   const { t } = useTranslation();
   return (
     <Button startIcon={<Share2 />} onClick={properties.onClick}>
-      {t("file_bar.share_popover.button")}
+      <span className="share-button-label">
+        {t("file_bar.share_popover.button")}
+      </span>
     </Button>
   );
 }
