@@ -1,0 +1,122 @@
+.workbook-list-section {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workbook-list-section-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 400;
+  color: var(--palette-grey-500);
+  margin-bottom: 8px;
+  padding: 0 8px;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+}
+
+.workbook-list-section-title svg {
+  width: 12px;
+  height: 12px;
+}
+
+.workbook-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border-radius: 8px;
+  padding: 8px 4px 8px 8px;
+  height: 32px;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-common-black);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.workbook-list-item:hover,
+.workbook-list-item--selected {
+  background-color: var(--palette-grey-300);
+}
+
+.workbook-list-item-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--palette-grey-500);
+}
+
+.workbook-list-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workbook-list-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  height: 24px;
+  width: 0;
+  min-width: 0;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--palette-grey-900);
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    width 0.15s,
+    opacity 0.15s;
+}
+
+.workbook-list-ellipsis--open {
+  opacity: 1;
+  width: 24px;
+  min-width: 24px;
+  background-color: var(--palette-grey-300);
+}
+
+.workbook-list-item:hover .workbook-list-ellipsis {
+  opacity: 1;
+  width: 24px;
+  min-width: 24px;
+}
+
+.workbook-list-ellipsis:hover {
+  background-color: var(--palette-grey-400);
+  opacity: 1;
+}
+
+.workbook-list-no-results {
+  padding: 0 8px;
+  color: var(--palette-grey-500);
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  line-height: 18px;
+}
+
+/* Context menu */
+.workbook-list-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1299;
+}
+
+.workbook-list-menu-panel {
+  position: fixed;
+  z-index: 1300;
+  background: var(--palette-common-white);
+  border-radius: 8px;
+  padding: 4px 0;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+}

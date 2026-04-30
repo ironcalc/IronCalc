@@ -1,10 +1,12 @@
-import styled from "@emotion/styled";
-import { IronCalcIconWhite as IronCalcIcon } from "@ironcalc/workbook";
-import { IconButton, TextField, Tooltip } from "@mui/material";
+import {
+  IconButton,
+  Input,
+  IronCalcIconWhite as IronCalcIcon,
+  Tooltip,
+} from "@ironcalc/workbook";
 import { Plus, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DialogHeaderLogoWrapper } from "../WelcomeDialog/WelcomeDialog";
 
 interface DrawerHeaderProps {
   onNewModel: () => void;
@@ -22,204 +24,74 @@ function DrawerHeader({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isSearching && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    if (isSearching) searchInputRef.current?.focus();
   }, [isSearching]);
 
+  const closeSearch = () => {
+    setSearchQuery("");
+    setIsSearching(false);
+  };
+
   return (
-    <HeaderContainer>
-      <LogoWrapper className={isSearching ? "hidden" : ""}>
-        <Logo>
+    <div className="drawer-header">
+      <div className={`drawer-header-logo${isSearching ? " is-hidden" : ""}`}>
+        <div className="drawer-header-logo-icon">
           <IronCalcIcon />
-        </Logo>
-        <Title>IronCalc</Title>
-      </LogoWrapper>
+        </div>
+        <h1 className="drawer-header-title">IronCalc</h1>
+      </div>
 
-      <ActionsWrapper className={isSearching ? "hidden" : ""}>
+      <div
+        className={`drawer-header-actions${isSearching ? " is-hidden" : ""}`}
+      >
         <Tooltip title={t("left_drawer.search_workbook")}>
-          <HeaderButton
-            onClick={() => setIsSearching(true)}
+          <IconButton
+            icon={<Search />}
             aria-label={t("left_drawer.search_workbook")}
-          >
-            <Search />
-          </HeaderButton>
+            size="sm"
+            variant="ghost"
+            className="drawer-header-button"
+            onClick={() => setIsSearching(true)}
+          />
         </Tooltip>
-
         <Tooltip title={t("left_drawer.new_workbook")}>
-          <HeaderButton
-            onClick={onNewModel}
+          <IconButton
+            icon={<Plus />}
             aria-label={t("left_drawer.new_workbook")}
-          >
-            <Plus />
-          </HeaderButton>
+            size="sm"
+            variant="ghost"
+            className="drawer-header-button"
+            onClick={onNewModel}
+          />
         </Tooltip>
-      </ActionsWrapper>
+      </div>
 
-      <SearchOverlay className={isSearching ? "active" : ""}>
-        <SearchIconWrapper>
+      <div className={`drawer-header-search${isSearching ? " is-active" : ""}`}>
+        <span className="drawer-header-search-icon">
           <Search />
-        </SearchIconWrapper>
-
-        <SearchInput
+        </span>
+        <Input
+          ref={searchInputRef}
+          size="sm"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setSearchQuery("");
-              setIsSearching(false);
-            }
+            if (e.key === "Escape") closeSearch();
           }}
-          size="small"
           placeholder={t("left_drawer.search_placeholder")}
-          variant="standard"
-          fullWidth
-          InputProps={{
-            disableUnderline: true,
-            inputRef: searchInputRef,
-          }}
+          className="drawer-header-search-input"
         />
-        <ClearButton
-          onClick={() => {
-            setSearchQuery("");
-            setIsSearching(false);
-          }}
-          disableRipple
+        <IconButton
+          icon={<X />}
           aria-label={t("left_drawer.clear_search")}
-        >
-          <X />
-        </ClearButton>
-      </SearchOverlay>
-    </HeaderContainer>
+          size="xs"
+          variant="ghost"
+          className="drawer-header-search-clear"
+          onClick={closeSearch}
+        />
+      </div>
+    </div>
   );
 }
-
-const LogoWrapper = styled("div")`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const Title = styled("h1")`
-  font-size: 14px;
-  font-weight: 600;
-`;
-
-const Logo = styled(DialogHeaderLogoWrapper)`
-  transform: none;
-  margin-bottom: 0px;
-  padding: 6px;
-`;
-
-const ActionsWrapper = styled("div")`
-  display: flex;
-  flex-direction: row;
-  gap: 2px;
-`;
-
-const HeaderButton = styled(IconButton)`
-  height: 32px;
-  width: 32px;
-  padding: 8px;
-  border-radius: 6px;
-
-  svg {
-    stroke-width: 2px;
-    stroke: #757575;
-    width: 16px;
-    height: 16px;
-  }
-  &:hover {
-    background-color: #E0E0E0;
-  }
-  &:active {
-    background-color: #BDBDBD;
-  }
-`;
-
-const HeaderContainer = styled("div")`
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 10px 12px 16px;
-  height: 60px;
-  box-sizing: border-box;
-  box-shadow: 0 1px 0 0 #e0e0e0;
-
-  .hidden {
-    opacity: 0;
-    pointer-events: none;
-  }
-`;
-
-const SearchOverlay = styled("div")`
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 20px;
-
-  opacity: 0;
-  transform: translateY(-4px);
-  pointer-events: none;
-
-  &.active {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-`;
-
-const SearchIconWrapper = styled("div")`
-  display: flex;
-  align-items: center;
-
-  svg {
-    stroke: #757575;
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-const SearchInput = styled(TextField)`
-  flex: 1;
-  
-  .MuiInputBase-root {
-    width: 100%;
-    height: 32px;
-    font-size: 12px;
-  }
-
-  .MuiInputBase-input {
-    padding: 0; 
-    height: 100%;
-    box-sizing: border-box;
-  }
-`;
-
-const ClearButton = styled(IconButton)`  
-height: 20px;
-width: 20px;
-padding: 0px;
-border-radius: 6px;
-
-svg {
-  stroke-width: 2px;
-  stroke: #757575;
-  width: 16px;
-  height: 16px;
-}
-&:hover {
-  background-color: transparent;
-    svg {
-    stroke: #000;
-  }
-}
-&:active {
-  background-color: transparent;
-}
-`;
 
 export default DrawerHeader;

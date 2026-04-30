@@ -1,5 +1,4 @@
-import styled from "@emotion/styled";
-import { Drawer } from "@mui/material";
+import "./left-drawer.css";
 import { useState } from "react";
 import DrawerContent from "./DrawerContent";
 import DrawerFooter from "./DrawerFooter";
@@ -14,23 +13,11 @@ interface LeftDrawerProps {
   localStorageId: number;
 }
 
-function LeftDrawer({
-  open,
-  onClose,
-  newModel,
-  setModel,
-  onDelete,
-}: LeftDrawerProps) {
+function LeftDrawer({ open, newModel, setModel, onDelete }: LeftDrawerProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
-    <DrawerWrapper
-      variant="persistent"
-      anchor="left"
-      open={open}
-      onClose={onClose}
-      transitionDuration={0}
-    >
+    <div className={`left-drawer${open ? "" : " left-drawer--closed"}`}>
       <DrawerHeader
         onNewModel={newModel}
         searchQuery={searchQuery}
@@ -41,24 +28,9 @@ function LeftDrawer({
         onDelete={onDelete}
         searchQuery={searchQuery}
       />
-
       <DrawerFooter />
-    </DrawerWrapper>
+    </div>
   );
 }
-
-const DrawerWrapper = styled(Drawer)`
-  width: 264px;
-  height: 100%;
-  flex-shrink: 0;
-  font-family: "Inter", sans-serif;
-
-  .MuiDrawer-paper {
-    width: 264px;
-    background-color: #f5f5f5;
-    overflow: hidden;
-    border-right: 1px solid #e0e0e0;
-  }
-`;
 
 export default LeftDrawer;

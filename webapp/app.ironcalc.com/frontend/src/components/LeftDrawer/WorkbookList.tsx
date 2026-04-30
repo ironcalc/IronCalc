@@ -1,5 +1,4 @@
-import styled from "@emotion/styled";
-import { Menu, MenuItem } from "@mui/material";
+import "./workbook-list.css";
 import {
   Copy,
   EllipsisVertical,
@@ -11,9 +10,14 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
-import { DeleteButton, MenuDivider, MenuItemWrapper } from "../FileMenu";
+import {
+  DeleteButton,
+  MenuDivider,
+  MenuItemWrapper,
+} from "../Navigation/FileMenu";
 import { downloadModel } from "../rpc";
 import {
   duplicateModel,
@@ -32,7 +36,11 @@ interface WorkbookListProps {
 
 function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
   const { t } = useTranslation();
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [openMenuUuid, setOpenMenuUuid] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
   const [selectedWorkbookUuid, setSelectedWorkbookUuid] = useState<
     string | null
   >(null);
@@ -44,7 +52,6 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
 
   const selectedUuid = getSelectedUuid();
 
-  // Clear intended selection when selectedUuid changes from outside
   useEffect(() => {
     if (intendedSelection && selectedUuid === intendedSelection) {
       setIntendedSelection(null);
@@ -56,20 +63,23 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
     uuid: string,
   ) => {
     event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    setMenuPosition({
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
+    setOpenMenuUuid(uuid);
     setSelectedWorkbookUuid(uuid);
-    setMenuAnchorEl(event.currentTarget);
     setIntendedSelection(uuid);
     setModel(uuid);
   };
 
   const handleMenuClose = () => {
-    setMenuAnchorEl(null);
-    // If we have an intended selection, make sure it's still selected
+    setOpenMenuUuid(null);
+    setMenuPosition(null);
     if (intendedSelection && intendedSelection !== selectedUuid) {
       setModel(intendedSelection);
     }
-    // Don't reset selectedWorkbookUuid here - we want to keep track of which workbook was selected
-    // The selectedWorkbookUuid will be used for download/delete operations
   };
 
   const handleDeleteClick = (uuid: string) => {
@@ -119,7 +129,6 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
     }
   };
 
-  // Group workbooks by pinned status and creation date
   const groupWorkbooks = (
     modelsMetadata: ReturnType<typeof getModelsMetadata>,
   ) => {
@@ -147,7 +156,6 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
       }
     }
 
-    // Sort each group by creation timestamp (newest first)
     const sortByNewest = (uuids: string[]) =>
       uuids.sort(
         (a, b) => modelsMetadata[b].createdAt - modelsMetadata[a].createdAt,
@@ -162,9 +170,9 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
   };
 
   const modelsMetadata = getModelsMetadata();
-
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const isSearchMode = normalizedQuery.length > 0;
+  const isAnyMenuOpen = openMenuUuid !== null;
 
   let pinnedModels: string[] = [];
   let modelsCreatedToday: string[] = [];
@@ -172,50 +180,58 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
   let olderModels: string[] = [];
 
   const renderWorkbookItem = (uuid: string) => {
-    const isMenuOpen = menuAnchorEl !== null && selectedWorkbookUuid === uuid;
-    const isAnyMenuOpen = menuAnchorEl !== null;
+    const isMenuOpen = openMenuUuid === uuid;
 
     return (
-      <WorkbookListItem
+      <button
         key={uuid}
+        type="button"
+        className={[
+          "workbook-list-item",
+          uuid === selectedUuid ? "workbook-list-item--selected" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         onClick={() => {
-          // Prevent clicking on list items when any menu is open
-          if (isAnyMenuOpen) {
-            return;
-          }
+          if (isAnyMenuOpen) return;
           setModel(uuid);
         }}
-        selected={uuid === selectedUuid}
-        disableRipple
         style={{ pointerEvents: isAnyMenuOpen ? "none" : "auto" }}
       >
-        <StorageIndicator>
+        <span className="workbook-list-item-icon">
           <Table2 />
-        </StorageIndicator>
-        <WorkbookListText>{modelsMetadata[uuid].name}</WorkbookListText>
-        <EllipsisButton
+        </span>
+        <span className="workbook-list-item-name">
+          {modelsMetadata[uuid].name}
+        </span>
+        <button
+          type="button"
+          className={[
+            "workbook-list-ellipsis",
+            isMenuOpen ? "workbook-list-ellipsis--open" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           onClick={(e) => handleMenuOpen(e, uuid)}
-          isOpen={isMenuOpen}
           onMouseDown={(e) => e.stopPropagation()}
           style={{ pointerEvents: "auto" }}
         >
           <EllipsisVertical />
-        </EllipsisButton>
-      </WorkbookListItem>
+        </button>
+      </button>
     );
   };
 
   const renderSection = (title: string, uuids: string[]) => {
     if (uuids.length === 0) return null;
-
     return (
-      <SectionContainer key={title}>
-        <SectionTitle>
+      <div key={title} className="workbook-list-section">
+        <div className="workbook-list-section-title">
           {title === t("left_drawer.pinned") && <Pin />}
           {title}
-        </SectionTitle>
+        </div>
         {uuids.map(renderWorkbookItem)}
-      </SectionContainer>
+      </div>
     );
   };
 
@@ -237,10 +253,8 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
   return (
     <>
       {isSearchMode ? (
-        // Search mode (flat list, no grouping)
         filteredModels.map(renderWorkbookItem)
       ) : (
-        // Default mode (grouped)
         <>
           {renderSection(t("left_drawer.pinned"), pinnedModels)}
           {renderSection(t("left_drawer.today"), modelsCreatedToday)}
@@ -249,87 +263,74 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
         </>
       )}
       {isNoResults && (
-        <NoResultsContainer>
+        <div className="workbook-list-no-results">
           {t("left_drawer.search_no_results")}
-        </NoResultsContainer>
+        </div>
       )}
 
-      <StyledMenu
-        anchorEl={menuAnchorEl}
-        open={Boolean(menuAnchorEl)}
-        onClose={handleMenuClose}
-        autoFocus={false}
-        disableRestoreFocus={true}
-        transitionDuration={0}
-        MenuListProps={{ dense: true }}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "right",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
-      >
-        <MenuItemWrapper
-          onClick={() => {
-            if (selectedWorkbookUuid) {
-              handleDownload(selectedWorkbookUuid);
-            }
-            setIntendedSelection(null);
-            handleMenuClose();
-          }}
-          disableRipple
-        >
-          <FileDown />
-          {t("left_drawer.workbook_menu.download")}
-        </MenuItemWrapper>
-
-        <MenuItemWrapper
-          onClick={() => {
-            if (selectedWorkbookUuid) {
-              handlePinToggle(selectedWorkbookUuid);
-            }
-          }}
-          disableRipple
-        >
-          {selectedWorkbookUuid && isWorkbookPinned(selectedWorkbookUuid) ? (
-            <PinOff />
-          ) : (
-            <Pin />
-          )}
-          {selectedWorkbookUuid && isWorkbookPinned(selectedWorkbookUuid)
-            ? t("left_drawer.workbook_menu.unpin")
-            : t("left_drawer.workbook_menu.pin")}
-        </MenuItemWrapper>
-
-        <MenuItemWrapper
-          onClick={() => {
-            if (selectedWorkbookUuid) {
-              handleDuplicate(selectedWorkbookUuid);
-            }
-          }}
-          disableRipple
-        >
-          <Copy />
-          {t("left_drawer.workbook_menu.duplicate")}
-        </MenuItemWrapper>
-
-        <MenuDivider />
-
-        <DeleteButton
-          selected={false}
-          onClick={() => {
-            if (selectedWorkbookUuid) {
-              handleDeleteClick(selectedWorkbookUuid);
-            }
-          }}
-          disableRipple
-        >
-          <Trash2 size={16} />
-          {t("left_drawer.workbook_menu.delete")}
-        </DeleteButton>
-      </StyledMenu>
+      {openMenuUuid &&
+        menuPosition &&
+        createPortal(
+          <>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop captures outside clicks */}
+            <div
+              className="workbook-list-menu-backdrop"
+              onMouseDown={handleMenuClose}
+            />
+            <div
+              className="workbook-list-menu-panel"
+              style={{ top: menuPosition.top, right: menuPosition.right }}
+            >
+              <MenuItemWrapper
+                onClick={() => {
+                  if (selectedWorkbookUuid)
+                    handleDownload(selectedWorkbookUuid);
+                  setIntendedSelection(null);
+                  handleMenuClose();
+                }}
+              >
+                <FileDown />
+                {t("left_drawer.workbook_menu.download")}
+              </MenuItemWrapper>
+              <MenuItemWrapper
+                onClick={() => {
+                  if (selectedWorkbookUuid)
+                    handlePinToggle(selectedWorkbookUuid);
+                }}
+              >
+                {selectedWorkbookUuid &&
+                isWorkbookPinned(selectedWorkbookUuid) ? (
+                  <PinOff />
+                ) : (
+                  <Pin />
+                )}
+                {selectedWorkbookUuid && isWorkbookPinned(selectedWorkbookUuid)
+                  ? t("left_drawer.workbook_menu.unpin")
+                  : t("left_drawer.workbook_menu.pin")}
+              </MenuItemWrapper>
+              <MenuItemWrapper
+                onClick={() => {
+                  if (selectedWorkbookUuid)
+                    handleDuplicate(selectedWorkbookUuid);
+                }}
+              >
+                <Copy />
+                {t("left_drawer.workbook_menu.duplicate")}
+              </MenuItemWrapper>
+              <MenuDivider />
+              <DeleteButton
+                onClick={() => {
+                  if (selectedWorkbookUuid)
+                    handleDeleteClick(selectedWorkbookUuid);
+                }}
+              >
+                <Trash2 size={16} />
+                {t("left_drawer.workbook_menu.delete")}
+              </DeleteButton>
+            </div>
+          </>,
+          document.body,
+        )}
 
       <DeleteWorkbookDialog
         open={isDeleteDialogOpen}
@@ -342,113 +343,5 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
     </>
   );
 }
-
-const StorageIndicator = styled("div")`
-  height: 16px;
-  width: 16px;
-  svg {
-    height: 16px;
-    width: 16px;
-    stroke: #9e9e9e;
-  }
-`;
-
-const EllipsisButton = styled("button")<{ isOpen: boolean }>`
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  height: 24px;
-  width: ${({ isOpen }) => (isOpen ? "24px" : "0px")};
-  border-radius: 4px;
-  color: #333333;
-  stroke-width: 2px;
-  background-color: ${({ isOpen }) => (isOpen ? "#E0E0E0" : "none")};
-  opacity: ${({ isOpen }) => (isOpen ? "1" : "0")};
-  &:hover {
-    background: #BDBDBD;
-    opacity: 1;
-  }
-  &:active {
-    background: #bdbdbd;
-    opacity: 1;
-  }
-`;
-
-const WorkbookListItem = styled(MenuItem)<{ selected: boolean }>`
-  display: flex;
-  gap: 8px;
-  justify-content: flex-start;
-  font-size: 14px;
-  width: 100%;
-  min-width: 172px;
-  border-radius: 8px;
-  padding: 8px 4px 8px 8px;
-  height: 32px;
-  min-height: 32px;
-  transition: gap 0.5s;
-  background-color: ${({ selected }) =>
-    selected ? "#e0e0e0 !important" : "transparent"};
-
-  &:hover {
-    background-color: #e0e0e0;
-    button {
-      opacity: 1;
-      min-width: 24px;
-    }
-  }
-`;
-
-const WorkbookListText = styled("div")`
-  color: #000;
-  font-size: 12px;
-  width: 100%;
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const StyledMenu = styled(Menu)`
-  .MuiPaper-root {
-    border-radius: 8px;
-    padding: 4px 0px;
-    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  .MuiList-root {
-    padding: 0;
-  }
-`;
-
-const SectionContainer = styled("div")`
-  margin-bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-`;
-
-const SectionTitle = styled("div")`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 400;
-  color: #9e9e9e;
-  margin-bottom: 8px;
-  padding: 0px 8px;
-  font-size: 12px;
-  svg {
-    width: 12px;
-    height: 12px;
-  }
-`;
-
-const NoResultsContainer = styled("div")`
-  padding: 0 8px;
-  color: #9e9e9e;
-  font-size: 12px;
-  line-height: 18px;
-`;
 
 export default WorkbookList;
