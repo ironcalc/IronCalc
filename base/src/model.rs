@@ -521,14 +521,14 @@ impl<'a> Model<'a> {
                     }
                 } else {
                     // Not bound by LET — look up as a defined-name Lambda.
-                    let name_upper = name.to_uppercase();
-                    let mut found = None;
-                    for (key, val) in &self.parsed_defined_names {
-                        if key.1.to_uppercase() == name_upper {
-                            found = Some(val.clone());
-                            break;
-                        }
-                    }
+                    // Prefer sheet-local (current sheet) over global (scope = None),
+                    // matching Excel's name resolution order.
+                    let name_lower = name.to_lowercase();
+                    let found = self
+                        .parsed_defined_names
+                        .get(&(Some(cell.sheet), name_lower.clone()))
+                        .or_else(|| self.parsed_defined_names.get(&(None, name_lower)))
+                        .cloned();
                     match found {
                         Some(ParsedDefinedName::LambdaDefinition(param_names, body)) => {
                             let lambda_id = self.get_next_lambda_id();
@@ -935,7 +935,7 @@ impl<'a> Model<'a> {
                 return self.set_cells_with_result(cell_reference, cell, &CalcResult::Number(0.0));
             }
             // CalcResult::Array is handled before this match (see above); it always returns early.
-            CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+            CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 debug_assert!(false, "Unexpected array result in non-array formula");
                 return Err("Unexpected array result in non-array formula".to_string());
             }
