@@ -70,7 +70,7 @@
         "button": "Supprimer le classeur",
         "title": "Êtes-vous sûr ?",
         "subtitle": "Le classeur '{{workbookName}}' sera définitivement supprimé. Cette action ne peut pas être annulée.",
-        "confirm_button": "Oui, supprimer le classeur",
+        "confirm_button": "Oui, supprimer",
         "cancel_button": "Annuler"
       },
       "default_language": "Langue par défaut"

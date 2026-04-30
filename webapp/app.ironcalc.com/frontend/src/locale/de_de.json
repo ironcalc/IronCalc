@@ -70,7 +70,7 @@
         "button": "Arbeitsmappe löschen",
         "title": "Sind Sie sicher?",
         "subtitle": "Die Arbeitsmappe '{{workbookName}}' wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
-        "confirm_button": "Ja, Arbeitsmappe löschen",
+        "confirm_button": "Ja, löschen",
         "cancel_button": "Abbrechen"
       },
       "default_language": "Standardsprache"

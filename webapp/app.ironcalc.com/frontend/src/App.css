@@ -8,3 +8,63 @@ html,
 body {
   overscroll-behavior: none;
 }
+
+.app-wrapper {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-main-content {
+  margin-left: -264px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.app-main-content--drawer-open {
+  margin-left: 0;
+  width: calc(100% - 264px);
+}
+
+@media (max-width: 600px) {
+  .app-main-content--drawer-open {
+    min-width: 600px;
+  }
+}
+
+.app-mobile-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: none;
+  padding: 0;
+  background-color: color-mix(
+    in srgb,
+    var(--palette-common-white) 80%,
+    transparent
+  );
+  z-index: 100;
+  cursor: pointer;
+}
+
+@media (min-width: 600px) {
+  .app-mobile-overlay {
+    display: none;
+  }
+}
+
+.app-loading {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--typography-font-family);
+  font-size: calc(var(--typography-font-size) + 2px);
+}

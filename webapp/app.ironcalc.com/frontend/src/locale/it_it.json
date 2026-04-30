@@ -70,7 +70,7 @@
         "button": "Elimina cartella di lavoro",
         "title": "Sei sicuro?",
         "subtitle": "La cartella di lavoro '{{workbookName}}' verrà eliminata definitivamente. Questa azione non può essere annullata.",
-        "confirm_button": "Sì, elimina cartella di lavoro",
+        "confirm_button": "Sì, elimina",
         "cancel_button": "Annulla"
       },
       "default_language": "Lingua predefinita"
