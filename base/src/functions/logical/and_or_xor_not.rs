@@ -97,7 +97,7 @@ impl<'a> Model<'a> {
                                 CalcResult::Range { .. }
                                 | CalcResult::String { .. }
                                 | CalcResult::EmptyCell => {}
-                                CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
                                     return CalcResult::Error {
                                         error: Error::NIMPL,
                                         origin: cell,
@@ -128,7 +128,7 @@ impl<'a> Model<'a> {
                 }
                 // References to empty cells are ignored. If all args are ignored the result is #VALUE!
                 CalcResult::EmptyCell => {}
-                CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+                CalcResult::Array(_) | CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,

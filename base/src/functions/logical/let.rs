@@ -73,6 +73,19 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
             assign_variable_ids(left, target, id);
             assign_variable_ids(right, target, id);
         }
+        Node::LambdaDefKind { parameters, body } => {
+            // If a LAMBDA parameter shadows `target`, don't recurse into the body.
+            let shadowed = parameters.iter().any(|p| p.name == target);
+            if !shadowed {
+                assign_variable_ids(body, target, id);
+            }
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            assign_variable_ids(lambda, target, id);
+            for arg in args.iter_mut() {
+                assign_variable_ids(arg, target, id);
+            }
+        }
         _ => {}
     }
 }

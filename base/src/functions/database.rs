@@ -551,7 +551,7 @@ impl<'a> Model<'a> {
                 })
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
-            CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+            CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 return Err(CalcResult::Error {
                     error: Error::NIMPL,
                     origin: cell,
@@ -588,7 +588,7 @@ impl<'a> Model<'a> {
                 | CalcResult::EmptyCell
                 | CalcResult::EmptyArg
                 | CalcResult::Array(_)
-                | CalcResult::Lambda { .. } => {}
+                | CalcResult::Lambda(_) => {}
             }
         }
 
@@ -749,7 +749,7 @@ impl<'a> Model<'a> {
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
             CalcResult::Error { .. } => return false,
-            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 return false
             }
         };

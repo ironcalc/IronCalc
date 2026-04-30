@@ -1165,7 +1165,7 @@ impl<'a> Model<'a> {
                     CalcResult::String(s) => ArrayNode::String(s),
                     CalcResult::Error { error, .. } => ArrayNode::Error(error),
                     CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-                    CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+                    CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
                         // This should never happen, but we need to handle it anyway
                         debug_assert!(false, "Unexpected array result in non-array formula");
                         ArrayNode::Error(Error::NIMPL)
@@ -1296,7 +1296,7 @@ impl<'a> Model<'a> {
                         let array = self.evaluate_range(left, right);
                         CalcResult::Array(array)
                     }
-                } else if matches!(result, CalcResult::Lambda { .. }) {
+                } else if matches!(result, CalcResult::Lambda(_)) {
                     CalcResult::new_error(
                         Error::CALC,
                         cell_reference,

@@ -89,7 +89,7 @@ impl<'a> Model<'a> {
                                 }
                                 CalcResult::EmptyCell => ArrayNode::Empty,
                                 CalcResult::EmptyArg => ArrayNode::Empty,
-                                CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
                                     // if we do things right this can never happen.
                                     // the evaluation of a cell should never return an array or lambda
                                     ArrayNode::Number(0.0)
@@ -103,7 +103,7 @@ impl<'a> Model<'a> {
             }
             CalcResult::Array(s) => Ok(NumberOrArray::Array(s)),
             error @ CalcResult::Error { .. } => Err(error),
-            CalcResult::Lambda { .. } => Err(CalcResult::new_error(
+            CalcResult::Lambda(_) => Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "LAMBDA cannot be used as a number".to_string(),
@@ -166,7 +166,7 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
             }),
-            CalcResult::Array(_) | CalcResult::Lambda { .. } => Err(CalcResult::Error {
+            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
                 error: Error::NIMPL,
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
@@ -223,7 +223,7 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
             }),
-            CalcResult::Array(_) | CalcResult::Lambda { .. } => Err(CalcResult::Error {
+            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
                 error: Error::NIMPL,
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
@@ -272,7 +272,7 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
             }),
-            CalcResult::Array(_) | CalcResult::Lambda { .. } => Err(CalcResult::Error {
+            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
                 error: Error::NIMPL,
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),

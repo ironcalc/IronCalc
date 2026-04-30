@@ -509,7 +509,7 @@ impl<'a> Model<'a> {
                 message: "Arrays not supported yet".to_string(),
             }),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(0),
-            CalcResult::Array(_) | CalcResult::Lambda { .. } => Err(CalcResult::Error {
+            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
                 error: Error::NIMPL,
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
@@ -919,7 +919,7 @@ impl<'a> Model<'a> {
                 message: "Invalid weekend".to_string(),
             }),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(weekend),
-            CalcResult::Array(_) | CalcResult::Lambda { .. } => Err(CalcResult::Error {
+            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
                 message: "Invalid weekend".to_string(),
@@ -1118,7 +1118,7 @@ impl<'a> Model<'a> {
                 }
             }
             err @ CalcResult::Error { .. } => err,
-            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 CalcResult::Error {
                     error: Error::NIMPL,
                     origin: cell,
