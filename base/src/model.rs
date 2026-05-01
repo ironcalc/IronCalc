@@ -1413,8 +1413,7 @@ impl<'a> Model<'a> {
         let cells = HashMap::new();
         let locale =
             get_locale(&workbook.settings.locale).map_err(|_| "Invalid locale".to_string())?;
-        let tz = Tz::parse(&workbook.settings.tz)
-            .map_err(|_| format!("Invalid timezone: {}", workbook.settings.tz))?;
+        let tz = Tz::parse(&workbook.settings.tz)?;
 
         let language = match get_language(language_id) {
             Ok(lang) => lang,

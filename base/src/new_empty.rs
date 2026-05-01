@@ -412,7 +412,7 @@ impl<'a> Model<'a> {
     ) -> Result<Model<'a>, String> {
         let tz = match Tz::parse(timezone) {
             Ok(tz) => tz,
-            Err(_) => return Err(format!("Invalid timezone: {}", &timezone)),
+            Err(e) => return Err(e),
         };
         let locale = match get_locale(locale_id) {
             Ok(l) => l,

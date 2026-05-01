@@ -1,12 +1,7 @@
 use crate::constants::EXCEL_DATE_BASE;
 
+#[derive(Clone)]
 pub(crate) struct Tz(chrono_tz::Tz);
-
-impl Clone for Tz {
-    fn clone(&self) -> Self {
-        Tz(self.0)
-    }
-}
 
 impl Tz {
     pub(crate) fn parse(s: &str) -> Result<Tz, String> {
