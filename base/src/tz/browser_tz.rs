@@ -3,8 +3,6 @@ use crate::constants::EXCEL_DATE_BASE;
 #[derive(Clone)]
 pub(crate) struct Tz(String);
 
-
-
 mod js {
     use wasm_bindgen::prelude::*;
 
