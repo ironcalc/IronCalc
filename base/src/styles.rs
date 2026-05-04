@@ -87,6 +87,7 @@ impl Styles {
             apply_font: false,
             apply_fill: false,
             quote_prefix: style.quote_prefix,
+            is_checkbox: style.is_checkbox,
             alignment: style.alignment.clone(),
         });
         self.cell_xfs.len() as i32 - 1
@@ -99,6 +100,7 @@ impl Styles {
             let font_id = cell_xf.font_id as usize;
             let num_fmt_id = cell_xf.num_fmt_id;
             let quote_prefix = cell_xf.quote_prefix;
+            let is_checkbox = cell_xf.is_checkbox;
             if style
                 == &(Style {
                     alignment: cell_xf.alignment.clone(),
@@ -107,6 +109,7 @@ impl Styles {
                     font: self.fonts[font_id].clone(),
                     border: self.borders[border_id].clone(),
                     quote_prefix,
+                    is_checkbox,
                 })
             {
                 return Some(index as i32);
@@ -162,6 +165,13 @@ impl Styles {
         self.add_named_cell_style(style_name, style_index)
     }
 
+    pub(crate) fn get_style_with_checkbox(&mut self, index: i32) -> Result<i32, String> {
+        let mut style = self.get_style(index)?;
+        style.is_checkbox = true;
+        style.quote_prefix = false;
+        Ok(self.get_style_index_or_create(&style))
+    }
+
     // Returns the style index of the style with `quote_prefix=true`
     // If there is no such style it creates it
     // TODO: It needs to be mutable, the name could reflect that
@@ -208,6 +218,7 @@ impl Styles {
         let font_id = cell_xf.font_id as usize;
         let num_fmt_id = cell_xf.num_fmt_id;
         let quote_prefix = cell_xf.quote_prefix;
+        let is_checkbox = cell_xf.is_checkbox;
         let alignment = cell_xf.alignment.clone();
 
         Ok(Style {
@@ -217,6 +228,7 @@ impl Styles {
             font: self.fonts[font_id].clone(),
             border: self.borders[border_id].clone(),
             quote_prefix,
+            is_checkbox,
         })
     }
 }

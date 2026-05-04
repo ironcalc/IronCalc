@@ -1998,13 +1998,14 @@ impl<'a> Model<'a> {
         value: bool,
     ) -> Result<(), String> {
         let style_index = self.get_cell_style_index(sheet, row, column)?;
-        let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
+        let no_quote = if self.workbook.styles.style_is_quote_prefix(style_index) {
             self.workbook
                 .styles
                 .get_style_without_quote_prefix(style_index)?
         } else {
             style_index
         };
+        let new_style_index = self.workbook.styles.get_style_with_checkbox(no_quote)?;
         self.set_cell_with_boolean(sheet, row, column, value, new_style_index)
     }
 
@@ -2283,8 +2284,12 @@ impl<'a> Model<'a> {
                 }
                 // We try to parse as boolean
                 if let Ok(v) = value.to_lowercase().parse::<bool>() {
+                    let checkbox_style = self
+                        .workbook
+                        .styles
+                        .get_style_with_checkbox(new_style_index)?;
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
-                    worksheet.set_cell_with_boolean(row, column, v, new_style_index)?;
+                    worksheet.set_cell_with_boolean(row, column, v, checkbox_style)?;
                     return Ok(());
                 }
                 // Check is it is error value

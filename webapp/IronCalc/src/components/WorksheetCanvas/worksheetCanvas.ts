@@ -66,6 +66,7 @@ interface TextProperties {
   strike: boolean;
   lines: [string, number, number, number][];
 }
+
 export default class WorksheetCanvas {
   sheetWidth: number;
 
@@ -586,6 +587,14 @@ export default class WorksheetCanvas {
     // Array = 64,
     // CompoundData = 128,
     const cellType = this.model.getCellType(selectedSheet, row, column);
+
+    if (
+      cellType === 4 &&
+      !this.model.getCellContent(selectedSheet, row, column).startsWith("=")
+    ) {
+      return;
+    }
+
     const { horizontal: horizontalAlign, vertical: verticalAlign } =
       this.getAlignment(style, cellType);
 
@@ -867,6 +876,14 @@ export default class WorksheetCanvas {
       y,
       false,
     );
+
+    if (
+      this.model.getCellType(selectedSheet, row, column) === 4 &&
+      !this.model.getCellContent(selectedSheet, row, column).startsWith("=")
+    ) {
+      const content = this.model.getCellContent(selectedSheet, row, column);
+      this.renderCheckbox(x, y, width, height, content === "TRUE");
+    }
   }
 
   /// Renders the text in the cell.
@@ -918,6 +935,59 @@ export default class WorksheetCanvas {
       }
     });
     context.restore();
+  }
+
+  isClickOnCheckbox(clickX: number, clickY: number): boolean {
+    const cell = this.getCellByCoordinates(clickX, clickY);
+    if (!cell) return false;
+    const sheet = this.model.getSelectedSheet();
+    if (this.model.getCellType(sheet, cell.row, cell.column) !== 4)
+      return false;
+    if (this.model.getCellContent(sheet, cell.row, cell.column).startsWith("="))
+      return false;
+    const [cx, cy] = this.getCoordinatesByCell(cell.row, cell.column);
+    const w = this.getColumnWidth(sheet, cell.column);
+    const h = this.getRowHeight(sheet, cell.row);
+    const s = Math.min(13, Math.floor(h * 0.65), Math.floor(w * 0.7));
+    if (s < 6) return false;
+    const l = Math.floor(cx + w / 2) + 0.5 - s / 2;
+    const t = Math.floor(cy + h / 2) + 0.5 - s / 2;
+    return clickX >= l && clickX <= l + s && clickY >= t && clickY <= t + s;
+  }
+
+  private renderCheckbox(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    checked: boolean,
+  ): void {
+    const s = Math.min(13, Math.floor(h * 0.65), Math.floor(w * 0.7));
+    if (s < 6) return;
+    const l = Math.floor(x + w / 2) + 0.5 - s / 2;
+    const t = Math.floor(y + h / 2) + 0.5 - s / 2;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.fillStyle = checked ? "#1a73e8" : "#ffffff";
+    ctx.fillRect(l, t, s, s);
+    ctx.strokeStyle = checked ? "#1a73e8" : "#757575";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(l + 0.5, t + 0.5, s - 1, s - 1);
+    if (checked) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(l + s * 0.15, t + s * 0.5);
+      ctx.lineTo(l + s * 0.4, t + s * 0.75);
+      ctx.lineTo(l + s * 0.85, t + s * 0.25);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // Column and row headers with their handles

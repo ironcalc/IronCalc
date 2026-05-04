@@ -642,6 +642,33 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onIncreaseFontSize={(delta: number) => {
           onIncreaseFontSize(delta);
         }}
+        onInsertCheckbox={() => {
+          const {
+            sheet,
+            range: [rowStart, columnStart, rowEnd, columnEnd],
+          } = model.getSelectedView();
+          for (
+            let row = Math.min(rowStart, rowEnd);
+            row <= Math.max(rowStart, rowEnd);
+            row += 1
+          ) {
+            for (
+              let col = Math.min(columnStart, columnEnd);
+              col <= Math.max(columnStart, columnEnd);
+              col += 1
+            ) {
+              const existing = model.getFormattedCellValue(sheet, row, col);
+              model.setUserInput(
+                sheet,
+                row,
+                col,
+                existing === "TRUE" ? "TRUE" : "FALSE",
+              );
+            }
+          }
+          model.evaluate();
+          setRedrawId((id) => id + 1);
+        }}
         onDownloadPNG={() => {
           // creates a new canvas element in the visible part of the the selected area
           const worksheetCanvas = worksheetRef.current?.getCanvas();

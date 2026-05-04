@@ -32,6 +32,7 @@ import {
   PoundSterling,
   Redo2,
   RemoveFormatting,
+  SquareCheck,
   Strikethrough,
   Type,
   Underline,
@@ -73,6 +74,7 @@ type ToolbarProperties = {
   onBorderChanged: (border: BorderOptions) => void;
   onClearFormatting: () => void;
   onIncreaseFontSize: (delta: number) => void;
+  onInsertCheckbox: () => void;
   onDownloadPNG: () => void;
   fillColor: string;
   fontColor: string;
@@ -490,6 +492,14 @@ function Toolbar(properties: ToolbarProperties) {
               onClick={() =>
                 properties.onToggleShowGridLines(!properties.showGridLines)
               }
+              disabled={!canEdit}
+            />
+          </Tooltip>
+          <Tooltip title={t("toolbar.insert_checkbox")}>
+            <IconButton
+              icon={<SquareCheck />}
+              aria-label={t("toolbar.insert_checkbox")}
+              onClick={() => properties.onInsertCheckbox()}
               disabled={!canEdit}
             />
           </Tooltip>

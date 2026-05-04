@@ -392,6 +392,7 @@ pub struct Style {
     pub font: Font,
     pub border: Border,
     pub quote_prefix: bool,
+    pub is_checkbox: bool,
 }
 
 impl Default for Style {
@@ -403,6 +404,7 @@ impl Default for Style {
             font: Font::default(),
             border: Border::default(),
             quote_prefix: false,
+            is_checkbox: false,
         }
     }
 }
@@ -640,6 +642,7 @@ pub struct CellXfs {
     pub apply_font: bool,
     pub apply_fill: bool,
     pub quote_prefix: bool,
+    pub is_checkbox: bool,
     pub alignment: Option<Alignment>,
 }
 

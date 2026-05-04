@@ -222,9 +222,19 @@ fn get_cell_xfs_xml(styles: &Styles) -> String {
                 {apply_font_str}\
                 {apply_fill_str}"
         );
+        let checkbox_ext = if cell_xf.is_checkbox {
+            concat!(
+                r#"<extLst><ext xmlns:xfpb="http://schemas.microsoft.com/office/spreadsheetml/2022/featurepropertybag""#,
+                r#" uri="{C7286773-470A-42A8-94C5-96B5CB345126}"><xfpb:xfComplement i="0"/></ext></extLst>"#,
+            )
+        } else {
+            ""
+        };
         if let Some(alignment) = &cell_xf.alignment {
             let alignment = get_alignment(alignment);
-            cell_xfs_str.push(format!("<xf {properties}>{alignment}</xf>"));
+            cell_xfs_str.push(format!("<xf {properties}>{alignment}{checkbox_ext}</xf>"));
+        } else if cell_xf.is_checkbox {
+            cell_xfs_str.push(format!("<xf {properties}>{checkbox_ext}</xf>"));
         } else {
             cell_xfs_str.push(format!("<xf {properties}/>"));
         }

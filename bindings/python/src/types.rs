@@ -299,6 +299,7 @@ impl From<&PyStyle> for Style {
             font: (&py_style.font).into(),
             border: (&py_style.border).into(),
             quote_prefix: py_style.quote_prefix,
+            is_checkbox: false,
         }
     }
 }

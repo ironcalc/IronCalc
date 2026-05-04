@@ -350,6 +350,16 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
             None
         };
 
+        let is_checkbox = xfs
+            .children()
+            .filter(|n| n.has_tag_name("extLst"))
+            .flat_map(|n| n.children())
+            .filter(|n| n.has_tag_name("ext"))
+            .any(|n| {
+                n.attribute("uri")
+                    == Some("{C7286773-470A-42A8-94C5-96B5CB345126}")
+            });
+
         cell_xfs.push(CellXfs {
             xf_id,
             num_fmt_id,
@@ -363,6 +373,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
             apply_font,
             apply_fill,
             quote_prefix,
+            is_checkbox,
             alignment,
         });
     }

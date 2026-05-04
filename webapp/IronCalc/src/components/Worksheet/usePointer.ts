@@ -48,17 +48,13 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         return;
       }
 
-      if (
-        !(
-          isSelecting.current ||
-          isInsertingRef.current ||
-          isSelectingRows.current ||
-          isSelectingColumns.current
-        )
-      ) {
-        return;
-      }
-      const { canvasElement, model, worksheetCanvas, refresh } = options;
+      const {
+        canvasElement,
+        model,
+        worksheetCanvas,
+        worksheetElement,
+        refresh,
+      } = options;
       const canvas = canvasElement.current;
       const worksheet = worksheetCanvas.current;
       // Silence the linter
@@ -68,6 +64,19 @@ const usePointer = (options: PointerSettings): PointerEvents => {
       const canvasRect = canvas.getBoundingClientRect();
       const x = event.clientX - canvasRect.x;
       const y = event.clientY - canvasRect.y;
+
+      // Show pointer cursor when hovering directly over a checkbox square
+      if (
+        !isSelecting.current &&
+        !isInsertingRef.current &&
+        !isSelectingRows.current &&
+        !isSelectingColumns.current &&
+        worksheetElement.current
+      ) {
+        const onCheckbox = worksheet.isClickOnCheckbox(x, y);
+        worksheetElement.current.style.cursor = onCheckbox ? "pointer" : "";
+        return;
+      }
 
       if (isSelectingRows.current) {
         // Prevent text selection during row dragging
@@ -335,6 +344,22 @@ const usePointer = (options: PointerSettings): PointerEvents => {
           );
           // we continue to select the new cell
         }
+        // Toggle checkbox only when the click lands on the checkbox square itself
+        if (!event.shiftKey && worksheet.isClickOnCheckbox(x, y)) {
+          const sheet = model.getSelectedSheet();
+          const content = model.getCellContent(sheet, cell.row, cell.column);
+          model.setUserInput(
+            sheet,
+            cell.row,
+            cell.column,
+            content === "TRUE" ? "FALSE" : "TRUE",
+          );
+          model.evaluate();
+          options.onCellSelected(cell, event);
+          refresh();
+          return;
+        }
+
         if (event.shiftKey) {
           // We are extending the selection
           options.onAreaSelecting(cell);
