@@ -1,0 +1,99 @@
+.file-bar {
+  position: relative;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 8px;
+  background: var(--palette-common-white);
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--palette-grey-300);
+}
+
+.file-bar-title-wrapper {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.file-bar-desktop-menu {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.file-bar-spacer {
+  flex-grow: 1;
+}
+
+.file-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-bar-drawer-button svg {
+  stroke: var(--palette-grey-600);
+}
+
+.file-bar-cloud-popover-content {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 240px;
+  background-color: var(--palette-common-white);
+  border: 1px solid var(--palette-grey-300);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  padding: 8px;
+  font-family: var(--typography-font-family);
+  font-size: calc(var(--typography-font-size) - 1px);
+  color: var(--palette-grey-900);
+  line-height: 128%;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 150ms ease-out,
+    visibility 0s linear 150ms;
+}
+
+.file-bar-cloud-popover-content[data-visible="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 150ms ease-out,
+    visibility 0s;
+}
+
+.file-bar-cloud-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.file-bar-cloud-button svg {
+  width: 16px;
+  height: 16px;
+  color: var(--palette-grey-400);
+}
+
+.file-bar-cloud-button:hover {
+  background-color: var(--palette-grey-100);
+}
+
+.file-bar-cloud-button:hover svg {
+  color: var(--palette-grey-600);
+}
+
+.file-bar-dialog-container {
+  position: relative;
+  display: inline-block;
+}

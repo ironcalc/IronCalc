@@ -9,9 +9,14 @@ export type {
   ButtonVariant,
 } from "./components/Button/Button";
 export { Button } from "./components/Button/Button";
+export type { IconButtonProperties } from "./components/Button/IconButton";
+export { IconButton } from "./components/Button/IconButton";
 export type { InputProperties, InputSize } from "./components/Input/Input";
 export { Input } from "./components/Input/Input";
 export { useModalFocus } from "./components/Modal/useModalFocus";
+export type { TooltipProperties } from "./components/Tooltip/Tooltip";
+export { Tooltip } from "./components/Tooltip/Tooltip";
+export { useTooltipPosition } from "./components/Tooltip/useTooltipPosition";
 export type { IronCalcHandle } from "./IronCalc";
 export { IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo, Model };
 
