@@ -71,10 +71,12 @@
 }
 
 .file-bar-cloud-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: default;
+  border: none;
+  background: transparent;
   border-radius: 6px;
   padding: 8px;
 }
