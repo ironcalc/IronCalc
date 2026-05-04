@@ -1,7 +1,6 @@
-import styled from "@emotion/styled";
-import type { Model } from "@ironcalc/workbook";
-import { ClickAwayListener, IconButton, Tooltip } from "@mui/material";
-import { CloudOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { IconButton, type Model, Tooltip } from "@ironcalc/workbook";
+import { ClickAwayListener } from "@mui/material";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
@@ -11,24 +10,14 @@ import { MobileMenu } from "./MobileMenu";
 import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareWorkbook/ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbook/ShareDialog";
+import { StorageWarning } from "./StorageWarning";
 import { updateNameSelectedWorkbook } from "./storage";
+import { useWindowWidth } from "./useWindowWidth";
 import { WorkbookTitle } from "./WorkbookTitle";
 
-type OpenMenu = "file" | "help" | null;
+import "./file-bar.css";
 
-// This hook is used to get the width of the window
-function useWindowWidth() {
-  const [width, setWidth] = useState(0);
-  useLayoutEffect(() => {
-    function updateWidth() {
-      setWidth(window.innerWidth);
-    }
-    window.addEventListener("resize", updateWidth);
-    updateWidth();
-    return () => window.removeEventListener("resize", updateWidth);
-  }, []);
-  return width;
-}
+type OpenMenu = "file" | "help" | null;
 
 export function FileBar(properties: {
   model: Model;
@@ -48,9 +37,6 @@ export function FileBar(properties: {
   const [maxTitleWidth, setMaxTitleWidth] = useState(0);
   const width = useWindowWidth();
   const { t } = useTranslation();
-  const cloudWarningText1 = `${t("file_bar.title_input.warning_text1")}`;
-  const cloudWarningText2 = `${t("file_bar.title_input.warning_text2")}`;
-
   const handleDownload = async () => {
     const model = properties.model;
     const bytes = model.toBytes();
@@ -59,6 +45,11 @@ export function FileBar(properties: {
   };
 
   const closeMenus = () => setOpenMenu(null);
+  const drawerLabel = t(
+    properties.isDrawerOpen
+      ? "file_bar.close_sidebar"
+      : "file_bar.open_sidebar",
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We need to update the maxTitleWidth when the width changes
   useLayoutEffect(() => {
@@ -72,32 +63,17 @@ export function FileBar(properties: {
   const isMobile = width < MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE;
 
   return (
-    <FileBarWrapper>
-      <Tooltip
-        title={t(
-          properties.isDrawerOpen
-            ? "file_bar.close_sidebar"
-            : "file_bar.open_sidebar",
-        )}
-        slotProps={{
-          popper: {
-            modifiers: [
-              {
-                name: "offset",
-                options: {
-                  offset: [0, -8],
-                },
-              },
-            ],
-          },
-        }}
-      >
-        <DrawerButton
+    <div className="file-bar">
+      <Tooltip title={drawerLabel}>
+        <IconButton
+          icon={
+            properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />
+          }
+          aria-label={drawerLabel}
+          size="md"
+          className="file-bar-drawer-button"
           onClick={() => properties.setIsDrawerOpen(!properties.isDrawerOpen)}
-          disableRipple
-        >
-          {properties.isDrawerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
-        </DrawerButton>
+        />
       </Tooltip>
       {isMobile ? (
         <MobileMenu
@@ -110,7 +86,7 @@ export function FileBar(properties: {
         />
       ) : (
         <ClickAwayListener onClickAway={closeMenus}>
-          <DesktopMenuWrapper>
+          <div className="file-bar-desktop-menu">
             <FileMenu
               newModel={properties.newModel}
               newModelFromTemplate={properties.newModelFromTemplate}
@@ -130,10 +106,10 @@ export function FileBar(properties: {
               onClose={closeMenus}
               onHover={() => openMenu && setOpenMenu("help")}
             />
-          </DesktopMenuWrapper>
+          </div>
         </ClickAwayListener>
       )}
-      <WorkbookTitleWrapper>
+      <div className="file-bar-title-wrapper">
         <WorkbookTitle
           name={properties.model.getName()}
           onNameChange={(name) => {
@@ -143,54 +119,11 @@ export function FileBar(properties: {
           }}
           maxWidth={maxTitleWidth}
         />
-      </WorkbookTitleWrapper>
-      <Spacer ref={spacerRef} />
-      <RightSideWrapper>
-        <Tooltip
-          title={
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
-            >
-              <div>{cloudWarningText1}</div>
-              <div style={{ fontWeight: "bold" }}>{cloudWarningText2}</div>
-            </div>
-          }
-          placement="bottom-end"
-          enterTouchDelay={0}
-          enterDelay={500}
-          slotProps={{
-            popper: {
-              modifiers: [
-                {
-                  name: "offset",
-                  options: {
-                    offset: [0, -16],
-                  },
-                },
-              ],
-            },
-            tooltip: {
-              sx: {
-                maxWidth: "240px",
-                fontSize: "11px",
-                padding: "8px",
-                backgroundColor: "#fff",
-                color: "#333333",
-                borderRadius: "8px",
-                border: "1px solid #e0e0e0",
-                boxShadow: "0px 1px 3px 0px #0000001A",
-                fontFamily: "Inter",
-                fontWeight: "400",
-                lineHeight: "16px",
-              },
-            },
-          }}
-        >
-          <CloudButton>
-            <CloudOff />
-          </CloudButton>
-        </Tooltip>
-        <DialogContainer>
+      </div>
+      <div ref={spacerRef} className="file-bar-spacer" />
+      <div className="file-bar-right">
+        <StorageWarning />
+        <div className="file-bar-dialog-container">
           <ShareButton onClick={() => setIsDialogOpen(true)} />
           {isDialogOpen && (
             <ShareWorkbookDialog
@@ -198,99 +131,8 @@ export function FileBar(properties: {
               model={properties.model}
             />
           )}
-        </DialogContainer>
-      </RightSideWrapper>
-    </FileBarWrapper>
+        </div>
+      </div>
+    </div>
   );
 }
-
-// We want the workbook title to be exactly an the center of the page,
-// so we need an absolute position
-const WorkbookTitleWrapper = styled("div")`
-  position: absolute;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-`;
-
-const CloudButton = styled("div")`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: default;
-  background-color: transparent;
-  border-radius: 6px;
-  padding: 8px;
-  svg {
-    width: 16px;
-    height: 16px;
-    color: #bdbdbd;
-  }
-  &:hover {
-    svg {
-      color: #757575;
-    }
-  }
-`;
-
-// The "Spacer" component occupies as much space as possible between the menu and the share button
-const Spacer = styled("div")`
-  flex-grow: 1;
-`;
-
-// const DrawerButton = styled(IconButton)<{ $isDrawerOpen: boolean }>`
-// cursor: ${(props) => (props.$isDrawerOpen ? "w-resize" : "e-resize")};
-const DrawerButton = styled(IconButton)`
-  margin-left: 8px;
-  height: 32px;
-  width: 32px;
-  padding: 8px;
-  border-radius: 6px;
-
-  svg {
-    stroke-width: 2px;
-    stroke: #757575;
-    width: 16px;
-    height: 16px;
-  }
-  &:hover {
-    background-color: #f2f2f2;
-  }
-  &:active {
-    background-color: #e0e0e0;
-  }
-`;
-
-// The container must be relative positioned so we can position the title absolutely
-const FileBarWrapper = styled("div")`
-  position: relative;
-  height: 60px;
-  min-height: 60px;
-  width: 100%;
-  background: #fff;
-  display: flex;
-  gap: 2px;
-  align-items: center;
-  border-bottom: 1px solid #e0e0e0;
-  justify-content: space-between;
-`;
-
-const RightSideWrapper = styled("div")`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const DialogContainer = styled("div")`
-  position: relative;
-  display: inline-block;
-`;
-
-const DesktopMenuWrapper = styled("div")`
-  display: flex;
-  align-items: center;
-  gap: 2px;
-`;
