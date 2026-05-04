@@ -1,0 +1,218 @@
+{
+  "toolbar": {
+    "redo": "Повторити",
+    "undo": "Скасувати",
+    "copy_styles": "Копіювати стилі",
+    "clear_formatting": "Очистити форматування",
+    "currency": "Формат валюти",
+    "percentage": "Формат відсотків",
+    "bold": "Жирний",
+    "italic": "Курсив",
+    "underline": "Підкреслення",
+    "strike_through": "Закреслення",
+    "align_left": "Вирівняти ліворуч",
+    "align_right": "Вирівняти праворуч",
+    "align_center": "Вирівняти по центру",
+    "format_number": "Формат числа",
+    "font_color": "Колір шрифту",
+    "fill_color": "Колір заливки",
+    "increase_font_size": "Збільшити розмір шрифту",
+    "decrease_font_size": "Зменшити розмір шрифту",
+    "decimal_places_increase": "Збільшити кількість десяткових знаків",
+    "decimal_places_decrease": "Зменшити кількість десяткових знаків",
+    "show_hide_grid_lines": "Показати/приховати лінії сітки",
+    "named_ranges": "Іменовані діапазони",
+    "vertical_align_bottom": "Вирівняти знизу",
+    "vertical_align_middle": "Вирівняти посередині",
+    "vertical_align_top": "Вирівняти зверху",
+    "selected_png": "Експортувати виділену область як PNG",
+    "wrap_text": "Перенос тексту",
+    "scroll_left": "Прокрутити ліворуч",
+    "scroll_right": "Прокрутити праворуч",
+    "format_menu": {
+      "auto": "Авто",
+      "number": "Число",
+      "percentage": "Відсотки",
+      "currency_eur": "Євро (EUR)",
+      "currency_usd": "Долар (USD)",
+      "currency_gbp": "Британський фунт (GBP)",
+      "date_short": "Коротка дата",
+      "date_long": "Повна дата",
+      "custom": "Користувацький",
+      "number_example": "1 000,00",
+      "percentage_example": "10%",
+      "currency_eur_example": "€",
+      "currency_usd_example": "$",
+      "currency_gbp_example": "£"
+    },
+    "borders": {
+      "title": "Межі",
+      "all": "Усі межі",
+      "inner": "Внутрішні межі",
+      "outer": "Зовнішні межі",
+      "top": "Верхні межі",
+      "bottom": "Нижні межі",
+      "clear": "Очистити межі",
+      "left": "Ліві межі",
+      "right": "Праві межі",
+      "horizontal": "Горизонтальні межі",
+      "vertical": "Вертикальні межі",
+      "color": "Колір межі",
+      "style": "Стиль межі"
+    }
+  },
+  "num_fmt": {
+    "title": "Користувацький формат числа",
+    "label": "Формат числа",
+    "close": "Закрити діалог",
+    "save": "Зберегти"
+  },
+  "sheet_rename": {
+    "rename": "Зберегти",
+    "label": "Нова назва",
+    "title": "Перейменувати аркуш",
+    "close": "Закрити діалог"
+  },
+  "sheet_delete": {
+    "title": "Ви впевнені?",
+    "message": "Аркуш '{{sheetName}}' буде видалено.",
+    "confirm": "Так, видалити аркуш",
+    "cancel": "Скасувати"
+  },
+  "sheet_tab": {
+    "rename": "Перейменувати",
+    "change_color": "Змінити колір",
+    "delete": "Видалити",
+    "hide_sheet": "Приховати",
+    "open_menu": "Відкрити меню аркуша"
+  },
+  "formula_input": {
+    "update": "Оновити",
+    "label": "Формула",
+    "title": "Оновити формулу"
+  },
+  "formula_bar": {
+    "manage_named_ranges": "Керувати іменованими діапазонами"
+  },
+  "navigation": {
+    "add_sheet": "Додати аркуш",
+    "sheet_list": "Список аркушів"
+  },
+  "name_manager_dialog": {
+    "title": "Іменовані діапазони",
+    "empty_message1": "Іменованих діапазонів ще не додано.",
+    "empty_message2": "Натисніть «Додати новий», щоб створити.",
+    "name": "Назва",
+    "range": "Область",
+    "scope": "Діапазон",
+    "help": "Про іменовані діапазони",
+    "new": "Додати новий",
+    "workbook": "Книга",
+    "global": "(Глобальний)",
+    "close": "Закрити діалог",
+    "delete": "Видалити діапазон",
+    "edit": "Редагувати діапазон",
+    "back_to_list": "Повернутися до списку",
+    "add_new_range": "Додати новий діапазон",
+    "edit_range": "Редагувати діапазон",
+    "new_named_range": "Новий іменований діапазон",
+    "range_name": "Назва діапазону",
+    "enter_range_name": "Введіть назву діапазону",
+    "scope_label": "Область",
+    "scope_helper": "Область іменованого діапазону визначає, де він доступний.",
+    "refers_to": "Посилається на",
+    "enter_formula": "Введіть формулу",
+    "cancel": "Скасувати",
+    "apply": "Застосувати зміни",
+    "discard": "Відхилити зміни",
+    "default_range_prefix": "Діапазон",
+    "errors": {
+      "range_name_required": "Назва діапазону обов'язкова",
+      "name_cannot_contain_spaces": "Назва не може містити пробіли",
+      "name_cannot_start_with_number": "Назва не може починатися з цифри",
+      "name_invalid_characters": "Назва містить недопустимі символи. Використовуйте лише літери, цифри, підкреслення та крапки. Має починатися з літери або підкреслення.",
+      "name_already_exists": "Ця назва вже існує у вибраній області"
+    }
+  },
+  "context_menu": {
+    "column_header": {
+      "delete_column": "Видалити стовпець '{{column}}'",
+      "delete_columns": "Видалити стовпці {{columnStart}} - {{columnEnd}}",
+      "freeze_columns": "Закріпити до стовпця '{{column}}'",
+      "hide_column": "Приховати стовпець '{{column}}'",
+      "hide_columns": "Приховати стовпці {{columnStart}} - {{columnEnd}}",
+      "insert_columns_before": "Вставити {{count}} стовпець(-ці) ліворуч",
+      "insert_columns_after": "Вставити {{count}} стовпець(-ці) праворуч",
+      "move_columns_left": "Перемістити стовпці ліворуч",
+      "move_columns_right": "Перемістити стовпці праворуч",
+      "show_hidden_columns": "Показати приховані стовпці",
+      "unfreeze_columns": "Відкріпити стовпці"
+    },
+    "row_header": {
+      "delete_row": "Видалити рядок '{{row}}'",
+      "delete_rows": "Видалити рядки {{rowStart}} - {{rowEnd}}",
+      "freeze_rows": "Закріпити до рядка '{{row}}'",
+      "hide_row": "Приховати рядок '{{row}}'",
+      "hide_rows": "Приховати рядки {{rowStart}} - {{rowEnd}}",
+      "insert_rows_above": "Вставити {{count}} рядок(-ки) вище",
+      "insert_rows_below": "Вставити {{count}} рядок(-ки) нижче",
+      "move_rows_up": "Перемістити рядки вгору",
+      "move_rows_down": "Перемістити рядки вниз",
+      "show_hidden_rows": "Показати приховані рядки",
+      "unfreeze_rows": "Відкріпити рядки"
+    }
+  },
+  "color_picker": {
+    "apply": "Додати колір",
+    "cancel": "Скасувати",
+    "add": "Додати новий колір",
+    "default": "Колір за замовчуванням",
+    "no_fill": "Без заливки",
+    "recent": "Нещодавні",
+    "title": "Вибір кольору"
+  },
+  "right_drawer": {
+    "resize_drawer": "Змінити розмір панелі",
+    "close": "Закрити"
+  },
+  "regional_settings": {
+    "open_regional_settings": "Відкрити регіональні налаштування",
+    "title": "Регіональні налаштування",
+    "close": "Закрити діалогове вікно",
+    "locale": {
+      "title": "Регіон",
+      "locale_label": "Регіон",
+      "locale_example1": "Число",
+      "locale_example2": "Дата й час",
+      "locale_example3": "Роздільник в формулах",
+      "delimiter_comma": "Кома",
+      "delimiter_semicolon": "Крапка з комою"
+    },
+    "language": {
+      "title": "Мова",
+      "language_label": "Мова двигуна",
+      "language_helper": "Визначає мову, яка використовується в іменах функцій та повідомленнях про помилки.",
+      "display_language": {
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "de": "Deutsch",
+        "it": "Italiano",
+        "uk": "Українська"
+      },
+      "display_language_current_lang": {
+        "en": "Англійська",
+        "es": "Іспанська",
+        "fr": "Французька",
+        "de": "Німецька",
+        "it": "Італійська",
+        "uk": "Українська"
+      }
+    },
+    "timezone": {
+      "title": "Часовий пояс",
+      "timezone_label": "Часовий пояс",
+      "timezone_helper": "Зміна цього параметра вплине на функції дати й часу, зокрема TODAY() та NOW()."
+    }
+  }
+}

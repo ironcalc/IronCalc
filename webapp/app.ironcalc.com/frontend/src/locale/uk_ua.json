@@ -1,0 +1,93 @@
+{
+  "app": {
+    "title": "IronCalc"
+  },
+  "default_workbook_name": "Книга",
+  "errors": {
+    "model_not_found": "Модель не знайдено або не вдалося завантажити",
+    "example_not_found": "Файл-приклад не знайдено або не вдалося завантажити"
+  },
+  "welcome_dialog": {
+    "title": "Ласкаво просимо до IronCalc",
+    "subtitle": "Почніть з порожньої книги або готового шаблону.",
+    "close_dialog": "Закрити діалог",
+    "new": "Новий",
+    "blank_workbook": "Порожня книга",
+    "blank_workbook_description": "Створіть з нуля або завантажте власний файл.",
+    "templates": {
+      "choose_template": "Оберіть шаблон",
+      "templates": "Шаблони",
+      "mortgage_calculator": "Іпотечний калькулятор",
+      "mortgage_calculator_description": "Розрахунок платежів, відсотків та загальної вартості.",
+      "travel_expenses_tracker": "Трекер витрат на подорожі",
+      "travel_expenses_tracker_description": "Відстежуйте витрати на поїздки та дотримуйтесь бюджету."
+    },
+    "create_workbook": "Створити книгу"
+  },
+  "left_drawer": {
+    "new_workbook": "Нова книга",
+    "pinned": "Закріплені",
+    "today": "Сьогодні",
+    "last_30_days": "Останні 30 днів",
+    "older": "Старіші",
+    "workbook_menu": {
+      "download": "Завантажити (.xlsx)",
+      "pin": "Закріпити",
+      "unpin": "Відкріпити",
+      "duplicate": "Дублювати",
+      "delete": "Видалити книгу"
+    },
+    "alert": {
+      "title": "Зверніть увагу!",
+      "subtitle": "IronCalc зберігає ваші дані лише у локальному сховищі браузера.",
+      "subtitle2": "<bold>Завантажуйте XLSX частіше</bold> — майбутні версії можуть не відкрити поточні книги, навіть якщо вони були надіслані."
+    },
+    "documentation": "Документація"
+  },
+  "file_bar": {
+    "open_sidebar": "Відкрити бічну панель",
+    "close_sidebar": "Закрити бічну панель",
+    "file_menu": {
+      "button": "Файл",
+      "new_blank_workbook": "Нова порожня книга",
+      "new_from_template": "Новий із шаблону",
+      "import": {
+        "button": "Імпорт",
+        "title": "Імпортувати файл .xlsx",
+        "subtitle": "Перетягніть файл сюди або",
+        "subtitle_link": "натисніть для вибору",
+        "learn_more": "Дізнатися більше про імпорт файлів в IronCalc",
+        "close_dialog": "Закрити діалог",
+        "uploading": "Завантаження {{fileName}}...",
+        "drop_file_here": "Перетягніть файл сюди"
+      },
+      "download": "Завантажити (.xlsx)",
+      "delete_workbook": {
+        "button": "Видалити книгу",
+        "title": "Ви впевнені?",
+        "subtitle": "Книгу <bold>'{{workbookName}}'</bold> буде остаточно видалено. Цю дію неможливо скасувати.",
+        "confirm_button": "Так, видалити книгу",
+        "cancel_button": "Скасувати"
+      },
+      "default_language": "Мова за замовчуванням"
+    },
+    "help_menu": {
+      "button": "Довідка",
+      "documentation": "Документація",
+      "keyboard_shortcuts": "Гарячі клавіші"
+    },
+    "title_input": {
+      "warning_text1": "Ця книга зберігається лише у вашому браузері. Для збереження завантажте її як .xlsx.",
+      "warning_text2": " Майбутні версії можуть бути несумісними."
+    },
+    "share_popover": {
+      "button": "Поділитися",
+      "copy_url": "Копіювати URL",
+      "copied": "Скопійовано!",
+      "info_text": "Будь-хто з посиланням зможе отримати копію цієї книги"
+    }
+  },
+  "loading_screen": {
+    "message": "Завантаження IronCalc"
+  }
+}

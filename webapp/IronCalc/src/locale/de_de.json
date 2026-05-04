@@ -215,14 +215,16 @@
         "es": "Español",
         "fr": "Français",
         "de": "Deutsch",
-        "it": "Italiano"
+        "it": "Italiano",
+        "uk": "Українська"
       },
       "display_language_current_lang": {
         "en": "Englisch",
         "es": "Spanisch",
         "fr": "Französisch",
         "de": "Deutsch",
-        "it": "Italienisch"
+        "it": "Italienisch",
+        "uk": "Ukrainisch"
       }
     },
     "timezone": {
