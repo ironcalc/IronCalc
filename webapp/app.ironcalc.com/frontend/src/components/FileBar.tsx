@@ -9,7 +9,7 @@ import { FileMenu } from "./FileMenu";
 import { HelpMenu } from "./HelpMenu";
 import { MobileMenu } from "./MobileMenu";
 import { downloadModel } from "./rpc";
-import { ShareButton } from "./ShareButton";
+import { ShareButton } from "./ShareWorkbook/ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbookDialog";
 import { updateNameSelectedWorkbook } from "./storage";
 import { WorkbookTitle } from "./WorkbookTitle";
@@ -288,9 +288,6 @@ const RightSideWrapper = styled("div")`
 const DialogContainer = styled("div")`
   position: relative;
   display: inline-block;
-  button {
-    margin-bottom: 8px;
-  }
   .MuiDialog-root {
     position: absolute;
     top: 100%;
