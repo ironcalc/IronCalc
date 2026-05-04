@@ -8,7 +8,13 @@ export function ShareButton(properties: { onClick: () => void }) {
   const { onClick } = properties;
   const { t } = useTranslation();
   return (
-    <Button onClick={onClick} startIcon={<Share2 />} className="share-button">
+    <Button
+      type="button"
+      onClick={onClick}
+      startIcon={<Share2 />}
+      className="share-button"
+      aria-label={t("file_bar.share_popover.button")}
+    >
       <span className="share-button__text">
         {t("file_bar.share_popover.button")}
       </span>
