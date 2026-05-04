@@ -491,6 +491,8 @@ impl<'a> Model<'a> {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
+            spill_cells: Vec::new(),
+            support: HashMap::new(),
         };
         model.parse_formulas();
         Ok(model)
