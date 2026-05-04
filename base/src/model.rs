@@ -165,6 +165,13 @@ fn formula_value_to_spill_value(v: &FormulaValue) -> SpillValue {
     }
 }
 
+pub(crate) enum CellOrRange {
+    // (sheet, row, column)
+    Cell((u32, i32, i32)),
+    // (sheet, start_row, start_column, end_row, end_column)
+    Range((u32, i32, i32, i32, i32)),
+}
+
 /// A dynamical IronCalc model.
 ///
 /// Its is composed of a `Workbook`. Everything else are dynamical quantities:
@@ -206,6 +213,10 @@ pub struct Model<'a> {
     pub(crate) lambdas: HashMap<usize, (Vec<String>, Node)>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
+    /// The list of cells that might spill
+    pub(crate) spill_cells: Vec<CellReferenceIndex>,
+    /// A dictionary to keep track of which cells or ranges support a given cell.
+    pub(crate) support: HashMap<CellReferenceIndex, Vec<CellOrRange>>,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -416,6 +427,10 @@ impl<'a> Model<'a> {
                 if !absolute_column {
                     column1 += cell.column;
                 }
+                self.support
+                    .entry(cell)
+                    .or_default()
+                    .push(CellOrRange::Cell((*sheet_index, row1, column1)));
                 self.evaluate_cell(CellReferenceIndex {
                     sheet: *sheet_index,
                     row: row1,
@@ -461,6 +476,16 @@ impl<'a> Model<'a> {
                 } else {
                     *column2 + cell.column
                 };
+                self.support
+                    .entry(cell)
+                    .or_default()
+                    .push(CellOrRange::Range((
+                        *sheet_index,
+                        r1.min(r2),
+                        c1.min(c2),
+                        r1.max(r2),
+                        c1.max(c2),
+                    )));
                 CalcResult::Range {
                     left: CellReferenceIndex {
                         sheet: *sheet_index,
@@ -1446,6 +1471,8 @@ impl<'a> Model<'a> {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
+            spill_cells: Vec::new(),
+            support: HashMap::new(),
         };
 
         model.parse_formulas();
@@ -2630,16 +2657,155 @@ impl<'a> Model<'a> {
         cells
     }
 
-    /// Evaluates the model with a top-down recursive algorithm
+    /// Collects all dynamic-formula anchor cells in natural (sheet, row, column) order
+    /// and stores them in `self.spill_cells`.
+    fn collect_spill_cells(&mut self) {
+        let mut spill_cells = Vec::new();
+        for (sheet_index, worksheet) in self.workbook.worksheets.iter().enumerate() {
+            let mut sorted_rows: Vec<i32> = worksheet.sheet_data.keys().copied().collect();
+            sorted_rows.sort_unstable();
+            for row in &sorted_rows {
+                let row_data = &worksheet.sheet_data[row];
+                let mut sorted_cols: Vec<i32> = row_data.keys().copied().collect();
+                sorted_cols.sort_unstable();
+                for col in &sorted_cols {
+                    if matches!(
+                        &row_data[col],
+                        Cell::ArrayFormula {
+                            kind: ArrayKind::Dynamic,
+                            ..
+                        }
+                    ) {
+                        spill_cells.push(CellReferenceIndex {
+                            sheet: sheet_index as u32,
+                            row: *row,
+                            column: *col,
+                        });
+                    }
+                }
+            }
+        }
+        self.spill_cells = spill_cells;
+    }
+
+    /// Returns all cells in the current spill area of a dynamic-formula anchor,
+    /// including the anchor itself.
+    fn get_spill_area(&self, cell_ref: CellReferenceIndex) -> Vec<CellReferenceIndex> {
+        let ws = match self.workbook.worksheet(cell_ref.sheet) {
+            Ok(ws) => ws,
+            Err(_) => return Vec::new(),
+        };
+        let (width, height) = match ws.cell(cell_ref.row, cell_ref.column) {
+            Some(Cell::ArrayFormula {
+                r,
+                kind: ArrayKind::Dynamic,
+                ..
+            }) => *r,
+            _ => return Vec::new(),
+        };
+        (cell_ref.row..cell_ref.row + height)
+            .flat_map(|r| {
+                (cell_ref.column..cell_ref.column + width).map(move |c| CellReferenceIndex {
+                    sheet: cell_ref.sheet,
+                    row: r,
+                    column: c,
+                })
+            })
+            .collect()
+    }
+
+    /// Returns true if any position in `positions` falls within a dependency of `cell`.
+    fn position_in_support(
+        &self,
+        cell: CellReferenceIndex,
+        positions: &[CellReferenceIndex],
+    ) -> bool {
+        let deps = match self.support.get(&cell) {
+            Some(d) => d,
+            None => return false,
+        };
+        for dep in deps {
+            match *dep {
+                CellOrRange::Cell((sheet, row, col)) => {
+                    if positions
+                        .iter()
+                        .any(|p| p.sheet == sheet && p.row == row && p.column == col)
+                    {
+                        return true;
+                    }
+                }
+                CellOrRange::Range((sheet, r1, c1, r2, c2)) => {
+                    if positions.iter().any(|p| {
+                        p.sheet == sheet
+                            && p.row >= r1
+                            && p.row <= r2
+                            && p.column >= c1
+                            && p.column <= c2
+                    }) {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    /// Evaluates the model using a two-phase algorithm that correctly handles dynamic arrays.
+    ///
+    /// Phase 1 evaluates all spill-capable cells first (in dependency order), so their spill
+    /// areas are populated before any other cell reads from them.  When a spill cell writes
+    /// into a position that an earlier spill cell depends on, the two cells are reordered and
+    /// the phase restarts.  A restart bound of N*N prevents infinite loops caused by circular
+    /// dependencies between spill cells.
+    ///
+    /// Phase 2 evaluates every remaining cell in natural order.  Because all spill areas have
+    /// already been written, regular cells always read the correct spill values.
     pub fn evaluate(&mut self) {
-        // clear all computation artifacts
-        self.cells.clear();
-        self.clear_variable_stack();
-        self.clear_lambdas();
+        self.collect_spill_cells();
 
-        let cells = self.get_all_cells();
+        let n = self.spill_cells.len();
+        // Each restart fixes at least one pair; O(N*N) restarts suffice.
+        let max_restarts = n * n + 1;
+        let mut retry = true;
+        let mut restart_count = 0;
 
-        for cell in cells {
+        while retry && restart_count < max_restarts {
+            retry = false;
+            self.cells.clear();
+            self.support.clear();
+            self.clear_variable_stack();
+            self.clear_lambdas();
+
+            // Phase 1: evaluate spill cells, correcting their order when needed.
+            for i in 0..self.spill_cells.len() {
+                let spill_cell = self.spill_cells[i];
+                self.evaluate_cell(spill_cell);
+
+                // Find every cell position written by this spill (anchor + spill cells).
+                let spill_area = self.get_spill_area(spill_cell);
+
+                // If any of those positions is a dependency of a spill cell that was
+                // evaluated earlier (index j < i), the current cell must come first.
+                for j in 0..i {
+                    let prev = self.spill_cells[j];
+                    if self.position_in_support(prev, &spill_area) {
+                        let moved = self.spill_cells.remove(i);
+                        self.spill_cells.insert(j, moved);
+                        retry = true;
+                        restart_count += 1;
+                        break;
+                    }
+                }
+                if retry {
+                    break;
+                }
+            }
+        }
+
+        // Phase 2: evaluate everything else; spill cells are already Evaluated and skipped.
+        // Fallback when max restarts is exceeded (circular spill dependency).
+        let all_cells = self.get_all_cells();
+        for cell in all_cells {
             self.evaluate_cell(CellReferenceIndex {
                 sheet: cell.index,
                 row: cell.row,
