@@ -10,7 +10,7 @@ import { HelpMenu } from "./HelpMenu";
 import { MobileMenu } from "./MobileMenu";
 import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareWorkbook/ShareButton";
-import ShareWorkbookDialog from "./ShareWorkbookDialog";
+import ShareWorkbookDialog from "./ShareWorkbook/ShareDialog";
 import { updateNameSelectedWorkbook } from "./storage";
 import { WorkbookTitle } from "./WorkbookTitle";
 
@@ -195,7 +195,6 @@ export function FileBar(properties: {
           {isDialogOpen && (
             <ShareWorkbookDialog
               onClose={() => setIsDialogOpen(false)}
-              onModelUpload={properties.onModelUpload}
               model={properties.model}
             />
           )}
@@ -288,12 +287,6 @@ const RightSideWrapper = styled("div")`
 const DialogContainer = styled("div")`
   position: relative;
   display: inline-block;
-  .MuiDialog-root {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    transform: translateY(8px);
-  }
 `;
 
 const DesktopMenuWrapper = styled("div")`

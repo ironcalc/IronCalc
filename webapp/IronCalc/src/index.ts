@@ -9,6 +9,9 @@ export type {
   ButtonVariant,
 } from "./components/Button/Button";
 export { Button } from "./components/Button/Button";
+export type { InputProperties, InputSize } from "./components/Input/Input";
+export { Input } from "./components/Input/Input";
+export { useModalFocus } from "./components/Modal/useModalFocus";
 export type { IronCalcHandle } from "./IronCalc";
 export { IronCalc, IronCalcIcon, IronCalcIconWhite, IronCalcLogo, Model };
 
