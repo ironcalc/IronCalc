@@ -1,0 +1,72 @@
+.share-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: transparent;
+}
+
+.share-dialog {
+  position: absolute;
+  top: 54px;
+  right: 10px;
+  width: 340px;
+  max-width: calc(100% - 20px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background: var(--palette-common-white);
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  font-family: var(--typography-font-family);
+}
+
+.share-dialog-content {
+  padding: 12px;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.share-dialog-url-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  justify-content: space-between;
+  align-items: stretch;
+}
+
+.share-dialog-qr-wrapper {
+  height: auto;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-dialog-qr-wrapper svg {
+  width: 72px;
+  height: auto;
+}
+
+.share-dialog-footer {
+  border-top: 1px solid var(--palette-grey-300);
+  font-size: var(--typography-font-size);
+  color: var(--palette-grey-600);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+.share-dialog-footer svg {
+  max-width: 16px;
+  min-width: 16px;
+}
+
+@media (max-width: 600px) {
+  .share-dialog-qr-wrapper {
+    display: none;
+  }
+
+  .share-dialog-url-wrapper {
+    gap: 8px;
+  }
+}
