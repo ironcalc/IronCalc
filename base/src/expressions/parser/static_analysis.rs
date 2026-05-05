@@ -624,6 +624,33 @@ fn args_signature_randarray(arg_count: usize) -> Vec<Signature> {
     vec![Signature::Scalar; arg_count]
 }
 
+fn args_signature_take(arg_count: usize) -> Vec<Signature> {
+    if !(2..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_drop(arg_count: usize) -> Vec<Signature> {
+    if !(2..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_tocol(arg_count: usize) -> Vec<Signature> {
+    if !(1..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
 fn args_signature_textsplit(arg_count: usize) -> Vec<Signature> {
     if !(2..=6).contains(&arg_count) {
         return vec![Signature::Error; arg_count];
@@ -820,6 +847,11 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sortby => args_signature_sortby(arg_count),
         Function::Unique => args_signature_unique(arg_count),
         Function::Filter => args_signature_filter(arg_count),
+        Function::Take => args_signature_take(arg_count),
+        Function::Drop => args_signature_drop(arg_count),
+        Function::Tocol => args_signature_tocol(arg_count),
+        Function::Torow => args_signature_tocol(arg_count),
+        Function::Transpose => args_signature_one_vector(arg_count),
         Function::Sequence => args_signature_sequence(arg_count),
         Function::Randarray => args_signature_randarray(arg_count),
         Function::Textsplit => args_signature_textsplit(arg_count),
@@ -1223,6 +1255,11 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sortby => StaticResult::Unknown,
         Function::Unique => StaticResult::Unknown,
         Function::Filter => StaticResult::Unknown,
+        Function::Take => StaticResult::Unknown,
+        Function::Drop => StaticResult::Unknown,
+        Function::Tocol => StaticResult::Unknown,
+        Function::Torow => StaticResult::Unknown,
+        Function::Transpose => StaticResult::Unknown,
         Function::Sequence => StaticResult::Unknown,
         Function::Randarray => StaticResult::Unknown,
         Function::Textsplit => StaticResult::Unknown,
