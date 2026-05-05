@@ -2,7 +2,7 @@ import { Button } from "@ironcalc/workbook";
 import { Share2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import "./share-button.css";
+import "./share-workbook.css";
 
 export function ShareButton(properties: { onClick: () => void }) {
   const { onClick } = properties;
@@ -12,10 +12,10 @@ export function ShareButton(properties: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       startIcon={<Share2 />}
-      className="share-button"
+      className="app-ic-share-button"
       aria-label={t("file_bar.share_popover.button")}
     >
-      <span className="share-button__text">
+      <span className="app-ic-share-button-text">
         {t("file_bar.share_popover.button")}
       </span>
     </Button>

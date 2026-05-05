@@ -1,10 +1,10 @@
-.share-dialog-backdrop {
+.app-ic-share-dialog-backdrop {
   position: fixed;
   inset: 0;
   background-color: transparent;
 }
 
-.share-dialog {
+.app-ic-share-dialog {
   position: absolute;
   top: 54px;
   right: 10px;
@@ -18,14 +18,14 @@
   font-family: var(--typography-font-family);
 }
 
-.share-dialog-content {
+.app-ic-share-dialog-content {
   padding: 12px;
   display: flex;
   flex-direction: row;
   gap: 12px;
 }
 
-.share-dialog-url-wrapper {
+.app-ic-share-dialog-url-wrapper {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -33,7 +33,7 @@
   align-items: stretch;
 }
 
-.share-dialog-qr-wrapper {
+.app-ic-share-dialog-qr-wrapper {
   height: auto;
   border-radius: 4px;
   display: flex;
@@ -41,12 +41,12 @@
   justify-content: center;
 }
 
-.share-dialog-qr-wrapper svg {
+.app-ic-share-dialog-qr-wrapper svg {
   width: 72px;
   height: auto;
 }
 
-.share-dialog-footer {
+.app-ic-share-dialog-footer {
   border-top: 1px solid var(--palette-grey-300);
   font-size: var(--typography-font-size);
   color: var(--palette-grey-600);
@@ -56,17 +56,21 @@
   padding: 12px;
 }
 
-.share-dialog-footer svg {
+.app-ic-share-dialog-footer svg {
   max-width: 16px;
   min-width: 16px;
 }
 
 @media (max-width: 600px) {
-  .share-dialog-qr-wrapper {
+  .app-ic-share-dialog-qr-wrapper {
     display: none;
   }
 
-  .share-dialog-url-wrapper {
+  .app-ic-share-dialog-url-wrapper {
     gap: 8px;
+  }
+
+  .app-ic-share-button-text {
+    display: none;
   }
 }
