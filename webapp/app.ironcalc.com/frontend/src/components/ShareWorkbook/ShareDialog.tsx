@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useModalFocus } from "./useModalFocus";
 import { useShareDialog } from "./useShareDialog";
 
-import "./share-dialog.css";
+import "./share-workbook.css";
 
 function ShareWorkbookDialog(properties: {
   onClose: () => void;
@@ -22,10 +22,14 @@ function ShareWorkbookDialog(properties: {
   };
 
   return createPortal(
-    <div className="share-dialog-backdrop" onClick={handleClose} role="none">
+    <div
+      className="app-ic-share-dialog-backdrop"
+      onClick={handleClose}
+      role="none"
+    >
       <div
         ref={modalRef}
-        className="share-dialog"
+        className="app-ic-share-dialog"
         role="dialog"
         aria-modal="true"
         onClick={(event) => event.stopPropagation()}
@@ -36,11 +40,11 @@ function ShareWorkbookDialog(properties: {
         }}
         tabIndex={-1}
       >
-        <div className="share-dialog-content">
-          <div className="share-dialog-qr-wrapper">
+        <div className="app-ic-share-dialog-content">
+          <div className="app-ic-share-dialog-qr-wrapper">
             <QRCodeSVG value={url} />
           </div>
-          <div className="share-dialog-url-wrapper">
+          <div className="app-ic-share-dialog-url-wrapper">
             <Input disabled value={url} />
             <Button
               type="button"
@@ -54,7 +58,7 @@ function ShareWorkbookDialog(properties: {
             </Button>
           </div>
         </div>
-        <div className="share-dialog-footer">
+        <div className="app-ic-share-dialog-footer">
           <GlobeLock />
           {t("file_bar.share_popover.info_text")}
         </div>
