@@ -4,8 +4,24 @@ use regex_lite as regex;
 use crate::{
     calc_result::CalcResult,
     expressions::token::{is_english_error_string, Error},
+    formatter::format::parse_date,
+    locale::Locale,
     number_format::to_excel_precision,
 };
+
+/// If `s` looks like a date literal in the given locale, return its Excel
+/// serial number as `f64`. Pure numeric strings are rejected here because the
+/// numeric branch in `build_criteria` handles them already, and date parsing
+/// must not shadow the simpler number path.
+fn parse_date_criterion(s: &str, locale: &Locale) -> Option<f64> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() || trimmed.parse::<f64>().is_ok() {
+        return None;
+    }
+    parse_date(trimmed, locale)
+        .ok()
+        .map(|(serial, _)| serial as f64)
+}
 
 fn error_sort_rank(e: &Error) -> u8 {
     match e {
@@ -345,7 +361,17 @@ fn result_is_equal_to_empty(calc_result: &CalcResult) -> bool {
 /// This returns a function (closure) of signature fn(&CalcResult) -> bool
 /// It is Boxed because it returns different closures, so the size cannot be known at compile time
 /// The lifetime (a) of value has to be longer or equal to the lifetime of the returned closure
-pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
+///
+/// `locale` is used to recognise date literals in the criterion string (e.g.
+/// "<7/31/2023" or "<31/7/2023" depending on the locale's short date format).
+/// When the post-operator string is not parseable as a number, we try to parse
+/// it as a date and, on success, fall back to numeric comparison against the
+/// resulting Excel serial. This is what lets COUNTIF/SUMIF/AVERAGEIF (and the
+/// *IFS variants) match date-serial cells with date-string criteria.
+pub(crate) fn build_criteria<'a>(
+    value: &'a CalcResult,
+    locale: &'a Locale,
+) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
     match value {
         CalcResult::String(s) => {
             if let Some(v) = s.strip_prefix("<=") {
@@ -354,6 +380,8 @@ pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResul
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
+                } else if let Some(f) = parse_date_criterion(v, locale) {
+                    Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else {
                     Box::new(move |x| result_is_less_or_equal_than_string(x, &v.to_lowercase()))
                 }
@@ -363,6 +391,8 @@ pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResul
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
+                } else if let Some(f) = parse_date_criterion(v, locale) {
+                    Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else {
                     Box::new(move |x| result_is_greater_or_equal_than_string(x, &v.to_lowercase()))
                 }
@@ -381,6 +411,8 @@ pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResul
                     }
                 } else if v.is_empty() {
                     Box::new(result_is_not_equal_to_empty)
+                } else if let Some(f) = parse_date_criterion(v, locale) {
+                    Box::new(move |x| result_is_not_equal_to_number(x, f))
                 } else {
                     Box::new(move |x| result_is_not_equal_to_string(x, &v.to_lowercase()))
                 }
@@ -390,6 +422,8 @@ pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResul
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
+                } else if let Some(f) = parse_date_criterion(v, locale) {
+                    Box::new(move |x| result_is_less_than_number(x, f))
                 } else {
                     Box::new(move |x| result_is_less_than_string(x, &v.to_lowercase()))
                 }
@@ -399,6 +433,8 @@ pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResul
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
+                } else if let Some(f) = parse_date_criterion(v, locale) {
+                    Box::new(move |x| result_is_greater_than_number(x, f))
                 } else {
                     Box::new(move |x| result_is_greater_than_string(x, &v.to_lowercase()))
                 }
@@ -420,6 +456,8 @@ pub(crate) fn build_criteria<'a>(value: &'a CalcResult) -> Box<dyn Fn(&CalcResul
                     } else {
                         Box::new(move |_| false)
                     }
+                } else if let Some(f) = parse_date_criterion(v, locale) {
+                    Box::new(move |x| result_is_equal_to_number(x, f))
                 } else {
                     Box::new(move |x| result_is_equal_to_string(x, &v.to_lowercase()))
                 }
