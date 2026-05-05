@@ -389,6 +389,7 @@ pub struct Functions {
     pub byrow: String,
     pub map: String,
     pub reduce: String,
+    pub scan: String,
 }
 
 #[derive(Encode, Decode)]

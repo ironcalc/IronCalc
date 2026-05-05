@@ -383,7 +383,8 @@
       "bycol": "BYCOL",
       "byrow": "BYROW",
       "map": "MAP",
-      "reduce": "REDUCE"
+      "reduce": "REDUCE",
+      "scan": "SCAN"
     }
   },
    "it": {
@@ -770,7 +771,8 @@
       "bycol": "BYCOL",
       "byrow": "BYROW",
       "map": "MAP",
-      "reduce": "REDUCE"
+      "reduce": "REDUCE",
+      "scan": "SCAN"
     }
   },
   "fr": {
@@ -1157,7 +1159,8 @@
       "bycol": "BYCOL",
       "byrow": "BYROW",
       "map": "MAP",
-      "reduce": "REDUCE"
+      "reduce": "REDUCE",
+      "scan": "SCAN"
     }
   },
   "de": {
@@ -1544,7 +1547,8 @@
       "bycol": "BYCOL",
       "byrow": "BYROW",
       "map": "MAP",
-      "reduce": "REDUCE"
+      "reduce": "REDUCE",
+      "scan": "SCAN"
     }
   },
   "es": {
@@ -1931,7 +1935,8 @@
       "bycol": "BYCOL",
       "byrow": "BYROW",
       "map": "MAP",
-      "reduce": "REDUCE"
+      "reduce": "REDUCE",
+      "scan": "SCAN"
     }
   }
 }

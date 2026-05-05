@@ -46,6 +46,7 @@ pub enum Function {
     Byrow,
     Map,
     Reduce,
+    Scan,
 
     // Mathematical and trigonometry
     Abs,
@@ -476,6 +477,7 @@ impl_function_lookup! {
     byrow       => Byrow,
     map         => Map,
     reduce      => Reduce,
+    scan        => Scan,
 
     // Mathematical and trigonometry
     abs             => Abs,
@@ -876,6 +878,7 @@ impl Function {
             Function::Byrow => functions.byrow.clone(),
             Function::Map => functions.map.clone(),
             Function::Reduce => functions.reduce.clone(),
+            Function::Scan => functions.scan.clone(),
             Function::Abs => functions.abs.clone(),
             Function::Acos => functions.acos.clone(),
             Function::Acosh => functions.acosh.clone(),
@@ -1224,7 +1227,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 363> {
+    pub fn into_iter() -> IntoIter<Function, 364> {
         [
             Function::And,
             Function::False,
@@ -1243,6 +1246,7 @@ impl Function {
             Function::Byrow,
             Function::Map,
             Function::Reduce,
+            Function::Scan,
             Function::Sin,
             Function::Cos,
             Function::Tan,
@@ -1621,6 +1625,7 @@ impl Function {
             Function::Byrow => "_xlfn.BYROW".to_string(),
             Function::Map => "_xlfn.MAP".to_string(),
             Function::Reduce => "_xlfn.REDUCE".to_string(),
+            Function::Scan => "_xlfn.SCAN".to_string(),
             Function::Xor => "_xlfn.XOR".to_string(),
             Function::Textbefore => "_xlfn.TEXTBEFORE".to_string(),
             Function::Textafter => "_xlfn.TEXTAFTER".to_string(),
@@ -1771,6 +1776,7 @@ impl<'a> Model<'a> {
             Function::Byrow => self.fn_byrow(args, cell),
             Function::Map => self.fn_map(args, cell),
             Function::Reduce => self.fn_reduce(args, cell),
+            Function::Scan => self.fn_scan(args, cell),
             Function::Log => self.fn_log(args, cell),
             Function::Log10 => self.fn_log10(args, cell),
             Function::Ln => self.fn_ln(args, cell),
