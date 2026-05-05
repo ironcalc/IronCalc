@@ -3,6 +3,7 @@ mod bycol_byrow;
 mod lambda;
 mod r#let;
 mod map_reduce;
+mod scan;
 mod switch;
 
 use crate::{

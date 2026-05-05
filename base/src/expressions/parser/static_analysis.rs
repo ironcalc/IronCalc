@@ -676,6 +676,14 @@ fn args_signature_reduce(arg_count: usize) -> Vec<Signature> {
     }
 }
 
+fn args_signature_scan(arg_count: usize) -> Vec<Signature> {
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Scalar],
+        3 => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
+        _ => vec![Signature::Error; arg_count],
+    }
+}
+
 fn args_signature_textsplit(arg_count: usize) -> Vec<Signature> {
     if !(2..=6).contains(&arg_count) {
         return vec![Signature::Error; arg_count];
@@ -881,6 +889,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Byrow => args_signature_bycol_byrow(arg_count),
         Function::Map => args_signature_map(arg_count),
         Function::Reduce => args_signature_reduce(arg_count),
+        Function::Scan => args_signature_scan(arg_count),
         Function::Sequence => args_signature_sequence(arg_count),
         Function::Randarray => args_signature_randarray(arg_count),
         Function::Textsplit => args_signature_textsplit(arg_count),
@@ -1293,6 +1302,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Byrow => StaticResult::Unknown,
         Function::Map => StaticResult::Unknown,
         Function::Reduce => StaticResult::Unknown,
+        Function::Scan => StaticResult::Unknown,
         Function::Sequence => StaticResult::Unknown,
         Function::Randarray => StaticResult::Unknown,
         Function::Textsplit => StaticResult::Unknown,
