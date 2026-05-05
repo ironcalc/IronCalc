@@ -379,7 +379,11 @@
       "drop": "DROP",
       "tocol": "TOCOL",
       "torow": "TOROW",
-      "transpose": "TRANSPOSE"
+      "transpose": "TRANSPOSE",
+      "bycol": "BYCOL",
+      "byrow": "BYROW",
+      "map": "MAP",
+      "reduce": "REDUCE"
     }
   },
    "it": {
@@ -762,7 +766,11 @@
       "drop": "DROP",
       "tocol": "TOCOL",
       "torow": "TOROW",
-      "transpose": "MATR.TRASPOSTA"
+      "transpose": "MATR.TRASPOSTA",
+      "bycol": "BYCOL",
+      "byrow": "BYROW",
+      "map": "MAP",
+      "reduce": "REDUCE"
     }
   },
   "fr": {
@@ -1145,7 +1153,11 @@
       "drop": "DROP",
       "tocol": "TOCOL",
       "torow": "TOROW",
-      "transpose": "TRANSPOSE"
+      "transpose": "TRANSPOSE",
+      "bycol": "BYCOL",
+      "byrow": "BYROW",
+      "map": "MAP",
+      "reduce": "REDUCE"
     }
   },
   "de": {
@@ -1528,7 +1540,11 @@
       "drop": "DROP",
       "tocol": "TOCOL",
       "torow": "TOROW",
-      "transpose": "MTRANS"
+      "transpose": "MTRANS",
+      "bycol": "BYCOL",
+      "byrow": "BYROW",
+      "map": "MAP",
+      "reduce": "REDUCE"
     }
   },
   "es": {
@@ -1911,7 +1927,11 @@
       "drop": "DROP",
       "tocol": "TOCOL",
       "torow": "TOROW",
-      "transpose": "TRANSPONER"
+      "transpose": "TRANSPONER",
+      "bycol": "BYCOL",
+      "byrow": "BYROW",
+      "map": "MAP",
+      "reduce": "REDUCE"
     }
   }
 }

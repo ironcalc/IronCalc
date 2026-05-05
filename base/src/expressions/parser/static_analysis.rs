@@ -651,6 +651,31 @@ fn args_signature_tocol(arg_count: usize) -> Vec<Signature> {
     result
 }
 
+fn args_signature_bycol_byrow(arg_count: usize) -> Vec<Signature> {
+    if arg_count != 2 {
+        return vec![Signature::Error; arg_count];
+    }
+    vec![Signature::Vector, Signature::Scalar]
+}
+
+fn args_signature_map(arg_count: usize) -> Vec<Signature> {
+    if arg_count < 2 {
+        return vec![Signature::Error; arg_count];
+    }
+    // All args except the last (lambda) are Vector; the lambda is Scalar.
+    let mut result = vec![Signature::Vector; arg_count];
+    result[arg_count - 1] = Signature::Scalar;
+    result
+}
+
+fn args_signature_reduce(arg_count: usize) -> Vec<Signature> {
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Scalar],
+        3 => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
+        _ => vec![Signature::Error; arg_count],
+    }
+}
+
 fn args_signature_textsplit(arg_count: usize) -> Vec<Signature> {
     if !(2..=6).contains(&arg_count) {
         return vec![Signature::Error; arg_count];
@@ -852,6 +877,10 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Tocol => args_signature_tocol(arg_count),
         Function::Torow => args_signature_tocol(arg_count),
         Function::Transpose => args_signature_one_vector(arg_count),
+        Function::Bycol => args_signature_bycol_byrow(arg_count),
+        Function::Byrow => args_signature_bycol_byrow(arg_count),
+        Function::Map => args_signature_map(arg_count),
+        Function::Reduce => args_signature_reduce(arg_count),
         Function::Sequence => args_signature_sequence(arg_count),
         Function::Randarray => args_signature_randarray(arg_count),
         Function::Textsplit => args_signature_textsplit(arg_count),
@@ -1260,6 +1289,10 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Tocol => StaticResult::Unknown,
         Function::Torow => StaticResult::Unknown,
         Function::Transpose => StaticResult::Unknown,
+        Function::Bycol => StaticResult::Unknown,
+        Function::Byrow => StaticResult::Unknown,
+        Function::Map => StaticResult::Unknown,
+        Function::Reduce => StaticResult::Unknown,
         Function::Sequence => StaticResult::Unknown,
         Function::Randarray => StaticResult::Unknown,
         Function::Textsplit => StaticResult::Unknown,
