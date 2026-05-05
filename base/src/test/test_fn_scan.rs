@@ -42,10 +42,7 @@ fn scan_running_max_with_initial() {
     model._set("A3", "4");
     model._set("A4", "2");
     // Running max starting from 0 → [3, 3, 4, 4]
-    model._set(
-        "B1",
-        "=SCAN(0, A1:A4, LAMBDA(acc, x, IF(x > acc, x, acc)))",
-    );
+    model._set("B1", "=SCAN(0, A1:A4, LAMBDA(acc, x, IF(x > acc, x, acc)))");
     model.evaluate();
     assert_eq!(model._get_text("B1"), "3");
     assert_eq!(model._get_text("B2"), "3");
