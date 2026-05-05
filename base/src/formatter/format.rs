@@ -745,7 +745,7 @@ fn parse_year(year_str: &str) -> Result<(i32, String), String> {
 // NOTE 1: The separator has to be the same
 // NOTE 2: In some engines "2/3" is implemented ad "2/March of the present year"
 // NOTE 3: I did not implement the "short date"
-fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
+pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
     let separator = if value.contains('/') {
         '/'
     } else if value.contains('-') {

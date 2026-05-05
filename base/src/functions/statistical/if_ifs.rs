@@ -70,7 +70,7 @@ impl<'a> Model<'a> {
             }
         }
         for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(criterion));
+            fn_criteria.push(build_criteria(criterion, self.locale));
         }
 
         let mut total = 0.0;
@@ -221,7 +221,7 @@ impl<'a> Model<'a> {
             }
         }
         for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(criterion));
+            fn_criteria.push(build_criteria(criterion, self.locale));
         }
 
         let left_row = sum_range.left.row;

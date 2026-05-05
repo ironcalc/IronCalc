@@ -18,6 +18,37 @@ fn test_fn_count_arguments() {
 }
 
 #[test]
+fn test_fn_countif_date_string_criterion() {
+    // 45131..=45137 -> 7/24/2023..7/30/2023 (seven dates strictly before 7/31)
+    // 45138         -> 7/31/2023
+    // 45139, 45200  -> after 7/31/2023
+    let mut model = new_empty_model();
+    for (idx, serial) in (45131..=45137).enumerate() {
+        let cell = format!("B{}", idx + 2);
+        model._set(&cell, &serial.to_string());
+    }
+    model._set("B9", "45138");
+    model._set("B10", "45139");
+    model._set("B11", "45200");
+
+    model._set("A1", "=COUNTIF(B2:B11, \"<7/31/2023\")");
+    model._set("A2", "=COUNTIF(B2:B11, \"<=7/31/2023\")");
+    model._set("A3", "=COUNTIF(B2:B11, \"7/31/2023\")");
+    model._set("A4", "=COUNTIF(B2:B11, \">7/31/2023\")");
+    model._set("A5", "=COUNTIF(B2:B11, \">=7/31/2023\")");
+    model._set("A6", "=COUNTIF(B2:B11, \"<>7/31/2023\")");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"7");
+    assert_eq!(model._get_text("A2"), *"8");
+    assert_eq!(model._get_text("A3"), *"1");
+    assert_eq!(model._get_text("A4"), *"2");
+    assert_eq!(model._get_text("A5"), *"3");
+    assert_eq!(model._get_text("A6"), *"9");
+}
+
+#[test]
 fn test_fn_count_minimal() {
     let mut model = new_empty_model();
     model._set("B1", "3.1415926");
