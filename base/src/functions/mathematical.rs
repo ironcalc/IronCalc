@@ -454,6 +454,12 @@ impl<'a> Model<'a> {
                                         message: "Error in array".to_string(),
                                     }
                                 }
+                                ArrayNode::Empty => {
+                                    // Excel behavior: empty cells are treated as 0 in GCD
+                                    if let Some(res) = handle_number(0.0) {
+                                        return res;
+                                    }
+                                }
                             }
                         }
                     }
@@ -676,6 +682,12 @@ impl<'a> Model<'a> {
                                         error,
                                         origin: cell,
                                         message: "Error in array".to_string(),
+                                    }
+                                }
+                                ArrayNode::Empty => {
+                                    // Excel behavior: empty cells are treated as 0 in LCM
+                                    if let Some(res) = handle_number(0.0) {
+                                        return res;
                                     }
                                 }
                             }
