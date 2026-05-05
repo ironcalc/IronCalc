@@ -385,6 +385,10 @@ pub struct Functions {
     pub tocol: String,
     pub torow: String,
     pub transpose: String,
+    pub bycol: String,
+    pub byrow: String,
+    pub map: String,
+    pub reduce: String,
 }
 
 #[derive(Encode, Decode)]

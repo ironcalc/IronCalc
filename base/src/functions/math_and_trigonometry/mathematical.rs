@@ -67,6 +67,23 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for node in row {
+                            match node {
+                                ArrayNode::Number(value) => result = value.min(result),
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::Error {
+                                        error,
+                                        origin: cell,
+                                        message: String::new(),
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
                 error @ CalcResult::Error { .. } => return error,
                 _ => {
                     // We ignore booleans and strings
@@ -106,6 +123,23 @@ impl<'a> Model<'a> {
                                 _ => {
                                     // We ignore booleans and strings
                                 }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for node in row {
+                            match node {
+                                ArrayNode::Number(value) => result = value.max(result),
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::Error {
+                                        error,
+                                        origin: cell,
+                                        message: String::new(),
+                                    }
+                                }
+                                _ => {}
                             }
                         }
                     }

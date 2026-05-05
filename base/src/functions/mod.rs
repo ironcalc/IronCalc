@@ -42,6 +42,10 @@ pub enum Function {
     Switch,
     True,
     Xor,
+    Bycol,
+    Byrow,
+    Map,
+    Reduce,
 
     // Mathematical and trigonometry
     Abs,
@@ -468,6 +472,10 @@ impl_function_lookup! {
     switch      => Switch,
     r#true      => True,
     xor         => Xor,
+    bycol       => Bycol,
+    byrow       => Byrow,
+    map         => Map,
+    reduce      => Reduce,
 
     // Mathematical and trigonometry
     abs             => Abs,
@@ -864,6 +872,10 @@ impl Function {
             Function::Switch => functions.switch.clone(),
             Function::True => functions.r#true.clone(),
             Function::Xor => functions.xor.clone(),
+            Function::Bycol => functions.bycol.clone(),
+            Function::Byrow => functions.byrow.clone(),
+            Function::Map => functions.map.clone(),
+            Function::Reduce => functions.reduce.clone(),
             Function::Abs => functions.abs.clone(),
             Function::Acos => functions.acos.clone(),
             Function::Acosh => functions.acosh.clone(),
@@ -1212,7 +1224,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 359> {
+    pub fn into_iter() -> IntoIter<Function, 363> {
         [
             Function::And,
             Function::False,
@@ -1227,6 +1239,10 @@ impl Function {
             Function::Switch,
             Function::True,
             Function::Xor,
+            Function::Bycol,
+            Function::Byrow,
+            Function::Map,
+            Function::Reduce,
             Function::Sin,
             Function::Cos,
             Function::Tan,
@@ -1601,6 +1617,10 @@ impl Function {
             Function::Drop => "_xlfn.DROP".to_string(),
             Function::Tocol => "_xlfn.TOCOL".to_string(),
             Function::Torow => "_xlfn.TOROW".to_string(),
+            Function::Bycol => "_xlfn.BYCOL".to_string(),
+            Function::Byrow => "_xlfn.BYROW".to_string(),
+            Function::Map => "_xlfn.MAP".to_string(),
+            Function::Reduce => "_xlfn.REDUCE".to_string(),
             Function::Xor => "_xlfn.XOR".to_string(),
             Function::Textbefore => "_xlfn.TEXTBEFORE".to_string(),
             Function::Textafter => "_xlfn.TEXTAFTER".to_string(),
@@ -1747,6 +1767,10 @@ impl<'a> Model<'a> {
             Function::Switch => self.fn_switch(args, cell),
             Function::True => self.fn_true(args, cell),
             Function::Xor => self.fn_xor(args, cell),
+            Function::Bycol => self.fn_bycol(args, cell),
+            Function::Byrow => self.fn_byrow(args, cell),
+            Function::Map => self.fn_map(args, cell),
+            Function::Reduce => self.fn_reduce(args, cell),
             Function::Log => self.fn_log(args, cell),
             Function::Log10 => self.fn_log10(args, cell),
             Function::Ln => self.fn_ln(args, cell),
