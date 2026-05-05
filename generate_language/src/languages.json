@@ -374,7 +374,12 @@
       "rankeq": "RANK.EQ",
       "skew": "SKEW",
       "skewp": "SKEW.P",
-      "small": "SMALL"
+      "small": "SMALL",
+      "take": "TAKE",
+      "drop": "DROP",
+      "tocol": "TOCOL",
+      "torow": "TOROW",
+      "transpose": "TRANSPOSE"
     }
   },
    "it": {
@@ -752,7 +757,12 @@
       "rankeq": "RANGO.UG",
       "skew": "ASIMMETRIA",
       "skewp": "ASIMMETRIA.P",
-      "small": "PICCOLO"
+      "small": "PICCOLO",
+      "take": "TAKE",
+      "drop": "DROP",
+      "tocol": "TOCOL",
+      "torow": "TOROW",
+      "transpose": "MATR.TRASPOSTA"
     }
   },
   "fr": {
@@ -1130,7 +1140,12 @@
       "rankeq": "EQUATION.RANG",
       "skew": "COEFFICIENT.ASYMETRIE",
       "skewp": "COEFFICIENT.ASYMETRIE.P",
-      "small": "PETITE.VALEUR"
+      "small": "PETITE.VALEUR",
+      "take": "TAKE",
+      "drop": "DROP",
+      "tocol": "TOCOL",
+      "torow": "TOROW",
+      "transpose": "TRANSPOSE"
     }
   },
   "de": {
@@ -1508,7 +1523,12 @@
       "rankeq": "RANG.GLEICH",
       "skew": "SCHIEFE",
       "skewp": "SCHIEFE.P",
-      "small": "KKLEINSTE"
+      "small": "KKLEINSTE",
+      "take": "TAKE",
+      "drop": "DROP",
+      "tocol": "TOCOL",
+      "torow": "TOROW",
+      "transpose": "MTRANS"
     }
   },
   "es": {
@@ -1886,7 +1906,12 @@
       "rankeq": "JERARQUIA.EQV",
       "skew": "COEFICIENTE.ASIMETRIA",
       "skewp": "COEFICIENTE.ASIMETRIA.P",
-      "small": "K.ESIMO.MENOR"
+      "small": "K.ESIMO.MENOR",
+      "take": "TAKE",
+      "drop": "DROP",
+      "tocol": "TOCOL",
+      "torow": "TOROW",
+      "transpose": "TRANSPONER"
     }
   }
 }

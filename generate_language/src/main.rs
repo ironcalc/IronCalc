@@ -381,6 +381,11 @@ pub struct Functions {
     pub skew: String,
     pub skewp: String,
     pub small: String,
+    pub take: String,
+    pub drop: String,
+    pub tocol: String,
+    pub torow: String,
+    pub transpose: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]
