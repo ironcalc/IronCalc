@@ -46,11 +46,8 @@ impl<'a> Model<'a> {
         let num_cols = data[0].len();
         let mut results = Vec::with_capacity(num_cols);
 
-        let columns: Vec<Vec<Vec<ArrayNode>>> = (0..num_cols)
-            .map(|j| data.iter().map(|row| vec![row[j].clone()]).collect())
-            .collect();
-
-        for column in columns {
+        for j in 0..num_cols {
+            let column: Vec<Vec<ArrayNode>> = data.iter().map(|row| vec![row[j].clone()]).collect();
             let result = self.call_lambda(lambda_result.clone(), &[Node::ArrayKind(column)], cell);
             results.push(calc_result_to_array_node(result));
         }

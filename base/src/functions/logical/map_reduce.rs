@@ -4,18 +4,14 @@ use crate::{
     model::Model,
 };
 
-fn array_node_to_calc_result(node: &ArrayNode) -> CalcResult {
+fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
     match node {
         ArrayNode::Number(n) => CalcResult::Number(*n),
         ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
         ArrayNode::String(s) => CalcResult::String(s.clone()),
         ArrayNode::Error(e) => CalcResult::Error {
             error: e.clone(),
-            origin: crate::expressions::types::CellReferenceIndex {
-                sheet: 0,
-                row: 1,
-                column: 1,
-            },
+            origin: cell,
             message: String::new(),
         },
         ArrayNode::Empty => CalcResult::EmptyCell,
@@ -82,7 +78,7 @@ impl<'a> Model<'a> {
             for j in 0..num_cols {
                 let values: Vec<CalcResult> = arrays
                     .iter()
-                    .map(|arr| array_node_to_calc_result(&arr[i][j]))
+                    .map(|arr| array_node_to_calc_result(&arr[i][j], cell))
                     .collect();
                 let cell_result = self.call_lambda_with_values(lambda_result.clone(), values, cell);
                 result[i][j] = calc_result_to_array_node(cell_result);
@@ -131,11 +127,11 @@ impl<'a> Model<'a> {
             }
             (init, 0)
         } else {
-            (array_node_to_calc_result(elements[0]), 1)
+            (array_node_to_calc_result(elements[0], cell), 1)
         };
 
         for element in &elements[start..] {
-            let current = array_node_to_calc_result(element);
+            let current = array_node_to_calc_result(element, cell);
             accumulator = self.call_lambda_with_values(
                 lambda_result.clone(),
                 vec![accumulator, current],
