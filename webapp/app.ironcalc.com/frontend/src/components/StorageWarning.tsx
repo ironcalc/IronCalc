@@ -1,14 +1,14 @@
-import { useTooltipPosition } from "@ironcalc/workbook";
 import { CloudOff } from "lucide-react";
 import { type RefObject, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { usePopoverPosition } from "./usePopoverPosition";
 
 export function StorageWarning() {
   const { t } = useTranslation();
-  const tooltipId = useId();
+  const popoverId = useId();
   const [visible, setVisible] = useState(false);
-  const { triggerRef, tooltipRef, position } = useTooltipPosition(visible);
+  const { triggerRef, popoverRef, position } = usePopoverPosition(visible);
 
   return (
     <>
@@ -16,7 +16,7 @@ export function StorageWarning() {
         ref={triggerRef as unknown as RefObject<HTMLButtonElement>}
         type="button"
         className="app-ic-file-bar-cloud-button"
-        aria-describedby={visible ? tooltipId : undefined}
+        aria-describedby={visible ? popoverId : undefined}
         onMouseEnter={() => setVisible(true)}
         onMouseLeave={() => setVisible(false)}
         onFocus={() => setVisible(true)}
@@ -32,8 +32,8 @@ export function StorageWarning() {
       </button>
       {createPortal(
         <div
-          ref={tooltipRef}
-          id={tooltipId}
+          ref={popoverRef}
+          id={popoverId}
           role="tooltip"
           className="app-ic-file-bar-cloud-popover-content"
           data-visible={visible}
