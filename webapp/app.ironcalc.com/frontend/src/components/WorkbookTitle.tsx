@@ -41,9 +41,9 @@ export function WorkbookTitle(properties: {
   const constrainedWidth = Math.min(width, properties.maxWidth);
 
   return (
-    <div className="workbook-title" style={{ width: constrainedWidth }}>
+    <div className="app-ic-workbook-title" style={{ width: constrainedWidth }}>
       <input
-        className="workbook-title-input"
+        className="app-ic-workbook-title-input"
         value={name}
         onChange={handleChange}
         onBlur={(event) => {
@@ -64,7 +64,7 @@ export function WorkbookTitle(properties: {
         style={{ width: constrainedWidth }}
         spellCheck={false}
       />
-      <div ref={mirrorDivRef} className="workbook-title-mirror">
+      <div ref={mirrorDivRef} className="app-ic-workbook-title-mirror">
         {name}
       </div>
     </div>

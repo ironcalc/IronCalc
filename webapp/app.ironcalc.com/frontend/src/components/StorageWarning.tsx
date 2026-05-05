@@ -15,7 +15,7 @@ export function StorageWarning() {
       <button
         ref={triggerRef as unknown as RefObject<HTMLButtonElement>}
         type="button"
-        className="file-bar-cloud-button"
+        className="app-ic-file-bar-cloud-button"
         aria-describedby={visible ? tooltipId : undefined}
         onMouseEnter={() => setVisible(true)}
         onMouseLeave={() => setVisible(false)}
@@ -35,7 +35,7 @@ export function StorageWarning() {
           ref={tooltipRef}
           id={tooltipId}
           role="tooltip"
-          className="file-bar-cloud-popover-content"
+          className="app-ic-file-bar-cloud-popover-content"
           data-visible={visible}
           style={position}
         >
