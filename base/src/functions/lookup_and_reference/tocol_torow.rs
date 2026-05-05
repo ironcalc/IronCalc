@@ -46,10 +46,7 @@ impl<'a> Model<'a> {
             return Err(CalcResult::new_args_number_error(cell));
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
-            Err(e) => return Err(e),
-        };
+        let data = self.eval_to_array(&args[0], cell)?;
 
         let ignore: u8 = if args.len() >= 2 {
             match self.get_number(&args[1], cell) {
@@ -71,10 +68,7 @@ impl<'a> Model<'a> {
         };
 
         let scan_by_col: bool = if args.len() >= 3 {
-            match self.get_boolean(&args[2], cell) {
-                Ok(b) => b,
-                Err(e) => return Err(e),
-            }
+            self.get_boolean(&args[2], cell)?
         } else {
             false
         };
