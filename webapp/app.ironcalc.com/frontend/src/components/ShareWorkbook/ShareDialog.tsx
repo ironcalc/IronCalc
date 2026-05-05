@@ -1,8 +1,9 @@
-import { Button, Input, type Model, useModalFocus } from "@ironcalc/workbook";
+import { Button, Input, type Model } from "@ironcalc/workbook";
 import { Check, Copy, GlobeLock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { useModalFocus } from "./useModalFocus";
 import { useShareDialog } from "./useShareDialog";
 
 import "./share-dialog.css";
