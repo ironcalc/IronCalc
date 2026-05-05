@@ -1,11 +1,11 @@
-.workbook-title {
+.app-ic-workbook-title {
   padding: 6px 4px;
   font-size: calc(var(--typography-font-size) + 2px);
   font-weight: 600;
   font-family: var(--typography-font-family);
 }
 
-.workbook-title-input {
+.app-ic-workbook-title-input {
   text-align: center;
   height: 20px;
   line-height: 20px;
@@ -20,15 +20,15 @@
   background: transparent;
 }
 
-.workbook-title-input:hover {
+.app-ic-workbook-title-input:hover {
   background-color: var(--palette-grey-100);
 }
 
-.workbook-title-input:focus {
+.app-ic-workbook-title-input:focus {
   outline: 1px solid var(--palette-grey-500);
 }
 
-.workbook-title-mirror {
+.app-ic-workbook-title-mirror {
   position: absolute;
   top: -9999px;
   left: -9999px;

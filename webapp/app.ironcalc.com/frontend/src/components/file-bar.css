@@ -1,4 +1,4 @@
-.file-bar {
+.app-ic-file-bar {
   position: relative;
   height: 52px;
   min-height: 52px;
@@ -11,7 +11,7 @@
   border-bottom: 1px solid var(--palette-grey-300);
 }
 
-.file-bar-title-wrapper {
+.app-ic-file-bar-title-wrapper {
   position: absolute;
   display: flex;
   align-items: center;
@@ -20,27 +20,27 @@
   transform: translateX(-50%);
 }
 
-.file-bar-desktop-menu {
+.app-ic-file-bar-desktop-menu {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.file-bar-spacer {
+.app-ic-file-bar-spacer {
   flex-grow: 1;
 }
 
-.file-bar-right {
+.app-ic-file-bar-right {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.file-bar-drawer-button svg {
+.app-ic-file-bar-drawer-button svg {
   stroke: var(--palette-grey-600);
 }
 
-.file-bar-cloud-popover-content {
+.app-ic-file-bar-cloud-popover-content {
   position: fixed;
   display: flex;
   flex-direction: column;
@@ -62,7 +62,7 @@
     visibility 0s linear 150ms;
 }
 
-.file-bar-cloud-popover-content[data-visible="true"] {
+.app-ic-file-bar-cloud-popover-content[data-visible="true"] {
   opacity: 1;
   visibility: visible;
   transition:
@@ -70,7 +70,7 @@
     visibility 0s;
 }
 
-.file-bar-cloud-button {
+.app-ic-file-bar-cloud-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -81,21 +81,21 @@
   padding: 8px;
 }
 
-.file-bar-cloud-button svg {
+.app-ic-file-bar-cloud-button svg {
   width: 16px;
   height: 16px;
   color: var(--palette-grey-400);
 }
 
-.file-bar-cloud-button:hover {
+.app-ic-file-bar-cloud-button:hover {
   background-color: var(--palette-grey-100);
 }
 
-.file-bar-cloud-button:hover svg {
+.app-ic-file-bar-cloud-button:hover svg {
   color: var(--palette-grey-600);
 }
 
-.file-bar-dialog-container {
+.app-ic-file-bar-dialog-container {
   position: relative;
   display: inline-block;
 }

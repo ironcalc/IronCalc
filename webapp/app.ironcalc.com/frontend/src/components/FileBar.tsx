@@ -63,7 +63,7 @@ export function FileBar(properties: {
   const isMobile = width < MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE;
 
   return (
-    <div className="file-bar">
+    <div className="app-ic-file-bar">
       <Tooltip title={drawerLabel}>
         <IconButton
           icon={
@@ -71,7 +71,7 @@ export function FileBar(properties: {
           }
           aria-label={drawerLabel}
           size="md"
-          className="file-bar-drawer-button"
+          className="app-ic-file-bar-drawer-button"
           onClick={() => properties.setIsDrawerOpen(!properties.isDrawerOpen)}
         />
       </Tooltip>
@@ -86,7 +86,7 @@ export function FileBar(properties: {
         />
       ) : (
         <ClickAwayListener onClickAway={closeMenus}>
-          <div className="file-bar-desktop-menu">
+          <div className="app-ic-file-bar-desktop-menu">
             <FileMenu
               newModel={properties.newModel}
               newModelFromTemplate={properties.newModelFromTemplate}
@@ -109,7 +109,7 @@ export function FileBar(properties: {
           </div>
         </ClickAwayListener>
       )}
-      <div className="file-bar-title-wrapper">
+      <div className="app-ic-file-bar-title-wrapper">
         <WorkbookTitle
           name={properties.model.getName()}
           onNameChange={(name) => {
@@ -120,10 +120,10 @@ export function FileBar(properties: {
           maxWidth={maxTitleWidth}
         />
       </div>
-      <div ref={spacerRef} className="file-bar-spacer" />
-      <div className="file-bar-right">
+      <div ref={spacerRef} className="app-ic-file-bar-spacer" />
+      <div className="app-ic-file-bar-right">
         <StorageWarning />
-        <div className="file-bar-dialog-container">
+        <div className="app-ic-file-bar-dialog-container">
           <ShareButton onClick={() => setIsDialogOpen(true)} />
           {isDialogOpen && (
             <ShareWorkbookDialog
