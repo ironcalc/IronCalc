@@ -21,7 +21,7 @@ import {
   MenuDivider,
   MenuItemText,
   MenuItemWrapper,
-} from "./FileMenu";
+} from "./Navigation/FileMenu";
 import { getModelsMetadata, getSelectedUuid } from "./storage";
 import UploadFileDialog from "./UploadFileDialog";
 
@@ -41,7 +41,7 @@ export function MobileMenu(props: MobileMenuProps) {
   const [isMobileImportMenuOpen, setMobileImportMenuOpen] = useState(false);
   const [isMobileDeleteDialogOpen, setMobileDeleteDialogOpen] = useState(false);
   const mobileMenuAnchor = useRef<HTMLButtonElement>(null);
-  const mobileLanguageMenuAnchor = useRef<HTMLLIElement>(null);
+  const mobileLanguageMenuAnchor = useRef<HTMLButtonElement>(null);
   const models = getModelsMetadata();
   const selectedUuid = getSelectedUuid();
 
@@ -141,7 +141,7 @@ export function MobileMenu(props: MobileMenuProps) {
         <MenuItemWrapper
           ref={mobileLanguageMenuAnchor}
           onClick={() => setMobileLanguageMenuOpen(!isMobileLanguageMenuOpen)}
-          sx={{ justifyContent: "space-between" }}
+          className="app-ic-nav-menu-item--space-between"
         >
           <Globe />
           <MenuItemText>

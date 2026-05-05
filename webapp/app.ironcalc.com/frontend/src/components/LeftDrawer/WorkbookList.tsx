@@ -13,7 +13,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
-import { DeleteButton, MenuDivider, MenuItemWrapper } from "../FileMenu";
+import { DeleteButton, MenuDivider, MenuItemWrapper } from "../Navigation/FileMenu";
 import { downloadModel } from "../rpc";
 import {
   duplicateModel,
@@ -279,7 +279,6 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
             setIntendedSelection(null);
             handleMenuClose();
           }}
-          disableRipple
         >
           <FileDown />
           {t("left_drawer.workbook_menu.download")}
@@ -291,7 +290,6 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
               handlePinToggle(selectedWorkbookUuid);
             }
           }}
-          disableRipple
         >
           {selectedWorkbookUuid && isWorkbookPinned(selectedWorkbookUuid) ? (
             <PinOff />
@@ -309,7 +307,6 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
               handleDuplicate(selectedWorkbookUuid);
             }
           }}
-          disableRipple
         >
           <Copy />
           {t("left_drawer.workbook_menu.duplicate")}
@@ -318,13 +315,11 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
         <MenuDivider />
 
         <DeleteButton
-          selected={false}
           onClick={() => {
             if (selectedWorkbookUuid) {
               handleDeleteClick(selectedWorkbookUuid);
             }
           }}
-          disableRipple
         >
           <Trash2 size={16} />
           {t("left_drawer.workbook_menu.delete")}

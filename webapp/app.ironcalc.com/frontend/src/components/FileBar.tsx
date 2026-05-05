@@ -1,11 +1,10 @@
 import { IconButton, type Model, Tooltip } from "@ironcalc/workbook";
-import { ClickAwayListener } from "@mui/material";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
-import { FileMenu } from "./FileMenu";
-import { HelpMenu } from "./HelpMenu";
+import { FileMenu } from "./Navigation/FileMenu";
+import { HelpMenu } from "./Navigation/HelpMenu";
 import { MobileMenu } from "./MobileMenu";
 import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareWorkbook/ShareButton";
@@ -85,29 +84,27 @@ export function FileBar(properties: {
           onLanguageChange={properties.onLanguageChange}
         />
       ) : (
-        <ClickAwayListener onClickAway={closeMenus}>
-          <div className="app-ic-file-bar-desktop-menu">
-            <FileMenu
-              newModel={properties.newModel}
-              newModelFromTemplate={properties.newModelFromTemplate}
-              setModel={properties.setModel}
-              onModelUpload={properties.onModelUpload}
-              onDownload={handleDownload}
-              onDelete={properties.onDelete}
-              isOpen={openMenu === "file"}
-              onOpen={() => setOpenMenu("file")}
-              onClose={closeMenus}
-              onHover={() => openMenu && setOpenMenu("file")}
-              onLanguageChange={properties.onLanguageChange}
-            />
-            <HelpMenu
-              isOpen={openMenu === "help"}
-              onOpen={() => setOpenMenu("help")}
-              onClose={closeMenus}
-              onHover={() => openMenu && setOpenMenu("help")}
-            />
-          </div>
-        </ClickAwayListener>
+        <div className="app-ic-file-bar-desktop-menu">
+          <FileMenu
+            newModel={properties.newModel}
+            newModelFromTemplate={properties.newModelFromTemplate}
+            setModel={properties.setModel}
+            onModelUpload={properties.onModelUpload}
+            onDownload={handleDownload}
+            onDelete={properties.onDelete}
+            isOpen={openMenu === "file"}
+            onOpen={() => setOpenMenu("file")}
+            onClose={closeMenus}
+            onHover={() => openMenu && setOpenMenu("file")}
+            onLanguageChange={properties.onLanguageChange}
+          />
+          <HelpMenu
+            isOpen={openMenu === "help"}
+            onOpen={() => setOpenMenu("help")}
+            onClose={closeMenus}
+            onHover={() => openMenu && setOpenMenu("help")}
+          />
+        </div>
       )}
       <div className="app-ic-file-bar-title-wrapper">
         <WorkbookTitle
