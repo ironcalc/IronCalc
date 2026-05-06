@@ -25,5 +25,13 @@ export function useLanguageSubmenu() {
 
   const close = useCallback(() => setIsOpen(false), []);
 
-  return { isOpen, menuStyle, anchorElement, menuRef, handleMouseEnter, handleMouseLeave, close };
+  return {
+    isOpen,
+    menuStyle,
+    anchorElement,
+    menuRef,
+    handleMouseEnter,
+    handleMouseLeave,
+    close,
+  };
 }

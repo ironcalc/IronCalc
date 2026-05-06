@@ -13,7 +13,11 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
-import { DeleteButton, MenuDivider, MenuItemWrapper } from "../Navigation/FileMenu";
+import {
+  DeleteButton,
+  MenuDivider,
+  MenuItemWrapper,
+} from "../Navigation/FileMenu";
 import { downloadModel } from "../rpc";
 import {
   duplicateModel,
