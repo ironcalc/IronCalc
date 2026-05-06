@@ -207,6 +207,46 @@ export interface CellStyle {
   alignment?: Alignment;
 }
 
+export type IconSetType =
+  | "Arrows3"
+  | "ArrowsGray3"
+  | "Arrows4"
+  | "ArrowsGray4"
+  | "Arrows5"
+  | "ArrowsGray5"
+  | "Triangles3"
+  | "TrafficLights3"
+  | "TrafficLights3Rimmed"
+  | "TrafficLights4"
+  | "Signs3"
+  | "RedToBlack4"
+  | "Symbols3Circled"
+  | "Symbols3Uncircled"
+  | "Flags3"
+  | "Stars3"
+  | "Quarters5"
+  | "Boxes5"
+  | "Ratings4"
+  | "Ratings5";
+
+export interface CfIcon {
+  set: IconSetType;
+  index: number;
+  show_value: boolean;
+}
+
+export interface CfDataBar {
+  color: string;
+  value: number;
+  show_value: boolean;
+}
+
+export interface ExtendedCellStyle {
+  style: CellStyle;
+  icon: CfIcon | null;
+  data_bar: CfDataBar | null;
+}
+
 export interface SelectedView {
   sheet: number;
   row: number;
