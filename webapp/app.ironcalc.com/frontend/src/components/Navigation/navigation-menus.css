@@ -137,21 +137,21 @@
 
 .app-ic-nav-mobile-button svg {
   stroke-width: 2;
-  color: #757575;
+  color: var(--palette-grey-600);
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
 
 .app-ic-nav-mobile-button:hover {
-  background-color: var(--palette-grey-100, #f5f5f5);
+  background-color: var(--palette-grey-100);
 }
 
 .app-ic-nav-mobile-button.is-active,
 .app-ic-nav-mobile-button.is-active:hover {
-  background-color: #e6e6e6;
+  background-color: var(--palette-grey-300);
 }
 
 .app-ic-nav-mobile-button:active {
-  background-color: #e0e0e0;
+  background-color: var(--palette-grey-300);
 }
