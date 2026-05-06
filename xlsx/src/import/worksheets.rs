@@ -6,6 +6,7 @@ use ironcalc_base::expressions::parser::{
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use ironcalc_base::{
+    cf_types::{CfRule, Cfvo, ConditionalFormatting, IconSet, Operator},
     expressions::{
         parser::{stringify::to_rc_format, DefinedNameS},
         token::{get_error_by_english_name, Error},
@@ -176,62 +177,234 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
 }
 
 
+fn parse_cfvo(node: Node) -> Result<Cfvo, XlsxError> {
+    let val = node.attribute("val").unwrap_or("0");
+    match node.attribute("type").unwrap_or("num") {
+        "min" => Ok(Cfvo::Min),
+        "max" => Ok(Cfvo::Max),
+        "num" => Ok(Cfvo::Number(val.parse::<f64>().unwrap_or(0.0))),
+        "percent" => Ok(Cfvo::Percent(val.parse::<f64>().unwrap_or(0.0))),
+        "percentile" => Ok(Cfvo::Percentile(val.parse::<f64>().unwrap_or(0.0))),
+        "formula" => Ok(Cfvo::Formula(val.to_string())),
+        // autoMin/autoMax are Excel 2010+ extensions; treat as Min/Max
+        "autoMin" => Ok(Cfvo::Min),
+        "autoMax" => Ok(Cfvo::Max),
+        other => Err(XlsxError::Xml(format!("Unknown cfvo type: {other}"))),
+    }
+}
+
+fn parse_operator(s: &str) -> Result<Operator, XlsxError> {
+    match s {
+        "equal" => Ok(Operator::Equal),
+        "greaterThan" => Ok(Operator::GreaterThan),
+        "greaterThanOrEqual" => Ok(Operator::GreaterThanOrEqual),
+        "lessThan" => Ok(Operator::LessThan),
+        "lessThanOrEqual" => Ok(Operator::LessThanOrEqual),
+        "notEqual" => Ok(Operator::NotEqual),
+        "between" => Ok(Operator::Between),
+        "notBetween" => Ok(Operator::NotBetween),
+        other => Err(XlsxError::Xml(format!("Unknown cellIs operator: {other}"))),
+    }
+}
+
+fn parse_icon_set_type(s: &str) -> IconSet {
+    match s {
+        "3Arrows" => IconSet::Arrows3,
+        "3ArrowsGray" => IconSet::ArrowsGray3,
+        "4Arrows" => IconSet::Arrows4,
+        "4ArrowsGray" => IconSet::ArrowsGray4,
+        "5Arrows" => IconSet::Arrows5,
+        "5ArrowsGray" => IconSet::ArrowsGray5,
+        "3Triangles" => IconSet::Triangles3,
+        "3TrafficLights1" | "3TrafficLights" => IconSet::TrafficLights3,
+        "3TrafficLights2" => IconSet::TrafficLights3Rimmed,
+        "4TrafficLights" => IconSet::TrafficLights4,
+        "3Signs" => IconSet::Signs3,
+        "4RedToBlack" => IconSet::RedToBlack4,
+        "3Symbols" => IconSet::Symbols3Circled,
+        "3Symbols2" => IconSet::Symbols3Uncircled,
+        "3Flags" => IconSet::Flags3,
+        "3Stars" => IconSet::Stars3,
+        "5Quarters" => IconSet::Quarters5,
+        "5Boxes" => IconSet::Boxes5,
+        "4Rating" => IconSet::Ratings4,
+        "5Rating" => IconSet::Ratings5,
+        // Default to TrafficLights3 for unknown or missing iconSet attribute
+        _ => IconSet::TrafficLights3,
+    }
+}
+
 // https://c-rex.net/samples/ooxml/e1/Part4/OOXML_P4_DOCX_cfRule_topic_ID0EFKO4.html
-fn load_conditional_formatting(ws: Node) -> Result<Vec<String>, XlsxError> {
-    // Conditional Formatting
-    // <conditionalFormatting sqref="B1:B9">
-    //     <cfRule type="colorScale" priority="1">
-    //         <colorScale>
-    //             <cfvo type="min"/>
-    //             <cfvo type="max"/>
-    //             <color rgb="FFF8696B"/>
-    //             <color rgb="FFFCFCFF"/>
-    //         </colorScale>
-    //     </cfRule>
-    // </conditionalFormatting>
-    let mut conditional_formatting = Vec::new();
-    let conditional_formatting_nodes = ws
+fn load_conditional_formatting(
+    ws: Node,
+    theme: &Theme,
+) -> Result<Vec<ConditionalFormatting>, XlsxError> {
+    let mut result = Vec::new();
+
+    for cf in ws
         .children()
-        .filter(|n| n.has_tag_name("conditionalFormattng"))
-        .collect::<Vec<Node>>();
-    for format in conditional_formatting_nodes {
-        let reference = get_attribute(&format, "sqref")?.to_string();
-        // cfRule
-        let cf_rule_nodes = ws
-            .children()
-            .filter(|n| n.has_tag_name("cfRule"))
-            .collect::<Vec<Node>>();
-        if cf_rule_nodes.len() == 1 {
-            let cf_rule = cf_rule_nodes[0] ;
-            let cf_type = get_attribute(&cf_rule, "type")?.to_string();
-            match cf_type.as_str() {
+        .filter(|n| n.has_tag_name("conditionalFormatting"))
+    {
+        let range = get_attribute(&cf, "sqref")?.to_string();
+
+        for cf_rule in cf.children().filter(|n| n.has_tag_name("cfRule")) {
+            let priority = cf_rule
+                .attribute("priority")
+                .unwrap_or("0")
+                .parse::<u32>()
+                .unwrap_or(0);
+            let dxf_id = cf_rule
+                .attribute("dxfId")
+                .and_then(|s| s.parse::<u32>().ok())
+                .unwrap_or(0);
+
+            let cf_type = match cf_rule.attribute("type") {
+                Some(t) => t,
+                None => continue,
+            };
+
+            let rule = match cf_type {
                 "colorScale" => {
-                    todo!()
+                    let cs_nodes: Vec<Node> = cf_rule
+                        .children()
+                        .filter(|n| n.has_tag_name("colorScale"))
+                        .collect();
+                    if cs_nodes.is_empty() {
+                        continue;
+                    }
+                    let mut cfvo = Vec::new();
+                    let mut colors = Vec::new();
+                    for child in cs_nodes[0].children() {
+                        match child.tag_name().name() {
+                            "cfvo" => cfvo.push(parse_cfvo(child)?),
+                            "color" => {
+                                if let Some(c) = get_color(child, theme)? {
+                                    colors.push(c);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    CfRule::ColorScale { cfvo, colors }
                 }
+                "cellIs" => {
+                    let operator = parse_operator(cf_rule.attribute("operator").unwrap_or(""))?;
+                    let formulas: Vec<String> = cf_rule
+                        .children()
+                        .filter(|n| n.has_tag_name("formula"))
+                        .filter_map(|n| n.text().map(|s| s.to_string()))
+                        .collect();
+                    let formula = formulas.first().cloned().unwrap_or_default();
+                    let formula2 = formulas.get(1).cloned();
+                    CfRule::CellIs {
+                        operator,
+                        formula,
+                        formula2,
+                        dxf_id,
+                    }
+                }
+                "duplicateValues" => CfRule::DuplicateValues { dxf_id },
                 "aboveAverage" => {
-                    let dxf_id = get_attribute(&cf_rule, "dxfId")?.to_string();
-                    todo!()
+                    if cf_rule.attribute("aboveAverage") == Some("0") {
+                        CfRule::BelowAverage { dxf_id }
+                    } else {
+                        CfRule::AboveAverage { dxf_id }
+                    }
                 }
-                "notContainsBlanks" => {
-                    let dxf_id = get_attribute(&cf_rule, "dxfId")?.to_string();
+                "top10" => {
+                    let rank = cf_rule
+                        .attribute("rank")
+                        .unwrap_or("10")
+                        .parse::<u32>()
+                        .unwrap_or(10);
+                    let percent = cf_rule.attribute("percent") == Some("1");
+                    if cf_rule.attribute("bottom") == Some("1") {
+                        CfRule::Bottom10 {
+                            rank,
+                            percent,
+                            dxf_id,
+                        }
+                    } else {
+                        CfRule::Top10 {
+                            rank,
+                            percent,
+                            dxf_id,
+                        }
+                    }
+                }
+                "dataBar" => {
+                    let db_nodes: Vec<Node> = cf_rule
+                        .children()
+                        .filter(|n| n.has_tag_name("dataBar"))
+                        .collect();
+                    if db_nodes.is_empty() {
+                        continue;
+                    }
+                    let db = db_nodes[0];
+                    let show_value = db.attribute("showValue") != Some("0");
+                    let mut cfvo = Vec::new();
+                    let mut color = String::new();
+                    for child in db.children() {
+                        match child.tag_name().name() {
+                            "cfvo" => cfvo.push(parse_cfvo(child)?),
+                            "color" => {
+                                if let Some(c) = get_color(child, theme)? {
+                                    color = c;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    CfRule::DataBar {
+                        cfvo,
+                        color,
+                        show_value,
+                    }
+                }
+                "iconSet" => {
+                    let is_nodes: Vec<Node> = cf_rule
+                        .children()
+                        .filter(|n| n.has_tag_name("iconSet"))
+                        .collect();
+                    if is_nodes.is_empty() {
+                        continue;
+                    }
+                    let is_node = is_nodes[0];
+                    let set =
+                        parse_icon_set_type(is_node.attribute("iconSet").unwrap_or("3TrafficLights1"));
+                    let show_value = is_node.attribute("showValue") != Some("0");
+                    let cfvo: Vec<Cfvo> = is_node
+                        .children()
+                        .filter(|n| n.has_tag_name("cfvo"))
+                        .map(parse_cfvo)
+                        .collect::<Result<Vec<_>, _>>()?;
+                    CfRule::IconSet {
+                        set,
+                        cfvo,
+                        show_value,
+                    }
+                }
+                "timePeriod" => {
+                    let time_period =
+                        cf_rule.attribute("timePeriod").unwrap_or("").to_string();
+                    CfRule::TimePeriod {
+                        dxf_id,
+                        time_period,
+                    }
+                }
+                // Skip unknown rule types silently
+                _ => continue,
+            };
 
-                }
-                _ => {}
-                
-            }
+            result.push(ConditionalFormatting {
+                range: range.clone(),
+                cf_rule: rule,
+                priority,
+            });
         }
-        // priority
-
-        // if type is avobeAverage then avobeAverage (and equlAverage)
-
-        // dxfId for some types((Differential Formatting Id) What style to apply when the criteria are met
-
-        // Posible children
-        // formula
-        // colorScales
     }
 
-    Ok(conditional_formatting)
+    Ok(result)
 }
 
 fn load_merge_cells(ws: Node) -> Result<Vec<String>, XlsxError> {
@@ -1173,7 +1346,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let merge_cells = load_merge_cells(ws)?;
 
-    let conditional_formatting = load_conditional_formatting(ws)?;
+    let conditional_formatting = load_conditional_formatting(ws, theme)?;
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 
@@ -1206,6 +1379,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             frozen_columns: sheet_view.frozen_columns,
             show_grid_lines: sheet_view.show_grid_lines,
             views,
+            conditional_formatting,
         },
         sheet_view.is_selected,
     ))

@@ -1,9 +1,6 @@
 use bitcode::{Decode, Encode};
 
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct ColorScale {}
-
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub enum Operator {
     Equal,
     GreaterThan,
@@ -11,6 +8,8 @@ pub enum Operator {
     LessThan,
     LessThanOrEqual,
     NotEqual,
+    Between,
+    NotBetween,
 }
 
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
@@ -44,15 +43,14 @@ pub enum IconSet {
     Ratings5,
 }
 
-// These are the rules for the icon set and color scale conditional formatting types.
-// They specify the thresholds for the icons and colors.
-// For instance, if we have three rules, we need 4 icons/colors.
+// These are the threshold definitions for icon set and color scale conditional formatting.
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub enum Cfvo {
     Min,
     Max,
     Number(f64),
     Percent(f64),
+    Percentile(f64),
     Formula(String),
 }
 
@@ -65,6 +63,8 @@ pub enum CfRule {
     CellIs {
         operator: Operator,
         formula: String,
+        // Only present for Between and NotBetween operators
+        formula2: Option<String>,
         dxf_id: u32,
     },
     DuplicateValues {
@@ -89,18 +89,22 @@ pub enum CfRule {
     DataBar {
         cfvo: Vec<Cfvo>,
         color: String,
+        show_value: bool,
     },
     IconSet {
         set: IconSet,
         cfvo: Vec<Cfvo>,
+        show_value: bool,
+    },
+    TimePeriod {
+        dxf_id: u32,
+        time_period: String,
     },
 }
 
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct ConditionalFormatting {
-    // sqref is the range of cells that the conditional formatting applies to.
-    range: String,
-    cf_rule: CfRule,
-    show_value: bool,
-    priority: u32,
+    pub range: String,
+    pub cf_rule: CfRule,
+    pub priority: u32,
 }

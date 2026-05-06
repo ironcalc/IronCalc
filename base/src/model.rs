@@ -2753,9 +2753,9 @@ impl<'a> Model<'a> {
         false
     }
 
-    pub fn evaluate_conditional_formatting() {
-        // Computes all conditional formatting rules and applies them to the cells.
-
+    /// Evaluates all conditional formatting rules for the workbook.
+    pub fn evaluate_conditional_formatting(&mut self) {
+        // TODO: Computes all conditional formatting rules and applies them to the cells.
     }
 
     /// Evaluates the model using a two-phase algorithm that correctly handles dynamic arrays.

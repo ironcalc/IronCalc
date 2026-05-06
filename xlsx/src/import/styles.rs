@@ -1,8 +1,8 @@
 use std::{collections::HashMap, io::Read};
 
 use ironcalc_base::types::{
-    Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Fill, Font,
-    FontScheme, HorizontalAlignment, NumFmt, Styles, VerticalAlignment,
+    Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Dxf, Fill,
+    Font, FontScheme, HorizontalAlignment, NumFmt, Styles, VerticalAlignment,
 };
 use roxmltree::Node;
 
@@ -364,18 +364,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         });
     }
 
-    // TODO
-    // let mut dxfs = Vec::new();
-    // let mut tableStyles = Vec::new();
-    // let mut colors = Vec::new();
-    // <colors>
-    //     <mruColors>
-    //         <color rgb="FFB1BB4D"/>
-    //         <color rgb="FFFF99CC"/>
-    //         <color rgb="FF6C56DC"/>
-    //         <color rgb="FFFF66CC"/>
-    //     </mruColors>
-    // </colors>
+    let dxfs = load_dxfs(style_sheet, theme)?;
 
     Ok(Styles {
         num_fmts,
@@ -385,6 +374,156 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         cell_style_xfs,
         cell_xfs,
         cell_styles,
-        dxfs: todo!(),
+        dxfs,
     })
+}
+
+fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
+    let mut dxfs = Vec::new();
+    let dxfs_nodes = style_sheet
+        .children()
+        .filter(|n| n.has_tag_name("dxfs"))
+        .collect::<Vec<Node>>();
+    if dxfs_nodes.is_empty() {
+        return Ok(dxfs);
+    }
+    for dxf_node in dxfs_nodes[0].children() {
+        if !dxf_node.is_element() {
+            continue;
+        }
+        let mut font = None;
+        let mut fill = None;
+        let mut border = None;
+        let mut num_fmt = None;
+        let mut alignment = None;
+
+        for child in dxf_node.children() {
+            match child.tag_name().name() {
+                "font" => {
+                    let mut f = Font::default();
+                    for feat in child.children() {
+                        match feat.tag_name().name() {
+                            "color" => {
+                                f.color = get_color(feat, theme)?;
+                            }
+                            "b" => {
+                                f.b = true;
+                            }
+                            "i" => {
+                                f.i = true;
+                            }
+                            "u" => {
+                                f.u = true;
+                            }
+                            "strike" => {
+                                f.strike = true;
+                            }
+                            "sz" => {
+                                f.sz = feat
+                                    .attribute("val")
+                                    .unwrap_or("11")
+                                    .parse::<i32>()
+                                    .unwrap_or(11);
+                            }
+                            "name" => {
+                                f.name =
+                                    feat.attribute("val").unwrap_or("Calibri").to_string();
+                            }
+                            "scheme" => {
+                                f.scheme = match feat.attribute("val") {
+                                    Some("minor") => FontScheme::Minor,
+                                    Some("major") => FontScheme::Major,
+                                    _ => FontScheme::None,
+                                };
+                            }
+                            _ => {}
+                        }
+                    }
+                    font = Some(f);
+                }
+                "fill" => {
+                    let pattern_fill_nodes = child
+                        .children()
+                        .filter(|n| n.has_tag_name("patternFill"))
+                        .collect::<Vec<Node>>();
+                    if pattern_fill_nodes.len() == 1 {
+                        let pf = pattern_fill_nodes[0];
+                        let pattern_type =
+                            pf.attribute("patternType").unwrap_or("solid").to_string();
+                        let mut fg_color = None;
+                        let mut bg_color = None;
+                        for feat in pf.children() {
+                            match feat.tag_name().name() {
+                                "fgColor" => fg_color = get_color(feat, theme)?,
+                                "bgColor" => bg_color = get_color(feat, theme)?,
+                                _ => {}
+                            }
+                        }
+                        fill = Some(Fill {
+                            pattern_type,
+                            fg_color,
+                            bg_color,
+                        });
+                    }
+                }
+                "border" => {
+                    let left = get_border(child, "left", theme)?;
+                    let right = get_border(child, "right", theme)?;
+                    let top = get_border(child, "top", theme)?;
+                    let bottom = get_border(child, "bottom", theme)?;
+                    let diagonal = get_border(child, "diagonal", theme)?;
+                    border = Some(Border {
+                        diagonal_up: false,
+                        diagonal_down: false,
+                        left,
+                        right,
+                        top,
+                        bottom,
+                        diagonal,
+                    });
+                }
+                "numFmt" => {
+                    let num_fmt_id = get_number(child, "numFmtId");
+                    let format_code =
+                        child.attribute("formatCode").unwrap_or("").to_string();
+                    num_fmt = Some(NumFmt {
+                        num_fmt_id,
+                        format_code,
+                    });
+                }
+                "alignment" => {
+                    let wrap_text =
+                        matches!(child.attribute("wrapText"), Some("1"));
+                    let horizontal = match child.attribute("horizontal") {
+                        Some("center") => HorizontalAlignment::Center,
+                        Some("left") => HorizontalAlignment::Left,
+                        Some("right") => HorizontalAlignment::Right,
+                        Some("justify") => HorizontalAlignment::Justify,
+                        _ => HorizontalAlignment::default(),
+                    };
+                    let vertical = match child.attribute("vertical") {
+                        Some("bottom") => VerticalAlignment::Bottom,
+                        Some("center") => VerticalAlignment::Center,
+                        Some("top") => VerticalAlignment::Top,
+                        _ => VerticalAlignment::default(),
+                    };
+                    alignment = Some(Alignment {
+                        horizontal,
+                        vertical,
+                        wrap_text,
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        dxfs.push(Dxf {
+            font,
+            fill,
+            border,
+            num_fmt,
+            alignment,
+        });
+    }
+    Ok(dxfs)
 }
