@@ -18,7 +18,6 @@ mod logical;
 mod lookup_and_reference;
 mod macros;
 mod math_util;
-mod mathematical;
 mod mathematical_sum;
 mod statistical;
 mod subtotal;
