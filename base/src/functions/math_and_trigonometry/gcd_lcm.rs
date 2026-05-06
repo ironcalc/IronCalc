@@ -283,6 +283,6 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_lcm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.gcd_lcm_impl(args, cell, "LCM", |a, b| lcm_i64(a, b))
+        self.gcd_lcm_impl(args, cell, "LCM", lcm_i64)
     }
 }
