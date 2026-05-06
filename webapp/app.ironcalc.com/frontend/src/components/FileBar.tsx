@@ -88,7 +88,6 @@ export function FileBar(properties: {
           <FileMenu
             newModel={properties.newModel}
             newModelFromTemplate={properties.newModelFromTemplate}
-            setModel={properties.setModel}
             onModelUpload={properties.onModelUpload}
             onDownload={handleDownload}
             onDelete={properties.onDelete}

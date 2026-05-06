@@ -21,7 +21,6 @@ import { useMenuAnchor } from "./useMenuAnchor";
 export function FileMenu(props: {
   newModel: () => void;
   newModelFromTemplate: () => void;
-  setModel: (key: string) => void;
   onDownload: () => void;
   onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
   onDelete: () => void;
@@ -185,7 +184,7 @@ export function FileMenu(props: {
           <DeleteWorkbookDialog
             onClose={() => setDeleteDialogOpen(false)}
             onConfirm={props.onDelete}
-            workbookName={selectedUuid ? models[selectedUuid].name : ""}
+            workbookName={models[selectedUuid ?? ""]?.name ?? ""}
           />,
           document.body,
         )}
