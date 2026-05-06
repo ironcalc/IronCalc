@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useLanguageSubmenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,7 +23,20 @@ export function useLanguageSubmenu() {
     closeTimer.current = setTimeout(() => setIsOpen(false), 80);
   }, []);
 
-  const close = useCallback(() => setIsOpen(false), []);
+  const close = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setIsOpen(false);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    },
+    [],
+  );
 
   return {
     isOpen,
