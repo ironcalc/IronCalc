@@ -117,7 +117,7 @@ pub struct Worksheet {
     pub views: HashMap<u32, WorksheetView>,
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
-    pub conditional_formatting: Vec<ConditionalFormatting>
+    pub conditional_formatting: Vec<ConditionalFormatting>,
 }
 
 /// Internal representation of Excel's sheet_data

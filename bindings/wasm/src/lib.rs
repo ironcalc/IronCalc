@@ -498,7 +498,7 @@ impl Model {
             .map_err(to_js_error)
     }
 
-    #[wasm_bindgen(js_name = "getCellStyle", unchecked_return_type = "CellStyle")]
+    #[wasm_bindgen(js_name = "getCellStyle", unchecked_return_type = "ExtendedCellStyle")]
     pub fn get_cell_style(
         &mut self,
         sheet: u32,
@@ -507,7 +507,7 @@ impl Model {
     ) -> Result<JsValue, JsError> {
         let style = self
             .model
-            .get_cell_style(sheet, row, column)
+            .get_extended_cell_style(sheet, row, column)
             .map_err(to_js_error)?;
 
         serde_wasm_bindgen::to_value(&style).map_err(|e| to_js_error(e.to_string()))

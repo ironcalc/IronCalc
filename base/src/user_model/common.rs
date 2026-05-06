@@ -10,6 +10,7 @@ use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cf_types::ExtendedStyle,
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         types::{Area, CellReferenceIndex},
@@ -1452,8 +1453,9 @@ impl<'a> UserModel<'a> {
         // This is the value in the cell itself
         let old_value = self.model.get_cell_style_or_none(sheet, row, column)?;
 
-        // This takes into account row or column styles. If none of those are present, it will return the default style
-        let old_style = self.get_cell_style(sheet, row, column)?;
+        // This takes into account row or column styles. We use the base style (no CF overlay)
+        // because we are writing back a persistent style, not a transient CF result.
+        let old_style = self.model.get_style_for_cell(sheet, row, column)?;
         let new_style = update_style(&old_style, style_path, value)?;
         self.model.set_cell_style(sheet, row, column, &new_style)?;
         diff_list.push(Diff::SetCellStyle {
@@ -1675,6 +1677,76 @@ impl<'a> UserModel<'a> {
         }
 
         Ok(style)
+    }
+
+    /// Returns the full extended style for a cell, including any conditional formatting overlay.
+    ///
+    /// Identical border-adjacency logic as [`get_cell_style`] but applied to the CF-overlaid style.
+    /// Use this when you need icon-set or data-bar decorations in addition to the base style.
+    pub fn get_extended_cell_style(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<ExtendedStyle, String> {
+        let mut extended = self.model.get_extended_style_for_cell(sheet, row, column)?;
+
+        let border_top = if row > 1 {
+            self.model
+                .get_style_for_cell(sheet, row - 1, column)?
+                .border
+                .bottom
+        } else {
+            None
+        };
+
+        let border_right = if column < LAST_COLUMN {
+            self.model
+                .get_style_for_cell(sheet, row, column + 1)?
+                .border
+                .left
+        } else {
+            None
+        };
+
+        let border_bottom = if row < LAST_ROW {
+            self.model
+                .get_style_for_cell(sheet, row + 1, column)?
+                .border
+                .top
+        } else {
+            None
+        };
+
+        let border_left = if column > 1 {
+            self.model
+                .get_style_for_cell(sheet, row, column - 1)?
+                .border
+                .right
+        } else {
+            None
+        };
+
+        if is_max_border(extended.style.border.top.as_ref(), border_top.as_ref()) {
+            extended.style.border.top = border_top;
+        }
+
+        if is_max_border(extended.style.border.right.as_ref(), border_right.as_ref()) {
+            extended.style.border.right = border_right;
+        }
+
+        if is_max_border(
+            extended.style.border.bottom.as_ref(),
+            border_bottom.as_ref(),
+        ) {
+            extended.style.border.bottom = border_bottom;
+        }
+
+        if is_max_border(extended.style.border.left.as_ref(), border_left.as_ref()) {
+            extended.style.border.left = border_left;
+        }
+
+        Ok(extended)
     }
 
     /// Fills the cells from `source_area` until `to_row`.

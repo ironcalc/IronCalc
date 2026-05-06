@@ -1,8 +1,8 @@
 use std::{collections::HashMap, io::Read};
 
 use ironcalc_base::types::{
-    Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Dxf, Fill,
-    Font, FontScheme, HorizontalAlignment, NumFmt, Styles, VerticalAlignment,
+    Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Dxf, Fill, Font,
+    FontScheme, HorizontalAlignment, NumFmt, Styles, VerticalAlignment,
 };
 use roxmltree::Node;
 
@@ -426,8 +426,7 @@ fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
                                     .unwrap_or(11);
                             }
                             "name" => {
-                                f.name =
-                                    feat.attribute("val").unwrap_or("Calibri").to_string();
+                                f.name = feat.attribute("val").unwrap_or("Calibri").to_string();
                             }
                             "scheme" => {
                                 f.scheme = match feat.attribute("val") {
@@ -484,16 +483,14 @@ fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
                 }
                 "numFmt" => {
                     let num_fmt_id = get_number(child, "numFmtId");
-                    let format_code =
-                        child.attribute("formatCode").unwrap_or("").to_string();
+                    let format_code = child.attribute("formatCode").unwrap_or("").to_string();
                     num_fmt = Some(NumFmt {
                         num_fmt_id,
                         format_code,
                     });
                 }
                 "alignment" => {
-                    let wrap_text =
-                        matches!(child.attribute("wrapText"), Some("1"));
+                    let wrap_text = matches!(child.attribute("wrapText"), Some("1"));
                     let horizontal = match child.attribute("horizontal") {
                         Some("center") => HorizontalAlignment::Center,
                         Some("left") => HorizontalAlignment::Left,

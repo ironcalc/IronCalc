@@ -176,7 +176,6 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
     Ok(cols)
 }
 
-
 fn parse_cfvo(node: Node) -> Result<Cfvo, XlsxError> {
     let val = node.attribute("val").unwrap_or("0");
     match node.attribute("type").unwrap_or("num") {
@@ -370,8 +369,9 @@ fn load_conditional_formatting(
                         continue;
                     }
                     let is_node = is_nodes[0];
-                    let set =
-                        parse_icon_set_type(is_node.attribute("iconSet").unwrap_or("3TrafficLights1"));
+                    let set = parse_icon_set_type(
+                        is_node.attribute("iconSet").unwrap_or("3TrafficLights1"),
+                    );
                     let show_value = is_node.attribute("showValue") != Some("0");
                     let cfvo: Vec<Cfvo> = is_node
                         .children()
@@ -385,8 +385,7 @@ fn load_conditional_formatting(
                     }
                 }
                 "timePeriod" => {
-                    let time_period =
-                        cf_rule.attribute("timePeriod").unwrap_or("").to_string();
+                    let time_period = cf_rule.attribute("timePeriod").unwrap_or("").to_string();
                     CfRule::TimePeriod {
                         dxf_id,
                         time_period,

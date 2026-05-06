@@ -1,4 +1,7 @@
 use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
+
+use crate::types::Style;
 
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub enum Operator {
@@ -12,7 +15,7 @@ pub enum Operator {
     NotBetween,
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub enum IconSet {
     // Directional
     Arrows3,
@@ -107,4 +110,63 @@ pub struct ConditionalFormatting {
     pub range: String,
     pub cf_rule: CfRule,
     pub priority: u32,
+}
+
+// ---------------------------------------------------------------------------
+// Evaluated CF result for a single cell (transient, not stored in Workbook).
+// ---------------------------------------------------------------------------
+
+/// The winning CF result for a cell, stored in Model::cf_cache after evaluate().
+#[derive(Clone, Debug)]
+pub(crate) enum CfCellResult {
+    /// A dxf-based rule matched; dxf_id indexes into styles.dxfs.
+    Dxf(u32),
+    /// Color scale: the pre-computed interpolated fill color (hex).
+    ColorScale(String),
+    /// Data bar: proportion filled (0..1), color, and show_value flag.
+    DataBar {
+        color: String,
+        value: f64,
+        show_value: bool,
+    },
+    /// Icon set: which icon set and which icon index (0-indexed).
+    Icon {
+        set: IconSet,
+        index: u32,
+        show_value: bool,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Public output types returned by get_cell_style().
+// ---------------------------------------------------------------------------
+
+/// Icon set decoration for a cell.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CfIcon {
+    pub set: IconSet,
+    /// 0-indexed position within the icon set.
+    pub index: u32,
+    pub show_value: bool,
+}
+
+/// Data bar decoration for a cell.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CfDataBar {
+    /// Hex color for the bar fill.
+    pub color: String,
+    /// Proportion of the bar to fill, in \[0.0, 1.0\].
+    pub value: f64,
+    pub show_value: bool,
+}
+
+/// The full visual description of a cell, including any conditional formatting overlay.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ExtendedStyle {
+    /// The final cell style (base style with any CF dxf/color-scale overlay applied).
+    pub style: Style,
+    /// Set when an icon-set rule applies to the cell.
+    pub icon: Option<CfIcon>,
+    /// Set when a data-bar rule applies to the cell.
+    pub data_bar: Option<CfDataBar>,
 }
