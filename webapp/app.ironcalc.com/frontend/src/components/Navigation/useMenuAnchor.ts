@@ -1,6 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-export function useMenuAnchor(isOpen: boolean, onClose: () => void) {
+export function useMenuAnchor(
+  isOpen: boolean,
+  onClose: () => void,
+  additionalRefs: RefObject<Element | null>[] = [],
+) {
   const anchorElement = useRef<HTMLButtonElement>(null);
   const menuElement = useRef<HTMLDivElement>(null);
   const [menuStyle, setMenuStyle] = useState<{ left?: number; top?: number }>(
@@ -31,7 +35,8 @@ export function useMenuAnchor(isOpen: boolean, onClose: () => void) {
       const target = event.target as Node | null;
       if (
         anchorElement.current?.contains(target) ||
-        menuElement.current?.contains(target)
+        menuElement.current?.contains(target) ||
+        additionalRefs.some((r) => r.current?.contains(target))
       )
         return;
       onClose();

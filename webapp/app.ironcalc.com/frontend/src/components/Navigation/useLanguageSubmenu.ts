@@ -6,6 +6,7 @@ export function useLanguageSubmenu() {
     {},
   );
   const anchorElement = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = useCallback(() => {
@@ -24,5 +25,5 @@ export function useLanguageSubmenu() {
 
   const close = useCallback(() => setIsOpen(false), []);
 
-  return { isOpen, menuStyle, anchorElement, handleMouseEnter, handleMouseLeave, close };
+  return { isOpen, menuStyle, anchorElement, menuRef, handleMouseEnter, handleMouseLeave, close };
 }
