@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::vec::Vec;
 
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
@@ -217,6 +218,8 @@ pub struct Model<'a> {
     pub(crate) spill_cells: Vec<CellReferenceIndex>,
     /// A dictionary to keep track of which cells or ranges support a given cell.
     pub(crate) support: HashMap<CellReferenceIndex, Vec<CellOrRange>>,
+    // A list of cells with conditional formatting rules
+    // pub(crate) cells_cf: HashMap<CellReferenceIndex, Vec<ConditionalFormatting>>,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -2750,6 +2753,11 @@ impl<'a> Model<'a> {
         false
     }
 
+    pub fn evaluate_conditional_formatting() {
+        // Computes all conditional formatting rules and applies them to the cells.
+
+    }
+
     /// Evaluates the model using a two-phase algorithm that correctly handles dynamic arrays.
     ///
     /// Phase 1 evaluates all spill-capable cells first (in dependency order), so their spill
@@ -2812,6 +2820,7 @@ impl<'a> Model<'a> {
                 column: cell.column,
             });
         }
+        self.evaluate_conditional_formatting();
     }
 
     /// Removes the content of every cell in the range but leaves the style.

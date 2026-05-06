@@ -2,7 +2,7 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
-use crate::expressions::token::Error;
+use crate::{cf_types::ConditionalFormatting, expressions::token::Error};
 
 fn default_as_false() -> bool {
     false
@@ -118,25 +118,6 @@ pub struct Worksheet {
     /// Whether or not to show the grid lines in the worksheet
     pub show_grid_lines: bool,
     pub conditional_formatting: Vec<ConditionalFormatting>
-}
-
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct ColorScale {
-
-}
-
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub enum CfRule {
-    ColorScale {
-        priority: u32,
-    },
-    CellIs,
-}
-
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub struct ConditionalFormatting {
-    sqref: String,
-    cf_rule: Vec<CfRule>
 }
 
 /// Internal representation of Excel's sheet_data
@@ -339,6 +320,19 @@ pub struct TableStyleInfo {
     pub show_column_stripes: bool,
 }
 
+// Dxf stands for "Differential Formatting". It is used in places like:
+// * conditional formatting
+// * tables
+// to specify partial formatting that overrides the cell formatting.
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct Dxf {
+    pub font: Option<Font>,
+    pub fill: Option<Fill>,
+    pub border: Option<Border>,
+    pub num_fmt: Option<NumFmt>,
+    pub alignment: Option<Alignment>,
+}
+
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Styles {
     pub num_fmts: Vec<NumFmt>,
@@ -348,6 +342,7 @@ pub struct Styles {
     pub cell_style_xfs: Vec<CellStyleXfs>,
     pub cell_xfs: Vec<CellXfs>,
     pub cell_styles: Vec<CellStyles>,
+    pub dxfs: Vec<Dxf>,
 }
 
 impl Default for Styles {
@@ -367,6 +362,7 @@ impl Default for Styles {
             cell_style_xfs: vec![Default::default()],
             cell_xfs: vec![Default::default()],
             cell_styles: vec![Default::default()],
+            dxfs: vec![],
         }
     }
 }
