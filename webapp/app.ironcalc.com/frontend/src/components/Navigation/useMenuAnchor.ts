@@ -1,4 +1,10 @@
-import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 export function useMenuAnchor(
   isOpen: boolean,
@@ -28,6 +34,7 @@ export function useMenuAnchor(
     };
   }, [isOpen]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: additionalRefs holds stable ref objects; .current is intentionally read inside the handler
   useEffect(() => {
     if (!isOpen) return;
 

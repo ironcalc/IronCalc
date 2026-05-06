@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE } from "../App";
 import { FileMenu } from "./Navigation/FileMenu";
 import { HelpMenu } from "./Navigation/HelpMenu";
-import { MobileMenu } from "./MobileMenu";
+import { MobileMenu } from "./Navigation/MobileMenu";
 import { downloadModel } from "./rpc";
 import { ShareButton } from "./ShareWorkbook/ShareButton";
 import ShareWorkbookDialog from "./ShareWorkbook/ShareDialog";
