@@ -37,11 +37,12 @@ export function FileMenu(props: {
   const models = getModelsMetadata();
   const selectedUuid = getSelectedUuid();
 
+  const langMenu = useLanguageSubmenu();
   const { anchorElement, menuElement, menuStyle } = useMenuAnchor(
     props.isOpen,
     props.onClose,
+    [langMenu.menuRef],
   );
-  const langMenu = useLanguageSubmenu();
 
   useEffect(() => {
     if (!props.isOpen) langMenu.close();
@@ -140,6 +141,7 @@ export function FileMenu(props: {
 
       {langMenu.isOpen && (
         <div
+          ref={langMenu.menuRef}
           className="app-ic-nav-submenu"
           style={langMenu.menuStyle}
           onMouseEnter={langMenu.handleMouseEnter}
