@@ -3040,17 +3040,16 @@ impl<'a> Model<'a> {
         if values.is_empty() {
             return;
         }
-        let mut pairs: Vec<(f64, &String)> = cfvo
+        let mut thresholds: Vec<f64> = cfvo
             .iter()
             .map(|c| self.resolve_cfvo(c, &values, sheet))
-            .zip(colors.iter())
             .collect();
-        // Excel sorts thresholds ascending; out-of-order cfvo values (e.g. a formula
-        // that resolves to a value below a preceding fixed threshold) would break the
-        // linear interpolation otherwise.
-        pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-        let thresholds: Vec<f64> = pairs.iter().map(|(t, _)| *t).collect();
-        let sorted_colors: Vec<String> = pairs.iter().map(|(_, c)| (*c).clone()).collect();
+        // Excel sorts only the threshold values, keeping colors at their original
+        // positional indices. A formula cfvo that resolves out-of-order (e.g. $G$13=0
+        // appearing after cfvo num=20) must be sorted into place while color[i] still
+        // maps to the i-th stop in sorted order.
+        thresholds.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let sorted_colors = colors;
 
         for &(r1, c1, r2, c2) in ranges {
             for row in r1..=r2 {
