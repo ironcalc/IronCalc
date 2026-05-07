@@ -38,7 +38,7 @@ function WelcomeDialog({
   const { t } = useTranslation();
   const titleId = useId();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("blank");
-  const { dialogRef } = useDialogFocus(true);
+  const dialogRef = useDialogFocus(true);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 

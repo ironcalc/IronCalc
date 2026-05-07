@@ -24,7 +24,7 @@ function TemplatesDialog({
   const [selectedTemplate, setSelectedTemplate] = useState(
     "mortgage_calculator",
   );
-  const { dialogRef } = useDialogFocus(open);
+  const dialogRef = useDialogFocus(open);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 

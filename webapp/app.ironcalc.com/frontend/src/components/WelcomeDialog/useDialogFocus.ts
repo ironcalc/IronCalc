@@ -19,5 +19,5 @@ export function useDialogFocus(open: boolean) {
     };
   }, [open]);
 
-  return { dialogRef };
+  return dialogRef;
 }
