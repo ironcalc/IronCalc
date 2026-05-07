@@ -33,8 +33,8 @@ use crate::{
 
 use crate::{
     cf_types::{
-        CfCellResult, CfDataBar, CfIcon, CfRule, Cfvo, ExtendedStyle, IconSet, PeriodType,
-        TextOperator, ValueOperator,
+        CfCellResult, CfCustomIcon, CfDataBar, CfIcon, CfRule, Cfvo, ExtendedStyle, Icon, IconSet,
+        PeriodType, TextOperator, ValueOperator,
     },
     tz::Tz,
 };
@@ -326,6 +326,30 @@ fn compute_icon_index(v: f64, thresholds: &[f64]) -> u32 {
         }
     }
     idx
+}
+
+fn icon_to_char(icon: &Icon) -> &'static str {
+    match icon {
+        Icon::ArrowUp => "↑",
+        Icon::ArrowRight => "→",
+        Icon::ArrowDown => "↓",
+        Icon::ArrowAngleUp => "↗",
+        Icon::ArrowAngleDown => "↘",
+        Icon::Circle => "●",
+        Icon::TriangleUp => "▲",
+        Icon::TriangleDown => "▼",
+        Icon::FlatRectangle => "▬",
+        Icon::Rhombus => "◆",
+        Icon::Flag => "⚑",
+        Icon::Check => "✔",
+        Icon::Cross => "✘",
+        Icon::Exclamation => "!",
+        Icon::Signal1 => "▁",
+        Icon::Signal2 => "▂",
+        Icon::Signal3 => "▄",
+        Icon::Signal4 => "▆",
+        Icon::Signal5 => "█",
+    }
 }
 
 /// Stable string key for a CellValue, used for duplicate detection.
@@ -2964,11 +2988,37 @@ impl<'a> Model<'a> {
             } => {
                 self.apply_cf_time_period(sheet, time_period, *dxf_id, ranges);
             }
-            CfRule::IconSetCustom2 { .. }
-            | CfRule::IconSetCustom3 { .. }
-            | CfRule::IconSetCustom4 { .. }
-            | CfRule::IconSetCustom5 { .. } => {
-                // Custom icon sets not yet rendered
+            CfRule::IconSetCustom2 {
+                set,
+                cfvo,
+                color,
+                show_value,
+            } => {
+                self.apply_cf_icon_set_custom(sheet, set, cfvo, color, *show_value, ranges);
+            }
+            CfRule::IconSetCustom3 {
+                set,
+                cfvo,
+                color,
+                show_value,
+            } => {
+                self.apply_cf_icon_set_custom(sheet, set, cfvo, color, *show_value, ranges);
+            }
+            CfRule::IconSetCustom4 {
+                set,
+                cfvo,
+                color,
+                show_value,
+            } => {
+                self.apply_cf_icon_set_custom(sheet, set, cfvo, color, *show_value, ranges);
+            }
+            CfRule::IconSetCustom5 {
+                set,
+                cfvo,
+                color,
+                show_value,
+            } => {
+                self.apply_cf_icon_set_custom(sheet, set, cfvo, color, *show_value, ranges);
             }
         }
     }
@@ -3162,6 +3212,49 @@ impl<'a> Model<'a> {
                             CfCellResult::Icon {
                                 set: set.clone(),
                                 index,
+                                show_value,
+                            },
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    fn apply_cf_icon_set_custom(
+        &mut self,
+        sheet: u32,
+        icons: &[Icon],
+        cfvo: &[Cfvo],
+        colors: &[String],
+        show_value: bool,
+        ranges: &[(i32, i32, i32, i32)],
+    ) {
+        let n = icons.len();
+        if n == 0 || cfvo.len() != n || colors.len() != n {
+            return;
+        }
+        let values = self.collect_numeric_values(sheet, ranges);
+        let thresholds: Vec<f64> = cfvo
+            .iter()
+            .map(|c| self.resolve_cfvo(c, &values, sheet))
+            .collect();
+
+        for &(r1, c1, r2, c2) in ranges {
+            for row in r1..=r2 {
+                for col in c1..=c2 {
+                    if let Ok(CellValue::Number(v)) =
+                        self.get_cell_value_by_index(sheet, row, col)
+                    {
+                        let idx = compute_icon_index(v, &thresholds) as usize;
+                        let idx = idx.min(n - 1);
+                        self.update_cf_cache(
+                            sheet,
+                            row,
+                            col,
+                            CfCellResult::CustomIcon {
+                                char: icon_to_char(&icons[idx]).to_string(),
+                                color: colors[idx].clone(),
                                 show_value,
                             },
                         );
@@ -3541,6 +3634,7 @@ impl<'a> Model<'a> {
                 style: base,
                 icon: None,
                 data_bar: None,
+                custom_icon: None,
             }),
             Some(CfCellResult::Dxf(dxf_id)) => {
                 let style = match self.workbook.styles.dxfs.get(*dxf_id as usize) {
@@ -3551,6 +3645,7 @@ impl<'a> Model<'a> {
                     style,
                     icon: None,
                     data_bar: None,
+                    custom_icon: None,
                 })
             }
             Some(CfCellResult::ColorScale(color)) => {
@@ -3562,6 +3657,7 @@ impl<'a> Model<'a> {
                     style,
                     icon: None,
                     data_bar: None,
+                    custom_icon: None,
                 })
             }
             Some(CfCellResult::DataBar {
@@ -3576,6 +3672,7 @@ impl<'a> Model<'a> {
                     value: *value,
                     show_value: *show_value,
                 }),
+                custom_icon: None,
             }),
             Some(CfCellResult::Icon {
                 set,
@@ -3589,6 +3686,21 @@ impl<'a> Model<'a> {
                     show_value: *show_value,
                 }),
                 data_bar: None,
+                custom_icon: None,
+            }),
+            Some(CfCellResult::CustomIcon {
+                char,
+                color,
+                show_value,
+            }) => Ok(ExtendedStyle {
+                style: base,
+                icon: None,
+                data_bar: None,
+                custom_icon: Some(CfCustomIcon {
+                    char: char.clone(),
+                    color: color.clone(),
+                    show_value: *show_value,
+                }),
             }),
         }
     }

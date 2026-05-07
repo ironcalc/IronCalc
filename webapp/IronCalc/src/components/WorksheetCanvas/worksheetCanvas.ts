@@ -13,6 +13,7 @@ import {
 import {
   ICON_AREA_WIDTH,
   drawBorder,
+  renderCustomIcon,
   renderDataBar,
   renderIcon,
 } from "./cfRenderer";
@@ -568,6 +569,9 @@ export default class WorksheetCanvas {
     if (extended.data_bar && !extended.data_bar.show_value) {
       return;
     }
+    if (extended.custom_icon && !extended.custom_icon.show_value) {
+      return;
+    }
 
     const { font, color: textColor, fontSize } = this.getFontStyle(style);
 
@@ -603,7 +607,10 @@ export default class WorksheetCanvas {
     const lineCount = lines.length;
     let maxWidth = 0;
     // When an icon is shown alongside the value, shift text right by the icon area.
-    const iconOffset = extended.icon?.show_value ? ICON_AREA_WIDTH : 0;
+    const iconOffset =
+      (extended.icon?.show_value || extended.custom_icon?.show_value)
+        ? ICON_AREA_WIDTH
+        : 0;
     let minX = x + iconOffset;
     let maxX = x + width;
     const textProperties = {
@@ -771,6 +778,9 @@ export default class WorksheetCanvas {
     }
     if (extended.icon) {
       renderIcon(context, x, y, height, extended.icon);
+    }
+    if (extended.custom_icon) {
+      renderCustomIcon(context, x, y, height, extended.custom_icon);
     }
 
     // Borders — we only draw left and top; the adjacent cell draws right/bottom.

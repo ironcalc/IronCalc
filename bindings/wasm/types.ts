@@ -241,10 +241,17 @@ export interface CfDataBar {
   show_value: boolean;
 }
 
+export interface CfCustomIcon {
+  char: string;
+  color: string;
+  show_value: boolean;
+}
+
 export interface ExtendedCellStyle {
   style: CellStyle;
   icon: CfIcon | null;
   data_bar: CfDataBar | null;
+  custom_icon: CfCustomIcon | null;
 }
 
 export interface SelectedView {

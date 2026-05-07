@@ -1,4 +1,4 @@
-import type { CfDataBar, CfIcon, IconSetType } from "@ironcalc/wasm";
+import type { CfCustomIcon, CfDataBar, CfIcon, IconSetType } from "@ironcalc/wasm";
 
 // Width (in pixels) reserved on the left of a cell for an icon-set indicator.
 export const ICON_AREA_WIDTH = 20;
@@ -240,5 +240,22 @@ export function renderIcon(
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillText(char, x + ICON_AREA_WIDTH / 2, y + height / 2);
+  context.restore();
+}
+
+export function renderCustomIcon(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  height: number,
+  icon: CfCustomIcon,
+): void {
+  const fontSize = Math.min(Math.round(height * 0.55), 13);
+  context.save();
+  context.font = `${fontSize}px sans-serif`;
+  context.fillStyle = icon.color;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(icon.char, x + ICON_AREA_WIDTH / 2, y + height / 2);
   context.restore();
 }

@@ -220,6 +220,12 @@ pub(crate) enum CfCellResult {
         index: u32,
         show_value: bool,
     },
+    /// Custom icon: explicit unicode character and color.
+    CustomIcon {
+        char: String,
+        color: String,
+        show_value: bool,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -245,13 +251,25 @@ pub struct CfDataBar {
     pub show_value: bool,
 }
 
+/// Custom icon decoration for a cell (from an IconSetCustom rule).
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CfCustomIcon {
+    /// Unicode character representing the icon.
+    pub char: String,
+    /// Hex color for the icon.
+    pub color: String,
+    pub show_value: bool,
+}
+
 /// The full visual description of a cell, including any conditional formatting overlay.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ExtendedStyle {
     /// The final cell style (base style with any CF dxf/color-scale overlay applied).
     pub style: Style,
-    /// Set when an icon-set rule applies to the cell.
+    /// Set when a preset icon-set rule applies to the cell.
     pub icon: Option<CfIcon>,
     /// Set when a data-bar rule applies to the cell.
     pub data_bar: Option<CfDataBar>,
+    /// Set when a custom icon-set rule applies to the cell.
+    pub custom_icon: Option<CfCustomIcon>,
 }
