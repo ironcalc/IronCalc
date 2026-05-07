@@ -178,7 +178,6 @@ function App() {
     <Wrapper>
       <LeftDrawer
         open={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
         newModel={handleNewModel}
         setModel={handleSetModel}
         onDelete={handleDeleteModelByUuid}

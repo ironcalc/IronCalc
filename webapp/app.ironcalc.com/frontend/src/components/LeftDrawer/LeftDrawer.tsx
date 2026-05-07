@@ -6,7 +6,6 @@ import "./left-drawer.css";
 
 interface LeftDrawerProps {
   open: boolean;
-  onClose: () => void;
   newModel: () => void;
   setModel: (key: string) => void;
   onDelete: (uuid: string) => void;
