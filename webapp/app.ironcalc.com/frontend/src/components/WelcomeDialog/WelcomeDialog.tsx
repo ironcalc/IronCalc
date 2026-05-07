@@ -5,7 +5,7 @@ import {
 } from "@ironcalc/workbook";
 import { Table, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import TemplatesList from "./TemplatesList";
@@ -36,14 +36,14 @@ function WelcomeDialog({
   onSelectTemplate: (templateId: string) => void;
 }) {
   const { t } = useTranslation();
+  const titleId = useId();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("blank");
-  const { dialogRef, restoreFocus } = useDialogFocus(true);
+  const { dialogRef } = useDialogFocus(true);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleClose = () => {
     onClose();
-    restoreFocus();
   };
 
   const { onKeyDown } = useDialogKeyDown({
@@ -60,6 +60,7 @@ function WelcomeDialog({
         onKeyDown={onKeyDown}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         tabIndex={-1}
       >
         <div className="app-ic-wd-welcome-header">
@@ -67,7 +68,7 @@ function WelcomeDialog({
             <DialogHeaderLogoWrapper>
               <IronCalcIcon />
             </DialogHeaderLogoWrapper>
-            <span className="app-ic-wd-header-title">
+            <span id={titleId} className="app-ic-wd-header-title">
               {t("welcome_dialog.title")}
             </span>
             <span className="app-ic-wd-header-subtitle">
