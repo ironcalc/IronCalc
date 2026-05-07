@@ -62,7 +62,9 @@
   );
   color: var(--palette-grey-500);
   cursor: pointer;
-  transition: border-color 0.2s ease-in-out, gap 0.2s ease-in-out;
+  transition:
+    border-color 0.2s ease-in-out,
+    gap 0.2s ease-in-out;
 }
 
 .app-ic-ufd-drop-zone:focus {
