@@ -128,8 +128,9 @@ interface IconSpec {
   color: string;
 }
 // ←	↑	→	↓	↔	↕	↖	↗	↘	↙
-const ARROW_CHARS = ["↑", "↗", "→", "↘", "↓"];
-const ARROW_COLORS = ["#38a800", "#84cb1f", "#ffeb84", "#f66f00", "#e43400"];
+// idx=0 = worst (lowest value), idx=N-1 = best (highest value)
+const ARROW_CHARS = ["↓", "↘", "→", "↗", "↑"];
+const ARROW_COLORS = ["#e43400", "#ffeb84", "#ffeb84", "#ffeb84","#84cb1f"];
 
 function getIconSpec(set: IconSetType, index: number): IconSpec {
   switch (set) {
@@ -153,67 +154,67 @@ function getIconSpec(set: IconSetType, index: number): IconSpec {
       return { char: ARROW_CHARS[index], color: "#808080" };
     case "Triangles3":
       return {
-        char: ["▲", "▬", "▼"][index],
-        color: ["#63be7b", "#ffeb84", "#f8696b"][index],
+        char: ["▼", "▬", "▲"][index],
+        color: ["#f8696b", "#ffeb84", "#63be7b"][index],
       };
     case "TrafficLights3":
     case "TrafficLights3Rimmed":
       return {
         char: "●",
-        color: ["#63be7b", "#ffeb84", "#f8696b"][index],
+        color: ["#f8696b", "#ffeb84", "#63be7b"][index],
       };
     case "TrafficLights4":
       return {
         char: "●",
-        color: ["#63be7b", "#b4d67e", "#ffeb84", "#f8696b"][index],
+        color: ["#000000", "#f8696b", "#ffeb84", "#63be7b"][index],
       };
     case "Signs3":
       return {
-        char: ["●", "▲", "✖"][index],
-        color: ["#63be7b", "#ffeb84", "#f8696b"][index],
+        char: ["✖", "▲", "●"][index],
+        color: ["#f8696b", "#ffeb84", "#63be7b"][index],
       };
     case "RedToBlack4":
       return {
         char: "●",
-        color: ["#e43400", "#f66f00", "#808080", "#000000"][index],
+        color: ["#000000", "#808080", "#f66f00", "#e43400"][index],
       };
     case "Symbols3Circled":
     case "Symbols3Uncircled":
       return {
-        char: ["✔", "!", "✘"][index],
-        color: ["#63be7b", "#ffeb84", "#f8696b"][index],
+        char: ["✘", "!", "✔"][index],
+        color: ["#f8696b", "#ffeb84", "#63be7b"][index],
       };
     case "Flags3":
       return {
         char: "⚑",
-        color: ["#63be7b", "#ffeb84", "#f8696b"][index],
+        color: ["#f8696b", "#ffeb84", "#63be7b"][index],
       };
     case "Stars3":
       return {
-        char: index < 2 ? "★" : "☆",
-        color: index === 0 ? "#ffd700" : "#c0c0c0",
+        char: index === 0 ? "☆" : "★",
+        color: index === 2 ? "#ffd700" : "#c0c0c0",
       };
     case "Quarters5":
       return {
-        char: ["●", "◕", "◑", "◔", "○"][index],
+        char: ["○", "◔", "◑", "◕", "●"][index],
         color: "#808080",
       };
     case "Boxes5": {
-      const colors5 = ["#63be7b", "#b4d67e", "#ffeb84", "#fc9f6e", "#f8696b"];
+      const colors5 = ["#f8696b", "#fc9f6e", "#ffeb84", "#b4d67e", "#63be7b"];
       return {
         char: "■",
         color: colors5[index],
       };
     }
-    case "Ratings4":{
-      const colors4 = ["#63be7b", "#b4d67e", "#ffeb84", "#f8696b"];
+    case "Ratings4": {
+      const colors4 = ["#f8696b", "#ffeb84", "#b4d67e", "#63be7b"];
       return {
         char: "■",
         color: colors4[index],
       };
     }
     case "Ratings5": {
-      const colors5 = ["#63be7b", "#b4d67e", "#ffeb84", "#fc9f6e", "#f8696b"];
+      const colors5 = ["#f8696b", "#fc9f6e", "#ffeb84", "#b4d67e", "#63be7b"];
       return {
         char: "■",
         color: colors5[index],
