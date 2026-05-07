@@ -6,7 +6,9 @@ use ironcalc_base::expressions::parser::{
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use ironcalc_base::{
-    cf_types::{CfRule, Cfvo, ConditionalFormatting, IconSet, PeriodType, TextOperator, ValueOperator},
+    cf_types::{
+        CfRule, Cfvo, ConditionalFormatting, IconSet, PeriodType, TextOperator, ValueOperator,
+    },
     expressions::{
         parser::{stringify::to_rc_format, DefinedNameS},
         token::{get_error_by_english_name, Error},
@@ -429,12 +431,11 @@ fn load_conditional_formatting(
                 }
                 "uniqueValues" => CfRule::UniqueValues { dxf_id },
                 "timePeriod" => {
-                    let period = match parse_period_type(
-                        cf_rule.attribute("timePeriod").unwrap_or(""),
-                    ) {
-                        Some(p) => p,
-                        None => continue,
-                    };
+                    let period =
+                        match parse_period_type(cf_rule.attribute("timePeriod").unwrap_or("")) {
+                            Some(p) => p,
+                            None => continue,
+                        };
                     CfRule::TimePeriod {
                         time_period: period,
                         date1: None,

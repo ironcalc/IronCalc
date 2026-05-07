@@ -42,6 +42,7 @@ pub mod worksheet;
 mod actions;
 mod arithmetic;
 mod cast;
+mod conditional_formatting;
 mod constants;
 mod functions;
 mod implicit_intersection;
