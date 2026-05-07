@@ -6,7 +6,7 @@ use ironcalc_base::expressions::parser::{
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use ironcalc_base::{
-    cf_types::{CfRule, Cfvo, ConditionalFormatting, IconSet, ValueOperator},
+    cf_types::{CfRule, Cfvo, ConditionalFormatting, IconSet, PeriodType, TextOperator, ValueOperator},
     expressions::{
         parser::{stringify::to_rc_format, DefinedNameS},
         token::{get_error_by_english_name, Error},
@@ -206,6 +206,36 @@ fn parse_operator(s: &str) -> Result<ValueOperator, XlsxError> {
     }
 }
 
+fn parse_text_operator(s: &str) -> Option<TextOperator> {
+    match s {
+        "containsText" => Some(TextOperator::Contains),
+        "notContains" => Some(TextOperator::DoesNotContain),
+        "beginsWith" => Some(TextOperator::BeginsWith),
+        "endsWith" => Some(TextOperator::EndsWith),
+        _ => None,
+    }
+}
+
+fn parse_period_type(s: &str) -> Option<PeriodType> {
+    match s {
+        "yesterday" => Some(PeriodType::Yesterday),
+        "today" => Some(PeriodType::Today),
+        "tomorrow" => Some(PeriodType::Tomorrow),
+        "last7Days" => Some(PeriodType::Last7Days),
+        "next7Days" => Some(PeriodType::Next7Days),
+        "lastWeek" => Some(PeriodType::LastWeek),
+        "thisWeek" => Some(PeriodType::ThisWeek),
+        "nextWeek" => Some(PeriodType::NextWeek),
+        "lastMonth" => Some(PeriodType::LastMonth),
+        "thisMonth" => Some(PeriodType::ThisMonth),
+        "nextMonth" => Some(PeriodType::NextMonth),
+        "lastYear" => Some(PeriodType::LastYear),
+        "thisYear" => Some(PeriodType::ThisYear),
+        "nextYear" => Some(PeriodType::NextYear),
+        _ => None,
+    }
+}
+
 fn parse_icon_set_type(s: &str) -> IconSet {
     match s {
         "3Arrows" => IconSet::Arrows3,
@@ -384,11 +414,32 @@ fn load_conditional_formatting(
                         show_value,
                     }
                 }
-                "timePeriod" => {
-                    let time_period = cf_rule.attribute("timePeriod").unwrap_or("").to_string();
-                    CfRule::TimePeriod {
+                "containsText" | "notContainsText" | "beginsWith" | "endsWith" => {
+                    let raw_type = cf_rule.attribute("type").unwrap_or("");
+                    let operator = match parse_text_operator(raw_type) {
+                        Some(op) => op,
+                        None => continue,
+                    };
+                    let value = cf_rule.attribute("text").unwrap_or("").to_string();
+                    CfRule::Text {
+                        operator,
+                        value,
                         dxf_id,
-                        time_period,
+                    }
+                }
+                "uniqueValues" => CfRule::UniqueValues { dxf_id },
+                "timePeriod" => {
+                    let period = match parse_period_type(
+                        cf_rule.attribute("timePeriod").unwrap_or(""),
+                    ) {
+                        Some(p) => p,
+                        None => continue,
+                    };
+                    CfRule::TimePeriod {
+                        time_period: period,
+                        date1: None,
+                        date2: None,
+                        dxf_id,
                     }
                 }
                 // Skip unknown rule types silently

@@ -32,7 +32,10 @@ use crate::{
 };
 
 use crate::{
-    cf_types::{CfCellResult, CfDataBar, CfIcon, CfRule, Cfvo, ExtendedStyle, IconSet, ValueOperator},
+    cf_types::{
+        CfCellResult, CfDataBar, CfIcon, CfRule, Cfvo, ExtendedStyle, IconSet, PeriodType,
+        TextOperator, ValueOperator,
+    },
     tz::Tz,
 };
 
@@ -2944,8 +2947,28 @@ impl<'a> Model<'a> {
             } => {
                 self.apply_cf_icon_set(sheet, set, cfvo, *show_value, ranges);
             }
-            CfRule::TimePeriod { .. } => {
-                // Not yet implemented
+            CfRule::Text {
+                operator,
+                value,
+                dxf_id,
+            } => {
+                self.apply_cf_text(sheet, operator, value, *dxf_id, ranges);
+            }
+            CfRule::UniqueValues { dxf_id } => {
+                self.apply_cf_unique_values(sheet, *dxf_id, ranges);
+            }
+            CfRule::TimePeriod {
+                time_period,
+                dxf_id,
+                ..
+            } => {
+                self.apply_cf_time_period(sheet, time_period, *dxf_id, ranges);
+            }
+            CfRule::IconSetCustom2 { .. }
+            | CfRule::IconSetCustom3 { .. }
+            | CfRule::IconSetCustom4 { .. }
+            | CfRule::IconSetCustom5 { .. } => {
+                // Custom icon sets not yet rendered
             }
         }
     }
@@ -3259,6 +3282,206 @@ impl<'a> Model<'a> {
                             v >= threshold
                         };
                         if matches {
+                            self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn apply_cf_text(
+        &mut self,
+        sheet: u32,
+        operator: &TextOperator,
+        value: &str,
+        dxf_id: u32,
+        ranges: &[(i32, i32, i32, i32)],
+    ) {
+        let search = value.to_lowercase();
+        for &(r1, c1, r2, c2) in ranges {
+            for row in r1..=r2 {
+                for col in c1..=c2 {
+                    if let Ok(CellValue::String(s)) =
+                        self.get_cell_value_by_index(sheet, row, col)
+                    {
+                        let cell_lower = s.to_lowercase();
+                        let matches = match operator {
+                            TextOperator::Contains => cell_lower.contains(search.as_str()),
+                            TextOperator::DoesNotContain => !cell_lower.contains(search.as_str()),
+                            TextOperator::BeginsWith => cell_lower.starts_with(search.as_str()),
+                            TextOperator::EndsWith => cell_lower.ends_with(search.as_str()),
+                        };
+                        if matches {
+                            self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn apply_cf_unique_values(
+        &mut self,
+        sheet: u32,
+        dxf_id: u32,
+        ranges: &[(i32, i32, i32, i32)],
+    ) {
+        let mut counts: HashMap<String, u32> = HashMap::new();
+        for &(r1, c1, r2, c2) in ranges {
+            for row in r1..=r2 {
+                for col in c1..=c2 {
+                    if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
+                        if let Some(k) = cell_value_key(&v) {
+                            *counts.entry(k).or_insert(0) += 1;
+                        }
+                    }
+                }
+            }
+        }
+        for &(r1, c1, r2, c2) in ranges {
+            for row in r1..=r2 {
+                for col in c1..=c2 {
+                    if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
+                        if let Some(k) = cell_value_key(&v) {
+                            if counts.get(&k).copied().unwrap_or(0) == 1 {
+                                self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn apply_cf_time_period(
+        &mut self,
+        sheet: u32,
+        period: &PeriodType,
+        dxf_id: u32,
+        ranges: &[(i32, i32, i32, i32)],
+    ) {
+        use crate::formatter::dates::{date_to_serial_number, from_excel_date};
+        use chrono::{Datelike, Duration, Months, NaiveDate};
+
+        let today_serial = match crate::tz::excel_serial_for_now(&self.tz) {
+            Some(s) => s.floor() as i64,
+            None => return,
+        };
+        let today = match from_excel_date(today_serial) {
+            Ok(d) => d,
+            Err(_) => return,
+        };
+
+        let serial_of = |d: NaiveDate| -> f64 {
+            date_to_serial_number(d.day(), d.month(), d.year()).unwrap_or(0) as f64
+        };
+
+        let range: (f64, f64) = match period {
+            PeriodType::Yesterday => {
+                let s = today_serial as f64 - 1.0;
+                (s, s)
+            }
+            PeriodType::Today => (today_serial as f64, today_serial as f64),
+            PeriodType::Tomorrow => {
+                let s = today_serial as f64 + 1.0;
+                (s, s)
+            }
+            PeriodType::Last7Days => (today_serial as f64 - 6.0, today_serial as f64),
+            PeriodType::Next7Days => (today_serial as f64, today_serial as f64 + 6.0),
+            PeriodType::LastWeek => {
+                let dow = today.weekday().num_days_from_monday() as i64;
+                let this_mon = today - Duration::days(dow);
+                let last_mon = this_mon - Duration::days(7);
+                let last_sun = this_mon - Duration::days(1);
+                (serial_of(last_mon), serial_of(last_sun))
+            }
+            PeriodType::ThisWeek => {
+                let dow = today.weekday().num_days_from_monday() as i64;
+                let this_mon = today - Duration::days(dow);
+                let this_sun = this_mon + Duration::days(6);
+                (serial_of(this_mon), serial_of(this_sun))
+            }
+            PeriodType::NextWeek => {
+                let dow = today.weekday().num_days_from_monday() as i64;
+                let next_mon = today - Duration::days(dow) + Duration::days(7);
+                let next_sun = next_mon + Duration::days(6);
+                (serial_of(next_mon), serial_of(next_sun))
+            }
+            PeriodType::LastMonth => {
+                let Some(this_month_start) =
+                    NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
+                else {
+                    return;
+                };
+                let last_month_end = this_month_start - Duration::days(1);
+                let Some(last_month_start) = NaiveDate::from_ymd_opt(
+                    last_month_end.year(),
+                    last_month_end.month(),
+                    1,
+                ) else {
+                    return;
+                };
+                (serial_of(last_month_start), serial_of(last_month_end))
+            }
+            PeriodType::ThisMonth => {
+                let Some(start) = NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
+                else {
+                    return;
+                };
+                let end = start + Months::new(1) - Duration::days(1);
+                (serial_of(start), serial_of(end))
+            }
+            PeriodType::NextMonth => {
+                let Some(this_start) = NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
+                else {
+                    return;
+                };
+                let next_start = this_start + Months::new(1);
+                let next_end = next_start + Months::new(1) - Duration::days(1);
+                (serial_of(next_start), serial_of(next_end))
+            }
+            PeriodType::LastYear => {
+                let y = today.year() - 1;
+                let Some(start) = NaiveDate::from_ymd_opt(y, 1, 1) else {
+                    return;
+                };
+                let Some(end) = NaiveDate::from_ymd_opt(y, 12, 31) else {
+                    return;
+                };
+                (serial_of(start), serial_of(end))
+            }
+            PeriodType::ThisYear => {
+                let y = today.year();
+                let Some(start) = NaiveDate::from_ymd_opt(y, 1, 1) else {
+                    return;
+                };
+                let Some(end) = NaiveDate::from_ymd_opt(y, 12, 31) else {
+                    return;
+                };
+                (serial_of(start), serial_of(end))
+            }
+            PeriodType::NextYear => {
+                let y = today.year() + 1;
+                let Some(start) = NaiveDate::from_ymd_opt(y, 1, 1) else {
+                    return;
+                };
+                let Some(end) = NaiveDate::from_ymd_opt(y, 12, 31) else {
+                    return;
+                };
+                (serial_of(start), serial_of(end))
+            }
+            PeriodType::Between | PeriodType::NotBetween => return,
+        };
+
+        for &(r1, c1, r2, c2) in ranges {
+            for row in r1..=r2 {
+                for col in c1..=c2 {
+                    if let Ok(CellValue::Number(v)) =
+                        self.get_cell_value_by_index(sheet, row, col)
+                    {
+                        let day = v.floor();
+                        if day >= range.0 && day <= range.1 {
                             self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
                         }
                     }
