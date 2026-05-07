@@ -943,4 +943,83 @@ impl<'a> Model<'a> {
             }),
         }
     }
+
+    // -----------------------------------------------------------------------
+    // CRUD API for conditional formatting rules
+    // -----------------------------------------------------------------------
+
+    /// Returns all CF rules for the given sheet in list order.
+    pub fn get_conditional_formatting_list(
+        &self,
+        sheet: u32,
+    ) -> Result<Vec<crate::cf_types::ConditionalFormatting>, String> {
+        Ok(self.workbook.worksheet(sheet)?.conditional_formatting.clone())
+    }
+
+    /// Adds a new CF rule to `sheet`, appended with priority = 1 + current max
+    /// (so existing rules keep higher priority).  Returns the assigned priority.
+    pub fn add_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        range: &str,
+        rule: crate::cf_types::CfRule,
+    ) -> Result<u32, String> {
+        if parse_sqref(range).is_empty() {
+            return Err(format!("Invalid conditional formatting range: '{range}'"));
+        }
+        let ws = self.workbook.worksheet_mut(sheet)?;
+        let priority = ws
+            .conditional_formatting
+            .iter()
+            .map(|cf| cf.priority)
+            .max()
+            .map(|m| m + 1)
+            .unwrap_or(1);
+        ws.conditional_formatting
+            .push(crate::cf_types::ConditionalFormatting {
+                range: range.to_string(),
+                cf_rule: rule,
+                priority,
+            });
+        Ok(priority)
+    }
+
+    /// Removes the CF rule at `index` from `sheet`.  Returns the removed rule.
+    pub fn delete_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        index: usize,
+    ) -> Result<crate::cf_types::ConditionalFormatting, String> {
+        let ws = self.workbook.worksheet_mut(sheet)?;
+        if index >= ws.conditional_formatting.len() {
+            return Err(format!(
+                "Conditional formatting index {index} out of bounds"
+            ));
+        }
+        Ok(ws.conditional_formatting.remove(index))
+    }
+
+    /// Replaces the range and rule of the CF entry at `index` on `sheet`.
+    /// The priority is preserved.  Returns the previous entry.
+    pub fn update_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        index: usize,
+        new_range: &str,
+        new_rule: crate::cf_types::CfRule,
+    ) -> Result<crate::cf_types::ConditionalFormatting, String> {
+        if parse_sqref(new_range).is_empty() {
+            return Err(format!("Invalid conditional formatting range: '{new_range}'"));
+        }
+        let ws = self.workbook.worksheet_mut(sheet)?;
+        if index >= ws.conditional_formatting.len() {
+            return Err(format!(
+                "Conditional formatting index {index} out of bounds"
+            ));
+        }
+        let old = ws.conditional_formatting[index].clone();
+        ws.conditional_formatting[index].range = new_range.to_string();
+        ws.conditional_formatting[index].cf_rule = new_rule;
+        Ok(old)
+    }
 }
