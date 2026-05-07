@@ -13,6 +13,8 @@ export type { IconButtonProperties } from "./components/Button/IconButton";
 export { IconButton } from "./components/Button/IconButton";
 export type { InputProperties, InputSize } from "./components/Input/Input";
 export { Input } from "./components/Input/Input";
+export type { ConfirmProperties } from "./components/Modal/Confirm";
+export { Confirm } from "./components/Modal/Confirm";
 export type { TooltipProperties } from "./components/Tooltip/Tooltip";
 export { Tooltip } from "./components/Tooltip/Tooltip";
 export type { IronCalcHandle } from "./IronCalc";
