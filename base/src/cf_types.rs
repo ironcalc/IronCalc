@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::Style;
 
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub enum ValueOperator {
     Equal,
     GreaterThan,
@@ -15,7 +15,7 @@ pub enum ValueOperator {
     NotBetween,
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub enum TextOperator {
     Contains, // NOT(ISERROR(SEARCH(value,A1)))
     DoesNotContain,
@@ -23,7 +23,7 @@ pub enum TextOperator {
     EndsWith, // RIGHT(E1,LEN(value))=
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub enum PeriodType {
     Between,
     NotBetween,
@@ -75,7 +75,7 @@ pub enum IconSet {
 }
 
 // These are the threshold definitions for icon set and color scale conditional formatting.
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub enum Cfvo {
     Min,
     Max,
@@ -85,7 +85,7 @@ pub enum Cfvo {
     Formula(String),
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub enum Icon {
     ArrowUp,
     ArrowRight,
@@ -108,7 +108,8 @@ pub enum Icon {
     Signal5,
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
+#[serde(tag = "type")]
 pub enum CfRule {
     ColorScale {
         cfvo: Vec<Cfvo>,
@@ -190,7 +191,7 @@ pub enum CfRule {
     },
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct ConditionalFormatting {
     pub range: String,
     pub cf_rule: CfRule,

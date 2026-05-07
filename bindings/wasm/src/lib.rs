@@ -5,6 +5,7 @@ use wasm_bindgen::{
 };
 
 use ironcalc_base::{
+    cf_types::CfRule,
     expressions::{
         lexer::util::get_tokens as tokenizer,
         types::Area,
@@ -953,5 +954,57 @@ impl Model {
             .get_cell_array_structure(sheet, row, column)
             .map_err(|e| to_js_error(e.to_string()))?;
         serde_wasm_bindgen::to_value(&cell_structure).map_err(JsError::from)
+    }
+
+    // -----------------------------------------------------------------------
+    // Conditional formatting
+    // -----------------------------------------------------------------------
+
+    #[wasm_bindgen(
+        js_name = "getConditionalFormattingList",
+        unchecked_return_type = "ConditionalFormatting[]"
+    )]
+    pub fn get_conditional_formatting_list(&self, sheet: u32) -> Result<JsValue, JsError> {
+        let list = self
+            .model
+            .get_conditional_formatting_list(sheet)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        serde_wasm_bindgen::to_value(&list).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "addConditionalFormatting")]
+    pub fn add_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        range: &str,
+        #[wasm_bindgen(unchecked_param_type = "CfRule")] rule: JsValue,
+    ) -> Result<(), JsError> {
+        let rule: CfRule =
+            serde_wasm_bindgen::from_value(rule).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .add_conditional_formatting(sheet, range, rule)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "deleteConditionalFormatting")]
+    pub fn delete_conditional_formatting(&mut self, sheet: u32, index: u32) -> Result<(), JsError> {
+        self.model
+            .delete_conditional_formatting(sheet, index)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "updateConditionalFormatting")]
+    pub fn update_conditional_formatting(
+        &mut self,
+        sheet: u32,
+        index: u32,
+        new_range: &str,
+        #[wasm_bindgen(unchecked_param_type = "CfRule")] new_rule: JsValue,
+    ) -> Result<(), JsError> {
+        let new_rule: CfRule =
+            serde_wasm_bindgen::from_value(new_rule).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .update_conditional_formatting(sheet, index, new_range, new_rule)
+            .map_err(|e| to_js_error(e.to_string()))
     }
 }
