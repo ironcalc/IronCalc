@@ -9,7 +9,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { type ComponentProps, forwardRef, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
 import { getModelsMetadata, getSelectedUuid } from "../storage";
@@ -179,15 +178,12 @@ export function FileMenu(props: {
         />
       )}
 
-      {isDeleteDialogOpen &&
-        createPortal(
-          <DeleteWorkbookDialog
-            onClose={() => setDeleteDialogOpen(false)}
-            onConfirm={props.onDelete}
-            workbookName={models[selectedUuid ?? ""]?.name ?? ""}
-          />,
-          document.body,
-        )}
+      <DeleteWorkbookDialog
+        open={isDeleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={props.onDelete}
+        workbookName={models[selectedUuid ?? ""]?.name ?? ""}
+      />
     </>
   );
 }

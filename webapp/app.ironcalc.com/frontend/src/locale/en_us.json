@@ -69,8 +69,9 @@
       "delete_workbook": {
         "button": "Delete workbook",
         "title": "Are you sure?",
-        "subtitle": "The workbook <bold>'{{workbookName}}'</bold> will be permanently deleted. This action cannot be undone.",
-        "confirm_button": "Yes, delete workbook",
+        "subtitle": "The workbook '{{workbookName}}' will be permanently deleted.",
+        "warning": "This action cannot be undone.",
+        "confirm_button": "Yes, delete",
         "cancel_button": "Cancel"
       },
       "default_language": "Default language"
