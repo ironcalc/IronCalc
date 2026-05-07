@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Menu, MenuItem, Modal } from "@mui/material";
+import { Menu, MenuItem } from "@mui/material";
 import {
   Copy,
   EllipsisVertical,
@@ -330,20 +330,14 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
         </DeleteButton>
       </StyledMenu>
 
-      <Modal
+      <DeleteWorkbookDialog
         open={isDeleteDialogOpen}
         onClose={handleDeleteCancel}
-        aria-labelledby="delete-dialog-title"
-        aria-describedby="delete-dialog-description"
-      >
-        <DeleteWorkbookDialog
-          onClose={handleDeleteCancel}
-          onConfirm={handleDeleteConfirm}
-          workbookName={
-            workbookToDelete ? modelsMetadata[workbookToDelete].name : ""
-          }
-        />
-      </Modal>
+        onConfirm={handleDeleteConfirm}
+        workbookName={
+          workbookToDelete ? modelsMetadata[workbookToDelete].name : ""
+        }
+      />
     </>
   );
 }

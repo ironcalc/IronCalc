@@ -69,8 +69,9 @@
       "delete_workbook": {
         "button": "Eliminar libro",
         "title": "¿Estás seguro?",
-        "subtitle": "El libro <bold>'{{workbookName}}'</bold> será eliminado permanentemente. Esta acción no se puede deshacer.",
-        "confirm_button": "Sí, eliminar libro",
+        "subtitle": "El libro '{{workbookName}}' será eliminado permanentemente.",
+        "warning": "Esta acción no se puede deshacer.",
+        "confirm_button": "Sí, eliminar",
         "cancel_button": "Cancelar"
       },
       "default_language": "Idioma predeterminado"
