@@ -14,11 +14,10 @@ export function useDialogFocus(open: boolean) {
         dialogRef.current?.focus();
       }
     });
+    return () => {
+      previousFocusRef.current?.focus();
+    };
   }, [open]);
 
-  function restoreFocus(): void {
-    previousFocusRef.current?.focus();
-  }
-
-  return { dialogRef, restoreFocus };
+  return { dialogRef };
 }

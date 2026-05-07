@@ -1,6 +1,6 @@
 import { Button, IconButton } from "@ironcalc/workbook";
 import { X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import TemplatesList from "./TemplatesList";
@@ -20,14 +20,16 @@ function TemplatesDialog({
   onSelectTemplate,
 }: TemplatesDialogProperties) {
   const { t } = useTranslation();
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  const { dialogRef, restoreFocus } = useDialogFocus(open);
+  const titleId = useId();
+  const [selectedTemplate, setSelectedTemplate] = useState(
+    "mortgage_calculator",
+  );
+  const { dialogRef } = useDialogFocus(open);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleClose = () => {
     onClose();
-    restoreFocus();
   };
 
   const { onKeyDown } = useDialogKeyDown({
@@ -48,10 +50,11 @@ function TemplatesDialog({
         onKeyDown={onKeyDown}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         tabIndex={-1}
       >
         <div className="app-ic-wd-template-header">
-          <span className="app-ic-wd-template-header-title">
+          <span id={titleId} className="app-ic-wd-template-header-title">
             {t("welcome_dialog.templates.choose_template")}
           </span>
           <IconButton
