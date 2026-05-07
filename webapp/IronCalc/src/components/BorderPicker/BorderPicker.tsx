@@ -2,6 +2,7 @@ import { type BorderOptions, BorderStyle, BorderType } from "@ironcalc/wasm";
 import {
   Grid2X2 as BorderAllIcon,
   ChevronRight,
+  LineStyle,
   PencilLine,
 } from "lucide-react";
 import type React from "react";
@@ -16,7 +17,6 @@ import {
   BorderNoneIcon,
   BorderOuterIcon,
   BorderRightIcon,
-  BorderStyleIcon,
   BorderTopIcon,
 } from "../../icons";
 import { IconButton } from "../Button/IconButton";
@@ -326,7 +326,7 @@ export default function BorderPicker({
           onMouseLeave={() => setStylePickerOpen(false)}
         >
           <button type="button" className="ic-border-picker__button">
-            <BorderStyleIcon />
+            <LineStyle />
             <span>{t("toolbar.borders.style")}</span>
             <ChevronRight />
           </button>
