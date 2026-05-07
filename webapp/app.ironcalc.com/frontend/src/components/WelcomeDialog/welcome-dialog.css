@@ -1,0 +1,223 @@
+/* Shared dialog shell */
+
+.app-ic-wd-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: color-mix(in srgb, black 40%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-ic-wd-paper {
+  width: 440px;
+  max-width: calc(100% - 32px);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  border: 1px solid var(--palette-grey-300);
+  box-shadow: var(--shadow-sm);
+  background: var(--palette-common-white);
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+}
+
+/* Scrollable content */
+
+.app-ic-wd-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Footer */
+
+.app-ic-wd-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px;
+}
+
+@media (max-width: 600px) {
+  .app-ic-wd-footer button {
+    width: 100%;
+  }
+}
+
+/* Templates list */
+
+.app-ic-wd-templates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-ic-wd-list-title {
+  font-size: var(--typography-font-size);
+  font-weight: 600;
+  color: var(--palette-grey-800);
+}
+
+/* List item — uses --item-color and --item-color-alpha for dynamic per-item colors */
+
+.app-ic-wd-list-item {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  background: none;
+  gap: 8px;
+  font-size: var(--typography-font-size);
+  color: var(--palette-grey-800);
+  border: 1px solid rgba(224, 224, 224, 0.6);
+  background-color: var(--palette-common-white);
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  outline: none;
+  transition: border 0.1s ease-in-out;
+  user-select: none;
+}
+
+.app-ic-wd-list-item:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+}
+
+.app-ic-wd-list-item:hover {
+  border-color: var(--item-color);
+}
+
+.app-ic-wd-list-item--active {
+  border-color: var(--item-color);
+  outline: 4px solid var(--item-color-alpha);
+}
+
+.app-ic-wd-list-item-icon {
+  display: flex;
+  align-items: center;
+  margin-top: -1px;
+}
+
+.app-ic-wd-list-item-icon svg {
+  width: 18px;
+  height: 100%;
+  color: var(--item-color);
+}
+
+.app-ic-wd-list-item-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 2px;
+}
+
+.app-ic-wd-list-item-title {
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.app-ic-wd-list-item-description {
+  color: var(--palette-grey-600);
+}
+
+/* Radio indicator */
+
+.app-ic-wd-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-top: -4px;
+  margin-right: -4px;
+  background-color: var(--palette-common-white);
+  border: 1px solid var(--palette-grey-300);
+}
+
+.app-ic-wd-radio--active {
+  background-color: var(--palette-primary-main);
+  border: none;
+}
+
+.app-ic-wd-radio-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--palette-common-white);
+}
+
+/* TemplatesDialog header */
+
+.app-ic-wd-template-header {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.app-ic-wd-template-header-title {
+  flex: 1;
+}
+
+/* WelcomeDialog header */
+
+.app-ic-wd-welcome-header {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+}
+
+.app-ic-wd-header-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px 0;
+  gap: 4px;
+  width: 100%;
+}
+
+.app-ic-wd-header-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 20px;
+  max-height: 20px;
+  background-color: var(--palette-primary-main);
+  padding: 10px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 2px;
+  transform: rotate(-8deg);
+  user-select: none;
+}
+
+.app-ic-wd-header-logo svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app-ic-wd-template-header-title,
+.app-ic-wd-header-title {
+  min-width: 0;
+  font-size: calc(var(--typography-font-size) + 1px);
+  font-weight: 600;
+  color: var(--palette-grey-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-ic-wd-header-subtitle {
+  font-size: var(--typography-font-size);
+  color: var(--palette-grey-600);
+}
