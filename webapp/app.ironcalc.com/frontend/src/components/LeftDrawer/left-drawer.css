@@ -92,6 +92,39 @@
   pointer-events: none;
 }
 
+/* Footer */
+
+.app-ic-drawer-footer {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid var(--palette-grey-300);
+  flex-shrink: 0;
+}
+
+.app-ic-drawer-footer-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: var(--typography-font-size);
+  color: var(--palette-common-black);
+  text-decoration: none;
+}
+
+.app-ic-drawer-footer-link:hover {
+  background-color: var(--palette-grey-300);
+}
+
+.app-ic-drawer-footer-link svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--palette-grey-500);
+}
+
 /* Search */
 
 .app-ic-drawer-search {
