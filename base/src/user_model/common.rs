@@ -10,7 +10,7 @@ use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cf_types::ExtendedStyle,
+    cf_types::{ConditionalFormatting, ExtendedStyle},
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         types::{Area, CellReferenceIndex},
@@ -2598,7 +2598,7 @@ impl<'a> UserModel<'a> {
         self.history.push(diff_list);
     }
 
-    fn evaluate_if_not_paused(&mut self) {
+    pub(super) fn evaluate_if_not_paused(&mut self) {
         if !self.pause_evaluation {
             self.model.evaluate();
         }
@@ -3015,6 +3015,54 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.set_timezone(old_value)?;
                 }
+                Diff::AddConditionalFormatting { sheet, priority, .. } => {
+                    let ws = self.model.workbook.worksheet_mut(*sheet)?;
+                    if let Some(pos) = ws
+                        .conditional_formatting
+                        .iter()
+                        .position(|cf| cf.priority == *priority)
+                    {
+                        ws.conditional_formatting.remove(pos);
+                    }
+                    needs_evaluation = true;
+                }
+                Diff::DeleteConditionalFormatting {
+                    sheet,
+                    index,
+                    old_range,
+                    old_rule,
+                    old_priority,
+                } => {
+                    self.model.insert_conditional_formatting_at(
+                        *sheet,
+                        *index as usize,
+                        ConditionalFormatting {
+                            range: old_range.clone(),
+                            cf_rule: old_rule.clone(),
+                            priority: *old_priority,
+                        },
+                    )?;
+                    needs_evaluation = true;
+                }
+                Diff::UpdateConditionalFormatting {
+                    sheet,
+                    index,
+                    old_range,
+                    old_rule,
+                    old_priority,
+                    ..
+                } => {
+                    let ws = self.model.workbook.worksheet_mut(*sheet)?;
+                    let i = *index as usize;
+                    if i < ws.conditional_formatting.len() {
+                        ws.conditional_formatting[i] = ConditionalFormatting {
+                            range: old_range.clone(),
+                            cf_rule: old_rule.clone(),
+                            priority: *old_priority,
+                        };
+                    }
+                    needs_evaluation = true;
+                }
             }
         }
         if needs_evaluation {
@@ -3301,6 +3349,49 @@ impl<'a> UserModel<'a> {
                     new_value,
                 } => {
                     self.model.set_timezone(new_value)?;
+                }
+                Diff::AddConditionalFormatting {
+                    sheet,
+                    range,
+                    rule,
+                    priority,
+                } => {
+                    let len = self
+                        .model
+                        .workbook
+                        .worksheet(*sheet)?
+                        .conditional_formatting
+                        .len();
+                    self.model.insert_conditional_formatting_at(
+                        *sheet,
+                        len,
+                        ConditionalFormatting {
+                            range: range.clone(),
+                            cf_rule: rule.clone(),
+                            priority: *priority,
+                        },
+                    )?;
+                    needs_evaluation = true;
+                }
+                Diff::DeleteConditionalFormatting { sheet, index, .. } => {
+                    self.model
+                        .delete_conditional_formatting(*sheet, *index as usize)?;
+                    needs_evaluation = true;
+                }
+                Diff::UpdateConditionalFormatting {
+                    sheet,
+                    index,
+                    new_range,
+                    new_rule,
+                    ..
+                } => {
+                    self.model.update_conditional_formatting(
+                        *sheet,
+                        *index as usize,
+                        new_range,
+                        new_rule.clone(),
+                    )?;
+                    needs_evaluation = true;
                 }
             }
         }

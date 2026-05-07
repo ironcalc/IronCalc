@@ -3,6 +3,7 @@
 mod border;
 mod border_utils;
 mod common;
+mod conditional_formatting;
 pub(crate) mod history;
 mod sequence_detector;
 mod ui;

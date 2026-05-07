@@ -1022,4 +1022,21 @@ impl<'a> Model<'a> {
         ws.conditional_formatting[index].cf_rule = new_rule;
         Ok(old)
     }
+
+    /// Inserts a CF entry at `index` without modifying priority (used for undo/redo).
+    pub(crate) fn insert_conditional_formatting_at(
+        &mut self,
+        sheet: u32,
+        index: usize,
+        cf: crate::cf_types::ConditionalFormatting,
+    ) -> Result<(), String> {
+        let ws = self.workbook.worksheet_mut(sheet)?;
+        if index > ws.conditional_formatting.len() {
+            return Err(format!(
+                "Conditional formatting index {index} out of bounds"
+            ));
+        }
+        ws.conditional_formatting.insert(index, cf);
+        Ok(())
+    }
 }
