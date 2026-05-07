@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::types::Style;
 
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
-pub enum Operator {
+pub enum ValueOperator {
     Equal,
     GreaterThan,
     GreaterThanOrEqual,
@@ -13,6 +13,34 @@ pub enum Operator {
     NotEqual,
     Between,
     NotBetween,
+}
+
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub enum TextOperator {
+    Contains, // NOT(ISERROR(SEARCH(value,A1)))
+    DoesNotContain,
+    BeginsWith,
+    EndsWith, // RIGHT(E1,LEN(value))=
+}
+
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub enum PeriodType {
+    Between,
+    NotBetween,
+    Yesterday,
+    Today,
+    Tomorrow,
+    Last7Days,
+    Next7Days,
+    LastWeek,
+    ThisWeek,
+    NextWeek,
+    LastMonth,
+    ThisMonth,
+    NextMonth,
+    LastYear,
+    ThisYear,
+    NextYear,
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
@@ -38,7 +66,7 @@ pub enum IconSet {
     Symbols3Uncircled,
     Flags3,
 
-    // Ratings
+    // Ratings, they all
     Stars3,
     Quarters5,
     Boxes5,
@@ -58,19 +86,56 @@ pub enum Cfvo {
 }
 
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
+pub enum Icon {
+    ArrowUp,
+    ArrowRight,
+    ArrowDown,
+    ArrowAngleUp,
+    ArrowAngleDown,
+    Circle,
+    TriangleUp,
+    TriangleDown,
+    FlatRectangle,
+    Rhombus,
+    Flag,
+    Check,
+    Cross,
+    Exclamation,
+    Signal1,
+    Signal2,
+    Signal3,
+    Signal4,
+    Signal5,
+}
+
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub enum CfRule {
     ColorScale {
         cfvo: Vec<Cfvo>,
         colors: Vec<String>,
     },
     CellIs {
-        operator: Operator,
+        operator: ValueOperator,
         formula: String,
         // Only present for Between and NotBetween operators
         formula2: Option<String>,
         dxf_id: u32,
     },
+    Text {
+        operator: TextOperator,
+        value: String,
+        dxf_id: u32,
+    },
+    TimePeriod {
+        time_period: PeriodType,
+        date1: Option<String>,
+        date2: Option<String>,
+        dxf_id: u32,
+    },
     DuplicateValues {
+        dxf_id: u32,
+    },
+    UniqueValues {
         dxf_id: u32,
     },
     AboveAverage {
@@ -99,9 +164,29 @@ pub enum CfRule {
         cfvo: Vec<Cfvo>,
         show_value: bool,
     },
-    TimePeriod {
-        dxf_id: u32,
-        time_period: String,
+    IconSetCustom2 {
+        set: [Icon; 2],
+        cfvo: [Cfvo; 2],
+        color: [String; 2],
+        show_value: bool,
+    },
+    IconSetCustom3 {
+        set: [Icon; 3],
+        cfvo: [Cfvo; 3],
+        color: [String; 3],
+        show_value: bool,
+    },
+    IconSetCustom4 {
+        set: [Icon; 4],
+        cfvo: [Cfvo; 4],
+        color: [String; 4],
+        show_value: bool,
+    },
+    IconSetCustom5 {
+        set: [Icon; 5],
+        cfvo: [Cfvo; 5],
+        color: [String; 5],
+        show_value: bool,
     },
 }
 

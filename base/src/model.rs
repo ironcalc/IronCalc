@@ -32,7 +32,7 @@ use crate::{
 };
 
 use crate::{
-    cf_types::{CfCellResult, CfDataBar, CfIcon, CfRule, Cfvo, ExtendedStyle, IconSet, Operator},
+    cf_types::{CfCellResult, CfDataBar, CfIcon, CfRule, Cfvo, ExtendedStyle, IconSet, ValueOperator},
     tz::Tz,
 };
 
@@ -3151,7 +3151,7 @@ impl<'a> Model<'a> {
     fn apply_cf_cell_is(
         &mut self,
         sheet: u32,
-        operator: &Operator,
+        operator: &ValueOperator,
         formula: &str,
         formula2: Option<&str>,
         dxf_id: u32,
@@ -3169,17 +3169,17 @@ impl<'a> Model<'a> {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
                     {
                         let matches = match operator {
-                            Operator::Equal => (v - threshold).abs() < f64::EPSILON,
-                            Operator::GreaterThan => v > threshold,
-                            Operator::GreaterThanOrEqual => v >= threshold,
-                            Operator::LessThan => v < threshold,
-                            Operator::LessThanOrEqual => v <= threshold,
-                            Operator::NotEqual => (v - threshold).abs() >= f64::EPSILON,
-                            Operator::Between => {
+                            ValueOperator::Equal => (v - threshold).abs() < f64::EPSILON,
+                            ValueOperator::GreaterThan => v > threshold,
+                            ValueOperator::GreaterThanOrEqual => v >= threshold,
+                            ValueOperator::LessThan => v < threshold,
+                            ValueOperator::LessThanOrEqual => v <= threshold,
+                            ValueOperator::NotEqual => (v - threshold).abs() >= f64::EPSILON,
+                            ValueOperator::Between => {
                                 let t2 = threshold2.unwrap_or(threshold);
                                 v >= threshold.min(t2) && v <= threshold.max(t2)
                             }
-                            Operator::NotBetween => {
+                            ValueOperator::NotBetween => {
                                 let t2 = threshold2.unwrap_or(threshold);
                                 v < threshold.min(t2) || v > threshold.max(t2)
                             }

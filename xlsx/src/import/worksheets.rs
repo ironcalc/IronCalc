@@ -6,7 +6,7 @@ use ironcalc_base::expressions::parser::{
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use ironcalc_base::{
-    cf_types::{CfRule, Cfvo, ConditionalFormatting, IconSet, Operator},
+    cf_types::{CfRule, Cfvo, ConditionalFormatting, IconSet, ValueOperator},
     expressions::{
         parser::{stringify::to_rc_format, DefinedNameS},
         token::{get_error_by_english_name, Error},
@@ -192,16 +192,16 @@ fn parse_cfvo(node: Node) -> Result<Cfvo, XlsxError> {
     }
 }
 
-fn parse_operator(s: &str) -> Result<Operator, XlsxError> {
+fn parse_operator(s: &str) -> Result<ValueOperator, XlsxError> {
     match s {
-        "equal" => Ok(Operator::Equal),
-        "greaterThan" => Ok(Operator::GreaterThan),
-        "greaterThanOrEqual" => Ok(Operator::GreaterThanOrEqual),
-        "lessThan" => Ok(Operator::LessThan),
-        "lessThanOrEqual" => Ok(Operator::LessThanOrEqual),
-        "notEqual" => Ok(Operator::NotEqual),
-        "between" => Ok(Operator::Between),
-        "notBetween" => Ok(Operator::NotBetween),
+        "equal" => Ok(ValueOperator::Equal),
+        "greaterThan" => Ok(ValueOperator::GreaterThan),
+        "greaterThanOrEqual" => Ok(ValueOperator::GreaterThanOrEqual),
+        "lessThan" => Ok(ValueOperator::LessThan),
+        "lessThanOrEqual" => Ok(ValueOperator::LessThanOrEqual),
+        "notEqual" => Ok(ValueOperator::NotEqual),
+        "between" => Ok(ValueOperator::Between),
+        "notBetween" => Ok(ValueOperator::NotBetween),
         other => Err(XlsxError::Xml(format!("Unknown cellIs operator: {other}"))),
     }
 }
