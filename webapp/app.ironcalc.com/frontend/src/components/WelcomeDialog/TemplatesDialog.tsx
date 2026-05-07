@@ -1,84 +1,84 @@
-import { Dialog, styled } from "@mui/material";
+import { Button, IconButton } from "@ironcalc/workbook";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import TemplatesList, {
-  Cross,
-  DialogContent,
-  DialogFooter,
-  DialogFooterButton,
-} from "./TemplatesList";
+import TemplatesList from "./TemplatesList";
+import { useDialogFocus } from "./useDialogFocus";
+import { useDialogKeyDown } from "./useDialogKeyDown";
+import "./welcome-dialog.css";
 
-function TemplatesDialog(properties: {
+interface TemplatesDialogProperties {
+  open: boolean;
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
-}) {
-  const { t } = useTranslation();
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-
-  const handleClose = () => {
-    properties.onClose();
-  };
-
-  const handleTemplateSelect = (templateId: string) => {
-    setSelectedTemplate(templateId);
-  };
-
-  return (
-    <DialogWrapper open={true} onClose={() => {}}>
-      <DialogTemplateHeader>
-        <span style={{ flexGrow: 2, marginLeft: 12 }}>
-          {t("welcome_dialog.templates.choose_template")}
-        </span>
-        <Cross
-          style={{ marginRight: 12 }}
-          onClick={handleClose}
-          title={t("welcome_dialog.close_dialog")}
-          tabIndex={0}
-          onKeyDown={(event) => event.key === "Enter" && properties.onClose()}
-        >
-          <X />
-        </Cross>
-      </DialogTemplateHeader>
-      <DialogContent>
-        <TemplatesList
-          selectedTemplate={selectedTemplate}
-          handleTemplateSelect={handleTemplateSelect}
-        />
-      </DialogContent>
-      <DialogFooter>
-        <DialogFooterButton
-          onClick={() => properties.onSelectTemplate(selectedTemplate)}
-        >
-          {t("welcome_dialog.create_workbook")}
-        </DialogFooterButton>
-      </DialogFooter>
-    </DialogWrapper>
-  );
 }
 
-export const DialogWrapper = styled(Dialog)`
-  font-family: Inter;
-  .MuiDialog-paper {
-    width: 440px;
-    border-radius: 8px;
-    margin: 16px;
-    border: 1px solid #e0e0e0;
-    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  .MuiBackdrop-root {
-    background-color: rgba(0, 0, 0, 0.4);
-  }
-`;
+function TemplatesDialog({
+  open,
+  onClose,
+  onSelectTemplate,
+}: TemplatesDialogProperties) {
+  const { t } = useTranslation();
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const { dialogRef, restoreFocus } = useDialogFocus(open);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
-const DialogTemplateHeader = styled("div")`
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #e0e0e0;
-  height: 44px;
-  font-size: 14px;
-  font-weight: 500;
-  font-family: Inter;
-`;
+  const handleClose = () => {
+    onClose();
+    restoreFocus();
+  };
+
+  const { onKeyDown } = useDialogKeyDown({
+    focusableElements: [closeButtonRef, confirmButtonRef],
+    onClose: handleClose,
+  });
+
+  if (!open) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="app-ic-wd-backdrop" onClick={handleClose} role="none">
+      <div
+        ref={dialogRef}
+        className="app-ic-wd-paper"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+      >
+        <div className="app-ic-wd-template-header">
+          <span className="app-ic-wd-template-header-title">
+            {t("welcome_dialog.templates.choose_template")}
+          </span>
+          <IconButton
+            ref={closeButtonRef}
+            icon={<X />}
+            aria-label={t("welcome_dialog.close_dialog")}
+            onClick={handleClose}
+          />
+        </div>
+        <div className="app-ic-wd-content">
+          <TemplatesList
+            selectedTemplate={selectedTemplate}
+            handleTemplateSelect={setSelectedTemplate}
+          />
+        </div>
+        <div className="app-ic-wd-footer">
+          <Button
+            ref={confirmButtonRef}
+            onClick={() => onSelectTemplate(selectedTemplate)}
+          >
+            {t("welcome_dialog.create_workbook")}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 export default TemplatesDialog;

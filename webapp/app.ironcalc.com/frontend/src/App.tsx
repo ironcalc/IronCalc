@@ -4,7 +4,6 @@ import type { IronCalcHandle } from "@ironcalc/workbook";
 // From IronCalc
 import { IronCalc, IronCalcIcon, init, Model } from "@ironcalc/workbook";
 import "@ironcalc/workbook/style.css";
-import { Modal } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileBar } from "./components/FileBar";
@@ -245,25 +244,19 @@ function App() {
           }}
         />
       )}
-      <Modal
+      <TemplatesDialog
         open={isTemplatesDialogOpen}
         onClose={() => setTemplatesDialogOpen(false)}
-        aria-labelledby="templates-dialog-title"
-        aria-describedby="templates-dialog-description"
-      >
-        <TemplatesDialog
-          onClose={() => setTemplatesDialogOpen(false)}
-          onSelectTemplate={async (fileName) => {
-            const model_bytes = await get_documentation_model(fileName);
-            const locale = loadDefaultLocaleFromStorage();
-            const languageId = getLanguageFromLocale(locale);
-            const importedModel = Model.from_bytes(model_bytes, languageId);
-            saveModelToStorage(importedModel);
-            setModel(importedModel);
-            setTemplatesDialogOpen(false);
-          }}
-        />
-      </Modal>
+        onSelectTemplate={async (fileName) => {
+          const model_bytes = await get_documentation_model(fileName);
+          const locale = loadDefaultLocaleFromStorage();
+          const languageId = getLanguageFromLocale(locale);
+          const importedModel = Model.from_bytes(model_bytes, languageId);
+          saveModelToStorage(importedModel);
+          setModel(importedModel);
+          setTemplatesDialogOpen(false);
+        }}
+      />
     </Wrapper>
   );
 }
