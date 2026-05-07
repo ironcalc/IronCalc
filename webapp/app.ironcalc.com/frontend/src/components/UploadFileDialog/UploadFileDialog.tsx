@@ -1,6 +1,6 @@
 import { IconButton } from "@ironcalc/workbook";
 import { BookOpen, FileUp, X } from "lucide-react";
-import { type DragEvent, useEffect, useId, useRef } from "react";
+import { type DragEvent, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useDialogFocus } from "./useDialogFocus";
@@ -24,15 +24,6 @@ function UploadFileDialog({
   const titleId = useId();
   const { t } = useTranslation();
   const dialogRef = useDialogFocus(true);
-
-  useEffect(() => {
-    return () => {
-      const root = document.getElementById("root");
-      if (root) {
-        root.style.filter = "none";
-      }
-    };
-  }, []);
 
   const { onKeyDown } = useDialogKeyDown({
     focusableElements: [closeButtonRef, dropZoneRef, footerLinkRef],
@@ -109,7 +100,6 @@ function UploadFileDialog({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="*"
           style={{ display: "none" }}
           onChange={(event) => {
             const files = event.target.files;
