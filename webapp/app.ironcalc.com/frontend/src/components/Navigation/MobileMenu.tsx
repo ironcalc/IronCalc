@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
 import { getModelsMetadata, getSelectedUuid } from "../storage";
-import UploadFileDialog from "../UploadFileDialog";
+import UploadFileDialog from "../UploadFileDialog/UploadFileDialog";
 import {
   DeleteButton,
   MenuDivider,
