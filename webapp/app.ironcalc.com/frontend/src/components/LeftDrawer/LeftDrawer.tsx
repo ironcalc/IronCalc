@@ -1,9 +1,8 @@
-import styled from "@emotion/styled";
-import { Drawer } from "@mui/material";
 import { useState } from "react";
 import DrawerContent from "./DrawerContent";
 import DrawerFooter from "./DrawerFooter";
 import DrawerHeader from "./DrawerHeader";
+import "./left-drawer.css";
 
 interface LeftDrawerProps {
   open: boolean;
@@ -14,51 +13,26 @@ interface LeftDrawerProps {
   localStorageId: number;
 }
 
-function LeftDrawer({
-  open,
-  onClose,
-  newModel,
-  setModel,
-  onDelete,
-}: LeftDrawerProps) {
+function LeftDrawer({ open, newModel, setModel, onDelete }: LeftDrawerProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
-    <DrawerWrapper
-      variant="persistent"
-      anchor="left"
-      open={open}
-      onClose={onClose}
-      transitionDuration={0}
-    >
-      <DrawerHeader
-        onNewModel={newModel}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-      />
-      <DrawerContent
-        setModel={setModel}
-        onDelete={onDelete}
-        searchQuery={searchQuery}
-      />
-
-      <DrawerFooter />
-    </DrawerWrapper>
+    <div className={`app-ic-drawer${open ? " app-ic-drawer--open" : ""}`}>
+      <div className="app-ic-drawer-paper">
+        <DrawerHeader
+          onNewModel={newModel}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
+        <DrawerContent
+          setModel={setModel}
+          onDelete={onDelete}
+          searchQuery={searchQuery}
+        />
+        <DrawerFooter />
+      </div>
+    </div>
   );
 }
-
-const DrawerWrapper = styled(Drawer)`
-  width: 264px;
-  height: 100%;
-  flex-shrink: 0;
-  font-family: "Inter", sans-serif;
-
-  .MuiDrawer-paper {
-    width: 264px;
-    background-color: #f5f5f5;
-    overflow: hidden;
-    border-right: 1px solid #e0e0e0;
-  }
-`;
 
 export default LeftDrawer;

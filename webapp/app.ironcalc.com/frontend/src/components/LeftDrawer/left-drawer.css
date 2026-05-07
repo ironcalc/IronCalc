@@ -1,0 +1,28 @@
+/* Root = flex placeholder, paper = fixed visual panel */
+
+.app-ic-drawer {
+  width: 264px;
+  flex-shrink: 0;
+  height: 100%;
+}
+
+.app-ic-drawer-paper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 264px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+  background-color: var(--palette-grey-50);
+  border-right: 1px solid var(--palette-grey-300);
+  overflow: hidden;
+  box-sizing: border-box;
+  transform: translateX(-264px);
+}
+
+.app-ic-drawer--open .app-ic-drawer-paper {
+  transform: translateX(0);
+}
