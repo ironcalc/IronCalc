@@ -15,7 +15,7 @@
     "@ironcalc/workbook": "file:../../IronCalc/",
     "i18next": "^25.7.4",
     "@mui/material": "^7.3.9",
-    "lucide-react": "^0.562.0",
+    "lucide-react": "^1.14.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
