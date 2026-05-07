@@ -1,0 +1,23 @@
+import { useEffect, useRef } from "react";
+
+export function useDialogFocus(open: boolean) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    requestAnimationFrame(() => {
+      if (!dialogRef.current?.contains(document.activeElement)) {
+        dialogRef.current?.focus();
+      }
+    });
+    return () => {
+      previousFocusRef.current?.focus();
+    };
+  }, [open]);
+
+  return dialogRef;
+}
