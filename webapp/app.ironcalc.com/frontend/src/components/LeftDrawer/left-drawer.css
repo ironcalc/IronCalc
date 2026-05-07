@@ -1,10 +1,7 @@
-:root {
-  --drawer-width: 264px;
-}
-
 /* Root = flex placeholder, paper = fixed visual panel */
 
 .app-ic-drawer {
+  --drawer-width: 264px;
   width: var(--drawer-width);
   flex-shrink: 0;
   height: 100%;
@@ -25,10 +22,12 @@
   overflow: hidden;
   box-sizing: border-box;
   transform: translateX(calc(-1 * var(--drawer-width)));
+  visibility: hidden;
 }
 
 .app-ic-drawer--open .app-ic-drawer-paper {
   transform: translateX(0);
+  visibility: visible;
 }
 
 /* Header */

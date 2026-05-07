@@ -34,6 +34,7 @@ function DrawerHeader({
     <div className="app-ic-drawer-header">
       <div
         className={`app-ic-drawer-header-logo-wrapper${isSearching ? " hidden" : ""}`}
+        aria-hidden={isSearching}
       >
         <div className="app-ic-drawer-logo">
           <IronCalcIcon />
@@ -43,6 +44,7 @@ function DrawerHeader({
 
       <div
         className={`app-ic-drawer-header-actions${isSearching ? " hidden" : ""}`}
+        aria-hidden={isSearching}
       >
         <Tooltip title={t("left_drawer.search_workbook")}>
           <IconButton
@@ -60,19 +62,25 @@ function DrawerHeader({
         </Tooltip>
       </div>
 
-      <div className={`app-ic-drawer-search${isSearching ? " active" : ""}`}>
+      <div
+        className={`app-ic-drawer-search${isSearching ? " active" : ""}`}
+        aria-hidden={!isSearching}
+      >
         <div className="app-ic-drawer-search-icon">
           <Search />
         </div>
         <Input
           ref={searchInputRef}
           size="sm"
+          aria-label={t("left_drawer.search_workbook")}
           className="app-ic-drawer-search-input"
           value={searchQuery}
           placeholder={t("left_drawer.search_placeholder")}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => {
+            e.stopPropagation();
             if (e.key === "Escape") {
+              e.preventDefault();
               setSearchQuery("");
               setIsSearching(false);
             }
