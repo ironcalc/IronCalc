@@ -497,6 +497,7 @@ impl<'a> Model<'a> {
             cf_cache: HashMap::new(),
         };
         model.parse_formulas();
+        model.evaluate_conditional_formatting();
         Ok(model)
     }
 }

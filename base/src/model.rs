@@ -1584,6 +1584,7 @@ impl<'a> Model<'a> {
 
         model.parse_formulas();
         model.parse_defined_names();
+        model.evaluate_conditional_formatting();
 
         Ok(model)
     }
@@ -3039,17 +3040,24 @@ impl<'a> Model<'a> {
         if values.is_empty() {
             return;
         }
-        let thresholds: Vec<f64> = cfvo
+        let mut pairs: Vec<(f64, &String)> = cfvo
             .iter()
             .map(|c| self.resolve_cfvo(c, &values, sheet))
+            .zip(colors.iter())
             .collect();
+        // Excel sorts thresholds ascending; out-of-order cfvo values (e.g. a formula
+        // that resolves to a value below a preceding fixed threshold) would break the
+        // linear interpolation otherwise.
+        pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        let thresholds: Vec<f64> = pairs.iter().map(|(t, _)| *t).collect();
+        let sorted_colors: Vec<String> = pairs.iter().map(|(_, c)| (*c).clone()).collect();
 
         for &(r1, c1, r2, c2) in ranges {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
                     {
-                        let color = interpolate_color(v, &thresholds, colors);
+                        let color = interpolate_color(v, &thresholds, &sorted_colors);
                         self.update_cf_cache(sheet, row, col, CfCellResult::ColorScale(color));
                     }
                 }

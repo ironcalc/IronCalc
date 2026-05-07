@@ -127,8 +127,8 @@ interface IconSpec {
   char: string;
   color: string;
 }
-
-const ARROW_CHARS = ["▲", "↗", "➡", "↘", "▼"];
+// ←	↑	→	↓	↔	↕	↖	↗	↘	↙
+const ARROW_CHARS = ["↑", "↗", "→", "↘", "↓"];
 const ARROW_COLORS = ["#38a800", "#84cb1f", "#ffeb84", "#f66f00", "#e43400"];
 
 function getIconSpec(set: IconSetType, index: number): IconSpec {
@@ -198,14 +198,25 @@ function getIconSpec(set: IconSetType, index: number): IconSpec {
         char: ["●", "◕", "◑", "◔", "○"][index],
         color: "#808080",
       };
-    case "Boxes5":
-    case "Ratings4":
-    case "Ratings5": {
-      const colors4 = ["#63be7b", "#b4d67e", "#ffeb84", "#f8696b"];
+    case "Boxes5": {
       const colors5 = ["#63be7b", "#b4d67e", "#ffeb84", "#fc9f6e", "#f8696b"];
       return {
         char: "■",
-        color: (set === "Ratings4" ? colors4 : colors5)[index],
+        color: colors5[index],
+      };
+    }
+    case "Ratings4":{
+      const colors4 = ["#63be7b", "#b4d67e", "#ffeb84", "#f8696b"];
+      return {
+        char: "■",
+        color: colors4[index],
+      };
+    }
+    case "Ratings5": {
+      const colors5 = ["#63be7b", "#b4d67e", "#ffeb84", "#fc9f6e", "#f8696b"];
+      return {
+        char: "■",
+        color: colors5[index],
       };
     }
     default:
