@@ -8,3 +8,51 @@ html,
 body {
   overscroll-behavior: none;
 }
+
+.app-ic-wrapper {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-ic-main-content {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.app-ic-mobile-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background-color: color-mix(
+    in srgb,
+    var(--palette-common-white) 80%,
+    transparent
+  );
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .app-ic-main-content--open {
+    min-width: 768px;
+  }
+
+  .app-ic-mobile-overlay {
+    display: block;
+  }
+}
+
+/* Loading screen */
+
+.app-ic-loading {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+}
