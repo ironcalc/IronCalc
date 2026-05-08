@@ -44,7 +44,8 @@
     "alert": {
       "title": "Achtung!",
       "subtitle": "IronCalc speichert Ihre Daten nur im lokalen Speicher Ihres Browsers.",
-      "subtitle2": "<bold>Laden Sie Ihre XLSX regelmäßig herunter</bold> – zukünftige Versionen können aktuelle Arbeitsmappen möglicherweise nicht öffnen, auch wenn sie geteilt wurden."
+      "subtitle2": "<bold>Laden Sie Ihre XLSX regelmäßig herunter</bold> – zukünftige Versionen können aktuelle Arbeitsmappen möglicherweise nicht öffnen, auch wenn sie geteilt wurden.",
+      "close": "Schließen"
     },
     "documentation": "Dokumentation"
   },
