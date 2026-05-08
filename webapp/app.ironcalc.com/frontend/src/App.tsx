@@ -1,5 +1,4 @@
 import "./App.css";
-import styled from "@emotion/styled";
 import type { IronCalcHandle } from "@ironcalc/workbook";
 // From IronCalc
 import { IronCalc, IronCalcIcon, init, Model } from "@ironcalc/workbook";
@@ -137,10 +136,10 @@ function App() {
 
   if (!model) {
     return (
-      <Loading>
+      <div className="app-ic-loading">
         <IronCalcIcon style={{ width: 24, height: 24, marginBottom: 16 }} />
         <div>{t("loading_screen.message")}</div>
-      </Loading>
+      </div>
     );
   }
 
@@ -175,7 +174,7 @@ function App() {
   // Passing the property down makes sure it is always defined.
 
   return (
-    <Wrapper>
+    <div className="app-ic-wrapper">
       <LeftDrawer
         open={isDrawerOpen}
         newModel={handleNewModel}
@@ -183,10 +182,13 @@ function App() {
         onDelete={handleDeleteModelByUuid}
         localStorageId={localStorageId}
       />
-      <MainContent isDrawerOpen={isDrawerOpen}>
-        {isDrawerOpen && (
-          <MobileOverlay onClick={() => setIsDrawerOpen(false)} />
-        )}
+      <div
+        className={`app-ic-main-content${isDrawerOpen ? " app-ic-main-content--open" : ""}`}
+        style={{
+          marginLeft: isDrawerOpen ? 0 : -DRAWER_WIDTH,
+          width: isDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%",
+        }}
+      >
         <FileBar
           model={model}
           onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
@@ -212,7 +214,14 @@ function App() {
           onLanguageChange={handleLanguageChange}
         />
         <IronCalc model={model} ref={ironCalcRef} />
-      </MainContent>
+        {isDrawerOpen && (
+          <div
+            className="app-ic-mobile-overlay"
+            onClick={() => setIsDrawerOpen(false)}
+            role="none"
+          />
+        )}
+      </div>
       {showWelcomeDialog && (
         <WelcomeDialog
           onClose={() => {
@@ -256,58 +265,11 @@ function App() {
           setTemplatesDialogOpen(false);
         }}
       />
-    </Wrapper>
+    </div>
   );
 }
 
-const Wrapper = styled("div")`
-  display: flex;
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-`;
-
 const DRAWER_WIDTH = 264;
 export const MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE = 768;
-
-const MainContent = styled("div")<{ isDrawerOpen: boolean }>`
-  margin-left: ${({ isDrawerOpen }) =>
-    isDrawerOpen ? "0px" : `-${DRAWER_WIDTH}px`};
-  width: ${({ isDrawerOpen }) =>
-    isDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%"};
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  @media (max-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE}px) {
-    ${({ isDrawerOpen }) =>
-      isDrawerOpen && `min-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE}px;`}
-  }
-`;
-
-const MobileOverlay = styled("div")`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.8);
-  z-index: 100;
-  cursor: pointer;
-
-  @media (min-width: ${MIN_MAIN_CONTENT_WIDTH_FOR_MOBILE + 1}px) {
-    display: none;
-  }
-`;
-
-const Loading = styled("div")`
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-family: "Inter";
-  font-size: 14px;
-`;
 
 export default App;
