@@ -47,7 +47,7 @@ INFO returns a [text](/features/value-types#text) string, or a number for `"numf
 
 - If the wrong number of arguments is supplied, INFO returns the [`#ERROR!`](/features/error-types.md#error) error.
 - If `type_text` is not a recognized string, INFO returns the [`#VALUE!`](/features/error-types.md#value) error.
-- If `type_text` is one of the unimplemented values (`"directory"`, `"origin"`, `"osversion"`), INFO returns the [`#NIMPL!`](/features/error-types.md#nimpl) error.
+- If `type_text` is one of the unimplemented values (`"directory"`, `"origin"`, `"osversion"`), INFO returns the [`#N/IMPL!`](/features/error-types.md#nimpl) error.
 
 ## Examples
 
