@@ -1,6 +1,6 @@
-import styled from "@emotion/styled";
 import LocalStorageAlert from "./LocalStorageAlert";
 import WorkbookList from "./WorkbookList";
+import "./left-drawer.css";
 
 interface DrawerContentProps {
   setModel: (key: string) => void;
@@ -8,42 +8,25 @@ interface DrawerContentProps {
   searchQuery: string;
 }
 
-function DrawerContent(props: DrawerContentProps) {
-  const { setModel, onDelete, searchQuery } = props;
-
+function DrawerContent({
+  setModel,
+  onDelete,
+  searchQuery,
+}: DrawerContentProps) {
   return (
     <>
-      <ContentContainer>
+      <div className="app-ic-drawer-content">
         <WorkbookList
           setModel={setModel}
           onDelete={onDelete}
           searchQuery={searchQuery}
         />
-      </ContentContainer>
-      <LocalStorageAlertWrapper>
+      </div>
+      <div className="app-ic-drawer-alert-wrapper">
         <LocalStorageAlert />
-      </LocalStorageAlertWrapper>
+      </div>
     </>
   );
 }
-
-const ContentContainer = styled("div")`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 12px;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  font-size: 12px;
-`;
-
-const LocalStorageAlertWrapper = styled("div")`
-  position: absolute;
-  bottom: 50px;
-  left: 0;
-  right: 0;
-  padding: 12px;
-`;
 
 export default DrawerContent;
