@@ -44,7 +44,8 @@
     "alert": {
       "title": "Heads up!",
       "subtitle": "IronCalc stores your data only in your browser's local storage.",
-      "subtitle2": "<bold>Download your XLSX often</bold> – future versions may not open current workbooks, even if shared."
+      "subtitle2": "<bold>Download your XLSX often</bold> – future versions may not open current workbooks, even if shared.",
+      "close": "Close"
     },
     "documentation": "Documentation"
   },

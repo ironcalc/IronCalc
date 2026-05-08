@@ -44,7 +44,8 @@
     "alert": {
       "title": "Atención",
       "subtitle": "IronCalc almacena tus datos solo en el almacenamiento local de tu navegador.",
-      "subtitle2": "<bold>Descarga tu XLSX con frecuencia</bold> – las versiones futuras podrían no abrir los libros actuales, incluso si se comparten."
+      "subtitle2": "<bold>Descarga tu XLSX con frecuencia</bold> – las versiones futuras podrían no abrir los libros actuales, incluso si se comparten.",
+      "close": "Cerrar"
     },
     "documentation": "Documentación"
   },

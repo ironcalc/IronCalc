@@ -44,7 +44,8 @@
     "alert": {
       "title": "Attention !",
       "subtitle": "IronCalc stocke vos données uniquement dans le stockage local de votre navigateur.",
-      "subtitle2": "<bold>Téléchargez souvent votre XLSX</bold> – les versions futures pourraient ne pas ouvrir les classeurs actuels, même s'ils sont partagés."
+      "subtitle2": "<bold>Téléchargez souvent votre XLSX</bold> – les versions futures pourraient ne pas ouvrir les classeurs actuels, même s'ils sont partagés.",
+      "close": "Fermer"
     },
     "documentation": "Documentation"
   },

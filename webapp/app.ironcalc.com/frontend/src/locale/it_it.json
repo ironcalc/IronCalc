@@ -44,7 +44,8 @@
     "alert": {
       "title": "Attenzione!",
       "subtitle": "IronCalc memorizza i tuoi dati solo nella memoria locale del browser.",
-      "subtitle2": "<bold>Scarica spesso il tuo XLSX</bold> – le versioni future potrebbero non aprire le cartelle di lavoro attuali, anche se condivise."
+      "subtitle2": "<bold>Scarica spesso il tuo XLSX</bold> – le versioni future potrebbero non aprire le cartelle di lavoro attuali, anche se condivise.",
+      "close": "Chiudi"
     },
     "documentation": "Documentazione"
   },
