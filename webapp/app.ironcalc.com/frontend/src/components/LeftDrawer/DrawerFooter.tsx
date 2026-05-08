@@ -1,6 +1,5 @@
 import { BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import "./left-drawer.css";
 
 function DrawerFooter() {
   const { t } = useTranslation();

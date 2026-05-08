@@ -7,7 +7,6 @@ import {
 import { Plus, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import "./left-drawer.css";
 
 interface DrawerHeaderProps {
   onNewModel: () => void;

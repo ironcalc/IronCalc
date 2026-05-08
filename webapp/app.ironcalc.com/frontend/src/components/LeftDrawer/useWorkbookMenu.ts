@@ -79,6 +79,7 @@ export function useWorkbookMenu({ setModel, onDelete }: Options) {
   };
 
   const handleDownload = async (uuid: string) => {
+    handleMenuClose();
     try {
       const model = selectModelFromStorage(uuid);
       if (model) {

@@ -9,7 +9,6 @@ import {
 } from "../storage";
 import { useWorkbookMenu } from "./useWorkbookMenu";
 import WorkbookMenu from "./WorkbookMenu";
-import "./left-drawer.css";
 
 interface WorkbookListProps {
   setModel: (key: string) => void;
@@ -71,31 +70,32 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
   const renderWorkbookItem = (uuid: string) => {
     const isThisMenuOpen = isMenuOpen && selectedWorkbookUuid === uuid;
     return (
-      <button
+      <div
         key={uuid}
-        type="button"
         className={`app-ic-drawer-workbook-item${uuid === selectedUuid ? " app-ic-drawer-workbook-item--selected" : ""}`}
-        style={{ pointerEvents: isMenuOpen ? "none" : "auto" }}
-        onClick={() => {
-          if (!isMenuOpen) setModel(uuid);
-        }}
       >
-        <span className="app-ic-drawer-workbook-icon">
-          <Table2 />
-        </span>
-        <span className="app-ic-drawer-workbook-name">
-          {modelsMetadata[uuid].name}
-        </span>
+        <button
+          type="button"
+          className="app-ic-drawer-workbook-select"
+          disabled={isMenuOpen}
+          onClick={() => setModel(uuid)}
+        >
+          <span className="app-ic-drawer-workbook-icon">
+            <Table2 />
+          </span>
+          <span className="app-ic-drawer-workbook-name">
+            {modelsMetadata[uuid].name}
+          </span>
+        </button>
         <button
           type="button"
           className={`app-ic-drawer-workbook-ellipsis${isThisMenuOpen ? " app-ic-drawer-workbook-ellipsis--open" : ""}`}
-          style={{ pointerEvents: "auto" }}
           onClick={(e) => handleMenuOpen(e, uuid)}
           onMouseDown={(e) => e.stopPropagation()}
         >
           <EllipsisVertical />
         </button>
-      </button>
+      </div>
     );
   };
 
@@ -145,7 +145,6 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
 
       {menuAnchorEl && selectedWorkbookUuid && (
         <WorkbookMenu
-          uuid={selectedWorkbookUuid}
           position={menuPosition}
           isPinned={isWorkbookPinned(selectedWorkbookUuid)}
           onClose={handleMenuClose}

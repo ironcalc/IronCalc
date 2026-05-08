@@ -1,5 +1,5 @@
 import { Copy, FileDown, Pin, PinOff, Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -9,7 +9,6 @@ import {
 } from "../Navigation/FileMenu";
 
 interface WorkbookMenuProps {
-  uuid: string;
   position: { top: number; right: number };
   isPinned: boolean;
   onClose: () => void;
@@ -31,6 +30,14 @@ function WorkbookMenu({
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return createPortal(
     <>
       <div
@@ -43,7 +50,6 @@ function WorkbookMenu({
         role="menu"
         className="app-ic-nav-menu"
         style={{ position: "fixed", top: position.top, right: position.right }}
-        onKeyDown={(e) => e.key === "Escape" && onClose()}
       >
         <MenuItemWrapper onClick={onDownload}>
           <FileDown />
