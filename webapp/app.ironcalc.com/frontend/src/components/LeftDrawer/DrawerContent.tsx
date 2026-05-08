@@ -1,6 +1,5 @@
 import LocalStorageAlert from "./LocalStorageAlert";
 import WorkbookList from "./WorkbookList";
-import "./left-drawer.css";
 
 interface DrawerContentProps {
   setModel: (key: string) => void;

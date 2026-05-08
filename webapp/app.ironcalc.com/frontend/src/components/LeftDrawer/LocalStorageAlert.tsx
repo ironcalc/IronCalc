@@ -2,7 +2,6 @@ import { IconButton } from "@ironcalc/workbook";
 import { CircleAlert, X } from "lucide-react";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import "./left-drawer.css";
 
 const ALERT_DISMISSED_KEY = "localStorageAlertDismissed";
 
