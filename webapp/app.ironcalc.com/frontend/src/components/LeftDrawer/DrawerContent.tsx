@@ -40,7 +40,7 @@ const ContentContainer = styled("div")`
 
 const LocalStorageAlertWrapper = styled("div")`
   position: absolute;
-  bottom: 56px;
+  bottom: 50px;
   left: 0;
   right: 0;
   padding: 12px;
