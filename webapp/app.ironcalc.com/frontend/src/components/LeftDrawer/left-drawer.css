@@ -120,6 +120,7 @@
 .app-ic-drawer-footer--selection {
   flex-direction: column;
   gap: 4px;
+  align-items: stretch;
 }
 
 .app-ic-drawer-footer-link svg {
@@ -246,6 +247,11 @@
   left: 0;
   right: 0;
   padding: 12px;
+  transition: bottom 0.2s ease;
+}
+
+.app-ic-drawer-alert-wrapper--selection {
+  bottom: 84px;
 }
 
 /* Workbook list */
@@ -339,6 +345,12 @@
   background: transparent;
   flex-shrink: 0;
   position: relative;
+}
+
+.app-ic-drawer-workbook-icon--checkbox:focus {
+  outline: 1px solid
+    color-mix(in srgb, var(--palette-common-black) 8%, transparent);
+  outline-offset: 1px;
 }
 
 .app-ic-drawer-workbook-icon--checkbox:checked {

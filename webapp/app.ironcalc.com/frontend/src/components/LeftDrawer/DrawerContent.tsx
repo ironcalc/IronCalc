@@ -31,7 +31,9 @@ function DrawerContent({
           onCheckboxClick={onCheckboxClick}
         />
       </div>
-      <div className="app-ic-drawer-alert-wrapper">
+      <div
+        className={`app-ic-drawer-alert-wrapper${checkedUuids.size > 0 ? " app-ic-drawer-alert-wrapper--selection" : ""}`}
+      >
         <LocalStorageAlert />
       </div>
     </>
