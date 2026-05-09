@@ -14,6 +14,18 @@ interface LeftDrawerProps {
 
 function LeftDrawer({ open, newModel, setModel, onDelete }: LeftDrawerProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [checkedUuids, setCheckedUuids] = useState<Set<string>>(new Set());
+
+  const handleDeleteChecked = () => {
+    for (const uuid of checkedUuids) {
+      onDelete(uuid);
+    }
+    setCheckedUuids(new Set());
+  };
+
+  const handleCancelChecked = () => {
+    setCheckedUuids(new Set());
+  };
 
   return (
     <div className={`app-ic-drawer${open ? " app-ic-drawer--open" : ""}`}>
@@ -27,8 +39,14 @@ function LeftDrawer({ open, newModel, setModel, onDelete }: LeftDrawerProps) {
           setModel={setModel}
           onDelete={onDelete}
           searchQuery={searchQuery}
+          checkedUuids={checkedUuids}
+          setCheckedUuids={setCheckedUuids}
         />
-        <DrawerFooter />
+        <DrawerFooter
+          checkedCount={checkedUuids.size}
+          onDeleteChecked={handleDeleteChecked}
+          onCancelChecked={handleCancelChecked}
+        />
       </div>
     </div>
   );

@@ -47,7 +47,12 @@
       "subtitle2": "<bold>Descarga tu XLSX con frecuencia</bold> – las versiones futuras podrían no abrir los libros actuales, incluso si se comparten.",
       "close": "Cerrar"
     },
-    "documentation": "Documentación"
+    "documentation": "Documentación",
+    "cancel": "Cancelar",
+    "delete_workbooks_one": "Eliminar {{count}} libro",
+    "delete_workbooks_other": "Eliminar {{count}} libros",
+    "bulk_delete_message_one": "Este libro será eliminado permanentemente.",
+    "bulk_delete_message_other": "{{count}} libros serán eliminados permanentemente."
   },
   "file_bar": {
     "open_sidebar": "Abrir barra lateral",

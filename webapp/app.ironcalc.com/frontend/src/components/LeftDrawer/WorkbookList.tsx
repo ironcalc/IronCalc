@@ -14,9 +14,17 @@ interface WorkbookListProps {
   setModel: (key: string) => void;
   onDelete: (uuid: string) => void;
   searchQuery: string;
+  checkedUuids: Set<string>;
+  setCheckedUuids: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
-function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
+function WorkbookList({
+  setModel,
+  onDelete,
+  searchQuery,
+  checkedUuids,
+  setCheckedUuids,
+}: WorkbookListProps) {
   const { t } = useTranslation();
   const {
     menuAnchorEl,
@@ -34,6 +42,8 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
     handlePinToggle,
     handleDuplicate,
   } = useWorkbookMenu({ setModel, onDelete });
+
+  const hasAnyChecked = checkedUuids.size > 0;
 
   const selectedUuid = getSelectedUuid();
   const modelsMetadata = getModelsMetadata();
@@ -81,7 +91,26 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
           onClick={() => setModel(uuid)}
         >
           <span className="app-ic-drawer-workbook-icon">
-            <Table2 />
+            <span className="app-ic-drawer-workbook-icon--default">
+              <Table2 />
+            </span>
+            <span className="app-ic-drawer-workbook-icon--checkbox-wrapper">
+              <input
+                type="checkbox"
+                className="app-ic-drawer-workbook-icon--checkbox"
+                tabIndex={-1}
+                checked={checkedUuids.has(uuid)}
+                onChange={() =>
+                  setCheckedUuids((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(uuid)) next.delete(uuid);
+                    else next.add(uuid);
+                    return next;
+                  })
+                }
+                onClick={(e) => e.stopPropagation()}
+              />
+            </span>
           </span>
           <span className="app-ic-drawer-workbook-name">
             {modelsMetadata[uuid].name}
@@ -141,7 +170,13 @@ function WorkbookList({ setModel, onDelete, searchQuery }: WorkbookListProps) {
 
   return (
     <>
-      {content}
+      <div
+        className={
+          hasAnyChecked ? "app-ic-drawer-workbook-list--has-checked" : undefined
+        }
+      >
+        {content}
+      </div>
 
       {menuAnchorEl && selectedWorkbookUuid && (
         <WorkbookMenu

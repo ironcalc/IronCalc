@@ -117,6 +117,11 @@
   background-color: var(--palette-grey-300);
 }
 
+.app-ic-drawer-footer--selection {
+  flex-direction: column;
+  gap: 4px;
+}
+
 .app-ic-drawer-footer-link svg {
   width: 16px;
   height: 16px;
@@ -308,6 +313,71 @@
   height: 16px;
 }
 
+.app-ic-drawer-workbook-icon--default {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-ic-drawer-workbook-icon--checkbox-wrapper {
+  display: none;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.app-ic-drawer-workbook-icon--checkbox {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  border: 1.5px solid var(--palette-grey-500);
+  border-radius: 4px;
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.app-ic-drawer-workbook-icon--checkbox:checked {
+  background: var(--palette-common-black);
+  border-color: var(--palette-common-black);
+}
+
+.app-ic-drawer-workbook-icon--checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 3px;
+  height: 6px;
+  border: 2px solid var(--palette-common-white);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.app-ic-drawer-workbook-icon:hover .app-ic-drawer-workbook-icon--default {
+  display: none;
+}
+
+.app-ic-drawer-workbook-icon:hover
+  .app-ic-drawer-workbook-icon--checkbox-wrapper {
+  display: flex;
+}
+
+.app-ic-drawer-workbook-list--has-checked
+  .app-ic-drawer-workbook-icon--default {
+  display: none;
+}
+
+.app-ic-drawer-workbook-list--has-checked
+  .app-ic-drawer-workbook-icon--checkbox-wrapper {
+  display: flex;
+}
+
 .app-ic-drawer-workbook-name {
   flex: 1;
   overflow: hidden;
@@ -335,7 +405,7 @@
 }
 
 .app-ic-drawer-workbook-item:hover .app-ic-drawer-workbook-ellipsis,
-.app-ic-drawer-workbook-item:focus-within .app-ic-drawer-workbook-ellipsis {
+.app-ic-drawer-workbook-ellipsis:focus {
   width: 24px;
   opacity: 1;
 }

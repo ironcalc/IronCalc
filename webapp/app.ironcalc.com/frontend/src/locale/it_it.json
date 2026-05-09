@@ -47,7 +47,12 @@
       "subtitle2": "<bold>Scarica spesso il tuo XLSX</bold> – le versioni future potrebbero non aprire le cartelle di lavoro attuali, anche se condivise.",
       "close": "Chiudi"
     },
-    "documentation": "Documentazione"
+    "documentation": "Documentazione",
+    "cancel": "Annulla",
+    "delete_workbooks_one": "Elimina {{count}} cartella",
+    "delete_workbooks_other": "Elimina {{count}} cartelle",
+    "bulk_delete_message_one": "Questa cartella di lavoro verrà eliminata definitivamente.",
+    "bulk_delete_message_other": "{{count}} cartelle di lavoro verranno eliminate definitivamente."
   },
   "file_bar": {
     "open_sidebar": "Apri barra laterale",
