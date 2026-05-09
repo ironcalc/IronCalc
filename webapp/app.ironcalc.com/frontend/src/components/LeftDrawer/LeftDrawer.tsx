@@ -2,6 +2,7 @@ import { useState } from "react";
 import DrawerContent from "./DrawerContent";
 import DrawerFooter from "./DrawerFooter";
 import DrawerHeader from "./DrawerHeader";
+import { useWorkbookSelection } from "./useWorkbookSelection";
 import "./left-drawer.css";
 
 interface LeftDrawerProps {
@@ -14,18 +15,12 @@ interface LeftDrawerProps {
 
 function LeftDrawer({ open, newModel, setModel, onDelete }: LeftDrawerProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [checkedUuids, setCheckedUuids] = useState<Set<string>>(new Set());
-
-  const handleDeleteChecked = () => {
-    for (const uuid of checkedUuids) {
-      onDelete(uuid);
-    }
-    setCheckedUuids(new Set());
-  };
-
-  const handleCancelChecked = () => {
-    setCheckedUuids(new Set());
-  };
+  const {
+    checkedUuids,
+    handleCheckboxClick,
+    handleDeleteChecked,
+    handleCancelChecked,
+  } = useWorkbookSelection({ onDelete });
 
   return (
     <div className={`app-ic-drawer${open ? " app-ic-drawer--open" : ""}`}>
@@ -40,7 +35,7 @@ function LeftDrawer({ open, newModel, setModel, onDelete }: LeftDrawerProps) {
           onDelete={onDelete}
           searchQuery={searchQuery}
           checkedUuids={checkedUuids}
-          setCheckedUuids={setCheckedUuids}
+          onCheckboxClick={handleCheckboxClick}
         />
         <DrawerFooter
           checkedCount={checkedUuids.size}

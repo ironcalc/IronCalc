@@ -1,4 +1,3 @@
-import type React from "react";
 import LocalStorageAlert from "./LocalStorageAlert";
 import WorkbookList from "./WorkbookList";
 
@@ -7,7 +6,11 @@ interface DrawerContentProps {
   onDelete: (uuid: string) => void;
   searchQuery: string;
   checkedUuids: Set<string>;
-  setCheckedUuids: React.Dispatch<React.SetStateAction<Set<string>>>;
+  onCheckboxClick: (
+    uuid: string,
+    shiftKey: boolean,
+    orderedUuids: string[],
+  ) => void;
 }
 
 function DrawerContent({
@@ -15,7 +18,7 @@ function DrawerContent({
   onDelete,
   searchQuery,
   checkedUuids,
-  setCheckedUuids,
+  onCheckboxClick,
 }: DrawerContentProps) {
   return (
     <>
@@ -25,7 +28,7 @@ function DrawerContent({
           onDelete={onDelete}
           searchQuery={searchQuery}
           checkedUuids={checkedUuids}
-          setCheckedUuids={setCheckedUuids}
+          onCheckboxClick={onCheckboxClick}
         />
       </div>
       <div className="app-ic-drawer-alert-wrapper">

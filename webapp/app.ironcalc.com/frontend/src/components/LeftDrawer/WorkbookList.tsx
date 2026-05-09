@@ -15,7 +15,11 @@ interface WorkbookListProps {
   onDelete: (uuid: string) => void;
   searchQuery: string;
   checkedUuids: Set<string>;
-  setCheckedUuids: React.Dispatch<React.SetStateAction<Set<string>>>;
+  onCheckboxClick: (
+    uuid: string,
+    shiftKey: boolean,
+    orderedUuids: string[],
+  ) => void;
 }
 
 function WorkbookList({
@@ -23,7 +27,7 @@ function WorkbookList({
   onDelete,
   searchQuery,
   checkedUuids,
-  setCheckedUuids,
+  onCheckboxClick,
 }: WorkbookListProps) {
   const { t } = useTranslation();
   const {
@@ -77,6 +81,20 @@ function WorkbookList({
     };
   };
 
+  const getOrderedUuids = (): string[] => {
+    if (isSearchMode) {
+      return Object.keys(modelsMetadata)
+        .sort(
+          (a, b) => modelsMetadata[b].createdAt - modelsMetadata[a].createdAt,
+        )
+        .filter((id) =>
+          modelsMetadata[id].name.toLowerCase().includes(normalizedQuery),
+        );
+    }
+    const { pinned, today, thisMonth, older } = groupWorkbooks(modelsMetadata);
+    return [...pinned, ...today, ...thisMonth, ...older];
+  };
+
   const renderWorkbookItem = (uuid: string) => {
     const isThisMenuOpen = isMenuOpen && selectedWorkbookUuid === uuid;
     return (
@@ -100,15 +118,11 @@ function WorkbookList({
                 className="app-ic-drawer-workbook-icon--checkbox"
                 tabIndex={-1}
                 checked={checkedUuids.has(uuid)}
-                onChange={() =>
-                  setCheckedUuids((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(uuid)) next.delete(uuid);
-                    else next.add(uuid);
-                    return next;
-                  })
-                }
-                onClick={(e) => e.stopPropagation()}
+                onChange={() => {}}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCheckboxClick(uuid, e.shiftKey, getOrderedUuids());
+                }}
               />
             </span>
           </span>
