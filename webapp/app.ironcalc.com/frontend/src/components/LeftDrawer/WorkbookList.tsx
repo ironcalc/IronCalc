@@ -102,30 +102,33 @@ function WorkbookList({
         key={uuid}
         className={`app-ic-drawer-workbook-item${uuid === selectedUuid ? " app-ic-drawer-workbook-item--selected" : ""}`}
       >
+        <span className="app-ic-drawer-workbook-icon">
+          <span className="app-ic-drawer-workbook-icon--default">
+            <Table2 />
+          </span>
+          <span className="app-ic-drawer-workbook-icon--checkbox-wrapper">
+            <input
+              type="checkbox"
+              className="app-ic-drawer-workbook-icon--checkbox"
+              aria-label={t("left_drawer.select_workbook", {
+                name: modelsMetadata[uuid].name,
+              })}
+              checked={checkedUuids.has(uuid)}
+              onChange={(e) => {
+                const isShift =
+                  e.nativeEvent instanceof MouseEvent && e.nativeEvent.shiftKey;
+                onCheckboxClick(uuid, isShift, getOrderedUuids());
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </span>
+        </span>
         <button
           type="button"
           className="app-ic-drawer-workbook-select"
           disabled={isMenuOpen}
           onClick={() => setModel(uuid)}
         >
-          <span className="app-ic-drawer-workbook-icon">
-            <span className="app-ic-drawer-workbook-icon--default">
-              <Table2 />
-            </span>
-            <span className="app-ic-drawer-workbook-icon--checkbox-wrapper">
-              <input
-                type="checkbox"
-                className="app-ic-drawer-workbook-icon--checkbox"
-                tabIndex={-1}
-                checked={checkedUuids.has(uuid)}
-                onChange={() => {}}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCheckboxClick(uuid, e.shiftKey, getOrderedUuids());
-                }}
-              />
-            </span>
-          </span>
           <span className="app-ic-drawer-workbook-name">
             {modelsMetadata[uuid].name}
           </span>

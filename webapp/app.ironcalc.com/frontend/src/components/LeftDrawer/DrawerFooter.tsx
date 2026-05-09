@@ -1,8 +1,7 @@
-import { Confirm } from "@ironcalc/workbook";
+import { Button, Confirm } from "@ironcalc/workbook";
 import { BookOpen, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "../../../../../IronCalc/src/components/Button/Button";
 
 interface DrawerFooterProps {
   checkedCount: number;
