@@ -117,6 +117,16 @@
   background-color: var(--palette-grey-300);
 }
 
+.app-ic-drawer-footer-link:focus {
+  outline: none;
+}
+
+.app-ic-drawer-footer-link:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  border-radius: 6px;
+  outline-offset: -2px;
+}
+
 .app-ic-drawer-footer--selection {
   flex-direction: column;
   gap: 4px;
@@ -291,7 +301,6 @@
 .app-ic-drawer-workbook-select {
   display: flex;
   align-items: center;
-  gap: 8px;
   flex: 1;
   min-width: 0;
   height: 100%;
@@ -299,7 +308,14 @@
   border: none;
   background: transparent;
   cursor: pointer;
+  outline: none;
   text-align: left;
+}
+
+.app-ic-drawer-workbook-select:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  border-radius: 6px;
+  outline-offset: -2px;
 }
 
 .app-ic-drawer-workbook-item:hover,
@@ -311,6 +327,7 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  padding-left: 8px;
   color: var(--palette-grey-500);
 }
 
@@ -348,9 +365,12 @@
 }
 
 .app-ic-drawer-workbook-icon--checkbox:focus {
-  outline: 1px solid
-    color-mix(in srgb, var(--palette-common-black) 8%, transparent);
-  outline-offset: 1px;
+  outline: none;
+}
+
+.app-ic-drawer-workbook-icon--checkbox:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
 }
 
 .app-ic-drawer-workbook-icon--checkbox:checked {
@@ -371,11 +391,15 @@
   transform: rotate(45deg);
 }
 
-.app-ic-drawer-workbook-icon:hover .app-ic-drawer-workbook-icon--default {
+.app-ic-drawer-workbook-icon:hover .app-ic-drawer-workbook-icon--default,
+.app-ic-drawer-workbook-icon:focus-within
+  .app-ic-drawer-workbook-icon--default {
   display: none;
 }
 
 .app-ic-drawer-workbook-icon:hover
+  .app-ic-drawer-workbook-icon--checkbox-wrapper,
+.app-ic-drawer-workbook-icon:focus-within
   .app-ic-drawer-workbook-icon--checkbox-wrapper {
   display: flex;
 }
@@ -412,6 +436,7 @@
   cursor: pointer;
   opacity: 0;
   overflow: hidden;
+  outline: none;
   color: var(--palette-grey-900);
   flex-shrink: 0;
 }
@@ -420,6 +445,11 @@
 .app-ic-drawer-workbook-ellipsis:focus {
   width: 24px;
   opacity: 1;
+}
+
+.app-ic-drawer-workbook-ellipsis:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
 }
 
 .app-ic-drawer-workbook-ellipsis--open {
