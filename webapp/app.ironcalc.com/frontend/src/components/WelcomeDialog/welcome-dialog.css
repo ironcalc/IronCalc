@@ -23,6 +23,11 @@
   font-size: var(--typography-font-size);
 }
 
+.app-ic-wd-paper:focus-visible {
+  outline: 3px solid
+    color-mix(in srgb, var(--palette-common-black) 8%, transparent);
+}
+
 /* Scrollable content */
 
 .app-ic-wd-content {
