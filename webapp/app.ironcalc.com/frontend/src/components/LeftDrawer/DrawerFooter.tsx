@@ -25,16 +25,11 @@ function DrawerFooter({
           <Button
             variant="destructive"
             startIcon={<Trash2 />}
-            style={{ width: "100%" }}
             onClick={() => setIsDeleteDialogOpen(true)}
           >
             {t("left_drawer.delete_workbooks", { count: checkedCount })}
           </Button>
-          <Button
-            variant="secondary"
-            style={{ width: "100%" }}
-            onClick={onCancelChecked}
-          >
+          <Button variant="secondary" onClick={onCancelChecked}>
             {t("left_drawer.cancel")}
           </Button>
         </div>
