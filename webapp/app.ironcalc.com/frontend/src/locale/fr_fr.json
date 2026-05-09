@@ -52,7 +52,8 @@
     "delete_workbooks_one": "Supprimer {{count}} classeur",
     "delete_workbooks_other": "Supprimer {{count}} classeurs",
     "bulk_delete_message_one": "Ce classeur sera définitivement supprimé.",
-    "bulk_delete_message_other": "{{count}} classeurs seront définitivement supprimés."
+    "bulk_delete_message_other": "{{count}} classeurs seront définitivement supprimés.",
+    "select_workbook": "Sélectionner {{name}}"
   },
   "file_bar": {
     "open_sidebar": "Ouvrir la barre latérale",
