@@ -1749,7 +1749,8 @@ impl<'a> UserModel<'a> {
                     .map(|row| self.get_cell_content(sheet, row, column))
                     .collect::<Result<Vec<_>, _>>()?
             };
-            let possible_progression = detect_progression(&values, locale);
+            let case_seed = self.get_cell_content(sheet, row1, column)?;
+            let possible_progression = detect_progression(&values, locale, &case_seed);
             for (range_idx, row_ref) in row_range.iter().enumerate() {
                 // Save value and style first
                 let row = *row_ref;
@@ -1876,7 +1877,8 @@ impl<'a> UserModel<'a> {
                     .map(|column| self.get_cell_content(sheet, row, column))
                     .collect::<Result<Vec<_>, _>>()?
             };
-            let possible_progression = detect_progression(&values, locale);
+            let case_seed = self.get_cell_content(sheet, row, column1)?;
+            let possible_progression = detect_progression(&values, locale, &case_seed);
             for (range_idx, column_ref) in column_range.iter().enumerate() {
                 let column = *column_ref;
                 // Save value and style first
