@@ -3,8 +3,10 @@ import {
   createContext,
   type ReactElement,
   type ReactNode,
+  type RefObject,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
@@ -17,7 +19,10 @@ import { useMenuPosition } from "./useMenuPosition";
 const focusableSelector =
   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
-export const MenuContext = createContext<{ close: () => void } | null>(null);
+export const MenuContext = createContext<{
+  close: () => void;
+  activeSetOpenRef: RefObject<((open: boolean) => void) | null>;
+} | null>(null);
 
 interface MenuTriggerProperties {
   trigger: ReactElement;
@@ -55,6 +60,8 @@ export function Menu(props: MenuProperties) {
   const menuStyle = isTriggerMode
     ? triggerPosition.position
     : anchorPosition.position;
+
+  const activeSetOpenRef = useRef<((open: boolean) => void) | null>(null);
 
   const onClose = !isTriggerMode ? props.onClose : undefined;
   const close = useCallback(() => {
@@ -126,7 +133,9 @@ export function Menu(props: MenuProperties) {
 
   if (!isTriggerMode) {
     return (
-      <MenuContext.Provider value={{ close }}>{menu}</MenuContext.Provider>
+      <MenuContext.Provider value={{ close, activeSetOpenRef }}>
+        {menu}
+      </MenuContext.Provider>
     );
   }
 
@@ -146,7 +155,7 @@ export function Menu(props: MenuProperties) {
   );
 
   return (
-    <MenuContext.Provider value={{ close }}>
+    <MenuContext.Provider value={{ close, activeSetOpenRef }}>
       {clonedTrigger}
       {menu}
     </MenuContext.Provider>

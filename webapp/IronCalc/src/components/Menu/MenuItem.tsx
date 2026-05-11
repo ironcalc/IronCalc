@@ -5,10 +5,6 @@ import { MenuContext } from "./Menu";
 import { useAnchorPosition } from "./useAnchorPosition";
 import { useMenuKeyDown } from "./useMenuKeyDown";
 
-// Tracks the setter of whichever submenu is currently open so a new one can
-// close it immediately without waiting for the hide timer.
-let activeSetOpen: ((open: boolean) => void) | null = null;
-
 export interface MenuItemProperties {
   onClick?: () => void;
   disabled?: boolean;
@@ -87,6 +83,7 @@ export function MenuItemWithSubmenu({
   submenu,
 }: MenuItemWithSubmenuProps) {
   const parentMenu = useContext(MenuContext);
+  const parentActiveSetOpenRef = parentMenu?.activeSetOpenRef ?? null;
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<
     { x: number; y: number; flipX?: number } | undefined
@@ -94,6 +91,9 @@ export function MenuItemWithSubmenu({
   const itemRef = useRef<HTMLButtonElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusOnOpenRef = useRef(false);
+  const submenuActiveSetOpenRef = useRef<((open: boolean) => void) | null>(
+    null,
+  );
 
   const { menuRef, position } = useAnchorPosition(open, anchor);
   const { handleMenuKeyDown } = useMenuKeyDown(
@@ -117,24 +117,34 @@ export function MenuItemWithSubmenu({
   useEffect(() => {
     return () => {
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-      if (activeSetOpen === setOpen) activeSetOpen = null;
+      if (parentActiveSetOpenRef?.current === setOpen) {
+        parentActiveSetOpenRef.current = null;
+      }
     };
-  }, []);
+  }, [parentActiveSetOpenRef]);
 
   function show() {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    if (activeSetOpen && activeSetOpen !== setOpen) activeSetOpen(false);
-    activeSetOpen = setOpen;
+    if (
+      parentActiveSetOpenRef?.current &&
+      parentActiveSetOpenRef.current !== setOpen
+    ) {
+      parentActiveSetOpenRef.current(false);
+    }
+    if (parentActiveSetOpenRef) parentActiveSetOpenRef.current = setOpen;
     const rect = itemRef.current?.getBoundingClientRect();
-    if (rect)
+    if (rect) {
       setAnchor({ x: rect.right + 4, y: rect.top - 4, flipX: rect.left - 4 });
+    }
     setOpen(true);
   }
 
   function scheduleHide() {
     closeTimerRef.current = setTimeout(() => {
       setOpen(false);
-      if (activeSetOpen === setOpen) activeSetOpen = null;
+      if (parentActiveSetOpenRef?.current === setOpen) {
+        parentActiveSetOpenRef.current = null;
+      }
     }, 150);
   }
 
@@ -179,7 +189,12 @@ export function MenuItemWithSubmenu({
 
       {open
         ? createPortal(
-            <MenuContext.Provider value={{ close: closeAll }}>
+            <MenuContext.Provider
+              value={{
+                close: closeAll,
+                activeSetOpenRef: submenuActiveSetOpenRef,
+              }}
+            >
               <div
                 ref={menuRef}
                 role="presentation"
