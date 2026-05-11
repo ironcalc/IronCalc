@@ -142,7 +142,7 @@ export const CornerPositioning: Story = {
   ),
 };
 
-const ALIGNMENTS = ["Left", "Center", "Right", "Justify"] as const;
+const ALIGNMENTS = ["Pinapple", "Grapefruit", "Mango", "Durian"] as const;
 type Alignment = (typeof ALIGNMENTS)[number];
 
 function AlignmentItems({
@@ -192,7 +192,7 @@ export const RadioItems: Story = {
     children: null,
   },
   render: () => {
-    const [alignment, setAlignment] = useState<Alignment>("Left");
+    const [alignment, setAlignment] = useState<Alignment>("Pinapple");
     return (
       <Menu trigger={<Button variant="secondary">{alignment}</Button>}>
         <AlignmentItems value={alignment} onChange={setAlignment} />
