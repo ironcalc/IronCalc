@@ -1,7 +1,6 @@
 /* Toolbar wrapper */
 .ic-toolbar-wrapper {
   position: relative;
-  isolation: isolate;
   display: flex;
   align-items: center;
   background: var(--palette-common-white);
@@ -71,7 +70,6 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 10;
   width: 24px;
   height: 100%;
   display: flex;

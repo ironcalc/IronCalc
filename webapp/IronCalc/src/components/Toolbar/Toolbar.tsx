@@ -143,18 +143,6 @@ function Toolbar(properties: ToolbarProperties) {
 
   return (
     <div className="ic-toolbar-wrapper">
-      {showLeftArrow && (
-        <Tooltip title={t("toolbar.scroll_left")}>
-          {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
-          {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
-          <div
-            className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--left"
-            onClick={scrollLeft}
-          >
-            <ChevronLeft />
-          </div>
-        </Tooltip>
-      )}
       <div className="ic-toolbar-container" ref={toolbarRef}>
         {/* History/Edit Group */}
         <div className="ic-toolbar-button-group">
@@ -544,6 +532,20 @@ function Toolbar(properties: ToolbarProperties) {
           open={borderPickerOpen}
         />
       </div>
+
+      {showLeftArrow && (
+        <Tooltip title={t("toolbar.scroll_left")}>
+          {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
+          {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
+          <div
+            className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--left"
+            onClick={scrollLeft}
+          >
+            <ChevronLeft />
+          </div>
+        </Tooltip>
+      )}
+
       {showRightArrow && (
         <Tooltip title={t("toolbar.scroll_right")}>
           {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
