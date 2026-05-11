@@ -32,10 +32,11 @@ The *info_type* argument is **always in English**, regardless of the workbook's 
 | `"address"` | The absolute reference of the first cell as text (e.g. `$A$1`). |
 | `"col"` | The column number of the cell. |
 | `"contents"` | The value of the upper-left cell in the reference. |
+| `"filename"` | The name of the file as a string like `[workbook.xlsx]SheetName`. |
 | `"row"` | The row number of the cell. |
 | `"type"` | The type of data in the cell: `"b"` for blank, `"l"` for label (text), or `"v"` for value (number, boolean, or error). |
 
-The following *info_type* values are recognized but **not yet implemented** and return a [`#VALUE!`](/features/error-types.md#value) error: `"color"`, `"filename"`, `"format"`, `"parentheses"`, `"prefix"`, `"protect"`, `"width"`.
+The following *info_type* values are recognized but **not yet implemented** and return a [`#VALUE!`](/features/error-types.md#value) error: `"color"`, `"format"`, `"parentheses"`, `"prefix"`, `"protect"`, `"width"`.
 
 ::: tip Case-insensitive
 The *info_type* argument is case-insensitive. `"address"`, `"ADDRESS"`, and `"Address"` all work the same way.
