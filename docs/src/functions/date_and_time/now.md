@@ -18,7 +18,7 @@ The optional `timezone` argument is an IronCalc extension. Excel, Google Sheets,
 
 ### Syntax
 
-**NOW([[<span title="Text" style="color:#E53935">timezone</span>]]) => <span title="Number" style="color:#1E88E5">serial_number</span>**
+**NOW([<span title="Text" style="color:#E53935">timezone</span>]) => <span title="Number" style="color:#1E88E5">serial_number</span>**
 
 ### Argument descriptions
 

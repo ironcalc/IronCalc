@@ -201,7 +201,7 @@ List all error scenarios the function may encounter:
 - Add the include directive at the end if using the error details snippet:
 
 ```markdown
-<!--@include: ../markdown-snippets/error-type-details.txt-->
+<!--@include: ../functions/markdown-snippets/error-type-details.txt-->
 ```
 
 ### 5. Details (Optional but Recommended)
@@ -367,7 +367,7 @@ FUNCTION_NAME returns a [type](/features/value-types#type) representing [descrip
 - Specific error condition with [`#ERROR!`](/features/error-types.md#error) link.
 - Another error condition.
 
-<!--@include: ../markdown-snippets/error-type-details.txt-->
+<!--@include: ../functions/markdown-snippets/error-type-details.txt-->
 
 ## Details
 
