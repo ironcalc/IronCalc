@@ -534,29 +534,29 @@ function Toolbar(properties: ToolbarProperties) {
       </div>
 
       {showLeftArrow && (
-        <Tooltip title={t("toolbar.scroll_left")}>
-          {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
-          {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
-          <div
-            className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--left"
-            onClick={scrollLeft}
-          >
+        // biome-ignore lint/a11y/noStaticElementInteractions: we need this
+        // biome-ignore lint/a11y/useKeyWithClickEvents: TODO!
+        <div
+          className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--left"
+          onClick={scrollLeft}
+        >
+          <Tooltip title={t("toolbar.scroll_left")}>
             <ChevronLeft />
-          </div>
-        </Tooltip>
+          </Tooltip>
+        </div>
       )}
 
       {showRightArrow && (
-        <Tooltip title={t("toolbar.scroll_right")}>
-          {/** biome-ignore lint/a11y/noStaticElementInteractions: we need this */}
-          {/** biome-ignore lint/a11y/useKeyWithClickEvents: TODO! */}
-          <div
-            className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--right"
-            onClick={scrollRight}
-          >
+        // biome-ignore lint/a11y/noStaticElementInteractions: we need this
+        // biome-ignore lint/a11y/useKeyWithClickEvents: TODO!
+        <div
+          className="ic-toolbar-scroll-arrow ic-toolbar-scroll-arrow--right"
+          onClick={scrollRight}
+        >
+          <Tooltip title={t("toolbar.scroll_right")}>
             <ChevronRight />
-          </div>
-        </Tooltip>
+          </Tooltip>
+        </div>
       )}
     </div>
   );
