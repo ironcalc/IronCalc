@@ -31,12 +31,16 @@ export function Tooltip({ title, children }: TooltipProperties) {
         className="ic-tooltip-trigger"
         aria-describedby={visible ? tooltipId : undefined}
         onMouseEnter={() => {
-          if (!isMenuOpen()) setVisible(true);
+          if (!isMenuOpen()) {
+            setVisible(true);
+          }
         }}
         onMouseLeave={() => setVisible(false)}
         onPointerDown={() => setVisible(false)}
         onFocus={() => {
-          if (!isMenuOpen()) setVisible(true);
+          if (!isMenuOpen()) {
+            setVisible(true);
+          }
         }}
         onBlur={() => setVisible(false)}
       >
