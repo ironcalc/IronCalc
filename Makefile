@@ -4,6 +4,7 @@ lint:
 	cargo clippy --all-targets --all-features -- -W clippy::unwrap_used -W clippy::expect_used -W clippy::panic -D warnings
 	cd webapp/IronCalc/ && npm install && npm run check
 	cd webapp/app.ironcalc.com/frontend/ && npm install && npm run check
+	cd docs/ && npm install && npm run build
 
 .PHONY: format
 format:
@@ -23,7 +24,7 @@ test-rust:
 
 .PHONY: test-js
 test-js:
-	# Regretabbly we need to build the wasm twice, once for the nodejs tests
+	# Regrettably we need to build the wasm twice, once for the nodejs tests
 	# and a second one for the vitest.
 	cd bindings/wasm/ && wasm-pack build --target nodejs && node tests/test.mjs && make
 	cd webapp/IronCalc/ && npm install && npm run test
