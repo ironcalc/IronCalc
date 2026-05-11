@@ -1,5 +1,23 @@
+use std::collections::HashMap;
+
 use crate::locale::Locale;
 
+enum DateCaseStyle {
+    Uppercase,
+    Capitalized,
+    Lowercase,
+}
+impl DateCaseStyle {
+    fn new(case_seed: &str) -> Self {
+        if case_seed == case_seed.to_uppercase() {
+            Self::Uppercase
+        } else if case_seed.chars().next().is_some_and(|c| c.is_uppercase()) {
+            Self::Capitalized
+        } else {
+            Self::Lowercase
+        }
+    }
+}
 pub(crate) struct NumericProgression {
     last: f64,
     step: f64,
@@ -276,32 +294,41 @@ impl SequenceDetector for SuffixedNumberDetector<'_> {
 
 struct DateProgressionDetector<'a> {
     locale: &'a Locale,
+    case_style: DateCaseStyle,
 }
 
 impl<'a> DateProgressionDetector<'a> {
     fn find_progression(&self, values: &[String], dates: &[String]) -> Option<Progression> {
+        let date_indexes = dates
+            .iter()
+            .enumerate()
+            .map(|(idx, date)| (date.to_lowercase(), idx))
+            .collect::<HashMap<_, _>>();
+
         let indexes = values
             .iter()
             .map(|value| {
-                dates
-                    .iter()
-                    .position(|date| date.eq_ignore_ascii_case(value))
-                    .map(|idx| idx.to_string())
+                date_indexes
+                    .get(&value.to_lowercase())
+                    .map(|&idx| idx.to_string())
             })
-            .collect::<Option<Vec<_>>>();
+            .collect::<Option<Vec<_>>>()?;
 
-        if let Some(indices) = indexes {
-            if let Some(Progression::Numeric(numeric_progression)) = (NumericProgressionDetector {
-                locale: self.locale,
-            })
-            .detect(&indices)
-            {
-                let date_progression = DateProgression {
-                    numeric_progression,
-                    dates: dates.to_vec(),
-                };
-                return Some(Progression::Date(date_progression));
-            }
+        if let Some(Progression::Numeric(numeric_progression)) = (NumericProgressionDetector {
+            locale: self.locale,
+        })
+        .detect(&indexes)
+        {
+            let dates = match self.case_style {
+                DateCaseStyle::Uppercase => dates.iter().map(|date| date.to_uppercase()).collect(),
+                DateCaseStyle::Capitalized => dates.to_vec(),
+                DateCaseStyle::Lowercase => dates.iter().map(|date| date.to_lowercase()).collect(),
+            };
+            let date_progression = DateProgression {
+                numeric_progression,
+                dates: dates.to_vec(),
+            };
+            return Some(Progression::Date(date_progression));
         }
         None
     }
@@ -327,14 +354,20 @@ impl<'a> SequenceDetector for DateProgressionDetector<'a> {
     }
 }
 
-pub(crate) fn detect_progression(values: &[String], locale: &Locale) -> Option<Progression> {
+pub(crate) fn detect_progression(
+    values: &[String],
+    locale: &Locale,
+    case_seed: &str,
+) -> Option<Progression> {
     if let Some(progression) = (NumericProgressionDetector { locale }).detect(values) {
         return Some(progression);
     }
     if let Some(progression) = (SuffixedNumberDetector { locale }).detect(values) {
         return Some(progression);
     }
-    if let Some(progression) = (DateProgressionDetector { locale }).detect(values) {
+
+    let case_style = DateCaseStyle::new(case_seed);
+    if let Some(progression) = (DateProgressionDetector { locale, case_style }).detect(values) {
         return Some(progression);
     }
     None
@@ -550,7 +583,8 @@ mod tests {
     #[test]
     fn test_date_progression_detector_en() {
         let locale = get_locale("en").unwrap();
-        let detector = DateProgressionDetector { locale };
+        let case_style = DateCaseStyle::new("Monday");
+        let detector = DateProgressionDetector { locale, case_style };
 
         let values = vec!["Monday".to_string(), "Tuesday".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -577,16 +611,40 @@ mod tests {
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "Monday");
 
-        let values = vec!["saturday".to_string(), "SUNDAY".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "Monday");
-
         let values = vec!["Jan".to_string(), "Mar".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "May");
 
         let values = vec!["Jan".to_string(), "Feb".to_string(), "Apr".to_string()];
         assert!(detector.detect(&values).is_none());
+
+        let values = vec!["jan".to_string(), "feb".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "mar");
+
+        let values = vec!["saturday".to_string(), "SUNDAY".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "Monday");
+
+        let values = vec!["monday".to_string(), "tuesday".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "wednesday");
+
+        let values = vec!["january".to_string(), "february".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "march");
+
+        let values = vec!["MONDAY".to_string(), "TUESDAY".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "WEDNESDAY");
+
+        let values = vec!["JANUARY".to_string(), "FEBRUARY".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "MARCH");
+
+        let values = vec!["JAN".to_string(), "FEB".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "MAR");
     }
 
     #[test]
@@ -601,6 +659,14 @@ mod tests {
         let values = vec!["janvier".to_string(), "février".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "mars");
+
+        let values = vec!["LUNDI".to_string(), "MARDI".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "MERCREDI");
+
+        let values = vec!["JANVIER".to_string(), "FÉVRIER".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "MARS");
     }
 
     #[test]
@@ -615,6 +681,14 @@ mod tests {
         let values = vec!["enero".to_string(), "febrero".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "marzo");
+
+        let values = vec!["LUNES".to_string(), "MARTES".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "MIÉRCOLES");
+
+        let values = vec!["ENERO".to_string(), "FEBRERO".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "MARZO");
     }
 
     #[test]
