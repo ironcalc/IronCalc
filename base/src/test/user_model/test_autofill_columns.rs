@@ -490,6 +490,93 @@ fn short_month_progression() {
 }
 
 #[test]
+fn short_month_progression_lowercase() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "jan").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "feb").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("mar".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("apr".to_string())
+    );
+}
+
+#[test]
+fn short_month_progression_uppercase() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "JAN").unwrap(); // A1
+    model.set_user_input(0, 1, 2, "FEB").unwrap(); // B1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 2,
+                height: 1,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 3), // C1
+        Ok("MAR".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 4), // D1
+        Ok("APR".to_string())
+    );
+}
+
+#[test]
+fn short_month_progression_left_uppercase() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 10, "JAN").unwrap(); // J1
+    model.set_user_input(0, 1, 11, "FEB").unwrap(); // K1
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 10,
+                width: 2,
+                height: 1,
+            },
+            8,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 1, 9), // I1
+        Ok("DEC".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 1, 8), // H1
+        Ok("NOV".to_string())
+    );
+}
+
+#[test]
 fn alpha_beta_gamma() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
