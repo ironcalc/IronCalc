@@ -893,10 +893,28 @@ impl<'a> Model<'a> {
                     return Ok(());
                 }
                 None => {
-                    // this should not happen, but we need to handle it anyway
-                    // It means we got an array in a cell that we 'thought' could only return a scalar
-                    // It means we made a mistake in parse time
-                    debug_assert!(false, "Unexpected array result in non-array formula");
+                    // Scalar formula produced an array at runtime. We only coerce safely
+                    // when the array is 1x1 (the result is genuinely a single value just
+                    // wrapped in an array). For larger arrays, Excel would apply implicit
+                    // intersection (legacy) or auto-spill (dynamic arrays); neither is
+                    // implemented here, so picking [0][0] could silently produce wrong
+                    // results. Emit #VALUE! instead so the divergence is visible.
+                    let coerced = if array_width == 1 && array_height == 1 {
+                        match self.get_value_from_array(array, 1, 1) {
+                            Some(node) => array_node_to_formula_value(node),
+                            None => FormulaValue::Error {
+                                ei: Error::VALUE,
+                                o: "".to_string(),
+                                m: "Unexpected array result".to_string(),
+                            },
+                        }
+                    } else {
+                        FormulaValue::Error {
+                            ei: Error::VALUE,
+                            o: "".to_string(),
+                            m: "Array result in scalar context".to_string(),
+                        }
+                    };
                     *self.workbook.worksheets[sheet as usize]
                         .sheet_data
                         .get_mut(&row)
@@ -905,13 +923,9 @@ impl<'a> Model<'a> {
                         .ok_or("expected a column")? = Cell::CellFormula {
                         f: formula,
                         s,
-                        v: FormulaValue::Error {
-                            ei: Error::NIMPL,
-                            o: "".to_string(),
-                            m: "Unexpected array result".to_string(),
-                        },
+                        v: coerced,
                     };
-                    return Err("Unexpected array result".to_string());
+                    return Ok(());
                 }
             }
         }
