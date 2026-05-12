@@ -14,6 +14,7 @@ mod expand;
 mod hstack_vstack;
 mod tocol_torow;
 mod transpose;
+mod mmult;
 mod trimrange;
 mod wrapcols_wraprows;
 mod xmatch;
