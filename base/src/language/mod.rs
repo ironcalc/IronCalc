@@ -425,6 +425,9 @@ pub struct Functions {
     pub wraprows: String,
     pub xmatch: String,
     pub trimrange: String,
+    // Legacy aliases (Excel 2007 compatibility names that map to modern variants).
+    pub stdev_legacy: String,
+    pub norminv_legacy: String,
 }
 
 #[derive(Encode, Decode)]
