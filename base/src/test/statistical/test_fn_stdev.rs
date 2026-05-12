@@ -44,3 +44,15 @@ fn numbers() {
     assert_eq!(model._get_text("B3"), *"15.499955689");
     assert_eq!(model._get_text("B4"), *"14.936131032");
 }
+
+#[test]
+fn stdev_legacy_alias() {
+    // STDEV is the pre-Excel-2010 name for STDEV.S; both must produce the same result.
+    let mut model = new_empty_model();
+    model._set("A1", "=STDEV.S(10, 12, 23, 23, 16, 23, 21)");
+    model._set("A2", "=STDEV(10, 12, 23, 23, 16, 23, 21)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A2"), *"5.589105048");
+    assert_eq!(model._get_text("A1"), model._get_text("A2"));
+}

@@ -117,3 +117,17 @@ fn test_fn_norm_s_inv_smoke() {
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
 }
+
+#[test]
+fn norminv_legacy_alias() {
+    // NORMINV is the pre-Excel-2010 name for NORM.INV; both must produce the same result.
+    let mut model = new_empty_model();
+    model._set("A1", "=NORM.INV(0.5, 0, 1)");
+    model._set("A2", "=NORMINV(0.5, 0, 1)");
+    model._set("A3", "=NORM.INV(0.7, 0.2, 5)");
+    model._set("A4", "=NORMINV(0.7, 0.2, 5)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), model._get_text("A2"));
+    assert_eq!(model._get_text("A3"), model._get_text("A4"));
+}
