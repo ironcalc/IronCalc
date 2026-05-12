@@ -97,6 +97,7 @@ mod test_fn_round;
 mod test_fn_scan;
 mod test_fn_tocol_torow;
 mod test_fn_transpose;
+mod test_fn_mmult;
 mod test_fn_type;
 mod test_frozen_rows_and_columns;
 mod test_geomean;
