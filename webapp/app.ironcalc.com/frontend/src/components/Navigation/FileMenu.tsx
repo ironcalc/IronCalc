@@ -1,21 +1,25 @@
 import {
-  Check,
-  ChevronRight,
-  FileDown,
-  FileUp,
-  Globe,
-  Plus,
-  Table2,
-  Trash2,
-} from "lucide-react";
-import { type ComponentProps, forwardRef, useEffect, useState } from "react";
+  Button,
+  Menu,
+  MenuDivider,
+  MenuItem,
+  MenuItemWithSubmenu,
+} from "@ironcalc/workbook";
+import { FileDown, FileUp, Globe, Plus, Table2, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
 import { getModelsMetadata, getSelectedUuid } from "../storage";
 import UploadFileDialog from "../UploadFileDialog/UploadFileDialog";
-import "./navigation-menus.css";
-import { useLanguageSubmenu } from "./useLanguageSubmenu";
-import { useMenuAnchor } from "./useMenuAnchor";
+
+const LANGUAGES = [
+  ["en-US", "English"],
+  ["en-GB", "English"],
+  ["es-ES", "Español"],
+  ["fr-FR", "Français"],
+  ["de-DE", "Deutsch"],
+  ["it-IT", "Italiano"],
+] as const;
 
 export function FileMenu(props: {
   newModel: () => void;
@@ -31,145 +35,87 @@ export function FileMenu(props: {
 }) {
   const [isImportMenuOpen, setImportMenuOpen] = useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [anchorPosition, setAnchorPosition] = useState({ x: 0, y: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const { t, i18n } = useTranslation();
   const models = getModelsMetadata();
   const selectedUuid = getSelectedUuid();
 
-  const langMenu = useLanguageSubmenu();
-  const { anchorElement, menuElement, menuStyle } = useMenuAnchor(
-    props.isOpen,
-    props.onClose,
-    [langMenu.menuRef],
-  );
-
-  useEffect(() => {
-    if (!props.isOpen) langMenu.close();
-  }, [props.isOpen, langMenu.close]);
-
-  const handleMainMenuClose = () => {
-    props.onClose();
-    langMenu.close();
-  };
-
-  const handleLanguageItemSelect = (language: string) => {
-    i18n.changeLanguage(language);
-    props.onLanguageChange(language);
-    handleMainMenuClose();
+  const captureAnchor = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) {
+      setAnchorPosition({ x: rect.left, y: rect.bottom + 4 });
+    }
   };
 
   return (
     <>
-      <button
-        type="button"
+      <Button
+        ref={triggerRef}
+        variant="ghost"
         id="file-menu-button"
-        onClick={props.onOpen}
-        onMouseEnter={props.onHover}
-        ref={anchorElement}
-        className={`app-ic-nav-button${props.isOpen ? " is-active" : ""}`}
-        aria-haspopup="true"
+        onClick={() => {
+          captureAnchor();
+          props.onOpen();
+        }}
+        onMouseEnter={() => {
+          captureAnchor();
+          props.onHover();
+        }}
+        aria-haspopup="menu"
+        aria-expanded={props.isOpen ? "true" : "false"}
       >
         {t("file_bar.file_menu.button")}
-      </button>
+      </Button>
 
-      {props.isOpen && (
-        <MenuPaper ref={menuElement} style={menuStyle}>
-          <MenuItemWrapper
-            onClick={() => {
-              props.newModel();
-              props.onClose();
-            }}
-          >
-            <Plus />
-            {t("file_bar.file_menu.new_blank_workbook")}
-          </MenuItemWrapper>
-          <MenuItemWrapper
-            onClick={() => {
-              props.newModelFromTemplate();
-              props.onClose();
-            }}
-          >
-            <Table2 />
-            {t("file_bar.file_menu.new_from_template")}
-          </MenuItemWrapper>
-          <MenuItemWrapper
-            onClick={() => {
-              setImportMenuOpen(true);
-              props.onClose();
-            }}
-          >
-            <FileUp />
-            {t("file_bar.file_menu.import.button")}
-          </MenuItemWrapper>
-          <MenuDivider />
-          <MenuItemWrapper
-            onClick={() => {
-              props.onDownload();
-              props.onClose();
-            }}
-          >
-            <FileDown />
-            <MenuItemText>{t("file_bar.file_menu.download")}</MenuItemText>
-          </MenuItemWrapper>
-          <DeleteButton
-            onClick={() => {
-              setDeleteDialogOpen(true);
-              props.onClose();
-            }}
-          >
-            <Trash2 />
-            <MenuItemText>
-              {t("file_bar.file_menu.delete_workbook.button")}
-            </MenuItemText>
-          </DeleteButton>
-          <MenuDivider />
-          <MenuItemWrapper
-            ref={langMenu.anchorElement}
-            onMouseEnter={langMenu.handleMouseEnter}
-            onMouseLeave={langMenu.handleMouseLeave}
-            className="app-ic-nav-menu-item--space-between"
-          >
-            <Globe />
-            <MenuItemText>
-              {t("file_bar.file_menu.default_language")}
-            </MenuItemText>
-            <ChevronRight size={16} />
-          </MenuItemWrapper>
-        </MenuPaper>
-      )}
-
-      {langMenu.isOpen && (
-        <div
-          ref={langMenu.menuRef}
-          role="menu"
-          className="app-ic-nav-submenu"
-          style={langMenu.menuStyle}
-          onMouseEnter={langMenu.handleMouseEnter}
-          onMouseLeave={langMenu.handleMouseLeave}
+      <Menu
+        open={props.isOpen}
+        onClose={props.onClose}
+        anchorPosition={anchorPosition}
+      >
+        <MenuItem icon={<Plus />} onClick={() => props.newModel()}>
+          {t("file_bar.file_menu.new_blank_workbook")}
+        </MenuItem>
+        <MenuItem
+          icon={<Table2 />}
+          onClick={() => props.newModelFromTemplate()}
         >
-          {(
-            [
-              ["en-US", "English (en-US)"],
-              ["en-GB", "English (en-GB)"],
-              ["es-ES", "Español (es-ES)"],
-              ["fr-FR", "Français (fr-FR)"],
-              ["de-DE", "Deutsch (de-DE)"],
-              ["it-IT", "Italiano (it-IT)"],
-            ] as const
-          ).map(([lang, label]) => (
-            <MenuItemWrapper
+          {t("file_bar.file_menu.new_from_template")}
+        </MenuItem>
+        <MenuItem icon={<FileUp />} onClick={() => setImportMenuOpen(true)}>
+          {t("file_bar.file_menu.import.button")}
+        </MenuItem>
+        <MenuDivider />
+        <MenuItem icon={<FileDown />} onClick={() => props.onDownload()}>
+          {t("file_bar.file_menu.download")}
+        </MenuItem>
+        <MenuItem
+          destructive
+          icon={<Trash2 />}
+          onClick={() => setDeleteDialogOpen(true)}
+        >
+          {t("file_bar.file_menu.delete_workbook.button")}
+        </MenuItem>
+        <MenuDivider />
+        <MenuItemWithSubmenu
+          icon={<Globe />}
+          submenu={LANGUAGES.map(([lang, label]) => (
+            <MenuItem
               key={lang}
-              onClick={() => handleLanguageItemSelect(lang)}
+              checked={i18n.language === lang}
+              secondaryText={lang}
+              onClick={() => {
+                i18n.changeLanguage(lang);
+                props.onLanguageChange(lang);
+              }}
             >
-              {i18n.language === lang ? (
-                <Check size={16} />
-              ) : (
-                <span className="app-ic-nav-icon-placeholder" />
-              )}
               {label}
-            </MenuItemWrapper>
+            </MenuItem>
           ))}
-        </div>
-      )}
+        >
+          {t("file_bar.file_menu.default_language")}
+        </MenuItemWithSubmenu>
+      </Menu>
 
       {isImportMenuOpen && (
         <UploadFileDialog
@@ -187,53 +133,3 @@ export function FileMenu(props: {
     </>
   );
 }
-
-export const MenuPaper = forwardRef<HTMLDivElement, ComponentProps<"div">>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={`app-ic-nav-menu${className ? ` ${className}` : ""}`}
-      {...props}
-    />
-  ),
-);
-MenuPaper.displayName = "MenuPaper";
-
-export const MenuItemWrapper = forwardRef<
-  HTMLButtonElement,
-  ComponentProps<"button">
->(({ className, ...props }, ref) => (
-  <button
-    ref={ref}
-    type="button"
-    className={`app-ic-nav-menu-item${className ? ` ${className}` : ""}`}
-    {...props}
-  />
-));
-MenuItemWrapper.displayName = "MenuItemWrapper";
-
-export function MenuItemText({ className, ...props }: ComponentProps<"div">) {
-  return (
-    <div
-      className={`app-ic-nav-menu-item-text${className ? ` ${className}` : ""}`}
-      {...props}
-    />
-  );
-}
-
-export function MenuDivider() {
-  return <div className="app-ic-nav-menu-divider" />;
-}
-
-export const DeleteButton = forwardRef<
-  HTMLButtonElement,
-  ComponentProps<"button">
->(({ className, ...props }, ref) => (
-  <button
-    ref={ref}
-    type="button"
-    className={`app-ic-nav-menu-item app-ic-nav-menu-item--delete${className ? ` ${className}` : ""}`}
-    {...props}
-  />
-));
-DeleteButton.displayName = "DeleteButton";
