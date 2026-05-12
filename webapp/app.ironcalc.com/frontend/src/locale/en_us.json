@@ -85,6 +85,7 @@
     },
     "help_menu": {
       "button": "Help",
+      "about": "About Ironcalc",
       "documentation": "Documentation",
       "keyboard_shortcuts": "Keyboard Shortcuts"
     },
