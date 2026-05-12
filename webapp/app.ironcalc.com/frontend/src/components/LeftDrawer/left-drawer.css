@@ -452,7 +452,7 @@
   outline-offset: 2px;
 }
 
-.app-ic-drawer-workbook-ellipsis--open {
+.app-ic-drawer-workbook-ellipsis[aria-expanded="true"] {
   width: 24px;
   opacity: 1;
   background-color: var(--palette-grey-300);
