@@ -1,17 +1,17 @@
-import { Copy, FileDown, Pin, PinOff, Trash2 } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { useTranslation } from "react-i18next";
+import { Menu, MenuDivider, MenuItem } from "@ironcalc/workbook";
 import {
-  DeleteButton,
-  MenuDivider,
-  MenuItemWrapper,
-} from "../Navigation/FileMenu";
+  Copy,
+  EllipsisVertical,
+  FileDown,
+  Pin,
+  PinOff,
+  Trash2,
+} from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface WorkbookMenuProps {
-  position: { top: number; right: number };
   isPinned: boolean;
-  onClose: () => void;
+  onOpen: () => void;
   onDownload: () => void;
   onPinToggle: () => void;
   onDuplicate: () => void;
@@ -19,64 +19,44 @@ interface WorkbookMenuProps {
 }
 
 function WorkbookMenu({
-  position,
   isPinned,
-  onClose,
+  onOpen,
   onDownload,
   onPinToggle,
   onDuplicate,
   onDelete,
 }: WorkbookMenuProps) {
   const { t } = useTranslation();
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
-  return createPortal(
-    <>
-      <div
-        className="app-ic-drawer-menu-backdrop"
-        onClick={onClose}
-        role="none"
-      />
-      <div
-        ref={menuRef}
-        role="menu"
-        className="app-ic-nav-menu"
-        style={{ position: "fixed", top: position.top, right: position.right }}
-      >
-        <MenuItemWrapper onClick={onDownload}>
-          <FileDown />
-          {t("left_drawer.workbook_menu.download")}
-        </MenuItemWrapper>
-
-        <MenuItemWrapper onClick={onPinToggle}>
-          {isPinned ? <PinOff /> : <Pin />}
-          {isPinned
-            ? t("left_drawer.workbook_menu.unpin")
-            : t("left_drawer.workbook_menu.pin")}
-        </MenuItemWrapper>
-
-        <MenuItemWrapper onClick={onDuplicate}>
-          <Copy />
-          {t("left_drawer.workbook_menu.duplicate")}
-        </MenuItemWrapper>
-
-        <MenuDivider />
-
-        <DeleteButton onClick={onDelete}>
-          <Trash2 size={16} />
-          {t("left_drawer.workbook_menu.delete")}
-        </DeleteButton>
-      </div>
-    </>,
-    document.body,
+  return (
+    <Menu
+      trigger={
+        <button
+          type="button"
+          className="app-ic-drawer-workbook-ellipsis"
+          onClick={onOpen}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <EllipsisVertical />
+        </button>
+      }
+    >
+      <MenuItem icon={<FileDown />} onClick={onDownload}>
+        {t("left_drawer.workbook_menu.download")}
+      </MenuItem>
+      <MenuItem icon={isPinned ? <PinOff /> : <Pin />} onClick={onPinToggle}>
+        {isPinned
+          ? t("left_drawer.workbook_menu.unpin")
+          : t("left_drawer.workbook_menu.pin")}
+      </MenuItem>
+      <MenuItem icon={<Copy />} onClick={onDuplicate}>
+        {t("left_drawer.workbook_menu.duplicate")}
+      </MenuItem>
+      <MenuDivider />
+      <MenuItem destructive icon={<Trash2 />} onClick={onDelete}>
+        {t("left_drawer.workbook_menu.delete")}
+      </MenuItem>
+    </Menu>
   );
 }
 

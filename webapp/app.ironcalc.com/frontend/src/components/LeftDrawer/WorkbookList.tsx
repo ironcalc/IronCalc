@@ -1,5 +1,4 @@
-import { EllipsisVertical, Pin, Table2 } from "lucide-react";
-import type React from "react";
+import { Pin, Table2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import DeleteWorkbookDialog from "../DeleteWorkbookDialog";
 import {
@@ -31,14 +30,9 @@ function WorkbookList({
 }: WorkbookListProps) {
   const { t } = useTranslation();
   const {
-    menuAnchorEl,
-    menuPosition,
-    selectedWorkbookUuid,
-    isMenuOpen,
     isDeleteDialogOpen,
     workbookToDelete,
     handleMenuOpen,
-    handleMenuClose,
     handleDeleteClick,
     handleDeleteConfirm,
     handleDeleteCancel,
@@ -96,7 +90,6 @@ function WorkbookList({
   };
 
   const renderWorkbookItem = (uuid: string) => {
-    const isThisMenuOpen = isMenuOpen && selectedWorkbookUuid === uuid;
     return (
       <div
         key={uuid}
@@ -126,21 +119,20 @@ function WorkbookList({
         <button
           type="button"
           className="app-ic-drawer-workbook-select"
-          disabled={isMenuOpen}
           onClick={() => setModel(uuid)}
         >
           <span className="app-ic-drawer-workbook-name">
             {modelsMetadata[uuid].name}
           </span>
         </button>
-        <button
-          type="button"
-          className={`app-ic-drawer-workbook-ellipsis${isThisMenuOpen ? " app-ic-drawer-workbook-ellipsis--open" : ""}`}
-          onClick={(e) => handleMenuOpen(e, uuid)}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <EllipsisVertical />
-        </button>
+        <WorkbookMenu
+          isPinned={isWorkbookPinned(uuid)}
+          onOpen={() => handleMenuOpen(uuid)}
+          onDownload={() => handleDownload(uuid)}
+          onPinToggle={() => handlePinToggle(uuid)}
+          onDuplicate={() => handleDuplicate(uuid)}
+          onDelete={() => handleDeleteClick(uuid)}
+        />
       </div>
     );
   };
@@ -194,18 +186,6 @@ function WorkbookList({
       >
         {content}
       </div>
-
-      {menuAnchorEl && selectedWorkbookUuid && (
-        <WorkbookMenu
-          position={menuPosition}
-          isPinned={isWorkbookPinned(selectedWorkbookUuid)}
-          onClose={handleMenuClose}
-          onDownload={() => handleDownload(selectedWorkbookUuid)}
-          onPinToggle={() => handlePinToggle(selectedWorkbookUuid)}
-          onDuplicate={() => handleDuplicate(selectedWorkbookUuid)}
-          onDelete={() => handleDeleteClick(selectedWorkbookUuid)}
-        />
-      )}
 
       <DeleteWorkbookDialog
         open={isDeleteDialogOpen}
