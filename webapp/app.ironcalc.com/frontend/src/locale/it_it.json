@@ -85,6 +85,7 @@
     },
     "help_menu": {
       "button": "Aiuto",
+      "about": "Informazioni su IronCalc",
       "documentation": "Documentazione",
       "keyboard_shortcuts": "Scorciatoie da tastiera"
     },
