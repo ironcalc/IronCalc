@@ -51,3 +51,21 @@ fn concat() {
     assert_eq!(model._get_text("A1"), *"Hello");
     assert_eq!(model._get_text("A2"), *"Hello world!");
 }
+
+#[test]
+fn offset_returning_1x1_array_in_scalar_context() {
+    // OFFSET(SingleCellRef, r, c) returns a 1x1 array internally.
+    // When such an expression appears inside another scalar formula
+    // (e.g. multiplied by a number, or wrapped in IF), it should 
+    // transparently unwrap the 1x1 array to its single value.
+    let mut model = new_empty_model();
+    model._set("B1", "10");
+    model._set("B2", "20");
+    model._set("B3", "30");
+
+    model._set("A1", "=2 * IF(TRUE, OFFSET(B1, 2, 0), 0)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "60".to_string());
+}
