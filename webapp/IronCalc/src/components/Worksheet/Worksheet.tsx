@@ -465,7 +465,11 @@ const Worksheet = forwardRef(
         <ColumnHeaderContextMenu
           open={colHeaderContextMenuOpen}
           onClose={() => setColHeaderContextMenuOpen(false)}
-          anchorPosition={contextMenuPosition}
+          anchorPosition={
+            contextMenuPosition
+              ? { x: contextMenuPosition.left, y: contextMenuPosition.top }
+              : null
+          }
           onInsertColumnsLeft={(): void => {
             const view = model.getSelectedView();
             const columnStart = view.range[1];
@@ -596,7 +600,11 @@ const Worksheet = forwardRef(
         <RowHeaderContextMenu
           open={rowHeaderContextMenuOpen}
           onClose={() => setRowHeaderContextMenuOpen(false)}
-          anchorPosition={contextMenuPosition}
+          anchorPosition={
+            contextMenuPosition
+              ? { x: contextMenuPosition.left, y: contextMenuPosition.top }
+              : null
+          }
           onInsertRowsAbove={(): void => {
             const view = model.getSelectedView();
             const rowStart = view.range[0];
