@@ -909,6 +909,19 @@ impl<'a> Model<'a> {
                             },
                         }
                     } else {
+                        // Currently unreachable from normal user formulas: static
+                        // analysis wraps array-returning subexpressions in scalar
+                        // contexts in implicit intersection (`@`), which collapses
+                        // them to a single value before they reach the cell. If we
+                        // ever get here, static analysis or implicit-intersection
+                        // insertion has regressed.
+                        debug_assert!(
+                            false,
+                            "Larger-than-1x1 array reached scalar-context cell \
+                             (sheet={sheet}, row={row}, column={column}, \
+                             {array_width}x{array_height}); implicit intersection \
+                             was expected to collapse it.",
+                        );
                         FormulaValue::Error {
                             ei: Error::VALUE,
                             o: "".to_string(),
@@ -1372,6 +1385,20 @@ impl<'a> Model<'a> {
                         let array_height = a.len();
                         let array_width = if array_height > 0 { a[0].len() } else { 0 };
                         if !is_array_formula && (array_width != 1 || array_height != 1) {
+                            // Currently unreachable from normal user formulas: static
+                            // analysis wraps array-returning subexpressions in scalar
+                            // contexts in implicit intersection (`@`), which collapses
+                            // them to a single value before they reach the cell. If we
+                            // ever get here, static analysis or implicit-intersection
+                            // insertion has regressed. Mirrors the assertion in
+                            // `set_cells_with_result` so that the cell value and the
+                            // value observed by in-pass dependents stay consistent.
+                            debug_assert!(
+                                false,
+                                "Larger-than-1x1 array reached scalar-context cell \
+                                 ({cell_reference:?}, {array_width}x{array_height}); \
+                                 implicit intersection was expected to collapse it.",
+                            );
                             CalcResult::new_error(
                                 Error::VALUE,
                                 cell_reference,
