@@ -896,9 +896,11 @@ impl<'a> Model<'a> {
                     // Scalar formula produced an array at runtime. We only coerce safely
                     // when the array is 1x1 (the result is genuinely a single value just
                     // wrapped in an array). For larger arrays, Excel would apply implicit
-                    // intersection (legacy) or auto-spill (dynamic arrays); neither is
-                    // implemented here, so picking [0][0] could silently produce wrong
-                    // results. Emit #VALUE! instead so the divergence is visible.
+                     // intersection (legacy) or, for formulas identified as dynamic/array
+                     // at parse time, auto-spill. In this `original_range == None` path we
+                     // do not have that array/dynamic context, so neither behavior is
+                     // available here; picking [0][0] could silently produce wrong results.
+                     // Emit #VALUE! instead so the divergence is visible.
                     let coerced = if array_width == 1 && array_height == 1 {
                         match self.get_value_from_array(array, 1, 1) {
                             Some(node) => array_node_to_formula_value(node),
