@@ -618,13 +618,16 @@ mod tests {
         let values = vec!["Jan".to_string(), "Feb".to_string(), "Apr".to_string()];
         assert!(detector.detect(&values).is_none());
 
+        let case_style = DateCaseStyle::new("jan");
+        let detector = DateProgressionDetector { locale, case_style };
+
         let values = vec!["jan".to_string(), "feb".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "mar");
 
         let values = vec!["saturday".to_string(), "SUNDAY".to_string()];
         let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "Monday");
+        assert_eq!(progression.next(0), "monday");
 
         let values = vec!["monday".to_string(), "tuesday".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -633,6 +636,9 @@ mod tests {
         let values = vec!["january".to_string(), "february".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "march");
+
+        let case_style = DateCaseStyle::new("MONDAY");
+        let detector = DateProgressionDetector { locale, case_style };
 
         let values = vec!["MONDAY".to_string(), "TUESDAY".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -650,7 +656,8 @@ mod tests {
     #[test]
     fn test_date_progression_detector_fr() {
         let locale = get_locale("fr").unwrap();
-        let detector = DateProgressionDetector { locale };
+        let case_style = DateCaseStyle::new("lundi");
+        let detector = DateProgressionDetector { locale, case_style };
 
         let values = vec!["lundi".to_string(), "mardi".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -659,6 +666,9 @@ mod tests {
         let values = vec!["janvier".to_string(), "février".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "mars");
+
+        let case_style = DateCaseStyle::new("LUNDI");
+        let detector = DateProgressionDetector { locale, case_style };
 
         let values = vec!["LUNDI".to_string(), "MARDI".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -672,7 +682,8 @@ mod tests {
     #[test]
     fn test_date_progression_detector_es() {
         let locale = get_locale("es").unwrap();
-        let detector = DateProgressionDetector { locale };
+        let case_style = DateCaseStyle::new("lunes");
+        let detector = DateProgressionDetector { locale, case_style };
 
         let values = vec!["lunes".to_string(), "martes".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -681,6 +692,9 @@ mod tests {
         let values = vec!["enero".to_string(), "febrero".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "marzo");
+
+        let case_style = DateCaseStyle::new("LUNES");
+        let detector = DateProgressionDetector { locale, case_style };
 
         let values = vec!["LUNES".to_string(), "MARTES".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -694,24 +708,25 @@ mod tests {
     #[test]
     fn test_detect_progression() {
         let locale = get_locale("en").unwrap();
+        let case_seed = "Mar";
 
         let values = vec!["1".to_string(), "3".to_string()];
-        let p = detect_progression(&values, locale).unwrap();
+        let p = detect_progression(&values, locale, case_seed).unwrap();
         assert_eq!(p.next(0), "5");
 
         let values = vec!["X10".to_string(), "X20".to_string()];
-        let p = detect_progression(&values, locale).unwrap();
+        let p = detect_progression(&values, locale, case_seed).unwrap();
         assert_eq!(p.next(0), "X30");
 
         let values = vec!["Mar".to_string(), "Apr".to_string()];
-        let p = detect_progression(&values, locale).unwrap();
+        let p = detect_progression(&values, locale, case_seed).unwrap();
         assert_eq!(p.next(0), "May");
 
         let values = vec!["1".to_string(), "A".to_string(), "foo".to_string()];
-        assert!(detect_progression(&values, locale).is_none());
+        assert!(detect_progression(&values, locale, case_seed).is_none());
 
         let values = vec!["1".to_string(), "2".to_string()];
-        let p = detect_progression(&values, locale).unwrap();
+        let p = detect_progression(&values, locale, case_seed).unwrap();
         assert!(matches!(p, Progression::Numeric(_)));
         assert_eq!(p.next(0), "3");
     }
