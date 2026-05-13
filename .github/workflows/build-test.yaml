@@ -24,7 +24,9 @@ jobs:
           cache-dependency-path: |
             **/package-lock.json
       - name: Install node dependencies
-        run: npm install -g wasm-pack typescript
+        run: |
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          npm install -g typescript
       - name: Lint
         run: make lint
   test-rust:
@@ -52,7 +54,9 @@ jobs:
           cache-dependency-path: |
             **/package-lock.json
       - name: Install node dependencies
-        run: npm install -g wasm-pack typescript
+        run: |
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          npm install -g typescript
       - name: JS Tests
         run: make test-js
   test-python:
