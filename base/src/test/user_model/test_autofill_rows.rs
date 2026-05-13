@@ -579,8 +579,8 @@ fn de_locale_month_progression_upwards_uppercase() {
     model.locale = get_locale("de").unwrap();
     let mut model = UserModel::from_model(model);
 
-    model.set_user_input(0, 10, 1, "JANUAR").unwrap(); // A10
-    model.set_user_input(0, 11, 1, "FEBRUAR").unwrap(); // A11
+    model.set_user_input(0, 10, 1, "MÄRZ").unwrap(); // A10
+    model.set_user_input(0, 11, 1, "april").unwrap(); // A11
     model
         .auto_fill_rows(
             &Area {
@@ -596,11 +596,11 @@ fn de_locale_month_progression_upwards_uppercase() {
 
     assert_eq!(
         model.get_cell_content(0, 9, 1), // A9
-        Ok("DEZEMBER".to_string())
+        Ok("FEBRUAR".to_string())
     );
     assert_eq!(
         model.get_cell_content(0, 8, 1), // A8
-        Ok("NOVEMBER".to_string())
+        Ok("JANUAR".to_string())
     );
 }
 
