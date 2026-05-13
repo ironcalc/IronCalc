@@ -60,12 +60,12 @@ const ColumnHeaderContextMenu = (properties: ColumnHeaderContextMenuProps) => {
 
   const { columnStart, columnEnd, columnCount } = range;
 
+  if (!anchorPosition) {
+    return null;
+  }
+
   return (
-    <Menu
-      open={open}
-      onClose={onClose}
-      anchorPosition={anchorPosition ?? { x: 0, y: 0 }}
-    >
+    <Menu open={open} onClose={onClose} anchorPosition={anchorPosition}>
       <MenuItem icon={<Plus />} onClick={onInsertColumnsLeft}>
         {t("context_menu.column_header.insert_columns_before", {
           count: columnCount,
