@@ -1358,16 +1358,36 @@ impl<'a> Model<'a> {
                 // return the result of the evaluation.
                 match result {
                     CalcResult::Array(a) => {
-                        // If it is an array, we return the value of the first cell
-                        match a[0][0] {
-                            ArrayNode::Number(n) => CalcResult::Number(n),
-                            ArrayNode::Boolean(b) => CalcResult::Boolean(b),
-                            ArrayNode::String(ref s) => CalcResult::String(s.clone()),
-                            ArrayNode::Error(ref error) => {
-                                let message = error.to_localized_error_string(self.language);
-                                CalcResult::new_error(error.clone(), cell_reference, message)
+                        // The cell ended up holding an array. Coerce it to a scalar so
+                        // that dependents observe the same value `set_cells_with_result`
+                        // wrote into the cell:
+                        //   * Array formula anchor (CSE/Dynamic): return a[0][0] (the
+                        //     anchor's "first cell" value, matching the existing model).
+                        //   * Plain scalar formula: 1x1 -> unwrap to the single value;
+                        //     larger -> `#VALUE!`. This must mirror the coercion in
+                        //     `set_cells_with_result` so that dependents evaluated via
+                        //     `ReferenceKind -> evaluate_cell` in the same recalculation
+                        //     pass do not observe a different value than what is stored.
+                        let is_array_formula = matches!(original_cell, Cell::ArrayFormula { .. });
+                        let array_height = a.len();
+                        let array_width = if array_height > 0 { a[0].len() } else { 0 };
+                        if !is_array_formula && (array_width != 1 || array_height != 1) {
+                            CalcResult::new_error(
+                                Error::VALUE,
+                                cell_reference,
+                                "Array result in scalar context".to_string(),
+                            )
+                        } else {
+                            match a[0][0] {
+                                ArrayNode::Number(n) => CalcResult::Number(n),
+                                ArrayNode::Boolean(b) => CalcResult::Boolean(b),
+                                ArrayNode::String(ref s) => CalcResult::String(s.clone()),
+                                ArrayNode::Error(ref error) => {
+                                    let message = error.to_localized_error_string(self.language);
+                                    CalcResult::new_error(error.clone(), cell_reference, message)
+                                }
+                                ArrayNode::Empty => CalcResult::EmptyCell,
                             }
-                            ArrayNode::Empty => CalcResult::EmptyCell,
                         }
                     }
                     _ => result,
