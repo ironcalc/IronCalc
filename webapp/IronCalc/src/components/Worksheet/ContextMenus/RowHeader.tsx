@@ -57,12 +57,12 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
   const { rowStart, rowEnd } = range;
   const rowCount = rowEnd - rowStart + 1;
 
+  if (!anchorPosition) {
+    return null;
+  }
+
   return (
-    <Menu
-      open={open}
-      onClose={onClose}
-      anchorPosition={anchorPosition ?? { x: 0, y: 0 }}
-    >
+    <Menu open={open} onClose={onClose} anchorPosition={anchorPosition}>
       <MenuItem icon={<Plus />} onClick={onInsertRowsAbove}>
         {t("context_menu.row_header.insert_rows_above", { count: rowCount })}
       </MenuItem>
