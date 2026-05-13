@@ -9,7 +9,7 @@ enum DateCaseStyle {
 }
 impl DateCaseStyle {
     fn new(case_seed: &str) -> Self {
-        if case_seed == case_seed.to_uppercase() {
+        if case_seed.chars().all(|c| c.is_uppercase()) {
             Self::Uppercase
         } else if case_seed.chars().next().is_some_and(|c| c.is_uppercase()) {
             Self::Capitalized
@@ -103,6 +103,10 @@ struct NumericProgressionDetector<'a> {
 }
 
 impl<'a> NumericProgressionDetector<'a> {
+    fn new(locale: &'a Locale) -> Self {
+        Self { locale }
+    }
+
     fn validate_group(part: &str, min_len: usize, max_len: usize) -> Result<(), ()> {
         let len = part.len();
         (!part.is_empty()
@@ -275,18 +279,22 @@ impl SequenceDetector for SuffixedNumberDetector<'_> {
         if !all_have_same_prefix {
             return None;
         }
+        // let Progression::Numeric(numeric_progression) =
+        //     NumericProgressionDetector::new(self.locale).detect(&indexes)?
+        // else {
+        //     return None;
+        // };
 
-        if let Some(Progression::Numeric(numeric_progression_from_suffixes)) =
-            (NumericProgressionDetector {
-                locale: self.locale,
-            })
-            .detect(&suffixes)
-        {
-            return Some(Progression::SuffixedNumber(SuffixedProgression {
-                numeric_progression: numeric_progression_from_suffixes,
-                prefix: prefix0.to_string(),
-            }));
-        }
+        let Progression::Numeric(numeric_progression_from_suffixes) =
+            NumericProgressionDetector::new(self.locale).detect(&suffixes)?
+        else {
+            return None;
+        };
+
+        return Some(Progression::SuffixedNumber(SuffixedProgression {
+            numeric_progression: numeric_progression_from_suffixes,
+            prefix: prefix0.to_string(),
+        }));
 
         None
     }
@@ -314,23 +322,22 @@ impl<'a> DateProgressionDetector<'a> {
             })
             .collect::<Option<Vec<_>>>()?;
 
-        if let Some(Progression::Numeric(numeric_progression)) = (NumericProgressionDetector {
-            locale: self.locale,
-        })
-        .detect(&indexes)
-        {
-            let dates = match self.case_style {
-                DateCaseStyle::Uppercase => dates.iter().map(|date| date.to_uppercase()).collect(),
-                DateCaseStyle::Capitalized => dates.to_vec(),
-                DateCaseStyle::Lowercase => dates.iter().map(|date| date.to_lowercase()).collect(),
-            };
-            let date_progression = DateProgression {
-                numeric_progression,
-                dates: dates.to_vec(),
-            };
-            return Some(Progression::Date(date_progression));
-        }
-        None
+        let Progression::Numeric(numeric_progression) =
+            NumericProgressionDetector::new(self.locale).detect(&indexes)?
+        else {
+            return None;
+        };
+
+        let dates = match self.case_style {
+            DateCaseStyle::Uppercase => dates.iter().map(|date| date.to_uppercase()).collect(),
+            DateCaseStyle::Capitalized => dates.to_vec(),
+            DateCaseStyle::Lowercase => dates.iter().map(|date| date.to_lowercase()).collect(),
+        };
+        let date_progression = DateProgression {
+            numeric_progression,
+            dates,
+        };
+        Some(Progression::Date(date_progression))
     }
 }
 
@@ -358,7 +365,7 @@ pub(crate) fn detect_progression(
     locale: &Locale,
     case_seed: &str,
 ) -> Option<Progression> {
-    if let Some(progression) = (NumericProgressionDetector { locale }).detect(values) {
+    if let Some(progression) = NumericProgressionDetector::new(locale).detect(values) {
         return Some(progression);
     }
     if let Some(progression) = (SuffixedNumberDetector { locale }).detect(values) {
@@ -382,7 +389,7 @@ mod tests {
     #[test]
     fn test_numeric_progression_detector() {
         let locale = get_locale("en").unwrap();
-        let detector = NumericProgressionDetector { locale };
+        let detector = NumericProgressionDetector::new(locale);
 
         let values = vec!["1".to_string(), "2".to_string(), "3".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -409,7 +416,7 @@ mod tests {
     #[test]
     fn test_numeric_float() {
         let locale = get_locale("en").unwrap();
-        let detector = NumericProgressionDetector { locale };
+        let detector = NumericProgressionDetector::new(locale);
 
         let values = vec!["1.5".to_string(), "2.0".to_string(), "2.5".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -460,7 +467,7 @@ mod tests {
     #[test]
     fn test_numeric_grouping_validation() {
         let locale = get_locale("en").unwrap();
-        let detector = NumericProgressionDetector { locale };
+        let detector = NumericProgressionDetector::new(locale);
 
         let values = vec!["1000000".to_string(), "2000000".to_string()];
         let progression = detector.detect(&values).unwrap();
@@ -504,7 +511,7 @@ mod tests {
     #[test]
     fn test_numeric_progression_detector_locale_de() {
         let locale = get_locale("de").unwrap();
-        let detector = NumericProgressionDetector { locale };
+        let detector = NumericProgressionDetector::new(locale);
 
         let values = vec!["1,5".to_string(), "2,0".to_string(), "2,5".to_string()];
         let progression = detector.detect(&values).unwrap();
