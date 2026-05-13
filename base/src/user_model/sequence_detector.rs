@@ -347,7 +347,6 @@ impl<'a> SequenceDetector for DateProgressionDetector<'a> {
             &dates.day_names_short,
             &dates.months,
             &dates.months_short,
-            &dates.months_letter,
         ]
         .iter()
         .find_map(|&names_vec| self.find_progression(values, names_vec))
@@ -601,11 +600,6 @@ mod tests {
         let values = vec!["Jan".to_string(), "Feb".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "Mar");
-
-        let values = vec!["J".to_string(), "F".to_string(), "M".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "A");
-        assert_eq!(progression.next(1), "M");
 
         let values = vec!["Saturday".to_string(), "Sunday".to_string()];
         let progression = detector.detect(&values).unwrap();
