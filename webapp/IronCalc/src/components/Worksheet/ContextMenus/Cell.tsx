@@ -16,6 +16,8 @@ interface CellContextMenuProps {
   onInsertRowBelow: () => void;
   onDeleteColumn: () => void;
   onDeleteRow: () => void;
+  onCut: () => void;
+  onCopy: () => void;
 }
 
 const CellContextMenu = (properties: CellContextMenuProps) => {
@@ -32,6 +34,8 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
     onInsertRowBelow,
     onDeleteColumn,
     onDeleteRow,
+    onCut,
+    onCopy,
   } = properties;
 
   if (!anchorPosition) {
@@ -40,10 +44,10 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
 
   return (
     <Menu open={open} onClose={onClose} anchorPosition={anchorPosition}>
-      <MenuItem icon={<Scissors />} onClick={() => {}}>
+      <MenuItem icon={<Scissors />} onClick={onCut}>
         {t("context_menu.cell.cut")}
       </MenuItem>
-      <MenuItem icon={<Copy />} onClick={() => {}}>
+      <MenuItem icon={<Copy />} onClick={onCopy}>
         {t("context_menu.cell.copy")}
       </MenuItem>
       <MenuItem icon={<Clipboard />} onClick={() => {}}>
