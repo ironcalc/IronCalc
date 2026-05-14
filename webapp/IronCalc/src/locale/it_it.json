@@ -121,6 +121,17 @@
       "show_hidden_columns": "Mostra colonne nascoste",
       "unfreeze_columns": "Rimuovi blocco delle colonne"
     },
+    "cell": {
+      "cut": "Taglia",
+      "copy": "Copia",
+      "paste": "Incolla",
+      "insert": "Inserisci...",
+      "insert_column_left": "Colonna a sinistra",
+      "insert_column_right": "Colonna a destra",
+      "insert_row_above": "Riga sopra",
+      "insert_row_below": "Riga sotto",
+      "delete": "Elimina..."
+    },
     "row_header": {
       "delete_row": "Elimina la riga '{{row}}'",
       "delete_rows": "Elimina le righe {{rowStart}} - {{rowEnd}}",

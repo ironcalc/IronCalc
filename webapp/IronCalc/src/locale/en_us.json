@@ -121,6 +121,17 @@
       "show_hidden_columns": "Show hidden columns",
       "unfreeze_columns": "Unfreeze columns"
     },
+    "cell": {
+      "cut": "Cut",
+      "copy": "Copy",
+      "paste": "Paste",
+      "insert": "Insert...",
+      "insert_column_left": "Column left",
+      "insert_column_right": "Column right",
+      "insert_row_above": "Row above",
+      "insert_row_below": "Row below",
+      "delete": "Delete..."
+    },
     "row_header": {
       "delete_row": "Delete row '{{row}}'",
       "delete_rows": "Delete rows {{rowStart}} - {{rowEnd}}",
