@@ -143,11 +143,20 @@ export function attachOutlineHandle(
         break;
       }
     }
+    const selectedRowStart = Math.min(rowStart, extendedArea.rowStart);
+    const selectedColumnStart = Math.min(columnStart, extendedArea.columnStart);
+    const selectedRowEnd = Math.max(rowStart + height - 1, extendedArea.rowEnd);
+    const selectedColumnEnd = Math.max(
+      columnStart + width - 1,
+      extendedArea.columnEnd,
+    );
+
+    worksheet.model.setSelectedCell(selectedRowStart, selectedColumnStart);
     worksheet.model.setSelectedRange(
-      Math.min(rowStart, extendedArea.rowStart),
-      Math.min(columnStart, extendedArea.columnStart),
-      Math.max(rowStart + height - 1, extendedArea.rowEnd),
-      Math.max(columnStart + width - 1, extendedArea.columnEnd),
+      selectedRowStart,
+      selectedColumnStart,
+      selectedRowEnd,
+      selectedColumnEnd,
     );
     worksheet.workbookState.clearExtendToArea();
     worksheet.renderSheet();
