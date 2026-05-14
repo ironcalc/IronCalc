@@ -770,6 +770,14 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           }}
           ref={worksheetRef}
           canEdit={isArrayFormula}
+          onCut={(): void => {
+            focusWorkbook();
+            document.execCommand("cut");
+          }}
+          onCopy={(): void => {
+            focusWorkbook();
+            document.execCommand("copy");
+          }}
         />
 
         <SheetTabBar
