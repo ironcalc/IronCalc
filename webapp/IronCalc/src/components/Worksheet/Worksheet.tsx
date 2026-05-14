@@ -50,6 +50,7 @@ const Worksheet = forwardRef(
       canEdit: boolean;
       onCut: () => void;
       onCopy: () => void;
+      onPaste: () => void;
     },
     ref,
   ) => {
@@ -84,7 +85,7 @@ const Worksheet = forwardRef(
 
     const ignoreScrollEventRef = useRef(false);
 
-    const { model, workbookState, refresh, canEdit, onCut, onCopy } = props;
+    const { model, workbookState, refresh, canEdit, onCut, onCopy, onPaste } = props;
     const { t } = useTranslation();
     const [clientWidth, clientHeight] = useWindowSize();
 
@@ -484,6 +485,7 @@ const Worksheet = forwardRef(
           row={model.getSelectedView().row}
           onCut={onCut}
           onCopy={onCopy}
+          onPaste={onPaste}
           onInsertColumnLeft={(): void => {
             const view = model.getSelectedView();
             try {
