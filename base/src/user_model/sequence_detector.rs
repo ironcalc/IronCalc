@@ -9,6 +9,7 @@ enum DateCaseStyle {
 }
 impl DateCaseStyle {
     fn new(case_seed: &str) -> Self {
+        let case_seed = case_seed.trim_matches(['.', ' ']);
         if case_seed.chars().all(|c| c.is_uppercase()) {
             Self::Uppercase
         } else if case_seed.chars().next().is_some_and(|c| c.is_uppercase()) {
@@ -318,7 +319,7 @@ impl<'a> DateProgressionDetector<'a> {
             .iter()
             .map(|value| {
                 date_indexes
-                    .get(&value.to_lowercase())
+                    .get(&value.trim_matches(['.', ' ']).to_lowercase())
                     .map(|&idx| idx.to_string())
             })
             .collect::<Option<Vec<_>>>()?;
@@ -603,6 +604,14 @@ mod tests {
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "Mar");
 
+        let values = vec!["Jan.".to_string(), "Feb.".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "Mar");
+
+        let values = vec!["Jan ".to_string(), "Feb ".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "Mar");
+
         let values = vec!["Saturday".to_string(), "Sunday".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "Monday");
@@ -645,6 +654,13 @@ mod tests {
         assert_eq!(progression.next(0), "MARCH");
 
         let values = vec!["JAN".to_string(), "FEB".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "MAR");
+
+        let case_style = DateCaseStyle::new(" MONDAY ");
+        let detector = DateProgressionDetector { locale, case_style };
+
+        let values = vec!["JAN. ".to_string(), "FEB. ".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "MAR");
     }
