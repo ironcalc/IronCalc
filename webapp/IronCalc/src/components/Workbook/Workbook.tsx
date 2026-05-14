@@ -174,7 +174,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }
       }
       rootRef.current?.dispatchEvent(
-        new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }),
+        new ClipboardEvent("paste", {
+          clipboardData: dt,
+          bubbles: true,
+          cancelable: true,
+        }),
       );
     } catch {
       // fall back to text-only if clipboard.read() is unavailable
@@ -183,7 +187,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         const dt = new DataTransfer();
         dt.setData("text/plain", text);
         rootRef.current?.dispatchEvent(
-          new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }),
+          new ClipboardEvent("paste", {
+            clipboardData: dt,
+            bubbles: true,
+            cancelable: true,
+          }),
         );
       } catch {
         // clipboard access denied

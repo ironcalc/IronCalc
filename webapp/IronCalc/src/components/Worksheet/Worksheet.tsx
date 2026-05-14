@@ -85,7 +85,8 @@ const Worksheet = forwardRef(
 
     const ignoreScrollEventRef = useRef(false);
 
-    const { model, workbookState, refresh, canEdit, onCut, onCopy, onPaste } = props;
+    const { model, workbookState, refresh, canEdit, onCut, onCopy, onPaste } =
+      props;
     const { t } = useTranslation();
     const [clientWidth, clientHeight] = useWindowSize();
 
