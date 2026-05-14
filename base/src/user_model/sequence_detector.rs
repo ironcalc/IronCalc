@@ -17,6 +17,14 @@ impl DateCaseStyle {
             Self::Lowercase
         }
     }
+
+    fn apply(&self, dates: &[String]) -> Vec<String> {
+        match self {
+            DateCaseStyle::Uppercase => dates.iter().map(|date| date.to_uppercase()).collect(),
+            DateCaseStyle::Capitalized => dates.to_vec(),
+            DateCaseStyle::Lowercase => dates.iter().map(|date| date.to_lowercase()).collect(),
+        }
+    }
 }
 pub(crate) struct NumericProgression {
     last: f64,
@@ -279,11 +287,6 @@ impl SequenceDetector for SuffixedNumberDetector<'_> {
         if !all_have_same_prefix {
             return None;
         }
-        // let Progression::Numeric(numeric_progression) =
-        //     NumericProgressionDetector::new(self.locale).detect(&indexes)?
-        // else {
-        //     return None;
-        // };
 
         let Progression::Numeric(numeric_progression_from_suffixes) =
             NumericProgressionDetector::new(self.locale).detect(&suffixes)?
@@ -291,12 +294,10 @@ impl SequenceDetector for SuffixedNumberDetector<'_> {
             return None;
         };
 
-        return Some(Progression::SuffixedNumber(SuffixedProgression {
+        Some(Progression::SuffixedNumber(SuffixedProgression {
             numeric_progression: numeric_progression_from_suffixes,
             prefix: prefix0.to_string(),
-        }));
-
-        None
+        }))
     }
 }
 
@@ -328,16 +329,10 @@ impl<'a> DateProgressionDetector<'a> {
             return None;
         };
 
-        let dates = match self.case_style {
-            DateCaseStyle::Uppercase => dates.iter().map(|date| date.to_uppercase()).collect(),
-            DateCaseStyle::Capitalized => dates.to_vec(),
-            DateCaseStyle::Lowercase => dates.iter().map(|date| date.to_lowercase()).collect(),
-        };
-        let date_progression = DateProgression {
+        Some(Progression::Date(DateProgression {
             numeric_progression,
-            dates,
-        };
-        Some(Progression::Date(date_progression))
+            dates: self.case_style.apply(dates),
+        }))
     }
 }
 
