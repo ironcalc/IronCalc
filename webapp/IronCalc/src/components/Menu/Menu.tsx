@@ -92,8 +92,12 @@ export function Menu(props: MenuProperties) {
       const triggerContains = isTriggerMode
         ? (triggerPosition.triggerRef.current?.contains(target) ?? false)
         : false;
+      const isInsideMenu = menuRef.current?.contains(target) ?? false;
+      const isInsideSubmenu = !!(target as Element).closest?.(
+        ".ic-menu-wrapper",
+      );
 
-      if (!triggerContains && !(menuRef.current?.contains(target) ?? false)) {
+      if (!triggerContains && !isInsideMenu && !isInsideSubmenu) {
         close();
       }
     }
