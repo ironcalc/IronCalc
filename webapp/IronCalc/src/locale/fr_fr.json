@@ -121,6 +121,17 @@
       "show_hidden_columns": "Afficher les colonnes masquées",
       "unfreeze_columns": "Annuler le figeage des colonnes"
     },
+    "cell": {
+      "cut": "Couper",
+      "copy": "Copier",
+      "paste": "Coller",
+      "insert": "Insérer...",
+      "insert_column_left": "Colonne à gauche",
+      "insert_column_right": "Colonne à droite",
+      "insert_row_above": "Ligne au-dessus",
+      "insert_row_below": "Ligne en-dessous",
+      "delete": "Supprimer..."
+    },
     "row_header": {
       "delete_row": "Supprimer la ligne '{{row}}'",
       "delete_rows": "Supprimer les lignes {{rowStart}} - {{rowEnd}}",

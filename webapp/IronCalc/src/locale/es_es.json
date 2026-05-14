@@ -121,6 +121,17 @@
       "show_hidden_columns": "Mostrar columnas ocultas",
       "unfreeze_columns": "Quitar fijación de columnas"
     },
+    "cell": {
+      "cut": "Cortar",
+      "copy": "Copiar",
+      "paste": "Pegar",
+      "insert": "Insertar...",
+      "insert_column_left": "Columna a la izquierda",
+      "insert_column_right": "Columna a la derecha",
+      "insert_row_above": "Fila encima",
+      "insert_row_below": "Fila debajo",
+      "delete": "Eliminar..."
+    },
     "row_header": {
       "delete_row": "Eliminar la fila '{{row}}'",
       "delete_rows": "Eliminar las filas {{rowStart}} - {{rowEnd}}",
