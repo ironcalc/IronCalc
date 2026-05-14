@@ -3,7 +3,6 @@
 use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 use crate::types::{ArrayKind, Cell, CellType, FormulaValue};
-use crate::types::{Cell, CellType};
 
 #[test]
 fn test_cell_get_type() {
@@ -23,7 +22,7 @@ fn test_cell_get_type() {
     model._set("A13", "=42"); // an Cell::EmptyCell, considered to be a CellType::Number
     model.evaluate();
 
-    model.cell_clear_contents(0, 13, 1).unwrap(); // A13
+    model._cell_clear_contents(0, 13, 1).unwrap(); // A13
     model._set("A14", "=42"); // a CellFormula
 
     assert_eq!(model._get_cell("A1").get_type(), CellType::Text);
@@ -69,7 +68,7 @@ fn test_cell_get_text_on_boolean_cell() {
     model.set_user_input(0, 1, 1, "TRUE".to_string()).unwrap();
     model.evaluate();
 
-    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "TRUE");
+    assert_eq!(model.get_localized_cell_content(0, 1, 1).unwrap(), "TRUE");
 }
 
 #[test]
@@ -80,9 +79,9 @@ fn test_cell_value_on_empty_shared_string() {
         .workbook
         .worksheet_mut(0)
         .unwrap()
-        .set_cell_with_string(1, 1, 1, 1); // A1
+        .set_cell_with_string(1, 1, 1, 0); // A1
 
-    assert_eq!(model.get_cell_content(0, 1, 1).unwrap(), "");
+    assert_eq!(model.get_localized_cell_content(0, 1, 1).unwrap(), "");
 }
 
 #[test]
