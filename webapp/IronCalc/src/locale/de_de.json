@@ -119,6 +119,17 @@
       "show_hidden_columns": "Ausgeblendete Spalten einblenden",
       "unfreeze_columns": "Fixierung der Spalten aufheben"
     },
+    "cell": {
+      "cut": "Ausschneiden",
+      "copy": "Kopieren",
+      "paste": "Einfügen",
+      "insert": "Einfügen...",
+      "insert_column_left": "Spalte links",
+      "insert_column_right": "Spalte rechts",
+      "insert_row_above": "Zeile oben",
+      "insert_row_below": "Zeile unten",
+      "delete": "Löschen..."
+    },
     "row_header": {
       "delete_row": "Zeile '{{row}}' löschen",
       "delete_rows": "Zeilen {{rowStart}} - {{rowEnd}} löschen",
