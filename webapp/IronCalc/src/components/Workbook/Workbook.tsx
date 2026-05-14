@@ -163,6 +163,34 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     updateRangeStyle("font.size_delta", `${delta}`);
   };
 
+  const handlePaste = useCallback(async (): Promise<void> => {
+    focusWorkbook();
+    try {
+      const items = await navigator.clipboard.read();
+      const dt = new DataTransfer();
+      for (const item of items) {
+        for (const type of item.types) {
+          dt.setData(type, await (await item.getType(type)).text());
+        }
+      }
+      rootRef.current?.dispatchEvent(
+        new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }),
+      );
+    } catch {
+      // fall back to text-only if clipboard.read() is unavailable
+      try {
+        const text = await navigator.clipboard.readText();
+        const dt = new DataTransfer();
+        dt.setData("text/plain", text);
+        rootRef.current?.dispatchEvent(
+          new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }),
+        );
+      } catch {
+        // clipboard access denied
+      }
+    }
+  }, [focusWorkbook]);
+
   const onCopyStyles = () => {
     const {
       sheet,
@@ -778,6 +806,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             focusWorkbook();
             document.execCommand("copy");
           }}
+          onPaste={handlePaste}
         />
 
         <SheetTabBar
