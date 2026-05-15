@@ -25,6 +25,7 @@ interface RowHeaderContextMenuProps {
   onMoveRowsDown: () => void;
   onHideRows: () => void;
   onShowHiddenRows: () => void;
+  hiddenRowsCount: number;
   range: {
     rowStart: number;
     columnStart: string;
@@ -50,6 +51,7 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
     onMoveRowsDown,
     onHideRows,
     onShowHiddenRows,
+    hiddenRowsCount,
     range,
     frozenRowsCount,
   } = properties;
@@ -86,9 +88,11 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
           ? t("context_menu.row_header.hide_row", { row: rowStart })
           : t("context_menu.row_header.hide_rows", { rowStart, rowEnd })}
       </MenuItem>
-      <MenuItem icon={<Eye />} onClick={onShowHiddenRows}>
-        {t("context_menu.row_header.show_hidden_rows")}
-      </MenuItem>
+      {hiddenRowsCount > 0 && (
+        <MenuItem icon={<Eye />} onClick={onShowHiddenRows}>
+          {t("context_menu.row_header.show_hidden_rows")}
+        </MenuItem>
+      )}
 
       <MenuDivider />
 
