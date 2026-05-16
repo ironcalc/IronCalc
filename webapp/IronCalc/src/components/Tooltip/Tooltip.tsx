@@ -1,6 +1,6 @@
 import { type ReactElement, useId, useState } from "react";
-import { createPortal } from "react-dom";
 
+import { Portal } from "../PortalContext";
 import "./tooltip.css";
 import { useTooltipPosition } from "./useTooltipPosition";
 
@@ -47,7 +47,7 @@ export function Tooltip({ title, children }: TooltipProperties) {
         {children}
       </span>
 
-      {createPortal(
+      <Portal>
         <div
           ref={tooltipRef}
           id={tooltipId}
@@ -57,9 +57,8 @@ export function Tooltip({ title, children }: TooltipProperties) {
           style={position}
         >
           {title}
-        </div>,
-        document.body,
-      )}
+        </div>
+      </Portal>
     </>
   );
 }

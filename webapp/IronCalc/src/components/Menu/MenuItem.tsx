@@ -1,6 +1,6 @@
 import { Check, ChevronRight } from "lucide-react";
 import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { Portal } from "../PortalContext";
 import { MenuContext } from "./Menu";
 import { useAnchorPosition } from "./useAnchorPosition";
 import { useMenuKeyDown } from "./useMenuKeyDown";
@@ -187,37 +187,36 @@ export function MenuItemWithSubmenu({
         </span>
       </button>
 
-      {open
-        ? createPortal(
-            <MenuContext.Provider
-              value={{
-                close: closeAll,
-                activeSetOpenRef: submenuActiveSetOpenRef,
-              }}
+      {open ? (
+        <Portal>
+          <MenuContext.Provider
+            value={{
+              close: closeAll,
+              activeSetOpenRef: submenuActiveSetOpenRef,
+            }}
+          >
+            <div
+              ref={menuRef}
+              role="presentation"
+              className="ic-menu-wrapper"
+              style={position}
             >
               <div
-                ref={menuRef}
-                role="presentation"
-                className="ic-menu-wrapper"
-                style={position}
+                role="menu"
+                className="ic-menu"
+                onMouseEnter={cancelHide}
+                onMouseLeave={scheduleHide}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  handleMenuKeyDown(e);
+                }}
               >
-                <div
-                  role="menu"
-                  className="ic-menu"
-                  onMouseEnter={cancelHide}
-                  onMouseLeave={scheduleHide}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    handleMenuKeyDown(e);
-                  }}
-                >
-                  {submenu}
-                </div>
+                {submenu}
               </div>
-            </MenuContext.Provider>,
-            document.body,
-          )
-        : null}
+            </div>
+          </MenuContext.Provider>
+        </Portal>
+      ) : null}
     </>
   );
 }

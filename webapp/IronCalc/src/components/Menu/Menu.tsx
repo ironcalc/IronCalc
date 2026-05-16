@@ -9,8 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
-
+import { Portal } from "../PortalContext";
 import "./menu.css";
 import { useAnchorPosition } from "./useAnchorPosition";
 import { useMenuKeyDown } from "./useMenuKeyDown";
@@ -115,21 +114,20 @@ export function Menu(props: MenuProperties) {
     firstItem?.focus();
   }, [open, menuRef]);
 
-  const menu = open
-    ? createPortal(
-        <div
-          ref={menuRef}
-          role="presentation"
-          className="ic-menu-wrapper"
-          style={menuStyle}
-        >
-          <div role="menu" className="ic-menu" onKeyDown={handleMenuKeyDown}>
-            {props.children}
-          </div>
-        </div>,
-        document.body,
-      )
-    : null;
+  const menu = open ? (
+    <Portal>
+      <div
+        ref={menuRef}
+        role="presentation"
+        className="ic-menu-wrapper"
+        style={menuStyle}
+      >
+        <div role="menu" className="ic-menu" onKeyDown={handleMenuKeyDown}>
+          {props.children}
+        </div>
+      </div>
+    </Portal>
+  ) : null;
 
   if (!isTriggerMode) {
     return (

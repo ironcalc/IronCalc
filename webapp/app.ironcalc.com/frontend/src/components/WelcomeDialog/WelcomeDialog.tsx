@@ -2,11 +2,11 @@ import {
   Button,
   IconButton,
   IronCalcIconWhite as IronCalcIcon,
+  Portal,
 } from "@ironcalc/workbook";
 import { Table, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import TemplatesList from "./TemplatesList";
 import TemplatesListItem from "./TemplatesListItem";
@@ -51,68 +51,71 @@ function WelcomeDialog({
     onClose: handleClose,
   });
 
-  return createPortal(
-    <div className="app-ic-wd-backdrop" onClick={handleClose} role="none">
-      <div
-        ref={dialogRef}
-        className="app-ic-wd-paper"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={onKeyDown}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
-        <div className="app-ic-wd-welcome-header">
-          <div className="app-ic-wd-header-body">
-            <DialogHeaderLogoWrapper>
-              <IronCalcIcon />
-            </DialogHeaderLogoWrapper>
-            <span id={titleId} className="app-ic-wd-header-title">
-              {t("welcome_dialog.title")}
-            </span>
-            <span className="app-ic-wd-header-subtitle">
-              {t("welcome_dialog.subtitle")}
-            </span>
-          </div>
-          <IconButton
-            ref={closeButtonRef}
-            icon={<X />}
-            aria-label={t("welcome_dialog.close_dialog")}
-            onClick={handleClose}
-          />
-        </div>
-        <div className="app-ic-wd-content">
-          <div className="app-ic-wd-list-title">{t("welcome_dialog.new")}</div>
-          <div className="app-ic-wd-templates-list">
-            <TemplatesListItem
-              title={t("welcome_dialog.blank_workbook")}
-              description={t("welcome_dialog.blank_workbook_description")}
-              icon={<Table />}
-              iconColor="#F2994A"
-              active={selectedTemplate === "blank"}
-              onClick={() => setSelectedTemplate("blank")}
+  return (
+    <Portal>
+      <div className="app-ic-wd-backdrop" onClick={handleClose} role="none">
+        <div
+          ref={dialogRef}
+          className="app-ic-wd-paper"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={onKeyDown}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+        >
+          <div className="app-ic-wd-welcome-header">
+            <div className="app-ic-wd-header-body">
+              <DialogHeaderLogoWrapper>
+                <IronCalcIcon />
+              </DialogHeaderLogoWrapper>
+              <span id={titleId} className="app-ic-wd-header-title">
+                {t("welcome_dialog.title")}
+              </span>
+              <span className="app-ic-wd-header-subtitle">
+                {t("welcome_dialog.subtitle")}
+              </span>
+            </div>
+            <IconButton
+              ref={closeButtonRef}
+              icon={<X />}
+              aria-label={t("welcome_dialog.close_dialog")}
+              onClick={handleClose}
             />
           </div>
-          <div className="app-ic-wd-list-title">
-            {t("welcome_dialog.templates.templates")}
+          <div className="app-ic-wd-content">
+            <div className="app-ic-wd-list-title">
+              {t("welcome_dialog.new")}
+            </div>
+            <div className="app-ic-wd-templates-list">
+              <TemplatesListItem
+                title={t("welcome_dialog.blank_workbook")}
+                description={t("welcome_dialog.blank_workbook_description")}
+                icon={<Table />}
+                iconColor="#F2994A"
+                active={selectedTemplate === "blank"}
+                onClick={() => setSelectedTemplate("blank")}
+              />
+            </div>
+            <div className="app-ic-wd-list-title">
+              {t("welcome_dialog.templates.templates")}
+            </div>
+            <TemplatesList
+              selectedTemplate={selectedTemplate}
+              handleTemplateSelect={setSelectedTemplate}
+            />
           </div>
-          <TemplatesList
-            selectedTemplate={selectedTemplate}
-            handleTemplateSelect={setSelectedTemplate}
-          />
-        </div>
-        <div className="app-ic-wd-footer">
-          <Button
-            ref={confirmButtonRef}
-            onClick={() => onSelectTemplate(selectedTemplate)}
-          >
-            {t("welcome_dialog.create_workbook")}
-          </Button>
+          <div className="app-ic-wd-footer">
+            <Button
+              ref={confirmButtonRef}
+              onClick={() => onSelectTemplate(selectedTemplate)}
+            >
+              {t("welcome_dialog.create_workbook")}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </Portal>
   );
 }
 

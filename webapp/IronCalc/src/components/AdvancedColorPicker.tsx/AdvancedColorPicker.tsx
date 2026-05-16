@@ -2,10 +2,10 @@ import { Check } from "lucide-react";
 import type { RefObject } from "react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "../Button/Button";
 import "./advanced-color-picker.css";
+import { Portal } from "../PortalContext";
 import { getFocusableElements } from "../util";
 import { useKeyDown } from "./useKeyDown";
 
@@ -136,102 +136,107 @@ const AdvancedColorPicker = ({
     return null;
   }
 
-  return createPortal(
-    <div className="ic-menu-layer">
-      <div className="ic-menu-backdrop" onClick={onCancel} aria-hidden="true" />
-
-      <div
-        ref={panelRef}
-        className="ic-advanced-color-picker-panel"
-        style={{
-          top: `${position.top}px`,
-          left: `${position.left}px`,
-        }}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("color_picker.title")}
-        onKeyDown={onKeyDown}
-      >
-        {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
-        {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
+  return (
+    <Portal>
+      <div className="ic-menu-layer">
         <div
-          className="ic-advanced-color-picker"
-          onClick={(event) => {
-            // Otherwise the sheet would grab the keyboard focus
-            event.stopPropagation();
+          className="ic-menu-backdrop"
+          onClick={onCancel}
+          aria-hidden="true"
+        />
+
+        <div
+          ref={panelRef}
+          className="ic-advanced-color-picker-panel"
+          style={{
+            top: `${position.top}px`,
+            left: `${position.left}px`,
           }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("color_picker.title")}
+          onKeyDown={onKeyDown}
         >
-          <HexColorPicker
-            color={selectedColor}
-            onChange={(newColor): void => {
-              setSelectedColor(newColor);
+          {/** biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}
+          {/** biome-ignore lint/a11y/useKeyWithClickEvents: FIXME */}
+          <div
+            className="ic-advanced-color-picker"
+            onClick={(event) => {
+              // Otherwise the sheet would grab the keyboard focus
+              event.stopPropagation();
             }}
-          />
+          >
+            <HexColorPicker
+              color={selectedColor}
+              onChange={(newColor): void => {
+                setSelectedColor(newColor);
+              }}
+            />
 
-          <div className="ic-advanced-color-picker-divider" />
+            <div className="ic-advanced-color-picker-divider" />
 
-          <div className="ic-advanced-color-picker-input-row">
-            <div className="ic-advanced-color-picker-hex-wrapper">
-              <label
-                className="ic-advanced-color-picker-hex-label"
-                htmlFor={hexInputId}
-              >
-                Hex
-              </label>
+            <div className="ic-advanced-color-picker-input-row">
+              <div className="ic-advanced-color-picker-hex-wrapper">
+                <label
+                  className="ic-advanced-color-picker-hex-label"
+                  htmlFor={hexInputId}
+                >
+                  Hex
+                </label>
 
-              <div className="ic-advanced-color-picker-hex-input-box">
-                <div className="ic-advanced-color-picker-hash-label">#</div>
+                <div className="ic-advanced-color-picker-hex-input-box">
+                  <div className="ic-advanced-color-picker-hash-label">#</div>
 
-                <HexColorInput
-                  id={hexInputId}
-                  className="ic-advanced-color-picker-hex-input"
-                  color={selectedColor}
-                  onChange={(newColor): void => {
-                    setSelectedColor(newColor);
-                  }}
-                />
+                  <HexColorInput
+                    id={hexInputId}
+                    className="ic-advanced-color-picker-hex-input"
+                    color={selectedColor}
+                    onChange={(newColor): void => {
+                      setSelectedColor(newColor);
+                    }}
+                  />
+                </div>
               </div>
+
+              <div
+                className={[
+                  "ic-advanced-color-picker-swatch",
+                  isWhiteSwatch ? "ic-advanced-color-picker-swatch--white" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                style={{
+                  backgroundColor: selectedColor,
+                  borderColor: isWhiteSwatch
+                    ? "var(--palette-grey-300)"
+                    : selectedColor,
+                }}
+                aria-hidden="true"
+              />
             </div>
 
-            <div
-              className={[
-                "ic-advanced-color-picker-swatch",
-                isWhiteSwatch ? "ic-advanced-color-picker-swatch--white" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              style={{
-                backgroundColor: selectedColor,
-                borderColor: isWhiteSwatch
-                  ? "var(--palette-grey-300)"
-                  : selectedColor,
-              }}
-              aria-hidden="true"
-            />
-          </div>
+            <div className="ic-advanced-color-picker-divider" />
 
-          <div className="ic-advanced-color-picker-divider" />
+            <div className="ic-advanced-color-picker-buttons">
+              <Button size="sm" variant="secondary" onClick={onCancel}>
+                {t("color_picker.cancel")}
+              </Button>
 
-          <div className="ic-advanced-color-picker-buttons">
-            <Button size="sm" variant="secondary" onClick={onCancel}>
-              {t("color_picker.cancel")}
-            </Button>
-
-            <Button
-              size="sm"
-              startIcon={<Check />}
-              onClick={(): void => {
-                handleColorSelect(selectedColor);
-                onCancel();
-              }}
-            >
-              {t("color_picker.apply")}
-            </Button>
+              <Button
+                size="sm"
+                startIcon={<Check />}
+                onClick={(): void => {
+                  handleColorSelect(selectedColor);
+                  onCancel();
+                }}
+              >
+                {t("color_picker.apply")}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </Portal>
   );
 };
 
