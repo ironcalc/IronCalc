@@ -72,6 +72,9 @@ pub enum Icon {
     Cross,
     Exclamation,
     Star,
+    Heart,
+    ThumbsUp,
+    ThumbsDown,
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]

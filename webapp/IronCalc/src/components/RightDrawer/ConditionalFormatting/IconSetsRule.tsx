@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
+import IconPicker, { iconSpecFor } from "../../IconPicker/IconPicker";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
@@ -171,40 +172,6 @@ const RATINGS: IconSetPreset[] = [
 ];
 
 export const ALL_PRESETS = [...DIRECTIONAL, ...SHAPES, ...INDICATORS];
-
-// Ordered list of all available icons for cycling.
-const CYCLE_ICONS: {
-  Icon: LucideIcon;
-  backendName: string;
-  filled?: boolean;
-}[] = [
-  { Icon: ArrowUp, backendName: "ArrowUp" },
-  { Icon: ArrowUpRight, backendName: "ArrowAngleUp" },
-  { Icon: ArrowRight, backendName: "ArrowRight" },
-  { Icon: ArrowDownRight, backendName: "ArrowAngleDown" },
-  { Icon: ArrowDown, backendName: "ArrowDown" },
-  { Icon: ChevronUp, backendName: "TriangleUp" },
-  { Icon: Minus, backendName: "FlatRectangle" },
-  { Icon: ChevronDown, backendName: "TriangleDown" },
-  { Icon: Circle, backendName: "Circle", filled: true },
-  { Icon: Diamond, backendName: "Rhombus", filled: true },
-  { Icon: Flag, backendName: "Flag", filled: true },
-  { Icon: Check, backendName: "Check" },
-  { Icon: X, backendName: "Cross" },
-  { Icon: CircleAlert, backendName: "Exclamation" },
-  { Icon: Star, backendName: "Star", filled: true },
-];
-
-function cycleIcon(current: string): string {
-  const idx = CYCLE_ICONS.findIndex((ic) => ic.backendName === current);
-  return CYCLE_ICONS[(idx + 1) % CYCLE_ICONS.length].backendName;
-}
-
-function iconSpecFor(backendName: string) {
-  return (
-    CYCLE_ICONS.find((ic) => ic.backendName === backendName) ?? CYCLE_ICONS[0]
-  );
-}
 
 const THRESHOLD_TYPE_OPTIONS = [
   "min",
@@ -533,7 +500,6 @@ const IconSetsRule = ({
               {thresholds.map((threshold, i) => {
                 const isLast = i === thresholds.length - 1;
                 const iconColor = threshold.color;
-                const spec = iconSpecFor(threshold.iconName);
                 let options = typeOptions;
                 if (i === 0) {
                   options = typeOptions.filter((o) => o.value !== "max");
@@ -594,21 +560,13 @@ const IconSetsRule = ({
                         />
                       </div>
                       <div className="ic-input-control md ic-cs-color-swatch-wrapper">
-                        <button
-                          type="button"
-                          className="ic-is-threshold-icon-btn"
-                          aria-label="Cycle icon"
-                          onClick={() =>
-                            updateThreshold(i, {
-                              iconName: cycleIcon(threshold.iconName),
-                            })
+                        <IconPicker
+                          value={threshold.iconName}
+                          color={iconColor}
+                          onChange={(name) =>
+                            updateThreshold(i, { iconName: name })
                           }
-                        >
-                          <spec.Icon
-                            color={iconColor}
-                            fill={spec.filled ? iconColor : "none"}
-                          />
-                        </button>
+                        />
                       </div>
 
                       <div className="ic-input-control md ic-cs-color-swatch-wrapper">
@@ -727,22 +685,11 @@ const IconSetsRule = ({
                 <div className="ic-edit-rule-settings-row">
                   <span>Icon</span>
                   <div className="ic-input-control md ic-cs-color-swatch-wrapper">
-                    {(() => {
-                      const spec = iconSpecFor(ratingIcon);
-                      return (
-                        <button
-                          type="button"
-                          className="ic-is-threshold-icon-btn"
-                          aria-label="Cycle icon"
-                          onClick={() => setRatingIcon(cycleIcon(ratingIcon))}
-                        >
-                          <spec.Icon
-                            color={ratingColor}
-                            fill={spec.filled ? ratingColor : "none"}
-                          />
-                        </button>
-                      );
-                    })()}
+                    <IconPicker
+                      value={ratingIcon}
+                      color={ratingColor}
+                      onChange={setRatingIcon}
+                    />
                   </div>
                 </div>
                 <div className="ic-edit-rule-settings-row">
