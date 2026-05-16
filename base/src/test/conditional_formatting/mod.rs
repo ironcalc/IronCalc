@@ -324,13 +324,13 @@ fn test_rule_only_applies_inside_range() {
 }
 
 #[test]
-fn test_lower_priority_number_wins() {
+fn test_higher_priority_number_wins() {
     let mut model = model_with_values();
-    // First rule (lower priority number = higher priority): red→green scale
+    // First rule added gets priority=1 (lower = less important): red→green scale.
     model
         .add_conditional_formatting(0, "A1:A5", color_scale_rule())
         .unwrap();
-    // Second rule: blue→yellow scale
+    // Second rule added gets priority=2 (higher = more important): blue→yellow scale.
     model
         .add_conditional_formatting(
             0,
@@ -351,9 +351,9 @@ fn test_lower_priority_number_wins() {
         .unwrap();
     model.evaluate();
 
-    // A1 = min: first rule's min color wins
+    // A1 = min: the second rule (higher priority number) must win → blue.
     let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
-    assert_eq!(style.style.fill.bg_color, Some("#FF0000".to_string()));
+    assert_eq!(style.style.fill.bg_color, Some("#0000FF".to_string()));
 }
 
 #[test]

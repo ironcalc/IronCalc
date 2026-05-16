@@ -960,7 +960,10 @@ impl<'a> Model<'a> {
         let mut icon = None;
         let mut data_bar = None;
         let mut rating = None;
-        let mut color_scale_applied = false;
+        let mut color_scale: Option<String> = None;
+        // Rules are stored in ascending priority order (highest number = highest priority,
+        // processed last). Dxf results accumulate; for exclusive types (ColorScale, DataBar,
+        // Icon, Rating) the last assignment wins, so the highest-priority rule wins.
         for cf_result in extended {
             match cf_result {
                 CfCellResult::Dxf(dxf_id) => {
@@ -968,15 +971,8 @@ impl<'a> Model<'a> {
                         style = dxf.apply_to(&style);
                     }
                 }
-                // For exclusive types (ColorScale, DataBar, Icon, Rating), the first result in
-                // the vec has the highest priority; later entries are skipped.
                 CfCellResult::ColorScale(color) => {
-                    if !color_scale_applied {
-                        style.fill.fg_color = None;
-                        style.fill.bg_color = Some(color.clone());
-                        style.fill.pattern_type = "solid".to_string();
-                        color_scale_applied = true;
-                    }
+                    color_scale = Some(color.clone());
                 }
                 CfCellResult::DataBar {
                     positive_color,
@@ -986,29 +982,25 @@ impl<'a> Model<'a> {
                     axis_position,
                     show_value,
                 } => {
-                    if data_bar.is_none() {
-                        data_bar = Some(CfDataBar {
-                            positive_color: positive_color.clone(),
-                            negative_color: negative_color.clone(),
-                            is_gradient: *is_gradient,
-                            value: *value,
-                            axis_position: *axis_position,
-                            show_value: *show_value,
-                        });
-                    }
+                    data_bar = Some(CfDataBar {
+                        positive_color: positive_color.clone(),
+                        negative_color: negative_color.clone(),
+                        is_gradient: *is_gradient,
+                        value: *value,
+                        axis_position: *axis_position,
+                        show_value: *show_value,
+                    });
                 }
                 CfCellResult::Icon {
                     icon: cf_icon,
                     color,
                     show_value,
                 } => {
-                    if icon.is_none() {
-                        icon = Some(CfIcon {
-                            icon: cf_icon.clone(),
-                            color: color.clone(),
-                            show_value: *show_value,
-                        });
-                    }
+                    icon = Some(CfIcon {
+                        icon: cf_icon.clone(),
+                        color: color.clone(),
+                        show_value: *show_value,
+                    });
                 }
                 CfCellResult::Rating {
                     icon: cf_icon,
@@ -1017,17 +1009,20 @@ impl<'a> Model<'a> {
                     color,
                     show_value,
                 } => {
-                    if rating.is_none() {
-                        rating = Some(CfRating {
-                            icon: cf_icon.clone(),
-                            count: *count,
-                            max: *max,
-                            color: color.clone(),
-                            show_value: *show_value,
-                        });
-                    }
+                    rating = Some(CfRating {
+                        icon: cf_icon.clone(),
+                        count: *count,
+                        max: *max,
+                        color: color.clone(),
+                        show_value: *show_value,
+                    });
                 }
             }
+        }
+        if let Some(color) = color_scale {
+            style.fill.fg_color = None;
+            style.fill.bg_color = Some(color);
+            style.fill.pattern_type = "solid".to_string();
         }
         Ok(ExtendedStyle {
             style,
