@@ -442,7 +442,7 @@ fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
                     if pattern_fill_nodes.len() == 1 {
                         let pf = pattern_fill_nodes[0];
                         let pattern_type =
-                            pf.attribute("patternType").unwrap_or("none").to_string();
+                            pf.attribute("patternType").unwrap_or("solid").to_string();
                         let mut fg_color = None;
                         let mut bg_color = None;
                         for feat in pf.children() {
