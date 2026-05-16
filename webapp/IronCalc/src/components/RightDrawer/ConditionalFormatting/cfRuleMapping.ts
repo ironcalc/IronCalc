@@ -447,7 +447,9 @@ export function ruleDataToCfRule(data: RuleData): CfRuleInput | null {
       }
 
       const icons = PRESET_ICONS[presetId];
-      if (!icons) return null;
+      if (!icons) {
+        return null;
+      }
       const n = icons.length;
       if (thresholds.length !== n) return null;
       // UI thresholds are HIGH→LOW (thresholds[0] = highest icon bucket).

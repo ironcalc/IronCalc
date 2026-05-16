@@ -257,7 +257,10 @@ export type Icon =
   | "Check"
   | "Cross"
   | "Exclamation"
-  | "Star";
+  | "Star"
+  | "Heart"
+  | "ThumbsUp"
+  | "ThumbsDown";
 
 export type Cfvo =
   | "Min"

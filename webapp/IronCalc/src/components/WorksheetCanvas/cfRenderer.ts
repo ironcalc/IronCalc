@@ -181,7 +181,9 @@ function drawLucideIcon(
   size: number,
 ): void {
   const spec = ICON_PATH_SPECS[iconName];
-  if (!spec) return;
+  if (!spec) {
+    return;
+  }
 
   const scale = size / 24;
   context.save();
