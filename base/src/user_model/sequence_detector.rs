@@ -339,11 +339,7 @@ impl<'a> DateProgressionDetector<'a> {
 
         let indexes = values
             .iter()
-            .map(|value| {
-                date_indexes
-                    .get(&Self::normalize(value))
-                    .map(|&idx| idx.to_string())
-            })
+            .map(|value| date_indexes.get(value).map(|&idx| idx.to_string()))
             .collect::<Option<Vec<_>>>()?;
 
         let Progression::Numeric(numeric_progression) =
@@ -364,6 +360,10 @@ impl<'a> SequenceDetector for DateProgressionDetector<'a> {
         if values.len() < 2 {
             return None;
         }
+        let normalized_values = values
+            .iter()
+            .map(|value| Self::normalize(value))
+            .collect::<Vec<_>>();
 
         let dates = &self.locale.dates;
 
@@ -374,7 +374,7 @@ impl<'a> SequenceDetector for DateProgressionDetector<'a> {
             &dates.months_short,
         ]
         .iter()
-        .find_map(|&names_vec| self.find_progression(values, names_vec))
+        .find_map(|&names_vec| self.find_progression(&normalized_values, names_vec))
     }
 }
 
