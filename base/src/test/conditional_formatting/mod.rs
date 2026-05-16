@@ -10,7 +10,7 @@ mod time_period;
 mod top_bottom;
 
 use crate::{
-    cf_types::{CfRule, CfRuleInput, Cfvo, ColorScaleThreshold, ValueOperator},
+    cf_types::{CfRule, CfRuleInput, Cfvo, ColorScaleThreshold, Icon, ValueOperator},
     test::util::new_empty_model,
     types::{Dxf, Fill},
 };
@@ -824,4 +824,57 @@ fn test_color_scale_formula_cfvo_with_sum() {
             .bg_color,
         Some("#00FF00".to_string())
     );
+}
+
+// ---------------------------------------------------------------------------
+// IconRating count
+// ---------------------------------------------------------------------------
+
+/// A 3-star rating over A1:A5 = {1,2,3,4,5}.
+/// Thresholds (lowest-first): Percent(0)=1.0, Percent(33)≈2.32, Percent(67)≈3.68.
+/// Expected filled-star counts: 1→1, 2→1, 3→2, 4→2, 5→3.
+#[test]
+fn test_icon_rating_count() {
+    let mut model = model_with_values();
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            CfRuleInput::IconRating {
+                icon: Icon::Star,
+                color: "#FFD700".to_string(),
+                // stored lowest-first: 0% → 33% → 67%
+                thresholds: vec![
+                    (Cfvo::Percent(0.0), true),
+                    (Cfvo::Percent(33.0), true),
+                    (Cfvo::Percent(67.0), true),
+                ],
+                show_value: true,
+            },
+        )
+        .unwrap();
+    model.evaluate();
+
+    let rating = |row: i32| {
+        model
+            .get_extended_style_for_cell(0, row, 1)
+            .unwrap()
+            .rating
+            .expect("rating should be present")
+    };
+
+    // max must equal the number of thresholds (3), not thresholds+1.
+    assert_eq!(rating(1).max, 3);
+
+    // A1=1 and A2=2 are below the 33 % threshold → 1 filled star.
+    assert_eq!(rating(1).count, 1, "A1 (value=1) should have 1 star");
+    assert_eq!(rating(2).count, 1, "A2 (value=2) should have 1 star");
+
+    // A3=3 is above the 33 % boundary (2.32) but below the 67 % one (3.68) → 2 stars.
+    assert_eq!(rating(3).count, 2, "A3 (value=3) should have 2 stars");
+    // A4=4 is above the 67 % boundary (3.68) → 3 stars.
+    assert_eq!(rating(4).count, 3, "A4 (value=4) should have 3 stars");
+
+    // A5=5 (max) is above all thresholds → 3 filled stars.
+    assert_eq!(rating(5).count, 3, "A5 (value=5) should have 3 stars");
 }
