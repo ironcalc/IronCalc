@@ -314,18 +314,34 @@ struct DateProgressionDetector<'a> {
 }
 
 impl<'a> DateProgressionDetector<'a> {
+    fn normalize(s: &str) -> String {
+        let s = s.trim_matches(['.', ' ']);
+        let mut result = String::with_capacity(s.len());
+        for c in s.chars() {
+            for lc in c.to_lowercase() {
+                match lc {
+                    'á' | 'ä' => result.push('a'),
+                    'é' => result.push('e'),
+                    'ì' => result.push('i'),
+                    'û' => result.push('u'),
+                    _ => result.push(lc),
+                }
+            }
+        }
+        result
+    }
     fn find_progression(&self, values: &[String], dates: &[String]) -> Option<Progression> {
         let date_indexes = dates
             .iter()
             .enumerate()
-            .map(|(idx, date)| (date.trim_end_matches('.').to_lowercase(), idx))
+            .map(|(idx, date)| (Self::normalize(date), idx))
             .collect::<HashMap<_, _>>();
 
         let indexes = values
             .iter()
             .map(|value| {
                 date_indexes
-                    .get(&value.trim_matches(['.', ' ']).to_lowercase())
+                    .get(&Self::normalize(value))
                     .map(|&idx| idx.to_string())
             })
             .collect::<Option<Vec<_>>>()?;
@@ -689,6 +705,10 @@ mod tests {
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "mars");
 
+        let values = vec!["janv.".to_string(), "févr.".to_string()];
+        let progression = detector.detect(&values).unwrap();
+        assert_eq!(progression.next(0), "mars");
+
         let case_style = DateCaseStyle::new("LUNDI");
         let detector = DateProgressionDetector { locale, case_style };
 
@@ -706,10 +726,6 @@ mod tests {
         let values = vec!["Lundi".to_string(), "Mardi".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "Mercredi");
-
-        let values = vec!["janv".to_string(), "févr".to_string()];
-        let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "mars.");
     }
 
     #[test]
@@ -723,7 +739,7 @@ mod tests {
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "März");
 
-        let values = vec!["So".to_string(), "Mo".to_string()];
+        let values = vec!["So.".to_string(), "Mo.".to_string()];
         let progression = detector.detect(&values).unwrap();
         assert_eq!(progression.next(0), "Di.");
     }
