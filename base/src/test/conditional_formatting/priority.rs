@@ -3,7 +3,7 @@
 use crate::{
     cf_types::{CfRuleInput, Cfvo, ColorScaleThreshold, Icon, IconThreshold, ValueOperator},
     test::util::new_empty_model,
-    types::Dxf,
+    types::{Dxf, Fill},
 };
 
 fn color_scale_rule() -> CfRuleInput {
@@ -266,4 +266,78 @@ fn test_higher_priority_icon_set_wins() {
     let extended = model.get_extended_style_for_cell(0, 1, 1).unwrap();
     let icon = extended.icon.expect("A1 should have an icon");
     assert_eq!(icon.icon, Icon::Flag);
+}
+
+// ColorScale fill must respect priority ordering relative to Dxf fill.
+// The rule processed last (highest priority number) wins for fill.
+#[test]
+fn test_color_scale_vs_dxf_fill_priority() {
+    let blue_fill = Dxf {
+        fill: Some(Fill {
+            pattern_type: "solid".to_string(),
+            fg_color: None,
+            bg_color: Some("#0000FF".to_string()),
+        }),
+        ..Dxf::default()
+    };
+
+    // Case 1: ColorScale (priority=1, lower) vs Dxf fill (priority=2, higher).
+    // The Dxf fill must win for cells that match both rules.
+    {
+        let mut model = model_with_values();
+        model
+            .add_conditional_formatting(0, "A1:A5", color_scale_rule())
+            .unwrap();
+        model
+            .add_conditional_formatting(
+                0,
+                "A1:A5",
+                CfRuleInput::CellIs {
+                    operator: ValueOperator::GreaterThan,
+                    formula: "0".to_string(),
+                    formula2: None,
+                    format: blue_fill.clone(),
+                },
+            )
+            .unwrap();
+        model.evaluate();
+
+        // A1=1 matches both; Dxf (priority=2) must override the ColorScale fill.
+        let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
+        assert_eq!(
+            style.style.fill.bg_color,
+            Some("#0000FF".to_string()),
+            "Dxf fill (higher priority) should override ColorScale"
+        );
+    }
+
+    // Case 2: Dxf fill (priority=1, lower) vs ColorScale (priority=2, higher).
+    // The ColorScale must win.
+    {
+        let mut model = model_with_values();
+        model
+            .add_conditional_formatting(
+                0,
+                "A1:A5",
+                CfRuleInput::CellIs {
+                    operator: ValueOperator::GreaterThan,
+                    formula: "0".to_string(),
+                    formula2: None,
+                    format: blue_fill.clone(),
+                },
+            )
+            .unwrap();
+        model
+            .add_conditional_formatting(0, "A1:A5", color_scale_rule())
+            .unwrap();
+        model.evaluate();
+
+        // A1=1 (min): ColorScale (priority=2) sets red; must override Dxf blue.
+        let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
+        assert_eq!(
+            style.style.fill.bg_color,
+            Some("#FF0000".to_string()),
+            "ColorScale (higher priority) should override Dxf fill"
+        );
+    }
 }
