@@ -960,9 +960,10 @@ impl<'a> Model<'a> {
         let mut icon = None;
         let mut data_bar = None;
         let mut rating = None;
-        // Rules are stored in ascending priority order (highest number = highest priority,
-        // processed last). Dxf results accumulate; for exclusive types (ColorScale, DataBar,
-        // Icon, Rating) the last assignment wins, so the highest-priority rule wins.
+        // `extended` contains the cached conditional-formatting results for this cell in the
+        // order produced by the evaluator. Dxf results accumulate as we iterate; for exclusive
+        // types (ColorScale, DataBar, Icon, Rating), the last assignment in this evaluated
+        // result order wins.
         for cf_result in extended {
             match cf_result {
                 CfCellResult::Dxf(dxf_id) => {
