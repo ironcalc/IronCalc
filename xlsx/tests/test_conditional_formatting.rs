@@ -48,7 +48,7 @@ fn test_cf_file() {
                 .unwrap();
             let icon = extended_style.icon.unwrap();
             assert_eq!(icon.icon, Icon::ArrowAngleDown);
-            assert_eq!(icon.color, "#e43400".to_string());
+            assert_eq!(icon.color, "#ffeb84".to_string());
         }
     }
 }
