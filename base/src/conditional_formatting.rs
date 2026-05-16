@@ -960,7 +960,6 @@ impl<'a> Model<'a> {
         let mut icon = None;
         let mut data_bar = None;
         let mut rating = None;
-        let mut color_scale: Option<String> = None;
         // Rules are stored in ascending priority order (highest number = highest priority,
         // processed last). Dxf results accumulate; for exclusive types (ColorScale, DataBar,
         // Icon, Rating) the last assignment wins, so the highest-priority rule wins.
@@ -972,7 +971,9 @@ impl<'a> Model<'a> {
                     }
                 }
                 CfCellResult::ColorScale(color) => {
-                    color_scale = Some(color.clone());
+                    style.fill.fg_color = None;
+                    style.fill.bg_color = Some(color.clone());
+                    style.fill.pattern_type = "solid".to_string();
                 }
                 CfCellResult::DataBar {
                     positive_color,
@@ -1018,11 +1019,6 @@ impl<'a> Model<'a> {
                     });
                 }
             }
-        }
-        if let Some(color) = color_scale {
-            style.fill.fg_color = None;
-            style.fill.bg_color = Some(color);
-            style.fill.pattern_type = "solid".to_string();
         }
         Ok(ExtendedStyle {
             style,
