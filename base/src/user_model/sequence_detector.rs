@@ -22,7 +22,13 @@ impl DateCaseStyle {
     fn apply(&self, dates: &[String]) -> Vec<String> {
         match self {
             DateCaseStyle::Uppercase => dates.iter().map(|date| date.to_uppercase()).collect(),
-            DateCaseStyle::Capitalized => dates.to_vec(),
+            DateCaseStyle::Capitalized => dates
+                .iter()
+                .map(|date| {
+                    let mut chars = date.chars();
+                    chars.next().unwrap_or_default().to_uppercase().to_string() + chars.as_str()
+                })
+                .collect(),
             DateCaseStyle::Lowercase => dates.iter().map(|date| date.to_lowercase()).collect(),
         }
     }
@@ -312,7 +318,7 @@ impl<'a> DateProgressionDetector<'a> {
         let date_indexes = dates
             .iter()
             .enumerate()
-            .map(|(idx, date)| (date.to_lowercase(), idx))
+            .map(|(idx, date)| (date.trim_end_matches('.').to_lowercase(), idx))
             .collect::<HashMap<_, _>>();
 
         let indexes = values
