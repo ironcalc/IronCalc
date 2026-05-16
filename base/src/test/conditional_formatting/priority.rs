@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use crate::{
     cf_types::{CfRuleInput, Cfvo, ColorScaleThreshold, Icon, IconThreshold, ValueOperator},
