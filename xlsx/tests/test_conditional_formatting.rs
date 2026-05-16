@@ -51,4 +51,15 @@ fn test_cf_file() {
             assert_eq!(icon.color, "#ffeb84".to_string());
         }
     }
+    {
+        // D16 is a flag
+        let (sheet, column) = (1, 4);
+        let row = 16;
+        let extended_style = model
+            .get_extended_style_for_cell(sheet, row, column)
+            .unwrap();
+        let icon = extended_style.icon.unwrap();
+        assert_eq!(icon.icon, Icon::Flag);
+        assert_eq!(icon.color, "#f8696b".to_string());
+    }
 }

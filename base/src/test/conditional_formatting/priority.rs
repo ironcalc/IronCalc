@@ -184,3 +184,86 @@ fn test_all_three_in_same_cell() {
     let icon5 = s5.icon.expect("A5 should have an icon");
     assert_eq!(icon5.icon, Icon::ArrowUp, "A5 should show ArrowUp");
 }
+
+// The rule added LAST gets the highest priority number and must win over
+// the rule added first when both cover the same cell and type.
+#[test]
+fn test_higher_priority_number_wins() {
+    let mut model = model_with_values();
+
+    // Rule 1: added first → priority=1 (lower, less important). Red scale.
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale_rule())
+        .unwrap();
+    // Rule 2: added second → priority=2 (higher, more important). Blue scale.
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            CfRuleInput::ColorScale {
+                thresholds: vec![
+                    ColorScaleThreshold {
+                        cfvo: Cfvo::Min,
+                        color: "#0000FF".to_string(),
+                    },
+                    ColorScaleThreshold {
+                        cfvo: Cfvo::Max,
+                        color: "#FFFF00".to_string(),
+                    },
+                ],
+            },
+        )
+        .unwrap();
+    model.evaluate();
+
+    // Rule 2 has the higher priority number and must win: A1 (min) should be blue.
+    let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
+    assert_eq!(style.style.fill.bg_color, Some("#0000FF".to_string()));
+}
+
+// Same as above but for icon sets.
+#[test]
+fn test_higher_priority_icon_set_wins() {
+    let mut model = model_with_values();
+
+    // Rule 1 (priority=1, lower): arrows.
+    model
+        .add_conditional_formatting(0, "A1:A5", icon_set_rule())
+        .unwrap();
+    // Rule 2 (priority=2, higher): flags — should win.
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            CfRuleInput::IconSet {
+                thresholds: vec![
+                    IconThreshold {
+                        icon: Icon::Flag,
+                        cfvo: Cfvo::Min,
+                        color: "#f8696b".to_string(),
+                        is_strict: false,
+                    },
+                    IconThreshold {
+                        icon: Icon::Flag,
+                        cfvo: Cfvo::Percent(33.0),
+                        color: "#ffeb84".to_string(),
+                        is_strict: false,
+                    },
+                    IconThreshold {
+                        icon: Icon::Flag,
+                        cfvo: Cfvo::Percent(67.0),
+                        color: "#63be7b".to_string(),
+                        is_strict: false,
+                    },
+                ],
+                show_value: true,
+            },
+        )
+        .unwrap();
+    model.evaluate();
+
+    // Rule 2 must win: A1 (min value) should show a Flag, not an ArrowDown.
+    let extended = model.get_extended_style_for_cell(0, 1, 1).unwrap();
+    let icon = extended.icon.expect("A1 should have an icon");
+    assert_eq!(icon.icon, Icon::Flag);
+}
