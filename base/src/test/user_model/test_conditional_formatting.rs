@@ -387,9 +387,9 @@ fn test_cell_is_rule_undo_redo() {
 
 #[test]
 fn test_icon_rating_uses_thresholds() {
-    // 5-star rating with boundaries at [80, 60, 40, 20] (is_strict=true → >=).
-    // A cell value of 50 falls in [40, 60): exceeds thresholds at 20 and 40 → count = 3.
-    // The old (buggy) implementation did round(50).clamp(0,5) = 5.
+    // 5-star rating. Thresholds stored lowest-first (as imported from XLSX):
+    //   [0, 20, 40, 60, 80]. count = number of thresholds the value exceeds.
+    // v=50 exceeds [0, 20, 40] → count = 3.
     let mut model = new_empty_user_model();
     model.set_user_input(0, 1, 1, "50").unwrap();
     model
@@ -401,10 +401,11 @@ fn test_icon_rating_uses_thresholds() {
                 color: "#FFD700".to_string(),
                 show_value: true,
                 thresholds: vec![
+                    (Cfvo::Number(0.0), true),  // >= 0  → count ≥ 1
+                    (Cfvo::Number(20.0), true), // >= 20 → count ≥ 2
+                    (Cfvo::Number(40.0), true), // >= 40 → count ≥ 3
+                    (Cfvo::Number(60.0), true), // >= 60 → count ≥ 4
                     (Cfvo::Number(80.0), true), // >= 80 → count = 5
-                    (Cfvo::Number(60.0), true), // >= 60 → count = 4
-                    (Cfvo::Number(40.0), true), // >= 40 → count = 3
-                    (Cfvo::Number(20.0), true), // >= 20 → count = 2
                 ],
             },
         )
@@ -422,8 +423,8 @@ fn test_icon_rating_uses_thresholds() {
 #[test]
 fn test_icon_rating_count_from_cell_value() {
     let mut model = new_empty_user_model();
-    // A1=1, A2=2, A3=3, A4=4, A5=5
-    // Thresholds with is_strict=true (>=): value>=2→2, >=3→3, >=4→4, >=5→5, else 1.
+    // A1=1 … A5=5. Thresholds lowest-first: [1, 2, 3, 4, 5].
+    // count = number of thresholds the value meets (>=), so Ai → count = i.
     for i in 1i32..=5 {
         model.set_user_input(0, i, 1, &i.to_string()).unwrap();
     }
@@ -436,10 +437,11 @@ fn test_icon_rating_count_from_cell_value() {
                 color: "#FFD700".to_string(),
                 show_value: true,
                 thresholds: vec![
-                    (Cfvo::Number(5.0), true),
-                    (Cfvo::Number(4.0), true),
-                    (Cfvo::Number(3.0), true),
+                    (Cfvo::Number(1.0), true),
                     (Cfvo::Number(2.0), true),
+                    (Cfvo::Number(3.0), true),
+                    (Cfvo::Number(4.0), true),
+                    (Cfvo::Number(5.0), true),
                 ],
             },
         )
@@ -460,10 +462,10 @@ fn test_icon_rating_count_from_cell_value() {
 #[test]
 fn test_icon_rating_clamps_to_max() {
     let mut model = new_empty_user_model();
-    // Thresholds (is_strict=true, >=): [5, 4, 3, 2] → 5 buckets.
-    // A1=7  → exceeds all 4 thresholds → count=5 (clamped to max)
-    // A2=-1 → exceeds none → count=1 (minimum)
-    // A3=2.7 → 2.7>=2 but 2.7<3 → count=2
+    // Thresholds lowest-first (is_strict=true, >=): [1, 2, 3, 4, 5] → max = 5.
+    // A1=7   → exceeds all 5 thresholds → count = 5 (= max, naturally clamped)
+    // A2=-1  → exceeds none             → count = 0
+    // A3=2.7 → 2.7>=1 and 2.7>=2, but 2.7<3 → count = 2
     model.set_user_input(0, 1, 1, "7").unwrap();
     model.set_user_input(0, 2, 1, "-1").unwrap();
     model.set_user_input(0, 3, 1, "2.7").unwrap();
@@ -475,10 +477,11 @@ fn test_icon_rating_clamps_to_max() {
                 icon: Icon::Star,
                 color: "#FFD700".to_string(),
                 thresholds: vec![
-                    (Cfvo::Number(5.0), true),
-                    (Cfvo::Number(4.0), true),
-                    (Cfvo::Number(3.0), true),
+                    (Cfvo::Number(1.0), true),
                     (Cfvo::Number(2.0), true),
+                    (Cfvo::Number(3.0), true),
+                    (Cfvo::Number(4.0), true),
+                    (Cfvo::Number(5.0), true),
                 ],
                 show_value: true,
             },
@@ -490,24 +493,22 @@ fn test_icon_rating_clamps_to_max() {
         .unwrap()
         .rating
         .unwrap();
-    assert_eq!(r1.count, 5, "7 exceeds all thresholds, clamped to max 5");
+    assert_eq!(r1.count, 5, "7 exceeds all 5 thresholds → max (5) stars");
+    assert_eq!(r1.max, 5);
 
     let r2 = model
         .get_extended_cell_style(0, 2, 1)
         .unwrap()
         .rating
         .unwrap();
-    assert_eq!(
-        r2.count, 1,
-        "-1 is below all thresholds, minimum count is 1"
-    );
+    assert_eq!(r2.count, 0, "-1 is below all thresholds → 0 filled icons");
 
     let r3 = model
         .get_extended_cell_style(0, 3, 1)
         .unwrap()
         .rating
         .unwrap();
-    assert_eq!(r3.count, 2, "2.7 >= 2 but < 3 → falls in the second bucket");
+    assert_eq!(r3.count, 2, "2.7 >= 1 and >= 2 but < 3 → 2 filled icons");
 }
 
 #[test]
