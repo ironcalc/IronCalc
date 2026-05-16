@@ -453,10 +453,11 @@ impl<'a> Model<'a> {
         if thresholds.is_empty() {
             return;
         }
-        // Thresholds are stored highest-value-first. For each threshold a cell value
-        // satisfies (iterating lowest-to-highest), the filled-icon count increments by 1.
-        // count ∈ [1, max] where max = thresholds.len() + 1.
-        let max = (thresholds.len() + 1) as u32;
+        // Thresholds are stored lowest-value-first. count = how many thresholds the
+        // cell value exceeds; count ∈ [0, max] where max = thresholds.len().
+        // is_strict=true → threshold applies when v >= value (gte).
+        // is_strict=false → threshold applies when v > value (gt).
+        let max = thresholds.len() as u32;
 
         let values = self.collect_numeric_values(sheet, ranges);
         // Pre-resolve all Cfvo entries before iterating cells.
@@ -470,10 +471,7 @@ impl<'a> Model<'a> {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
                     {
-                        // Iterate from the lowest-value threshold to the highest.
-                        // is_strict=true → threshold applies when v >= value (gte).
-                        // is_strict=false → threshold applies when v > value (gt).
-                        let mut count = 1u32;
+                        let mut count = 0u32;
                         for &(threshold_val, is_strict) in resolved.iter().rev() {
                             let exceeds = if is_strict {
                                 v >= threshold_val
