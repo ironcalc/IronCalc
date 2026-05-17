@@ -199,7 +199,15 @@ impl<'a> Model<'a> {
                 dxf_id,
                 stop_if_true,
             } => {
-                self.apply_cf_top_n(sheet, *rank, *percent, false, *dxf_id, *stop_if_true, ranges);
+                self.apply_cf_top_n(
+                    sheet,
+                    *rank,
+                    *percent,
+                    false,
+                    *dxf_id,
+                    *stop_if_true,
+                    ranges,
+                );
             }
             CfRule::Bottom10 {
                 rank,
@@ -553,6 +561,7 @@ impl<'a> Model<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn apply_cf_cell_is(
         &mut self,
         sheet: u32,
@@ -639,6 +648,7 @@ impl<'a> Model<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn apply_cf_top_n(
         &mut self,
         sheet: u32,
