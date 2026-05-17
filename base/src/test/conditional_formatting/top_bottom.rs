@@ -24,6 +24,7 @@ fn top_n(rank: u32, percent: bool) -> CfRuleInput {
         rank,
         percent,
         format: super::red_fill(),
+        stop_if_true: false,
     }
 }
 
@@ -32,6 +33,7 @@ fn bottom_n(rank: u32, percent: bool) -> CfRuleInput {
         rank,
         percent,
         format: super::red_fill(),
+        stop_if_true: false,
     }
 }
 

@@ -81,6 +81,7 @@ fn test_priority() {
         formula: "3".to_string(),
         formula2: None,
         format: Dxf::default(),
+        stop_if_true: false,
     };
     model.add_conditional_formatting(0, "A2:C2", rule).unwrap();
 
@@ -297,6 +298,7 @@ fn test_color_scale_vs_dxf_fill_priority() {
                     formula: "0".to_string(),
                     formula2: None,
                     format: blue_fill.clone(),
+                    stop_if_true: false,
                 },
             )
             .unwrap();
@@ -324,6 +326,7 @@ fn test_color_scale_vs_dxf_fill_priority() {
                     formula: "0".to_string(),
                     formula2: None,
                     format: blue_fill.clone(),
+                    stop_if_true: false,
                 },
             )
             .unwrap();

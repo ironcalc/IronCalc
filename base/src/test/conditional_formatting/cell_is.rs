@@ -32,6 +32,7 @@ fn cell_is(operator: ValueOperator, formula: &str, formula2: Option<&str>) -> Cf
         formula: formula.to_string(),
         formula2: formula2.map(|s| s.to_string()),
         format: super::red_fill(),
+        stop_if_true: false,
     }
 }
 

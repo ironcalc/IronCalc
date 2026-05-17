@@ -97,6 +97,7 @@
     "rule_type_unique_values": "Valeurs uniques",
     "rule_value_placeholder": "Valeur",
     "search_placeholder": "Rechercher...",
+    "stop_if_true": "Arrêter si vrai",
     "tab_classic": "Classique",
     "tab_color_scale": "Nuance de couleur",
     "tab_data_bars": "Barres de données",

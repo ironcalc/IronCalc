@@ -156,6 +156,7 @@ impl<'a> Model<'a> {
                 formula,
                 formula2,
                 dxf_id,
+                stop_if_true,
             } => {
                 self.apply_cf_cell_is(
                     sheet,
@@ -163,34 +164,50 @@ impl<'a> Model<'a> {
                     formula,
                     formula2.as_deref(),
                     *dxf_id,
+                    *stop_if_true,
                     ranges,
                 );
             }
-            CfRule::Formula { formula, dxf_id } => {
-                self.apply_cf_formula(sheet, formula, *dxf_id, ranges);
+            CfRule::Formula {
+                formula,
+                dxf_id,
+                stop_if_true,
+            } => {
+                self.apply_cf_formula(sheet, formula, *dxf_id, *stop_if_true, ranges);
             }
-            CfRule::DuplicateValues { dxf_id } => {
-                self.apply_cf_duplicate_values(sheet, *dxf_id, ranges);
+            CfRule::DuplicateValues {
+                dxf_id,
+                stop_if_true,
+            } => {
+                self.apply_cf_duplicate_values(sheet, *dxf_id, *stop_if_true, ranges);
             }
-            CfRule::AboveAverage { dxf_id } => {
-                self.apply_cf_average(sheet, *dxf_id, true, ranges);
+            CfRule::AboveAverage {
+                dxf_id,
+                stop_if_true,
+            } => {
+                self.apply_cf_average(sheet, *dxf_id, true, *stop_if_true, ranges);
             }
-            CfRule::BelowAverage { dxf_id } => {
-                self.apply_cf_average(sheet, *dxf_id, false, ranges);
+            CfRule::BelowAverage {
+                dxf_id,
+                stop_if_true,
+            } => {
+                self.apply_cf_average(sheet, *dxf_id, false, *stop_if_true, ranges);
             }
             CfRule::Top10 {
                 rank,
                 percent,
                 dxf_id,
+                stop_if_true,
             } => {
-                self.apply_cf_top_n(sheet, *rank, *percent, false, *dxf_id, ranges);
+                self.apply_cf_top_n(sheet, *rank, *percent, false, *dxf_id, *stop_if_true, ranges);
             }
             CfRule::Bottom10 {
                 rank,
                 percent,
                 dxf_id,
+                stop_if_true,
             } => {
-                self.apply_cf_top_n(sheet, *rank, *percent, true, *dxf_id, ranges);
+                self.apply_cf_top_n(sheet, *rank, *percent, true, *dxf_id, *stop_if_true, ranges);
             }
             CfRule::DataBar {
                 min,
@@ -221,18 +238,23 @@ impl<'a> Model<'a> {
                 operator,
                 value,
                 dxf_id,
+                stop_if_true,
             } => {
-                self.apply_cf_text(sheet, operator, value, *dxf_id, ranges);
+                self.apply_cf_text(sheet, operator, value, *dxf_id, *stop_if_true, ranges);
             }
-            CfRule::UniqueValues { dxf_id } => {
-                self.apply_cf_unique_values(sheet, *dxf_id, ranges);
+            CfRule::UniqueValues {
+                dxf_id,
+                stop_if_true,
+            } => {
+                self.apply_cf_unique_values(sheet, *dxf_id, *stop_if_true, ranges);
             }
             CfRule::TimePeriod {
                 time_period,
                 dxf_id,
+                stop_if_true,
                 ..
             } => {
-                self.apply_cf_time_period(sheet, time_period, *dxf_id, ranges);
+                self.apply_cf_time_period(sheet, time_period, *dxf_id, *stop_if_true, ranges);
             }
             CfRule::IconRating {
                 icon,
@@ -242,28 +264,50 @@ impl<'a> Model<'a> {
             } => {
                 self.apply_cf_icon_rating(sheet, icon, color, thresholds, *show_value, ranges);
             }
-            CfRule::Blanks { dxf_id } => {
-                self.apply_cf_blanks(sheet, *dxf_id, false, ranges);
+            CfRule::Blanks {
+                dxf_id,
+                stop_if_true,
+            } => {
+                self.apply_cf_blanks(sheet, *dxf_id, false, *stop_if_true, ranges);
             }
-            CfRule::NotBlanks { dxf_id } => {
-                self.apply_cf_blanks(sheet, *dxf_id, true, ranges);
+            CfRule::NotBlanks {
+                dxf_id,
+                stop_if_true,
+            } => {
+                self.apply_cf_blanks(sheet, *dxf_id, true, *stop_if_true, ranges);
             }
-            CfRule::Errors { dxf_id } => {
-                self.apply_cf_errors(sheet, *dxf_id, false, ranges);
+            CfRule::Errors {
+                dxf_id,
+                stop_if_true,
+            } => {
+                self.apply_cf_errors(sheet, *dxf_id, false, *stop_if_true, ranges);
             }
-            CfRule::NoErrors { dxf_id } => {
-                self.apply_cf_errors(sheet, *dxf_id, true, ranges);
+            CfRule::NoErrors {
+                dxf_id,
+                stop_if_true,
+            } => {
+                self.apply_cf_errors(sheet, *dxf_id, true, *stop_if_true, ranges);
             }
         }
     }
 
-    /// Only inserts into cf_cache if the cell has no entry yet (first-wins, since rules are
-    /// processed in ascending priority order).
-    fn update_cf_cache(&mut self, sheet: u32, row: i32, col: i32, result: CfCellResult) {
-        self.cf_cache
-            .entry((sheet, row, col))
-            .or_default()
-            .push(result);
+    fn update_cf_cache(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        col: i32,
+        result: CfCellResult,
+        stop_if_true: bool,
+    ) {
+        if stop_if_true {
+            // Replace any lower-priority results already in the cache for this cell.
+            self.cf_cache.insert((sheet, row, col), vec![result]);
+        } else {
+            self.cf_cache
+                .entry((sheet, row, col))
+                .or_default()
+                .push(result);
+        }
     }
 
     /// Collects all numeric values from the given set of ranges on `sheet`.
@@ -340,7 +384,13 @@ impl<'a> Model<'a> {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
                     {
                         let color = interpolate_color(v, &stops, &colors);
-                        self.update_cf_cache(sheet, row, col, CfCellResult::ColorScale(color));
+                        self.update_cf_cache(
+                            sheet,
+                            row,
+                            col,
+                            CfCellResult::ColorScale(color),
+                            false,
+                        );
                     }
                 }
             }
@@ -395,6 +445,7 @@ impl<'a> Model<'a> {
                                 axis_position,
                                 show_value,
                             },
+                            false,
                         );
                     }
                 }
@@ -434,6 +485,7 @@ impl<'a> Model<'a> {
                                 color: thresholds[idx].color.clone(),
                                 show_value,
                             },
+                            false,
                         );
                     }
                 }
@@ -493,6 +545,7 @@ impl<'a> Model<'a> {
                                 color: color.to_string(),
                                 show_value,
                             },
+                            false,
                         );
                     }
                 }
@@ -507,6 +560,7 @@ impl<'a> Model<'a> {
         formula: &str,
         formula2: Option<&str>,
         dxf_id: u32,
+        stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
         let threshold = match self.evaluate_formula(formula, sheet) {
@@ -537,7 +591,13 @@ impl<'a> Model<'a> {
                             }
                         };
                         if matches {
-                            self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                            self.update_cf_cache(
+                                sheet,
+                                row,
+                                col,
+                                CfCellResult::Dxf(dxf_id),
+                                stop_if_true,
+                            );
                         }
                     }
                 }
@@ -550,6 +610,7 @@ impl<'a> Model<'a> {
         sheet: u32,
         dxf_id: u32,
         above: bool,
+        stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
         let values = self.collect_numeric_values(sheet, ranges);
@@ -564,7 +625,13 @@ impl<'a> Model<'a> {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
                     {
                         if (above && v > avg) || (!above && v < avg) {
-                            self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                            self.update_cf_cache(
+                                sheet,
+                                row,
+                                col,
+                                CfCellResult::Dxf(dxf_id),
+                                stop_if_true,
+                            );
                         }
                     }
                 }
@@ -579,6 +646,7 @@ impl<'a> Model<'a> {
         percent: bool,
         bottom: bool,
         dxf_id: u32,
+        stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
         let values = self.collect_numeric_values(sheet, ranges);
@@ -611,7 +679,13 @@ impl<'a> Model<'a> {
                             v >= threshold
                         };
                         if matches {
-                            self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                            self.update_cf_cache(
+                                sheet,
+                                row,
+                                col,
+                                CfCellResult::Dxf(dxf_id),
+                                stop_if_true,
+                            );
                         }
                     }
                 }
@@ -625,6 +699,7 @@ impl<'a> Model<'a> {
         operator: &TextOperator,
         value: &str,
         dxf_id: u32,
+        stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
         let search = value.to_lowercase();
@@ -642,7 +717,13 @@ impl<'a> Model<'a> {
                             TextOperator::Equals => cell_lower == search.as_str(),
                         };
                         if matches {
-                            self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                            self.update_cf_cache(
+                                sheet,
+                                row,
+                                col,
+                                CfCellResult::Dxf(dxf_id),
+                                stop_if_true,
+                            );
                         }
                     }
                 }
@@ -659,6 +740,7 @@ impl<'a> Model<'a> {
         sheet: u32,
         formula: &str,
         dxf_id: u32,
+        stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
         let Some(&(anchor_row, anchor_col, _, _)) = ranges.first() else {
@@ -689,14 +771,26 @@ impl<'a> Model<'a> {
                         _ => false,
                     };
                     if matches {
-                        self.update_cf_cache(sheet, row, column, CfCellResult::Dxf(dxf_id));
+                        self.update_cf_cache(
+                            sheet,
+                            row,
+                            column,
+                            CfCellResult::Dxf(dxf_id),
+                            stop_if_true,
+                        );
                     }
                 }
             }
         }
     }
 
-    fn apply_cf_unique_values(&mut self, sheet: u32, dxf_id: u32, ranges: &[(i32, i32, i32, i32)]) {
+    fn apply_cf_unique_values(
+        &mut self,
+        sheet: u32,
+        dxf_id: u32,
+        stop_if_true: bool,
+        ranges: &[(i32, i32, i32, i32)],
+    ) {
         let mut counts: HashMap<String, u32> = HashMap::new();
         for &(r1, c1, r2, c2) in ranges {
             for row in r1..=r2 {
@@ -715,7 +809,13 @@ impl<'a> Model<'a> {
                     if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
                         if let Some(k) = cell_value_key(&v) {
                             if counts.get(&k).copied().unwrap_or(0) == 1 {
-                                self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                                self.update_cf_cache(
+                                    sheet,
+                                    row,
+                                    col,
+                                    CfCellResult::Dxf(dxf_id),
+                                    stop_if_true,
+                                );
                             }
                         }
                     }
@@ -729,6 +829,7 @@ impl<'a> Model<'a> {
         sheet: u32,
         period: &PeriodType,
         dxf_id: u32,
+        stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
         let today_serial = match crate::tz::excel_serial_for_now(&self.tz) {
@@ -845,7 +946,13 @@ impl<'a> Model<'a> {
                     {
                         let day = v.floor();
                         if day >= range.0 && day <= range.1 {
-                            self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                            self.update_cf_cache(
+                                sheet,
+                                row,
+                                col,
+                                CfCellResult::Dxf(dxf_id),
+                                stop_if_true,
+                            );
                         }
                     }
                 }
@@ -857,6 +964,7 @@ impl<'a> Model<'a> {
         &mut self,
         sheet: u32,
         dxf_id: u32,
+        stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
         let mut counts: HashMap<String, u32> = HashMap::new();
@@ -878,7 +986,13 @@ impl<'a> Model<'a> {
                     if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
                         if let Some(k) = cell_value_key(&v) {
                             if counts.get(&k).copied().unwrap_or(0) > 1 {
-                                self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                                self.update_cf_cache(
+                                    sheet,
+                                    row,
+                                    col,
+                                    CfCellResult::Dxf(dxf_id),
+                                    stop_if_true,
+                                );
                             }
                         }
                     }
@@ -892,6 +1006,7 @@ impl<'a> Model<'a> {
         sheet: u32,
         dxf_id: u32,
         invert: bool,
+        stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
         for &(r1, c1, r2, c2) in ranges {
@@ -902,7 +1017,13 @@ impl<'a> Model<'a> {
                         Ok(CellValue::None)
                     );
                     if is_blank != invert {
-                        self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                        self.update_cf_cache(
+                            sheet,
+                            row,
+                            col,
+                            CfCellResult::Dxf(dxf_id),
+                            stop_if_true,
+                        );
                     }
                 }
             }
@@ -914,6 +1035,7 @@ impl<'a> Model<'a> {
         sheet: u32,
         dxf_id: u32,
         invert: bool,
+        stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
         use crate::types::CellType;
@@ -927,7 +1049,13 @@ impl<'a> Model<'a> {
                         .and_then(|ws| ws.cell(row, col))
                         .is_some_and(|c| c.get_type() == CellType::ErrorValue);
                     if is_error != invert {
-                        self.update_cf_cache(sheet, row, col, CfCellResult::Dxf(dxf_id));
+                        self.update_cf_cache(
+                            sheet,
+                            row,
+                            col,
+                            CfCellResult::Dxf(dxf_id),
+                            stop_if_true,
+                        );
                     }
                 }
             }
@@ -1049,77 +1177,124 @@ impl<'a> Model<'a> {
                 formula,
                 formula2,
                 format,
+                stop_if_true,
             } => CfRule::CellIs {
                 operator,
                 formula,
                 formula2,
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
             CfRuleInput::Text {
                 operator,
                 value,
                 format,
+                stop_if_true,
             } => CfRule::Text {
                 operator,
                 value,
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
-            CfRuleInput::Formula { formula, format } => CfRule::Formula {
+            CfRuleInput::Formula {
+                formula,
+                format,
+                stop_if_true,
+            } => CfRule::Formula {
                 formula,
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
             CfRuleInput::TimePeriod {
                 time_period,
                 date1,
                 date2,
                 format,
+                stop_if_true,
             } => CfRule::TimePeriod {
                 time_period,
                 date1,
                 date2,
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
-            CfRuleInput::DuplicateValues { format } => CfRule::DuplicateValues {
+            CfRuleInput::DuplicateValues {
+                format,
+                stop_if_true,
+            } => CfRule::DuplicateValues {
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
-            CfRuleInput::UniqueValues { format } => CfRule::UniqueValues {
+            CfRuleInput::UniqueValues {
+                format,
+                stop_if_true,
+            } => CfRule::UniqueValues {
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
-            CfRuleInput::Blanks { format } => CfRule::Blanks {
+            CfRuleInput::Blanks {
+                format,
+                stop_if_true,
+            } => CfRule::Blanks {
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
-            CfRuleInput::NotBlanks { format } => CfRule::NotBlanks {
+            CfRuleInput::NotBlanks {
+                format,
+                stop_if_true,
+            } => CfRule::NotBlanks {
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
-            CfRuleInput::Errors { format } => CfRule::Errors {
+            CfRuleInput::Errors {
+                format,
+                stop_if_true,
+            } => CfRule::Errors {
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
-            CfRuleInput::NoErrors { format } => CfRule::NoErrors {
+            CfRuleInput::NoErrors {
+                format,
+                stop_if_true,
+            } => CfRule::NoErrors {
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
-            CfRuleInput::AboveAverage { format } => CfRule::AboveAverage {
+            CfRuleInput::AboveAverage {
+                format,
+                stop_if_true,
+            } => CfRule::AboveAverage {
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
-            CfRuleInput::BelowAverage { format } => CfRule::BelowAverage {
+            CfRuleInput::BelowAverage {
+                format,
+                stop_if_true,
+            } => CfRule::BelowAverage {
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
             CfRuleInput::Top10 {
                 rank,
                 percent,
                 format,
+                stop_if_true,
             } => CfRule::Top10 {
                 rank,
                 percent,
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
             CfRuleInput::Bottom10 {
                 rank,
                 percent,
                 format,
+                stop_if_true,
             } => CfRule::Bottom10 {
                 rank,
                 percent,
                 dxf_id: self.create_dxf(format),
+                stop_if_true,
             },
             CfRuleInput::DataBar {
                 min,
@@ -1185,14 +1360,14 @@ impl<'a> Model<'a> {
             CfRule::CellIs { dxf_id, .. }
             | CfRule::Text { dxf_id, .. }
             | CfRule::TimePeriod { dxf_id, .. }
-            | CfRule::DuplicateValues { dxf_id }
-            | CfRule::UniqueValues { dxf_id }
-            | CfRule::Blanks { dxf_id }
-            | CfRule::NotBlanks { dxf_id }
-            | CfRule::Errors { dxf_id }
-            | CfRule::NoErrors { dxf_id }
-            | CfRule::AboveAverage { dxf_id }
-            | CfRule::BelowAverage { dxf_id }
+            | CfRule::DuplicateValues { dxf_id, .. }
+            | CfRule::UniqueValues { dxf_id, .. }
+            | CfRule::Blanks { dxf_id, .. }
+            | CfRule::NotBlanks { dxf_id, .. }
+            | CfRule::Errors { dxf_id, .. }
+            | CfRule::NoErrors { dxf_id, .. }
+            | CfRule::AboveAverage { dxf_id, .. }
+            | CfRule::BelowAverage { dxf_id, .. }
             | CfRule::Top10 { dxf_id, .. }
             | CfRule::Bottom10 { dxf_id, .. } => *dxf_id,
             _ => return Ok(None),
@@ -1224,7 +1399,6 @@ impl<'a> Model<'a> {
             range: range.to_string(),
             cf_rule: final_rule,
             priority,
-            stop_if_true: false,
         });
         Ok(priority)
     }

@@ -67,6 +67,7 @@ fn test_formula_rule_stored() {
             CfRuleInput::Formula {
                 formula: "=$A1>5".to_string(),
                 format: super::red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -90,6 +91,7 @@ fn test_formula_absolute_column_highlights_correct_rows() {
             CfRuleInput::Formula {
                 formula: "=$A1>5".to_string(),
                 format: super::red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -125,6 +127,7 @@ fn test_formula_relative_row_across_columns() {
             CfRuleInput::Formula {
                 formula: "=$A1>5".to_string(),
                 format: super::red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -161,6 +164,7 @@ fn test_formula_cross_column_reference() {
             CfRuleInput::Formula {
                 formula: "=$C1>10".to_string(),
                 format: super::red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -197,6 +201,7 @@ fn test_formula_fully_absolute_always_true() {
             CfRuleInput::Formula {
                 formula: "=$A$1>0".to_string(),
                 format: super::red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -224,6 +229,7 @@ fn test_formula_string_equality() {
             CfRuleInput::Formula {
                 formula: r#"=$B1="C""#.to_string(),
                 format: super::red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -255,6 +261,7 @@ fn test_formula_always_false_no_highlight() {
             CfRuleInput::Formula {
                 formula: "=FALSE()".to_string(),
                 format: super::red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();

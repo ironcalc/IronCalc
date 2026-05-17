@@ -41,6 +41,7 @@ fn text_rule(operator: TextOperator, value: &str) -> CfRuleInput {
         operator,
         value: value.to_string(),
         format: super::red_fill(),
+        stop_if_true: false,
     }
 }
 

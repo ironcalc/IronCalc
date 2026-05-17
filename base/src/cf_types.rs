@@ -105,55 +105,69 @@ pub enum CfRule {
         // Only present for Between and NotBetween operators
         formula2: Option<String>,
         dxf_id: u32,
+        stop_if_true: bool,
     },
     Formula {
         formula: String,
         dxf_id: u32,
+        stop_if_true: bool,
     },
     Text {
         operator: TextOperator,
         value: String,
         dxf_id: u32,
+        stop_if_true: bool,
     },
     TimePeriod {
         time_period: PeriodType,
         date1: Option<String>,
         date2: Option<String>,
         dxf_id: u32,
+        stop_if_true: bool,
     },
     DuplicateValues {
         dxf_id: u32,
+        stop_if_true: bool,
     },
     UniqueValues {
         dxf_id: u32,
+        stop_if_true: bool,
     },
     Blanks {
         dxf_id: u32,
+        stop_if_true: bool,
     },
     NotBlanks {
         dxf_id: u32,
+        stop_if_true: bool,
     },
     Errors {
         dxf_id: u32,
+        stop_if_true: bool,
     },
     NoErrors {
         dxf_id: u32,
+        stop_if_true: bool,
     },
     AboveAverage {
         dxf_id: u32,
+        stop_if_true: bool,
     },
     BelowAverage {
         dxf_id: u32,
+        stop_if_true: bool,
     },
     Top10 {
         rank: u32,
         percent: bool,
         dxf_id: u32,
+        stop_if_true: bool,
     },
     Bottom10 {
         rank: u32,
         percent: bool,
         dxf_id: u32,
+        stop_if_true: bool,
     },
     DataBar {
         // If Options are None, they default to Automatic:
@@ -194,7 +208,7 @@ pub enum CfRule {
 }
 
 /// User-facing input type for creating or updating a CF rule.
-/// Mirrors `CfRule` but dxf-based variants carry an optional `Dxf` format
+/// Mirrors `CfRule` but dxf-based variants carry a `Dxf` format
 /// instead of a `dxf_id` index.  Non-dxf variants (ColorScale, DataBar,
 /// IconSet, IconRating) are identical to their `CfRule` counterparts.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -208,55 +222,69 @@ pub enum CfRuleInput {
         formula: String,
         formula2: Option<String>,
         format: Dxf,
+        stop_if_true: bool,
     },
     Text {
         operator: TextOperator,
         value: String,
         format: Dxf,
+        stop_if_true: bool,
     },
     Formula {
         formula: String,
         format: Dxf,
+        stop_if_true: bool,
     },
     TimePeriod {
         time_period: PeriodType,
         date1: Option<String>,
         date2: Option<String>,
         format: Dxf,
+        stop_if_true: bool,
     },
     DuplicateValues {
         format: Dxf,
+        stop_if_true: bool,
     },
     UniqueValues {
         format: Dxf,
+        stop_if_true: bool,
     },
     Blanks {
         format: Dxf,
+        stop_if_true: bool,
     },
     NotBlanks {
         format: Dxf,
+        stop_if_true: bool,
     },
     Errors {
         format: Dxf,
+        stop_if_true: bool,
     },
     NoErrors {
         format: Dxf,
+        stop_if_true: bool,
     },
     AboveAverage {
         format: Dxf,
+        stop_if_true: bool,
     },
     BelowAverage {
         format: Dxf,
+        stop_if_true: bool,
     },
     Top10 {
         rank: u32,
         percent: bool,
         format: Dxf,
+        stop_if_true: bool,
     },
     Bottom10 {
         rank: u32,
         percent: bool,
         format: Dxf,
+        stop_if_true: bool,
     },
     DataBar {
         min: Option<Cfvo>,
@@ -283,7 +311,6 @@ pub struct ConditionalFormatting {
     pub range: String,
     pub cf_rule: CfRule,
     pub priority: u32,
-    pub stop_if_true: bool,
 }
 
 // ---------------------------------------------------------------------------

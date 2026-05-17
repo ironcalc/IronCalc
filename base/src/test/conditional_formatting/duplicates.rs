@@ -33,12 +33,14 @@ fn model_with_mixed() -> crate::Model<'static> {
 fn duplicate_rule() -> CfRuleInput {
     CfRuleInput::DuplicateValues {
         format: super::red_fill(),
+        stop_if_true: false,
     }
 }
 
 fn unique_rule() -> CfRuleInput {
     CfRuleInput::UniqueValues {
         format: super::red_fill(),
+        stop_if_true: false,
     }
 }
 
