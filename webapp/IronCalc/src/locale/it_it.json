@@ -35,9 +35,7 @@
     "data_bars_negative": "Negativo",
     "data_bars_positive": "Positivo",
     "data_bars_preferences": "Preferenze",
-    "data_bars_round_corners": "Angoli arrotondati",
     "data_bars_settings": "Impostazioni",
-    "data_bars_show_borders": "Mostra bordi",
     "data_bars_solid_fill": "Riempimento uniforme",
     "data_bars_type_automatic": "Automatico",
     "default_styles": "Preset",
@@ -58,7 +56,6 @@
     "icon_sets_settings": "Impostazioni",
     "icon_sets_shapes": "Forme",
     "icon_sets_show_value": "Mostra valore cella",
-    "icon_sets_when_gte_and": "Quando il valore è ≥ {{value}}{{unit}} e",
     "icon_sets_when_value_is": "Quando il valore è",
     "new": "Aggiungi nuovo",
     "no_search_results": "Nessuna regola corrisponde alla tua ricerca.",
@@ -143,49 +140,30 @@
     "error_inserting_columns": "Impossibile inserire le colonne",
     "error_inserting_rows": "Impossibile inserire le righe",
     "error_moving_columns": "Impossibile spostare le colonne",
-    "error_moving_rows": "Impossibile spostare le righe",
-    "ok": "OK"
+    "error_moving_rows": "Impossibile spostare le righe"
   },
   "formula_bar": {
     "manage_named_ranges": "Gestisci intervalli denominati"
-  },
-  "formula_input": {
-    "label": "Formula",
-    "title": "Aggiorna formula",
-    "update": "Aggiorna"
   },
   "name_manager_dialog": {
     "add_new_range": "Aggiungi nuovo intervallo",
     "apply": "Applica modifiche",
     "back_to_list": "Torna alla lista",
     "cancel": "Annulla",
-    "close": "Chiudi finestra",
     "default_range_prefix": "Intervallo",
     "delete": "Elimina intervallo",
-    "discard": "Annulla modifiche",
     "edit": "Modifica intervallo",
     "edit_range": "Modifica intervallo",
     "empty_message1": "Non sono ancora stati aggiunti intervalli denominati.",
     "empty_message2": "Fai clic su \"Aggiungi nuovo\" per crearne uno.",
     "enter_formula": "Inserisci formula",
     "enter_range_name": "Inserisci nome intervallo",
-    "errors": {
-      "name_already_exists": "Questo nome esiste già nell'ambito selezionato",
-      "name_cannot_contain_spaces": "Il nome non può contenere spazi",
-      "name_cannot_start_with_number": "Il nome non può iniziare con un numero",
-      "name_invalid_characters": "Il nome contiene caratteri non validi. Usa solo lettere, numeri, underscore e punti. Deve iniziare con una lettera o underscore.",
-      "range_name_required": "Il nome dell'intervallo è obbligatorio"
-    },
     "global": "(Globale)",
-    "help": "Informazioni sugli intervalli denominati",
-    "name": "Nome",
     "new": "Aggiungi nuovo",
     "new_named_range": "Nuovo intervallo denominato",
     "no_search_results": "Nessun intervallo denominato corrisponde alla tua ricerca.",
-    "range": "Ambito",
     "range_name": "Nome intervallo",
     "refers_to": "Fa riferimento a",
-    "scope": "Intervallo",
     "scope_filter_all": "Tutti",
     "scope_filter_current": "Foglio corrente",
     "scope_filter_global": "Globale",
@@ -203,12 +181,10 @@
   "num_fmt": {
     "cancel": "Annulla",
     "close": "Chiudi finestra",
-    "label": "Formato numero",
     "save": "Salva",
     "title": "Formato numero personalizzato"
   },
   "regional_settings": {
-    "close": "Chiudi finestra",
     "language": {
       "display_language": {
         "de": "Deutsch",
@@ -216,17 +192,7 @@
         "es": "Español",
         "fr": "Français",
         "it": "Italiano"
-      },
-      "display_language_current_lang": {
-        "de": "Tedesco",
-        "en": "Inglese",
-        "es": "Spagnolo",
-        "fr": "Francese",
-        "it": "Italiano"
-      },
-      "language_helper": "Controlla la lingua usata nei nomi delle funzioni e nei messaggi di errore.",
-      "language_label": "Lingua del motore",
-      "title": "Lingua"
+      }
     },
     "locale": {
       "delimiter_comma": "Virgola",
@@ -254,12 +220,6 @@
     "confirm": "Sì, elimina foglio",
     "message": "Il foglio '{{sheetName}}' verrà eliminato.",
     "title": "Sei sicuro?"
-  },
-  "sheet_rename": {
-    "close": "Chiudi finestra",
-    "label": "Nuovo nome",
-    "rename": "Salva",
-    "title": "Rinomina foglio"
   },
   "sheet_tab": {
     "change_color": "Cambia colore",
@@ -310,14 +270,12 @@
       "date_long": "Data lunga",
       "date_short": "Data breve",
       "number": "Numero",
-      "number_example": "1.000,00",
       "percentage": "Percentuale",
       "percentage_example": "10%"
     },
     "format_number": "Formato numero",
     "increase_font_size": "Aumenta dimensione carattere",
     "italic": "Corsivo",
-    "named_ranges": "Intervalli denominati",
     "percentage": "Formato percentuale",
     "redo": "Ripeti",
     "scroll_left": "Scorri a sinistra",
