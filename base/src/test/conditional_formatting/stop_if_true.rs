@@ -98,9 +98,9 @@ fn test_stop_if_true_stored_as_false() {
 //       evaluation, so the DataBar from the lower-priority rule must NOT appear.
 //   A1, A2, A3 (value ≤ 3): the stop rule does not match, so the DataBar applies normally.
 //
-// Without stop_if_true evaluation (current state) both the DataBar and the blue fill
-// are pushed into the cache Vec for A4/A5, so data_bar would be Some(…).
-// These tests therefore FAIL until stop_if_true is wired into evaluate_conditional_formatting.
+// Expected cache behavior:
+//   matched A4/A5 keep the blue fill and do not retain a DataBar entry;
+//   unmatched A1/A2/A3 retain the DataBar as normal.
 // ---------------------------------------------------------------------------
 
 fn model_with_stop_if_true_over_data_bar() -> crate::Model<'static> {
