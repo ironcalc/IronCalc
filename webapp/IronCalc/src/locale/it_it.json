@@ -97,6 +97,7 @@
     "rule_type_unique_values": "Valori univoci",
     "rule_value_placeholder": "Valore",
     "search_placeholder": "Cerca...",
+    "stop_if_true": "Interrompi se vero",
     "tab_classic": "Classico",
     "tab_color_scale": "Scala di colori",
     "tab_data_bars": "Barre dati",

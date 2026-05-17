@@ -15,6 +15,7 @@ fn period_rule(period: PeriodType) -> CfRuleInput {
         date1: None,
         date2: None,
         format: super::red_fill(),
+        stop_if_true: false,
     }
 }
 

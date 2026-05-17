@@ -219,7 +219,6 @@ pub(crate) enum Diff {
         range: String,
         rule: Box<CfRule>,
         priority: u32,
-        stop_if_true: bool,
     },
     DeleteConditionalFormatting {
         sheet: u32,
@@ -227,7 +226,6 @@ pub(crate) enum Diff {
         old_range: String,
         old_rule: Box<CfRule>,
         old_priority: u32,
-        old_stop_if_true: bool,
     },
     UpdateConditionalFormatting {
         sheet: u32,
@@ -235,10 +233,8 @@ pub(crate) enum Diff {
         old_range: String,
         old_rule: Box<CfRule>,
         old_priority: u32,
-        old_stop_if_true: bool,
         new_range: String,
         new_rule: Box<CfRule>,
-        new_stop_if_true: bool,
     },
     // FIXME: we are missing SetViewDiffs
 }

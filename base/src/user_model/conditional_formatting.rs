@@ -34,7 +34,7 @@ impl<'a> UserModel<'a> {
     ) -> Result<(), String> {
         let priority = self.model.add_conditional_formatting(sheet, range, rule)?;
         // Read back the stored entry so the Diff contains the dxf_id that was assigned.
-        let (stored_rule, stop_if_true) = self
+        let stored_rule = self
             .model
             .workbook
             .worksheet(sheet)
@@ -43,15 +43,17 @@ impl<'a> UserModel<'a> {
                 ws.conditional_formatting
                     .iter()
                     .find(|cf| cf.priority == priority)
-                    .map(|cf| (cf.cf_rule.clone(), cf.stop_if_true))
+                    .map(|cf| cf.cf_rule.clone())
             })
-            .unwrap_or((CfRule::DuplicateValues { dxf_id: 0 }, false));
+            .unwrap_or(CfRule::DuplicateValues {
+                dxf_id: 0,
+                stop_if_true: false,
+            });
         self.push_diff_list(vec![Diff::AddConditionalFormatting {
             sheet,
             range: range.to_string(),
             rule: Box::new(stored_rule),
             priority,
-            stop_if_true,
         }]);
         self.evaluate_if_not_paused();
         Ok(())
@@ -68,7 +70,6 @@ impl<'a> UserModel<'a> {
             old_range: old.range,
             old_rule: Box::new(old.cf_rule),
             old_priority: old.priority,
-            old_stop_if_true: old.stop_if_true,
         }]);
         self.evaluate_if_not_paused();
         Ok(())
@@ -86,7 +87,7 @@ impl<'a> UserModel<'a> {
             self.model
                 .update_conditional_formatting(sheet, index as usize, new_range, new_rule)?;
         // Read back the stored entry so the Diff contains the dxf_id that was assigned.
-        let (stored_rule, new_stop_if_true) = self
+        let stored_rule = self
             .model
             .workbook
             .worksheet(sheet)
@@ -94,19 +95,20 @@ impl<'a> UserModel<'a> {
             .and_then(|ws| {
                 ws.conditional_formatting
                     .get(index as usize)
-                    .map(|cf| (cf.cf_rule.clone(), cf.stop_if_true))
+                    .map(|cf| cf.cf_rule.clone())
             })
-            .unwrap_or((CfRule::DuplicateValues { dxf_id: 0 }, false));
+            .unwrap_or(CfRule::DuplicateValues {
+                dxf_id: 0,
+                stop_if_true: false,
+            });
         self.push_diff_list(vec![Diff::UpdateConditionalFormatting {
             sheet,
             index,
             old_range: old.range,
             old_rule: Box::new(old.cf_rule),
             old_priority: old.priority,
-            old_stop_if_true: old.stop_if_true,
             new_range: new_range.to_string(),
             new_rule: Box::new(stored_rule),
-            new_stop_if_true,
         }]);
         self.evaluate_if_not_paused();
         Ok(())

@@ -5,6 +5,7 @@ mod cell_is;
 mod duplicates;
 mod formula;
 mod priority;
+mod stop_if_true;
 mod text;
 mod time_period;
 mod top_bottom;
@@ -60,6 +61,7 @@ fn cell_is_gt(threshold: &str) -> CfRuleInput {
         formula: threshold.to_string(),
         formula2: None,
         format: Dxf::default(),
+        stop_if_true: false,
     }
 }
 
@@ -407,6 +409,7 @@ fn test_cell_is_with_format_applies_fill() {
                 formula: "3".to_string(),
                 formula2: None,
                 format: red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -428,7 +431,10 @@ fn test_format_retrieved_via_get_dxf() {
         .add_conditional_formatting(
             0,
             "A1:A5",
-            CfRuleInput::DuplicateValues { format: red_fill() },
+            CfRuleInput::DuplicateValues {
+                format: red_fill(),
+                stop_if_true: false,
+            },
         )
         .unwrap();
 
@@ -484,6 +490,7 @@ fn test_cell_is_threshold_from_sum() {
                 formula: "=SUM($B$1:$B$3)/2".to_string(),
                 formula2: None,
                 format: red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -529,6 +536,7 @@ fn test_cell_is_threshold_addition() {
                 formula: "=$B$1+$B$2".to_string(),
                 formula2: None,
                 format: red_fill(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -568,7 +576,14 @@ fn test_blanks_applies_to_empty_cells() {
     model.evaluate();
 
     model
-        .add_conditional_formatting(0, "A1:A5", CfRuleInput::Blanks { format: red_fill() })
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            CfRuleInput::Blanks {
+                format: red_fill(),
+                stop_if_true: false,
+            },
+        )
         .unwrap();
     model.evaluate();
 
@@ -625,7 +640,14 @@ fn test_not_blanks_applies_to_non_empty_cells() {
     model.evaluate();
 
     model
-        .add_conditional_formatting(0, "A1:A5", CfRuleInput::NotBlanks { format: red_fill() })
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            CfRuleInput::NotBlanks {
+                format: red_fill(),
+                stop_if_true: false,
+            },
+        )
         .unwrap();
     model.evaluate();
 
@@ -688,7 +710,14 @@ fn test_errors_applies_to_error_cells() {
     model.evaluate();
 
     model
-        .add_conditional_formatting(0, "A1:A4", CfRuleInput::Errors { format: red_fill() })
+        .add_conditional_formatting(
+            0,
+            "A1:A4",
+            CfRuleInput::Errors {
+                format: red_fill(),
+                stop_if_true: false,
+            },
+        )
         .unwrap();
     model.evaluate();
 
@@ -736,7 +765,14 @@ fn test_no_errors_applies_to_non_error_cells() {
     model.evaluate();
 
     model
-        .add_conditional_formatting(0, "A1:A3", CfRuleInput::NoErrors { format: red_fill() })
+        .add_conditional_formatting(
+            0,
+            "A1:A3",
+            CfRuleInput::NoErrors {
+                format: red_fill(),
+                stop_if_true: false,
+            },
+        )
         .unwrap();
     model.evaluate();
 

@@ -21,12 +21,14 @@ fn model_with_values() -> crate::Model<'static> {
 fn above_average_rule() -> CfRuleInput {
     CfRuleInput::AboveAverage {
         format: super::red_fill(),
+        stop_if_true: false,
     }
 }
 
 fn below_average_rule() -> CfRuleInput {
     CfRuleInput::BelowAverage {
         format: super::red_fill(),
+        stop_if_true: false,
     }
 }
 

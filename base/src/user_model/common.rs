@@ -3034,7 +3034,6 @@ impl<'a> UserModel<'a> {
                     old_range,
                     old_rule,
                     old_priority,
-                    old_stop_if_true,
                 } => {
                     self.model.insert_conditional_formatting_at(
                         *sheet,
@@ -3043,7 +3042,6 @@ impl<'a> UserModel<'a> {
                             range: old_range.clone(),
                             cf_rule: *old_rule.clone(),
                             priority: *old_priority,
-                            stop_if_true: *old_stop_if_true,
                         },
                     )?;
                     needs_evaluation = true;
@@ -3054,7 +3052,6 @@ impl<'a> UserModel<'a> {
                     old_range,
                     old_rule,
                     old_priority,
-                    old_stop_if_true,
                     ..
                 } => {
                     let ws = self.model.workbook.worksheet_mut(*sheet)?;
@@ -3064,7 +3061,6 @@ impl<'a> UserModel<'a> {
                             range: old_range.clone(),
                             cf_rule: *old_rule.clone(),
                             priority: *old_priority,
-                            stop_if_true: *old_stop_if_true,
                         };
                     }
                     needs_evaluation = true;
@@ -3361,7 +3357,6 @@ impl<'a> UserModel<'a> {
                     range,
                     rule,
                     priority,
-                    stop_if_true,
                 } => {
                     let len = self
                         .model
@@ -3376,7 +3371,6 @@ impl<'a> UserModel<'a> {
                             range: range.clone(),
                             cf_rule: *rule.clone(),
                             priority: *priority,
-                            stop_if_true: *stop_if_true,
                         },
                     )?;
                     needs_evaluation = true;
@@ -3391,7 +3385,6 @@ impl<'a> UserModel<'a> {
                     index,
                     new_range,
                     new_rule,
-                    new_stop_if_true,
                     ..
                 } => {
                     let ws = self.model.workbook.worksheet_mut(*sheet)?;
@@ -3399,7 +3392,6 @@ impl<'a> UserModel<'a> {
                     if i < ws.conditional_formatting.len() {
                         ws.conditional_formatting[i].range = new_range.clone();
                         ws.conditional_formatting[i].cf_rule = *new_rule.clone();
-                        ws.conditional_formatting[i].stop_if_true = *new_stop_if_true;
                     }
                     needs_evaluation = true;
                 }

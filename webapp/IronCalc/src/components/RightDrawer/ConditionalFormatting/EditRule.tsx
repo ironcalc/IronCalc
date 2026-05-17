@@ -24,6 +24,7 @@ export interface RuleData {
   ruleValue: string;
   ruleValue2: string;
   formatStyle: FormatStyle;
+  stopIfTrue?: boolean;
   colorScale?: ColorScaleRuleData;
   dataBars?: DataBarsRuleData;
   iconSets?: IconSetsRuleData;

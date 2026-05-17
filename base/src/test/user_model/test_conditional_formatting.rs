@@ -363,6 +363,7 @@ fn test_cell_is_rule_undo_redo() {
                 formula: "3".to_string(),
                 formula2: None,
                 format: Dxf::default(),
+                stop_if_true: false,
             },
         )
         .unwrap();
@@ -529,6 +530,7 @@ fn test_priority_of_overlapping_rules() {
                 formula: "3".to_string(),
                 formula2: None,
                 format: Dxf::default(),
+                stop_if_true: false,
             },
         )
         .unwrap();

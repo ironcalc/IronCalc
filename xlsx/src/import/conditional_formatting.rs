@@ -214,8 +214,6 @@ fn parse_x14_icon_sets(ws: Node) -> Vec<ConditionalFormatting> {
                             .unwrap_or("0")
                             .parse::<u32>()
                             .unwrap_or(0);
-                        let stop_if_true = rule.attribute("stopIfTrue") == Some("1");
-
                         let is_node = match rule.children().find(|n| n.has_tag_name("iconSet")) {
                             Some(n) => n,
                             None => continue,
@@ -309,7 +307,6 @@ fn parse_x14_icon_sets(ws: Node) -> Vec<ConditionalFormatting> {
                             range: range.clone(),
                             cf_rule,
                             priority,
-                            stop_if_true,
                         });
                     }
                 }
@@ -395,6 +392,7 @@ pub(super) fn load_conditional_formatting(
                 .attribute("dxfId")
                 .and_then(|s| s.parse::<u32>().ok())
                 .unwrap_or(0);
+            let stop_if_true = cf_rule.attribute("stopIfTrue") == Some("1");
 
             let cf_type = match cf_rule.attribute("type") {
                 Some(t) => t,
@@ -444,14 +442,24 @@ pub(super) fn load_conditional_formatting(
                         formula,
                         formula2,
                         dxf_id,
+                        stop_if_true,
                     }
                 }
-                "duplicateValues" => CfRule::DuplicateValues { dxf_id },
+                "duplicateValues" => CfRule::DuplicateValues {
+                    dxf_id,
+                    stop_if_true,
+                },
                 "aboveAverage" => {
                     if cf_rule.attribute("aboveAverage") == Some("0") {
-                        CfRule::BelowAverage { dxf_id }
+                        CfRule::BelowAverage {
+                            dxf_id,
+                            stop_if_true,
+                        }
                     } else {
-                        CfRule::AboveAverage { dxf_id }
+                        CfRule::AboveAverage {
+                            dxf_id,
+                            stop_if_true,
+                        }
                     }
                 }
                 "top10" => {
@@ -466,12 +474,14 @@ pub(super) fn load_conditional_formatting(
                             rank,
                             percent,
                             dxf_id,
+                            stop_if_true,
                         }
                     } else {
                         CfRule::Top10 {
                             rank,
                             percent,
                             dxf_id,
+                            stop_if_true,
                         }
                     }
                 }
@@ -600,9 +610,13 @@ pub(super) fn load_conditional_formatting(
                         operator,
                         value,
                         dxf_id,
+                        stop_if_true,
                     }
                 }
-                "uniqueValues" => CfRule::UniqueValues { dxf_id },
+                "uniqueValues" => CfRule::UniqueValues {
+                    dxf_id,
+                    stop_if_true,
+                },
                 "timePeriod" => {
                     let period =
                         match parse_period_type(cf_rule.attribute("timePeriod").unwrap_or("")) {
@@ -614,18 +628,17 @@ pub(super) fn load_conditional_formatting(
                         date1: None,
                         date2: None,
                         dxf_id,
+                        stop_if_true,
                     }
                 }
                 // Skip unknown rule types silently
                 _ => continue,
             };
 
-            let stop_if_true = cf_rule.attribute("stopIfTrue") == Some("1");
             result.push(ConditionalFormatting {
                 range: range.clone(),
                 cf_rule: rule,
                 priority,
-                stop_if_true,
             });
         }
     }

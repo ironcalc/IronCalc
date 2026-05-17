@@ -285,42 +285,42 @@ export interface IconThreshold {
 /** Stored CF rule returned by getConditionalFormattingList (no format field — use getDxfForConditionalFormatting to retrieve it). */
 export type CfRule =
   | { type: "ColorScale"; thresholds: ColorScaleThreshold[] }
-  | { type: "CellIs"; operator: ValueOperator; formula: string; formula2: string | null }
-  | { type: "Formula"; formula: string }
-  | { type: "Text"; operator: TextOperator; value: string }
-  | { type: "TimePeriod"; time_period: PeriodType; date1: string | null; date2: string | null }
-  | { type: "DuplicateValues" }
-  | { type: "UniqueValues" }
-  | { type: "Blanks" }
-  | { type: "NotBlanks" }
-  | { type: "Errors" }
-  | { type: "NoErrors" }
-  | { type: "AboveAverage" }
-  | { type: "BelowAverage" }
-  | { type: "Top10"; rank: number; percent: boolean }
-  | { type: "Bottom10"; rank: number; percent: boolean }
+  | { type: "CellIs"; operator: ValueOperator; formula: string; formula2: string | null; stop_if_true: boolean }
+  | { type: "Formula"; formula: string; stop_if_true: boolean }
+  | { type: "Text"; operator: TextOperator; value: string; stop_if_true: boolean }
+  | { type: "TimePeriod"; time_period: PeriodType; date1: string | null; date2: string | null; stop_if_true: boolean }
+  | { type: "DuplicateValues"; stop_if_true: boolean }
+  | { type: "UniqueValues"; stop_if_true: boolean }
+  | { type: "Blanks"; stop_if_true: boolean }
+  | { type: "NotBlanks"; stop_if_true: boolean }
+  | { type: "Errors"; stop_if_true: boolean }
+  | { type: "NoErrors"; stop_if_true: boolean }
+  | { type: "AboveAverage"; stop_if_true: boolean }
+  | { type: "BelowAverage"; stop_if_true: boolean }
+  | { type: "Top10"; rank: number; percent: boolean; stop_if_true: boolean }
+  | { type: "Bottom10"; rank: number; percent: boolean; stop_if_true: boolean }
   | { type: "DataBar"; min: Cfvo | null; max: Cfvo | null; positive_color: string; negative_color: string; is_gradient: boolean; show_value: boolean }
   | { type: "IconSet"; thresholds: IconThreshold[]; show_value: boolean }
   | { type: "IconRating"; icon: Icon; color: string; thresholds: [Cfvo, boolean][]; show_value: boolean };
 
 /** Input CF rule for addConditionalFormatting / updateConditionalFormatting.
- *  Dxf-based variants carry an optional inline `format` instead of a separate Dxf argument. */
+ *  Dxf-based variants carry an inline `format` and a `stop_if_true` flag. */
 export type CfRuleInput =
   | { type: "ColorScale"; thresholds: ColorScaleThreshold[] }
-  | { type: "CellIs"; operator: ValueOperator; formula: string; formula2: string | null; format: Dxf }
-  | { type: "Formula"; formula: string; format: Dxf }
-  | { type: "Text"; operator: TextOperator; value: string; format: Dxf }
-  | { type: "TimePeriod"; time_period: PeriodType; date1: string | null; date2: string | null; format: Dxf }
-  | { type: "DuplicateValues"; format: Dxf }
-  | { type: "UniqueValues"; format: Dxf }
-  | { type: "Blanks"; format: Dxf }
-  | { type: "NotBlanks"; format: Dxf }
-  | { type: "Errors"; format: Dxf }
-  | { type: "NoErrors"; format: Dxf }
-  | { type: "AboveAverage"; format: Dxf }
-  | { type: "BelowAverage"; format: Dxf }
-  | { type: "Top10"; rank: number; percent: boolean; format: Dxf }
-  | { type: "Bottom10"; rank: number; percent: boolean; format: Dxf }
+  | { type: "CellIs"; operator: ValueOperator; formula: string; formula2: string | null; format: Dxf; stop_if_true: boolean }
+  | { type: "Formula"; formula: string; format: Dxf; stop_if_true: boolean }
+  | { type: "Text"; operator: TextOperator; value: string; format: Dxf; stop_if_true: boolean }
+  | { type: "TimePeriod"; time_period: PeriodType; date1: string | null; date2: string | null; format: Dxf; stop_if_true: boolean }
+  | { type: "DuplicateValues"; format: Dxf; stop_if_true: boolean }
+  | { type: "UniqueValues"; format: Dxf; stop_if_true: boolean }
+  | { type: "Blanks"; format: Dxf; stop_if_true: boolean }
+  | { type: "NotBlanks"; format: Dxf; stop_if_true: boolean }
+  | { type: "Errors"; format: Dxf; stop_if_true: boolean }
+  | { type: "NoErrors"; format: Dxf; stop_if_true: boolean }
+  | { type: "AboveAverage"; format: Dxf; stop_if_true: boolean }
+  | { type: "BelowAverage"; format: Dxf; stop_if_true: boolean }
+  | { type: "Top10"; rank: number; percent: boolean; format: Dxf; stop_if_true: boolean }
+  | { type: "Bottom10"; rank: number; percent: boolean; format: Dxf; stop_if_true: boolean }
   | { type: "DataBar"; min: Cfvo | null; max: Cfvo | null; positive_color: string; negative_color: string; is_gradient: boolean; show_value: boolean }
   | { type: "IconSet"; thresholds: IconThreshold[]; show_value: boolean }
   | { type: "IconRating"; icon: Icon; color: string; thresholds: [Cfvo, boolean][]; show_value: boolean };
@@ -383,7 +383,6 @@ export interface ConditionalFormatting {
   range: string;
   cf_rule: CfRule;
   priority: number;
-  stop_if_true: boolean;
 }
 
 export type IconSetType =

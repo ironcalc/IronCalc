@@ -47,6 +47,9 @@ const ClassicRule = ({
   );
   const [ruleValue, setRuleValue] = useState(initialValues?.ruleValue ?? "");
   const [ruleValue2, setRuleValue2] = useState(initialValues?.ruleValue2 ?? "");
+  const [stopIfTrue, setStopIfTrue] = useState(
+    initialValues?.stopIfTrue ?? false,
+  );
 
   const ruleTypeOptions = [
     {
@@ -342,6 +345,16 @@ const ClassicRule = ({
             onChange={onFormatStyleChange}
           />
         </div>
+        <div className="ic-edit-rule-section">
+          <label className="ic-edit-rule-checkbox-label">
+            <input
+              type="checkbox"
+              checked={stopIfTrue}
+              onChange={(e) => setStopIfTrue(e.target.checked)}
+            />
+            {t("conditional_formatting.stop_if_true")}
+          </label>
+        </div>
       </div>
       <div className="ic-edit-rule-footer">
         <Button variant="secondary" onClick={onCancel}>
@@ -363,6 +376,7 @@ const ClassicRule = ({
               ruleValue,
               ruleValue2,
               formatStyle,
+              stopIfTrue,
             })
           }
         >

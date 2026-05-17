@@ -478,6 +478,7 @@ export function ruleDataToCfRule(data: RuleData): CfRuleInput | null {
         formula: data.ruleValue,
         formula2: isBetween ? data.ruleValue2 : null,
         format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
       };
     }
     case "text": {
@@ -488,6 +489,7 @@ export function ruleDataToCfRule(data: RuleData): CfRuleInput | null {
         operator,
         value: data.ruleValue,
         format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
       };
     }
     case "date": {
@@ -501,31 +503,51 @@ export function ruleDataToCfRule(data: RuleData): CfRuleInput | null {
         date1: isBetween ? data.ruleValue : null,
         date2: isBetween ? data.ruleValue2 : null,
         format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
       };
     }
     case "duplicate_values":
       return {
         type: "DuplicateValues",
         format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
       };
     case "unique_values":
       return {
         type: "UniqueValues",
         format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
       };
     case "blanks":
-      return { type: "Blanks", format: formatStyleToDxf(data.formatStyle) };
+      return {
+        type: "Blanks",
+        format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
+      };
     case "no_blanks":
-      return { type: "NotBlanks", format: formatStyleToDxf(data.formatStyle) };
+      return {
+        type: "NotBlanks",
+        format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
+      };
     case "errors":
-      return { type: "Errors", format: formatStyleToDxf(data.formatStyle) };
+      return {
+        type: "Errors",
+        format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
+      };
     case "no_errors":
-      return { type: "NoErrors", format: formatStyleToDxf(data.formatStyle) };
+      return {
+        type: "NoErrors",
+        format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
+      };
     case "formula":
       return {
         type: "Formula",
         formula: data.ruleValue,
         format: formatStyleToDxf(data.formatStyle),
+        stop_if_true: data.stopIfTrue ?? false,
       };
     default:
       return null;
@@ -650,6 +672,7 @@ export function cfRuleToRuleData(
         ruleOperator,
         ruleValue: cf_rule.formula,
         ruleValue2: cf_rule.formula2 ?? "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     }
     case "Text": {
@@ -660,6 +683,7 @@ export function cfRuleToRuleData(
         ruleOperator,
         ruleValue: cf_rule.value,
         ruleValue2: "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     }
     case "TimePeriod": {
@@ -670,6 +694,7 @@ export function cfRuleToRuleData(
         ruleOperator,
         ruleValue: cf_rule.date1 ?? "",
         ruleValue2: cf_rule.date2 ?? "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     }
     case "DuplicateValues":
@@ -678,6 +703,7 @@ export function cfRuleToRuleData(
         ruleOperator: "",
         ruleValue: "",
         ruleValue2: "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     case "UniqueValues":
       return {
@@ -685,6 +711,7 @@ export function cfRuleToRuleData(
         ruleOperator: "",
         ruleValue: "",
         ruleValue2: "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     case "Blanks":
       return {
@@ -692,6 +719,7 @@ export function cfRuleToRuleData(
         ruleOperator: "",
         ruleValue: "",
         ruleValue2: "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     case "NotBlanks":
       return {
@@ -699,6 +727,7 @@ export function cfRuleToRuleData(
         ruleOperator: "",
         ruleValue: "",
         ruleValue2: "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     case "Errors":
       return {
@@ -706,6 +735,7 @@ export function cfRuleToRuleData(
         ruleOperator: "",
         ruleValue: "",
         ruleValue2: "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     case "NoErrors":
       return {
@@ -713,6 +743,7 @@ export function cfRuleToRuleData(
         ruleOperator: "",
         ruleValue: "",
         ruleValue2: "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     case "Formula":
       return {
@@ -720,6 +751,7 @@ export function cfRuleToRuleData(
         ruleOperator: "",
         ruleValue: cf_rule.formula,
         ruleValue2: "",
+        stopIfTrue: cf_rule.stop_if_true,
       };
     default:
       return null;
