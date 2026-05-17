@@ -19,8 +19,9 @@
   },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.json",
-    "check": "biome check ./src ./tests .storybook/ *.ts *.json",
+    "check": "biome check ./src ./tests .storybook/ *.ts *.json && npm run lint:i18n",
     "check-write": "biome check --write ./src ./tests .storybook/ *.ts *.json",
+    "lint:i18n": "node scripts/lint-i18n.js",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build"
