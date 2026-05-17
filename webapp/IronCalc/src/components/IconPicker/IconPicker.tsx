@@ -26,39 +26,42 @@ import "./icon-picker.css";
 // Ordered list of all available icons for cycling.
 const CYCLE_ICONS: {
   Icon: LucideIcon;
-  backendName: string;
+  name: string;
   filled?: boolean;
 }[] = [
-  { Icon: ArrowUp, backendName: "ArrowUp" },
-  { Icon: ArrowUpRight, backendName: "ArrowAngleUp" },
-  { Icon: ArrowRight, backendName: "ArrowRight" },
-  { Icon: ArrowDownRight, backendName: "ArrowAngleDown" },
-  { Icon: ArrowDown, backendName: "ArrowDown" },
-  { Icon: ChevronUp, backendName: "TriangleUp" },
-  { Icon: Minus, backendName: "FlatRectangle" },
-  { Icon: ChevronDown, backendName: "TriangleDown" },
-  { Icon: Circle, backendName: "Circle", filled: true },
-  { Icon: Diamond, backendName: "Rhombus", filled: true },
-  { Icon: Flag, backendName: "Flag", filled: true },
-  { Icon: Check, backendName: "Check" },
-  { Icon: X, backendName: "Cross" },
-  { Icon: CircleAlert, backendName: "Exclamation" },
-  { Icon: Star, backendName: "Star", filled: true },
-  { Icon: Heart, backendName: "Heart", filled: true },
-  { Icon: ThumbsUp, backendName: "ThumbsUp", filled: true },
-  { Icon: ThumbsDown, backendName: "ThumbsDown", filled: true },
+  { Icon: ArrowUp, name: "ArrowUp" },
+  { Icon: ArrowUpRight, name: "ArrowAngleUp" },
+  { Icon: ArrowRight, name: "ArrowRight" },
+  { Icon: ArrowDownRight, name: "ArrowAngleDown" },
+  { Icon: ArrowDown, name: "ArrowDown" },
+  { Icon: ChevronUp, name: "TriangleUp" },
+  { Icon: Minus, name: "FlatRectangle" },
+  { Icon: ChevronDown, name: "TriangleDown" },
+  { Icon: Circle, name: "Circle", filled: true },
+  { Icon: Diamond, name: "Rhombus", filled: true },
+  { Icon: Flag, name: "Flag", filled: true },
+  { Icon: Check, name: "Check" },
+  { Icon: X, name: "Cross" },
+  { Icon: CircleAlert, name: "Exclamation" },
+  { Icon: Star, name: "Star", filled: true },
+  { Icon: Heart, name: "Heart", filled: true },
+  { Icon: ThumbsUp, name: "ThumbsUp", filled: true },
+  { Icon: ThumbsDown, name: "ThumbsDown", filled: true },
 ];
 
-export function iconSpecFor(backendName: string) {
-  return (
-    CYCLE_ICONS.find((ic) => ic.backendName === backendName) ?? CYCLE_ICONS[0]
-  );
+export function iconSpecFor(name: string) {
+  const result = CYCLE_ICONS.find((ic) => ic.name === name);
+  if (!result) {
+    console.warn(`Unknown icon name: ${name}`);
+    return { Icon: X, filled: false };
+  }
+  return result;
 }
 
 interface IconPickerProps {
   value: string;
   color: string;
-  onChange: (backendName: string) => void;
+  onChange: (name: string) => void;
 }
 
 const IconPicker = ({ value, color, onChange }: IconPickerProps) => {
@@ -129,14 +132,14 @@ const IconPicker = ({ value, color, onChange }: IconPickerProps) => {
             className="ic-icon-picker-panel"
             style={{ top: pos.top, left: pos.left }}
           >
-            {CYCLE_ICONS.map(({ Icon, backendName, filled }) => (
+            {CYCLE_ICONS.map(({ Icon, name, filled }) => (
               <button
-                key={backendName}
+                key={name}
                 type="button"
-                className={`ic-icon-picker-item${backendName === value ? " ic-icon-picker-item--selected" : ""}`}
-                aria-label={backendName}
+                className={`ic-icon-picker-item${name === value ? " ic-icon-picker-item--selected" : ""}`}
+                aria-label={name}
                 onClick={() => {
-                  onChange(backendName);
+                  onChange(name);
                   setOpen(false);
                 }}
               >
