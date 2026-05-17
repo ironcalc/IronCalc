@@ -35,9 +35,7 @@
     "data_bars_negative": "Negativo",
     "data_bars_positive": "Positivo",
     "data_bars_preferences": "Preferencias",
-    "data_bars_round_corners": "Esquinas redondeadas",
     "data_bars_settings": "Configuración",
-    "data_bars_show_borders": "Mostrar bordes",
     "data_bars_solid_fill": "Relleno sólido",
     "data_bars_type_automatic": "Automático",
     "default_styles": "Presets",
@@ -58,7 +56,6 @@
     "icon_sets_settings": "Configuración",
     "icon_sets_shapes": "Formas",
     "icon_sets_show_value": "Mostrar valor de celda",
-    "icon_sets_when_gte_and": "Cuando el valor es ≥ {{value}}{{unit}} y",
     "icon_sets_when_value_is": "Cuando el valor es",
     "new": "Añadir nuevo",
     "no_search_results": "Ninguna regla coincide con tu búsqueda.",
@@ -143,49 +140,30 @@
     "error_inserting_columns": "Error al insertar las columnas",
     "error_inserting_rows": "Error al insertar las filas",
     "error_moving_columns": "Error al mover las columnas",
-    "error_moving_rows": "Error al mover las filas",
-    "ok": "OK"
+    "error_moving_rows": "Error al mover las filas"
   },
   "formula_bar": {
     "manage_named_ranges": "Gestionar rangos con nombre"
-  },
-  "formula_input": {
-    "label": "Fórmula",
-    "title": "Actualizar fórmula",
-    "update": "Actualizar"
   },
   "name_manager_dialog": {
     "add_new_range": "Añadir un nuevo rango",
     "apply": "Aplicar cambios",
     "back_to_list": "Volver a la lista",
     "cancel": "Cancelar",
-    "close": "Cerrar diálogo",
     "default_range_prefix": "Rango",
     "delete": "Eliminar rango",
-    "discard": "Descartar cambios",
     "edit": "Editar rango",
     "edit_range": "Editar rango",
     "empty_message1": "Aún no se han añadido rangos con nombre.",
     "empty_message2": "Haz clic en 'Añadir nuevo' para agregar uno.",
     "enter_formula": "Introduce la fórmula",
     "enter_range_name": "Introduce el nombre del rango",
-    "errors": {
-      "name_already_exists": "Este nombre ya existe en el ámbito seleccionado",
-      "name_cannot_contain_spaces": "El nombre no puede contener espacios",
-      "name_cannot_start_with_number": "El nombre no puede empezar con un número",
-      "name_invalid_characters": "El nombre contiene caracteres no válidos. Usa solo letras, números, guiones bajos y puntos. Debe empezar con una letra o guion bajo.",
-      "range_name_required": "El nombre del rango es obligatorio"
-    },
     "global": "(Global)",
-    "help": "Acerca de los rangos con nombre",
-    "name": "Nombre",
     "new": "Añadir nuevo",
     "new_named_range": "Nuevo rango con nombre",
     "no_search_results": "Ningún rango con nombre coincide con tu búsqueda.",
-    "range": "Ámbito",
     "range_name": "Nombre del rango",
     "refers_to": "Hace referencia a",
-    "scope": "Rango",
     "scope_filter_all": "Todo",
     "scope_filter_current": "Hoja actual",
     "scope_filter_global": "Global",
@@ -203,12 +181,10 @@
   "num_fmt": {
     "cancel": "Cancelar",
     "close": "Cerrar diálogo",
-    "label": "Formato de número",
     "save": "Guardar",
     "title": "Formato de número personalizado"
   },
   "regional_settings": {
-    "close": "Cerrar diálogo",
     "language": {
       "display_language": {
         "de": "Deutsch",
@@ -216,17 +192,7 @@
         "es": "Español",
         "fr": "Français",
         "it": "Italiano"
-      },
-      "display_language_current_lang": {
-        "de": "Alemán",
-        "en": "Inglés",
-        "es": "Español",
-        "fr": "Francés",
-        "it": "Italiano"
-      },
-      "language_helper": "Controla el idioma usado en los nombres de funciones y los mensajes de error.",
-      "language_label": "Idioma del motor",
-      "title": "Idioma"
+      }
     },
     "locale": {
       "delimiter_comma": "Coma",
@@ -254,12 +220,6 @@
     "confirm": "Sí, eliminar hoja",
     "message": "La hoja '{{sheetName}}' será eliminada.",
     "title": "¿Estás seguro?"
-  },
-  "sheet_rename": {
-    "close": "Cerrar diálogo",
-    "label": "Nuevo nombre",
-    "rename": "Guardar",
-    "title": "Renombrar hoja"
   },
   "sheet_tab": {
     "change_color": "Cambiar color",
@@ -310,14 +270,12 @@
       "date_long": "Fecha larga",
       "date_short": "Fecha corta",
       "number": "Número",
-      "number_example": "1.000,00",
       "percentage": "Porcentaje",
       "percentage_example": "10%"
     },
     "format_number": "Formato de número",
     "increase_font_size": "Aumentar tamaño de fuente",
     "italic": "Cursiva",
-    "named_ranges": "Rangos con nombre",
     "percentage": "Formato porcentaje",
     "redo": "Rehacer",
     "scroll_left": "Desplazar a la izquierda",

@@ -35,9 +35,7 @@
     "data_bars_negative": "Negativ",
     "data_bars_positive": "Positiv",
     "data_bars_preferences": "Einstellungen",
-    "data_bars_round_corners": "Abgerundete Ecken",
     "data_bars_settings": "Einstellungen",
-    "data_bars_show_borders": "Rahmen anzeigen",
     "data_bars_solid_fill": "Einfarbige Füllung",
     "data_bars_type_automatic": "Automatisch",
     "default_styles": "Voreinstellungen",
@@ -58,7 +56,6 @@
     "icon_sets_settings": "Einstellungen",
     "icon_sets_shapes": "Formen",
     "icon_sets_show_value": "Zellenwert anzeigen",
-    "icon_sets_when_gte_and": "Wenn der Wert ≥ {{value}}{{unit}} und",
     "icon_sets_when_value_is": "Wenn der Wert",
     "new": "Neu hinzufügen",
     "no_search_results": "Keine Regeln entsprechen Ihrer Suche.",
@@ -143,49 +140,30 @@
     "error_inserting_columns": "Spalten konnten nicht eingefügt werden",
     "error_inserting_rows": "Zeilen konnten nicht eingefügt werden",
     "error_moving_columns": "Spalten konnten nicht verschoben werden",
-    "error_moving_rows": "Zeilen konnten nicht verschoben werden",
-    "ok": "OK"
+    "error_moving_rows": "Zeilen konnten nicht verschoben werden"
   },
   "formula_bar": {
     "manage_named_ranges": "Benannte Bereiche verwalten"
-  },
-  "formula_input": {
-    "label": "Formel",
-    "title": "Formel aktualisieren",
-    "update": "Aktualisieren"
   },
   "name_manager_dialog": {
     "add_new_range": "Neuen Bereich hinzufügen",
     "apply": "Änderungen übernehmen",
     "back_to_list": "Zurück zur Liste",
     "cancel": "Abbrechen",
-    "close": "Dialog schließen",
     "default_range_prefix": "Bereich",
     "delete": "Bereich löschen",
-    "discard": "Änderungen verwerfen",
     "edit": "Bereich bearbeiten",
     "edit_range": "Bereich bearbeiten",
     "empty_message1": "Es wurden noch keine benannten Bereiche hinzugefügt.",
     "empty_message2": "Klicke auf „Neu hinzufügen“, um einen anzulegen.",
     "enter_formula": "Formel eingeben",
     "enter_range_name": "Bereichsnamen eingeben",
-    "errors": {
-      "name_already_exists": "Dieser Name existiert bereits im ausgewählten Geltungsbereich",
-      "name_cannot_contain_spaces": "Der Name darf keine Leerzeichen enthalten",
-      "name_cannot_start_with_number": "Der Name darf nicht mit einer Zahl beginnen",
-      "name_invalid_characters": "Der Name enthält ungültige Zeichen. Verwende nur Buchstaben, Zahlen, Unterstriche und Punkte. Muss mit einem Buchstaben oder Unterstrich beginnen.",
-      "range_name_required": "Der Bereichsname ist erforderlich"
-    },
     "global": "(Global)",
-    "help": "Über benannte Bereiche",
-    "name": "Name",
     "new": "Neu hinzufügen",
     "new_named_range": "Neuer benannter Bereich",
     "no_search_results": "Keine benannten Bereiche entsprechen Ihrer Suche.",
-    "range": "Geltungsbereich",
     "range_name": "Bereichsname",
     "refers_to": "Bezieht sich auf",
-    "scope": "Bereich",
     "scope_filter_all": "Alle",
     "scope_filter_current": "Aktuelles Blatt",
     "scope_filter_global": "Global",
@@ -203,12 +181,10 @@
   "num_fmt": {
     "cancel": "Abbrechen",
     "close": "Dialog schließen",
-    "label": "Zahlenformat",
     "save": "Speichern",
     "title": "Benutzerdefiniertes Zahlenformat"
   },
   "regional_settings": {
-    "close": "Dialog schließen",
     "language": {
       "display_language": {
         "de": "Deutsch",
@@ -216,17 +192,7 @@
         "es": "Español",
         "fr": "Français",
         "it": "Italiano"
-      },
-      "display_language_current_lang": {
-        "de": "Deutsch",
-        "en": "Englisch",
-        "es": "Spanisch",
-        "fr": "Französisch",
-        "it": "Italienisch"
-      },
-      "language_helper": "Legt die Sprache für Funktionsnamen und Fehlermeldungen fest.",
-      "language_label": "Engine-Sprache",
-      "title": "Sprache"
+      }
     },
     "locale": {
       "delimiter_comma": "Komma",
@@ -254,12 +220,6 @@
     "confirm": "Ja, Tabellenblatt löschen",
     "message": "Das Tabellenblatt '{{sheetName}}' wird gelöscht.",
     "title": "Bist du sicher?"
-  },
-  "sheet_rename": {
-    "close": "Dialog schließen",
-    "label": "Neuer Name",
-    "rename": "Speichern",
-    "title": "Tabellenblatt umbenennen"
   },
   "sheet_tab": {
     "change_color": "Farbe ändern",
@@ -310,14 +270,12 @@
       "date_long": "Langes Datum",
       "date_short": "Kurzes Datum",
       "number": "Zahl",
-      "number_example": "1.000,00",
       "percentage": "Prozent",
       "percentage_example": "10%"
     },
     "format_number": "Zahlenformat",
     "increase_font_size": "Schriftgröße erhöhen",
     "italic": "Kursiv",
-    "named_ranges": "Benannte Bereiche",
     "percentage": "Als Prozent formatieren",
     "redo": "Wiederholen",
     "scroll_left": "Nach links scrollen",

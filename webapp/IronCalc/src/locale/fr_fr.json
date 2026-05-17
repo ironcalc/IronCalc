@@ -35,9 +35,7 @@
     "data_bars_negative": "Négatif",
     "data_bars_positive": "Positif",
     "data_bars_preferences": "Préférences",
-    "data_bars_round_corners": "Coins arrondis",
     "data_bars_settings": "Paramètres",
-    "data_bars_show_borders": "Afficher les bordures",
     "data_bars_solid_fill": "Remplissage uni",
     "data_bars_type_automatic": "Automatique",
     "default_styles": "Préréglages",
@@ -58,7 +56,6 @@
     "icon_sets_settings": "Paramètres",
     "icon_sets_shapes": "Formes",
     "icon_sets_show_value": "Afficher la valeur de la cellule",
-    "icon_sets_when_gte_and": "Quand la valeur est ≥ {{value}}{{unit}} et",
     "icon_sets_when_value_is": "Quand la valeur est",
     "new": "Ajouter",
     "no_search_results": "Aucune règle ne correspond à votre recherche.",
@@ -143,49 +140,30 @@
     "error_inserting_columns": "Échec de l'insertion des colonnes",
     "error_inserting_rows": "Échec de l'insertion des lignes",
     "error_moving_columns": "Échec du déplacement des colonnes",
-    "error_moving_rows": "Échec du déplacement des lignes",
-    "ok": "OK"
+    "error_moving_rows": "Échec du déplacement des lignes"
   },
   "formula_bar": {
     "manage_named_ranges": "Gérer les plages nommées"
-  },
-  "formula_input": {
-    "label": "Formule",
-    "title": "Mettre à jour la formule",
-    "update": "Mettre à jour"
   },
   "name_manager_dialog": {
     "add_new_range": "Ajouter une nouvelle plage",
     "apply": "Appliquer les modifications",
     "back_to_list": "Retour à la liste",
     "cancel": "Annuler",
-    "close": "Fermer la boîte de dialogue",
     "default_range_prefix": "Plage",
     "delete": "Supprimer la plage",
-    "discard": "Annuler les modifications",
     "edit": "Modifier la plage",
     "edit_range": "Modifier la plage",
     "empty_message1": "Aucune plage nommée n’a encore été ajoutée.",
     "empty_message2": "Cliquez sur « Ajouter » pour en créer une.",
     "enter_formula": "Saisir la formule",
     "enter_range_name": "Saisir le nom de la plage",
-    "errors": {
-      "name_already_exists": "Ce nom existe déjà dans la portée sélectionnée",
-      "name_cannot_contain_spaces": "Le nom ne peut pas contenir d’espaces",
-      "name_cannot_start_with_number": "Le nom ne peut pas commencer par un chiffre",
-      "name_invalid_characters": "Le nom contient des caractères non valides. Utilisez uniquement des lettres, chiffres, traits de soulignement et points. Il doit commencer par une lettre ou un trait de soulignement.",
-      "range_name_required": "Le nom de la plage est obligatoire"
-    },
     "global": "(Global)",
-    "help": "À propos des plages nommées",
-    "name": "Nom",
     "new": "Ajouter",
     "new_named_range": "Nouvelle plage nommée",
     "no_search_results": "Aucune plage nommée ne correspond à votre recherche.",
-    "range": "Portée",
     "range_name": "Nom de la plage",
     "refers_to": "Fait référence à",
-    "scope": "Plage",
     "scope_filter_all": "Tous",
     "scope_filter_current": "Feuille actuelle",
     "scope_filter_global": "Global",
@@ -203,12 +181,10 @@
   "num_fmt": {
     "cancel": "Annuler",
     "close": "Fermer la boîte de dialogue",
-    "label": "Format de nombre",
     "save": "Enregistrer",
     "title": "Format de nombre personnalisé"
   },
   "regional_settings": {
-    "close": "Fermer la boîte de dialogue",
     "language": {
       "display_language": {
         "de": "Deutsch",
@@ -216,17 +192,7 @@
         "es": "Español",
         "fr": "Français",
         "it": "Italiano"
-      },
-      "display_language_current_lang": {
-        "de": "Allemand",
-        "en": "Anglais",
-        "es": "Espagnol",
-        "fr": "Français",
-        "it": "Italien"
-      },
-      "language_helper": "Contrôle la langue utilisée pour les noms de fonctions et les messages d’erreur.",
-      "language_label": "Langue du moteur",
-      "title": "Langue"
+      }
     },
     "locale": {
       "delimiter_comma": "Virgule",
@@ -254,12 +220,6 @@
     "confirm": "Oui, supprimer la feuille",
     "message": "La feuille « {{sheetName}} » sera supprimée.",
     "title": "Êtes-vous sûr ?"
-  },
-  "sheet_rename": {
-    "close": "Fermer la boîte de dialogue",
-    "label": "Nouveau nom",
-    "rename": "Enregistrer",
-    "title": "Renommer la feuille"
   },
   "sheet_tab": {
     "change_color": "Changer la couleur",
@@ -310,14 +270,12 @@
       "date_long": "Date longue",
       "date_short": "Date courte",
       "number": "Nombre",
-      "number_example": "1 000,00",
       "percentage": "Pourcentage",
       "percentage_example": "10 %"
     },
     "format_number": "Format de nombre",
     "increase_font_size": "Augmenter la taille de la police",
     "italic": "Italique",
-    "named_ranges": "Plages nommées",
     "percentage": "Formater pourcentage",
     "redo": "Rétablir",
     "scroll_left": "Faire défiler vers la gauche",
