@@ -336,11 +336,18 @@ const ConditionalFormatting = ({
                   const isColorScale = rule.ruleType === "color_scale";
                   const colorScaleGradient =
                     isColorScale && rule.colorScale
-                      ? steppedGradient([
-                          rule.colorScale.minimum.color,
-                          rule.colorScale.midpoint.color,
-                          rule.colorScale.maximum.color,
-                        ])
+                      ? steppedGradient(
+                          rule.colorScale.midpoint.type === "none"
+                            ? [
+                                rule.colorScale.minimum.color,
+                                rule.colorScale.maximum.color,
+                              ]
+                            : [
+                                rule.colorScale.minimum.color,
+                                rule.colorScale.midpoint.color,
+                                rule.colorScale.maximum.color,
+                              ],
+                        )
                       : undefined;
                   const isDataBars = rule.ruleType === "data_bars";
                   const isIconSets = rule.ruleType === "icon_sets";
