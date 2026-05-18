@@ -518,7 +518,7 @@ const IconSetsRule = ({
                   >
                     <div className="ic-is-threshold-label">{getLabel(i)}</div>
                     <div className="ic-is-threshold-controls">
-                      <div className="ic-input-control md ic-is-operator-group">
+                      <div className="ic-is-operator-group--compact">
                         <IconButton
                           size="sm"
                           variant={
