@@ -94,6 +94,7 @@ mod test_fn_fv;
 mod test_fn_lambda;
 mod test_fn_let;
 mod test_fn_map_reduce;
+mod test_fn_mmult;
 mod test_fn_round;
 mod test_fn_scan;
 mod test_fn_tocol_torow;
