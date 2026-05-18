@@ -44,6 +44,20 @@ function getRange(applyTo: string): string {
   return parts.length === 2 ? parts[1] : applyTo;
 }
 
+function rangesIntersect(
+  a: [number, number, number, number, number],
+  b: [number, number, number, number, number],
+): boolean {
+  const [aSheet, aR1, aC1, aR2, aC2] = a;
+  const [bSheet, bR1, bC1, bR2, bC2] = b;
+  if (aSheet !== bSheet) return false;
+  const aMinR = Math.min(aR1, aR2);
+  const aMaxR = Math.max(aR1, aR2);
+  const aMinC = Math.min(aC1, aC2);
+  const aMaxC = Math.max(aC1, aC2);
+  return aMinR <= bR2 && bR1 <= aMaxR && aMinC <= bC2 && bC1 <= aMaxC;
+}
+
 interface ConditionalFormattingProps {
   onClose: () => void;
   getSelectedArea: () => string;
@@ -112,6 +126,22 @@ const ConditionalFormatting = ({
   };
 
   const rules = loadRules();
+
+  const sheetName = model.getWorksheetsProperties()[sheet]?.name ?? "";
+
+  const getRuleRange = (rule: Rule): string =>
+    rule.applyTo.includes("!") ? rule.applyTo : `${sheetName}!${rule.applyTo}`;
+
+  const selectRuleRange = (rule: Rule): void => {
+    const range = parseRangeInSheet(model, getRuleRange(rule));
+    if (range) {
+      const [sheetIndex, rowStart, columnStart, rowEnd, columnEnd] = range;
+      model.setSelectedSheet(sheetIndex);
+      model.setSelectedCell(rowStart, columnStart);
+      model.setSelectedRange(rowStart, columnStart, rowEnd, columnEnd);
+    }
+    onUpdate();
+  };
 
   const isEditView = isCreatingNew || editingRule !== null;
 
@@ -188,7 +218,7 @@ const ConditionalFormatting = ({
                   italic: false,
                   underline: false,
                   strike: false,
-                  fontColor: "#C0392B",
+                  fontColor: "#D21D21",
                   fillColor: "#FBE7E8",
                 },
               }
@@ -203,21 +233,9 @@ const ConditionalFormatting = ({
     if (filterOption === "selection") {
       const selectedParsed = parseRangeInSheet(model, getSelectedArea());
       if (!selectedParsed) return false;
-      const sheetName = model.getWorksheetsProperties()[sheet]?.name ?? "";
-      const ruleRange = rule.applyTo.includes("!")
-        ? rule.applyTo
-        : `${sheetName}!${rule.applyTo}`;
-      const ruleParsed = parseRangeInSheet(model, ruleRange);
+      const ruleParsed = parseRangeInSheet(model, getRuleRange(rule));
       if (!ruleParsed) return false;
-      const [selSheet, selR1, selC1, selR2, selC2] = selectedParsed;
-      const [ruleSheet, ruleR1, ruleC1, ruleR2, ruleC2] = ruleParsed;
-      if (selSheet !== ruleSheet) return false;
-      const selMinR = Math.min(selR1, selR2);
-      const selMaxR = Math.max(selR1, selR2);
-      const selMinC = Math.min(selC1, selC2);
-      const selMaxC = Math.max(selC1, selC2);
-      if (selMinR > ruleR2 || ruleR1 > selMaxR) return false;
-      if (selMinC > ruleC2 || ruleC1 > selMaxC) return false;
+      if (!rangesIntersect(selectedParsed, ruleParsed)) return false;
     }
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
@@ -289,34 +307,18 @@ const ConditionalFormatting = ({
                 </div>
               ) : (
                 filteredRules.map((rule) => {
-                  const sheetName =
-                    model.getWorksheetsProperties()[sheet]?.name ?? "";
                   const selectedParsed = parseRangeInSheet(
                     model,
                     getSelectedArea(),
                   );
-                  const ruleRange = rule.applyTo.includes("!")
-                    ? rule.applyTo
-                    : `${sheetName}!${rule.applyTo}`;
-                  const ruleParsed = parseRangeInSheet(model, ruleRange);
-                  let isActive = false;
-                  if (selectedParsed && ruleParsed) {
-                    const [selSheet, selR1, selC1, selR2, selC2] =
-                      selectedParsed;
-                    const [ruleSheet, ruleR1, ruleC1, ruleR2, ruleC2] =
-                      ruleParsed;
-                    if (selSheet === ruleSheet) {
-                      const selMinR = Math.min(selR1, selR2);
-                      const selMaxR = Math.max(selR1, selR2);
-                      const selMinC = Math.min(selC1, selC2);
-                      const selMaxC = Math.max(selC1, selC2);
-                      isActive =
-                        selMinR <= ruleR2 &&
-                        ruleR1 <= selMaxR &&
-                        selMinC <= ruleC2 &&
-                        ruleC1 <= selMaxC;
-                    }
-                  }
+                  const ruleParsed = parseRangeInSheet(
+                    model,
+                    getRuleRange(rule),
+                  );
+                  const isActive =
+                    selectedParsed !== null &&
+                    ruleParsed !== null &&
+                    rangesIntersect(selectedParsed, ruleParsed);
 
                   const previewStyle: React.CSSProperties = {
                     color: rule.formatStyle.fontColor || "#000000",
@@ -365,59 +367,11 @@ const ConditionalFormatting = ({
                       className={`ic-cf-list-item${isActive ? " ic-cf-list-item--selected" : ""}`}
                       // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
                       tabIndex={0}
-                      onClick={() => {
-                        const sheetName =
-                          model.getWorksheetsProperties()[sheet]?.name ?? "";
-                        const ruleRange = rule.applyTo.includes("!")
-                          ? rule.applyTo
-                          : `${sheetName}!${rule.applyTo}`;
-                        const range = parseRangeInSheet(model, ruleRange);
-                        if (range) {
-                          const [
-                            sheetIndex,
-                            rowStart,
-                            columnStart,
-                            rowEnd,
-                            columnEnd,
-                          ] = range;
-                          model.setSelectedSheet(sheetIndex);
-                          model.setSelectedCell(rowStart, columnStart);
-                          model.setSelectedRange(
-                            rowStart,
-                            columnStart,
-                            rowEnd,
-                            columnEnd,
-                          );
-                        }
-                        onUpdate();
-                      }}
+                      onClick={() => selectRuleRange(rule)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          const sheetName =
-                            model.getWorksheetsProperties()[sheet]?.name ?? "";
-                          const ruleRange = rule.applyTo.includes("!")
-                            ? rule.applyTo
-                            : `${sheetName}!${rule.applyTo}`;
-                          const range = parseRangeInSheet(model, ruleRange);
-                          if (range) {
-                            const [
-                              sheetIndex,
-                              rowStart,
-                              columnStart,
-                              rowEnd,
-                              columnEnd,
-                            ] = range;
-                            model.setSelectedSheet(sheetIndex);
-                            model.setSelectedCell(rowStart, columnStart);
-                            model.setSelectedRange(
-                              rowStart,
-                              columnStart,
-                              rowEnd,
-                              columnEnd,
-                            );
-                          }
-                          onUpdate();
+                          selectRuleRange(rule);
                         }
                       }}
                     >

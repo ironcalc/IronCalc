@@ -451,7 +451,7 @@ const DataBarsRule = ({
                   }))
                 }
               />
-              {t("conditional_formatting.icon_sets_show_value")}
+              {t("conditional_formatting.data_bars_show_value")}
             </label>
           </div>
         </div>
