@@ -1102,8 +1102,8 @@ export default class WorksheetCanvas {
     div.style.fontWeight = "bold";
     div.style.borderLeft = `1px solid ${this.theme.headerBorderColor}`;
     div.style.borderTop = `1px solid ${this.theme.headerBorderColor}`;
+    div.style.borderBottom = `1px solid ${selected ? this.theme.outlineColor : "transparent"}`;
     if (selected) {
-      div.style.borderBottom = `1px solid ${this.theme.outlineColor}`;
       div.classList.add("selected");
     } else {
       div.classList.remove("selected");
@@ -1222,6 +1222,12 @@ export default class WorksheetCanvas {
     columnHeaders.style.lineHeight = `${headerRowHeight}px`;
     columnHeaders.style.left = `${headerColumnWidth}px`;
 
+    const selectedSheet = this.model.getSelectedSheet();
+    const isHidden = (col: number): boolean =>
+      col >= 1 &&
+      col <= LAST_COLUMN &&
+      this.getColumnWidth(selectedSheet, col) === 0;
+
     // Frozen headers
     for (let column = 1; column <= frozenColumns; column += 1) {
       const selected = column >= columnStart && column <= columnEnd;
@@ -1230,6 +1236,8 @@ export default class WorksheetCanvas {
         column,
         selected,
         isFullColumnSelected,
+        isHidden(column - 1),
+        isHidden(column + 1),
       );
     }
 
@@ -1251,10 +1259,25 @@ export default class WorksheetCanvas {
         column,
         selected,
         isFullColumnSelected,
+        isHidden(column - 1),
+        isHidden(column + 1),
       );
     }
 
     columnHeaders.style.width = `${deltaX}px`;
+  }
+
+  private createHiddenColumnChevron(direction: "left" | "right"): HTMLElement {
+    const span = document.createElement("span");
+    span.style.position = "absolute";
+    span.style.top = "50%";
+    span.style.transform = "translateY(-50%)";
+    span.style.display = "flex";
+    span.style.alignItems = "center";
+    const points = direction === "left" ? "0,0 4,4 0,8" : "4,0 0,4 4,8";
+    span.innerHTML = `<svg width="4" height="8" viewBox="0 0 4 8" fill="currentColor"><polygon points="${points}"/></svg>`;
+    span.style[direction] = "4px";
+    return span;
   }
 
   private addColumnHeader(
@@ -1262,6 +1285,8 @@ export default class WorksheetCanvas {
     column: number,
     selected: boolean,
     isFullColumnSelected: boolean,
+    hasHiddenLeft = false,
+    hasHiddenRight = false,
   ): number {
     const columnWidth = this.getColumnWidth(
       this.model.getSelectedSheet(),
@@ -1272,9 +1297,19 @@ export default class WorksheetCanvas {
     }
     const div = document.createElement("div");
     div.className = "column-header";
-    div.textContent = columnNameFromNumber(column);
-    this.columnHeaders.insertBefore(div, null);
+    div.style.position = "relative";
 
+    if (hasHiddenLeft) {
+      div.appendChild(this.createHiddenColumnChevron("left"));
+    }
+    const label = document.createElement("span");
+    label.textContent = columnNameFromNumber(column);
+    div.appendChild(label);
+    if (hasHiddenRight) {
+      div.appendChild(this.createHiddenColumnChevron("right"));
+    }
+
+    this.columnHeaders.insertBefore(div, null);
     this.styleColumnHeader(columnWidth, div, selected, isFullColumnSelected);
     this.addColumnResizeHandle(deltaX + columnWidth, column, columnWidth);
     return columnWidth;
