@@ -8,9 +8,9 @@ use crate::{
 use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex, values_are_equal};
 
 mod drop_take;
+mod mmult;
 mod tocol_torow;
 mod transpose;
-mod mmult;
 
 impl<'a> Model<'a> {
     pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
