@@ -3,6 +3,8 @@ import { ICON_PATH_SPECS } from "./lucideIconPaths";
 
 // Width (in pixels) reserved on the left of a cell for an icon-set indicator.
 export const ICON_AREA_WIDTH = 20;
+// Left margin so icons don't sit too close to the cell border.
+const ICON_LEFT_MARGIN = 3;
 
 // ---------------------------------------------------------------------------
 // Border drawing helpers (extracted from WorksheetCanvas to keep it smaller)
@@ -197,7 +199,7 @@ function drawLucideIcon(
 
   context.strokeStyle = color;
   context.fillStyle = color;
-  context.lineWidth = (spec.strokeWidth ?? 2) / scale;
+  context.lineWidth = (spec.strokeWidth ?? 1.5) / scale;
   context.lineCap = "round";
   context.lineJoin = "round";
 
@@ -226,7 +228,7 @@ export function renderIcon(
     context,
     icon.icon,
     icon.color,
-    x + size / 2,
+    x + ICON_LEFT_MARGIN + size / 2,
     y + height / 2,
     size,
   );
@@ -247,7 +249,7 @@ export function renderRating(
       context,
       rating.icon,
       rating.color,
-      x + size / 2 + i * size,
+      x + ICON_LEFT_MARGIN + size / 2 + i * size,
       y + height / 2,
       size,
     );
