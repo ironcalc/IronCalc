@@ -166,32 +166,6 @@ const StopRow = ({
     <div className="ic-edit-rule-field-wrapper">
       <span className="ic-edit-rule-label">{label}</span>
       <div className="ic-cs-settings-row">
-        {!isNone && (
-          <>
-            <div className="ic-input-control md ic-cs-color-swatch-wrapper">
-              <button
-                ref={colorRef}
-                type="button"
-                className="ic-cs-color-swatch"
-                style={{ backgroundColor: stop.color }}
-                onClick={() => setColorOpen(true)}
-                aria-label={label}
-              />
-            </div>
-            <ColorPicker
-              color={stop.color}
-              defaultColor={stop.color}
-              title={t("color_picker.default")}
-              onChange={(c) => {
-                onChange({ ...stop, color: c });
-                setColorOpen(false);
-              }}
-              onClose={() => setColorOpen(false)}
-              anchorEl={colorRef}
-              open={colorOpen}
-            />
-          </>
-        )}
         <Select
           value={stop.type}
           options={typeOptions}
@@ -218,6 +192,32 @@ const StopRow = ({
               </Tooltip>
             }
           />
+        )}
+        {!isNone && (
+          <>
+            <div className="ic-input-control md ic-cs-color-swatch-wrapper">
+              <button
+                ref={colorRef}
+                type="button"
+                className="ic-cs-color-swatch"
+                style={{ backgroundColor: stop.color }}
+                onClick={() => setColorOpen(true)}
+                aria-label={label}
+              />
+            </div>
+            <ColorPicker
+              color={stop.color}
+              defaultColor={stop.color}
+              title={t("color_picker.default")}
+              onChange={(c) => {
+                onChange({ ...stop, color: c });
+                setColorOpen(false);
+              }}
+              onClose={() => setColorOpen(false)}
+              anchorEl={colorRef}
+              open={colorOpen}
+            />
+          </>
         )}
       </div>
     </div>
@@ -258,8 +258,13 @@ const ColorScaleRule = ({
   );
 
   const applyPreset = (colors: string[]) => {
+    const is2Stop = colors.length === 2;
     setMinimum((s) => ({ ...s, color: sampleColorAt(colors, 0) }));
-    setMidpoint((s) => ({ ...s, color: sampleColorAt(colors, 0.5) }));
+    setMidpoint((s) => ({
+      color: sampleColorAt(colors, 0.5),
+      type: is2Stop ? "none" : s.type === "none" ? "percentile" : s.type,
+      value: is2Stop ? "" : s.type === "none" ? "50" : s.value,
+    }));
     setMaximum((s) => ({ ...s, color: sampleColorAt(colors, 1) }));
   };
 
