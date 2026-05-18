@@ -433,7 +433,7 @@ const IconSetsRule = ({
               endAdornment={
                 <Tooltip title={t("conditional_formatting.use_selection")}>
                   <IconButton
-                    size="sm"
+                    size="md"
                     variant="secondary"
                     icon={<SquareMousePointer />}
                     aria-label={t("conditional_formatting.use_selection")}
@@ -722,6 +722,9 @@ const IconSetsRule = ({
             </>
           )}
           <div className="ic-fsp-presets-section">
+            <div className="ic-edit-rule-label">
+              {t("conditional_formatting.data_bars_preferences")}
+            </div>
             <label className="ic-edit-rule-checkbox-row">
               <input
                 type="checkbox"

@@ -362,6 +362,16 @@ const DataBarsRule = ({
                 {t("conditional_formatting.data_bars_positive")}
               </span>
               <div className="ic-cs-settings-row">
+                <Input
+                  type="text"
+                  value={selected.positiveColor}
+                  onChange={(e) =>
+                    setSelected((s) => ({
+                      ...s,
+                      positiveColor: e.target.value,
+                    }))
+                  }
+                />
                 <div className="ic-input-control md ic-cs-color-swatch-wrapper">
                   <button
                     ref={positiveRef}
@@ -384,16 +394,6 @@ const DataBarsRule = ({
                   anchorEl={positiveRef}
                   open={positiveOpen}
                 />
-                <Input
-                  type="text"
-                  value={selected.positiveColor}
-                  onChange={(e) =>
-                    setSelected((s) => ({
-                      ...s,
-                      positiveColor: e.target.value,
-                    }))
-                  }
-                />
               </div>
             </div>
             <div className="ic-edit-rule-field-wrapper">
@@ -401,6 +401,16 @@ const DataBarsRule = ({
                 {t("conditional_formatting.data_bars_negative")}
               </span>
               <div className="ic-cs-settings-row">
+                <Input
+                  type="text"
+                  value={selected.negativeColor}
+                  onChange={(e) =>
+                    setSelected((s) => ({
+                      ...s,
+                      negativeColor: e.target.value,
+                    }))
+                  }
+                />
                 <div className="ic-input-control md ic-cs-color-swatch-wrapper">
                   <button
                     ref={negativeRef}
@@ -423,16 +433,6 @@ const DataBarsRule = ({
                   anchorEl={negativeRef}
                   open={negativeOpen}
                 />
-                <Input
-                  type="text"
-                  value={selected.negativeColor}
-                  onChange={(e) =>
-                    setSelected((s) => ({
-                      ...s,
-                      negativeColor: e.target.value,
-                    }))
-                  }
-                />
               </div>
             </div>
           </div>
@@ -443,15 +443,15 @@ const DataBarsRule = ({
             <label className="ic-edit-rule-checkbox-row">
               <input
                 type="checkbox"
-                checked={selected.hideCellContent}
+                checked={!selected.hideCellContent}
                 onChange={(e) =>
                   setSelected((s) => ({
                     ...s,
-                    hideCellContent: e.target.checked,
+                    hideCellContent: !e.target.checked,
                   }))
                 }
               />
-              {t("conditional_formatting.data_bars_hide_cell_content")}
+              {t("conditional_formatting.icon_sets_show_value")}
             </label>
           </div>
         </div>
