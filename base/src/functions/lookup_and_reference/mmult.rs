@@ -107,6 +107,10 @@ impl<'a> Model<'a> {
         }
 
         let mut result: Vec<Vec<ArrayNode>> = Vec::with_capacity(m);
+        // Classic matrix multiplication: C[i][j] = sum over p of A[i][p] * B[p][j].
+        // Clippy can't see that i and j each address both matrices in the inner
+        // loop, so named indices stay clearer than iterator combinators here.
+        #[allow(clippy::needless_range_loop)]
         for i in 0..m {
             let mut row = Vec::with_capacity(n);
             for j in 0..n {
