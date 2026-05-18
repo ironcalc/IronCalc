@@ -327,6 +327,7 @@ pub enum Function {
     Isoweeknum,
 
     // Financial
+    Accrintm,
     Cumipmt,
     Cumprinc,
     Db,
@@ -741,6 +742,7 @@ impl_function_lookup! {
     isoweeknum      => Isoweeknum,
 
     // Financial
+    accrintm   => Accrintm,
     cumipmt    => Cumipmt,
     cumprinc   => Cumprinc,
     db         => Db,
@@ -1125,6 +1127,7 @@ impl Function {
             Function::WorkdayIntl => functions.workdayintl.clone(),
             Function::Yearfrac => functions.yearfrac.clone(),
             Function::Isoweeknum => functions.isoweeknum.clone(),
+            Function::Accrintm => functions.accrintm.clone(),
             Function::Cumipmt => functions.cumipmt.clone(),
             Function::Cumprinc => functions.cumprinc.clone(),
             Function::Db => functions.db.clone(),
@@ -1227,7 +1230,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 364> {
+    pub fn into_iter() -> IntoIter<Function, 365> {
         [
             Function::And,
             Function::False,
@@ -1444,6 +1447,7 @@ impl Function {
             Function::Db,
             Function::Cumprinc,
             Function::Cumipmt,
+            Function::Accrintm,
             Function::Besseli,
             Function::Besselj,
             Function::Besselk,
@@ -1939,6 +1943,7 @@ impl<'a> Model<'a> {
             Function::Db => self.fn_db(args, cell),
             Function::Cumprinc => self.fn_cumprinc(args, cell),
             Function::Cumipmt => self.fn_cumipmt(args, cell),
+            Function::Accrintm => self.fn_accrintm(args, cell),
             Function::Besseli => self.fn_besseli(args, cell),
             Function::Besselj => self.fn_besselj(args, cell),
             Function::Besselk => self.fn_besselk(args, cell),
