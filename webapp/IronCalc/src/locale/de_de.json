@@ -110,6 +110,8 @@
       "copy": "Kopieren",
       "cut": "Ausschneiden",
       "delete": "Löschen...",
+      "delete_column": "Spalte '{{column}}'",
+      "delete_row": "Zeile '{{row}}'",
       "insert": "Einfügen...",
       "insert_column_left": "Spalte links",
       "insert_column_right": "Spalte rechts",
@@ -152,7 +154,8 @@
     "error_inserting_columns": "Spalten konnten nicht eingefügt werden",
     "error_inserting_rows": "Zeilen konnten nicht eingefügt werden",
     "error_moving_columns": "Spalten konnten nicht verschoben werden",
-    "error_moving_rows": "Zeilen konnten nicht verschoben werden"
+    "error_moving_rows": "Zeilen konnten nicht verschoben werden",
+    "error_clipboard_paste": "Zugriff auf die Zwischenablage verweigert. Bitte erlauben Sie Zwischenablage-Berechtigungen in Ihrem Browser."
   },
   "formula_bar": {
     "manage_named_ranges": "Benannte Bereiche verwalten"

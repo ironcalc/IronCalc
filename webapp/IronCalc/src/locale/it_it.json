@@ -110,6 +110,8 @@
       "copy": "Copia",
       "cut": "Taglia",
       "delete": "Elimina...",
+      "delete_column": "Colonna '{{column}}'",
+      "delete_row": "Riga '{{row}}'",
       "insert": "Inserisci...",
       "insert_column_left": "Colonna a sinistra",
       "insert_column_right": "Colonna a destra",
@@ -152,7 +154,8 @@
     "error_inserting_columns": "Impossibile inserire le colonne",
     "error_inserting_rows": "Impossibile inserire le righe",
     "error_moving_columns": "Impossibile spostare le colonne",
-    "error_moving_rows": "Impossibile spostare le righe"
+    "error_moving_rows": "Impossibile spostare le righe",
+    "error_clipboard_paste": "Accesso agli appunti negato. Consenti le autorizzazioni per gli appunti nel tuo browser."
   },
   "formula_bar": {
     "manage_named_ranges": "Gestisci intervalli denominati"

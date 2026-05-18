@@ -110,6 +110,8 @@
       "copy": "Copier",
       "cut": "Couper",
       "delete": "Supprimer...",
+      "delete_column": "Colonne '{{column}}'",
+      "delete_row": "Ligne '{{row}}'",
       "insert": "Insérer...",
       "insert_column_left": "Colonne à gauche",
       "insert_column_right": "Colonne à droite",
@@ -152,7 +154,8 @@
     "error_inserting_columns": "Échec de l'insertion des colonnes",
     "error_inserting_rows": "Échec de l'insertion des lignes",
     "error_moving_columns": "Échec du déplacement des colonnes",
-    "error_moving_rows": "Échec du déplacement des lignes"
+    "error_moving_rows": "Échec du déplacement des lignes",
+    "error_clipboard_paste": "Accès au presse-papiers refusé. Veuillez autoriser les permissions du presse-papiers dans votre navigateur."
   },
   "formula_bar": {
     "manage_named_ranges": "Gérer les plages nommées"
