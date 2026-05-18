@@ -289,6 +289,35 @@ const ConditionalFormatting = ({
                 </div>
               ) : (
                 filteredRules.map((rule) => {
+                  const sheetName =
+                    model.getWorksheetsProperties()[sheet]?.name ?? "";
+                  const selectedParsed = parseRangeInSheet(
+                    model,
+                    getSelectedArea(),
+                  );
+                  const ruleRange = rule.applyTo.includes("!")
+                    ? rule.applyTo
+                    : `${sheetName}!${rule.applyTo}`;
+                  const ruleParsed = parseRangeInSheet(model, ruleRange);
+                  let isActive = false;
+                  if (selectedParsed && ruleParsed) {
+                    const [selSheet, selR1, selC1, selR2, selC2] =
+                      selectedParsed;
+                    const [ruleSheet, ruleR1, ruleC1, ruleR2, ruleC2] =
+                      ruleParsed;
+                    if (selSheet === ruleSheet) {
+                      const selMinR = Math.min(selR1, selR2);
+                      const selMaxR = Math.max(selR1, selR2);
+                      const selMinC = Math.min(selC1, selC2);
+                      const selMaxC = Math.max(selC1, selC2);
+                      isActive =
+                        selMinR <= ruleR2 &&
+                        ruleR1 <= selMaxR &&
+                        selMinC <= ruleC2 &&
+                        ruleC1 <= selMaxC;
+                    }
+                  }
+
                   const previewStyle: React.CSSProperties = {
                     color: rule.formatStyle.fontColor || "#000000",
                     backgroundColor:
@@ -326,14 +355,62 @@ const ConditionalFormatting = ({
                     // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
                     <div
                       key={rule.id}
-                      className="ic-cf-list-item"
+                      className={`ic-cf-list-item${isActive ? " ic-cf-list-item--selected" : ""}`}
                       // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
                       tabIndex={0}
-                      onClick={() => setEditingRule(rule)}
+                      onClick={() => {
+                        const sheetName =
+                          model.getWorksheetsProperties()[sheet]?.name ?? "";
+                        const ruleRange = rule.applyTo.includes("!")
+                          ? rule.applyTo
+                          : `${sheetName}!${rule.applyTo}`;
+                        const range = parseRangeInSheet(model, ruleRange);
+                        if (range) {
+                          const [
+                            sheetIndex,
+                            rowStart,
+                            columnStart,
+                            rowEnd,
+                            columnEnd,
+                          ] = range;
+                          model.setSelectedSheet(sheetIndex);
+                          model.setSelectedCell(rowStart, columnStart);
+                          model.setSelectedRange(
+                            rowStart,
+                            columnStart,
+                            rowEnd,
+                            columnEnd,
+                          );
+                        }
+                        onUpdate();
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setEditingRule(rule);
+                          const sheetName =
+                            model.getWorksheetsProperties()[sheet]?.name ?? "";
+                          const ruleRange = rule.applyTo.includes("!")
+                            ? rule.applyTo
+                            : `${sheetName}!${rule.applyTo}`;
+                          const range = parseRangeInSheet(model, ruleRange);
+                          if (range) {
+                            const [
+                              sheetIndex,
+                              rowStart,
+                              columnStart,
+                              rowEnd,
+                              columnEnd,
+                            ] = range;
+                            model.setSelectedSheet(sheetIndex);
+                            model.setSelectedCell(rowStart, columnStart);
+                            model.setSelectedRange(
+                              rowStart,
+                              columnStart,
+                              rowEnd,
+                              columnEnd,
+                            );
+                          }
+                          onUpdate();
                         }
                       }}
                     >
