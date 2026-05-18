@@ -168,43 +168,55 @@ export function attachOutlineHandle(
   });
 
   cellOutlineHandle.addEventListener("dblclick", (event) => {
-    // On double-click, we will auto-fill the rows below the selected cell
-    const [sheet, row, column] = worksheet.model.getSelectedCell();
-    let lastUsedRow = row + 1;
-    let testColumn = column - 1;
+    // On double-click, we will auto-fill the rows below the selected range
+    event.stopPropagation();
+    event.preventDefault();
+    const { sheet, range } = worksheet.model.getSelectedView();
+    const rowStart = Math.min(range[0], range[2]);
+    const rowEnd = Math.max(range[0], range[2]);
+    const columnStart = Math.min(range[1], range[3]);
+    const columnEnd = Math.max(range[1], range[3]);
+    const width = columnEnd - columnStart + 1;
+    const height = rowEnd - rowStart + 1;
+
+    let lastUsedRow = rowEnd;
+    let testColumn = columnStart - 1;
 
     // The "test column" is the column to the left of the selected cell or the next column if the left one is empty
     if (
       testColumn < 1 ||
-      worksheet.model.getFormattedCellValue(sheet, row, column - 1) === ""
+      worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) === ""
     ) {
-      testColumn = column + 1;
+      testColumn = columnEnd + 1;
       if (
         testColumn > LAST_COLUMN ||
-        worksheet.model.getFormattedCellValue(sheet, row, testColumn) === ""
+        worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) === ""
       ) {
         return;
       }
     }
 
     // Find the last used row in the "test column"
-    for (let r = row + 1; r <= LAST_ROW; r += 1) {
+    for (let r = rowEnd + 1; r <= LAST_ROW; r += 1) {
       if (worksheet.model.getFormattedCellValue(sheet, r, testColumn) === "") {
         break;
       }
       lastUsedRow = r;
     }
 
+    if (lastUsedRow <= rowEnd) {
+      return;
+    }
+
     const area = {
       sheet,
-      row: row,
-      column: column,
-      width: 1,
-      height: 1,
+      row: rowStart,
+      column: columnStart,
+      width,
+      height,
     };
 
     worksheet.model.autoFillRows(area, lastUsedRow);
-    event.stopPropagation();
     worksheet.renderSheet();
   });
   return cellOutlineHandle;
