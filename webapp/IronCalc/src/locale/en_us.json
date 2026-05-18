@@ -108,6 +108,17 @@
     "use_selection": "Use selected range"
   },
   "context_menu": {
+    "cell": {
+      "copy": "Copy",
+      "cut": "Cut",
+      "delete": "Delete...",
+      "insert": "Insert...",
+      "insert_column_left": "Column left",
+      "insert_column_right": "Column right",
+      "insert_row_above": "Row above",
+      "insert_row_below": "Row below",
+      "paste": "Paste"
+    },
     "column_header": {
       "delete_column": "Delete column '{{column}}'",
       "delete_columns": "Delete columns {{columnStart}} - {{columnEnd}}",
@@ -120,17 +131,6 @@
       "move_columns_right": "Move columns right",
       "show_hidden_columns": "Show hidden columns",
       "unfreeze_columns": "Unfreeze columns"
-    },
-    "cell": {
-      "cut": "Cut",
-      "copy": "Copy",
-      "paste": "Paste",
-      "insert": "Insert...",
-      "insert_column_left": "Column left",
-      "insert_column_right": "Column right",
-      "insert_row_above": "Row above",
-      "insert_row_below": "Row below",
-      "delete": "Delete..."
     },
     "row_header": {
       "delete_row": "Delete row '{{row}}'",
