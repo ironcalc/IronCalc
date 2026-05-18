@@ -440,6 +440,14 @@ fn args_signature_let(arg_count: usize) -> Vec<Signature> {
         .collect()
 }
 
+fn args_signature_arraytotext(arg_count: usize) -> Vec<Signature> {
+    match arg_count {
+        1 => vec![Signature::Vector],
+        2 => vec![Signature::Vector, Signature::Scalar],
+        _ => vec![Signature::Error; arg_count],
+    }
+}
+
 fn args_signature_one_vector(arg_count: usize) -> Vec<Signature> {
     if arg_count == 1 {
         vec![Signature::Vector]
@@ -1037,6 +1045,24 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
         Function::Unicode => args_signature_scalars(arg_count, 1, 0),
+        Function::Unichar => args_signature_scalars(arg_count, 1, 0),
+        Function::Char => args_signature_scalars(arg_count, 1, 0),
+        Function::Clean => args_signature_scalars(arg_count, 1, 0),
+        Function::Code => args_signature_scalars(arg_count, 1, 0),
+        Function::Asc => args_signature_scalars(arg_count, 1, 0),
+        Function::Arraytotext => args_signature_arraytotext(arg_count),
+        Function::Dollar => args_signature_scalars(arg_count, 1, 1),
+        Function::Findb => args_signature_scalars(arg_count, 2, 1),
+        Function::Fixed => args_signature_scalars(arg_count, 1, 2),
+        Function::Leftb => args_signature_scalars(arg_count, 1, 1),
+        Function::Lenb => args_signature_scalars(arg_count, 1, 0),
+        Function::Midb => args_signature_scalars(arg_count, 3, 0),
+        Function::Numbervalue => args_signature_scalars(arg_count, 1, 2),
+        Function::Proper => args_signature_scalars(arg_count, 1, 0),
+        Function::Replace => args_signature_scalars(arg_count, 4, 0),
+        Function::Replaceb => args_signature_scalars(arg_count, 4, 0),
+        Function::Rightb => args_signature_scalars(arg_count, 1, 1),
+        Function::Searchb => args_signature_scalars(arg_count, 2, 1),
         Function::Geomean => vec![Signature::Vector; arg_count],
         Function::Networkdays => args_signature_networkdays(arg_count),
         Function::NetworkdaysIntl => args_signature_networkdays_intl(arg_count),
@@ -1326,6 +1352,24 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Textjoin => not_implemented(args),
         Function::Trim => not_implemented(args),
         Function::Unicode => not_implemented(args),
+        Function::Unichar => not_implemented(args),
+        Function::Char => not_implemented(args),
+        Function::Clean => not_implemented(args),
+        Function::Code => not_implemented(args),
+        Function::Asc => not_implemented(args),
+        Function::Arraytotext => not_implemented(args),
+        Function::Dollar => not_implemented(args),
+        Function::Findb => not_implemented(args),
+        Function::Fixed => not_implemented(args),
+        Function::Leftb => not_implemented(args),
+        Function::Lenb => not_implemented(args),
+        Function::Midb => not_implemented(args),
+        Function::Numbervalue => not_implemented(args),
+        Function::Proper => not_implemented(args),
+        Function::Replace => not_implemented(args),
+        Function::Replaceb => not_implemented(args),
+        Function::Rightb => not_implemented(args),
+        Function::Searchb => not_implemented(args),
         Function::Upper => not_implemented(args),
         Function::Value => not_implemented(args),
         Function::Valuetotext => not_implemented(args),
