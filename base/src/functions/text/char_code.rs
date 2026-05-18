@@ -11,7 +11,7 @@ use crate::{
 // https://en.wikipedia.org/wiki/Windows-1252
 const WIN1252_128_159: [char; 32] = [
     '\u{20AC}', // 128  €
-    '\u{FFFD}', // 129  undefined → replacement character
+    '',        // 129  '\u{FFFD}' undefined → replacement character
     '\u{201A}', // 130  ‚
     '\u{0192}', // 131  ƒ
     '\u{201E}', // 132  „
@@ -23,10 +23,10 @@ const WIN1252_128_159: [char; 32] = [
     '\u{0160}', // 138  Š
     '\u{2039}', // 139  ‹
     '\u{0152}', // 140  Œ
-    '\u{FFFD}', // 141  undefined
+    '',        // 141  undefined
     '\u{017D}', // 142  Ž
-    '\u{FFFD}', // 143  undefined
-    '\u{FFFD}', // 144  undefined
+    '',        // 143  undefined
+    '',        // 144  undefined
     '\u{2018}', // 145  '
     '\u{2019}', // 146  '
     '\u{201C}', // 147  "
@@ -39,7 +39,7 @@ const WIN1252_128_159: [char; 32] = [
     '\u{0161}', // 154  š
     '\u{203A}', // 155  ›
     '\u{0153}', // 156  œ
-    '\u{FFFD}', // 157  undefined
+    '',        // 157  undefined
     '\u{017E}', // 158  ž
     '\u{0178}', // 159  Ÿ
 ];

@@ -28,12 +28,42 @@ fn read_shared_strings_from_string(text: &str) -> Result<Vec<String>, XlsxError>
         let text = node
             .descendants()
             .filter(|n| n.has_tag_name("t"))
-            .map(|n| n.text().unwrap_or("").to_string())
+            .map(|n| decode_xlsx_escapes(n.text().unwrap_or("")))
             .collect::<Vec<String>>()
             .join("");
         shared_strings.push(text);
     }
     Ok(shared_strings)
+}
+
+/// Decodes Excel's `_xXXXX_` escape sequences for characters that are invalid in XML 1.0.
+/// For example, `_x0001_` → U+0001 (SOH).
+pub(crate) fn decode_xlsx_escapes(s: &str) -> String {
+    if !s.contains("_x") {
+        return s.to_string();
+    }
+    let bytes = s.as_bytes();
+    let len = bytes.len();
+    let mut result = String::with_capacity(len);
+    let mut i = 0;
+    while i < len {
+        // Look for _xHHHH_ pattern (7 bytes: '_', 'x', 4 hex digits, '_')
+        if i + 6 < len && bytes[i] == b'_' && bytes[i + 1] == b'x' && bytes[i + 6] == b'_' {
+            let hex = &s[i + 2..i + 6];
+            if hex.chars().all(|c| c.is_ascii_hexdigit()) {
+                if let Ok(code) = u32::from_str_radix(hex, 16) {
+                    if let Some(c) = char::from_u32(code) {
+                        result.push(c);
+                        i += 7;
+                        continue;
+                    }
+                }
+            }
+        }
+        result.push(s[i..].chars().next().unwrap());
+        i += s[i..].chars().next().map_or(1, |c| c.len_utf8());
+    }
+    result
 }
 
 #[cfg(test)]

@@ -24,64 +24,42 @@ fn escape_char(c: char) -> Value {
     }
 }
 
-enum Process<'a> {
-    Borrowed(&'a str),
-    Owned(String),
-}
-
-impl<'a> Process<'a> {
-    fn process(&mut self, (i, next): (usize, Value)) {
-        match next {
-            Value::Str(s) => match *self {
-                Process::Owned(ref mut o) => o.push_str(s),
-                Process::Borrowed(b) => {
-                    let mut r = String::with_capacity(b.len() + s.len());
-                    r.push_str(&b[..i]);
-                    r.push_str(s);
-                    *self = Process::Owned(r);
-                }
-            },
-            Value::Char(c) => match *self {
-                Process::Borrowed(_) => {}
-                Process::Owned(ref mut o) => o.push(c),
-            },
-        }
-    }
-
-    fn into_result(self) -> Cow<'a, str> {
-        match self {
-            Process::Borrowed(b) => Cow::Borrowed(b),
-            Process::Owned(o) => Cow::Owned(o),
-        }
-    }
-}
-
-impl Extend<(usize, Value)> for Process<'_> {
-    fn extend<I: IntoIterator<Item = (usize, Value)>>(&mut self, it: I) {
-        for v in it.into_iter() {
-            self.process(v);
-        }
-    }
+/// Returns true for characters that are restricted/forbidden in XML 1.0 and
+/// must be encoded using Excel's `_xXXXX_` convention.
+fn needs_xlsx_escape(c: char) -> bool {
+    let cp = c as u32;
+    // XML 1.0 forbidden: 0x01-0x08, 0x0B, 0x0C, 0x0E-0x1F
+    // (0x09=TAB, 0x0A=LF, 0x0D=CR are valid in XML and handled above)
+    matches!(cp, 0x01..=0x08 | 0x0B | 0x0C | 0x0E..=0x1F)
 }
 
 /// Performs escaping of common XML characters inside an attribute value.
 ///
-/// This function replaces several important markup characters with their
-/// entity equivalents:
-///
-/// * `<` → `&lt;`
-/// * `>` → `&gt;`
-/// * `"` → `&quot;`
-/// * `'` → `&apos;`
-/// * `&` → `&amp;`
-///
-/// The resulting string is safe to use inside XML attribute values.
+/// Also encodes control characters (U+0001-U+0008, U+000B, U+000C, U+000E-U+001F)
+/// using Excel's `_xXXXX_` convention so the output is valid XML 1.0.
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
 pub fn escape_xml(s: &'_ str) -> Cow<'_, str> {
-    let mut p = Process::Borrowed(s);
-    p.extend(s.char_indices().map(|(ind, c)| (ind, escape_char(c))));
-    p.into_result()
+    // Fast path: if no special characters, return borrowed slice.
+    if !s
+        .chars()
+        .any(|c| matches!(c, '<' | '>' | '"' | '\'' | '&' | '\n' | '\r') || needs_xlsx_escape(c))
+    {
+        return Cow::Borrowed(s);
+    }
+
+    let mut result = String::with_capacity(s.len() + 8);
+    for c in s.chars() {
+        if needs_xlsx_escape(c) {
+            result.push_str(&format!("_x{:04X}_", c as u32));
+        } else {
+            match escape_char(c) {
+                Value::Str(s) => result.push_str(s),
+                Value::Char(c) => result.push(c),
+            }
+        }
+    }
+    Cow::Owned(result)
 }
 
 // A simpler function that allocates memory for each replacement
