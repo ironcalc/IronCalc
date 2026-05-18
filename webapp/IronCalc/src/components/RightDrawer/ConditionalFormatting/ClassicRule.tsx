@@ -274,20 +274,6 @@ const ClassicRule = ({
                     )}
                     value={ruleValue}
                     onChange={(e) => setRuleValue(e.target.value)}
-                    endAdornment={
-                      <Tooltip
-                        title={t("conditional_formatting.use_selection")}
-                      >
-                        <IconButton
-                          size="sm"
-                          variant="secondary"
-                          icon={<SquareMousePointer />}
-                          aria-label={t("conditional_formatting.use_selection")}
-                          onClick={() => setRuleValue(getSelectedArea())}
-                          className="ic-edit-rule-range-button"
-                        />
-                      </Tooltip>
-                    }
                   />
                   <Input
                     type="text"
@@ -296,20 +282,6 @@ const ClassicRule = ({
                     )}
                     value={ruleValue2}
                     onChange={(e) => setRuleValue2(e.target.value)}
-                    endAdornment={
-                      <Tooltip
-                        title={t("conditional_formatting.use_selection")}
-                      >
-                        <IconButton
-                          size="sm"
-                          variant="secondary"
-                          icon={<SquareMousePointer />}
-                          aria-label={t("conditional_formatting.use_selection")}
-                          onClick={() => setRuleValue2(getSelectedArea())}
-                          className="ic-edit-rule-range-button"
-                        />
-                      </Tooltip>
-                    }
                   />
                 </div>
               ) : (
