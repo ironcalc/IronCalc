@@ -112,6 +112,8 @@
       "copy": "Copiar",
       "cut": "Cortar",
       "delete": "Eliminar...",
+      "delete_column": "Columna '{{column}}'",
+      "delete_row": "Fila '{{row}}'",
       "insert": "Insertar...",
       "insert_column_left": "Columna a la izquierda",
       "insert_column_right": "Columna a la derecha",
@@ -154,7 +156,8 @@
     "error_inserting_columns": "Error al insertar las columnas",
     "error_inserting_rows": "Error al insertar las filas",
     "error_moving_columns": "Error al mover las columnas",
-    "error_moving_rows": "Error al mover las filas"
+    "error_moving_rows": "Error al mover las filas",
+    "error_clipboard_paste": "Acceso al portapapeles denegado. Por favor, permite el acceso al portapapeles en tu navegador."
   },
   "formula_bar": {
     "manage_named_ranges": "Gestionar rangos con nombre"
