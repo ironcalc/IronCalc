@@ -190,7 +190,8 @@ export function attachOutlineHandle(
       testColumn = columnEnd + 1;
       if (
         testColumn > LAST_COLUMN ||
-        worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) === ""
+        worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) ===
+          ""
       ) {
         return;
       }
