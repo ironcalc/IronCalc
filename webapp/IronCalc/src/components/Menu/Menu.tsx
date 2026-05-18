@@ -104,7 +104,7 @@ export function Menu(props: MenuProperties) {
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true);
     };
-  }, [open, close, isTriggerMode, triggerPosition.triggerRef, menuRef]);
+  }, [open, close, isTriggerMode, triggerPosition.triggerRef]);
 
   const { handleMenuKeyDown } = useMenuKeyDown(menuRef, close);
 
