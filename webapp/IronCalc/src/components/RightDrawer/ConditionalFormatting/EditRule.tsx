@@ -43,8 +43,8 @@ const DEFAULT_FORMAT_STYLE: FormatStyle = {
   italic: false,
   underline: false,
   strike: false,
-  fontColor: "#C0392B",
-  fillColor: "#FADBD8",
+  fontColor: "#D21D21",
+  fillColor: "#FBE7E8",
 };
 
 type TabId = "classic" | "color_scale" | "data_bars" | "icon_sets";

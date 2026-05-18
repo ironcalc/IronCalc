@@ -182,7 +182,7 @@ const ConditionalFormatting = ({
                   underline: false,
                   strike: false,
                   fontColor: "#C0392B",
-                  fillColor: "#FADBD8",
+                  fillColor: "#FBE7E8",
                 },
               }
             }
