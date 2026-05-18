@@ -1,17 +1,13 @@
 .ic-edit-rule-container {
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .ic-edit-rule-content {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   font-size: 12px;
-  overflow: auto;
-  overscroll-behavior: contain;
 }
 
 .ic-edit-rule-header-box {
@@ -53,7 +49,10 @@
   flex-direction: row;
   height: 44px;
   border-bottom: 1px solid var(--palette-grey-300);
-  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--palette-common-white);
 }
 
 .ic-edit-rule-tab.ic-button {
@@ -358,6 +357,9 @@
   gap: 8px;
   padding: 8px;
   border-top: 1px solid var(--palette-grey-300);
+  position: sticky;
+  bottom: 0;
+  background: var(--palette-common-white);
 }
 
 .ic-edit-rule-settings-row {
