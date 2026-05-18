@@ -10,7 +10,7 @@ Although IronCalc is ready for use, it’s important to understand its current l
 
 ## **Collaboration** <Badge type="info" text="Planned" />
 
-Real-time collaboration (that is, where multiple users can view and edit the same spreadsheet simultaneously) is not yet available in IronCalc. Currently, spreadsheets cannot be edited concurrently from different devices or by different users. This feature is on the roadmap, and is the top priority after the release of version 1.0.
+Real-time collaboration (that is, where multiple users can view and edit the same spreadsheet simultaneously) is not yet available in IronCalc. Currently, spreadsheets cannot be edited concurrently from different devices or by different users. This feature is on the roadmap and is the top priority after the release of version 1.0.
 
 ## **Charts** <Badge type="info" text="Planned" />
 
