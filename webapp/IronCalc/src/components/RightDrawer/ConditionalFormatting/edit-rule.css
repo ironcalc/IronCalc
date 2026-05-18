@@ -65,6 +65,7 @@
   background: transparent;
   border-bottom: 2px solid transparent;
   padding: 0 4px;
+  line-height: 120%;
 }
 
 .ic-edit-rule-tab.ic-button:hover {
