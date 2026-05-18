@@ -913,6 +913,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Right => args_signature_scalars(arg_count, 2, 1),
         Function::Search => args_signature_scalars(arg_count, 2, 1),
         Function::Substitute => args_signature_scalars(arg_count, 3, 1),
+        Function::Regexextract => args_signature_scalars(arg_count, 2, 1),
+        Function::Regexreplace => args_signature_scalars(arg_count, 3, 0),
+        Function::Regextest => args_signature_scalars(arg_count, 2, 0),
         Function::T => args_signature_scalars(arg_count, 1, 0),
         Function::Text => args_signature_scalars(arg_count, 2, 0),
         Function::Textafter => args_signature_textafter(arg_count),
@@ -1345,6 +1348,15 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Right => not_implemented(args),
         Function::Search => not_implemented(args),
         Function::Substitute => not_implemented(args),
+        Function::Regexextract => {
+            if args.len() == 3 {
+                StaticResult::Unknown
+            } else {
+                not_implemented(args)
+            }
+        }
+        Function::Regexreplace => not_implemented(args),
+        Function::Regextest => not_implemented(args),
         Function::T => not_implemented(args),
         Function::Text => not_implemented(args),
         Function::Textafter => not_implemented(args),
