@@ -19,6 +19,7 @@ import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { parseRangeInSheet } from "../../Editor/util";
 import { Input } from "../../Input/Input";
+import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
 import { steppedGradient } from "./ColorScaleRule";
 import {
@@ -61,7 +62,13 @@ const ConditionalFormatting = ({
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterOption, setFilterOption] = useState("sheet");
   const { t } = useTranslation();
+
+  const filterOptions = [
+    { value: "sheet", label: t("conditional_formatting.filter_this_sheet") },
+    { value: "selection", label: t("conditional_formatting.filter_selection") },
+  ];
 
   const resolveRef = (val: string): string => {
     if (!val.trim()) {
@@ -193,6 +200,25 @@ const ConditionalFormatting = ({
   }
 
   const filteredRules = rules.filter((rule) => {
+    if (filterOption === "selection") {
+      const selectedParsed = parseRangeInSheet(model, getSelectedArea());
+      if (!selectedParsed) return false;
+      const sheetName = model.getWorksheetsProperties()[sheet]?.name ?? "";
+      const ruleRange = rule.applyTo.includes("!")
+        ? rule.applyTo
+        : `${sheetName}!${rule.applyTo}`;
+      const ruleParsed = parseRangeInSheet(model, ruleRange);
+      if (!ruleParsed) return false;
+      const [selSheet, selR1, selC1, selR2, selC2] = selectedParsed;
+      const [ruleSheet, ruleR1, ruleC1, ruleR2, ruleC2] = ruleParsed;
+      if (selSheet !== ruleSheet) return false;
+      const selMinR = Math.min(selR1, selR2);
+      const selMaxR = Math.max(selR1, selR2);
+      const selMinC = Math.min(selC1, selC2);
+      const selMaxC = Math.max(selC1, selC2);
+      if (selMinR > ruleR2 || ruleR1 > selMaxR) return false;
+      if (selMinC > ruleC2 || ruleC1 > selMaxC) return false;
+    }
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
     return (
@@ -238,6 +264,16 @@ const ConditionalFormatting = ({
                 placeholder={t("conditional_formatting.search_placeholder")}
                 startAdornment={<Search />}
               />
+              <div className="ic-cf-filter">
+                <span>{t("conditional_formatting.filter_label")}</span>
+                <Select
+                  size="sm"
+                  variant="ghost"
+                  value={filterOption}
+                  options={filterOptions}
+                  onChange={setFilterOption}
+                />
+              </div>
             </div>
             {/* biome-ignore lint/a11y/noStaticElementInteractions: prevents search input from losing focus on list click */}
             <div
