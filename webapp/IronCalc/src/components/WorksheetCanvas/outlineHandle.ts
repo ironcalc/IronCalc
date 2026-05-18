@@ -182,7 +182,8 @@ export function attachOutlineHandle(
     let lastUsedRow = rowEnd;
     let testColumn = columnStart - 1;
 
-    // The "test column" is the column to the left of the selected cell or the next column if the left one is empty
+    // The "test column" is the column to the left of the selected range,
+    // or the column to the right if the left one is unavailable or empty.
     if (
       testColumn < 1 ||
       worksheet.model.getFormattedCellValue(sheet, rowStart, testColumn) === ""
