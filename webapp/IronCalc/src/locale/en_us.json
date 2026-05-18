@@ -149,6 +149,7 @@
     }
   },
   "error_dialog": {
+    "error_clipboard_paste": "Clipboard access denied. Please allow clipboard permissions in your browser.",
     "error_deleting_cells": "Failed to delete cells",
     "error_deleting_columns": "Failed to delete columns",
     "error_deleting_rows": "Failed to delete rows",
@@ -156,8 +157,7 @@
     "error_inserting_columns": "Failed to insert columns",
     "error_inserting_rows": "Failed to insert rows",
     "error_moving_columns": "Failed to move columns",
-    "error_moving_rows": "Failed to move rows",
-    "error_clipboard_paste": "Clipboard access denied. Please allow clipboard permissions in your browser."
+    "error_moving_rows": "Failed to move rows"
   },
   "formula_bar": {
     "manage_named_ranges": "Manage Named Ranges"

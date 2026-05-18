@@ -149,6 +149,7 @@
     }
   },
   "error_dialog": {
+    "error_clipboard_paste": "Zugriff auf die Zwischenablage verweigert. Bitte erlauben Sie Zwischenablage-Berechtigungen in Ihrem Browser.",
     "error_deleting_cells": "Zellen konnten nicht gelöscht werden",
     "error_deleting_columns": "Spalten konnten nicht gelöscht werden",
     "error_deleting_rows": "Zeilen konnten nicht gelöscht werden",
@@ -156,8 +157,7 @@
     "error_inserting_columns": "Spalten konnten nicht eingefügt werden",
     "error_inserting_rows": "Zeilen konnten nicht eingefügt werden",
     "error_moving_columns": "Spalten konnten nicht verschoben werden",
-    "error_moving_rows": "Zeilen konnten nicht verschoben werden",
-    "error_clipboard_paste": "Zugriff auf die Zwischenablage verweigert. Bitte erlauben Sie Zwischenablage-Berechtigungen in Ihrem Browser."
+    "error_moving_rows": "Zeilen konnten nicht verschoben werden"
   },
   "formula_bar": {
     "manage_named_ranges": "Benannte Bereiche verwalten"
