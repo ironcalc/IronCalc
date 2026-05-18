@@ -458,7 +458,7 @@ fn de_locale_month_progression() {
 }
 
 #[test]
-fn short_month_progression() {
+fn short_month_progression_capitalized() {
     let model = new_empty_model();
     let mut model = UserModel::from_model(model);
     model.set_user_input(0, 1, 1, "Jan").unwrap(); // A1
@@ -483,6 +483,124 @@ fn short_month_progression() {
     assert_eq!(
         model.get_cell_content(0, 4, 1), // A4
         Ok("Apr".to_string())
+    );
+}
+
+#[test]
+fn short_month_progression_lowercase() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "jan").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "feb").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("mar".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("apr".to_string())
+    );
+}
+
+#[test]
+fn short_month_progression_uppercase() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 1, 1, "JAN").unwrap(); // A1
+    model.set_user_input(0, 2, 1, "FEB").unwrap(); // A2
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 1,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            4,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 3, 1), // A3
+        Ok("MAR".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 4, 1), // A4
+        Ok("APR".to_string())
+    );
+}
+
+#[test]
+fn short_month_progression_upwards_lowercase() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    model.set_user_input(0, 10, 1, "jan").unwrap(); // A10
+    model.set_user_input(0, 11, 1, "feb").unwrap(); // A11
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 10,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            8,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 9, 1), // A9
+        Ok("dec".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 8, 1), // A8
+        Ok("nov".to_string())
+    );
+}
+
+#[test]
+fn de_locale_month_progression_upwards_uppercase() {
+    let mut model = new_empty_model();
+    model.locale = get_locale("de").unwrap();
+    let mut model = UserModel::from_model(model);
+
+    model.set_user_input(0, 10, 1, "MÄRZ").unwrap(); // A10
+    model.set_user_input(0, 11, 1, "april").unwrap(); // A11
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 10,
+                column: 1,
+                width: 1,
+                height: 2,
+            },
+            8,
+        )
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_content(0, 9, 1), // A9
+        Ok("FEBRUAR".to_string())
+    );
+    assert_eq!(
+        model.get_cell_content(0, 8, 1), // A8
+        Ok("JANUAR".to_string())
     );
 }
 
