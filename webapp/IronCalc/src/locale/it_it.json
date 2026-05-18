@@ -106,6 +106,17 @@
     "use_selection": "Usa intervallo selezionato"
   },
   "context_menu": {
+    "cell": {
+      "copy": "Copia",
+      "cut": "Taglia",
+      "delete": "Elimina...",
+      "insert": "Inserisci...",
+      "insert_column_left": "Colonna a sinistra",
+      "insert_column_right": "Colonna a destra",
+      "insert_row_above": "Riga sopra",
+      "insert_row_below": "Riga sotto",
+      "paste": "Incolla"
+    },
     "column_header": {
       "delete_column": "Elimina la colonna '{{column}}'",
       "delete_columns": "Elimina le colonne {{columnStart}} - {{columnEnd}}",
@@ -118,17 +129,6 @@
       "move_columns_right": "Sposta le colonne a destra",
       "show_hidden_columns": "Mostra colonne nascoste",
       "unfreeze_columns": "Rimuovi blocco delle colonne"
-    },
-    "cell": {
-      "cut": "Taglia",
-      "copy": "Copia",
-      "paste": "Incolla",
-      "insert": "Inserisci...",
-      "insert_column_left": "Colonna a sinistra",
-      "insert_column_right": "Colonna a destra",
-      "insert_row_above": "Riga sopra",
-      "insert_row_below": "Riga sotto",
-      "delete": "Elimina..."
     },
     "row_header": {
       "delete_row": "Elimina la riga '{{row}}'",
