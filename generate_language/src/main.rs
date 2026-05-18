@@ -391,6 +391,9 @@ pub struct Functions {
     pub map: String,
     pub reduce: String,
     pub scan: String,
+    // Legacy aliases (Excel 2007 compatibility names).
+    pub stdev_legacy: String,
+    pub norminv_legacy: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]

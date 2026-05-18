@@ -601,6 +601,10 @@ impl_function_lookup! {
     torow     => Torow,
     transpose => Transpose,
 
+    // Legacy aliases — same Function variant resolves under multiple names.
+    stdev_legacy   => StDevS,
+    norminv_legacy => NormInv,
+
     // Dynamic array
     sequence  => Sequence,
     randarray => Randarray,
