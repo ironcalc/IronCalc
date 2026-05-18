@@ -112,6 +112,8 @@
       "copy": "Copy",
       "cut": "Cut",
       "delete": "Delete...",
+      "delete_column": "Column '{{column}}'",
+      "delete_row": "Row '{{row}}'",
       "insert": "Insert...",
       "insert_column_left": "Column left",
       "insert_column_right": "Column right",
@@ -154,7 +156,8 @@
     "error_inserting_columns": "Failed to insert columns",
     "error_inserting_rows": "Failed to insert rows",
     "error_moving_columns": "Failed to move columns",
-    "error_moving_rows": "Failed to move rows"
+    "error_moving_rows": "Failed to move rows",
+    "error_clipboard_paste": "Clipboard access denied. Please allow clipboard permissions in your browser."
   },
   "formula_bar": {
     "manage_named_ranges": "Manage Named Ranges"

@@ -86,10 +86,10 @@ const CellContextMenu = (properties: CellContextMenuProps) => {
         submenu={
           <>
             <MenuItem onClick={onDeleteColumn}>
-              {t("context_menu.column_header.delete_column", { column })}
+              {t("context_menu.cell.delete_column", { column })}
             </MenuItem>
             <MenuItem onClick={onDeleteRow}>
-              {t("context_menu.row_header.delete_row", { row })}
+              {t("context_menu.cell.delete_row", { row })}
             </MenuItem>
           </>
         }

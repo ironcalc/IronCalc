@@ -404,8 +404,19 @@ const Worksheet = forwardRef(
               // Cell area: select the clicked cell
               const cell = worksheetCanvas.current?.getCellByCoordinates(x, y);
               if (cell) {
-                model.setSelectedCell(cell.row, cell.column);
-                refresh();
+                const { range } = model.getSelectedView();
+                const [rowStart, columnStart, rowEnd, columnEnd] = range;
+                if (
+                  !(
+                    rowStart <= cell.row &&
+                    cell.row <= rowEnd &&
+                    columnStart <= cell.column &&
+                    cell.column <= columnEnd
+                  )
+                ) {
+                  model.setSelectedCell(cell.row, cell.column);
+                  refresh();
+                }
               }
             }
 
@@ -500,7 +511,7 @@ const Worksheet = forwardRef(
           onInsertColumnRight={(): void => {
             const view = model.getSelectedView();
             try {
-              model.insertColumns(view.sheet, view.column + 1, 1);
+              model.insertColumns(view.sheet, view.range[3] + 1, 1);
             } catch {
               setRowColErrorTitle(t("error_dialog.error_inserting_columns"));
             }
@@ -520,7 +531,7 @@ const Worksheet = forwardRef(
           onInsertRowBelow={(): void => {
             const view = model.getSelectedView();
             try {
-              model.insertRows(view.sheet, view.row + 1, 1);
+              model.insertRows(view.sheet, view.range[2] + 1, 1);
             } catch {
               setRowColErrorTitle(t("error_dialog.error_inserting_rows"));
             }
