@@ -1,7 +1,7 @@
 mod colors;
 mod conditional_formatting;
 mod metadata;
-mod shared_strings;
+pub(crate) mod shared_strings;
 mod styles;
 mod tables;
 mod theme;
