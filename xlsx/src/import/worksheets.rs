@@ -425,17 +425,17 @@ fn get_cell_from_excel(
                 s: cell_style,
             },
             "str" => {
-                let s = cell_value.unwrap_or("");
-                let si = if let Some(i) = shared_strings.iter().position(|r| r == s) {
+                let s = decode_xlsx_escapes(cell_value.unwrap_or(""));
+                let si = if let Some(i) = shared_strings.iter().position(|r| r == &s) {
                     i
                 } else {
-                    shared_strings.push(s.to_string());
+                    shared_strings.push(s.clone());
                     shared_strings.len() - 1
                 } as i32;
 
                 if let Some(anchor) = anchor_cell {
                     Cell::SpillCell {
-                        v: SpillValue::Text(cell_value.unwrap_or("").to_string()),
+                        v: SpillValue::Text(s),
                         s: cell_style,
                         a: anchor,
                     }

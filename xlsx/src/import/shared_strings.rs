@@ -117,4 +117,34 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn test_decode_xlsx_escapes_control_chars() {
+        assert_eq!(decode_xlsx_escapes("_x0001_"), "\x01");
+        assert_eq!(decode_xlsx_escapes("_x001F_"), "\x1F");
+        assert_eq!(decode_xlsx_escapes("_x000B_"), "\x0B");
+        assert_eq!(decode_xlsx_escapes("hello_x0001_world"), "hello\x01world");
+    }
+
+    #[test]
+    fn test_decode_xlsx_escapes_literal_underscore() {
+        // _x005F_ decodes to underscore; the rest is literal
+        assert_eq!(decode_xlsx_escapes("_x005F_x0001_"), "_x0001_");
+        assert_eq!(decode_xlsx_escapes("_x005F_x005F_"), "_x005F_");
+    }
+
+    #[test]
+    fn test_decode_xlsx_escapes_non_patterns() {
+        // Strings that look similar but are not valid _xHHHH_ patterns
+        assert_eq!(decode_xlsx_escapes("_xGGGG_"), "_xGGGG_"); // non-hex digits
+        assert_eq!(decode_xlsx_escapes("_x001"), "_x001"); // too short
+        assert_eq!(decode_xlsx_escapes("_x00001_"), "_x00001_"); // 5 hex digits
+        assert_eq!(decode_xlsx_escapes("plain text"), "plain text");
+        assert_eq!(decode_xlsx_escapes("_hello"), "_hello");
+    }
+
+    #[test]
+    fn test_decode_xlsx_escapes_nul() {
+        assert_eq!(decode_xlsx_escapes("_x0000_"), "\x00");
+    }
 }
