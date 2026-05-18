@@ -24,6 +24,7 @@ use crate::error::XlsxError;
 
 use super::{
     conditional_formatting::load_conditional_formatting,
+    shared_strings::decode_xlsx_escapes,
     tables::load_table,
     theme::Theme,
     util::{get_attribute, get_color, get_number},
@@ -526,7 +527,9 @@ fn get_cell_from_excel(
             }
             "str" => {
                 // In Excel and in IronCalc all strings in cells result of a formula are *not* shared strings.
-                make_cell(FormulaValue::Text(cell_value.unwrap_or("").to_string()))
+                make_cell(FormulaValue::Text(decode_xlsx_escapes(
+                    cell_value.unwrap_or(""),
+                )))
             }
             "d" => {
                 // Not implemented
