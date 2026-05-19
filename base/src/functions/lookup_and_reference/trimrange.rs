@@ -16,7 +16,7 @@ fn row_is_empty(row: &[ArrayNode]) -> bool {
 
 /// Returns true if every row has a blank value at column index `col`.
 fn col_is_empty(data: &[Vec<ArrayNode>], col: usize) -> bool {
-    data.iter().all(|row| row.get(col).map_or(true, is_blank))
+    data.iter().all(|row| row.get(col).is_none_or(is_blank))
 }
 
 impl<'a> Model<'a> {
