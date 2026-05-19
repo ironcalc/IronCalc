@@ -965,7 +965,13 @@ fn stringify(
                 .iter()
                 .map(|p| {
                     if export_to_excel {
-                        format!("_xlpm.{}", p.name)
+                        if p.is_optional {
+                            format!("_xlop.{}", p.name)
+                        } else {
+                            format!("_xlpm.{}", p.name)
+                        }
+                    } else if p.is_optional {
+                        format!("[{}]", p.name)
                     } else {
                         p.name.clone()
                     }
