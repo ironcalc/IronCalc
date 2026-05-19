@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { parseRangeInSheet } from "../../Editor/util";
+import { iconSpecFor } from "../../IconPicker/IconPicker";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
@@ -353,12 +354,24 @@ const ConditionalFormatting = ({
                       : undefined;
                   const isDataBars = rule.ruleType === "data_bars";
                   const isIconSets = rule.ruleType === "icon_sets";
-                  const iconSetsFirstIcon =
-                    isIconSets && rule.iconSets
-                      ? ALL_PRESETS.find(
-                          (p) => p.id === rule.iconSets?.presetId,
-                        )?.icons[0]
-                      : undefined;
+                  const isRating = isIconSets && !!rule.iconSets?.rating;
+                  const iconSetsFirstIcon = (() => {
+                    if (!isIconSets || !rule.iconSets) {
+                      return undefined;
+                    }
+                    if (rule.iconSets.rating) {
+                      const spec = iconSpecFor(rule.iconSets.rating.icon);
+                      return {
+                        Icon: spec.Icon,
+                        color: rule.iconSets.rating.color,
+                        filled: spec.filled,
+                        backendName: rule.iconSets.rating.icon,
+                      };
+                    }
+                    return ALL_PRESETS.find(
+                      (p) => p.id === rule.iconSets?.presetId,
+                    )?.icons[0];
+                  })();
 
                   return (
                     // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
@@ -408,10 +421,12 @@ const ConditionalFormatting = ({
                       </div>
                       <div className="ic-cf-list-item-text">
                         <div className="ic-cf-list-item-rule">
-                          {getRuleDescription({
-                            ...rule,
-                            resolveValue: resolveRef,
-                          })}
+                          {isRating
+                            ? t("conditional_formatting.icon_sets_ratings")
+                            : getRuleDescription({
+                                ...rule,
+                                resolveValue: resolveRef,
+                              })}
                         </div>
                         <div className="ic-cf-list-item-range">
                           {rule.applyTo || "—"}

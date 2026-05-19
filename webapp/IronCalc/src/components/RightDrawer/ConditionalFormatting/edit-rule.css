@@ -226,6 +226,7 @@
   padding: 4px 6px;
   background-color: var(--palette-common-white);
   border-radius: 4px;
+  min-width: 0;
 }
 
 .ic-is-swatch-icons {
@@ -233,6 +234,7 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
+  overflow: hidden;
   height: 100%;
 }
 
@@ -317,6 +319,15 @@
 
 .ic-is-mode-toggle .ic-button {
   flex: 1;
+}
+
+.ic-is-picker-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ic-is-picker-disabled > * {
+  pointer-events: none;
 }
 
 .ic-is-op-text {

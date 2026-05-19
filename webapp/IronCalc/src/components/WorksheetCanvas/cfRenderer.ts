@@ -205,10 +205,11 @@ function drawLucideIcon(
 
   for (const d of spec.paths) {
     const path = new Path2D(d);
+    if (spec.fill ?? !spec.stroke) {
+      context.fill(path);
+    }
     if (spec.stroke) {
       context.stroke(path);
-    } else {
-      context.fill(path);
     }
   }
 
