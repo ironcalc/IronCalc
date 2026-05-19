@@ -1,5 +1,12 @@
 import { Check, ChevronRight } from "lucide-react";
-import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { MenuContext } from "./Menu";
 import { useAnchorPosition } from "./useAnchorPosition";
@@ -94,6 +101,7 @@ export function MenuItemWithSubmenu({
   const submenuActiveSetOpenRef = useRef<((open: boolean) => void) | null>(
     null,
   );
+  const submenuActiveSubMenuNodeRef = useRef<Element | null>(null);
 
   const { menuRef, position } = useAnchorPosition(open, anchor);
   const { handleMenuKeyDown } = useMenuKeyDown(
@@ -122,6 +130,16 @@ export function MenuItemWithSubmenu({
       }
     };
   }, [parentActiveSetOpenRef]);
+
+  useLayoutEffect(() => {
+    const subMenuNodeRef = parentMenu?.activeSubMenuNodeRef;
+    if (!subMenuNodeRef) return;
+    if (open) {
+      subMenuNodeRef.current = menuRef.current;
+    } else {
+      subMenuNodeRef.current = null;
+    }
+  }, [open, parentMenu, menuRef]);
 
   function show() {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
@@ -193,6 +211,7 @@ export function MenuItemWithSubmenu({
               value={{
                 close: closeAll,
                 activeSetOpenRef: submenuActiveSetOpenRef,
+                activeSubMenuNodeRef: submenuActiveSubMenuNodeRef,
               }}
             >
               <div

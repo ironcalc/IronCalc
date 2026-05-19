@@ -22,6 +22,7 @@ const focusableSelector =
 export const MenuContext = createContext<{
   close: () => void;
   activeSetOpenRef: RefObject<((open: boolean) => void) | null>;
+  activeSubMenuNodeRef: RefObject<Element | null>;
 } | null>(null);
 
 interface MenuTriggerProperties {
@@ -62,6 +63,7 @@ export function Menu(props: MenuProperties) {
     : anchorPosition.position;
 
   const activeSetOpenRef = useRef<((open: boolean) => void) | null>(null);
+  const activeSubMenuNodeRef = useRef<Element | null>(null);
 
   const onClose = !isTriggerMode ? props.onClose : undefined;
   const close = useCallback(() => {
@@ -93,7 +95,13 @@ export function Menu(props: MenuProperties) {
         ? (triggerPosition.triggerRef.current?.contains(target) ?? false)
         : false;
 
-      if (!triggerContains && !(menuRef.current?.contains(target) ?? false)) {
+      const subMenuContains =
+        activeSubMenuNodeRef.current?.contains(target) ?? false;
+      if (
+        !triggerContains &&
+        !(menuRef.current?.contains(target) ?? false) &&
+        !subMenuContains
+      ) {
         close();
       }
     }
@@ -133,7 +141,9 @@ export function Menu(props: MenuProperties) {
 
   if (!isTriggerMode) {
     return (
-      <MenuContext.Provider value={{ close, activeSetOpenRef }}>
+      <MenuContext.Provider
+        value={{ close, activeSetOpenRef, activeSubMenuNodeRef }}
+      >
         {menu}
       </MenuContext.Provider>
     );
@@ -155,7 +165,9 @@ export function Menu(props: MenuProperties) {
   );
 
   return (
-    <MenuContext.Provider value={{ close, activeSetOpenRef }}>
+    <MenuContext.Provider
+      value={{ close, activeSetOpenRef, activeSubMenuNodeRef }}
+    >
       {clonedTrigger}
       {menu}
     </MenuContext.Provider>
