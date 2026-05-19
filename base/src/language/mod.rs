@@ -412,6 +412,15 @@ pub struct Functions {
     pub map: String,
     pub reduce: String,
     pub scan: String,
+    pub address: String,
+    pub areas: String,
+    pub choosecols: String,
+    pub chooserows: String,
+    pub expand: String,
+    pub hstack: String,
+    pub vstack: String,
+    pub wrapcols: String,
+    pub wraprows: String,
 }
 
 #[derive(Encode, Decode)]

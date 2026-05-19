@@ -406,10 +406,19 @@
       "byrow": "BYROW",
       "map": "MAP",
       "reduce": "REDUCE",
-      "scan": "SCAN"
+      "scan": "SCAN",
+      "address": "ADDRESS",
+      "areas": "AREAS",
+      "choosecols": "CHOOSECOLS",
+      "chooserows": "CHOOSEROWS",
+      "expand": "EXPAND",
+      "hstack": "HSTACK",
+      "vstack": "VSTACK",
+      "wrapcols": "WRAPCOLS",
+      "wraprows": "WRAPROWS"
     }
   },
-   "it": {
+  "it": {
     "name": "Italiano",
     "code": "it",
     "booleans": {
@@ -816,7 +825,16 @@
       "byrow": "BYROW",
       "map": "MAP",
       "reduce": "REDUCE",
-      "scan": "SCAN"
+      "scan": "SCAN",
+      "address": "INDIRIZZO",
+      "areas": "AREE",
+      "choosecols": "CHOOSECOLS",
+      "chooserows": "CHOOSEROWS",
+      "expand": "EXPAND",
+      "hstack": "HSTACK",
+      "vstack": "VSTACK",
+      "wrapcols": "WRAPCOLS",
+      "wraprows": "WRAPROWS"
     }
   },
   "fr": {
@@ -1226,7 +1244,16 @@
       "byrow": "BYROW",
       "map": "MAP",
       "reduce": "REDUCE",
-      "scan": "SCAN"
+      "scan": "SCAN",
+      "address": "ADRESSE",
+      "areas": "ZONES",
+      "choosecols": "CHOOSECOLS",
+      "chooserows": "CHOOSEROWS",
+      "expand": "EXPAND",
+      "hstack": "HSTACK",
+      "vstack": "VSTACK",
+      "wrapcols": "WRAPCOLS",
+      "wraprows": "WRAPROWS"
     }
   },
   "de": {
@@ -1636,7 +1663,16 @@
       "byrow": "BYROW",
       "map": "MAP",
       "reduce": "REDUCE",
-      "scan": "SCAN"
+      "scan": "SCAN",
+      "address": "ADRESSE",
+      "areas": "BEREICHE",
+      "choosecols": "CHOOSECOLS",
+      "chooserows": "CHOOSEROWS",
+      "expand": "EXPAND",
+      "hstack": "HSTACK",
+      "vstack": "VSTACK",
+      "wrapcols": "WRAPCOLS",
+      "wraprows": "WRAPROWS"
     }
   },
   "es": {
@@ -2046,7 +2082,16 @@
       "byrow": "BYROW",
       "map": "MAP",
       "reduce": "REDUCE",
-      "scan": "SCAN"
+      "scan": "SCAN",
+      "address": "DIRECCION",
+      "areas": "AREAS",
+      "choosecols": "CHOOSECOLS",
+      "chooserows": "CHOOSEROWS",
+      "expand": "EXPAND",
+      "hstack": "HSTACK",
+      "vstack": "VSTACK",
+      "wrapcols": "WRAPCOLS",
+      "wraprows": "WRAPROWS"
     }
   }
 }
