@@ -13,7 +13,13 @@ use std::fs;
 // PRODUCT_SUM.xlsx contains three fonts: two with <color theme="1"/> (sz=11) and one with
 // no <color> child (sz=8, the only font with that size).
 fn test_font_with_no_color_element_is_none() {
-    let model = load_from_xlsx("tests/calc_tests/PRODUCT_SUM.xlsx", "en", "UTC", "en").unwrap();
+    let model = load_from_xlsx(
+        "tests/calc_tests/MATH_AND_TRIGONOMETRY/PRODUCT_SUM.xlsx",
+        "en",
+        "UTC",
+        "en",
+    )
+    .unwrap();
     let fonts = &model.workbook.styles.fonts;
 
     let no_color_font = fonts.iter().find(|f| f.sz == 8).unwrap();
