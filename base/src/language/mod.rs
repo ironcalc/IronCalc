@@ -421,6 +421,8 @@ pub struct Functions {
     pub vstack: String,
     pub wrapcols: String,
     pub wraprows: String,
+    pub xmatch: String,
+    pub trimrange: String,
 }
 
 #[derive(Encode, Decode)]

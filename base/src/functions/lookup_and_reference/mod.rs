@@ -14,7 +14,9 @@ mod expand;
 mod hstack_vstack;
 mod tocol_torow;
 mod transpose;
+mod trimrange;
 mod wrapcols_wraprows;
+mod xmatch;
 
 impl<'a> Model<'a> {
     pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

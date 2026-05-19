@@ -805,6 +805,24 @@ fn args_signature_networkdays_intl(arg_count: usize) -> Vec<Signature> {
 // 2. Checking the arguments to see if we need to insert the implicit intersection operator
 // 3. Understanding the return value
 //
+fn args_signature_xmatch(arg_count: usize) -> Vec<Signature> {
+    if !(2..=4).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[1] = Signature::Vector;
+    result
+}
+
+fn args_signature_trimrange(arg_count: usize) -> Vec<Signature> {
+    if !(1..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
 fn args_signature_address(arg_count: usize) -> Vec<Signature> {
     if !(2..=5).contains(&arg_count) {
         return vec![Signature::Error; arg_count];
@@ -927,6 +945,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Wrapcols => args_signature_wrapcols(arg_count),
         Function::Wraprows => args_signature_wrapcols(arg_count),
         Function::Xlookup => args_signature_xlookup(arg_count),
+        Function::Xmatch => args_signature_xmatch(arg_count),
+        Function::Trimrange => args_signature_trimrange(arg_count),
         Function::Sort => args_signature_sort(arg_count),
         Function::Sortby => args_signature_sortby(arg_count),
         Function::Unique => args_signature_unique(arg_count),
@@ -1371,6 +1391,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => not_implemented(args),
+        Function::Xmatch => not_implemented(args),
+        Function::Trimrange => StaticResult::Unknown,
         Function::Sort => StaticResult::Unknown,
         Function::Sortby => StaticResult::Unknown,
         Function::Unique => StaticResult::Unknown,
