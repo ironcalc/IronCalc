@@ -1,6 +1,6 @@
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
     model::Model,
 };
 
@@ -12,7 +12,7 @@ impl<'a> Model<'a> {
     /// `=ADDRESS(row_num, col_num, [abs_num], [a1], [sheet_text])`
     ///
     /// Returns a cell address as text.
-    ///   * abs_num: 1=absolute $A$1 (default), 2=row-abs/col-rel $A1, 3=row-rel/col-abs A$1, 4=relative A1
+    ///   * abs_num: 1=absolute $A$1 (default), 2=row-abs/col-rel A$1, 3=row-rel/col-abs $A1, 4=relative A1
     ///   * a1: TRUE=A1 style (default), FALSE=R1C1 style
     ///   * sheet_text: optional sheet name prefix
     pub(crate) fn fn_address(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -64,7 +64,7 @@ impl<'a> Model<'a> {
 
         let sheet_prefix = if args.len() == 5 {
             match self.get_string(&args[4], cell) {
-                Ok(s) if !s.is_empty() => format!("{}!", s),
+                Ok(s) if !s.is_empty() => format!("{}!", quote_name(&s)),
                 Ok(_) => String::new(),
                 Err(e) => return e,
             }

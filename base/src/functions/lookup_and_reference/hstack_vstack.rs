@@ -42,7 +42,7 @@ impl<'a> Model<'a> {
                 if r < arr.len() {
                     row.extend(arr[r].iter().cloned());
                 } else {
-                    let ncols = arr.first().map(|r| r.len()).unwrap_or(1);
+                    let ncols = arr.first().map(|r| r.len()).unwrap_or(0);
                     row.extend(std::iter::repeat_n(na.clone(), ncols));
                 }
             }
