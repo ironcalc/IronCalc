@@ -70,6 +70,7 @@ export const ICON_PATH_SPECS: Record<string, IconPathSpec> = {
       "M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2a8 8 0 0 1 4 1 8 8 0 0 0 4 1 6 6 0 0 0 2.8-.7 1 1 0 0 1 1.2.15 1 1 0 0 1 0 .85V13a1 1 0 0 1-.6.9A6 6 0 0 1 16 14a8 8 0 0 1-4-1 8 8 0 0 0-4-1 6 6 0 0 0-4 1.4",
     ],
     fill: true,
+    stroke: true,
   },
   // Checkmark
   Check: {

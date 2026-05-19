@@ -390,23 +390,11 @@ const IconSetsRule = ({
     return t("conditional_formatting.icon_sets_when_value_is");
   };
 
-  const groups = [
-    {
-      key: "directional",
-      label: t("conditional_formatting.icon_sets_directional"),
-      presets: DIRECTIONAL,
-    },
-    {
-      key: "shapes",
-      label: t("conditional_formatting.icon_sets_shapes"),
-      presets: SHAPES,
-    },
-    {
-      key: "indicators",
-      label: t("conditional_formatting.icon_sets_indicators"),
-      presets: INDICATORS,
-    },
-  ];
+  const groups = [2, 3, 4, 5].map((count) => ({
+    key: `count-${count}`,
+    label: `${count} ${t("conditional_formatting.icon_sets_icons")}`,
+    presets: ALL_PRESETS.filter((p) => p.icons.length === count),
+  }));
 
   const handleSave = () => {
     onSave({
@@ -452,50 +440,69 @@ const IconSetsRule = ({
           </div>
         </div>
         <div className="ic-edit-rule-section">
-          <div className="ic-edit-rule-section-title">
-            {t("conditional_formatting.tab_icon_sets")}
-          </div>
-          {groups.map((group) => (
-            <div key={group.key} className="ic-fsp-presets-section">
-              <div className="ic-edit-rule-label">{group.label}</div>
-              <div className="ic-is-presets">
-                {group.presets.map((preset) => (
-                  <IconSetSwatch
-                    key={preset.id}
-                    preset={preset}
-                    selected={mode === "preset" && selected === preset.id}
-                    onClick={() => handlePresetSelect(preset)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="ic-edit-rule-section">
-          <div className="ic-edit-rule-section-title">
-            {t("conditional_formatting.icon_sets_ratings")}
-          </div>
-          <div className="ic-fsp-presets-section">
-            <div className="ic-edit-rule-label">
+          <div className="ic-is-operator-group--compact ic-is-mode-toggle">
+            <Button
+              variant={mode === "preset" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setMode("preset")}
+            >
+              {t("conditional_formatting.icon_sets_mode_preset")}
+            </Button>
+            <Button
+              variant={mode === "rating" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setMode("rating")}
+            >
               {t("conditional_formatting.icon_sets_ratings")}
-            </div>
-            <div className="ic-is-presets">
-              {RATINGS.map((preset) => (
-                <IconSetSwatch
-                  key={preset.id}
-                  preset={preset}
-                  selected={
-                    mode === "rating" &&
-                    ratingCount === preset.icons.length &&
-                    ratingColor === preset.icons[0].color
-                  }
-                  onClick={() =>
-                    handleRatingCountSelect(preset.icons.length as 3 | 4 | 5)
-                  }
-                />
-              ))}
-            </div>
+            </Button>
           </div>
+          {mode === "preset" &&
+            groups.map((group) => (
+              <div key={group.key} className="ic-fsp-presets-section">
+                <div className="ic-edit-rule-label">{group.label}</div>
+                <div className="ic-is-presets">
+                  {group.presets.map((preset) => (
+                    <IconSetSwatch
+                      key={preset.id}
+                      preset={preset}
+                      selected={selected === preset.id}
+                      onClick={() => handlePresetSelect(preset)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          {mode === "rating" &&
+            [3, 4, 5].map((count) => {
+              const presets = RATINGS.filter((p) => p.icons.length === count);
+              if (presets.length === 0) {
+                return null;
+              }
+              return (
+                <div key={count} className="ic-fsp-presets-section">
+                  <div className="ic-edit-rule-label">
+                    {`${count} ${t("conditional_formatting.icon_sets_icons")}`}
+                  </div>
+                  <div className="ic-is-presets">
+                    {presets.map((preset) => (
+                      <IconSetSwatch
+                        key={preset.id}
+                        preset={preset}
+                        selected={
+                          ratingCount === preset.icons.length &&
+                          ratingColor === preset.icons[0].color
+                        }
+                        onClick={() =>
+                          handleRatingCountSelect(
+                            preset.icons.length as 3 | 4 | 5,
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
         </div>
         <div className="ic-edit-rule-section">
           <div className="ic-edit-rule-section-title">

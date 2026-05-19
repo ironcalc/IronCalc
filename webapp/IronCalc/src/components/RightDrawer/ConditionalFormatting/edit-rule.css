@@ -305,6 +305,7 @@
   height: 32px;
   padding: 0 1px;
   overflow: hidden;
+  gap: 1px;
 }
 
 .ic-is-operator-group .ic-button,
@@ -312,6 +313,10 @@
   min-width: 0;
   padding: 0;
   border-radius: 4px;
+}
+
+.ic-is-mode-toggle .ic-button {
+  flex: 1;
 }
 
 .ic-is-op-text {

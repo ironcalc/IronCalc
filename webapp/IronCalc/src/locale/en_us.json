@@ -54,7 +54,9 @@
     "highlight_cells_if": "Highlight cells if...",
     "icon_sets_directional": "Directional",
     "icon_sets_else": "Else",
+    "icon_sets_icons": "icons",
     "icon_sets_indicators": "Indicators",
+    "icon_sets_mode_preset": "Icon Sets",
     "icon_sets_ratings": "Ratings",
     "icon_sets_settings": "Settings",
     "icon_sets_shapes": "Shapes",
@@ -104,7 +106,7 @@
     "tab_classic": "Rule based",
     "tab_color_scale": "Color Scale",
     "tab_data_bars": "Data Bars",
-    "tab_icon_sets": "Icon Sets",
+    "tab_icon_sets": "Icons",
     "title": "Conditional Formatting",
     "use_selection": "Use selected range"
   },
