@@ -17,6 +17,7 @@ import {
   Star,
   ThumbsDown,
   ThumbsUp,
+  Triangle,
   X,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -37,16 +38,17 @@ const CYCLE_ICONS: {
   { Icon: ChevronUp, name: "TriangleUp" },
   { Icon: Minus, name: "FlatRectangle" },
   { Icon: ChevronDown, name: "TriangleDown" },
+  { Icon: Check, name: "Check" },
+  { Icon: CircleAlert, name: "Exclamation" },
+  { Icon: X, name: "Cross" },
+  { Icon: ThumbsUp, name: "ThumbsUp" },
+  { Icon: ThumbsDown, name: "ThumbsDown" },
   { Icon: Circle, name: "Circle", filled: true },
   { Icon: Diamond, name: "Rhombus", filled: true },
+  { Icon: Triangle, name: "Triangle", filled: true },
   { Icon: Flag, name: "Flag", filled: true },
-  { Icon: Check, name: "Check" },
-  { Icon: X, name: "Cross" },
-  { Icon: CircleAlert, name: "Exclamation" },
   { Icon: Star, name: "Star", filled: true },
   { Icon: Heart, name: "Heart", filled: true },
-  { Icon: ThumbsUp, name: "ThumbsUp", filled: true },
-  { Icon: ThumbsDown, name: "ThumbsDown", filled: true },
 ];
 
 export function iconSpecFor(name: string) {

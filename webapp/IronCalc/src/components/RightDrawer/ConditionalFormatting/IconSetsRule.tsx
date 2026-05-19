@@ -15,6 +15,7 @@ import {
   Minus,
   SquareMousePointer,
   Star,
+  Triangle,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -81,9 +82,9 @@ const SHAPES: IconSetPreset[] = [
   {
     id: "shapes-3-circles-color",
     icons: [
-      { Icon: Circle, color: "#8CB354", filled: true, backendName: "Circle" },
-      { Icon: Circle, color: "#F8CD3D", filled: true, backendName: "Circle" },
       { Icon: Circle, color: "#EC5753", filled: true, backendName: "Circle" },
+      { Icon: Circle, color: "#F8CD3D", filled: true, backendName: "Circle" },
+      { Icon: Circle, color: "#8CB354", filled: true, backendName: "Circle" },
     ],
   },
   {
@@ -98,9 +99,14 @@ const SHAPES: IconSetPreset[] = [
   {
     id: "shapes-3-multiple",
     icons: [
-      { Icon: Diamond, color: "#8CB354", filled: true, backendName: "Rhombus" },
-      { Icon: Diamond, color: "#F8CD3D", filled: true, backendName: "Rhombus" },
       { Icon: Diamond, color: "#EC5753", filled: true, backendName: "Rhombus" },
+      {
+        Icon: Triangle,
+        color: "#F8CD3D",
+        filled: true,
+        backendName: "TriangleUp",
+      },
+      { Icon: Circle, color: "#8CB354", filled: true, backendName: "Circle" },
     ],
   },
   {
@@ -516,7 +522,7 @@ const IconSetsRule = ({
                     key={selectedPreset.id + String(i)}
                     className="ic-is-threshold-row"
                   >
-                    <div className="ic-is-threshold-label">{getLabel(i)}</div>
+                    <div className="ic-edit-rule-label">{getLabel(i)}</div>
                     <div className="ic-is-threshold-controls">
                       <div className="ic-is-operator-group--compact">
                         <IconButton
@@ -604,122 +610,118 @@ const IconSetsRule = ({
             </div>
           )}
           {mode === "rating" && (
-            <>
-              <div className="ic-is-threshold-rows">
-                {thresholds.map((threshold, i) => {
-                  if (i === thresholds.length - 1) {
-                    // last option is empty
-                    return (
-                      <div
-                        key={`rating${String(i)}`}
-                        className="ic-is-threshold-row"
-                      ></div>
-                    );
-                  }
-                  let options = typeOptions;
-                  if (i === 0) {
-                    options = typeOptions.filter((o) => o.value !== "max");
-                  } else {
-                    options = typeOptions.filter(
-                      (o) => o.value !== "min" && o.value !== "max",
-                    );
-                  }
-                  return (
-                    <div
-                      key={`rating${String(i)}`}
-                      className="ic-is-threshold-row"
-                    >
-                      <div className="ic-is-threshold-label">{getLabel(i)}</div>
-                      <div className="ic-is-threshold-controls">
-                        <div className="ic-input-control md ic-is-operator-group">
-                          <IconButton
-                            size="sm"
-                            variant={
-                              threshold.operator === ">="
-                                ? "secondary"
-                                : "ghost"
-                            }
-                            icon={<span className="ic-is-op-text">{"≥"}</span>}
-                            aria-label="Greater than or equal"
-                            onClick={() =>
-                              updateThreshold(i, { operator: ">=" })
-                            }
-                          />
-                          <IconButton
-                            size="sm"
-                            variant={
-                              threshold.operator === ">" ? "secondary" : "ghost"
-                            }
-                            icon={<span className="ic-is-op-text">{">"}</span>}
-                            aria-label="Greater than"
-                            onClick={() =>
-                              updateThreshold(i, { operator: ">" })
-                            }
-                          />
-                        </div>
-                        <div className="ic-is-threshold-value-wrap">
-                          <Input
-                            type="text"
-                            value={threshold.value}
-                            onChange={(e) =>
-                              updateThreshold(i, { value: e.target.value })
-                            }
-                          />
-                        </div>
-                        <div className="ic-is-threshold-type-wrap">
-                          <Select
-                            value={threshold.type}
-                            options={options}
-                            onChange={(v) =>
-                              updateThreshold(i, { type: v as ThresholdType })
-                            }
-                            hideCheck
-                          />
-                        </div>
-                      </div>
-                    </div>
+            <div className="ic-is-threshold-rows">
+              {thresholds.map((threshold, i) => {
+                if (i === thresholds.length - 1) {
+                  return null;
+                }
+                let options = typeOptions;
+                if (i === 0) {
+                  options = typeOptions.filter((o) => o.value !== "max");
+                } else {
+                  options = typeOptions.filter(
+                    (o) => o.value !== "min" && o.value !== "max",
                   );
-                })}
-              </div>
-              <div className="ic-fsp-presets-section">
-                <div className="ic-edit-rule-settings-row">
-                  <span>Icon</span>
-                  <div className="ic-input-control md ic-cs-color-swatch-wrapper">
-                    <IconPicker
-                      value={ratingIcon}
-                      color={ratingColor}
-                      onChange={setRatingIcon}
-                    />
+                }
+                return (
+                  <div
+                    key={`rating${String(i)}`}
+                    className="ic-is-threshold-row"
+                  >
+                    <div className="ic-edit-rule-label">{getLabel(i)}</div>
+                    <div className="ic-is-threshold-controls">
+                      <div className="ic-is-operator-group--compact">
+                        <IconButton
+                          size="sm"
+                          variant={
+                            threshold.operator === ">=" ? "secondary" : "ghost"
+                          }
+                          icon={<span className="ic-is-op-text">{"≥"}</span>}
+                          aria-label="Greater than or equal"
+                          onClick={() => updateThreshold(i, { operator: ">=" })}
+                        />
+                        <IconButton
+                          size="sm"
+                          variant={
+                            threshold.operator === ">" ? "secondary" : "ghost"
+                          }
+                          icon={<span className="ic-is-op-text">{">"}</span>}
+                          aria-label="Greater than"
+                          onClick={() => updateThreshold(i, { operator: ">" })}
+                        />
+                      </div>
+                      <div className="ic-is-threshold-value-wrap">
+                        <Input
+                          type="text"
+                          value={threshold.value}
+                          onChange={(e) =>
+                            updateThreshold(i, { value: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="ic-is-threshold-type-wrap">
+                        <Select
+                          value={threshold.type}
+                          options={options}
+                          onChange={(v) =>
+                            updateThreshold(i, { type: v as ThresholdType })
+                          }
+                          hideCheck
+                        />
+                      </div>
+                      <div
+                        className="ic-input-control md ic-cs-color-swatch-wrapper"
+                        style={
+                          i !== 0
+                            ? { opacity: 0.6, pointerEvents: "none" }
+                            : undefined
+                        }
+                      >
+                        <IconPicker
+                          value={ratingIcon}
+                          color={ratingColor}
+                          onChange={setRatingIcon}
+                        />
+                      </div>
+                      <div
+                        className="ic-input-control md ic-cs-color-swatch-wrapper"
+                        style={
+                          i !== 0
+                            ? { opacity: 0.6, pointerEvents: "none" }
+                            : undefined
+                        }
+                      >
+                        <button
+                          ref={i === 0 ? ratingColorButtonRef : null}
+                          type="button"
+                          className="ic-cs-color-swatch"
+                          style={{ backgroundColor: ratingColor }}
+                          onClick={
+                            i === 0 ? () => setRatingColorOpen(true) : undefined
+                          }
+                          aria-label={t("color_picker.title")}
+                        />
+                      </div>
+                      {i === 0 && (
+                        <ColorPicker
+                          color={ratingColor}
+                          defaultColor={ratingColor}
+                          title={t("color_picker.default")}
+                          onChange={handleRatingColorChange}
+                          onClose={() => setRatingColorOpen(false)}
+                          anchorEl={
+                            {
+                              current: ratingColorButtonRef.current,
+                            } as React.RefObject<HTMLButtonElement>
+                          }
+                          open={ratingColorOpen}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="ic-edit-rule-settings-row">
-                  <span>Color</span>
-                  <div className="ic-input-control md ic-cs-color-swatch-wrapper">
-                    <button
-                      ref={ratingColorButtonRef}
-                      type="button"
-                      className="ic-cs-color-swatch"
-                      style={{ backgroundColor: ratingColor }}
-                      onClick={() => setRatingColorOpen(true)}
-                      aria-label={t("color_picker.title")}
-                    />
-                  </div>
-                  <ColorPicker
-                    color={ratingColor}
-                    defaultColor={ratingColor}
-                    title={t("color_picker.default")}
-                    onChange={handleRatingColorChange}
-                    onClose={() => setRatingColorOpen(false)}
-                    anchorEl={
-                      {
-                        current: ratingColorButtonRef.current,
-                      } as React.RefObject<HTMLButtonElement>
-                    }
-                    open={ratingColorOpen}
-                  />
-                </div>
-              </div>
-            </>
+                );
+              })}
+            </div>
           )}
           <div className="ic-fsp-presets-section">
             <div className="ic-edit-rule-label">

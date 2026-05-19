@@ -239,7 +239,7 @@
 .ic-edit-rule-checkbox-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: var(--typography-font-size);
   font-family: var(--typography-font-family);
   color: var(--palette-common-black);
@@ -249,8 +249,8 @@
 
 .ic-edit-rule-checkbox-row input[type="checkbox"] {
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 1.5px solid var(--palette-grey-400);
   border-radius: 4px;
   background: var(--palette-common-white);
@@ -270,8 +270,8 @@
   position: absolute;
   inset: 0;
   margin: auto;
-  width: 4px;
-  height: 7px;
+  width: 3px;
+  height: 6px;
   border: 2px solid var(--palette-common-white);
   border-top: none;
   border-left: none;
@@ -330,12 +330,6 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.ic-is-threshold-label {
-  font-size: var(--typography-font-size);
-  font-family: var(--typography-font-family);
-  color: var(--palette-grey-600);
 }
 
 .ic-is-threshold-controls {

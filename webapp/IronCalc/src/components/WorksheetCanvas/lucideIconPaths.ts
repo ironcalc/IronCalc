@@ -64,24 +64,24 @@ export const ICON_PATH_SPECS: Record<string, IconPathSpec> = {
     ],
     fill: true,
   },
-  // Flag (OctagonAlert / flag icon)
+  // Flag (filled)
   Flag: {
     paths: [
       "M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2a8 8 0 0 1 4 1 8 8 0 0 0 4 1 6 6 0 0 0 2.8-.7 1 1 0 0 1 1.2.15 1 1 0 0 1 0 .85V13a1 1 0 0 1-.6.9A6 6 0 0 1 16 14a8 8 0 0 1-4-1 8 8 0 0 0-4-1 6 6 0 0 0-4 1.4",
     ],
-    stroke: true,
+    fill: true,
   },
   // Checkmark
   Check: {
     paths: ["M20 6 9 17l-5-5"],
     stroke: true,
-    strokeWidth: 2.5,
+    strokeWidth: 2,
   },
   // X mark
   Cross: {
     paths: ["M18 6 6 18", "m6 6 12 12"],
     stroke: true,
-    strokeWidth: 2.5,
+    strokeWidth: 2,
   },
   // CircleAlert: circle + exclamation
   Exclamation: {
@@ -99,14 +99,14 @@ export const ICON_PATH_SPECS: Record<string, IconPathSpec> = {
       "M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z",
       "M7 10v12",
     ],
-    stroke: false,
+    stroke: true,
   },
   ThumbsDown: {
     paths: [
       "M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z",
       "M17 14V2",
     ],
-    stroke: false,
+    stroke: true,
   },
   Star: {
     paths: [

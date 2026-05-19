@@ -318,7 +318,7 @@ const ClassicRule = ({
           />
         </div>
         <div className="ic-edit-rule-section">
-          <label className="ic-edit-rule-checkbox-label">
+          <label className="ic-edit-rule-checkbox-row">
             <input
               type="checkbox"
               checked={stopIfTrue}
