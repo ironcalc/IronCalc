@@ -805,6 +805,40 @@ fn args_signature_networkdays_intl(arg_count: usize) -> Vec<Signature> {
 // 2. Checking the arguments to see if we need to insert the implicit intersection operator
 // 3. Understanding the return value
 //
+fn args_signature_address(arg_count: usize) -> Vec<Signature> {
+    if !(2..=5).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    vec![Signature::Scalar; arg_count]
+}
+
+fn args_signature_choosecols(arg_count: usize) -> Vec<Signature> {
+    if arg_count < 2 {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_expand(arg_count: usize) -> Vec<Signature> {
+    if !(2..=4).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
+fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
+    if !(2..=3).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Scalar; arg_count];
+    result[0] = Signature::Vector;
+    result
+}
+
 // The signature of the functions should be defined only once
 
 // Given a function and a number of arguments this returns the arguments at each position
@@ -874,7 +908,13 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Na => args_signature_no_args(arg_count),
         Function::Sheet => args_signature_sheet(arg_count),
         Function::Type => args_signature_one_vector(arg_count),
+        Function::Address => args_signature_address(arg_count),
+        Function::Areas => args_signature_one_vector(arg_count),
+        Function::Choosecols => args_signature_choosecols(arg_count),
+        Function::Chooserows => args_signature_choosecols(arg_count),
+        Function::Expand => args_signature_expand(arg_count),
         Function::Hlookup => args_signature_hlookup(arg_count),
+        Function::Hstack => vec![Signature::Vector; arg_count],
         Function::Index => args_signature_index(arg_count),
         Function::Indirect => args_signature_scalars(arg_count, 1, 0),
         Function::Lookup => args_signature_lookup(arg_count),
@@ -883,6 +923,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Row => args_signature_row(arg_count),
         Function::Rows => args_signature_one_vector(arg_count),
         Function::Vlookup => args_signature_hlookup(arg_count),
+        Function::Vstack => vec![Signature::Vector; arg_count],
+        Function::Wrapcols => args_signature_wrapcols(arg_count),
+        Function::Wraprows => args_signature_wrapcols(arg_count),
         Function::Xlookup => args_signature_xlookup(arg_count),
         Function::Sort => args_signature_sort(arg_count),
         Function::Sortby => args_signature_sortby(arg_count),
@@ -1309,7 +1352,13 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Na => StaticResult::Scalar,
         Function::Sheet => StaticResult::Scalar,
         Function::Type => not_implemented(args),
+        Function::Address => not_implemented(args),
+        Function::Areas => StaticResult::Scalar,
+        Function::Choosecols => StaticResult::Unknown,
+        Function::Chooserows => StaticResult::Unknown,
+        Function::Expand => StaticResult::Unknown,
         Function::Hlookup => not_implemented(args),
+        Function::Hstack => StaticResult::Unknown,
         Function::Index => static_analysis_index(args),
         Function::Indirect => static_analysis_indirect(args),
         Function::Lookup => not_implemented(args),
@@ -1318,6 +1367,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Row => StaticResult::Scalar,
         Function::Rows => not_implemented(args),
         Function::Vlookup => not_implemented(args),
+        Function::Vstack => StaticResult::Unknown,
+        Function::Wrapcols => StaticResult::Unknown,
+        Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => not_implemented(args),
         Function::Sort => StaticResult::Unknown,
         Function::Sortby => StaticResult::Unknown,

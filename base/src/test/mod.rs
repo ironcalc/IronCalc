@@ -76,6 +76,7 @@ mod test_number_format;
 
 mod array_formulas;
 mod dynamic_evaluation;
+mod lookup_and_reference;
 mod test_arrays;
 mod test_cell_info_n_sheets;
 mod test_combin_combina;
