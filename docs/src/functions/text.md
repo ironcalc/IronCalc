@@ -38,6 +38,9 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | REPLACE     | <Badge type="tip" text="Available" />          | –             |
 | REPLACEB    | <Badge type="tip" text="Available" />          | –             |
 | REPT        | <Badge type="tip" text="Available" />          | –             |
+| REGEXEXTRACT | <Badge type="tip" text="Available" />         | –             |
+| REGEXREPLACE | <Badge type="tip" text="Available" />         | –             |
+| REGEXTEST   | <Badge type="tip" text="Available" />          | –             |
 | RIGHT       | <Badge type="tip" text="Available" />          | –             |
 | RIGHTB      | <Badge type="tip" text="Available" />          | –             |
 | SEARCH      | <Badge type="tip" text="Available" />          | –             |

@@ -41,6 +41,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | TOCOL        | <Badge type="tip" text="Available" />          | –             |
 | TOROW        | <Badge type="tip" text="Available" />          | –             |
 | TRANSPOSE    | <Badge type="tip" text="Available" />          | –             |
+| TRIMRANGE    | <Badge type="tip" text="Available" />          | –             |
 | UNIQUE       | <Badge type="tip" text="Available" />          | –             |
 | VLOOKUP      | <Badge type="tip" text="Available" />          | –             |
 | VSTACK       | <Badge type="info" text="Not implemented yet" /> | –             |
