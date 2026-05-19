@@ -43,7 +43,6 @@
 }
 
 .ic-icon-picker-item--selected {
-  background: color-mix(in srgb, var(--palette-primary-main) 12%, transparent);
-  outline: 1.5px solid var(--palette-primary-main);
+  background: var(--palette-grey-50);
   outline-offset: -1px;
 }
