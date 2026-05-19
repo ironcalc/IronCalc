@@ -58,10 +58,34 @@ fn lambda_simple() {
             NamedVariable {
                 name: "a".to_string(),
                 id: None,
+                is_optional: false,
             },
             NamedVariable {
                 name: "b".to_string(),
                 id: None,
+                is_optional: false,
+            },
+        ],
+        body: Box::new(sqrt_aa_bb()),
+    };
+    assert_eq!(t, expected);
+}
+
+#[test]
+fn lambda_simple_optional() {
+    let mut p = parser();
+    let t = p.parse("LAMBDA(a, [b], SQRT(a*a+b*b))", &cell());
+    let expected = Node::LambdaDefKind {
+        parameters: vec![
+            NamedVariable {
+                name: "a".to_string(),
+                id: None,
+                is_optional: false,
+            },
+            NamedVariable {
+                name: "b".to_string(),
+                id: None,
+                is_optional: true,
             },
         ],
         body: Box::new(sqrt_aa_bb()),
@@ -79,10 +103,12 @@ fn lambda_called_immediately() {
                 NamedVariable {
                     name: "a".to_string(),
                     id: None,
+                    is_optional: false,
                 },
                 NamedVariable {
                     name: "b".to_string(),
                     id: None,
+                    is_optional: false,
                 },
             ],
             body: Box::new(sqrt_aa_bb()),
@@ -101,6 +127,7 @@ fn lambda_called_immediately_with_lambda_as_parameter() {
             parameters: vec![NamedVariable {
                 name: "f".to_string(),
                 id: None,
+                is_optional: false,
             }],
             body: Box::new(Node::NamedFunctionKind {
                 id: None,
@@ -113,10 +140,12 @@ fn lambda_called_immediately_with_lambda_as_parameter() {
                 NamedVariable {
                     name: "a".to_string(),
                     id: None,
+                    is_optional: false,
                 },
                 NamedVariable {
                     name: "b".to_string(),
                     id: None,
+                    is_optional: false,
                 },
             ],
             body: Box::new(sqrt_aa_bb()),
@@ -140,6 +169,7 @@ fn lambda_in_let() {
                 parameters: vec![NamedVariable {
                     name: "a".to_string(),
                     id: None,
+                    is_optional: false,
                 }],
                 body: Box::new(Node::OpProductKind {
                     kind: token::OpProduct::Times,
@@ -194,6 +224,39 @@ fn lambda_non_name_parameter_is_parse_error() {
         matches!(t, Node::ParseErrorKind { .. }),
         "LAMBDA with numeric param should be a parse error, got {t:?}"
     );
+}
+
+// LAMBDA with optional param, immediately invoked with one arg.
+#[test]
+fn lambda_optional_called_with_one_arg() {
+    let mut p = parser();
+    let t = p.parse("LAMBDA(a, [b], a+1)(12)", &cell());
+    let expected = Node::LambdaCallKind {
+        lambda: Box::new(Node::LambdaDefKind {
+            parameters: vec![
+                NamedVariable {
+                    name: "a".to_string(),
+                    id: None,
+                    is_optional: false,
+                },
+                NamedVariable {
+                    name: "b".to_string(),
+                    id: None,
+                    is_optional: true,
+                },
+            ],
+            body: Box::new(Node::OpSumKind {
+                kind: token::OpSum::Add,
+                left: Box::new(Node::NamedVariableKind {
+                    name: "a".to_string(),
+                    id: None,
+                }),
+                right: Box::new(Node::NumberKind(1.0)),
+            }),
+        }),
+        args: vec![Node::NumberKind(12.0)],
+    };
+    assert_eq!(t, expected);
 }
 
 // SIN(x) is a fully-resolved function call, not a lambda — calling it with (3)

@@ -150,6 +150,7 @@ pub struct Functions {
     pub errortype: String,
     pub formulatext: String,
     pub isformula: String,
+    pub isomitted: String,
     pub r#type: String,
     pub sheet: String,
     pub average: String,

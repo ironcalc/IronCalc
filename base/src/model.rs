@@ -14,7 +14,7 @@ use crate::{
             move_formula::{move_formula, MoveContext},
             static_analysis::StaticResult,
             stringify::{rename_defined_name_in_node, to_localized_string, to_rc_format},
-            ArrayNode, Node, Parser,
+            ArrayNode, NamedVariable, Node, Parser,
         },
         token::{get_error_by_name, Error, OpProduct, OpSum, OpUnary},
         types::*,
@@ -106,7 +106,7 @@ pub(crate) enum ParsedDefinedName {
     /// A Range (`=C4:D6`)
     RangeReference(Range),
     /// `=LAMBDA(params..., body)`
-    LambdaDefinition(Vec<String>, Node),
+    LambdaDefinition(Vec<NamedVariable>, Node),
     /// `=SomethingElse`
     InvalidDefinedNameFormula,
 }
@@ -210,7 +210,7 @@ pub struct Model<'a> {
     /// Last variable id used. It is incremented every time a new variable is created (for example, when evaluating a LET function).
     pub(crate) last_variable_id: usize,
     /// Lambdas
-    pub(crate) lambdas: HashMap<usize, (Vec<String>, Node)>,
+    pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The list of cells that might spill
@@ -736,9 +736,8 @@ impl<'a> Model<'a> {
                 _ => self.evaluate_node_in_context(child, cell),
             },
             LambdaDefKind { parameters, body } => {
-                let param_names: Vec<String> = parameters.iter().map(|p| p.name.clone()).collect();
                 let id = self.get_next_lambda_id();
-                self.lambdas.insert(id, (param_names, *body.clone()));
+                self.lambdas.insert(id, (parameters.clone(), *body.clone()));
                 CalcResult::Lambda(id)
             }
             LambdaCallKind { lambda, args } => {

@@ -114,6 +114,7 @@ pub enum ArrayNode {
 pub struct NamedVariable {
     pub(crate) name: String,
     pub(crate) id: Option<u32>,
+    pub(crate) is_optional: bool,
 }
 
 #[derive(PartialEq, Clone, Debug)]

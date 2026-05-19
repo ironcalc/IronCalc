@@ -138,6 +138,7 @@ pub enum Function {
     Isnontext,
     Isnumber,
     Isodd,
+    Isomitted,
     Isref,
     Istext,
     Na,
@@ -602,6 +603,7 @@ impl_function_lookup! {
     isnontext   => Isnontext,
     isnumber    => Isnumber,
     isodd       => Isodd,
+    isomitted   => Isomitted,
     isref       => Isref,
     istext      => Istext,
     na          => Na,
@@ -1032,6 +1034,7 @@ impl Function {
             Function::Isnontext => functions.isnontext.clone(),
             Function::Isnumber => functions.isnumber.clone(),
             Function::Isodd => functions.isodd.clone(),
+            Function::Isomitted => functions.isomitted.clone(),
             Function::Isref => functions.isref.clone(),
             Function::Istext => functions.istext.clone(),
             Function::Na => functions.na.clone(),
@@ -1327,7 +1330,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 397> {
+    pub fn into_iter() -> IntoIter<Function, 398> {
         [
             Function::And,
             Function::False,
@@ -1499,6 +1502,7 @@ impl Function {
             Function::ErrorType,
             Function::Formulatext,
             Function::Isformula,
+            Function::Isomitted,
             Function::Type,
             Function::Sheet,
             Function::Average,
@@ -1800,6 +1804,7 @@ impl Function {
             Function::Regexreplace => "_xlfn.REGEXREPLACE".to_string(),
             Function::Regextest => "_xlfn.REGEXTEST".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
+            Function::Isomitted => "_xlfn.ISOMITTED".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
             Function::Isoweeknum => "_xlfn.ISOWEEKNUM".to_string(),
@@ -2038,6 +2043,7 @@ impl<'a> Model<'a> {
             Function::Na => CalcResult::new_error(Error::NA, cell, "".to_string()),
             Function::Isref => self.fn_isref(args, cell),
             Function::Isodd => self.fn_isodd(args, cell),
+            Function::Isomitted => self.fn_isomitted(args, cell),
             Function::Iseven => self.fn_iseven(args, cell),
             Function::ErrorType => self.fn_errortype(args, cell),
             Function::Formulatext => self.fn_formulatext(args, cell),

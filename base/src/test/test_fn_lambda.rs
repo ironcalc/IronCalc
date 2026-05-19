@@ -83,3 +83,37 @@ fn let_bound_variable_captured_in_lambda_body() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"3");
 }
+
+#[test]
+fn optional_parameter_omitted() {
+    let mut model = new_empty_model();
+    // b is optional; calling with one arg should use default (a/2 = 6).
+    model._set("A1", "=LAMBDA(a, [b], IF(ISOMITTED(b), a/2, a*b))(12)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"6");
+}
+
+#[test]
+fn optional_parameter_provided() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LAMBDA(a, [b], IF(ISOMITTED(b), a/2, a*b))(12, 3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"36");
+}
+
+#[test]
+fn optional_parameter_too_many_args_is_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LAMBDA(a, [b], a+1)(1, 2, 3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+}
+
+#[test]
+fn required_arg_missing_is_error() {
+    let mut model = new_empty_model();
+    // `a` is required; calling with no args is an error.
+    model._set("A1", "=LAMBDA(a, [b], a+1)()");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+}

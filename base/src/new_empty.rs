@@ -153,8 +153,7 @@ impl<'a> Model<'a> {
                 };
                 match self.parser.parse(formula_body, &dummy_ref) {
                     Node::LambdaDefKind { parameters, body } => {
-                        let param_names = parameters.iter().map(|p| p.name.clone()).collect();
-                        ParsedDefinedName::LambdaDefinition(param_names, *body)
+                        ParsedDefinedName::LambdaDefinition(parameters, *body)
                     }
                     _ => ParsedDefinedName::InvalidDefinedNameFormula,
                 }
