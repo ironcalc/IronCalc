@@ -48,4 +48,4 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | WRAPCOLS     | <Badge type="info" text="Not implemented yet" /> | –             |
 | WRAPROWS     | <Badge type="info" text="Not implemented yet" /> | –             |
 | XLOOKUP      | <Badge type="tip" text="Available" />          | –             |
-| XMATCH       | <Badge type="info" text="Not implemented yet" /> | –             |
+| XMATCH       | <Badge type="tip" text="Available" />          | –             |
