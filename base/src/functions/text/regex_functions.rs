@@ -18,8 +18,8 @@ impl<'a> Model<'a> {
     ///
     /// Returns the first substring of `text` that matches `regular_expression`.
     /// If the pattern contains capture groups, returns the content of the first group.
-    /// When the optional `return_all` argument is 1, returns a vertical array of
-    /// every match instead of only the first one.
+    /// When the optional `return_all` argument is 1, returns a horizontal array of
+    /// every match (one match per column) instead of only the first one.
     /// Returns #N/A if there is no match, #VALUE! if the regex is invalid.
     pub(crate) fn fn_regexextract(
         &mut self,
