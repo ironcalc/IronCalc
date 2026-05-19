@@ -206,37 +206,38 @@ export const WithSubmenu: Story = {
     trigger: <Button variant="secondary">Open menu</Button>,
     children: null,
   },
-  render: () => (
-    <Menu trigger={<Button variant="secondary">123</Button>}>
-      <MenuItem onClick={() => {}}>Auto</MenuItem>
-      <MenuDivider />
-      <MenuItem onClick={() => {}}>Number</MenuItem>
-      <MenuItem onClick={() => {}}>Percentage</MenuItem>
-      <MenuDivider />
-      <MenuItemWithSubmenu
-        submenu={
-          <>
-            <MenuItem onClick={() => {}}>EUR €</MenuItem>
-            <MenuItem onClick={() => {}}>USD $</MenuItem>
-            <MenuItem onClick={() => {}}>GBP £</MenuItem>
-          </>
-        }
-      >
-        Currency
-      </MenuItemWithSubmenu>
-      <MenuDivider />
-      <MenuItemWithSubmenu
-        submenu={
-          <>
-            <MenuItem onClick={() => {}}>Short date</MenuItem>
-            <MenuItem onClick={() => {}}>Long date</MenuItem>
-          </>
-        }
-      >
-        Date
-      </MenuItemWithSubmenu>
-    </Menu>
-  ),
+  render: () => {
+    const [selected, setSelected] = useState("123");
+    return (
+      <Menu trigger={<Button variant="secondary">{selected}</Button>}>
+        <MenuItemWithSubmenu
+          submenu={
+            <>
+              <MenuItem onClick={() => setSelected("EUR €")}>EUR €</MenuItem>
+              <MenuItem onClick={() => setSelected("USD $")}>USD $</MenuItem>
+              <MenuItem onClick={() => setSelected("GBP £")}>GBP £</MenuItem>
+            </>
+          }
+        >
+          Currency
+        </MenuItemWithSubmenu>
+        <MenuItemWithSubmenu
+          submenu={
+            <>
+              <MenuItem onClick={() => setSelected("Short date")}>
+                Short date
+              </MenuItem>
+              <MenuItem onClick={() => setSelected("Long date")}>
+                Long date
+              </MenuItem>
+            </>
+          }
+        >
+          Date
+        </MenuItemWithSubmenu>
+      </Menu>
+    );
+  },
 };
 
 export const ContextMenu: Story = {
