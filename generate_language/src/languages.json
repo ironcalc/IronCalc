@@ -415,7 +415,9 @@
       "hstack": "HSTACK",
       "vstack": "VSTACK",
       "wrapcols": "WRAPCOLS",
-      "wraprows": "WRAPROWS"
+      "wraprows": "WRAPROWS",
+      "xmatch": "XMATCH",
+      "trimrange": "TRIMRANGE"
     }
   },
   "it": {
@@ -834,7 +836,9 @@
       "hstack": "HSTACK",
       "vstack": "VSTACK",
       "wrapcols": "WRAPCOLS",
-      "wraprows": "WRAPROWS"
+      "wraprows": "WRAPROWS",
+      "xmatch": "XMATCH",
+      "trimrange": "TRIMRANGE"
     }
   },
   "fr": {
@@ -1253,7 +1257,9 @@
       "hstack": "HSTACK",
       "vstack": "VSTACK",
       "wrapcols": "WRAPCOLS",
-      "wraprows": "WRAPROWS"
+      "wraprows": "WRAPROWS",
+      "xmatch": "XMATCH",
+      "trimrange": "TRIMRANGE"
     }
   },
   "de": {
@@ -1672,7 +1678,9 @@
       "hstack": "HSTACK",
       "vstack": "VSTACK",
       "wrapcols": "WRAPCOLS",
-      "wraprows": "WRAPROWS"
+      "wraprows": "WRAPROWS",
+      "xmatch": "XMATCH",
+      "trimrange": "TRIMRANGE"
     }
   },
   "es": {
@@ -2091,7 +2099,9 @@
       "hstack": "HSTACK",
       "vstack": "VSTACK",
       "wrapcols": "WRAPCOLS",
-      "wraprows": "WRAPROWS"
+      "wraprows": "WRAPROWS",
+      "xmatch": "XMATCH",
+      "trimrange": "TRIMRANGE"
     }
   }
 }

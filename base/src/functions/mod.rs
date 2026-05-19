@@ -173,6 +173,8 @@ pub enum Function {
     Wrapcols,
     Wraprows,
     Xlookup,
+    Xmatch,
+    Trimrange,
     Take,
     Drop,
     Tocol,
@@ -635,6 +637,8 @@ impl_function_lookup! {
     wrapcols  => Wrapcols,
     wraprows  => Wraprows,
     xlookup   => Xlookup,
+    xmatch    => Xmatch,
+    trimrange => Trimrange,
     take      => Take,
     drop      => Drop,
     tocol     => Tocol,
@@ -1060,6 +1064,8 @@ impl Function {
             Function::Wrapcols => functions.wrapcols.clone(),
             Function::Wraprows => functions.wraprows.clone(),
             Function::Xlookup => functions.xlookup.clone(),
+            Function::Xmatch => functions.xmatch.clone(),
+            Function::Trimrange => functions.trimrange.clone(),
             Function::Take => functions.take.clone(),
             Function::Drop => functions.drop.clone(),
             Function::Tocol => functions.tocol.clone(),
@@ -1321,7 +1327,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 395> {
+    pub fn into_iter() -> IntoIter<Function, 397> {
         [
             Function::And,
             Function::False,
@@ -1434,6 +1440,8 @@ impl Function {
             Function::Wrapcols,
             Function::Wraprows,
             Function::Xlookup,
+            Function::Xmatch,
+            Function::Trimrange,
             Function::Take,
             Function::Drop,
             Function::Tocol,
@@ -1742,6 +1750,8 @@ impl Function {
             Function::Sortby => "_xlfn.SORTBY".to_string(),
             Function::Unique => "_xlfn.UNIQUE".to_string(),
             Function::Xlookup => "_xlfn.XLOOKUP".to_string(),
+            Function::Xmatch => "_xlfn.XMATCH".to_string(),
+            Function::Trimrange => "_xlfn.TRIMRANGE".to_string(),
             Function::Take => "_xlfn.TAKE".to_string(),
             Function::Drop => "_xlfn.DROP".to_string(),
             Function::Tocol => "_xlfn.TOCOL".to_string(),
@@ -1973,6 +1983,8 @@ impl<'a> Model<'a> {
             Function::Wrapcols => self.fn_wrapcols(args, cell),
             Function::Wraprows => self.fn_wraprows(args, cell),
             Function::Xlookup => self.fn_xlookup(args, cell),
+            Function::Xmatch => self.fn_xmatch(args, cell),
+            Function::Trimrange => self.fn_trimrange(args, cell),
             Function::Take => self.fn_take(args, cell),
             Function::Drop => self.fn_drop(args, cell),
             Function::Tocol => self.fn_tocol(args, cell),
