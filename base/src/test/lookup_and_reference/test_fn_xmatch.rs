@@ -188,6 +188,19 @@ fn test_xmatch_regex_reverse_search() {
     assert_eq!(model._get_text("C1"), "3");
 }
 
+// ── regex mode: non-string lookup_value → #N/A (matches Excel) ───────────────
+
+#[test]
+fn test_xmatch_regex_non_string_lookup_is_na() {
+    let mut model = new_empty_model();
+    model._set("A1", "apple");
+    model._set("A2", "banana");
+    // Excel returns #N/A (not found) when lookup_value is not a string in regex mode
+    model._set("C1", "=XMATCH(42,A1:A2,3)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#N/A");
+}
+
 // ── row vector ────────────────────────────────────────────────────────────────
 
 #[test]
