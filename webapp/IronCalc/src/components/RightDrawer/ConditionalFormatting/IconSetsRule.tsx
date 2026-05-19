@@ -12,9 +12,12 @@ import {
   CircleAlert,
   Diamond,
   Flag,
+  Heart,
   Minus,
   SquareMousePointer,
   Star,
+  ThumbsDown,
+  ThumbsUp,
   Triangle,
   X,
 } from "lucide-react";
@@ -33,6 +36,7 @@ interface IconSetIcon {
   color: string;
   filled?: boolean;
   backendName: string;
+  style?: React.CSSProperties;
 }
 
 interface IconSetPreset {
@@ -104,7 +108,7 @@ const SHAPES: IconSetPreset[] = [
         Icon: Triangle,
         color: "#F8CD3D",
         filled: true,
-        backendName: "TriangleUp",
+        backendName: "TriangleUpFilled",
       },
       { Icon: Circle, color: "#8CB354", filled: true, backendName: "Circle" },
     ],
@@ -122,10 +126,42 @@ const SHAPES: IconSetPreset[] = [
 
 const INDICATORS: IconSetPreset[] = [
   {
+    id: "ind-2-arrows",
+    icons: [
+      { Icon: ArrowUp, color: "#8CB354", backendName: "ArrowUp" },
+      { Icon: ArrowDown, color: "#EC5753", backendName: "ArrowDown" },
+    ],
+  },
+  {
+    id: "ind-2-thumbs",
+    icons: [
+      { Icon: ThumbsUp, color: "#8CB354", backendName: "ThumbsUp" },
+      { Icon: ThumbsDown, color: "#EC5753", backendName: "ThumbsDown" },
+    ],
+  },
+  {
     id: "ind-3-checkx",
     icons: [
       { Icon: Check, color: "#8CB354", backendName: "Check" },
       { Icon: X, color: "#EC5753", backendName: "Cross" },
+    ],
+  },
+  {
+    id: "ind-2-triangles",
+    icons: [
+      {
+        Icon: Triangle,
+        color: "#8CB354",
+        filled: true,
+        backendName: "TriangleUpFilled",
+      },
+      {
+        Icon: Triangle,
+        color: "#EC5753",
+        filled: true,
+        backendName: "TriangleDownFilled",
+        style: { transform: "rotate(180deg)" },
+      },
     ],
   },
   {
@@ -147,7 +183,9 @@ const INDICATORS: IconSetPreset[] = [
 ];
 
 const DEFAULT_RATING_COLOR = "#FFD700";
-const RATINGS: IconSetPreset[] = [
+const DEFAULT_HEART_COLOR = "#EC5753";
+
+export const RATINGS: IconSetPreset[] = [
   {
     id: "rating-3-stars",
     icons: [
@@ -173,6 +211,93 @@ const RATINGS: IconSetPreset[] = [
       { Icon: Star, color: "#FFD700", filled: true, backendName: "Star" },
       { Icon: Star, color: "#FFD700", filled: true, backendName: "Star" },
       { Icon: Star, color: "#FFD700", filled: true, backendName: "Star" },
+    ],
+  },
+  {
+    id: "rating-3-hearts",
+    icons: [
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+    ],
+  },
+  {
+    id: "rating-4-hearts",
+    icons: [
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+    ],
+  },
+  {
+    id: "rating-5-hearts",
+    icons: [
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
+      {
+        Icon: Heart,
+        color: DEFAULT_HEART_COLOR,
+        filled: true,
+        backendName: "Heart",
+      },
     ],
   },
 ];
@@ -243,12 +368,13 @@ const IconSetSwatch = ({ preset, selected, onClick }: IconSetSwatchProps) => {
       aria-label={preset.id}
     >
       <div className="ic-is-swatch-icons">
-        {preset.icons.map(({ Icon, color, filled }, i) => (
+        {preset.icons.map(({ Icon, color, filled, style }, i) => (
           <Icon
             key={color + String(i)}
             size={size}
             color={color}
             fill={filled ? color : "none"}
+            style={style}
           />
         ))}
       </div>
@@ -362,10 +488,15 @@ const IconSetsRule = ({
     setThresholds(defaultThresholds(preset.icons));
   };
 
-  const handleRatingCountSelect = (count: 3 | 4 | 5) => {
+  const handleRatingPresetSelect = (preset: IconSetPreset) => {
+    const count = preset.icons.length as 3 | 4 | 5;
+    const color = preset.icons[0].color;
+    const iconName = preset.icons[0].backendName;
     setMode("rating");
     setRatingCount(count);
-    setThresholds(defaultRatingThresholds(count, ratingColor, ratingIcon));
+    setRatingColor(color);
+    setRatingIcon(iconName);
+    setThresholds(defaultRatingThresholds(count, color, iconName));
   };
 
   const handleRatingColorChange = (color: string) => {
@@ -492,11 +623,7 @@ const IconSetsRule = ({
                           ratingCount === preset.icons.length &&
                           ratingColor === preset.icons[0].color
                         }
-                        onClick={() =>
-                          handleRatingCountSelect(
-                            preset.icons.length as 3 | 4 | 5,
-                          )
-                        }
+                        onClick={() => handleRatingPresetSelect(preset)}
                       />
                     ))}
                   </div>
@@ -677,12 +804,7 @@ const IconSetsRule = ({
                         />
                       </div>
                       <div
-                        className="ic-input-control md ic-cs-color-swatch-wrapper"
-                        style={
-                          i !== 0
-                            ? { opacity: 0.6, pointerEvents: "none" }
-                            : undefined
-                        }
+                        className={`ic-input-control md ic-cs-color-swatch-wrapper${i !== 0 ? " ic-is-picker-disabled" : ""}`}
                       >
                         <IconPicker
                           value={ratingIcon}
@@ -691,12 +813,7 @@ const IconSetsRule = ({
                         />
                       </div>
                       <div
-                        className="ic-input-control md ic-cs-color-swatch-wrapper"
-                        style={
-                          i !== 0
-                            ? { opacity: 0.6, pointerEvents: "none" }
-                            : undefined
-                        }
+                        className={`ic-input-control md ic-cs-color-swatch-wrapper${i !== 0 ? " ic-is-picker-disabled" : ""}`}
                       >
                         <button
                           ref={i === 0 ? ratingColorButtonRef : null}

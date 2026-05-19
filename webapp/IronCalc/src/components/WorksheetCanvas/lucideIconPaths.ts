@@ -32,14 +32,25 @@ export const ICON_PATH_SPECS: Record<string, IconPathSpec> = {
     paths: ["m7 7 10 10", "M17 7v10H7"],
     stroke: true,
   },
-  // Triangle (filled) pointing up; TriangleDown uses flipY
+  // ChevronUp / ChevronDown (stroke)
   TriangleUp: {
+    paths: ["m18 15-6-6-6 6"],
+    stroke: true,
+    strokeWidth: 2,
+  },
+  TriangleDown: {
+    paths: ["m6 9 6 6 6-6"],
+    stroke: true,
+    strokeWidth: 2,
+  },
+  // Filled triangles
+  TriangleUpFilled: {
     paths: [
       "M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z",
     ],
     fill: true,
   },
-  TriangleDown: {
+  TriangleDownFilled: {
     paths: [
       "M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z",
     ],

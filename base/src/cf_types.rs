@@ -65,6 +65,8 @@ pub enum Icon {
     Circle,
     TriangleUp,
     TriangleDown,
+    TriangleUpFilled,
+    TriangleDownFilled,
     FlatRectangle,
     Rhombus,
     Flag,
