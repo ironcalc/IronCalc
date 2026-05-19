@@ -13,12 +13,12 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | ------------ | ---------------------------------------------- | ------------- |
 | ADDRESS      | <Badge type="info" text="Not implemented yet" /> | –             |
 | AREAS        | <Badge type="info" text="Not implemented yet" /> | –             |
-| CHOOSE       | <Badge type="tip" text="Available" />          | –             |
+| CHOOSE       | <Badge type="tip" text="Available" />          | [CHOOSE](lookup_and_reference/choose) |
 | CHOOSECOLS   | <Badge type="info" text="Not implemented yet" /> | –             |
 | CHOOSEROWS   | <Badge type="info" text="Not implemented yet" /> | –             |
 | COLUMN       | <Badge type="tip" text="Available" />          | [COLUMN](lookup_and_reference/column)             |
 | COLUMNS      | <Badge type="tip" text="Available" />          | [COLUMNS](lookup_and_reference/columns)             |
-| DROP         | <Badge type="info" text="Not implemented yet" /> | –             |
+| DROP         | <Badge type="tip" text="Available" />          | –             |
 | EXPAND       | <Badge type="info" text="Not implemented yet" /> | –             |
 | FILTER       | <Badge type="tip" text="Available" />          | –             |
 | FORMULATEXT  | <Badge type="tip" text="Available" />          | –             |
@@ -37,10 +37,10 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | RTD          | <Badge type="info" text="Not implemented yet" /> | –             |
 | SORT         | <Badge type="tip" text="Available" />          | –             |
 | SORTBY       | <Badge type="tip" text="Available" />          | –             |
-| TAKE         | <Badge type="info" text="Not implemented yet" /> | –             |
-| TOCOL        | <Badge type="info" text="Not implemented yet" /> | –             |
-| TOROW        | <Badge type="info" text="Not implemented yet" /> | –             |
-| TRANSPOSE    | <Badge type="info" text="Not implemented yet" /> | –             |
+| TAKE         | <Badge type="tip" text="Available" />          | –             |
+| TOCOL        | <Badge type="tip" text="Available" />          | –             |
+| TOROW        | <Badge type="tip" text="Available" />          | –             |
+| TRANSPOSE    | <Badge type="tip" text="Available" />          | –             |
 | UNIQUE       | <Badge type="tip" text="Available" />          | –             |
 | VLOOKUP      | <Badge type="tip" text="Available" />          | –             |
 | VSTACK       | <Badge type="info" text="Not implemented yet" /> | –             |

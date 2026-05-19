@@ -12,21 +12,21 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | Function  | Status                                         | Documentation |
 | --------- | ---------------------------------------------- | ------------- |
 | AND       | <Badge type="tip" text="Available" />          | –             |
-| BYCOL     | <Badge type="info" text="Not implemented yet" /> | –             |
-| BYROW     | <Badge type="info" text="Not implemented yet" /> | –             |
+| BYCOL     | <Badge type="tip" text="Available" />          | –             |
+| BYROW     | <Badge type="tip" text="Available" />          | –             |
 | FALSE     | <Badge type="tip" text="Available" />          | –             |
 | IF        | <Badge type="tip" text="Available" />          | –             |
 | IFERROR   | <Badge type="tip" text="Available" />          | –             |
 | IFNA      | <Badge type="tip" text="Available" />          | –             |
 | IFS       | <Badge type="tip" text="Available" />          | –             |
-| LAMBDA    | <Badge type="info" text="Not implemented yet" /> | –             |
+| LAMBDA    | <Badge type="tip" text="Available" />          | –             |
 | LET       | <Badge type="tip" text="Available" />          | –             |
 | MAKEARRAY | <Badge type="info" text="Not implemented yet" /> | –             |
-| MAP       | <Badge type="info" text="Not implemented yet" /> | –             |
+| MAP       | <Badge type="tip" text="Available" />          | –             |
 | NOT       | <Badge type="tip" text="Available" />          | –             |
 | OR        | <Badge type="tip" text="Available" />          | –             |
-| REDUCE    | <Badge type="info" text="Not implemented yet" /> | –             |
-| SCAN      | <Badge type="info" text="Not implemented yet" /> | –             |
+| REDUCE    | <Badge type="tip" text="Available" />          | –             |
+| SCAN      | <Badge type="tip" text="Available" />          | –             |
 | SWITCH    | <Badge type="tip" text="Available" />          | –             |
 | TRUE      | <Badge type="tip" text="Available" />          | –             |
 | XOR       | <Badge type="tip" text="Available" />          | –             |

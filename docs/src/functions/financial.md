@@ -12,7 +12,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | Function   | Status                                         | Documentation      |
 | ---------- | ---------------------------------------------- | ------------------ |
 | ACCRINT    | <Badge type="info" text="Not implemented yet" /> | –                  |
-| ACCRINTM   | <Badge type="info" text="Not implemented yet" /> | –                  |
+| ACCRINTM   | <Badge type="tip" text="Available" />          | –                  |
 | AMORDEGRC  | <Badge type="info" text="Not implemented yet" /> | –                  |
 | AMORLINC   | <Badge type="info" text="Not implemented yet" /> | –                  |
 | COUPDAYBS  | <Badge type="info" text="Not implemented yet" /> | –                  |

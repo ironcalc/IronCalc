@@ -11,37 +11,37 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 
 | Function    | Status                                         | Documentation |
 | ----------- | ---------------------------------------------- | ------------- |
-| ASC         | <Badge type="info" text="Not implemented yet" /> | –             |
-| ARRAYTOTEXT | <Badge type="info" text="Not implemented yet" /> | –             |
+| ASC         | <Badge type="tip" text="Available" />          | –             |
+| ARRAYTOTEXT | <Badge type="tip" text="Available" />          | –             |
 | BAHTTEXT    | <Badge type="info" text="Not implemented yet" /> | –             |
-| CHAR        | <Badge type="info" text="Not implemented yet" /> | –             |
-| CLEAN       | <Badge type="info" text="Not implemented yet" /> | –             |
-| CODE        | <Badge type="info" text="Not implemented yet" /> | –             |
+| CHAR        | <Badge type="tip" text="Available" />          | –             |
+| CLEAN       | <Badge type="tip" text="Available" />          | –             |
+| CODE        | <Badge type="tip" text="Available" />          | –             |
 | CONCAT      | <Badge type="tip" text="Available" />          | –             |
 | CONCATENATE | <Badge type="tip" text="Available" />          | –             |
 | DBCS        | <Badge type="info" text="Not implemented yet" /> | –             |
-| DOLLAR      | <Badge type="info" text="Not implemented yet" /> | –             |
+| DOLLAR      | <Badge type="tip" text="Available" />          | –             |
 | EXACT       | <Badge type="tip" text="Available" />          | –             |
 | FIND        | <Badge type="tip" text="Available" />          | –             |
-| FINDB       | <Badge type="info" text="Not implemented yet" /> | –             |
-| FIXED       | <Badge type="info" text="Not implemented yet" /> | –             |
+| FINDB       | <Badge type="tip" text="Available" />          | –             |
+| FIXED       | <Badge type="tip" text="Available" />          | –             |
 | LEFT        | <Badge type="tip" text="Available" />          | –             |
-| LEFTB       | <Badge type="info" text="Not implemented yet" /> | –             |
+| LEFTB       | <Badge type="tip" text="Available" />          | –             |
 | LEN         | <Badge type="tip" text="Available" />          | –             |
-| LENB        | <Badge type="info" text="Not implemented yet" /> | –             |
+| LENB        | <Badge type="tip" text="Available" />          | –             |
 | LOWER       | <Badge type="tip" text="Available" />          | –             |
 | MID         | <Badge type="tip" text="Available" />          | –             |
-| MIDB        | <Badge type="info" text="Not implemented yet" /> | –             |
-| NUMBERVALUE | <Badge type="info" text="Not implemented yet" /> | –             |
+| MIDB        | <Badge type="tip" text="Available" />          | –             |
+| NUMBERVALUE | <Badge type="tip" text="Available" />          | –             |
 | PHONETIC    | <Badge type="info" text="Not implemented yet" /> | –             |
-| PROPER      | <Badge type="info" text="Not implemented yet" /> | –             |
-| REPLACE     | <Badge type="info" text="Not implemented yet" /> | –             |
-| REPLACEB    | <Badge type="info" text="Not implemented yet" /> | –             |
+| PROPER      | <Badge type="tip" text="Available" />          | –             |
+| REPLACE     | <Badge type="tip" text="Available" />          | –             |
+| REPLACEB    | <Badge type="tip" text="Available" />          | –             |
 | REPT        | <Badge type="tip" text="Available" />          | –             |
 | RIGHT       | <Badge type="tip" text="Available" />          | –             |
-| RIGHTB      | <Badge type="info" text="Not implemented yet" /> | –             |
+| RIGHTB      | <Badge type="tip" text="Available" />          | –             |
 | SEARCH      | <Badge type="tip" text="Available" />          | –             |
-| SEARCHB     | <Badge type="info" text="Not implemented yet" /> | –             |
+| SEARCHB     | <Badge type="tip" text="Available" />          | –             |
 | SUBSTITUTE  | <Badge type="tip" text="Available" />          | –             |
 | T           | <Badge type="tip" text="Available" />          | –             |
 | TEXT        | <Badge type="tip" text="Available" />          | –             |
@@ -50,7 +50,7 @@ You can track the progress in this [GitHub issue](https://github.com/ironcalc/Ir
 | TEXTJOIN    | <Badge type="tip" text="Available" />          | –             |
 | TEXTSPLIT   | <Badge type="tip" text="Available" />          | –             |
 | TRIM        | <Badge type="tip" text="Available" />          | –             |
-| UNICHAR     | <Badge type="info" text="Not implemented yet" /> | –             |
+| UNICHAR     | <Badge type="tip" text="Available" />          | –             |
 | UNICODE     | <Badge type="tip" text="Available" />          | –             |
 | UPPER       | <Badge type="tip" text="Available" />          | –             |
 | VALUE       | <Badge type="tip" text="Available" />          | –             |
