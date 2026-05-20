@@ -18,8 +18,8 @@ use crate::{
     locale::{get_default_locale, get_locale},
     model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
     types::{
-        DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
-        WorksheetView,
+        Border, BorderItem, BorderStyle, DefinedName, Fill, Font, FontScheme, Metadata, SheetState,
+        Style, Styles, Workbook, WorkbookSettings, WorkbookView, Worksheet, WorksheetView,
     },
     utils::ParsedReference,
 };
@@ -29,6 +29,464 @@ use crate::tz::Tz;
 pub const APPLICATION: &str = "IronCalc Sheets";
 pub const APP_VERSION: &str = "10.0000";
 pub const IRONCALC_USER: &str = "IronCalc User";
+
+// Default IronCalc theme palette (matches xlsx/src/import/theme.rs DEFAULT_PALETTE)
+const ACCENT1: &str = "#4472C4";
+const ACCENT2: &str = "#ED7D31";
+const ACCENT3: &str = "#A5A5A5";
+const ACCENT4: &str = "#FFC000";
+const ACCENT5: &str = "#5B9BD5";
+const ACCENT6: &str = "#70AD47";
+const DK2: &str = "#44546A";
+
+fn tint_color(hex: &str, tint: f64) -> String {
+    fn hue_to_rgb(p: f64, q: f64, t: f64) -> f64 {
+        let mut c = t;
+        if c < 0.0 {
+            c += 1.0;
+        }
+        if c > 1.0 {
+            c -= 1.0;
+        }
+        if c < 1.0 / 6.0 {
+            return p + (q - p) * 6.0 * t;
+        }
+        if c < 0.5 {
+            return q;
+        }
+        if c < 2.0 / 3.0 {
+            return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+        }
+        p
+    }
+    if tint == 0.0 {
+        return hex.to_string();
+    }
+    let r = u8::from_str_radix(&hex[1..3], 16).unwrap_or(0) as i32;
+    let g = u8::from_str_radix(&hex[3..5], 16).unwrap_or(0) as i32;
+    let b = u8::from_str_radix(&hex[5..7], 16).unwrap_or(0) as i32;
+    let max_c = r.max(g).max(b);
+    let min_c = r.min(g).min(b);
+    let chroma = (max_c - min_c) as f64 / 255.0;
+    if chroma == 0.0 {
+        let l = (r as f64 / 255.0 * 100.0).round() as i32;
+        let new_l = if tint < 0.0 {
+            (l as f64 * (1.0 + tint)).round() as i32
+        } else {
+            (l as f64 + (100.0 - l as f64) * tint).round() as i32
+        };
+        let v = (new_l as f64 / 100.0 * 255.0).round() as u8;
+        return format!("#{:02X}{:02X}{:02X}", v, v, v);
+    }
+    let rf = r as f64 / 255.0;
+    let gf = g as f64 / 255.0;
+    let bf = b as f64 / 255.0;
+    let luminosity = (max_c + min_c) as f64 / (255.0 * 2.0);
+    let saturation = if luminosity > 0.5 {
+        0.5 * chroma / (1.0 - luminosity)
+    } else {
+        0.5 * chroma / luminosity
+    };
+    let hue = if max_c == r {
+        if g >= b {
+            60.0 * (gf - bf) / chroma
+        } else {
+            ((gf - bf) / chroma + 6.0) * 60.0
+        }
+    } else if max_c == g {
+        ((bf - rf) / chroma + 2.0) * 60.0
+    } else {
+        ((rf - gf) / chroma + 4.0) * 60.0
+    };
+    let h = hue.round() as i32;
+    let s = (saturation * 100.0).round() as i32;
+    let l = (luminosity * 100.0).round() as i32;
+    let new_l = if tint < 0.0 {
+        (l as f64 * (1.0 + tint)).round() as i32
+    } else {
+        (l as f64 + (100.0 - l as f64) * tint).round() as i32
+    };
+    let hue_f = h as f64 / 360.0;
+    let sat_f = s as f64 / 100.0;
+    let lum_f = new_l as f64 / 100.0;
+    let (nr, ng, nb) = if sat_f == 0.0 {
+        let v = (lum_f * 255.0).round() as u8;
+        (v, v, v)
+    } else {
+        let q = if lum_f < 0.5 {
+            lum_f * (1.0 + sat_f)
+        } else {
+            lum_f + sat_f - lum_f * sat_f
+        };
+        let p = 2.0 * lum_f - q;
+        let nr = (255.0 * hue_to_rgb(p, q, hue_f + 1.0 / 3.0)).round() as u8;
+        let ng = (255.0 * hue_to_rgb(p, q, hue_f)).round() as u8;
+        let nb = (255.0 * hue_to_rgb(p, q, hue_f - 1.0 / 3.0)).round() as u8;
+        (nr, ng, nb)
+    };
+    format!("#{:02X}{:02X}{:02X}", nr, ng, nb)
+}
+
+fn solid_fill(color: &str) -> Fill {
+    Fill {
+        pattern_type: "solid".to_string(),
+        fg_color: Some(color.to_string()),
+        bg_color: None,
+    }
+}
+
+fn thin_box_border(color: &str) -> Border {
+    let item = Some(BorderItem {
+        style: BorderStyle::Thin,
+        color: Some(color.to_string()),
+    });
+    Border {
+        left: item.clone(),
+        right: item.clone(),
+        top: item.clone(),
+        bottom: item,
+        ..Default::default()
+    }
+}
+
+fn double_box_border(color: &str) -> Border {
+    let item = Some(BorderItem {
+        style: BorderStyle::Double,
+        color: Some(color.to_string()),
+    });
+    Border {
+        left: item.clone(),
+        right: item.clone(),
+        top: item.clone(),
+        bottom: item,
+        ..Default::default()
+    }
+}
+
+fn thick_bottom_border(color: &str) -> Border {
+    Border {
+        bottom: Some(BorderItem {
+            style: BorderStyle::Thick,
+            color: Some(color.to_string()),
+        }),
+        ..Default::default()
+    }
+}
+
+fn thin_top_double_bottom_border(color: &str) -> Border {
+    Border {
+        top: Some(BorderItem {
+            style: BorderStyle::Thin,
+            color: Some(color.to_string()),
+        }),
+        bottom: Some(BorderItem {
+            style: BorderStyle::Double,
+            color: Some(color.to_string()),
+        }),
+        ..Default::default()
+    }
+}
+
+fn default_builtin_styles() -> Styles {
+    let mut styles = Styles::default();
+
+    // Good, Bad, Neutral
+    let _ = styles.create_named_style(
+        "Good",
+        &Style {
+            font: Font {
+                color: Some("#006100".to_string()),
+                ..Default::default()
+            },
+            fill: solid_fill("#C6EFCE"),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Bad",
+        &Style {
+            font: Font {
+                color: Some("#9C0006".to_string()),
+                ..Default::default()
+            },
+            fill: solid_fill("#FFC7CE"),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Neutral",
+        &Style {
+            font: Font {
+                color: Some("#9C5700".to_string()),
+                ..Default::default()
+            },
+            fill: solid_fill("#FFEB9C"),
+            ..Default::default()
+        },
+    );
+
+    // Data and Model
+    let _ = styles.create_named_style(
+        "Calculation",
+        &Style {
+            font: Font {
+                b: true,
+                color: Some("#FA7D00".to_string()),
+                ..Default::default()
+            },
+            fill: solid_fill("#F2F2F2"),
+            border: thin_box_border("#7F7F7F"),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Check Cell",
+        &Style {
+            font: Font {
+                b: true,
+                color: Some("#FFFFFF".to_string()),
+                ..Default::default()
+            },
+            fill: solid_fill("#A5A5A5"),
+            border: double_box_border("#3F3F3F"),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Explanatory Text",
+        &Style {
+            font: Font {
+                i: true,
+                color: Some("#7F7F7F".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Input",
+        &Style {
+            font: Font {
+                color: Some("#3F3F76".to_string()),
+                ..Default::default()
+            },
+            fill: solid_fill("#FFCC99"),
+            border: thin_box_border("#7F7F7F"),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Linked Cell",
+        &Style {
+            font: Font {
+                color: Some("#FA7D00".to_string()),
+                ..Default::default()
+            },
+            border: Border {
+                bottom: Some(BorderItem {
+                    style: BorderStyle::Double,
+                    color: Some("#FF8001".to_string()),
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Note",
+        &Style {
+            fill: solid_fill("#FFFFE1"),
+            border: thin_box_border("#B2B2B2"),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Output",
+        &Style {
+            font: Font {
+                b: true,
+                color: Some("#3F3F3F".to_string()),
+                ..Default::default()
+            },
+            fill: solid_fill("#F2F2F2"),
+            border: thin_box_border("#3F3F3F"),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Warning Text",
+        &Style {
+            font: Font {
+                color: Some("#FF0000".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    );
+
+    // Titles and Headings
+    let _ = styles.create_named_style(
+        "Title",
+        &Style {
+            font: Font {
+                sz: 18,
+                color: Some(DK2.to_string()),
+                scheme: FontScheme::Major,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Heading 1",
+        &Style {
+            font: Font {
+                b: true,
+                sz: 15,
+                color: Some(DK2.to_string()),
+                ..Default::default()
+            },
+            border: thick_bottom_border(ACCENT1),
+            ..Default::default()
+        },
+    );
+    let h2_border_color = tint_color(ACCENT1, 0.5);
+    let _ = styles.create_named_style(
+        "Heading 2",
+        &Style {
+            font: Font {
+                b: true,
+                sz: 13,
+                color: Some(DK2.to_string()),
+                ..Default::default()
+            },
+            border: thick_bottom_border(&h2_border_color),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Heading 3",
+        &Style {
+            font: Font {
+                b: true,
+                color: Some(DK2.to_string()),
+                ..Default::default()
+            },
+            border: Border {
+                bottom: Some(BorderItem {
+                    style: BorderStyle::Thin,
+                    color: Some(ACCENT1.to_string()),
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Heading 4",
+        &Style {
+            font: Font {
+                b: true,
+                i: true,
+                color: Some(DK2.to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Total",
+        &Style {
+            font: Font {
+                b: true,
+                ..Default::default()
+            },
+            border: thin_top_double_bottom_border(ACCENT1),
+            ..Default::default()
+        },
+    );
+
+    // Themed Cell Styles: 20% / 40% / 60% tints and solid for each accent
+    for (accent_name, accent_hex) in [
+        ("Accent1", ACCENT1),
+        ("Accent2", ACCENT2),
+        ("Accent3", ACCENT3),
+        ("Accent4", ACCENT4),
+        ("Accent5", ACCENT5),
+        ("Accent6", ACCENT6),
+    ] {
+        let c20 = tint_color(accent_hex, 0.8);
+        let _ = styles.create_named_style(
+            &format!("20% - {accent_name}"),
+            &Style {
+                fill: solid_fill(&c20),
+                ..Default::default()
+            },
+        );
+        let c40 = tint_color(accent_hex, 0.6);
+        let _ = styles.create_named_style(
+            &format!("40% - {accent_name}"),
+            &Style {
+                fill: solid_fill(&c40),
+                ..Default::default()
+            },
+        );
+        let c60 = tint_color(accent_hex, 0.4);
+        let _ = styles.create_named_style(
+            &format!("60% - {accent_name}"),
+            &Style {
+                fill: solid_fill(&c60),
+                ..Default::default()
+            },
+        );
+        let _ = styles.create_named_style(
+            accent_name,
+            &Style {
+                fill: solid_fill(accent_hex),
+                ..Default::default()
+            },
+        );
+    }
+
+    // Number Format styles
+    let _ = styles.create_named_style(
+        "Comma",
+        &Style {
+            num_fmt: "#,##0.00".to_string(),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Comma [0]",
+        &Style {
+            num_fmt: "#,##0".to_string(),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Currency",
+        &Style {
+            num_fmt: r#"_("$"* #,##0.00_);_("$"* \(#,##0.00\);_("$"* "-"??_);_(@_)"#.to_string(),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Currency [0]",
+        &Style {
+            num_fmt: r#"_("$"* #,##0_);_("$"* \(#,##0\);_("$"* "-"_);_(@_)"#.to_string(),
+            ..Default::default()
+        },
+    );
+    let _ = styles.create_named_style(
+        "Percent",
+        &Style {
+            num_fmt: "0%".to_string(),
+            ..Default::default()
+        },
+    );
+
+    styles
+}
 
 /// Name cannot be blank, must be shorter than 31 characters.
 /// You can use all alphanumeric characters but not the following special characters:
@@ -453,7 +911,7 @@ impl<'a> Model<'a> {
             shared_strings: vec![],
             defined_names: vec![],
             worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, &[&0])],
-            styles: Default::default(),
+            styles: default_builtin_styles(),
             name: name.to_string(),
             settings: WorkbookSettings {
                 tz: timezone.to_string(),

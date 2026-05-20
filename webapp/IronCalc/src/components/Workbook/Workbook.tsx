@@ -738,6 +738,14 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         isConditionalFormattingOpen={
           isDrawerOpen && drawerType === "conditionalFormatting"
         }
+        namedStyles={model.getNamedStyleList().map((name) => ({
+          name,
+          style: model.getNamedStyle(name),
+        }))}
+        onApplyNamedStyle={(style) => {
+          model.onPasteStyles([[style]]);
+          setRedrawId((id) => id + 1);
+        }}
       />
       <div
         className="ic-workbook-worksheet-area-left"

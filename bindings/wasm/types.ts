@@ -479,3 +479,11 @@ export interface FmtSettings {
   number_fmt: string;
   number_example: string;
 }
+
+/** A named cell style (e.g. "Normal", "Heading 1", or a custom style). */
+export interface NamedStyle {
+  /** The style name. */
+  name: string;
+  /** The full style definition. */
+  style: CellStyle;
+}

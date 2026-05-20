@@ -420,9 +420,9 @@ fn test_worksheet_cell_clear_contents_with_style() {
 fn workbook_styles_get_style_error_handling() {
     let model = new_empty_model();
 
-    // case 1 : Invalid index
+    // Invalid index (well beyond any built-in styles)
     assert_eq!(
-        model.workbook.styles.get_style(15),
+        model.workbook.styles.get_style(9999),
         Err("Invalid index provided".to_string())
     );
 }
@@ -431,9 +431,9 @@ fn workbook_styles_get_style_error_handling() {
 fn workbook_styles_get_style_without_quote_prefix_error_handling() {
     let mut model = new_empty_model();
 
-    // case 1 : Invalid index
+    // Invalid index (well beyond any built-in styles)
     assert_eq!(
-        model.workbook.styles.get_style_without_quote_prefix(15),
+        model.workbook.styles.get_style_without_quote_prefix(9999),
         Err("Invalid index provided".to_string())
     );
 }
@@ -442,12 +442,12 @@ fn workbook_styles_get_style_without_quote_prefix_error_handling() {
 fn workbook_styles_get_style_with_format_error_handling() {
     let mut model = new_empty_model();
 
-    // case 1 : Invalid index
+    // Invalid index (well beyond any built-in styles)
     assert_eq!(
         model
             .workbook
             .styles
-            .get_style_with_format(15, "dummy_num_format"),
+            .get_style_with_format(9999, "dummy_num_format"),
         Err("Invalid index provided".to_string())
     );
 }
@@ -456,9 +456,9 @@ fn workbook_styles_get_style_with_format_error_handling() {
 fn workbook_styles_get_style_with_quote_prefix_handling() {
     let mut model = new_empty_model();
 
-    // case 1 : Invalid index
+    // Invalid index (well beyond any built-in styles)
     assert_eq!(
-        model.workbook.styles.get_style_with_quote_prefix(15),
+        model.workbook.styles.get_style_with_quote_prefix(9999),
         Err("Invalid index provided".to_string())
     );
 }

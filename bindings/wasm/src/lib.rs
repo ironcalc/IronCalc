@@ -1023,4 +1023,49 @@ impl Model {
             .update_conditional_formatting(sheet, index, new_range, new_rule)
             .map_err(|e| to_js_error(e.to_string()))
     }
+
+    // Named styles
+
+    #[wasm_bindgen(js_name = "getNamedStyleList", unchecked_return_type = "string[]")]
+    pub fn get_named_style_list(&self) -> Vec<String> {
+        self.model.get_named_style_list()
+    }
+
+    #[wasm_bindgen(js_name = "getNamedStyle", unchecked_return_type = "CellStyle")]
+    pub fn get_named_style(&self, name: &str) -> Result<JsValue, JsError> {
+        let style = self.model.get_named_style(name).map_err(to_js_error)?;
+        serde_wasm_bindgen::to_value(&style).map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "createNamedStyle")]
+    pub fn create_named_style(
+        &mut self,
+        name: &str,
+        #[wasm_bindgen(unchecked_param_type = "CellStyle")] style: JsValue,
+    ) -> Result<(), JsError> {
+        let style: Style =
+            serde_wasm_bindgen::from_value(style).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .create_named_style(name, &style)
+            .map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "deleteNamedStyle")]
+    pub fn delete_named_style(&mut self, name: &str) -> Result<(), JsError> {
+        self.model.delete_named_style(name).map_err(to_js_error)
+    }
+
+    #[wasm_bindgen(js_name = "updateNamedStyle")]
+    pub fn update_named_style(
+        &mut self,
+        name: &str,
+        new_name: &str,
+        #[wasm_bindgen(unchecked_param_type = "CellStyle")] style: JsValue,
+    ) -> Result<(), JsError> {
+        let style: Style =
+            serde_wasm_bindgen::from_value(style).map_err(|e| to_js_error(e.to_string()))?;
+        self.model
+            .update_named_style(name, new_name, &style)
+            .map_err(to_js_error)
+    }
 }

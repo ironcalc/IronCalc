@@ -268,15 +268,16 @@ fn test_get_cell_style_index() {
     let mut model = new_empty_model();
 
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
-    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
-    assert_eq!(style_index, 0);
+    let default_index = model.get_cell_style_index(0, 1, 1).unwrap();
+    assert_eq!(default_index, 0);
     assert!(!style.font.b);
 
     style.font.b = true;
     assert!(model.set_cell_style(0, 1, 1, &style).is_ok());
 
-    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
-    assert_eq!(style_index, 1);
+    let bold_index = model.get_cell_style_index(0, 1, 1).unwrap();
+    assert_ne!(bold_index, default_index);
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().font.b);
 }
 
 #[test]
@@ -286,16 +287,16 @@ fn test_model_set_cells_with_values_styles() {
     model.set_user_input(0, 1, 1, "21".to_string()).unwrap(); // A1
     model.set_user_input(0, 2, 1, "2".to_string()).unwrap(); // A2
 
-    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
-    assert_eq!(style_index, 0);
+    let default_index = model.get_cell_style_index(0, 1, 1).unwrap();
+    assert_eq!(default_index, 0);
     let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
     style.font.b = true;
     assert!(model.set_cell_style(0, 1, 1, &style).is_ok());
     assert!(model.set_cell_style(0, 2, 1, &style).is_ok());
-    let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
-    assert_eq!(style_index, 1);
-    let style_index = model.get_cell_style_index(0, 2, 1).unwrap();
-    assert_eq!(style_index, 1);
+    let bold_index = model.get_cell_style_index(0, 1, 1).unwrap();
+    assert_ne!(bold_index, default_index);
+    let style_index2 = model.get_cell_style_index(0, 2, 1).unwrap();
+    assert_eq!(bold_index, style_index2);
 
     model.update_cell_with_number(0, 1, 2, 1.0).unwrap();
     model.update_cell_with_number(0, 2, 1, 2.0).unwrap();
@@ -304,9 +305,9 @@ fn test_model_set_cells_with_values_styles() {
 
     // Styles are not modified
     let style_index = model.get_cell_style_index(0, 1, 1).unwrap();
-    assert_eq!(style_index, 1);
+    assert_eq!(style_index, bold_index);
     let style_index = model.get_cell_style_index(0, 2, 1).unwrap();
-    assert_eq!(style_index, 1);
+    assert_eq!(style_index, bold_index);
 }
 
 #[test]
