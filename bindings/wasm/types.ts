@@ -260,7 +260,9 @@ export type Icon =
   | "Star"
   | "Heart"
   | "ThumbsUp"
-  | "ThumbsDown";
+  | "ThumbsDown"
+  | "TriangleUpFilled"
+  | "TriangleDownFilled";
 
 export type Cfvo =
   | "Min"
