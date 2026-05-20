@@ -5,6 +5,7 @@ mod border_utils;
 mod common;
 mod conditional_formatting;
 pub(crate) mod history;
+mod named_cell_styles;
 mod sequence_detector;
 mod ui;
 

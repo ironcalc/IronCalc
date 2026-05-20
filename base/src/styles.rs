@@ -162,6 +162,50 @@ impl Styles {
         self.add_named_cell_style(style_name, style_index)
     }
 
+    /// Returns the names of all named styles
+    pub fn get_named_style_list(&self) -> Vec<String> {
+        self.cell_styles.iter().map(|cs| cs.name.clone()).collect()
+    }
+
+    /// Returns true if the named style is built-in and cannot be deleted or modified.
+    /// In OOXML, only "Normal" has builtinId=0; all other built-ins have builtinId > 0.
+    /// Custom styles also have builtinId=0 (absent attribute), so we distinguish by name for the zero case.
+    pub fn is_builtin_style(&self, style_name: &str) -> bool {
+        self.cell_styles.iter().any(|cs| {
+            cs.name == style_name && (cs.builtin_id > 0 || cs.name.eq_ignore_ascii_case("Normal"))
+        })
+    }
+
+    /// Removes a named style entry. Does not remove the underlying cell_xfs entry.
+    /// Fails if the style does not exist or is a built-in.
+    pub(crate) fn delete_named_style_entry(&mut self, style_name: &str) -> Result<(), String> {
+        let pos = self
+            .cell_styles
+            .iter()
+            .position(|cs| cs.name == style_name)
+            .ok_or_else(|| format!("Style '{style_name}' not found"))?;
+        self.cell_styles.remove(pos);
+        Ok(())
+    }
+
+    /// Updates the xf_id and name of an existing named style entry.
+    /// Fails if the style does not exist.
+    pub(crate) fn update_named_style_entry(
+        &mut self,
+        style_name: &str,
+        new_name: &str,
+        new_xf_id: i32,
+    ) -> Result<(), String> {
+        let cs = self
+            .cell_styles
+            .iter_mut()
+            .find(|cs| cs.name == style_name)
+            .ok_or_else(|| format!("Style '{style_name}' not found"))?;
+        cs.name = new_name.to_string();
+        cs.xf_id = new_xf_id;
+        Ok(())
+    }
+
     // Returns the style index of the style with `quote_prefix=true`
     // If there is no such style it creates it
     // TODO: It needs to be mutable, the name could reflect that
@@ -295,6 +339,82 @@ impl<'a> Model<'a> {
             .worksheet_mut(sheet)?
             .set_column_style(column, style_index)?;
         Ok(())
+    }
+
+    /// Returns the list of all named style names.
+    pub fn get_named_style_list(&self) -> Vec<String> {
+        self.workbook.styles.get_named_style_list()
+    }
+
+    /// Returns the `Style` associated with the named style.
+    pub fn get_named_style(&self, name: &str) -> Result<Style, String> {
+        let xf_id = self.workbook.styles.get_style_index_by_name(name)?;
+        self.workbook.styles.get_style(xf_id)
+    }
+
+    /// Creates a new named style. Fails if a style with that name already exists.
+    pub fn create_named_style(&mut self, name: &str, style: &Style) -> Result<(), String> {
+        self.workbook.styles.create_named_style(name, style)
+    }
+
+    /// Deletes a named style. Fails if the style does not exist or is built-in.
+    /// Cells that used this style keep their formatting; only the name association is removed.
+    pub fn delete_named_style(&mut self, name: &str) -> Result<(), String> {
+        if self.workbook.styles.is_builtin_style(name) {
+            return Err(format!("Cannot delete built-in style '{name}'"));
+        }
+        self.workbook.styles.delete_named_style_entry(name)
+    }
+
+    /// Updates the formatting and optionally the name of a named style.
+    /// All cells, rows, and columns that use the old style are updated to the new formatting.
+    /// Fails if the style does not exist, is built-in, or if `new_name` is already taken (when renaming).
+    /// Returns `(old_xf_id, new_xf_id)` for diff tracking.
+    pub fn update_named_style(
+        &mut self,
+        name: &str,
+        new_name: &str,
+        style: &Style,
+    ) -> Result<(i32, i32), String> {
+        if self.workbook.styles.is_builtin_style(name) {
+            return Err(format!("Cannot modify built-in style '{name}'"));
+        }
+        let old_xf_id = self.workbook.styles.get_style_index_by_name(name)?;
+        if name != new_name
+            && self
+                .workbook
+                .styles
+                .get_style_index_by_name(new_name)
+                .is_ok()
+        {
+            return Err(format!("A style named '{new_name}' already exists"));
+        }
+        let new_xf_id = self.workbook.styles.get_style_index_or_create(style);
+        if old_xf_id != new_xf_id {
+            for worksheet in &mut self.workbook.worksheets {
+                for row_data in worksheet.sheet_data.values_mut() {
+                    for cell in row_data.values_mut() {
+                        if cell.get_style() == old_xf_id {
+                            cell.set_style(new_xf_id);
+                        }
+                    }
+                }
+                for row in &mut worksheet.rows {
+                    if row.s == old_xf_id {
+                        row.s = new_xf_id;
+                    }
+                }
+                for col in &mut worksheet.cols {
+                    if col.style == Some(old_xf_id) {
+                        col.style = Some(new_xf_id);
+                    }
+                }
+            }
+        }
+        self.workbook
+            .styles
+            .update_named_style_entry(name, new_name, new_xf_id)?;
+        Ok((old_xf_id, new_xf_id))
     }
 }
 

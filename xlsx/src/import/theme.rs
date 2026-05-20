@@ -1,10 +1,9 @@
 use std::io::Read;
 
+use ironcalc_base::colors::hex_with_tint_to_rgb;
 use roxmltree::Node;
 
 use crate::error::XlsxError;
-
-use super::colors::hex_with_tint_to_rgb;
 
 const PALETTE_LEN: usize = 12;
 

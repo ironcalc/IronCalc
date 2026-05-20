@@ -2,6 +2,7 @@ import type {
   BorderOptions,
   FmtSettings,
   HorizontalAlignment,
+  NamedStyle,
   VerticalAlignment,
 } from "@ironcalc/wasm";
 import {
@@ -24,6 +25,7 @@ import {
   Grid2x2X,
   ImageDown,
   Italic,
+  Layers,
   Minus,
   PaintBucket,
   PaintRoller,
@@ -51,6 +53,7 @@ import {
   increaseDecimalPlaces,
   NumberFormats,
 } from "../FormatMenu/formatUtil";
+import NamedStylesPanel from "../NamedStyles/NamedStylesPanel";
 import "./toolbar.css";
 import { Tooltip } from "../Tooltip/Tooltip";
 
@@ -91,18 +94,23 @@ type ToolbarProperties = {
   formatOptions: FmtSettings;
   onOpenConditionalFormatting: () => void;
   isConditionalFormattingOpen: boolean;
+  customStyles: NamedStyle[];
+  builtinStyles: NamedStyle[];
+  onApplyNamedStyle: (name: string) => void;
 };
 
 function Toolbar(properties: ToolbarProperties) {
   const [fontColorPickerOpen, setFontColorPickerOpen] = useState(false);
   const [fillColorPickerOpen, setFillColorPickerOpen] = useState(false);
   const [borderPickerOpen, setBorderPickerOpen] = useState(false);
+  const [namedStylesPanelOpen, setNamedStylesPanelOpen] = useState(false);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
 
   const fontColorButton = useRef(null);
   const fillColorButton = useRef(null);
   const borderButton = useRef(null);
+  const namedStylesButton = useRef(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
@@ -394,6 +402,16 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
+          <Tooltip title={t("toolbar.named_styles")}>
+            <IconButton
+              icon={<Layers />}
+              aria-label={t("toolbar.named_styles")}
+              pressed={namedStylesPanelOpen}
+              ref={namedStylesButton}
+              onClick={() => setNamedStylesPanelOpen((open) => !open)}
+              disabled={!canEdit}
+            />
+          </Tooltip>
         </div>
 
         <div className="ic-toolbar-divider" />
@@ -542,6 +560,17 @@ function Toolbar(properties: ToolbarProperties) {
           }}
           anchorEl={borderButton}
           open={borderPickerOpen}
+        />
+        <NamedStylesPanel
+          open={namedStylesPanelOpen}
+          customStyles={properties.customStyles}
+          builtinStyles={properties.builtinStyles}
+          onApplyNamedStyle={(name) => {
+            properties.onApplyNamedStyle(name);
+            setNamedStylesPanelOpen(false);
+          }}
+          onClose={() => setNamedStylesPanelOpen(false)}
+          anchorEl={namedStylesButton}
         />
       </div>
 

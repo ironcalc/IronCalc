@@ -278,6 +278,12 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         let name = get_attribute(&cell_style, "name")?.to_string();
         let xf_id = get_number(cell_style, "xfId");
         let builtin_id = get_number(cell_style, "builtinId");
+        // NB: A builtin style could be hidden (this is removed in the UI)
+        // <cellStyle name="Linked Cell" xfId="8" builtinId="24" hidden="1"/>
+        // NB: A builtin style could be modified
+        // <cellStyle name="Good" xfId="4" builtinId="26" customBuiltin="1"/>
+        // let hidden = get_bool(cell_style, "hidden");
+        // let custom_builtin = get_bool(cell_style, "customBuiltin");
         style_names.insert(xf_id, name.clone());
         cell_styles.push(CellStyles {
             name,
