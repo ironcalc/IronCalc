@@ -3,11 +3,13 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../../Button/IconButton";
 import { Input } from "../../Input/Input";
+import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
 import functionsDb from "./functions-db.json";
 import "./functions.css";
 
 type FunctionEntry = {
+  c: string;
   i?: boolean;
   d: string;
   a: string[];
@@ -15,6 +17,10 @@ type FunctionEntry = {
 
 const DB = functionsDb as Record<string, FunctionEntry>;
 const FUNCTIONS = Object.keys(DB);
+const CATEGORIES = [
+  "[all]",
+  ...Array.from(new Set(FUNCTIONS.map((name) => DB[name].c))).sort(),
+];
 
 const buildSyntax = (name: string, args: string[]): string => {
   const formatted = args.map((a) =>
@@ -30,12 +36,21 @@ type FunctionsProps = {
 const Functions = ({ onClose }: FunctionsProps) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("[all]");
   const [expandedName, setExpandedName] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const filteredFunctions = FUNCTIONS.filter((name) =>
-    name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredFunctions = FUNCTIONS.filter((name) => {
+    if (categoryFilter !== "[all]" && DB[name].c !== categoryFilter) {
+      return false;
+    }
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const categoryOptions = CATEGORIES.map((c) => ({
+    value: c,
+    label: c === "[all]" ? t("functions.filter_all") : c,
+  }));
 
   return (
     <div className="ic-functions-container">
@@ -59,6 +74,15 @@ const Functions = ({ onClose }: FunctionsProps) => {
           placeholder={t("functions.search_placeholder")}
           startAdornment={<Search />}
         />
+        <div className="ic-functions-category-filter">
+          <Select
+            size="sm"
+            variant="ghost"
+            value={categoryFilter}
+            options={categoryOptions}
+            onChange={setCategoryFilter}
+          />
+        </div>
       </div>
       <div className="ic-functions-list">
         {filteredFunctions.length === 0 ? (
