@@ -738,6 +738,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         isConditionalFormattingOpen={
           isDrawerOpen && drawerType === "conditionalFormatting"
         }
+        onOpenFunctions={() => openDrawer("functions")}
+        isFunctionsOpen={isDrawerOpen && drawerType === "functions"}
       />
       <div
         className="ic-workbook-worksheet-area-left"

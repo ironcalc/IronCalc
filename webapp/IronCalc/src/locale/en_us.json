@@ -148,6 +148,9 @@
   "formula_bar": {
     "manage_named_ranges": "Manage Named Ranges"
   },
+  "functions": {
+    "title": "Functions"
+  },
   "name_manager_dialog": {
     "add_new_range": "Add a new range",
     "apply": "Apply changes",
@@ -277,6 +280,7 @@
       "percentage_example": "10%"
     },
     "format_number": "Format number",
+    "functions": "Functions",
     "increase_font_size": "Increase font size",
     "italic": "Italic",
     "percentage": "Format as percentage",

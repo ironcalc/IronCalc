@@ -32,6 +32,7 @@ import {
   PoundSterling,
   Redo2,
   RemoveFormatting,
+  Sigma,
   Strikethrough,
   Type,
   Underline,
@@ -91,6 +92,8 @@ type ToolbarProperties = {
   formatOptions: FmtSettings;
   onOpenConditionalFormatting: () => void;
   isConditionalFormattingOpen: boolean;
+  onOpenFunctions: () => void;
+  isFunctionsOpen: boolean;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -483,6 +486,14 @@ function Toolbar(properties: ToolbarProperties) {
 
         {/* View & Tools Group */}
         <div className="ic-toolbar-button-group">
+          <Tooltip title={t("toolbar.functions")}>
+            <IconButton
+              icon={<Sigma />}
+              aria-label={t("toolbar.functions")}
+              pressed={properties.isFunctionsOpen}
+              onClick={properties.onOpenFunctions}
+            />
+          </Tooltip>
           <Tooltip title={t("toolbar.show_hide_grid_lines")}>
             <IconButton
               icon={properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}

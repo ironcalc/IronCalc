@@ -1,0 +1,19 @@
+.ic-functions-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ic-functions-header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--palette-grey-300);
+}
+
+.ic-functions-header-title {
+  width: 100%;
+  font-size: 12px;
+}

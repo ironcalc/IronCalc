@@ -2,6 +2,7 @@ import type { Model } from "@ironcalc/wasm";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
+import Functions from "./Functions/Functions";
 import NamedRanges from "./NamedRanges/NamedRanges";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
 import "./rightdrawer.css";
@@ -17,7 +18,8 @@ const KEYBOARD_RESIZE_STEP = 16;
 export type DrawerType =
   | "namedRanges"
   | "regionalSettings"
-  | "conditionalFormatting";
+  | "conditionalFormatting"
+  | "functions";
 
 interface RightDrawerProps {
   isOpen: boolean;
@@ -153,6 +155,8 @@ const RightDrawer = ({
             model={model}
           />
         );
+      case "functions":
+        return <Functions onClose={onClose} />;
       default:
         return (
           <NamedRanges
