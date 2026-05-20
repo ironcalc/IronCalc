@@ -149,6 +149,9 @@
     "manage_named_ranges": "Manage Named Ranges"
   },
   "functions": {
+    "no_search_results": "No functions match your search.",
+    "not_implemented": "Not implemented",
+    "search_placeholder": "Search...",
     "title": "Functions"
   },
   "name_manager_dialog": {
