@@ -1,0 +1,39 @@
+{
+  "ABS": {
+    "d": "Returns the absolute value of a number.",
+    "a": ["number"]
+  },
+  "ACCRINT": {
+    "i": false,
+    "d": "Returns the accrued interest for a security that pays periodic interest.",
+    "a": ["id", "fid", "sd", "rate", "par", "freq", "basis*", "calc*"]
+  },
+  "ACCRINTM": {
+    "d": "Returns the accrued interest for a security that pays interest at maturity.",
+    "a": ["id", "sd", "rate", "par", "basis*"]
+  },
+  "ACOS": {
+    "d": "Returns the arccosine of a number, in radians.",
+    "a": ["number"]
+  },
+  "ACOSH": {
+    "d": "Returns the inverse hyperbolic cosine of a number.",
+    "a": ["number"]
+  },
+  "ACOT": {
+    "d": "Returns the arccotangent of a number, in radians.",
+    "a": ["number"]
+  },
+  "ACOTH": {
+    "d": "Returns the inverse hyperbolic cotangent of a number.",
+    "a": ["number"]
+  },
+  "ADDRESS": {
+    "d": "Returns a cell address as text, given row and column numbers.",
+    "a": ["row", "col", "abs*", "a1*", "sheet*"]
+  },
+  "AGGREGATE": {
+    "d": "Returns an aggregate calculation (sum, average, etc.) while ignoring errors or hidden rows.",
+    "a": ["fn", "opts", "ref1", "ref2*"]
+  }
+}
