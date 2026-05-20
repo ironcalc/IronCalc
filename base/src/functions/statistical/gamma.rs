@@ -11,7 +11,7 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number_no_bools(&args[0], cell) {
+        let x = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
@@ -39,15 +39,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
+        let x = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let alpha = match self.get_number_no_bools(&args[1], cell) {
+        let alpha = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let beta_scale = match self.get_number_no_bools(&args[2], cell) {
+        let beta_scale = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
@@ -104,15 +104,15 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let p = match self.get_number_no_bools(&args[0], cell) {
+        let p = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let alpha = match self.get_number_no_bools(&args[1], cell) {
+        let alpha = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let beta_scale = match self.get_number_no_bools(&args[2], cell) {
+        let beta_scale = match self.get_number(&args[2], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
