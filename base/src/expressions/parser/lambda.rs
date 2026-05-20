@@ -1,60 +1,10 @@
 use crate::expressions::parser::{NamedVariable, Node, Parser};
 use crate::expressions::token::TokenType;
 
-/// Recursively strips the `_xlpm.` prefix from every `NamedVariableKind` name in `node`.
-/// This converts XLSX-style body references (`_xlpm.x`) to clean names (`x`) so the
-/// internal representation is prefix-free regardless of whether the formula came from a
-/// hand-typed formula or was imported from an xlsx file.
-fn strip_xlpm_prefix_in_body(node: &mut Node) {
-    match node {
-        Node::NamedVariableKind { name, .. } => {
-            if let Some(clean) = name.strip_prefix("_xlpm.") {
-                *name = clean.to_string();
-            }
-        }
-        Node::FunctionKind { args, .. } => {
-            for a in args.iter_mut() {
-                strip_xlpm_prefix_in_body(a);
-            }
-        }
-        Node::NamedFunctionKind { args, .. } => {
-            for a in args.iter_mut() {
-                strip_xlpm_prefix_in_body(a);
-            }
-        }
-        Node::LambdaDefKind { body, .. } => strip_xlpm_prefix_in_body(body),
-        Node::LambdaCallKind { lambda, args } => {
-            strip_xlpm_prefix_in_body(lambda);
-            for a in args.iter_mut() {
-                strip_xlpm_prefix_in_body(a);
-            }
-        }
-        Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right }
-        | Node::OpConcatenateKind { left, right }
-        | Node::OpRangeKind { left, right } => {
-            strip_xlpm_prefix_in_body(left);
-            strip_xlpm_prefix_in_body(right);
-        }
-        Node::CompareKind { left, right, .. } => {
-            strip_xlpm_prefix_in_body(left);
-            strip_xlpm_prefix_in_body(right);
-        }
-        Node::UnaryKind { right, .. } => strip_xlpm_prefix_in_body(right),
-        Node::ImplicitIntersection { child, .. } => strip_xlpm_prefix_in_body(child),
-        _ => {}
-    }
-}
-
 impl<'a> Parser<'a> {
     // Called after `LAMBDA` and the opening `(` have been consumed.
     // Parses:  (param | '[' param ']')*, body ')' ['(' call_args ')']
     // Returns LambdaDefKind, or LambdaCallKind if immediately invoked.
-    //
-    // Parameter names are always stored clean (no _xlpm./_xlop. prefix).
-    // Optional parameters come from either [name] bracket syntax or the _xlop. XLSX prefix.
-    // Body variable references are also stored clean (the _xlpm. prefix is stripped).
     pub(crate) fn parse_lambda(&mut self) -> Node {
         let arg_separator = self.get_argument_separator_token();
 
@@ -67,15 +17,16 @@ impl<'a> Parser<'a> {
             };
         }
 
-        let mut parameters: Vec<NamedVariable> = Vec::new();
+        let mut parameters = Vec::new();
 
         // Parse items one by one. Items followed by the separator are parameters (must
         // be plain names or [name]). The final item before ')' is the body expression.
-        let mut body = loop {
+        let body = loop {
             // Optional parameter syntax: [name]
             let bracket_optional = self.lexer.peek_token() == TokenType::LeftBracket;
             if bracket_optional {
-                self.lexer.advance_token(); // consume '['
+                // consume '['
+                self.lexer.advance_token();
             }
 
             let expr = self.parse_expr();
@@ -96,15 +47,12 @@ impl<'a> Parser<'a> {
             let next = self.lexer.peek_token();
             if next == arg_separator {
                 // This item must be a parameter name.
-                self.lexer.advance_token(); // consume separator
+                self.lexer.advance_token();
                 match expr {
                     Node::NamedVariableKind { name, id } => {
-                        // Strip XLSX prefixes. _xlop. marks optional; both prefixes are
-                        // removed so the stored name is always clean.
+                        // xlop: Excel Optional Parameter.
                         let (clean, is_optional) = if let Some(s) = name.strip_prefix("_xlop.") {
                             (s.to_string(), true)
-                        } else if let Some(s) = name.strip_prefix("_xlpm.") {
-                            (s.to_string(), bracket_optional)
                         } else {
                             (name, bracket_optional)
                         };
@@ -133,10 +81,6 @@ impl<'a> Parser<'a> {
                 };
             }
         };
-
-        // Strip _xlpm. prefix from variable references in the body so the internal
-        // representation is always prefix-free (matches the clean param names above).
-        strip_xlpm_prefix_in_body(&mut body);
 
         let def = Node::LambdaDefKind {
             parameters,

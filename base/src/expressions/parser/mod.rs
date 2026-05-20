@@ -883,6 +883,7 @@ impl<'a> Parser<'a> {
                         return Node::TableNameKind(name);
                     }
                 }
+                // xlpm: Excel Lambda Parameter
                 let name = name.trim_start_matches("_xlpm.").to_string();
                 Node::NamedVariableKind { name, id: None }
             }
