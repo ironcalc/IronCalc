@@ -149,8 +149,8 @@
     "manage_named_ranges": "Manage Named Ranges"
   },
   "functions": {
-    "category_label": "Category",
     "all_functions": "All functions",
+    "category_label": "Category",
     "commonly_used": "Commonly used",
     "filter_all": "All categories",
     "insert_function": "Insert function",

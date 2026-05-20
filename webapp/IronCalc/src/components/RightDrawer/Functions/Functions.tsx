@@ -1,10 +1,12 @@
+import type { Model } from "@ironcalc/wasm";
 import { Search, SearchX, SquareArrowRightEnter, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../../Button/IconButton";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
+import type { WorkbookState } from "../../workbookState";
 import functionsDb from "./functions-db.json";
 import "./functions.css";
 
@@ -32,16 +34,42 @@ const buildSyntax = (name: string, args: string[]): string => {
 
 type FunctionsProps = {
   onClose: () => void;
+  model: Model;
+  workbookState: WorkbookState;
+  onUpdate: () => void;
 };
 
-const Functions = ({ onClose }: FunctionsProps) => {
+const Functions = ({
+  onClose,
+  model,
+  workbookState,
+  onUpdate,
+}: FunctionsProps) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("[all]");
   const [expandedName, setExpandedName] = useState<string | null>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-
   const isFiltering = searchQuery !== "" || categoryFilter !== "[all]";
+
+  const handleInsert = (name: string) => {
+    const { sheet, row, column } = model.getSelectedView();
+    const text = `=${name}(`;
+    workbookState.setEditingCell({
+      sheet,
+      row,
+      column,
+      text,
+      cursorStart: text.length,
+      cursorEnd: text.length,
+      referencedRange: null,
+      focus: "cell",
+      activeRanges: [],
+      mode: "accept",
+      editorWidth: model.getColumnWidth(sheet, column),
+      editorHeight: model.getRowHeight(sheet, row),
+    });
+    onUpdate();
+  };
 
   const filteredFunctions = FUNCTIONS.filter((name) => {
     if (categoryFilter !== "[all]" && DB[name].c !== categoryFilter) {
@@ -63,6 +91,7 @@ const Functions = ({ onClose }: FunctionsProps) => {
       <div
         key={name}
         className={`ic-functions-list-item${isOpen ? " ic-functions-list-item--open" : ""}`}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
         tabIndex={0}
         onClick={() => setExpandedName(isOpen ? null : name)}
         onKeyDown={(e) => {
@@ -85,7 +114,10 @@ const Functions = ({ onClose }: FunctionsProps) => {
                 <IconButton
                   icon={<SquareArrowRightEnter />}
                   aria-label={t("functions.insert_function")}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsert(name);
+                  }}
                 />
               </Tooltip>
             </div>
@@ -117,7 +149,6 @@ const Functions = ({ onClose }: FunctionsProps) => {
       </div>
       <div className="ic-functions-search-container">
         <Input
-          ref={searchRef}
           type="text"
           size="sm"
           value={searchQuery}
@@ -155,11 +186,9 @@ const Functions = ({ onClose }: FunctionsProps) => {
         ) : (
           <>
             {!isFiltering && (
-              <>
-                <div className="ic-functions-section-header">
-                  {t("functions.all_functions")}
-                </div>
-              </>
+              <div className="ic-functions-section-header">
+                {t("functions.all_functions")}
+              </div>
             )}
             {filteredFunctions.map(renderItem)}
           </>
