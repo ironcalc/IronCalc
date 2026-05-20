@@ -163,6 +163,8 @@
     "manage_named_ranges": "Manage Named Ranges"
   },
   "functions": {
+    "category_label": "Category",
+    "filter_all": "All categories",
     "no_search_results": "No functions match your search.",
     "not_implemented": "Not implemented",
     "search_placeholder": "Search...",
