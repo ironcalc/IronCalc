@@ -786,6 +786,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }
         onOpenNamedStyles={() => openDrawer("namedStyles")}
         isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
+        onOpenFunctions={() => openDrawer("functions")}
+        isFunctionsOpen={isDrawerOpen && drawerType === "functions"}
       />
       <div
         className="ic-workbook-worksheet-area-left"

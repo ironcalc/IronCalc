@@ -33,6 +33,7 @@ import {
   PoundSterling,
   Redo2,
   RemoveFormatting,
+  Sigma,
   Strikethrough,
   Type,
   Underline,
@@ -94,6 +95,8 @@ type ToolbarProperties = {
   isConditionalFormattingOpen: boolean;
   onOpenNamedStyles: () => void;
   isNamedStylesOpen: boolean;
+  onOpenFunctions: () => void;
+  isFunctionsOpen: boolean;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -499,6 +502,14 @@ function Toolbar(properties: ToolbarProperties) {
 
         {/* View & Tools Group */}
         <div className="ic-toolbar-button-group">
+          <Tooltip title={t("toolbar.functions")}>
+            <IconButton
+              icon={<Sigma />}
+              aria-label={t("toolbar.functions")}
+              pressed={properties.isFunctionsOpen}
+              onClick={properties.onOpenFunctions}
+            />
+          </Tooltip>
           <Tooltip title={t("toolbar.selected_png")}>
             <IconButton
               icon={<ImageDown />}
