@@ -1,7 +1,6 @@
-import { IconButton } from "@ironcalc/workbook";
+import { IconButton, Portal } from "@ironcalc/workbook";
 import { BookOpen, FileUp, X } from "lucide-react";
 import { type DragEvent, useId, useRef } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useDialogFocus } from "./useDialogFocus";
 import { useDialogKeyDown } from "./useDialogKeyDown";
@@ -84,93 +83,94 @@ function UploadFileDialog({
     }
   };
 
-  return createPortal(
-    <div className="app-ic-ufd-backdrop" onClick={onClose} role="none">
-      <div
-        ref={dialogRef}
-        className="app-ic-ufd-paper"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={onKeyDown}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          style={{ display: "none" }}
-          onChange={(event) => {
-            const files = event.target.files;
-            if (files) {
-              for (const file of files) {
-                handleFileUpload(file);
+  return (
+    <Portal>
+      <div className="app-ic-ufd-backdrop" onClick={onClose} role="none">
+        <div
+          ref={dialogRef}
+          className="app-ic-ufd-paper"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={onKeyDown}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            style={{ display: "none" }}
+            onChange={(event) => {
+              const files = event.target.files;
+              if (files) {
+                for (const file of files) {
+                  handleFileUpload(file);
+                }
               }
-            }
-          }}
-        />
-        <div className="app-ic-ufd-header">
-          <span id={titleId} className="app-ic-ufd-header-title">
-            {t("file_bar.file_menu.import.title")}
-          </span>
-          <IconButton
-            ref={closeButtonRef}
-            icon={<X />}
-            aria-label={t("file_bar.file_menu.import.close_dialog")}
-            onClick={onClose}
+            }}
           />
-        </div>
-
-        {message === "" ? (
-          <button
-            ref={dropZoneRef}
-            type="button"
-            className={`app-ic-ufd-drop-zone${hover ? " app-ic-ufd-drop-zone--dragging" : ""}`}
-            onDragEnter={handleDragEnter}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDragExit={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {hover ? (
-              <div>{t("file_bar.file_menu.import.drop_file_here")}</div>
-            ) : (
-              <>
-                <div className="app-ic-ufd-drop-zone-icon">
-                  <FileUp />
-                </div>
-                <div className="app-ic-ufd-drop-zone-text">
-                  <span>{t("file_bar.file_menu.import.subtitle")} </span>
-                  <span className="app-ic-ufd-browse-link">
-                    {t("file_bar.file_menu.import.subtitle_link")}
-                  </span>
-                </div>
-              </>
-            )}
-          </button>
-        ) : (
-          <div className="app-ic-ufd-drop-zone">
-            <div>{message}</div>
+          <div className="app-ic-ufd-header">
+            <span id={titleId} className="app-ic-ufd-header-title">
+              {t("file_bar.file_menu.import.title")}
+            </span>
+            <IconButton
+              ref={closeButtonRef}
+              icon={<X />}
+              aria-label={t("file_bar.file_menu.import.close_dialog")}
+              onClick={onClose}
+            />
           </div>
-        )}
 
-        <div className="app-ic-ufd-footer">
-          <BookOpen />
-          <a
-            ref={footerLinkRef}
-            className="app-ic-ufd-footer-link"
-            href="https://docs.ironcalc.com/web-application/importing-files.html"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t("file_bar.file_menu.import.learn_more")}
-          </a>
+          {message === "" ? (
+            <button
+              ref={dropZoneRef}
+              type="button"
+              className={`app-ic-ufd-drop-zone${hover ? " app-ic-ufd-drop-zone--dragging" : ""}`}
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDragExit={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {hover ? (
+                <div>{t("file_bar.file_menu.import.drop_file_here")}</div>
+              ) : (
+                <>
+                  <div className="app-ic-ufd-drop-zone-icon">
+                    <FileUp />
+                  </div>
+                  <div className="app-ic-ufd-drop-zone-text">
+                    <span>{t("file_bar.file_menu.import.subtitle")} </span>
+                    <span className="app-ic-ufd-browse-link">
+                      {t("file_bar.file_menu.import.subtitle_link")}
+                    </span>
+                  </div>
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="app-ic-ufd-drop-zone">
+              <div>{message}</div>
+            </div>
+          )}
+
+          <div className="app-ic-ufd-footer">
+            <BookOpen />
+            <a
+              ref={footerLinkRef}
+              className="app-ic-ufd-footer-link"
+              href="https://docs.ironcalc.com/web-application/importing-files.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("file_bar.file_menu.import.learn_more")}
+            </a>
+          </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </Portal>
   );
 }
 

@@ -23,6 +23,7 @@ export type {
 export { MenuItem, MenuItemWithSubmenu } from "./components/Menu/MenuItem";
 export type { ConfirmProperties } from "./components/Modal/Confirm";
 export { Confirm } from "./components/Modal/Confirm";
+export { Portal, PortalProvider } from "./components/PortalContext";
 export type { TooltipProperties } from "./components/Tooltip/Tooltip";
 export { Tooltip } from "./components/Tooltip/Tooltip";
 export type { IronCalcHandle } from "./IronCalc";

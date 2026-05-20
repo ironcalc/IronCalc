@@ -1,6 +1,6 @@
+import { Portal } from "@ironcalc/workbook";
 import { CloudOff } from "lucide-react";
 import { type RefObject, useId, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { usePopoverPosition } from "./usePopoverPosition";
 
@@ -30,7 +30,7 @@ export function StorageWarning() {
       >
         <CloudOff />
       </button>
-      {createPortal(
+      <Portal>
         <div
           ref={popoverRef}
           id={popoverId}
@@ -41,9 +41,8 @@ export function StorageWarning() {
         >
           {t("file_bar.title_input.warning_text1")}
           <strong>{t("file_bar.title_input.warning_text2")}</strong>
-        </div>,
-        document.body,
-      )}
+        </div>
+      </Portal>
     </>
   );
 }

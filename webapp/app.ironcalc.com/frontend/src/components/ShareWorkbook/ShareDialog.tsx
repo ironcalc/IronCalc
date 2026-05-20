@@ -1,7 +1,6 @@
-import { Button, Input, type Model } from "@ironcalc/workbook";
+import { Button, Input, type Model, Portal } from "@ironcalc/workbook";
 import { Check, Copy, GlobeLock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useModalFocus } from "./useModalFocus";
 import { useShareDialog } from "./useShareDialog";
@@ -21,50 +20,51 @@ function ShareWorkbookDialog(properties: {
     properties.onClose();
   };
 
-  return createPortal(
-    <div
-      className="app-ic-share-dialog-backdrop"
-      onClick={handleClose}
-      role="none"
-    >
+  return (
+    <Portal>
       <div
-        ref={modalRef}
-        className="app-ic-share-dialog"
-        role="dialog"
-        aria-modal="true"
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            handleClose();
-          }
-        }}
-        tabIndex={-1}
+        className="app-ic-share-dialog-backdrop"
+        onClick={handleClose}
+        role="none"
       >
-        <div className="app-ic-share-dialog-content">
-          <div className="app-ic-share-dialog-qr-wrapper">
-            <QRCodeSVG value={url} />
+        <div
+          ref={modalRef}
+          className="app-ic-share-dialog"
+          role="dialog"
+          aria-modal="true"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              handleClose();
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div className="app-ic-share-dialog-content">
+            <div className="app-ic-share-dialog-qr-wrapper">
+              <QRCodeSVG value={url} />
+            </div>
+            <div className="app-ic-share-dialog-url-wrapper">
+              <Input disabled value={url} />
+              <Button
+                type="button"
+                variant="secondary"
+                startIcon={copied ? <Check /> : <Copy />}
+                onClick={handleCopy}
+              >
+                {copied
+                  ? t("file_bar.share_popover.copied")
+                  : t("file_bar.share_popover.copy_url")}
+              </Button>
+            </div>
           </div>
-          <div className="app-ic-share-dialog-url-wrapper">
-            <Input disabled value={url} />
-            <Button
-              type="button"
-              variant="secondary"
-              startIcon={copied ? <Check /> : <Copy />}
-              onClick={handleCopy}
-            >
-              {copied
-                ? t("file_bar.share_popover.copied")
-                : t("file_bar.share_popover.copy_url")}
-            </Button>
+          <div className="app-ic-share-dialog-footer">
+            <GlobeLock />
+            {t("file_bar.share_popover.info_text")}
           </div>
-        </div>
-        <div className="app-ic-share-dialog-footer">
-          <GlobeLock />
-          {t("file_bar.share_popover.info_text")}
         </div>
       </div>
-    </div>,
-    document.body,
+    </Portal>
   );
 }
 
