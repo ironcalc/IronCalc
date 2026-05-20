@@ -120,6 +120,16 @@
     "d": "Returns TRUE if the number is odd.",
     "a": ["number"]
   },
+  "LAMBDA": {
+    "c": "Logical",
+    "d": "Creates a custom reusable function with named parameters.",
+    "a": ["param*", "body"]
+  },
+  "LET": {
+    "c": "Logical",
+    "d": "Assigns names to calculation results and returns the final formula.",
+    "a": ["name1", "value1", "name_value*", "formula"]
+  },
   "MAX": {
     "c": "Statistical",
     "d": "Returns the largest value in a set of values.",
