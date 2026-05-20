@@ -9,18 +9,18 @@ use core::cmp::min;
 // Warning: Excel uses a weird normalization for HSL colors (0, 255)
 // We use a more standard one but our HSL numbers will not coincide with Excel's
 
-pub(crate) fn hex_to_rgb(h: &str) -> [i32; 3] {
+pub fn hex_to_rgb(h: &str) -> [i32; 3] {
     let r = i32::from_str_radix(&h[1..3], 16).unwrap();
     let g = i32::from_str_radix(&h[3..5], 16).unwrap();
     let b = i32::from_str_radix(&h[5..7], 16).unwrap();
     [r, g, b]
 }
 
-pub(crate) fn rgb_to_hex(rgb: [i32; 3]) -> String {
+pub fn rgb_to_hex(rgb: [i32; 3]) -> String {
     format!("#{:02X}{:02X}{:02X}", rgb[0], rgb[1], rgb[2])
 }
 
-pub(crate) fn rgb_to_hsl(rgb: [i32; 3]) -> [i32; 3] {
+pub fn rgb_to_hsl(rgb: [i32; 3]) -> [i32; 3] {
     let r = rgb[0];
     let g = rgb[1];
     let b = rgb[2];
@@ -78,7 +78,7 @@ fn hue_to_rgb(p: f64, q: f64, t: f64) -> f64 {
     p
 }
 
-pub(crate) fn hsl_to_rgb(hsl: [i32; 3]) -> [i32; 3] {
+pub fn hsl_to_rgb(hsl: [i32; 3]) -> [i32; 3] {
     let hue = (hsl[0] as f64) / 360.0;
     let saturation = (hsl[1] as f64) / 100.0;
     let luminosity = (hsl[2] as f64) / 100.0;
@@ -110,7 +110,7 @@ pub(crate) fn hsl_to_rgb(hsl: [i32; 3]) -> [i32; 3] {
 }
 
 /* 18.8.3 bgColor tint algorithm */
-pub(crate) fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
+pub fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
     if tint == 0.0 {
         return hex.to_string();
     }
@@ -148,7 +148,7 @@ pub fn get_indexed_color(index: i32) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::import::colors::*;
+    use super::*;
 
     #[test]
     fn test_rgb_hex() {

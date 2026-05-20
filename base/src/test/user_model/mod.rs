@@ -20,6 +20,7 @@ mod test_hidden_columns;
 mod test_keyboard_navigation;
 mod test_last_empty_cell;
 mod test_multi_row_column;
+mod test_named_styles;
 mod test_on_area_selection;
 mod test_on_expand_selected_range;
 mod test_on_paste_styles;

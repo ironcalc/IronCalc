@@ -64,6 +64,102 @@ fn test_create_named_style() {
 }
 
 #[test]
+fn test_get_named_style_list() {
+    let model = new_empty_model();
+    let list = model.get_named_style_list();
+    // Default model has one entry: "normal"
+    assert_eq!(list, vec!["normal".to_string()]);
+}
+
+#[test]
+fn test_get_named_style() {
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold", &style).unwrap();
+    let retrieved = model.get_named_style("bold").unwrap();
+    assert!(retrieved.font.b);
+}
+
+#[test]
+fn test_create_named_style_via_model() {
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    assert!(model.create_named_style("bold", &style).is_ok());
+    // Duplicate name fails
+    assert!(model.create_named_style("bold", &style).is_err());
+    // Can apply the style to a cell
+    model.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().font.b);
+}
+
+#[test]
+fn test_delete_named_style() {
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold", &style).unwrap();
+    // Apply it to a cell
+    model.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().font.b);
+    // Delete the named style
+    assert!(model.delete_named_style("bold").is_ok());
+    // Named style is gone
+    assert!(model.get_named_style("bold").is_err());
+    // Cell retains its formatting
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().font.b);
+    // Built-in "normal" cannot be deleted
+    assert!(model.delete_named_style("normal").is_err());
+    // Deleting a non-existent style fails
+    assert!(model.delete_named_style("nonexistent").is_err());
+}
+
+#[test]
+fn test_update_named_style_updates_cells() {
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold", &style).unwrap();
+    // Apply to A1 and A2
+    model.set_cell_style_by_name(0, 1, 1, "bold").unwrap();
+    model.set_cell_style_by_name(0, 2, 1, "bold").unwrap();
+    // Update the style to also be italic
+    let mut new_style = model.get_named_style("bold").unwrap();
+    new_style.font.i = true;
+    model
+        .update_named_style("bold", "bold", &new_style)
+        .unwrap();
+    // Both cells now have the updated style
+    assert!(model.get_style_for_cell(0, 1, 1).unwrap().font.i);
+    assert!(model.get_style_for_cell(0, 2, 1).unwrap().font.i);
+    // The named style reflects the new formatting
+    assert!(model.get_named_style("bold").unwrap().font.i);
+}
+
+#[test]
+fn test_update_named_style_rename() {
+    let mut model = new_empty_model();
+    let mut style = model.get_style_for_cell(0, 1, 1).unwrap();
+    style.font.b = true;
+    model.create_named_style("bold", &style).unwrap();
+    // Rename it
+    model.update_named_style("bold", "bold2", &style).unwrap();
+    assert!(model.get_named_style("bold").is_err());
+    assert!(model.get_named_style("bold2").is_ok());
+}
+
+#[test]
+fn test_update_named_style_rejects_builtin() {
+    let mut model = new_empty_model();
+    let style = model.get_style_for_cell(0, 1, 1).unwrap();
+    assert!(model
+        .update_named_style("normal", "normal", &style)
+        .is_err());
+    assert!(model.delete_named_style("normal").is_err());
+}
+
+#[test]
 fn empty_models_have_two_fills() {
     let model = new_empty_model();
     assert_eq!(model.workbook.styles.fills.len(), 2);

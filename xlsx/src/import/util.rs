@@ -1,11 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
-use colors::get_indexed_color;
+use ironcalc_base::colors::get_indexed_color;
 use roxmltree::{ExpandedName, Node};
 
 use crate::error::XlsxError;
 
-use super::colors;
 use super::theme::Theme;
 
 pub(crate) fn get_number(node: Node, s: &str) -> i32 {

@@ -213,6 +213,21 @@ pub(crate) enum Diff {
         old_value: String,
         new_value: String,
     },
+    // Named style diffs
+    CreateNamedStyle {
+        name: String,
+        xf_id: i32,
+    },
+    DeleteNamedStyle {
+        name: String,
+        old_xf_id: i32,
+    },
+    UpdateNamedStyle {
+        name: String,
+        new_name: String,
+        old_xf_id: i32,
+        new_xf_id: i32,
+    },
     // Conditional formatting diffs
     AddConditionalFormatting {
         sheet: u32,
