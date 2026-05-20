@@ -90,7 +90,9 @@
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
-  padding: 12px;
+  padding: 4px 6px 4px 12px;
+  height: 36px;
+  box-sizing: border-box;
   font-size: var(--typography-font-size);
   font-family: var(--typography-font-family);
   color: var(--palette-common-black);
@@ -103,6 +105,16 @@
   border: 1px solid var(--palette-grey-300);
   padding: 3px 6px;
   border-radius: 16px;
+}
+
+.ic-functions-list-item-insert {
+  margin-left: auto;
+  opacity: 0;
+}
+
+.ic-functions-list-item:hover .ic-functions-list-item-insert,
+.ic-functions-list-item--open .ic-functions-list-item-insert {
+  opacity: 1;
 }
 
 .ic-functions-detail {
