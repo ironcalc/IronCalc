@@ -1379,7 +1379,8 @@ impl<'a> Model<'a> {
             | CfRule::AboveAverage { dxf_id, .. }
             | CfRule::BelowAverage { dxf_id, .. }
             | CfRule::Top10 { dxf_id, .. }
-            | CfRule::Bottom10 { dxf_id, .. } => *dxf_id,
+            | CfRule::Bottom10 { dxf_id, .. }
+            | CfRule::Formula { dxf_id, .. } => *dxf_id,
             _ => return Ok(None),
         };
         Ok(self.workbook.styles.dxfs.get(dxf_id as usize).cloned())
