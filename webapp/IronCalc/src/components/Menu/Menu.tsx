@@ -93,8 +93,13 @@ export function Menu(props: MenuProperties) {
         ? (triggerPosition.triggerRef.current?.contains(target) ?? false)
         : false;
 
-      const insideAnyMenu = (target as Element).closest?.(".ic-menu-wrapper") !== null;
-      if (!triggerContains && !(menuRef.current?.contains(target) ?? false) && !insideAnyMenu) {
+      const insideAnyMenu =
+        (target as Element).closest?.(".ic-menu-wrapper") !== null;
+      if (
+        !triggerContains &&
+        !(menuRef.current?.contains(target) ?? false) &&
+        !insideAnyMenu
+      ) {
         close();
       }
     }

@@ -86,7 +86,7 @@ export function MenuItemWithSubmenu({
   const parentActiveSetOpenRef = parentMenu?.activeSetOpenRef ?? null;
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<
-    { x: number; y: number; flipX?: number } | undefined
+    { x: number; y: number; flipX?: number; flipY?: number } | undefined
   >();
   const itemRef = useRef<HTMLButtonElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,7 +134,12 @@ export function MenuItemWithSubmenu({
     if (parentActiveSetOpenRef) parentActiveSetOpenRef.current = setOpen;
     const rect = itemRef.current?.getBoundingClientRect();
     if (rect) {
-      setAnchor({ x: rect.right + 4, y: rect.top - 4, flipX: rect.left - 4 });
+      setAnchor({
+        x: rect.right + 4,
+        y: rect.top - 4,
+        flipX: rect.left - 4,
+        flipY: rect.bottom + 4,
+      });
     }
     setOpen(true);
   }

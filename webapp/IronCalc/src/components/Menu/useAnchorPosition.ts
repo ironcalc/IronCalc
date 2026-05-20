@@ -2,7 +2,7 @@ import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 
 export function useAnchorPosition(
   open: boolean,
-  anchor: { x: number; y: number; flipX?: number } | undefined,
+  anchor: { x: number; y: number; flipX?: number; flipY?: number } | undefined,
 ) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<CSSProperties>({});
@@ -27,12 +27,15 @@ export function useAnchorPosition(
       let left = anchor.x;
       let top = anchor.y;
 
-      // Flip above the anchor when the menu would overflow below and there's room above
-      if (
-        top + menuHeight > viewportHeight - margin &&
-        anchor.y - menuHeight > margin
-      ) {
-        top = anchor.y - menuHeight;
+      // Flip vertically when the menu would overflow below
+      if (top + menuHeight > viewportHeight - margin) {
+        if (anchor.flipY !== undefined) {
+          // Submenu: align bottom of submenu with item bottom
+          top = anchor.flipY - menuHeight;
+        } else if (anchor.y - menuHeight > margin) {
+          // Dropdown: flip above the anchor point
+          top = anchor.y - menuHeight;
+        }
       }
 
       if (left + menuWidth > viewportWidth - margin) {
