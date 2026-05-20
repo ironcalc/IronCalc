@@ -1,4 +1,4 @@
-import { Search, SearchX, X } from "lucide-react";
+import { Search, SearchX, SquareArrowRightEnter, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../../Button/IconButton";
@@ -78,6 +78,17 @@ const Functions = ({ onClose }: FunctionsProps) => {
             <span className="ic-functions-not-implemented">
               {t("functions.not_implemented")}
             </span>
+          )}
+          {entry.i !== false && (
+            <div className="ic-functions-list-item-insert">
+              <Tooltip title={t("functions.insert_function")}>
+                <IconButton
+                  icon={<SquareArrowRightEnter />}
+                  aria-label={t("functions.insert_function")}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </Tooltip>
+            </div>
           )}
         </div>
         {isOpen && (
