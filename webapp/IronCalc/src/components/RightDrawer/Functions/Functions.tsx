@@ -72,6 +72,9 @@ const Functions = ({
   };
 
   const filteredFunctions = FUNCTIONS.filter((name) => {
+    if (!isFiltering && COMMONLY_USED.includes(name)) {
+      return false;
+    }
     if (categoryFilter !== "[all]" && DB[name].c !== categoryFilter) {
       return false;
     }
@@ -87,37 +90,30 @@ const Functions = ({
     const entry = DB[name];
     const isOpen = expandedName === name;
     return (
-      // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
       <div
         key={name}
         className={`ic-functions-list-item${isOpen ? " ic-functions-list-item--open" : ""}`}
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
-        tabIndex={0}
-        onClick={() => setExpandedName(isOpen ? null : name)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setExpandedName(isOpen ? null : name);
-          }
-        }}
       >
         <div className="ic-functions-list-item-header">
-          <span>{name}</span>
-          {entry.i === false && (
-            <span className="ic-functions-not-implemented">
-              {t("functions.not_implemented")}
-            </span>
-          )}
+          <button
+            type="button"
+            className="ic-functions-list-item-toggle"
+            onClick={() => setExpandedName(isOpen ? null : name)}
+          >
+            {name}
+            {entry.i === false && (
+              <span className="ic-functions-not-implemented">
+                {t("functions.not_implemented")}
+              </span>
+            )}
+          </button>
           {entry.i !== false && (
             <div className="ic-functions-list-item-insert">
               <Tooltip title={t("functions.insert_function")}>
                 <IconButton
                   icon={<SquareArrowRightEnter />}
                   aria-label={t("functions.insert_function")}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleInsert(name);
-                  }}
+                  onClick={() => handleInsert(name)}
                 />
               </Tooltip>
             </div>
@@ -156,15 +152,14 @@ const Functions = ({
           placeholder={t("functions.search_placeholder")}
           startAdornment={<Search />}
         />
-        <div className="ic-functions-category-filter">
-          <Select
-            size="sm"
-            variant="ghost"
-            value={categoryFilter}
-            options={categoryOptions}
-            onChange={setCategoryFilter}
-          />
-        </div>
+        <Select
+          className="ic-functions-category-filter"
+          size="sm"
+          variant="ghost"
+          value={categoryFilter}
+          options={categoryOptions}
+          onChange={setCategoryFilter}
+        />
       </div>
       <div className="ic-functions-list">
         {!isFiltering && (
