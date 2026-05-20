@@ -16,7 +16,8 @@ type FunctionEntry = {
 };
 
 const DB = functionsDb as Record<string, FunctionEntry>;
-const FUNCTIONS = Object.keys(DB);
+const FUNCTIONS = Object.keys(DB).sort();
+const COMMONLY_USED = ["SUM", "AVERAGE", "COUNT", "MAX", "MIN"];
 const CATEGORIES = [
   "[all]",
   ...Array.from(new Set(FUNCTIONS.map((name) => DB[name].c))).sort(),
@@ -40,6 +41,8 @@ const Functions = ({ onClose }: FunctionsProps) => {
   const [expandedName, setExpandedName] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  const isFiltering = searchQuery !== "" || categoryFilter !== "[all]";
+
   const filteredFunctions = FUNCTIONS.filter((name) => {
     if (categoryFilter !== "[all]" && DB[name].c !== categoryFilter) {
       return false;
@@ -51,6 +54,43 @@ const Functions = ({ onClose }: FunctionsProps) => {
     value: c,
     label: c === "[all]" ? t("functions.filter_all") : c,
   }));
+
+  const renderItem = (name: string) => {
+    const entry = DB[name];
+    const isOpen = expandedName === name;
+    return (
+      // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
+      <div
+        key={name}
+        className={`ic-functions-list-item${isOpen ? " ic-functions-list-item--open" : ""}`}
+        tabIndex={0}
+        onClick={() => setExpandedName(isOpen ? null : name)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpandedName(isOpen ? null : name);
+          }
+        }}
+      >
+        <div className="ic-functions-list-item-header">
+          <span>{name}</span>
+          {entry.i === false && (
+            <span className="ic-functions-not-implemented">
+              {t("functions.not_implemented")}
+            </span>
+          )}
+        </div>
+        {isOpen && (
+          <div className="ic-functions-detail">
+            <div className="ic-functions-detail-description">{entry.d}</div>
+            <div className="ic-functions-detail-syntax">
+              {buildSyntax(name, entry.a)}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="ic-functions-container">
@@ -85,7 +125,16 @@ const Functions = ({ onClose }: FunctionsProps) => {
         </div>
       </div>
       <div className="ic-functions-list">
-        {filteredFunctions.length === 0 ? (
+        {!isFiltering && (
+          <>
+            <div className="ic-functions-section-header">
+              {t("functions.commonly_used")}
+            </div>
+            {COMMONLY_USED.map(renderItem)}
+            <div className="ic-functions-divider" />
+          </>
+        )}
+        {isFiltering && filteredFunctions.length === 0 ? (
           <div className="ic-functions-empty-state">
             <div className="ic-functions-icon-wrapper">
               <SearchX />
@@ -93,44 +142,16 @@ const Functions = ({ onClose }: FunctionsProps) => {
             {t("functions.no_search_results")}
           </div>
         ) : (
-          filteredFunctions.map((name) => {
-            const entry = DB[name];
-            const isOpen = expandedName === name;
-            return (
-              // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
-              <div
-                key={name}
-                className={`ic-functions-list-item${isOpen ? " ic-functions-list-item--open" : ""}`}
-                tabIndex={0}
-                onClick={() => setExpandedName(isOpen ? null : name)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setExpandedName(isOpen ? null : name);
-                  }
-                }}
-              >
-                <div className="ic-functions-list-item-header">
-                  <span>{name}</span>
-                  {entry.i === false && (
-                    <span className="ic-functions-not-implemented">
-                      {t("functions.not_implemented")}
-                    </span>
-                  )}
+          <>
+            {!isFiltering && (
+              <>
+                <div className="ic-functions-section-header">
+                  {t("functions.all_functions")}
                 </div>
-                {isOpen && (
-                  <div className="ic-functions-detail">
-                    <div className="ic-functions-detail-description">
-                      {entry.d}
-                    </div>
-                    <div className="ic-functions-detail-syntax">
-                      {buildSyntax(name, entry.a)}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
+              </>
+            )}
+            {filteredFunctions.map(renderItem)}
+          </>
         )}
       </div>
     </div>

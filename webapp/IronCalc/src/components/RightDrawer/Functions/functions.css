@@ -58,6 +58,20 @@
   flex-direction: column;
 }
 
+.ic-functions-section-header {
+  font-family: var(--typography-font-family);
+  font-size: var(--typography-font-size);
+  padding: 12px;
+  color: var(--palette-grey-500);
+}
+
+.ic-functions-divider {
+  height: 1px;
+  width: 100%;
+  flex-shrink: 0;
+  background-color: var(--palette-grey-300);
+}
+
 .ic-functions-list-item {
   cursor: pointer;
   box-sizing: border-box;
