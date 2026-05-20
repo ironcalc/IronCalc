@@ -44,5 +44,30 @@
     "c": "Math and Trigonometry",
     "d": "Returns an aggregate calculation (sum, average, etc.) while ignoring errors or hidden rows.",
     "a": ["fn", "opts", "ref1", "ref2*"]
+  },
+  "AVERAGE": {
+    "c": "Statistical",
+    "d": "Returns the average (arithmetic mean) of its arguments.",
+    "a": ["number1", "number2*"]
+  },
+  "COUNT": {
+    "c": "Statistical",
+    "d": "Counts the cells in a range that contain numbers.",
+    "a": ["value1", "value2*"]
+  },
+  "MAX": {
+    "c": "Statistical",
+    "d": "Returns the largest value in a set of values.",
+    "a": ["number1", "number2*"]
+  },
+  "MIN": {
+    "c": "Statistical",
+    "d": "Returns the smallest value in a set of values.",
+    "a": ["number1", "number2*"]
+  },
+  "SUM": {
+    "c": "Math and Trigonometry",
+    "d": "Adds all the numbers in a range of cells.",
+    "a": ["number1", "number2*"]
   }
 }
