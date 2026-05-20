@@ -1,6 +1,7 @@
 import type { FmtSettings, Model, NamedStyle } from "@ironcalc/wasm";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
+import type { WorkbookState } from "../workbookState";
 import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
 import Functions from "./Functions/Functions";
 import NamedRanges from "./NamedRanges/NamedRanges";
@@ -33,6 +34,7 @@ interface RightDrawerProps {
   width: number;
   onWidthChange: (width: number) => void;
   model: Model;
+  workbookState: WorkbookState;
   onUpdate: () => void;
   getSelectedArea: () => string;
   drawerType: DrawerType;
@@ -61,6 +63,7 @@ const RightDrawer = ({
   onWidthChange,
   getSelectedArea,
   model,
+  workbookState,
   onUpdate,
   drawerType,
   customStyles,
@@ -193,7 +196,14 @@ const RightDrawer = ({
           />
         );
       case "functions":
-        return <Functions onClose={onClose} />;
+        return (
+          <Functions
+            onClose={onClose}
+            model={model}
+            workbookState={workbookState}
+            onUpdate={onUpdate}
+          />
+        );
       default:
         return (
           <NamedRanges

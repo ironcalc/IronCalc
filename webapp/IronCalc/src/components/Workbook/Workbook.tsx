@@ -886,6 +886,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         width={drawerWidth}
         onWidthChange={setDrawerWidth}
         model={model}
+        workbookState={workbookState}
         onUpdate={() => {
           setRedrawId((id) => id + 1);
         }}

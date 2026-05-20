@@ -50,10 +50,75 @@
     "d": "Returns the average (arithmetic mean) of its arguments.",
     "a": ["number1", "number2*"]
   },
+  "CELL": {
+    "c": "Information",
+    "d": "Returns information about the formatting, location, or contents of a cell.",
+    "a": ["info_type", "reference*"]
+  },
   "COUNT": {
     "c": "Statistical",
     "d": "Counts the cells in a range that contain numbers.",
     "a": ["value1", "value2*"]
+  },
+  "ERROR.TYPE": {
+    "c": "Information",
+    "d": "Returns a number corresponding to one of the error values.",
+    "a": ["error_val"]
+  },
+  "INFO": {
+    "c": "Information",
+    "d": "Returns information about the current operating environment.",
+    "a": ["type_text"]
+  },
+  "ISBLANK": {
+    "c": "Information",
+    "d": "Returns TRUE if the value is blank.",
+    "a": ["value"]
+  },
+  "ISERR": {
+    "c": "Information",
+    "d": "Returns TRUE if the value is any error value except #N/A.",
+    "a": ["value"]
+  },
+  "ISERROR": {
+    "c": "Information",
+    "d": "Returns TRUE if the value is any error value.",
+    "a": ["value"]
+  },
+  "ISEVEN": {
+    "c": "Information",
+    "d": "Returns TRUE if the number is even.",
+    "a": ["number"]
+  },
+  "ISFORMULA": {
+    "c": "Information",
+    "d": "Returns TRUE if there is a formula in the referenced cell.",
+    "a": ["reference"]
+  },
+  "ISLOGICAL": {
+    "c": "Information",
+    "d": "Returns TRUE if the value is a logical value.",
+    "a": ["value"]
+  },
+  "ISNA": {
+    "c": "Information",
+    "d": "Returns TRUE if the value is the #N/A error value.",
+    "a": ["value"]
+  },
+  "ISNONTEXT": {
+    "c": "Information",
+    "d": "Returns TRUE if the value is not text.",
+    "a": ["value"]
+  },
+  "ISNUMBER": {
+    "c": "Information",
+    "d": "Returns TRUE if the value is a number.",
+    "a": ["value"]
+  },
+  "ISODD": {
+    "c": "Information",
+    "d": "Returns TRUE if the number is odd.",
+    "a": ["number"]
   },
   "MAX": {
     "c": "Statistical",
