@@ -92,8 +92,10 @@ export function Menu(props: MenuProperties) {
       const triggerContains = isTriggerMode
         ? (triggerPosition.triggerRef.current?.contains(target) ?? false)
         : false;
+      const isInsideAnyMenu =
+        target instanceof Element && !!target.closest(".ic-menu-wrapper");
 
-      if (!triggerContains && !(menuRef.current?.contains(target) ?? false)) {
+      if (!triggerContains && !isInsideAnyMenu) {
         close();
       }
     }
@@ -102,7 +104,7 @@ export function Menu(props: MenuProperties) {
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true);
     };
-  }, [open, close, isTriggerMode, triggerPosition.triggerRef, menuRef]);
+  }, [open, close, isTriggerMode, triggerPosition.triggerRef]);
 
   const { handleMenuKeyDown } = useMenuKeyDown(menuRef, close);
 

@@ -108,6 +108,19 @@
     "use_selection": "Auswahl übernehmen"
   },
   "context_menu": {
+    "cell": {
+      "copy": "Kopieren",
+      "cut": "Ausschneiden",
+      "delete": "Löschen...",
+      "delete_column": "Spalte '{{column}}'",
+      "delete_row": "Zeile '{{row}}'",
+      "insert": "Einfügen...",
+      "insert_column_left": "Spalte links",
+      "insert_column_right": "Spalte rechts",
+      "insert_row_above": "Zeile oben",
+      "insert_row_below": "Zeile unten",
+      "paste": "Einfügen"
+    },
     "column_header": {
       "delete_column": "Spalte '{{column}}' löschen",
       "delete_columns": "Spalten {{columnStart}} - {{columnEnd}} löschen",
@@ -136,6 +149,7 @@
     }
   },
   "error_dialog": {
+    "error_clipboard_paste": "Zugriff auf die Zwischenablage verweigert. Bitte erlauben Sie Zwischenablage-Berechtigungen in Ihrem Browser.",
     "error_deleting_cells": "Zellen konnten nicht gelöscht werden",
     "error_deleting_columns": "Spalten konnten nicht gelöscht werden",
     "error_deleting_rows": "Zeilen konnten nicht gelöscht werden",

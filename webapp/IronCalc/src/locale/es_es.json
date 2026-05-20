@@ -108,6 +108,19 @@
     "use_selection": "Usar rango seleccionado"
   },
   "context_menu": {
+    "cell": {
+      "copy": "Copiar",
+      "cut": "Cortar",
+      "delete": "Eliminar...",
+      "delete_column": "Columna '{{column}}'",
+      "delete_row": "Fila '{{row}}'",
+      "insert": "Insertar...",
+      "insert_column_left": "Columna a la izquierda",
+      "insert_column_right": "Columna a la derecha",
+      "insert_row_above": "Fila encima",
+      "insert_row_below": "Fila debajo",
+      "paste": "Pegar"
+    },
     "column_header": {
       "delete_column": "Eliminar la columna '{{column}}'",
       "delete_columns": "Eliminar las columnas {{columnStart}} - {{columnEnd}}",
@@ -136,6 +149,7 @@
     }
   },
   "error_dialog": {
+    "error_clipboard_paste": "Acceso al portapapeles denegado. Por favor, permite el acceso al portapapeles en tu navegador.",
     "error_deleting_cells": "Error al eliminar las celdas",
     "error_deleting_columns": "Error al eliminar las columnas",
     "error_deleting_rows": "Error al eliminar las filas",

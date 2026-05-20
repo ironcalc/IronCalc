@@ -43,6 +43,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const worksheetRef = useRef<{
     getCanvas: () => WorksheetCanvas | null;
   }>(null);
+  const lastClipboardJson = useRef<string | null>(null);
 
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
@@ -162,6 +163,48 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const onIncreaseFontSize = (delta: number) => {
     updateRangeStyle("font.size_delta", `${delta}`);
   };
+
+  const handlePaste = useCallback(async (): Promise<void> => {
+    focusWorkbook();
+    try {
+      const items = await navigator.clipboard.read();
+      const dt = new DataTransfer();
+      for (const item of items) {
+        for (const type of item.types) {
+          dt.setData(type, await (await item.getType(type)).text());
+        }
+      }
+      if (!dt.getData("application/json") && lastClipboardJson.current) {
+        dt.setData("application/json", lastClipboardJson.current);
+      }
+      rootRef.current?.dispatchEvent(
+        new ClipboardEvent("paste", {
+          clipboardData: dt,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    } catch {
+      // fall back to text-only if clipboard.read() is unavailable
+      try {
+        const text = await navigator.clipboard.readText();
+        const dt = new DataTransfer();
+        dt.setData("text/plain", text);
+        if (lastClipboardJson.current) {
+          dt.setData("application/json", lastClipboardJson.current);
+        }
+        rootRef.current?.dispatchEvent(
+          new ClipboardEvent("paste", {
+            clipboardData: dt,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      } catch {
+        setAlertDialogMessage(t("error_dialog.error_clipboard_paste"));
+      }
+    }
+  }, [focusWorkbook, t]);
 
   const onCopyStyles = () => {
     const {
@@ -557,6 +600,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           sheet,
           clipboardId,
         });
+        lastClipboardJson.current = clipboardJsonStr;
         event.clipboardData.setData("text/plain", data.csv.trim());
         event.clipboardData.setData("application/json", clipboardJsonStr);
         event.preventDefault();
@@ -595,6 +639,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           sheet,
           clipboardId,
         });
+        lastClipboardJson.current = clipboardJsonStr;
         event.clipboardData.setData("text/plain", data.csv);
         event.clipboardData.setData("application/json", clipboardJsonStr);
         workbookState.setCutRange({
@@ -770,6 +815,15 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           }}
           ref={worksheetRef}
           canEdit={isArrayFormula}
+          onCut={(): void => {
+            focusWorkbook();
+            document.execCommand("cut");
+          }}
+          onCopy={(): void => {
+            focusWorkbook();
+            document.execCommand("copy");
+          }}
+          onPaste={handlePaste}
         />
 
         <SheetTabBar

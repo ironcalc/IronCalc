@@ -108,6 +108,19 @@
     "use_selection": "Use selected range"
   },
   "context_menu": {
+    "cell": {
+      "copy": "Copy",
+      "cut": "Cut",
+      "delete": "Delete...",
+      "delete_column": "Column '{{column}}'",
+      "delete_row": "Row '{{row}}'",
+      "insert": "Insert...",
+      "insert_column_left": "Column left",
+      "insert_column_right": "Column right",
+      "insert_row_above": "Row above",
+      "insert_row_below": "Row below",
+      "paste": "Paste"
+    },
     "column_header": {
       "delete_column": "Delete column '{{column}}'",
       "delete_columns": "Delete columns {{columnStart}} - {{columnEnd}}",
@@ -136,6 +149,7 @@
     }
   },
   "error_dialog": {
+    "error_clipboard_paste": "Clipboard access denied. Please allow clipboard permissions in your browser.",
     "error_deleting_cells": "Failed to delete cells",
     "error_deleting_columns": "Failed to delete columns",
     "error_deleting_rows": "Failed to delete rows",

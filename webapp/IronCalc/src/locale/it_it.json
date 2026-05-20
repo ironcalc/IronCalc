@@ -108,6 +108,19 @@
     "use_selection": "Usa intervallo selezionato"
   },
   "context_menu": {
+    "cell": {
+      "copy": "Copia",
+      "cut": "Taglia",
+      "delete": "Elimina...",
+      "delete_column": "Colonna '{{column}}'",
+      "delete_row": "Riga '{{row}}'",
+      "insert": "Inserisci...",
+      "insert_column_left": "Colonna a sinistra",
+      "insert_column_right": "Colonna a destra",
+      "insert_row_above": "Riga sopra",
+      "insert_row_below": "Riga sotto",
+      "paste": "Incolla"
+    },
     "column_header": {
       "delete_column": "Elimina la colonna '{{column}}'",
       "delete_columns": "Elimina le colonne {{columnStart}} - {{columnEnd}}",
@@ -136,6 +149,7 @@
     }
   },
   "error_dialog": {
+    "error_clipboard_paste": "Accesso agli appunti negato. Consenti le autorizzazioni per gli appunti nel tuo browser.",
     "error_deleting_cells": "Impossibile eliminare le celle",
     "error_deleting_columns": "Impossibile eliminare le colonne",
     "error_deleting_rows": "Impossibile eliminare le righe",
