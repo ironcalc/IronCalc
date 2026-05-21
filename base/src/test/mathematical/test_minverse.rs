@@ -47,7 +47,7 @@ fn test_minverse_singular_error() {
     model._set("B2", "4");
     model._set("C1", "=MINVERSE(A1:B2)");
     model.evaluate();
-    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C1"), "#NUM!");
 }
 
 #[test]

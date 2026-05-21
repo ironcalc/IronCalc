@@ -20,15 +20,18 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number(&args[0], cell) {
+        let x = match self.get_number_no_bools(&args[0], cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let n = match self.get_number(&args[1], cell) {
+        if x == 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "SERIESSUM: x=0".to_string());
+        }
+        let n = match self.get_number_no_bools(&args[1], cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let m = match self.get_number(&args[2], cell) {
+        let m = match self.get_number_no_bools(&args[2], cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
@@ -68,18 +71,18 @@ impl<'a> Model<'a> {
                     }
                 };
                 let exponent = n + (i as f64) * m;
-                if x == 0.0 && exponent < 0.0 {
-                    return CalcResult::new_error(
-                        Error::DIV,
-                        cell,
-                        "SERIESSUM: x=0 with negative exponent".to_string(),
-                    );
-                }
                 sum += coeff * x.powf(exponent);
                 i += 1;
             }
         }
 
+        if !sum.is_finite() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "SERIESSUM: result is not finite".to_string(),
+            );
+        }
         CalcResult::Number(sum)
     }
 }
