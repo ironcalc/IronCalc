@@ -95,11 +95,7 @@ export function Menu(props: MenuProperties) {
       const insideAnyMenu =
         target instanceof Element &&
         target.closest(".ic-menu-wrapper") !== null;
-      if (
-        !triggerContains &&
-        !(menuRef.current?.contains(target) ?? false) &&
-        !insideAnyMenu
-      ) {
+      if (!triggerContains && !insideAnyMenu) {
         close();
       }
     }
