@@ -6,6 +6,7 @@ import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
+import { Tooltip } from "../../Tooltip/Tooltip";
 import { getFullRangeToString } from "../../util";
 import "./edit-name-range.css";
 
@@ -204,23 +205,24 @@ const EditNamedRange = ({
             ]}
           />
           <Input
-              label={t("name_manager_dialog.refers_to")}
-              placeholder={t("name_manager_dialog.enter_formula")}
-              value={formula}
-              error={!!formulaError}
-              helperText={formulaError || undefined}
-              onChange={(e) => {
-                setFormula(e.target.value);
-                setFormulaError("");
-              }}
-              onKeyDown={handleKeyDown}
-              endAdornment={
+            label={t("name_manager_dialog.refers_to")}
+            placeholder={t("name_manager_dialog.enter_formula")}
+            value={formula}
+            error={!!formulaError}
+            helperText={formulaError || undefined}
+            onChange={(e) => {
+              setFormula(e.target.value);
+              setFormulaError("");
+            }}
+            onKeyDown={handleKeyDown}
+            endAdornment={
+              <Tooltip title={t("name_manager_dialog.use_selection")}>
                 <IconButton
-                  title={t("name_manager_dialog.use_selection")}
-                  aria-label={t("name_manager_dialog.use_selection")}
                   size="sm"
-                  variant="ghost"
+                  variant="secondary"
                   icon={<SquareMousePointer />}
+                  aria-label={t("name_manager_dialog.use_selection")}
+                  className="ic-edit-range-range-button"
                   onClick={() => {
                     const worksheetNames = model
                       .getWorksheetsProperties()
@@ -233,8 +235,9 @@ const EditNamedRange = ({
                     setFormula(formula);
                   }}
                 />
-              }
-            />
+              </Tooltip>
+            }
+          />
         </div>
       </div>
       <div className="ic-edit-range-footer">
