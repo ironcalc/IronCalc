@@ -86,39 +86,6 @@
   }
 }
 
-/* Used by the formula textarea field which is not an Input component */
-.ic-edit-range-field-wrapper {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 2px;
-}
-
-.ic-edit-range-label {
-  display: block;
-  font-size: var(--typography-font-size);
-  font-family: var(--typography-font-family);
-  font-weight: 500;
-  color: var(--palette-common-black);
-}
-
-.ic-edit-range-helper-text {
-  margin: 0;
-  padding: 0;
-  font-size: var(--typography-font-size);
-  font-family: var(--typography-font-family);
-  line-height: 1.4;
-  color: var(--palette-grey-500);
-}
-
-.ic-edit-range-error-text {
-  color: var(--palette-error-main);
-}
-
-.ic-edit-range-form-control {
-  display: flex;
-  flex-direction: column;
-}
 
 .ic-edit-range-footer {
   display: flex;
@@ -127,35 +94,4 @@
   gap: 8px;
   padding: 8px;
   border-top: 1px solid var(--palette-grey-300);
-}
-
-.ic-edit-range-textarea {
-  width: 100%;
-  box-sizing: border-box;
-
-  font-family: var(--typography-font-family);
-  font-size: var(--typography-font-size);
-
-  padding: 8px;
-  margin: 0;
-
-  border: 1px solid var(--palette-grey-300);
-  border-radius: 4px;
-  background-color: var(--palette-common-white);
-  color: var(--palette-common-black);
-
-  resize: none;
-  outline: none;
-}
-
-.ic-edit-range-textarea:hover:not(.ic-edit-range-textarea--error) {
-  border: 1px solid var(--palette-grey-600);
-}
-
-.ic-edit-range-textarea:focus:not(.ic-edit-range-textarea--error) {
-  border: 2px solid var(--palette-primary-main);
-}
-
-.ic-edit-range-textarea--error {
-  border: 2px solid var(--palette-error-main);
 }
