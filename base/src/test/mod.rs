@@ -70,6 +70,7 @@ mod test_yearfrac_datedif;
 pub(crate) mod util;
 
 mod engineering;
+mod mathematical;
 mod statistical;
 mod test_fn_offset;
 mod test_number_format;

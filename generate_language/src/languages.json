@@ -419,7 +419,13 @@
       "wrapcols": "WRAPCOLS",
       "wraprows": "WRAPROWS",
       "xmatch": "XMATCH",
-      "trimrange": "TRIMRANGE"
+      "trimrange": "TRIMRANGE",
+      "mdeterm": "MDETERM",
+      "minverse": "MINVERSE",
+      "munit": "MUNIT",
+      "multinomial": "MULTINOMIAL",
+      "seriessum": "SERIESSUM",
+      "sumproduct": "SUMPRODUCT"
     }
   },
   "it": {
@@ -842,7 +848,13 @@
       "wrapcols": "WRAPCOLS",
       "wraprows": "WRAPROWS",
       "xmatch": "XMATCH",
-      "trimrange": "TRIMRANGE"
+      "trimrange": "TRIMRANGE",
+      "mdeterm": "MATR.DETERM",
+      "minverse": "MATR.INVERSA",
+      "munit": "MUNIT",
+      "multinomial": "MULTINOMIALE",
+      "seriessum": "SOMMA.SERIE",
+      "sumproduct": "MATR.SOMMA.PRODOTTO"
     }
   },
   "fr": {
@@ -1265,7 +1277,13 @@
       "wrapcols": "WRAPCOLS",
       "wraprows": "WRAPROWS",
       "xmatch": "XMATCH",
-      "trimrange": "TRIMRANGE"
+      "trimrange": "TRIMRANGE",
+      "mdeterm": "DETERMAT",
+      "minverse": "INVERSEMAT",
+      "munit": "MUNIT",
+      "multinomial": "MULTINOMIALE",
+      "seriessum": "SOMME.SERIE",
+      "sumproduct": "SOMMEPROD"
     }
   },
   "de": {
@@ -1688,7 +1706,13 @@
       "wrapcols": "WRAPCOLS",
       "wraprows": "WRAPROWS",
       "xmatch": "XMATCH",
-      "trimrange": "TRIMRANGE"
+      "trimrange": "TRIMRANGE",
+      "mdeterm": "MDET",
+      "minverse": "MINV",
+      "munit": "MEINHEIT",
+      "multinomial": "MULTINOMIAL",
+      "seriessum": "POTENZREIHE",
+      "sumproduct": "SUMMENPRODUKT"
     }
   },
   "es": {
@@ -2111,7 +2135,13 @@
       "wrapcols": "WRAPCOLS",
       "wraprows": "WRAPROWS",
       "xmatch": "XMATCH",
-      "trimrange": "TRIMRANGE"
+      "trimrange": "TRIMRANGE",
+      "mdeterm": "MDETERM",
+      "minverse": "MINVERSA",
+      "munit": "MUNIT",
+      "multinomial": "MULTINOMIAL",
+      "seriessum": "SUMA.SERIE",
+      "sumproduct": "SUMAPRODUCTO"
     }
   }
 }

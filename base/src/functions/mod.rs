@@ -124,6 +124,12 @@ pub enum Function {
     Combin,
     Combina,
     Sumsq,
+    Mdeterm,
+    Minverse,
+    Munit,
+    Multinomial,
+    Seriessum,
+    Sumproduct,
 
     // Information
     ErrorType,
@@ -590,6 +596,12 @@ impl_function_lookup! {
     combin          => Combin,
     combina         => Combina,
     sumsq           => Sumsq,
+    mdeterm         => Mdeterm,
+    minverse        => Minverse,
+    munit           => Munit,
+    multinomial     => Multinomial,
+    seriessum       => Seriessum,
+    sumproduct      => Sumproduct,
 
     // Information
     errortype   => ErrorType,
@@ -1024,6 +1036,12 @@ impl Function {
             Function::Combin => functions.combin.clone(),
             Function::Combina => functions.combina.clone(),
             Function::Sumsq => functions.sumsq.clone(),
+            Function::Mdeterm => functions.mdeterm.clone(),
+            Function::Minverse => functions.minverse.clone(),
+            Function::Munit => functions.munit.clone(),
+            Function::Multinomial => functions.multinomial.clone(),
+            Function::Seriessum => functions.seriessum.clone(),
+            Function::Sumproduct => functions.sumproduct.clone(),
             Function::ErrorType => functions.errortype.clone(),
             Function::Formulatext => functions.formulatext.clone(),
             Function::Isblank => functions.isblank.clone(),
@@ -1333,7 +1351,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 399> {
+    pub fn into_iter() -> IntoIter<Function, 405> {
         [
             Function::And,
             Function::False,
@@ -1645,6 +1663,12 @@ impl Function {
             Function::Combin,
             Function::Combina,
             Function::Sumsq,
+            Function::Mdeterm,
+            Function::Minverse,
+            Function::Munit,
+            Function::Multinomial,
+            Function::Seriessum,
+            Function::Sumproduct,
             Function::N,
             Function::Cell,
             Function::Info,
@@ -1895,6 +1919,7 @@ impl Function {
             Function::SkewP => "_xlfn.SKEW.P".to_string(),
             Function::RankAvg => "_xlfn.RANK.AVG".to_string(),
             Function::RankEq => "_xlfn.RANK.EQ".to_string(),
+            Function::Munit => "_xlfn.MUNIT".to_string(),
 
             _ => {
                 let language = get_default_language();
@@ -2223,6 +2248,12 @@ impl<'a> Model<'a> {
             Function::Combin => self.fn_combin(args, cell),
             Function::Combina => self.fn_combina(args, cell),
             Function::Sumsq => self.fn_sumsq(args, cell),
+            Function::Mdeterm => self.fn_mdeterm(args, cell),
+            Function::Minverse => self.fn_minverse(args, cell),
+            Function::Munit => self.fn_munit(args, cell),
+            Function::Multinomial => self.fn_multinomial(args, cell),
+            Function::Seriessum => self.fn_seriessum(args, cell),
+            Function::Sumproduct => self.fn_sumproduct(args, cell),
             Function::N => self.fn_n(args, cell),
             Function::Cell => self.fn_cell(args, cell),
             Function::Info => self.fn_info(args, cell),

@@ -426,6 +426,12 @@ pub struct Functions {
     pub wraprows: String,
     pub xmatch: String,
     pub trimrange: String,
+    pub mdeterm: String,
+    pub minverse: String,
+    pub munit: String,
+    pub multinomial: String,
+    pub seriessum: String,
+    pub sumproduct: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]
