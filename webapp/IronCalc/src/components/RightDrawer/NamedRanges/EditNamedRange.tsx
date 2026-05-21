@@ -80,7 +80,6 @@ const EditNamedRange = ({
   const isSelected = (value: string) => scope === value;
 
   const nameId = useId();
-  const formulaId = useId();
 
   // Validate name (format and duplicates)
   useEffect(() => {
@@ -204,54 +203,38 @@ const EditNamedRange = ({
               })),
             ]}
           />
-          <div className="ic-edit-range-field-wrapper">
-            <div className="ic-edit-range-line-wrapper">
-              <label className="ic-edit-range-label" htmlFor={formulaId}>
-                {t("name_manager_dialog.refers_to")}
-              </label>
-              <IconButton
-                title={t("name_manager_dialog.use_selection")}
-                aria-label={t("name_manager_dialog.use_selection")}
-                size="sm"
-                variant="ghost"
-                icon={<SquareMousePointer />}
-                onClick={() => {
-                  const worksheetNames = model
-                    .getWorksheetsProperties()
-                    .map((s) => s.name);
-                  const selectedView = model.getSelectedView();
-                  const formula = getFullRangeToString(
-                    selectedView,
-                    worksheetNames,
-                  );
-                  setFormula(formula);
-                }}
-              />
-            </div>
-            <div className="ic-edit-range-form-control">
-              <textarea
-                id={formulaId}
-                className={`ic-edit-range-textarea ${
-                  formulaError ? "ic-edit-range-textarea--error" : ""
-                }`}
-                placeholder={t("name_manager_dialog.enter_formula")}
-                rows={3}
-                value={formula}
-                onChange={(e) => {
-                  setFormula(e.target.value);
-                  setFormulaError("");
-                }}
-                onKeyDown={handleKeyDown}
-                onClick={(e) => e.stopPropagation()}
-                aria-invalid={formulaError ? "true" : "false"}
-              />
-              {formulaError && (
-                <span className="ic-edit-range-helper-text ic-edit-range-error-text">
-                  {formulaError}
-                </span>
-              )}
-            </div>
-          </div>
+          <Input
+              label={t("name_manager_dialog.refers_to")}
+              placeholder={t("name_manager_dialog.enter_formula")}
+              value={formula}
+              error={!!formulaError}
+              helperText={formulaError || undefined}
+              onChange={(e) => {
+                setFormula(e.target.value);
+                setFormulaError("");
+              }}
+              onKeyDown={handleKeyDown}
+              endAdornment={
+                <IconButton
+                  title={t("name_manager_dialog.use_selection")}
+                  aria-label={t("name_manager_dialog.use_selection")}
+                  size="sm"
+                  variant="ghost"
+                  icon={<SquareMousePointer />}
+                  onClick={() => {
+                    const worksheetNames = model
+                      .getWorksheetsProperties()
+                      .map((s) => s.name);
+                    const selectedView = model.getSelectedView();
+                    const formula = getFullRangeToString(
+                      selectedView,
+                      worksheetNames,
+                    );
+                    setFormula(formula);
+                  }}
+                />
+              }
+            />
         </div>
       </div>
       <div className="ic-edit-range-footer">
