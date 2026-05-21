@@ -84,26 +84,29 @@ const EditNamedRange = ({
 
   // Validate name (format and duplicates)
   useEffect(() => {
-    const worksheets = model.getWorksheetsProperties();
-    const scopeIndex = worksheets.findIndex((s) => s.name === scope);
-    const newScope = scopeIndex >= 0 ? scopeIndex : null;
-    try {
-      model.isValidDefinedName(name, newScope, formula);
-    } catch (e) {
-      const message = (e as Error).message;
-      if (editingDefinedName && message.includes("already exists")) {
-        // Allow the same name if it's the one being edited
-        setNameError("");
-        setFormulaError("");
+    const timer = setTimeout(() => {
+      const worksheets = model.getWorksheetsProperties();
+      const scopeIndex = worksheets.findIndex((s) => s.name === scope);
+      const newScope = scopeIndex >= 0 ? scopeIndex : null;
+      try {
+        model.isValidDefinedName(name, newScope, formula);
+      } catch (e) {
+        const message = (e as Error).message;
+        if (editingDefinedName && message.includes("already exists")) {
+          // Allow the same name if it's the one being edited
+          setNameError("");
+          setFormulaError("");
+          return;
+        }
+        const { nameError, formulaError } = formatOnSaveError(message);
+        setNameError(nameError);
+        setFormulaError(formulaError);
         return;
       }
-      const { nameError, formulaError } = formatOnSaveError(message);
-      setNameError(nameError);
-      setFormulaError(formulaError);
-      return;
-    }
-    setNameError("");
-    setFormulaError("");
+      setNameError("");
+      setFormulaError("");
+    }, 300);
+    return () => clearTimeout(timer);
   }, [name, scope, formula, model, editingDefinedName]);
 
   const hasAnyError = nameError !== "" || formulaError !== "";
