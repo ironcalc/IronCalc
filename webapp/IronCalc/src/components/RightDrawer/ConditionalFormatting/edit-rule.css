@@ -51,7 +51,6 @@
   border-bottom: 1px solid var(--palette-grey-300);
   position: sticky;
   top: 0;
-  z-index: 1;
   background: var(--palette-common-white);
 }
 
