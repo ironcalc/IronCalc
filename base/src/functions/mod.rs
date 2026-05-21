@@ -181,6 +181,7 @@ pub enum Function {
     Tocol,
     Torow,
     Transpose,
+    Mmult,
 
     // Dynamic array
     Sequence,
@@ -646,6 +647,7 @@ impl_function_lookup! {
     tocol     => Tocol,
     torow     => Torow,
     transpose => Transpose,
+    mmult     => Mmult,
 
     // Dynamic array
     sequence  => Sequence,
@@ -1074,6 +1076,7 @@ impl Function {
             Function::Tocol => functions.tocol.clone(),
             Function::Torow => functions.torow.clone(),
             Function::Transpose => functions.transpose.clone(),
+            Function::Mmult => functions.mmult.clone(),
             Function::Sequence => functions.sequence.clone(),
             Function::Randarray => functions.randarray.clone(),
             Function::Concat => functions.concat.clone(),
@@ -1330,7 +1333,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 398> {
+    pub fn into_iter() -> IntoIter<Function, 399> {
         [
             Function::And,
             Function::False,
@@ -1450,6 +1453,7 @@ impl Function {
             Function::Tocol,
             Function::Torow,
             Function::Transpose,
+            Function::Mmult,
             Function::Sequence,
             Function::Randarray,
             Function::Concatenate,
@@ -1995,6 +1999,7 @@ impl<'a> Model<'a> {
             Function::Tocol => self.fn_tocol(args, cell),
             Function::Torow => self.fn_torow(args, cell),
             Function::Transpose => self.fn_transpose(args, cell),
+            Function::Mmult => self.fn_mmult(args, cell),
             Function::Sequence => self.fn_sequence(args, cell),
             Function::Randarray => self.fn_randarray(args, cell),
             Function::Concatenate => self.fn_concatenate(args, cell),

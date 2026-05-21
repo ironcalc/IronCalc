@@ -957,6 +957,13 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Tocol => args_signature_tocol(arg_count),
         Function::Torow => args_signature_tocol(arg_count),
         Function::Transpose => args_signature_one_vector(arg_count),
+        Function::Mmult => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::Bycol => args_signature_bycol_byrow(arg_count),
         Function::Byrow => args_signature_bycol_byrow(arg_count),
         Function::Map => args_signature_map(arg_count),
@@ -1404,6 +1411,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Tocol => StaticResult::Unknown,
         Function::Torow => StaticResult::Unknown,
         Function::Transpose => StaticResult::Unknown,
+        Function::Mmult => StaticResult::Unknown,
         Function::Bycol => StaticResult::Unknown,
         Function::Byrow => StaticResult::Unknown,
         Function::Map => StaticResult::Unknown,
