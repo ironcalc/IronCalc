@@ -15,11 +15,20 @@ impl<'a> Model<'a> {
     ///
     /// Returns the matrix product of two arrays. The number of columns of
     /// `array1` must equal the number of rows of `array2`. All entries must
-    /// be numeric (booleans are coerced to 0/1, empty cells to 0). Strings or
-    /// any error in either argument yield `#VALUE!` (or propagate the error).
+    /// be numeric. Empty cells, booleans, and strings in either argument yield
+    /// `#VALUE!`. Errors are propagated. Overflow yields `#NUM!`.
     pub(crate) fn fn_mmult(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
+        }
+
+        // Omitted arguments (e.g. =MMULT(,)) are not valid matrices.
+        if matches!(args[0], Node::EmptyArgKind) || matches!(args[1], Node::EmptyArgKind) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "MMULT requires non-empty arrays".to_string(),
+            );
         }
 
         let a = match self.eval_to_array(&args[0], cell) {
@@ -53,16 +62,17 @@ impl<'a> Model<'a> {
         }
 
         // Coerce one ArrayNode into f64 (or return an early error).
+        // MMULT does not coerce booleans or empty cells — those yield #VALUE!.
         fn coerce(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
             match node {
                 ArrayNode::Number(v) => Ok(*v),
-                ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-                ArrayNode::Empty => Ok(0.0),
-                ArrayNode::String(_) => Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "MMULT requires numeric values".to_string(),
-                )),
+                ArrayNode::Boolean(_) | ArrayNode::Empty | ArrayNode::String(_) => {
+                    Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "MMULT requires numeric values".to_string(),
+                    ))
+                }
                 ArrayNode::Error(e) => Err(CalcResult::new_error(
                     e.clone(),
                     cell,
@@ -117,6 +127,13 @@ impl<'a> Model<'a> {
                 let mut s = 0.0f64;
                 for p in 0..k {
                     s += a_num[i][p] * b_num[p][j];
+                }
+                if s.is_infinite() || s.is_nan() {
+                    return CalcResult::new_error(
+                        Error::NUM,
+                        cell,
+                        "MMULT result overflow".to_string(),
+                    );
                 }
                 row.push(ArrayNode::Number(s));
             }
