@@ -45,7 +45,7 @@ fn test_multinomial_negative_error() {
     let mut model = new_empty_model();
     model._set("A1", "=MULTINOMIAL(2,-1)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A1"), "#NUM!");
 }
 
 #[test]
@@ -55,4 +55,13 @@ fn test_multinomial_two_two() {
     model._set("A1", "=MULTINOMIAL(2,2)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "6");
+}
+
+#[test]
+fn test_multinomial_overflow_num_error() {
+    // Inputs large enough that (sum)! overflows f64 → must return #NUM!, not Inf.
+    let mut model = new_empty_model();
+    model._set("A1", "=MULTINOMIAL(100000,100000)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
 }

@@ -52,3 +52,17 @@ fn test_munit_wrong_arg_count() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+#[test]
+fn test_munit_very_large_dimension_error() {
+    // A very large dimension must not OOM — it should return an error instead.
+    let mut model = new_empty_model();
+    model._set("A1", "=MUNIT(1000000)");
+    model.evaluate();
+    // Sheet limit or size limit hit → error, not a panic/OOM.
+    let result = model._get_text("A1");
+    assert!(
+        result == "#VALUE!" || result == "#ERROR!",
+        "expected an error for huge MUNIT, got {result}"
+    );
+}

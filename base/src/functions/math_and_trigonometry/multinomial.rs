@@ -8,6 +8,10 @@ use crate::{
     model::Model,
 };
 
+fn log_factorial(n: u64) -> f64 {
+    (1..=n).map(|i| (i as f64).ln()).sum()
+}
+
 impl<'a> Model<'a> {
     // ── MULTINOMIAL ───────────────────────────────────────────────────────────
 
@@ -27,7 +31,7 @@ impl<'a> Model<'a> {
                 CalcResult::Number(v) => {
                     if v < 0.0 {
                         return CalcResult::new_error(
-                            Error::VALUE,
+                            Error::NUM,
                             cell,
                             "MULTINOMIAL requires non-negative values".to_string(),
                         );
@@ -54,7 +58,7 @@ impl<'a> Model<'a> {
                                 CalcResult::Number(v) => {
                                     if v < 0.0 {
                                         return CalcResult::new_error(
-                                            Error::VALUE,
+                                            Error::NUM,
                                             cell,
                                             "MULTINOMIAL requires non-negative values".to_string(),
                                         );
@@ -63,7 +67,13 @@ impl<'a> Model<'a> {
                                 }
                                 CalcResult::EmptyCell | CalcResult::EmptyArg => values.push(0),
                                 err @ CalcResult::Error { .. } => return err,
-                                _ => {}
+                                _ => {
+                                    return CalcResult::new_error(
+                                        Error::VALUE,
+                                        cell,
+                                        "MULTINOMIAL requires numeric values".to_string(),
+                                    )
+                                }
                             }
                         }
                     }
@@ -75,7 +85,7 @@ impl<'a> Model<'a> {
                                 ArrayNode::Number(v) => {
                                     if v < 0.0 {
                                         return CalcResult::new_error(
-                                            Error::VALUE,
+                                            Error::NUM,
                                             cell,
                                             "MULTINOMIAL requires non-negative values".to_string(),
                                         );
@@ -90,25 +100,41 @@ impl<'a> Model<'a> {
                                         message: String::new(),
                                     }
                                 }
-                                _ => {}
+                                _ => {
+                                    return CalcResult::new_error(
+                                        Error::VALUE,
+                                        cell,
+                                        "MULTINOMIAL requires numeric values".to_string(),
+                                    )
+                                }
                             }
                         }
                     }
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => values.push(0),
                 err @ CalcResult::Error { .. } => return err,
-                _ => {}
+                _ => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "MULTINOMIAL requires numeric values".to_string(),
+                    )
+                }
             }
         }
 
         // Compute (sum)! / (n1! * n2! * ... * nk!) using f64 to handle large values.
         // Use the log-factorial approach for numerical stability.
         let sum: u64 = values.iter().sum();
-        let result = log_factorial(sum) - values.iter().map(|&v| log_factorial(v)).sum::<f64>();
-        CalcResult::Number(result.exp().round())
+        let log_result = log_factorial(sum) - values.iter().map(|&v| log_factorial(v)).sum::<f64>();
+        let result = log_result.exp();
+        if !result.is_finite() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "MULTINOMIAL: result overflow".to_string(),
+            );
+        }
+        CalcResult::Number(result.round())
     }
-}
-
-fn log_factorial(n: u64) -> f64 {
-    (1..=n).map(|i| (i as f64).ln()).sum()
 }

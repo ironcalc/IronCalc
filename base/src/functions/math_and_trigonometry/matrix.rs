@@ -5,6 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::math_and_trigonometry::array_size::check_array_size,
     model::Model,
 };
 
@@ -151,7 +152,7 @@ impl<'a> Model<'a> {
         let (_, swaps) = match lu_decompose(&mut mat, n) {
             Ok(v) => v,
             Err(()) => {
-                return CalcResult::new_error(Error::VALUE, cell, "matrix is singular".to_string())
+                return CalcResult::new_error(Error::NUM, cell, "matrix is singular".to_string())
             }
         };
 
@@ -210,6 +211,9 @@ impl<'a> Model<'a> {
             );
         }
         let n = n as usize;
+        if let Some((error, message)) = check_array_size(n, n) {
+            return CalcResult::new_error(error, cell, message);
+        }
         let result: Vec<Vec<ArrayNode>> = (0..n)
             .map(|i| {
                 (0..n)
