@@ -86,6 +86,11 @@
   }
 }
 
+.ic-edit-range-range-button.ic-button {
+  --button-height: 24px;
+  margin-right: -2px;
+  border-radius: 3px;
+}
 
 .ic-edit-range-footer {
   display: flex;
