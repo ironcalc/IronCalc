@@ -1,5 +1,7 @@
 .ic-edit-rule-container {
   height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   overscroll-behavior: contain;
   isolation: isolate;
@@ -9,6 +11,7 @@
   display: flex;
   flex-direction: column;
   font-size: 12px;
+  flex: 1 0 auto;
 }
 
 .ic-edit-rule-header-box {
@@ -17,6 +20,7 @@
   align-items: center;
   gap: 8px;
   padding: 24px 12px;
+  flex-shrink: 0;
   border-bottom: 1px solid var(--palette-grey-300);
   font-size: 14px;
   font-weight: 600;
@@ -49,6 +53,7 @@
   display: flex;
   flex-direction: row;
   height: 44px;
+  flex-shrink: 0;
   border-bottom: 1px solid var(--palette-grey-300);
   position: sticky;
   top: 0;
@@ -383,6 +388,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 8px;
+  flex-shrink: 0;
   border-top: 1px solid var(--palette-grey-300);
   position: sticky;
   bottom: 0;
