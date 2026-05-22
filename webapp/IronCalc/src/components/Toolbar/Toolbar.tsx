@@ -53,7 +53,7 @@ import {
   increaseDecimalPlaces,
   NumberFormats,
 } from "../FormatMenu/formatUtil";
-import NamedStylesPanel from "../NamedStyles/NamedStylesPanel";
+import NamedStylesPanel from "../RightDrawer/NamedStyles/NamedStylesPanel";
 import "./toolbar.css";
 import { Tooltip } from "../Tooltip/Tooltip";
 
