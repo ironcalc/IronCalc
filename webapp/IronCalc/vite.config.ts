@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import svgr from "vite-plugin-svgr";
 import pkg from "./package.json";
 
@@ -32,5 +32,12 @@ export default defineConfig({
       // Allow serving files from one level up to the project root
       allow: [".."],
     },
+  },
+  test: {
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/e2e/**",
+    ],
   },
 });
