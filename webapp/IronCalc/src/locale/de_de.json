@@ -191,6 +191,14 @@
     "use_selection": "Auswahl übernehmen",
     "workbook": "Arbeitsmappe"
   },
+  "named_styles": {
+    "add_new_style": "Neuen Stil hinzufügen",
+    "apply": "Anwenden",
+    "back_to_list": "Zurück zur Liste",
+    "cancel": "Abbrechen",
+    "new_style": "Neuer Stil",
+    "panel_title": "Zellformate"
+  },
   "navigation": {
     "add_sheet": "Tabellenblatt hinzufügen",
     "sheet_list": "Tabellenblattliste"

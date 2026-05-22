@@ -191,6 +191,14 @@
     "use_selection": "Use selected range",
     "workbook": "Workbook"
   },
+  "named_styles": {
+    "add_new_style": "Add a new style",
+    "apply": "Apply",
+    "back_to_list": "Back to list",
+    "cancel": "Cancel",
+    "new_style": "New style",
+    "panel_title": "Cell styles"
+  },
   "navigation": {
     "add_sheet": "Add sheet",
     "sheet_list": "Sheet list"

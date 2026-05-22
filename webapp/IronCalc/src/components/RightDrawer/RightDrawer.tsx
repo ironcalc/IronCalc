@@ -1,4 +1,4 @@
-import type { Model, NamedStyle } from "@ironcalc/wasm";
+import type { FmtSettings, Model, NamedStyle } from "@ironcalc/wasm";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
@@ -33,6 +33,7 @@ interface RightDrawerProps {
   // Named styles props
   customStyles: NamedStyle[];
   builtinStyles: NamedStyle[];
+  formatOptions: FmtSettings;
   onApplyNamedStyle: (name: string) => void;
   // Regional settings props
   initialLocale: string;
@@ -52,6 +53,7 @@ const RightDrawer = ({
   drawerType,
   customStyles,
   builtinStyles,
+  formatOptions,
   onApplyNamedStyle,
   initialLocale,
   initialTimezone,
@@ -148,6 +150,7 @@ const RightDrawer = ({
             onClose={onClose}
             customStyles={customStyles}
             builtinStyles={builtinStyles}
+            formatOptions={formatOptions}
             onApplyNamedStyle={onApplyNamedStyle}
           />
         );

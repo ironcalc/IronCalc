@@ -191,6 +191,14 @@
     "use_selection": "Utiliser la plage sélectionnée",
     "workbook": "Classeur"
   },
+  "named_styles": {
+    "add_new_style": "Ajouter un nouveau style",
+    "apply": "Appliquer",
+    "back_to_list": "Retour à la liste",
+    "cancel": "Annuler",
+    "new_style": "Nouveau style",
+    "panel_title": "Styles de cellule"
+  },
   "navigation": {
     "add_sheet": "Ajouter une feuille",
     "sheet_list": "Liste des feuilles"
