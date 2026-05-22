@@ -5,7 +5,7 @@
   align-items: center;
   height: var(--formula-bar-height);
   flex-shrink: 0;
-  background: var(--palette-common-white);
+  background: #ffcccc; /* Temporary pink background to fail screenshot tests */
   border-top: 1px solid var(--palette-grey-300);
 }
 
