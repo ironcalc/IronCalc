@@ -2,6 +2,7 @@
   height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
+  isolation: isolate;
 }
 
 .ic-edit-rule-content {
@@ -52,6 +53,7 @@
   position: sticky;
   top: 0;
   background: var(--palette-common-white);
+  z-index: 1;
 }
 
 .ic-edit-rule-tab.ic-button {
