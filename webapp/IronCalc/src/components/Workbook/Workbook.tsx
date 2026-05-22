@@ -904,6 +904,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             .map((name) => ({ name, style: model.getNamedStyle(name) }));
         })()}
         builtinStyles={model.getBuiltinNamedStyles()}
+        formatOptions={fmtSettings}
         onApplyNamedStyle={(name) => {
           model.onApplyNamedStyle(name);
           setRedrawId((id) => id + 1);

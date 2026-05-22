@@ -191,6 +191,14 @@
     "use_selection": "Usar rango seleccionado",
     "workbook": "Libro"
   },
+  "named_styles": {
+    "add_new_style": "Agregar un nuevo estilo",
+    "apply": "Aplicar",
+    "back_to_list": "Volver a la lista",
+    "cancel": "Cancelar",
+    "new_style": "Nuevo estilo",
+    "panel_title": "Estilos de celda"
+  },
   "navigation": {
     "add_sheet": "Añadir hoja",
     "sheet_list": "Lista de hojas"

@@ -1,9 +1,12 @@
-import type { CellStyle, NamedStyle } from "@ironcalc/wasm";
-import { X } from "lucide-react";
+import type { CellStyle, FmtSettings, NamedStyle } from "@ironcalc/wasm";
+import { ArrowLeft, Plus, X } from "lucide-react";
 import type { CSSProperties } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { Tooltip } from "../../Tooltip/Tooltip";
+import EditNamedStyle from "./EditNamedStyle";
 import "./named-styles.css";
 
 type CategoryType = "grid" | "themed";
@@ -118,6 +121,42 @@ function groupStyles(
   return result;
 }
 
+const BORDER_WIDTH: Record<string, string> = {
+  thin: "1px",
+  medium: "2px",
+  thick: "3px",
+  double: "3px",
+  dotted: "1px",
+  slantdashdot: "1px",
+  mediumdashed: "2px",
+  mediumdashdotdot: "2px",
+  mediumdashdot: "2px",
+};
+
+const BORDER_CSS_STYLE: Record<string, string> = {
+  thin: "solid",
+  medium: "solid",
+  thick: "solid",
+  double: "double",
+  dotted: "dotted",
+  slantdashdot: "dashed",
+  mediumdashed: "dashed",
+  mediumdashdotdot: "dashed",
+  mediumdashdot: "dashed",
+};
+
+interface BorderItem {
+  style: string;
+  color: string;
+}
+
+function getBorderValue(item: BorderItem | undefined): string | undefined {
+  if (!item?.style) return undefined;
+  const width = BORDER_WIDTH[item.style] ?? "1px";
+  const cssStyle = BORDER_CSS_STYLE[item.style] ?? "solid";
+  return `${width} ${cssStyle} ${item.color || "currentColor"}`;
+}
+
 function getTileStyle(style: CellStyle): CSSProperties {
   const decorations: string[] = [];
   if (style.font.u) decorations.push("underline");
@@ -128,6 +167,10 @@ function getTileStyle(style: CellStyle): CSSProperties {
     fontWeight: style.font.b ? "bold" : undefined,
     fontStyle: style.font.i ? "italic" : undefined,
     textDecoration: decorations.length > 0 ? decorations.join(" ") : undefined,
+    borderTop: getBorderValue(style.border?.top),
+    borderRight: getBorderValue(style.border?.right),
+    borderBottom: getBorderValue(style.border?.bottom),
+    borderLeft: getBorderValue(style.border?.left),
   };
 }
 
@@ -143,6 +186,7 @@ const ACCENT_LABELS = [
 interface NamedStylesPanelProps {
   customStyles: NamedStyle[];
   builtinStyles: NamedStyle[];
+  formatOptions: FmtSettings;
   onApplyNamedStyle: (name: string) => void;
   onClose: () => void;
 }
@@ -150,11 +194,17 @@ interface NamedStylesPanelProps {
 const NamedStylesPanel = ({
   customStyles,
   builtinStyles,
+  formatOptions,
   onApplyNamedStyle,
   onClose,
 }: NamedStylesPanelProps) => {
   const { t } = useTranslation();
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+
   const groups = groupStyles(customStyles, builtinStyles);
+
+  const handleNewClick = () => setIsCreatingNew(true);
+  const handleCancel = () => setIsCreatingNew(false);
 
   const renderTile = ({ name, style }: NamedStyle, label?: string) => (
     <button
@@ -162,7 +212,6 @@ const NamedStylesPanel = ({
       type="button"
       className="ic-named-styles-tile"
       style={getTileStyle(style)}
-      title={name}
       onClick={() => onApplyNamedStyle(name)}
     >
       <span className="ic-named-styles-tile-text">{label ?? name}</span>
@@ -199,11 +248,50 @@ const NamedStylesPanel = ({
     );
   };
 
+  if (isCreatingNew) {
+    return (
+      <div className="ic-named-styles-container">
+        <div className="ic-named-styles-edit-header">
+          <Tooltip title={t("named_styles.back_to_list")}>
+            <IconButton
+              icon={<ArrowLeft />}
+              onClick={handleCancel}
+              aria-label={t("named_styles.back_to_list")}
+            />
+          </Tooltip>
+          <div className="ic-named-styles-edit-header-title">
+            {t("named_styles.add_new_style")}
+          </div>
+          <Tooltip title={t("right_drawer.close")}>
+            <IconButton
+              icon={<X />}
+              onClick={onClose}
+              aria-label={t("right_drawer.close")}
+            />
+          </Tooltip>
+        </div>
+        <div className="ic-named-styles-content">
+          <EditNamedStyle
+            name=""
+            style={null}
+            formatOptions={formatOptions}
+            existingStyleNames={[
+              ...customStyles.map((s) => s.name),
+              ...builtinStyles.map((s) => s.name),
+            ]}
+            onSave={() => ({ nameError: "" })}
+            onCancel={handleCancel}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ic-named-styles-container">
       <div className="ic-named-styles-header">
         <div className="ic-named-styles-header-title">
-          {t("toolbar.named_styles")}
+          {t("named_styles.panel_title")}
         </div>
         <Tooltip title={t("right_drawer.close")}>
           <IconButton
@@ -215,11 +303,16 @@ const NamedStylesPanel = ({
       </div>
       <div className="ic-named-styles-content">
         {groups.map((group) => (
-          <div key={group.label} className="ic-edit-rule-section">
-            <div className="ic-edit-rule-section-title">{group.label}</div>
+          <div key={group.label} className="ic-named-styles-section">
+            <div className="ic-named-styles-section-title">{group.label}</div>
             {renderGroupContent(group)}
           </div>
         ))}
+      </div>
+      <div className="ic-named-styles-footer">
+        <Button startIcon={<Plus />} onClick={handleNewClick}>
+          Add new
+        </Button>
       </div>
     </div>
   );

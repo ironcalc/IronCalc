@@ -26,7 +26,31 @@
   font-size: var(--typography-font-size);
 }
 
-.ic-named-styles-content .ic-edit-rule-section {
+.ic-named-styles-edit-header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  gap: 8px;
+  border-bottom: 1px solid var(--palette-grey-300);
+}
+
+.ic-named-styles-edit-header-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ic-named-styles-footer {
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px solid var(--palette-grey-300);
+}
+
+.ic-named-styles-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -34,11 +58,11 @@
   border-bottom: 1px solid var(--palette-grey-300);
 }
 
-.ic-named-styles-content .ic-edit-rule-section:last-child {
+.ic-named-styles-section:last-child {
   border-bottom: none;
 }
 
-.ic-named-styles-content .ic-edit-rule-section-title {
+.ic-named-styles-section-title {
   font-size: 14px;
   font-weight: 600;
   font-family: var(--typography-font-family);
@@ -49,7 +73,7 @@
 .ic-named-styles-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  gap: 6px;
 }
 
 .ic-named-styles-rows {
@@ -75,7 +99,10 @@
   padding: 0 6px;
   background-color: var(--palette-common-white, #fff);
   font-family: inherit;
-  box-shadow: inset 0 0 0 1px
+}
+
+.ic-named-styles-grid .ic-named-styles-tile {
+  box-shadow: 0 0 0 1px
     color-mix(in srgb, var(--palette-common-black) 12%, transparent);
 }
 
@@ -92,15 +119,17 @@
 }
 
 .ic-named-styles-tile:hover {
-  outline: 2px solid var(--palette-primary-main, #217346);
-  outline-offset: -2px;
+  outline: 1px solid var(--palette-common-black);
+  outline-offset: 1px;
   z-index: 1;
   position: relative;
 }
 
 .ic-named-styles-tile:focus-visible {
-  outline: 2px solid var(--palette-primary-main, #217346);
-  outline-offset: -2px;
+  outline: 1px solid var(--palette-common-black);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 1px
+    color-mix(in srgb, var(--palette-common-black) 40%, transparent);
   z-index: 1;
   position: relative;
 }

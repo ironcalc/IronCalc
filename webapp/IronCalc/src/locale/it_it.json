@@ -191,6 +191,14 @@
     "use_selection": "Usa intervallo selezionato",
     "workbook": "Cartella di lavoro"
   },
+  "named_styles": {
+    "add_new_style": "Aggiungi un nuovo stile",
+    "apply": "Applica",
+    "back_to_list": "Torna all'elenco",
+    "cancel": "Annulla",
+    "new_style": "Nuovo stile",
+    "panel_title": "Stili di cella"
+  },
   "navigation": {
     "add_sheet": "Aggiungi foglio",
     "sheet_list": "Elenco fogli"
