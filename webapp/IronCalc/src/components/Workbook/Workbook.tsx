@@ -783,20 +783,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         isConditionalFormattingOpen={
           isDrawerOpen && drawerType === "conditionalFormatting"
         }
-        customStyles={(() => {
-          const builtinNames = new Set(
-            model.getBuiltinNamedStyles().map((s) => s.name.toLowerCase()),
-          );
-          return model
-            .getNamedStyleList()
-            .filter((name) => !builtinNames.has(name.toLowerCase()))
-            .map((name) => ({ name, style: model.getNamedStyle(name) }));
-        })()}
-        builtinStyles={model.getBuiltinNamedStyles()}
-        onApplyNamedStyle={(name) => {
-          model.onApplyNamedStyle(name);
-          setRedrawId((id) => id + 1);
-        }}
+        onOpenNamedStyles={() => openDrawer("namedStyles")}
+        isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
       />
       <div
         className="ic-workbook-worksheet-area-left"
@@ -906,6 +894,20 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           return getFullRangeToString(selectedView, worksheetNames);
         }}
         drawerType={drawerType}
+        customStyles={(() => {
+          const builtinNames = new Set(
+            model.getBuiltinNamedStyles().map((s) => s.name.toLowerCase()),
+          );
+          return model
+            .getNamedStyleList()
+            .filter((name) => !builtinNames.has(name.toLowerCase()))
+            .map((name) => ({ name, style: model.getNamedStyle(name) }));
+        })()}
+        builtinStyles={model.getBuiltinNamedStyles()}
+        onApplyNamedStyle={(name) => {
+          model.onApplyNamedStyle(name);
+          setRedrawId((id) => id + 1);
+        }}
         initialLocale={model.getLocale()}
         initialTimezone={model.getTimezone()}
         initialLanguage={model.getLanguage()}
