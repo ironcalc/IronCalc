@@ -120,8 +120,8 @@
 
 .ic-worksheet-cell-array-structure {
   position: absolute;
-  outline: 3px dashed var(--palette-sheet-cell-array-structure-color);
-  border-radius: 3px;
+  box-sizing: border-box;
+  border: 1px solid var(--palette-sheet-cell-array-structure-color);
 }
 
 /* Cell outline */

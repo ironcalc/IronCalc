@@ -453,6 +453,10 @@ const Worksheet = forwardRef(
           }}
         >
           <canvas className="ic-worksheet-sheet-canvas" ref={canvasElement} />
+          <div
+            className="ic-worksheet-cell-array-structure"
+            ref={cellArrayStructure}
+          />
           <div className="ic-worksheet-cell-outline" ref={cellOutline} />
           <div className="ic-worksheet-editor-wrapper" ref={editorElement}>
             <Editor
@@ -470,10 +474,6 @@ const Worksheet = forwardRef(
             />
           </div>
           <div className="ic-worksheet-area-outline" ref={areaOutline} />
-          <div
-            className="ic-worksheet-cell-array-structure"
-            ref={cellArrayStructure}
-          />
           <div
             className="ic-worksheet-extend-to-outline"
             ref={extendToOutline}
