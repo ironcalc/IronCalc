@@ -1,8 +1,9 @@
-import type { Model } from "@ironcalc/wasm";
+import type { Model, NamedStyle } from "@ironcalc/wasm";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
 import NamedRanges from "./NamedRanges/NamedRanges";
+import NamedStylesPanel from "./NamedStyles/NamedStylesPanel";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
 import "./rightdrawer.css";
 import { useTranslation } from "react-i18next";
@@ -16,6 +17,7 @@ const KEYBOARD_RESIZE_STEP = 16;
 
 export type DrawerType =
   | "namedRanges"
+  | "namedStyles"
   | "regionalSettings"
   | "conditionalFormatting";
 
@@ -28,6 +30,10 @@ interface RightDrawerProps {
   onUpdate: () => void;
   getSelectedArea: () => string;
   drawerType: DrawerType;
+  // Named styles props
+  customStyles: NamedStyle[];
+  builtinStyles: NamedStyle[];
+  onApplyNamedStyle: (name: string) => void;
   // Regional settings props
   initialLocale: string;
   initialTimezone: string;
@@ -44,6 +50,9 @@ const RightDrawer = ({
   model,
   onUpdate,
   drawerType,
+  customStyles,
+  builtinStyles,
+  onApplyNamedStyle,
   initialLocale,
   initialTimezone,
   initialLanguage,
@@ -133,6 +142,15 @@ const RightDrawer = ({
 
   const renderDrawerContent = () => {
     switch (drawerType) {
+      case "namedStyles":
+        return (
+          <NamedStylesPanel
+            onClose={onClose}
+            customStyles={customStyles}
+            builtinStyles={builtinStyles}
+            onApplyNamedStyle={onApplyNamedStyle}
+          />
+        );
       case "regionalSettings":
         return (
           <RegionalSettings

@@ -1,23 +1,28 @@
 import type { CellStyle, NamedStyle } from "@ironcalc/wasm";
-import {
-  type CSSProperties,
-  type RefObject,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
+import { IconButton } from "../../Button/IconButton";
+import { Tooltip } from "../../Tooltip/Tooltip";
 import "./named-styles.css";
 
-// Known Excel built-in style name→category mapping (case-insensitive)
-const BUILTIN_CATEGORIES: { label: string; names: string[] }[] = [
+type CategoryType = "grid" | "themed";
+
+interface Category {
+  label: string;
+  type: CategoryType;
+  names: string[];
+}
+
+const BUILTIN_CATEGORIES: Category[] = [
   {
     label: "Good, Bad and Neutral",
+    type: "grid",
     names: ["normal", "bad", "good", "neutral"],
   },
   {
     label: "Data and Model",
+    type: "grid",
     names: [
       "calculation",
       "check cell",
@@ -31,6 +36,7 @@ const BUILTIN_CATEGORIES: { label: string; names: string[] }[] = [
   },
   {
     label: "Titles and Headings",
+    type: "grid",
     names: [
       "heading 1",
       "heading 2",
@@ -42,56 +48,71 @@ const BUILTIN_CATEGORIES: { label: string; names: string[] }[] = [
   },
   {
     label: "Themed Cell Styles",
+    type: "themed",
+    // Each group of 4 = one accent (20% → 40% → 60% → 100%)
     names: [
       "20% - accent1",
-      "20% - accent2",
-      "20% - accent3",
-      "20% - accent4",
-      "20% - accent5",
-      "20% - accent6",
       "40% - accent1",
-      "40% - accent2",
-      "40% - accent3",
-      "40% - accent4",
-      "40% - accent5",
-      "40% - accent6",
       "60% - accent1",
-      "60% - accent2",
-      "60% - accent3",
-      "60% - accent4",
-      "60% - accent5",
-      "60% - accent6",
+      "80% - accent1",
       "accent1",
+      "20% - accent2",
+      "40% - accent2",
+      "60% - accent2",
+      "80% - accent2",
       "accent2",
+      "20% - accent3",
+      "40% - accent3",
+      "60% - accent3",
+      "80% - accent3",
       "accent3",
+      "20% - accent4",
+      "40% - accent4",
+      "60% - accent4",
+      "80% - accent4",
       "accent4",
+      "20% - accent5",
+      "40% - accent5",
+      "60% - accent5",
+      "80% - accent5",
       "accent5",
+      "20% - accent6",
+      "40% - accent6",
+      "60% - accent6",
+      "80% - accent6",
       "accent6",
     ],
   },
   {
     label: "Number Format",
+    type: "grid",
     names: ["comma", "comma [0]", "currency", "currency [0]", "percent"],
   },
 ];
 
+interface StyleGroup {
+  label: string;
+  type: CategoryType;
+  styles: NamedStyle[];
+}
+
 function groupStyles(
   customStyles: NamedStyle[],
   builtinStyles: NamedStyle[],
-): { label: string; styles: NamedStyle[] }[] {
+): StyleGroup[] {
   const byLowerName = new Map(
     builtinStyles.map((s) => [s.name.toLowerCase(), s]),
   );
-  const result: { label: string; styles: NamedStyle[] }[] = [];
+  const result: StyleGroup[] = [];
   if (customStyles.length > 0) {
-    result.push({ label: "Custom", styles: customStyles });
+    result.push({ label: "Custom", type: "grid", styles: customStyles });
   }
   for (const cat of BUILTIN_CATEGORIES) {
-    const catStyles = cat.names
+    const styles = cat.names
       .map((n) => byLowerName.get(n))
       .filter((s): s is NamedStyle => s !== undefined);
-    if (catStyles.length > 0) {
-      result.push({ label: cat.label, styles: catStyles });
+    if (styles.length > 0) {
+      result.push({ label: cat.label, type: cat.type, styles });
     }
   }
   return result;
@@ -110,119 +131,97 @@ function getTileStyle(style: CellStyle): CSSProperties {
   };
 }
 
+const ACCENT_LABELS = [
+  "Accent 1",
+  "Accent 2",
+  "Accent 3",
+  "Accent 4",
+  "Accent 5",
+  "Accent 6",
+];
+
 interface NamedStylesPanelProps {
-  open: boolean;
   customStyles: NamedStyle[];
   builtinStyles: NamedStyle[];
   onApplyNamedStyle: (name: string) => void;
   onClose: () => void;
-  anchorEl: RefObject<HTMLElement | null>;
 }
 
 const NamedStylesPanel = ({
-  open,
   customStyles,
   builtinStyles,
   onApplyNamedStyle,
   onClose,
-  anchorEl,
 }: NamedStylesPanelProps) => {
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
   const { t } = useTranslation();
-
-  useLayoutEffect(() => {
-    if (!open) return;
-
-    const anchor = anchorEl.current;
-    const panel = panelRef.current;
-    if (!anchor || !panel) return;
-
-    const updatePosition = () => {
-      const anchorRect = anchor.getBoundingClientRect();
-      const panelWidth = panel.offsetWidth;
-      const panelHeight = panel.offsetHeight;
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const margin = 8;
-      const offset = 4;
-
-      let left = anchorRect.left;
-      let top = anchorRect.bottom + offset;
-
-      if (left + panelWidth > viewportWidth - margin) {
-        left = viewportWidth - panelWidth - margin;
-      }
-      if (left < margin) left = margin;
-      if (top + panelHeight > viewportHeight - margin) {
-        top = anchorRect.top - panelHeight - offset;
-      }
-      if (top < margin) top = margin;
-
-      setPosition({ top, left });
-    };
-
-    updatePosition();
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [open, anchorEl]);
-
-  if (!open) return null;
-
   const groups = groupStyles(customStyles, builtinStyles);
 
-  return createPortal(
-    <div className="ic-menu-layer">
-      <div
-        className="ic-menu-backdrop"
-        onPointerDown={onClose}
-        aria-hidden="true"
-      />
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: panel intercepts click only to prevent workbook focus steal */}
-      <div
-        ref={panelRef}
-        className="ic-named-styles-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("toolbar.named_styles")}
-        style={
-          {
-            top: `${position.top}px`,
-            left: `${position.left}px`,
-          } as CSSProperties
-        }
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-      >
+  const renderTile = ({ name, style }: NamedStyle, label?: string) => (
+    <button
+      key={name}
+      type="button"
+      className="ic-named-styles-tile"
+      style={getTileStyle(style)}
+      title={name}
+      onClick={() => onApplyNamedStyle(name)}
+    >
+      <span className="ic-named-styles-tile-text">{label ?? name}</span>
+    </button>
+  );
+
+  const renderGroupContent = (group: StyleGroup) => {
+    if (group.type === "themed") {
+      return (
+        <div className="ic-named-styles-rows">
+          {ACCENT_LABELS.map((accentLabel, i) => {
+            const accentSuffix = `accent${i + 1}`;
+            const row = group.styles.filter((s) =>
+              s.name.toLowerCase().endsWith(accentSuffix),
+            );
+            if (row.length === 0) return null;
+            return (
+              <div key={accentLabel} className="ic-named-styles-row">
+                {row.map((s) => {
+                  const pct = s.name.match(/^(\d+%)/);
+                  return renderTile(s, pct ? pct[1] : accentLabel);
+                })}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div className="ic-named-styles-grid">
+        {group.styles.map((s) => renderTile(s))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="ic-named-styles-container">
+      <div className="ic-named-styles-header">
+        <div className="ic-named-styles-header-title">
+          {t("toolbar.named_styles")}
+        </div>
+        <Tooltip title={t("right_drawer.close")}>
+          <IconButton
+            icon={<X />}
+            onClick={onClose}
+            aria-label={t("right_drawer.close")}
+          />
+        </Tooltip>
+      </div>
+      <div className="ic-named-styles-content">
         {groups.map((group) => (
-          <div key={group.label} className="ic-named-styles-category">
-            <div className="ic-named-styles-category-label">{group.label}</div>
-            <div className="ic-named-styles-grid">
-              {group.styles.map(({ name, style }) => (
-                <button
-                  key={name}
-                  type="button"
-                  className="ic-named-styles-tile"
-                  style={getTileStyle(style)}
-                  title={name}
-                  onClick={() => {
-                    onApplyNamedStyle(name);
-                    onClose();
-                  }}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
+          <div key={group.label} className="ic-edit-rule-section">
+            <div className="ic-edit-rule-section-title">{group.label}</div>
+            {renderGroupContent(group)}
           </div>
         ))}
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 };
 
