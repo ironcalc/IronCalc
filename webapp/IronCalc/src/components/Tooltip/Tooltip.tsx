@@ -30,12 +30,12 @@ export function Tooltip({ title, children }: TooltipProperties) {
         role="none"
         className="ic-tooltip-trigger"
         aria-describedby={visible ? tooltipId : undefined}
-        onMouseEnter={() => {
-          if (!isMenuOpen()) {
+        onPointerEnter={(e) => {
+          if (e.pointerType === "mouse" && !isMenuOpen()) {
             setVisible(true);
           }
         }}
-        onMouseLeave={() => setVisible(false)}
+        onPointerLeave={() => setVisible(false)}
         onPointerDown={() => setVisible(false)}
         onFocus={() => {
           if (!isMenuOpen()) {
