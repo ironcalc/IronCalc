@@ -80,6 +80,19 @@
   margin-left: auto;
 }
 
+.ic-named-styles-category {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ic-named-styles-category-label {
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  font-weight: 500;
+  color: var(--palette-common-black);
+}
+
 .ic-named-styles-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

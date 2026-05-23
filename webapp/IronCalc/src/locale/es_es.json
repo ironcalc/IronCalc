@@ -192,12 +192,13 @@
     "workbook": "Libro"
   },
   "named_styles": {
-    "add_new_style": "Agregar un nuevo estilo",
+    "add_new_style": "Añadir nuevo",
     "apply": "Aplicar",
     "back_to_list": "Volver a la lista",
     "cancel": "Cancelar",
     "confirm_delete_message": "¿Seguro que desea eliminar",
     "delete_style": "Eliminar estilo",
+    "manage_styles": "Gestionar estilos",
     "name_already_exists": "Ya existe un estilo con este nombre",
     "new_style": "Nuevo estilo",
     "panel_title": "Estilos de celda",

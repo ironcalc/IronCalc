@@ -192,12 +192,13 @@
     "workbook": "Workbook"
   },
   "named_styles": {
-    "add_new_style": "Add a new style",
+    "add_new_style": "Add new",
     "apply": "Apply",
     "back_to_list": "Back to list",
     "cancel": "Cancel",
     "confirm_delete_message": "Are you sure you want to delete",
     "delete_style": "Delete style",
+    "manage_styles": "Manage styles",
     "name_already_exists": "A style with this name already exists",
     "new_style": "New style",
     "panel_title": "Cell styles",

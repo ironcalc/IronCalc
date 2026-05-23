@@ -1,5 +1,5 @@
 import type { CellStyle, FmtSettings, NamedStyle } from "@ironcalc/wasm";
-import { ArrowLeft, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Plus, Settings2, Trash2, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -102,26 +102,17 @@ interface StyleGroup {
   styles: NamedStyle[];
 }
 
-function groupStyles(
-  customStyles: NamedStyle[],
-  builtinStyles: NamedStyle[],
-): StyleGroup[] {
+function getBuiltinGroups(builtinStyles: NamedStyle[]): StyleGroup[] {
   const byLowerName = new Map(
     builtinStyles.map((s) => [s.name.toLowerCase(), s]),
   );
-  const result: StyleGroup[] = [];
-  if (customStyles.length > 0) {
-    result.push({ label: "Custom", type: "grid", styles: customStyles });
-  }
-  for (const cat of BUILTIN_CATEGORIES) {
-    const styles = cat.names
+  return BUILTIN_CATEGORIES.map((cat) => ({
+    label: cat.label,
+    type: cat.type,
+    styles: cat.names
       .map((n) => byLowerName.get(n))
-      .filter((s): s is NamedStyle => s !== undefined);
-    if (styles.length > 0) {
-      result.push({ label: cat.label, type: cat.type, styles });
-    }
-  }
-  return result;
+      .filter((s): s is NamedStyle => s !== undefined),
+  })).filter((g) => g.styles.length > 0);
 }
 
 const BORDER_WIDTH: Record<string, string> = {
@@ -230,7 +221,7 @@ const NamedStylesPanel = ({
   const normalStyle = builtinStyles.find(
     (s) => s.name.toLowerCase() === "normal",
   );
-  const groups = groupStyles(customStyles, builtinStyles);
+  const builtinGroups = getBuiltinGroups(builtinStyles);
   const allStyleNames = [
     ...customStyles.map((s) => s.name),
     ...builtinStyles.map((s) => s.name),
@@ -451,32 +442,43 @@ const NamedStylesPanel = ({
         </Tooltip>
       </div>
       <div className="ic-named-styles-content">
-        {groups.map((group) => (
-          <div key={group.label} className="ic-named-styles-section">
+        {customStyles.length > 0 && (
+          <div className="ic-named-styles-section">
             <div className="ic-named-styles-section-title">
-              {group.label}
-              {group.label === "Custom" && (
-                <div className="ic-named-styles-section-title-actions">
-                  <Tooltip title={t("named_styles.update_style")}>
-                    <IconButton
-                      icon={<Pencil size={14} />}
-                      onClick={() => setView({ mode: "edit-list" })}
-                      aria-label={t("named_styles.update_style")}
-                    />
-                  </Tooltip>
-                  <Tooltip title={t("named_styles.delete_style")}>
-                    <IconButton
-                      icon={<Trash2 size={14} />}
-                      onClick={() => setView({ mode: "delete-list" })}
-                      aria-label={t("named_styles.delete_style")}
-                    />
-                  </Tooltip>
-                </div>
-              )}
+              Custom
+              <div className="ic-named-styles-section-title-actions">
+                <Tooltip title={t("named_styles.manage_styles")}>
+                  <IconButton
+                    icon={<Settings2 size={14} />}
+                    onClick={() => setView({ mode: "edit-list" })}
+                    aria-label={t("named_styles.manage_styles")}
+                  />
+                </Tooltip>
+                <Tooltip title={t("named_styles.delete_style")}>
+                  <IconButton
+                    icon={<Trash2 size={14} />}
+                    onClick={() => setView({ mode: "delete-list" })}
+                    aria-label={t("named_styles.delete_style")}
+                  />
+                </Tooltip>
+              </div>
             </div>
-            {renderGroupContent(group)}
+            <div className="ic-named-styles-grid">
+              {customStyles.map((s) => renderTile(s))}
+            </div>
           </div>
-        ))}
+        )}
+        <div className="ic-named-styles-section">
+          <div className="ic-named-styles-section-title">Theme</div>
+          {builtinGroups.map((group) => (
+            <div key={group.label} className="ic-named-styles-category">
+              <div className="ic-named-styles-category-label">
+                {group.label}
+              </div>
+              {renderGroupContent(group)}
+            </div>
+          ))}
+        </div>
       </div>
       <div className="ic-named-styles-footer">
         <Button
