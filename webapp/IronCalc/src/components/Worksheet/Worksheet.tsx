@@ -793,17 +793,16 @@ const Worksheet = forwardRef(
             };
           })()}
           frozenRowsCount={model.getFrozenRowsCount(model.getSelectedSheet())}
-          hiddenRowsCount={(() => {
+          hasHiddenRows={(() => {
             const view = model.getSelectedView();
             const rowStart = view.range[0];
             const rowEnd = view.range[2];
-            let count = 0;
             for (let row = rowStart; row <= rowEnd; row++) {
               if (model.getRowHeight(view.sheet, row) === 0) {
-                count += 1;
+                return true;
               }
             }
-            return count;
+            return false;
           })()}
         />
         <Alert

@@ -1300,6 +1300,7 @@ export default class WorksheetCanvas {
     const points = direction === "left" ? "0,0 4,4 0,8" : "4,0 0,4 4,8";
     span.innerHTML = `<svg width="4" height="8" viewBox="0 0 4 8" fill="currentColor"><polygon points="${points}"/></svg>`;
     span.style[direction] = "4px";
+    span.style.pointerEvents = "none";
     return span;
   }
 
