@@ -2691,14 +2691,28 @@ impl<'a> UserModel<'a> {
                                 .update_cell(*row, *column, value)?;
                         }
                         None => {
-                            let area = Area {
-                                sheet: *sheet,
-                                row: *row,
-                                column: *column,
-                                width: 1,
-                                height: 1,
-                            };
-                            self.model.range_clear_all(&area)?;
+                            if spill_dims.is_some() {
+                                // The spill cells were already cleared above; only
+                                // the anchor itself remains.  range_clear_all would
+                                // re-expand to the full spill range and erase cells
+                                // that were just restored by earlier diffs in this
+                                // same undo operation (e.g. the cut source that
+                                // overlaps the paste target's spill area).
+                                let _ = self
+                                    .model
+                                    .workbook
+                                    .worksheet_mut(*sheet)?
+                                    .cell_clear_contents(*row, *column);
+                            } else {
+                                let area = Area {
+                                    sheet: *sheet,
+                                    row: *row,
+                                    column: *column,
+                                    width: 1,
+                                    height: 1,
+                                };
+                                self.model.range_clear_all(&area)?;
+                            }
                         }
                     }
                 }
@@ -2820,15 +2834,54 @@ impl<'a> UserModel<'a> {
                         self.model
                             .set_cell_style(*sheet, *row, *column, old_style)?;
                     } else {
-                        // If the cell did not have a style there was nothing on it
-                        let area = Area {
-                            sheet: *sheet,
-                            row: *row,
-                            column: *column,
-                            width: 1,
-                            height: 1,
-                        };
-                        self.model.range_clear_all(&area)?;
+                        // The cell had no explicit style before this operation.
+                        // Normally range_clear_all removes the cell from sheet_data so
+                        // that row/column styles are inherited again.  But for a dynamic
+                        // array formula anchor, range_clear_all would expand to the full
+                        // spill range and wipe cells restored by earlier diffs in the
+                        // same undo.  In that case, clear only the anchor itself.
+                        let spill_dims = self
+                            .model
+                            .workbook
+                            .worksheet(*sheet)
+                            .ok()
+                            .and_then(|ws| ws.cell(*row, *column))
+                            .and_then(|c| match c {
+                                Cell::ArrayFormula {
+                                    kind: ArrayKind::Dynamic,
+                                    r,
+                                    ..
+                                } => Some(*r),
+                                _ => None,
+                            });
+                        if let Some((w, h)) = spill_dims {
+                            // For a dynamic formula anchor, range_clear_all would
+                            // expand to the full spill range and wipe cells restored
+                            // by earlier diffs in the same undo.  Clear the anchor
+                            // and only its own SpillCells instead.
+                            let ws = self.model.workbook.worksheet_mut(*sheet)?;
+                            for r in *row..*row + h {
+                                for c in *column..*column + w {
+                                    if r == *row && c == *column {
+                                        let _ = ws.cell_clear_contents(r, c);
+                                        continue;
+                                    }
+                                    if matches!(ws.cell(r, c), Some(Cell::SpillCell { a, .. }) if *a == (*row, *column))
+                                    {
+                                        let _ = ws.cell_clear_contents(r, c);
+                                    }
+                                }
+                            }
+                        } else {
+                            let area = Area {
+                                sheet: *sheet,
+                                row: *row,
+                                column: *column,
+                                width: 1,
+                                height: 1,
+                            };
+                            self.model.range_clear_all(&area)?;
+                        }
                     }
                 }
                 Diff::InsertRows { sheet, row, count } => {
