@@ -170,3 +170,51 @@ fn cut_paste_dynamic_array_undo_clears_spill_cells() {
         "C1 must be empty after undoing the cut-paste (was a stray SpillCell)"
     );
 }
+
+// Regression test: cutting a dynamic-array formula and pasting it onto one of
+// its own spill cells must move the formula to the new anchor, not erase it.
+//
+// Bug: the is_cut path called range_clear_contents on the original anchor after
+// writing the formula to the target.  Because range_clear_contents expands a
+// DynamicFormula anchor to its full spill range, it also wiped the just-pasted
+// formula, leaving the sheet empty.
+//
+// Steps:
+//   1. =SEQUENCE(10) in A1 — spills A1:A10 (values 1..10)
+//   2. Cut A1, paste to A5 (a spill cell of SEQUENCE)
+//      → A5 should become the new anchor, spilling A5:A14
+//      → A1:A4 should be empty
+#[test]
+fn cut_paste_array_onto_own_spill_cell_moves_formula() {
+    let mut model = new_empty_user_model();
+
+    // Step 1: =SEQUENCE(10) in A1
+    model.set_user_input(0, 1, 1, "=SEQUENCE(10)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "5");
+    assert_eq!(model.get_formatted_cell_value(0, 10, 1).unwrap(), "10");
+
+    // Step 2: cut A1, paste to A5
+    model.set_selected_cell(1, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(5, 1).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 1, 1), &cp.data, true)
+        .unwrap();
+
+    // The formula must have moved to A5 — not disappeared.
+    assert_ne!(
+        model.get_formatted_cell_value(0, 5, 1).unwrap(),
+        "",
+        "A5 must not be empty after pasting =SEQUENCE(10) onto it"
+    );
+    // A5:A14 should spill 1..10
+    assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 6, 1).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 14, 1).unwrap(), "10");
+    // A1:A4 must be empty (formula moved away)
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 1).unwrap(), "");
+    // A15 must be empty (spill does not exceed 10 rows)
+    assert_eq!(model.get_formatted_cell_value(0, 15, 1).unwrap(), "");
+}
