@@ -94,11 +94,12 @@ const NamedRanges = ({
         return { formulaError: "", nameError: `${e}` };
       }
     } else {
-      if (!editingDefinedName)
+      if (!editingDefinedName) {
         return {
           formulaError: "",
           nameError: "",
         };
+      }
 
       const scope_index = worksheets.findIndex((s) => s.name === scope);
       const newScope = scope_index >= 0 ? scope_index : null;
@@ -190,9 +191,15 @@ const NamedRanges = ({
     },
   ];
   const filteredDefinedNameList = definedNameList.filter((definedName) => {
-    if (scopeFilter === "[global]" && definedName.scope != null) return false;
-    if (scopeFilter === "[current]" && definedName.scope !== currentSheetIndex)
+    if (scopeFilter === "[global]" && definedName.scope != null) {
       return false;
+    }
+    if (
+      scopeFilter === "[current]" &&
+      definedName.scope !== currentSheetIndex
+    ) {
+      return false;
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       const worksheets = model.getWorksheetsProperties();

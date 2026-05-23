@@ -106,7 +106,9 @@ export function MenuItemWithSubmenu({
   );
 
   useEffect(() => {
-    if (!open || !focusOnOpenRef.current) return;
+    if (!open || !focusOnOpenRef.current) {
+      return;
+    }
     focusOnOpenRef.current = false;
     const firstItem = menuRef.current?.querySelector<HTMLButtonElement>(
       ':is([role="menuitem"],[role="menuitemradio"],[role="menuitemcheckbox"]):not([disabled])',
@@ -116,7 +118,9 @@ export function MenuItemWithSubmenu({
 
   useEffect(() => {
     return () => {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
       if (parentActiveSetOpenRef?.current === setOpen) {
         parentActiveSetOpenRef.current = null;
       }
@@ -124,14 +128,18 @@ export function MenuItemWithSubmenu({
   }, [parentActiveSetOpenRef]);
 
   function show() {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+    }
     if (
       parentActiveSetOpenRef?.current &&
       parentActiveSetOpenRef.current !== setOpen
     ) {
       parentActiveSetOpenRef.current(false);
     }
-    if (parentActiveSetOpenRef) parentActiveSetOpenRef.current = setOpen;
+    if (parentActiveSetOpenRef) {
+      parentActiveSetOpenRef.current = setOpen;
+    }
     const rect = itemRef.current?.getBoundingClientRect();
     if (rect) {
       setAnchor({
@@ -154,7 +162,9 @@ export function MenuItemWithSubmenu({
   }
 
   function cancelHide() {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+    }
   }
 
   function closeAll() {

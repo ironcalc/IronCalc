@@ -163,11 +163,17 @@ const ClassicRule = ({
   const showFormulaInput = ruleType === "formula";
 
   const formulaError = (() => {
-    if (!showFormulaInput || !ruleValue.trim()) return null;
-    if (!ruleValue.trim().startsWith("="))
+    if (!showFormulaInput || !ruleValue.trim()) {
+      return null;
+    }
+    if (!ruleValue.trim().startsWith("=")) {
       return t("conditional_formatting.formula_error_must_start_with_equals");
-    if (getTokens(ruleValue.trim().slice(1)).some((t) => t.token === "Illegal"))
+    }
+    if (
+      getTokens(ruleValue.trim().slice(1)).some((t) => t.token === "Illegal")
+    ) {
       return t("conditional_formatting.formula_error_invalid");
+    }
     return null;
   })();
 

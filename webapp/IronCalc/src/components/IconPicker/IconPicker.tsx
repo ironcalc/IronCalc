@@ -99,7 +99,9 @@ const IconPicker = ({ value, color, onChange }: IconPickerProps) => {
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const handler = (e: MouseEvent) => {
       if (
         !buttonRef.current?.contains(e.target as Node) &&

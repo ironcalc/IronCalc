@@ -1113,8 +1113,9 @@ export default class WorksheetCanvas {
   private removeHandles(): void {
     const root = this.canvas.parentElement;
     if (root) {
-      for (const handle of root.querySelectorAll(".row-resize-handle"))
+      for (const handle of root.querySelectorAll(".row-resize-handle")) {
         handle.remove();
+      }
     }
   }
 
@@ -1203,16 +1204,19 @@ export default class WorksheetCanvas {
       [rowStart, rowEnd] = [rowEnd, rowStart];
     }
     const isFullColumnSelected = rowStart === 1 && rowEnd === LAST_ROW;
-    for (const header of columnHeaders.querySelectorAll(".column-header"))
+    for (const header of columnHeaders.querySelectorAll(".column-header")) {
       header.remove();
+    }
     for (const handle of columnHeaders.querySelectorAll(
       ".column-resize-handle",
-    ))
+    )) {
       handle.remove();
+    }
     for (const separator of columnHeaders.querySelectorAll(
       ".frozen-column-separator",
-    ))
+    )) {
       separator.remove();
+    }
     columnHeaders.style.font = this.theme.headerFont;
     columnHeaders.style.height = `${headerRowHeight}px`;
     columnHeaders.style.lineHeight = `${headerRowHeight}px`;
@@ -1519,8 +1523,12 @@ export default class WorksheetCanvas {
         cellY += this.getRowHeight(this.model.getSelectedSheet(), row);
       }
     }
-    if (row < 1) row = 1;
-    if (column < 1) column = 1;
+    if (row < 1) {
+      row = 1;
+    }
+    if (column < 1) {
+      column = 1;
+    }
     return { row, column };
   }
 

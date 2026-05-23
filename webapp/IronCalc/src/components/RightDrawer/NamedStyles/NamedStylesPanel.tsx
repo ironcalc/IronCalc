@@ -241,7 +241,9 @@ const NamedStylesPanel = ({
             const row = group.styles.filter((s) =>
               s.name.toLowerCase().endsWith(accentSuffix),
             );
-            if (row.length === 0) return null;
+            if (row.length === 0) {
+              return null;
+            }
             return (
               <div key={accentLabel} className="ic-named-styles-row">
                 {row.map((s) => {
