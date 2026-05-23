@@ -8,80 +8,31 @@ impl<'a> Model<'a> {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut count = 0.0;
-        let mut product = 1.0;
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => {
-                    count += 1.0;
-                    product *= value;
-                }
-                CalcResult::Boolean(b) => {
-                    if let Node::ReferenceKind { .. } = arg {
-                    } else {
-                        product *= if b { 1.0 } else { 0.0 };
-                        count += 1.0;
-                    }
-                }
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    count += 1.0;
-                                    product *= value;
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                CalcResult::Range { .. } => {
-                                    return CalcResult::new_error(
-                                        Error::ERROR,
-                                        cell,
-                                        "Unexpected Range".to_string(),
-                                    );
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::String(s) => {
-                    if let Node::ReferenceKind { .. } = arg {
-                        // Do nothing
-                    } else if let Ok(t) = s.parse::<f64>() {
-                        product *= t;
-                        count += 1.0;
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Argument cannot be cast into number".to_string(),
-                        };
-                    }
-                }
-                _ => {
-                    // Ignore everything else
-                }
-            };
+
+        let mut values: Vec<f64> = Vec::new();
+        if let Err(e) = self.for_each_value(args, cell, |f| values.push(f)) {
+            return e;
         }
-        if count == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by Zero".to_string(),
-            };
+
+        if values.is_empty() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "GEOMEAN requires at least one numeric value".to_string(),
+            );
         }
-        CalcResult::Number(product.powf(1.0 / count))
+
+        if values.iter().any(|&v| v <= 0.0) {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "GEOMEAN requires all values to be positive".to_string(),
+            );
+        }
+
+        // Compute via log-sum to avoid overflow for large values
+        let n = values.len() as f64;
+        let log_sum: f64 = values.iter().map(|v| v.ln()).sum();
+        CalcResult::Number((log_sum / n).exp())
     }
 }

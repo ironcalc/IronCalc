@@ -6,11 +6,7 @@ use crate::{
 impl<'a> Model<'a> {
     // FORECAST(x, known_y's, known_x's) / FORECAST.LINEAR(x, known_y's, known_x's)
     // Returns the predicted y value for a given x using simple linear regression.
-    fn fn_forecast_linear_impl(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
+    fn fn_forecast_linear_impl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -64,7 +60,11 @@ impl<'a> Model<'a> {
         let result = intercept + slope * x;
 
         if !result.is_finite() {
-            return CalcResult::new_error(Error::NUM, cell, "Numerical error in FORECAST".to_string());
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Numerical error in FORECAST".to_string(),
+            );
         }
 
         CalcResult::Number(result)

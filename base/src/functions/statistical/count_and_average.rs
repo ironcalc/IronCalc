@@ -8,7 +8,7 @@ use crate::{
 };
 
 impl<'a> Model<'a> {
-    fn for_each_value<F>(
+    pub(crate) fn for_each_value<F>(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
