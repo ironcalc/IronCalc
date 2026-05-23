@@ -202,8 +202,7 @@
     "name_already_exists": "Ya existe un estilo con este nombre",
     "new_style": "Nuevo estilo",
     "panel_title": "Estilos de celda",
-    "pick_to_delete": "Seleccione un estilo para eliminar",
-    "pick_to_edit": "Seleccione un estilo para editar",
+
     "update_style": "Editar estilo"
   },
   "navigation": {

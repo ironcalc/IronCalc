@@ -202,8 +202,7 @@
     "name_already_exists": "A style with this name already exists",
     "new_style": "New style",
     "panel_title": "Cell styles",
-    "pick_to_delete": "Select a style to delete",
-    "pick_to_edit": "Select a style to edit",
+
     "update_style": "Edit style"
   },
   "navigation": {
