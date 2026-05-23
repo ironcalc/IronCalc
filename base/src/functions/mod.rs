@@ -277,7 +277,8 @@ pub enum Function {
     FTest,
     Fisher,
     FisherInv,
-    // Forecast,
+    Forecast,
+    ForecastLinear,
     Gamma,
     GammaDist,
     GammaInv,
@@ -933,10 +934,12 @@ impl_function_lookup! {
 
     // More statistical
     correl    => Correl,
-    rsq       => Rsq,
-    intercept => Intercept,
-    slope     => Slope,
-    steyx     => Steyx,
+    rsq             => Rsq,
+    intercept       => Intercept,
+    slope           => Slope,
+    steyx           => Steyx,
+    forecast        => Forecast,
+    forecastlinear  => ForecastLinear,
 }
 
 impl Function {
@@ -1348,10 +1351,12 @@ impl Function {
             Function::Intercept => functions.intercept.clone(),
             Function::Slope => functions.slope.clone(),
             Function::Steyx => functions.steyx.clone(),
+            Function::Forecast => functions.forecast.clone(),
+            Function::ForecastLinear => functions.forecastlinear.clone(),
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 405> {
+    pub fn into_iter() -> IntoIter<Function, 407> {
         [
             Function::And,
             Function::False,
@@ -1746,6 +1751,8 @@ impl Function {
             Function::Intercept,
             Function::Slope,
             Function::Steyx,
+            Function::Forecast,
+            Function::ForecastLinear,
             Function::Large,
             Function::Median,
             Function::Small,
@@ -2334,6 +2341,8 @@ impl<'a> Model<'a> {
             Function::Intercept => self.fn_intercept(args, cell),
             Function::Slope => self.fn_slope(args, cell),
             Function::Steyx => self.fn_steyx(args, cell),
+            Function::Forecast => self.fn_forecast(args, cell),
+            Function::ForecastLinear => self.fn_forecast_linear(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),
