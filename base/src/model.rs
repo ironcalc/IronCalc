@@ -2252,6 +2252,12 @@ impl<'a> Model<'a> {
     ) -> Result<(), String> {
         // first we make sure we can write in the cell and clear the spills.
         self.prepare_cell_for_user_input(sheet, row, column)?;
+        if value.is_empty() {
+            // If the value is empty we just clear the cell
+            let ws = self.workbook.worksheet_mut(sheet)?;
+            ws.cell_clear_contents(row, column)?;
+            return Ok(());
+        }
 
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column)?;
@@ -3787,10 +3793,8 @@ mod tests {
             Some(&Cell::NumberCell { v: 35.0, s: 0 })
         );
 
-        assert_eq!(
-            worksheet.cell(2, 1),
-            Some(&Cell::SharedString { si: 0, s: 0 })
-        );
+        // Clears the content of A2 but not the style
+        assert_eq!(worksheet.cell(2, 1), Some(&Cell::EmptyCell { s: 0 }));
         assert_eq!(worksheet.cell(3, 1), None)
     }
 

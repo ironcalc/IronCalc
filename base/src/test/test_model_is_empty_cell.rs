@@ -36,10 +36,10 @@ fn test_is_empty_cell_with_value() {
 }
 
 #[test]
-fn test_is_empty_cell_empty_string_not_empty() {
+fn test_is_empty_cell_empty_string_is_empty() {
     let mut model = new_empty_model();
     model._set("A1", "");
-    assert_eq!(model.is_empty_cell(0, 1, 1), Ok(false));
+    assert_eq!(model.is_empty_cell(0, 1, 1), Ok(true));
 }
 
 #[test]
