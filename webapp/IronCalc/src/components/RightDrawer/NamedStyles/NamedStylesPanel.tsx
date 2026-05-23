@@ -1,6 +1,5 @@
-import type { CellStyle, FmtSettings, NamedStyle } from "@ironcalc/wasm";
-import { ArrowLeft, Plus, Settings2, Trash2, X } from "lucide-react";
-import type { CSSProperties } from "react";
+import type { FmtSettings, NamedStyle } from "@ironcalc/wasm";
+import { ArrowLeft, Plus, Settings2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
@@ -10,7 +9,9 @@ import EditNamedStyle, {
   type NamedStyleSavePayload,
   type SaveError,
 } from "./EditNamedStyle";
+import ManageCustomStyles from "./ManageCustomStyles";
 import "./named-styles.css";
+import { getTileStyle } from "./named-styles-utils";
 
 type CategoryType = "grid" | "themed";
 
@@ -115,65 +116,6 @@ function getBuiltinGroups(builtinStyles: NamedStyle[]): StyleGroup[] {
   })).filter((g) => g.styles.length > 0);
 }
 
-const BORDER_WIDTH: Record<string, string> = {
-  thin: "1px",
-  medium: "2px",
-  thick: "3px",
-  double: "3px",
-  dotted: "1px",
-  slantdashdot: "1px",
-  mediumdashed: "2px",
-  mediumdashdotdot: "2px",
-  mediumdashdot: "2px",
-};
-
-const BORDER_CSS_STYLE: Record<string, string> = {
-  thin: "solid",
-  medium: "solid",
-  thick: "solid",
-  double: "double",
-  dotted: "dotted",
-  slantdashdot: "dashed",
-  mediumdashed: "dashed",
-  mediumdashdotdot: "dashed",
-  mediumdashdot: "dashed",
-};
-
-interface BorderItem {
-  style: string;
-  color: string;
-}
-
-function getBorderValue(item: BorderItem | undefined): string | undefined {
-  if (!item?.style) {
-    return undefined;
-  }
-  const width = BORDER_WIDTH[item.style] ?? "1px";
-  const cssStyle = BORDER_CSS_STYLE[item.style] ?? "solid";
-  return `${width} ${cssStyle} ${item.color || "currentColor"}`;
-}
-
-function getTileStyle(style: CellStyle): CSSProperties {
-  const decorations: string[] = [];
-  if (style.font.u) {
-    decorations.push("underline");
-  }
-  if (style.font.strike) {
-    decorations.push("line-through");
-  }
-  return {
-    backgroundColor: style.fill.fg_color || undefined,
-    color: style.font.color || undefined,
-    fontWeight: style.font.b ? "bold" : undefined,
-    fontStyle: style.font.i ? "italic" : undefined,
-    textDecoration: decorations.length > 0 ? decorations.join(" ") : undefined,
-    borderTop: getBorderValue(style.border?.top),
-    borderRight: getBorderValue(style.border?.right),
-    borderBottom: getBorderValue(style.border?.bottom),
-    borderLeft: getBorderValue(style.border?.left),
-  };
-}
-
 const ACCENT_LABELS = [
   "Accent 1",
   "Accent 2",
@@ -186,9 +128,8 @@ const ACCENT_LABELS = [
 type PanelView =
   | { mode: "list" }
   | { mode: "create" }
-  | { mode: "edit-list" }
+  | { mode: "manage" }
   | { mode: "editing"; style: NamedStyle }
-  | { mode: "delete-list" }
   | { mode: "delete-confirm"; style: NamedStyle };
 
 interface NamedStylesPanelProps {
@@ -271,12 +212,12 @@ const NamedStylesPanel = ({
     );
   };
 
-  const renderSubHeader = (title: string) => (
+  const renderSubHeader = (title: string, onBack?: () => void) => (
     <div className="ic-named-styles-edit-header">
       <Tooltip title={t("named_styles.back_to_list")}>
         <IconButton
           icon={<ArrowLeft />}
-          onClick={() => setView({ mode: "list" })}
+          onClick={onBack ?? (() => setView({ mode: "list" }))}
           aria-label={t("named_styles.back_to_list")}
         />
       </Tooltip>
@@ -318,24 +259,16 @@ const NamedStylesPanel = ({
     );
   }
 
-  if (view.mode === "edit-list") {
+  if (view.mode === "manage") {
     return (
       <div className="ic-named-styles-container">
-        {renderSubHeader(t("named_styles.pick_to_edit"))}
+        {renderSubHeader(t("named_styles.manage_styles"))}
         <div className="ic-named-styles-content">
-          <div className="ic-named-styles-pick-list">
-            {customStyles.map((s) => (
-              <button
-                key={s.name}
-                type="button"
-                className="ic-named-styles-pick-item"
-                style={getTileStyle(s.style)}
-                onClick={() => setView({ mode: "editing", style: s })}
-              >
-                {s.name}
-              </button>
-            ))}
-          </div>
+          <ManageCustomStyles
+            customStyles={customStyles}
+            onEdit={(style) => setView({ mode: "editing", style })}
+            onDelete={(style) => setView({ mode: "delete-confirm", style })}
+          />
         </div>
       </div>
     );
@@ -348,7 +281,9 @@ const NamedStylesPanel = ({
     );
     return (
       <div className="ic-named-styles-container">
-        {renderSubHeader(t("named_styles.update_style"))}
+        {renderSubHeader(t("named_styles.update_style"), () =>
+          setView({ mode: "manage" }),
+        )}
         <div className="ic-named-styles-content">
           <EditNamedStyle
             name={editingStyle.name}
@@ -365,31 +300,8 @@ const NamedStylesPanel = ({
               }
               return onUpdateNamedStyle(editingStyle.name, payload);
             }}
-            onClose={() => setView({ mode: "list" })}
+            onClose={() => setView({ mode: "manage" })}
           />
-        </div>
-      </div>
-    );
-  }
-
-  if (view.mode === "delete-list") {
-    return (
-      <div className="ic-named-styles-container">
-        {renderSubHeader(t("named_styles.pick_to_delete"))}
-        <div className="ic-named-styles-content">
-          <div className="ic-named-styles-pick-list">
-            {customStyles.map((s) => (
-              <button
-                key={s.name}
-                type="button"
-                className="ic-named-styles-pick-item"
-                style={getTileStyle(s.style)}
-                onClick={() => setView({ mode: "delete-confirm", style: s })}
-              >
-                {s.name}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     );
@@ -399,7 +311,9 @@ const NamedStylesPanel = ({
     const { style: deletingStyle } = view;
     return (
       <div className="ic-named-styles-container">
-        {renderSubHeader(t("named_styles.delete_style"))}
+        {renderSubHeader(t("named_styles.delete_style"), () =>
+          setView({ mode: "manage" }),
+        )}
         <div className="ic-named-styles-confirm">
           <p className="ic-named-styles-confirm-message">
             {t("named_styles.confirm_delete_message")}{" "}
@@ -408,7 +322,7 @@ const NamedStylesPanel = ({
           <div className="ic-named-styles-confirm-actions">
             <Button
               variant="secondary"
-              onClick={() => setView({ mode: "delete-list" })}
+              onClick={() => setView({ mode: "manage" })}
             >
               {t("named_styles.cancel")}
             </Button>
@@ -444,21 +358,17 @@ const NamedStylesPanel = ({
       <div className="ic-named-styles-content">
         {customStyles.length > 0 && (
           <div className="ic-named-styles-section">
-            <div className="ic-named-styles-section-title">
+            <div
+              className="ic-named-styles-section-title"
+              style={{ height: "17px" }}
+            >
               Custom
               <div className="ic-named-styles-section-title-actions">
                 <Tooltip title={t("named_styles.manage_styles")}>
                   <IconButton
                     icon={<Settings2 size={14} />}
-                    onClick={() => setView({ mode: "edit-list" })}
+                    onClick={() => setView({ mode: "manage" })}
                     aria-label={t("named_styles.manage_styles")}
-                  />
-                </Tooltip>
-                <Tooltip title={t("named_styles.delete_style")}>
-                  <IconButton
-                    icon={<Trash2 size={14} />}
-                    onClick={() => setView({ mode: "delete-list" })}
-                    aria-label={t("named_styles.delete_style")}
                   />
                 </Tooltip>
               </div>
