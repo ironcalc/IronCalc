@@ -274,3 +274,71 @@ fn paste_onto_spill_cell_then_undo_restores_spill() {
     // "X" must be back in C3 (the cut source was restored)
     assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "X");
 }
+
+// Regression test: cutting a dynamic array formula and pasting it onto a cell
+// that overlaps the original spill range, then undoing, must restore the formula
+// at its original location — not leave the sheet empty.
+//
+// Root cause: during undo, the diff is replayed in reverse: the source formula
+// (A3) is first restored via RangeClearContents, then the paste target (A1) is
+// cleared via range_clear_all.  Because A1 is still a DynamicFormula with
+// r=(1,10), range_clear_all sweeps A1:A10 — wiping the just-restored A3.
+//
+// The reproduction requires prior undo history so the undo stack is non-empty
+// before the paste operation is recorded.
+//
+// Steps:
+//   1. Write "1" in B1 then delete it (primes the undo history)
+//   2. =SEQUENCE(10) in A3 — spills A3:A12
+//   3. Cut A3, paste to A1 (overlaps spill: A1 is inside A3:A12)
+//      → A1:A10 show 1..10; A3 moved to new anchor
+//   4. Undo — A3 must be the anchor again, spilling A3:A12; A1 must be empty
+#[test]
+fn cut_paste_overlap_spill_undo_restores_formula() {
+    let mut model = new_empty_user_model();
+
+    // Step 1: prime the undo history
+    model.set_user_input(0, 1, 2, "1").unwrap(); // B1 = "1"
+    model
+        .range_clear_contents(&crate::expressions::types::Area {
+            sheet: 0,
+            row: 1,
+            column: 2,
+            width: 1,
+            height: 1,
+        })
+        .unwrap(); // delete B1
+
+    // Step 2: =SEQUENCE(10) in A3 — spills A3:A12
+    model.set_user_input(0, 3, 1, "=SEQUENCE(10)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 12, 1).unwrap(), "10");
+    assert_eq!(model.get_formatted_cell_value(0, 13, 1).unwrap(), ""); // A13 empty
+
+    // Step 3: cut A3, paste to A1 (A1 is inside the A3:A12 spill range)
+    model.set_selected_cell(3, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(1, 1).unwrap();
+    model
+        .paste_from_clipboard(0, (3, 1, 3, 1), &cp.data, true)
+        .unwrap();
+    // Formula moved to A1, spills A1:A10
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 10, 1).unwrap(), "10");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "3"); // spill cell
+    assert_eq!(model.get_formatted_cell_value(0, 11, 1).unwrap(), ""); // A11 empty
+
+    // Step 4: undo — formula must return to A3
+    model.undo().unwrap();
+
+    assert_ne!(
+        model.get_formatted_cell_value(0, 3, 1).unwrap(),
+        "",
+        "A3 must not be empty after undoing the cut-paste"
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "1"); // A3 anchor = 1
+    assert_eq!(model.get_formatted_cell_value(0, 12, 1).unwrap(), "10"); // A12 = last spill
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), ""); // A1 empty again
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), ""); // A2 empty
+    assert_eq!(model.get_formatted_cell_value(0, 13, 1).unwrap(), ""); // A13 empty
+}
