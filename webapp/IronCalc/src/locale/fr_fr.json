@@ -192,12 +192,13 @@
     "workbook": "Classeur"
   },
   "named_styles": {
-    "add_new_style": "Ajouter un nouveau style",
+    "add_new_style": "Ajouter",
     "apply": "Appliquer",
     "back_to_list": "Retour à la liste",
     "cancel": "Annuler",
     "confirm_delete_message": "Voulez-vous vraiment supprimer",
     "delete_style": "Supprimer le style",
+    "manage_styles": "Gérer les styles",
     "name_already_exists": "Un style avec ce nom existe déjà",
     "new_style": "Nouveau style",
     "panel_title": "Styles de cellule",

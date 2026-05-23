@@ -192,12 +192,13 @@
     "workbook": "Arbeitsmappe"
   },
   "named_styles": {
-    "add_new_style": "Neuen Stil hinzufügen",
+    "add_new_style": "Neu hinzufügen",
     "apply": "Anwenden",
     "back_to_list": "Zurück zur Liste",
     "cancel": "Abbrechen",
     "confirm_delete_message": "Möchten Sie wirklich löschen",
     "delete_style": "Stil löschen",
+    "manage_styles": "Stile verwalten",
     "name_already_exists": "Ein Stil mit diesem Namen existiert bereits",
     "new_style": "Neuer Stil",
     "panel_title": "Zellformate",
