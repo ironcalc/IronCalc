@@ -317,6 +317,76 @@ fn filter_wrong_arg_count() {
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
 
+#[test]
+fn filter_string_include_returns_value_error() {
+    // A string in the include argument is not a valid boolean/numeric mask → #VALUE!
+    let mut model = new_empty_model();
+    model._set("A1", "3");
+    model._set("A2", "5");
+    model._set("A3", "7");
+    model._set("B1", "=FILTER(A1:A3,\"=5\")");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#VALUE!");
+}
+
+#[test]
+fn filter_string_include_in_range_returns_value_error() {
+    // A range whose cells contain strings is also invalid as an include mask.
+    let mut model = new_empty_model();
+    model._set("A1", "3");
+    model._set("A2", "5");
+    model._set("A3", "7");
+    model._set("B1", "yes");
+    model._set("B2", "no");
+    model._set("B3", "yes");
+    model._set("C1", "=FILTER(A1:A3,B1:B3)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+}
+
+#[test]
+fn filter_scalar_false_include_returns_calc_not_crash() {
+    // =FILTER(B1:B3, 1=0): include evaluates to a scalar FALSE whose 1x1 size
+    // coincides with the array's single column.  Previously this triggered
+    // column-filter mode, produced a Nx0 array, and caused a panic in the
+    // spill/evaluate path.  It should return #CALC! instead.
+    let mut model = new_empty_model();
+    model._set("B1", "apple");
+    model._set("B2", "banana");
+    model._set("B3", "cherry");
+    model._set("A1", "=FILTER(B1:B3,1=0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+}
+
+#[test]
+fn filter_scalar_false_include_with_if_empty() {
+    // Same scenario as above, but with an if_empty fallback — must return the
+    // fallback value rather than crashing.
+    let mut model = new_empty_model();
+    model._set("B1", "apple");
+    model._set("B2", "banana");
+    model._set("B3", "cherry");
+    model._set("A1", "=FILTER(B1:B3,1=0,\"none\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "none");
+}
+
+#[test]
+fn filter_all_columns_excluded_returns_calc() {
+    // FILTER on a multi-column array where the column-include mask is all-false.
+    // The result is a Nx0 array which must be treated as an empty result (#CALC!).
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("B1", "20");
+    model._set("A2", "30");
+    model._set("B2", "40");
+    // Include mask is a row vector [FALSE, FALSE] — filters columns
+    model._set("C1", "=FILTER(A1:B2,{FALSE,FALSE})");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#CALC!");
+}
+
 // ── Combination tests ─────────────────────────────────────────────────────────
 
 #[test]

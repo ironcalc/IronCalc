@@ -181,3 +181,39 @@ fn test_randarray_rows_cols_exceeds_max_size() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+#[test]
+fn test_randarray_zero_rows_returns_calc() {
+    // rows=0 is a zero-size array, consistent with SEQUENCE(0) → #CALC!
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDARRAY(0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+}
+
+#[test]
+fn test_randarray_zero_cols_returns_calc() {
+    // cols=0 is a zero-size array, consistent with SEQUENCE(1,0) → #CALC!
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDARRAY(1,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CALC!");
+}
+
+#[test]
+fn test_randarray_negative_rows_returns_value() {
+    // Negative row count is an invalid argument → #VALUE! (not #CALC!)
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDARRAY(-1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+}
+
+#[test]
+fn test_randarray_negative_cols_returns_value() {
+    // Negative column count is an invalid argument → #VALUE! (not #CALC!)
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDARRAY(1,-1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+}
