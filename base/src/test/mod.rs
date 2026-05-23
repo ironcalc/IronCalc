@@ -15,6 +15,7 @@ mod test_days360_month_end;
 mod test_degrees_radians;
 mod test_error_propagation;
 mod test_fact_factdouble;
+mod test_forecast;
 mod test_fn_accrintm;
 mod test_fn_average;
 mod test_fn_averageifs;

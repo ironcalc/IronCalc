@@ -2,6 +2,7 @@ mod beta;
 mod binom;
 mod chisq;
 mod correl;
+mod forecast;
 mod count_and_average;
 mod covariance;
 mod devsq;
