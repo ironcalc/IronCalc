@@ -819,6 +819,17 @@ impl<'a> Model<'a> {
 
             match original_range {
                 Some((true, _)) => {
+                    if row + array_height - 1 > LAST_ROW || column + array_width - 1 > LAST_COLUMN {
+                        return self.set_cells_with_result(
+                            cell_reference,
+                            cell,
+                            &CalcResult::new_error(
+                                Error::SPILL,
+                                cell_reference,
+                                "Spill would exceed worksheet bounds".to_string(),
+                            ),
+                        );
+                    }
                     // Check that the full spill area (based on actual result dimensions) is clear.
                     // The stored range may be (1,1) on first evaluation, so we must re-check here.
                     let sheet_data = &self.workbook.worksheets[sheet as usize].sheet_data;
