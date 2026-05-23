@@ -17,21 +17,17 @@ export interface SaveError {
 
 interface EditNamedStyleProps {
   name: string;
-  style: CellStyle | null;
+  style: CellStyle;
   formatOptions: FmtSettings;
   existingStyleNames: string[];
-  onSave: (name: string) => SaveError;
-  onCancel: () => void;
+  onSave: (payload: NamedStyleSavePayload) => SaveError;
+  onClose: () => void;
 }
 
-const DEFAULT_FORMAT_STYLE: FormatStyle = {
-  bold: false,
-  italic: false,
-  underline: false,
-  strike: false,
-  fontColor: "#000000",
-  fillColor: "",
-};
+export interface NamedStyleSavePayload {
+  name: string;
+  style: CellStyle;
+}
 
 function formatStyleToPreview(formatStyle: FormatStyle): CSSProperties {
   const decorations: string[] = [];
@@ -46,8 +42,7 @@ function formatStyleToPreview(formatStyle: FormatStyle): CSSProperties {
   };
 }
 
-function initFormatStyle(style: CellStyle | null): FormatStyle {
-  if (!style) return DEFAULT_FORMAT_STYLE;
+function initFormatStyle(style: CellStyle): FormatStyle {
   return {
     bold: style.font.b,
     italic: style.font.i,
@@ -66,12 +61,14 @@ const EditNamedStyle = ({
   formatOptions,
   existingStyleNames,
   onSave,
-  onCancel,
+  onClose,
 }: EditNamedStyleProps) => {
   const { t } = useTranslation();
 
   const getDefaultName = () => {
-    if (initialName) return initialName;
+    if (initialName) {
+      return initialName;
+    }
     const existing = new Set(existingStyleNames.map((n) => n.toLowerCase()));
     let counter = 1;
     let candidate = `Style${counter}`;
@@ -87,7 +84,7 @@ const EditNamedStyle = ({
   const [formatStyle, setFormatStyle] = useState<FormatStyle>(() =>
     initFormatStyle(style),
   );
-  const [numFmt, setNumFmt] = useState<string>(NumberFormats.AUTO);
+  const [numFmt, setNumFmt] = useState<string>(style.num_fmt);
   const [customFmt, setCustomFmt] = useState("");
 
   const knownFormats = [
@@ -144,10 +141,31 @@ const EditNamedStyle = ({
   const hasError = !!nameError || !name.trim();
 
   const handleSave = () => {
-    if (hasError) return;
-    const error = onSave(name.trim());
+    if (hasError) {
+      return;
+    }
+    const newStyle = {
+      ...style,
+      num_fmt: numFmt,
+      fill: {
+        ...style.fill,
+        pattern_type: formatStyle.fillColor ? "solid" : "none",
+        fg_color: formatStyle.fillColor || undefined,
+      },
+      font: {
+        ...style.font,
+        b: formatStyle.bold,
+        i: formatStyle.italic,
+        u: formatStyle.underline,
+        strike: formatStyle.strike,
+        color: formatStyle.fontColor || undefined,
+      },
+    };
+    const error = onSave({ name: name.trim(), style: newStyle });
     if (error.nameError) {
       setNameError(error.nameError);
+    } else {
+      onClose();
     }
   };
 
@@ -216,7 +234,7 @@ const EditNamedStyle = ({
         </div>
       </div>
       <div className="ic-edit-style-footer">
-        <Button variant="secondary" onClick={onCancel}>
+        <Button variant="secondary" onClick={onClose}>
           {t("named_styles.cancel")}
         </Button>
         <Button startIcon={<Check />} disabled={hasError} onClick={handleSave}>

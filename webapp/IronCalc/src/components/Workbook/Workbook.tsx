@@ -909,6 +909,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.onApplyNamedStyle(name);
           setRedrawId((id) => id + 1);
         }}
+        onAddNamedStyle={(payload) => {
+          model.createNamedStyle(payload.name, payload.style);
+          setRedrawId((id) => id + 1);
+        }}
         initialLocale={model.getLocale()}
         initialTimezone={model.getTimezone()}
         initialLanguage={model.getLanguage()}
