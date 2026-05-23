@@ -11,6 +11,7 @@ import {
   getNewClipboardId,
 } from "../clipboard";
 import FormulaBar from "../FormulaBar/FormulaBar";
+import type { SaveError } from "../RightDrawer/NamedStyles/EditNamedStyle";
 import RightDrawer, {
   DEFAULT_DRAWER_WIDTH,
   type DrawerType,
@@ -909,9 +910,14 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.onApplyNamedStyle(name);
           setRedrawId((id) => id + 1);
         }}
-        onAddNamedStyle={(payload) => {
-          model.createNamedStyle(payload.name, payload.style);
-          setRedrawId((id) => id + 1);
+        onAddNamedStyle={(payload): SaveError => {
+          try {
+            model.createNamedStyle(payload.name, payload.style);
+            setRedrawId((id) => id + 1);
+            return { nameError: "" };
+          } catch (e) {
+            return { nameError: e instanceof Error ? e.message : String(e) };
+          }
         }}
         initialLocale={model.getLocale()}
         initialTimezone={model.getTimezone()}

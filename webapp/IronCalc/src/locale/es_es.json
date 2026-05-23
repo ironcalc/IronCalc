@@ -196,6 +196,7 @@
     "apply": "Aplicar",
     "back_to_list": "Volver a la lista",
     "cancel": "Cancelar",
+    "name_already_exists": "Ya existe un estilo con este nombre",
     "new_style": "Nuevo estilo",
     "panel_title": "Estilos de celda"
   },

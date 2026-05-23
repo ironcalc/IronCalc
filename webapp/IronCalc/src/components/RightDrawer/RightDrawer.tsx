@@ -7,7 +7,10 @@ import NamedStylesPanel from "./NamedStyles/NamedStylesPanel";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
 import "./rightdrawer.css";
 import { useTranslation } from "react-i18next";
-import type { NamedStyleSavePayload } from "./NamedStyles/EditNamedStyle";
+import type {
+  NamedStyleSavePayload,
+  SaveError,
+} from "./NamedStyles/EditNamedStyle";
 
 // Default drawer width is duplicated in CSS in rightdrawer.css; keep in sync
 const DEFAULT_DRAWER_WIDTH = 360;
@@ -36,7 +39,7 @@ interface RightDrawerProps {
   builtinStyles: NamedStyle[];
   formatOptions: FmtSettings;
   onApplyNamedStyle: (name: string) => void;
-  onAddNamedStyle: (payload: NamedStyleSavePayload) => void;
+  onAddNamedStyle: (payload: NamedStyleSavePayload) => SaveError;
   // Regional settings props
   initialLocale: string;
   initialTimezone: string;

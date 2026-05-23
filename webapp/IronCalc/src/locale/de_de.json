@@ -196,6 +196,7 @@
     "apply": "Anwenden",
     "back_to_list": "Zurück zur Liste",
     "cancel": "Abbrechen",
+    "name_already_exists": "Ein Stil mit diesem Namen existiert bereits",
     "new_style": "Neuer Stil",
     "panel_title": "Zellformate"
   },
