@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { Tooltip } from "../../Tooltip/Tooltip";
-import EditNamedStyle from "./EditNamedStyle";
+import EditNamedStyle, { type NamedStyleSavePayload } from "./EditNamedStyle";
 import "./named-styles.css";
 
 type CategoryType = "grid" | "themed";
@@ -151,7 +151,9 @@ interface BorderItem {
 }
 
 function getBorderValue(item: BorderItem | undefined): string | undefined {
-  if (!item?.style) return undefined;
+  if (!item?.style) {
+    return undefined;
+  }
   const width = BORDER_WIDTH[item.style] ?? "1px";
   const cssStyle = BORDER_CSS_STYLE[item.style] ?? "solid";
   return `${width} ${cssStyle} ${item.color || "currentColor"}`;
@@ -159,8 +161,12 @@ function getBorderValue(item: BorderItem | undefined): string | undefined {
 
 function getTileStyle(style: CellStyle): CSSProperties {
   const decorations: string[] = [];
-  if (style.font.u) decorations.push("underline");
-  if (style.font.strike) decorations.push("line-through");
+  if (style.font.u) {
+    decorations.push("underline");
+  }
+  if (style.font.strike) {
+    decorations.push("line-through");
+  }
   return {
     backgroundColor: style.fill.fg_color || undefined,
     color: style.font.color || undefined,
@@ -188,6 +194,7 @@ interface NamedStylesPanelProps {
   builtinStyles: NamedStyle[];
   formatOptions: FmtSettings;
   onApplyNamedStyle: (name: string) => void;
+  onAddNamedStyle: (payload: NamedStyleSavePayload) => void;
   onClose: () => void;
 }
 
@@ -196,6 +203,7 @@ const NamedStylesPanel = ({
   builtinStyles,
   formatOptions,
   onApplyNamedStyle,
+  onAddNamedStyle,
   onClose,
 }: NamedStylesPanelProps) => {
   const { t } = useTranslation();
@@ -204,7 +212,7 @@ const NamedStylesPanel = ({
   const groups = groupStyles(customStyles, builtinStyles);
 
   const handleNewClick = () => setIsCreatingNew(true);
-  const handleCancel = () => setIsCreatingNew(false);
+  const handleClose = () => setIsCreatingNew(false);
 
   const renderTile = ({ name, style }: NamedStyle, label?: string) => (
     <button
@@ -255,7 +263,7 @@ const NamedStylesPanel = ({
           <Tooltip title={t("named_styles.back_to_list")}>
             <IconButton
               icon={<ArrowLeft />}
-              onClick={handleCancel}
+              onClick={handleClose}
               aria-label={t("named_styles.back_to_list")}
             />
           </Tooltip>
@@ -273,14 +281,20 @@ const NamedStylesPanel = ({
         <div className="ic-named-styles-content">
           <EditNamedStyle
             name=""
-            style={null}
+            style={
+              builtinStyles.find((s) => s.name.toLowerCase() === "normal")
+                ?.style ?? builtinStyles[0]?.style
+            }
             formatOptions={formatOptions}
             existingStyleNames={[
               ...customStyles.map((s) => s.name),
               ...builtinStyles.map((s) => s.name),
             ]}
-            onSave={() => ({ nameError: "" })}
-            onCancel={handleCancel}
+            onSave={(payload) => {
+              onAddNamedStyle(payload);
+              return { nameError: "" };
+            }}
+            onClose={handleClose}
           />
         </div>
       </div>
