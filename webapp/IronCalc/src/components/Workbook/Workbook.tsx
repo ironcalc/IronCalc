@@ -919,6 +919,19 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             return { nameError: e instanceof Error ? e.message : String(e) };
           }
         }}
+        onUpdateNamedStyle={(originalName, payload): SaveError => {
+          try {
+            model.updateNamedStyle(originalName, payload.name, payload.style);
+            setRedrawId((id) => id + 1);
+            return { nameError: "" };
+          } catch (e) {
+            return { nameError: e instanceof Error ? e.message : String(e) };
+          }
+        }}
+        onDeleteNamedStyle={(name) => {
+          model.deleteNamedStyle(name);
+          setRedrawId((id) => id + 1);
+        }}
         initialLocale={model.getLocale()}
         initialTimezone={model.getTimezone()}
         initialLanguage={model.getLanguage()}

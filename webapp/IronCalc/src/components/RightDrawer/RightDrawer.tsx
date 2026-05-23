@@ -40,6 +40,11 @@ interface RightDrawerProps {
   formatOptions: FmtSettings;
   onApplyNamedStyle: (name: string) => void;
   onAddNamedStyle: (payload: NamedStyleSavePayload) => SaveError;
+  onUpdateNamedStyle: (
+    originalName: string,
+    payload: NamedStyleSavePayload,
+  ) => SaveError;
+  onDeleteNamedStyle: (name: string) => void;
   // Regional settings props
   initialLocale: string;
   initialTimezone: string;
@@ -61,6 +66,8 @@ const RightDrawer = ({
   formatOptions,
   onApplyNamedStyle,
   onAddNamedStyle,
+  onUpdateNamedStyle,
+  onDeleteNamedStyle,
   initialLocale,
   initialTimezone,
   initialLanguage,
@@ -159,6 +166,8 @@ const RightDrawer = ({
             formatOptions={formatOptions}
             onApplyNamedStyle={onApplyNamedStyle}
             onAddNamedStyle={onAddNamedStyle}
+            onUpdateNamedStyle={onUpdateNamedStyle}
+            onDeleteNamedStyle={onDeleteNamedStyle}
           />
         );
       case "regionalSettings":

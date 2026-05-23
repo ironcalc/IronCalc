@@ -196,9 +196,14 @@
     "apply": "Appliquer",
     "back_to_list": "Retour à la liste",
     "cancel": "Annuler",
+    "confirm_delete_message": "Voulez-vous vraiment supprimer",
+    "delete_style": "Supprimer le style",
     "name_already_exists": "Un style avec ce nom existe déjà",
     "new_style": "Nouveau style",
-    "panel_title": "Styles de cellule"
+    "panel_title": "Styles de cellule",
+    "pick_to_delete": "Sélectionner un style à supprimer",
+    "pick_to_edit": "Sélectionner un style à modifier",
+    "update_style": "Modifier le style"
   },
   "navigation": {
     "add_sheet": "Ajouter une feuille",
