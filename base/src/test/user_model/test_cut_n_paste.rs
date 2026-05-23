@@ -218,3 +218,59 @@ fn cut_paste_array_onto_own_spill_cell_moves_formula() {
     // A15 must be empty (spill does not exceed 10 rows)
     assert_eq!(model.get_formatted_cell_value(0, 15, 1).unwrap(), "");
 }
+
+// Regression test: pasting a value onto a spill cell (causing #SPILL!) and then
+// undoing must restore the full spill — not leave A1 stuck in #SPILL!.
+//
+// Root cause: when the array formula evaluates to #SPILL! it resets r=(1,1) in
+// the anchor cell.  On undo, the old SpillCell for the blocking position is
+// restored by the diff, but the pre-eval clear loop (bounded by r=(1,1)) never
+// reaches it.  The blocking check then treats that SpillCell as an occupied cell,
+// keeping the formula in #SPILL! permanently.
+//
+// Steps:
+//   1. =SEQUENCE(6) in A1 — spills A1:A6
+//   2. Write "X" in C3; cut C3, paste onto A3 (a spill cell)
+//      → A3 now holds "X", blocking SEQUENCE → A1 = #SPILL!
+//   3. Undo the paste
+//      → A3 must be restored to its spill value (3), A1 must show 1..6 again
+#[test]
+fn paste_onto_spill_cell_then_undo_restores_spill() {
+    let mut model = new_empty_user_model();
+
+    // Step 1: =SEQUENCE(6) in A1
+    model.set_user_input(0, 1, 1, "=SEQUENCE(6)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "3"); // A3 is a spill cell
+    assert_eq!(model.get_formatted_cell_value(0, 6, 1).unwrap(), "6");
+
+    // Step 2: put "X" in C3, cut it, paste onto A3
+    model.set_user_input(0, 3, 3, "X").unwrap();
+    model.set_selected_cell(3, 3).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(3, 1).unwrap();
+    model
+        .paste_from_clipboard(0, (3, 3, 3, 3), &cp.data, true)
+        .unwrap();
+    // A3 now holds "X", which blocks SEQUENCE(6)
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "X");
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 1).unwrap(),
+        "#SPILL!",
+        "A1 must be #SPILL! while A3 is blocked"
+    );
+
+    // Step 3: undo — A3 must revert to its spill value, A1 must recover
+    model.undo().unwrap();
+
+    assert_ne!(
+        model.get_formatted_cell_value(0, 1, 1).unwrap(),
+        "#SPILL!",
+        "A1 must not be #SPILL! after undoing the paste"
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "3");
+    assert_eq!(model.get_formatted_cell_value(0, 6, 1).unwrap(), "6");
+    // "X" must be back in C3 (the cut source was restored)
+    assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "X");
+}

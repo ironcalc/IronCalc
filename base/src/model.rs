@@ -839,9 +839,19 @@ impl<'a> Model<'a> {
                             if r == row && c == column {
                                 continue;
                             }
+                            // A cell blocks spilling only if it is occupied by something
+                            // other than an empty cell or a spill cell that already belongs
+                            // to this formula.  Own spill cells are about to be overwritten
+                            // and must never prevent the formula from re-spilling (this
+                            // matters after undo restores a SpillCell while the anchor's
+                            // stored `r` is still (1,1) from a prior #SPILL! evaluation).
                             let blocking = row_data
                                 .and_then(|row_map| row_map.get(&c))
-                                .map(|spill_cell| !matches!(spill_cell, Cell::EmptyCell { .. }))
+                                .map(|cell| match cell {
+                                    Cell::EmptyCell { .. } => false,
+                                    Cell::SpillCell { a, .. } if *a == (row, column) => false,
+                                    _ => true,
+                                })
                                 .unwrap_or(false);
                             if blocking {
                                 return self.set_cells_with_result(
