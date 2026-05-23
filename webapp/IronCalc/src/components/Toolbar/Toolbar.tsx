@@ -499,6 +499,14 @@ function Toolbar(properties: ToolbarProperties) {
 
         {/* View & Tools Group */}
         <div className="ic-toolbar-button-group">
+          <Tooltip title={t("toolbar.selected_png")}>
+            <IconButton
+              icon={<ImageDown />}
+              aria-label={t("toolbar.download_png")}
+              onClick={() => properties.onDownloadPNG()}
+              disabled={!canEdit}
+            />
+          </Tooltip>
           <Tooltip title={t("toolbar.show_hide_grid_lines")}>
             <IconButton
               icon={properties.showGridLines ? <Grid2x2Check /> : <Grid2x2X />}
@@ -506,14 +514,6 @@ function Toolbar(properties: ToolbarProperties) {
               onClick={() =>
                 properties.onToggleShowGridLines(!properties.showGridLines)
               }
-              disabled={!canEdit}
-            />
-          </Tooltip>
-          <Tooltip title={t("toolbar.selected_png")}>
-            <IconButton
-              icon={<ImageDown />}
-              aria-label={t("toolbar.download_png")}
-              onClick={() => properties.onDownloadPNG()}
               disabled={!canEdit}
             />
           </Tooltip>
