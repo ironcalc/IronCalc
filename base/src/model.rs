@@ -1467,6 +1467,12 @@ impl<'a> Model<'a> {
                                 cell_reference,
                                 "Array result in scalar context".to_string(),
                             )
+                        } else if array_height == 0 || array_width == 0 {
+                            CalcResult::new_error(
+                                Error::CALC,
+                                cell_reference,
+                                "Formula produced a zero-size array".to_string(),
+                            )
                         } else {
                             match a[0][0] {
                                 ArrayNode::Number(n) => CalcResult::Number(n),

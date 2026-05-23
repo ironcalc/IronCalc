@@ -537,6 +537,30 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
+        // Strings and errors are invalid as include mask elements.
+        // Strings → #VALUE!; errors → propagate the error.
+        for row in &include {
+            for node in row {
+                match node {
+                    ArrayNode::Boolean(_) | ArrayNode::Number(_) | ArrayNode::Empty => {}
+                    ArrayNode::String(_) => {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "include array must contain numbers or booleans".to_string(),
+                        );
+                    }
+                    ArrayNode::Error(e) => {
+                        return CalcResult::new_error(
+                            e.clone(),
+                            cell,
+                            "include array contains an error".to_string(),
+                        );
+                    }
+                }
+            }
+        }
+
         // Determine whether we are filtering rows or columns
         let include_flat: Vec<bool>;
         let filter_rows: bool;
@@ -587,7 +611,10 @@ impl<'a> Model<'a> {
                 .collect()
         };
 
-        if filtered.is_empty() {
+        let is_empty_result =
+            filtered.is_empty() || filtered.first().is_none_or(|r| r.is_empty());
+
+        if is_empty_result {
             if args.len() >= 3 {
                 let empty_val = self.evaluate_node_in_context(&args[2], cell);
                 match empty_val {
