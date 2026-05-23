@@ -6,7 +6,10 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { Tooltip } from "../../Tooltip/Tooltip";
-import EditNamedStyle, { type NamedStyleSavePayload } from "./EditNamedStyle";
+import EditNamedStyle, {
+  type NamedStyleSavePayload,
+  type SaveError,
+} from "./EditNamedStyle";
 import "./named-styles.css";
 
 type CategoryType = "grid" | "themed";
@@ -194,7 +197,7 @@ interface NamedStylesPanelProps {
   builtinStyles: NamedStyle[];
   formatOptions: FmtSettings;
   onApplyNamedStyle: (name: string) => void;
-  onAddNamedStyle: (payload: NamedStyleSavePayload) => void;
+  onAddNamedStyle: (payload: NamedStyleSavePayload) => SaveError;
   onClose: () => void;
 }
 
@@ -209,6 +212,9 @@ const NamedStylesPanel = ({
   const { t } = useTranslation();
   const [isCreatingNew, setIsCreatingNew] = useState(false);
 
+  const normalStyle = builtinStyles.find(
+    (s) => s.name.toLowerCase() === "normal",
+  );
   const groups = groupStyles(customStyles, builtinStyles);
 
   const handleNewClick = () => setIsCreatingNew(true);
@@ -256,7 +262,11 @@ const NamedStylesPanel = ({
     );
   };
 
-  if (isCreatingNew) {
+  if (isCreatingNew && normalStyle) {
+    const allStyleNames = [
+      ...customStyles.map((s) => s.name),
+      ...builtinStyles.map((s) => s.name),
+    ];
     return (
       <div className="ic-named-styles-container">
         <div className="ic-named-styles-edit-header">
@@ -281,18 +291,18 @@ const NamedStylesPanel = ({
         <div className="ic-named-styles-content">
           <EditNamedStyle
             name=""
-            style={
-              builtinStyles.find((s) => s.name.toLowerCase() === "normal")
-                ?.style ?? builtinStyles[0]?.style
-            }
+            style={normalStyle.style}
             formatOptions={formatOptions}
-            existingStyleNames={[
-              ...customStyles.map((s) => s.name),
-              ...builtinStyles.map((s) => s.name),
-            ]}
+            existingStyleNames={allStyleNames}
             onSave={(payload) => {
-              onAddNamedStyle(payload);
-              return { nameError: "" };
+              if (
+                allStyleNames.some(
+                  (n) => n.toLowerCase() === payload.name.toLowerCase(),
+                )
+              ) {
+                return { nameError: t("named_styles.name_already_exists") };
+              }
+              return onAddNamedStyle(payload);
             }}
             onClose={handleClose}
           />

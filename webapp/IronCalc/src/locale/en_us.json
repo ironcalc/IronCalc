@@ -196,6 +196,7 @@
     "apply": "Apply",
     "back_to_list": "Back to list",
     "cancel": "Cancel",
+    "name_already_exists": "A style with this name already exists",
     "new_style": "New style",
     "panel_title": "Cell styles"
   },
