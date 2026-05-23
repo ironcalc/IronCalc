@@ -119,8 +119,9 @@ const Worksheet = forwardRef(
         !scrollElement.current ||
         !editor ||
         !arrayStructure
-      )
+      ) {
         return;
+      }
       // FIXME: This two need to be computed.
       model.setWindowWidth(clientWidth - 37);
       model.setWindowHeight(clientHeight - 190);

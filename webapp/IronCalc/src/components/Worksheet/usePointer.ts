@@ -79,10 +79,14 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         let targetRow: number | null = null;
         if (x >= 0 && x < headerColumnWidth && y >= headerRowHeight) {
           const cell = worksheet.getCellByCoordinates(headerColumnWidth, y);
-          if (cell) targetRow = cell.row;
+          if (cell) {
+            targetRow = cell.row;
+          }
         } else if (x >= headerColumnWidth && y >= headerRowHeight) {
           const cell = worksheet.getCellByCoordinates(x, y);
-          if (cell) targetRow = cell.row;
+          if (cell) {
+            targetRow = cell.row;
+          }
         }
 
         if (targetRow !== null) {
@@ -109,10 +113,14 @@ const usePointer = (options: PointerSettings): PointerEvents => {
         let targetColumn: number | null = null;
         if (x >= headerColumnWidth && y >= 0 && y < headerRowHeight) {
           const cell = worksheet.getCellByCoordinates(x, headerRowHeight);
-          if (cell) targetColumn = cell.column;
+          if (cell) {
+            targetColumn = cell.column;
+          }
         } else if (x >= headerColumnWidth && y >= headerRowHeight) {
           const cell = worksheet.getCellByCoordinates(x, y);
-          if (cell) targetColumn = cell.column;
+          if (cell) {
+            targetColumn = cell.column;
+          }
         }
 
         if (targetColumn !== null) {

@@ -118,7 +118,9 @@ function Toolbar(properties: ToolbarProperties) {
     toolbarRef.current?.scrollBy({ left: 200, behavior: "smooth" });
 
   const updateArrows = useCallback(() => {
-    if (!toolbarRef.current) return;
+    if (!toolbarRef.current) {
+      return;
+    }
     const { scrollLeft, scrollWidth, clientWidth } = toolbarRef.current;
     setShowLeftArrow(scrollLeft > 0);
     setShowRightArrow(scrollLeft < scrollWidth - clientWidth);
@@ -126,7 +128,9 @@ function Toolbar(properties: ToolbarProperties) {
 
   useEffect(() => {
     const toolbar = toolbarRef.current;
-    if (!toolbar) return;
+    if (!toolbar) {
+      return;
+    }
 
     updateArrows();
     toolbar.addEventListener("scroll", updateArrows);

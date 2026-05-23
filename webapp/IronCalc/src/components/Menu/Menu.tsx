@@ -81,7 +81,9 @@ export function Menu(props: MenuProperties) {
 
   // Close on outside pointer down
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
 
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as Node | null;
@@ -110,7 +112,9 @@ export function Menu(props: MenuProperties) {
 
   // Focus first item when menu opens so keyboard navigation works immediately.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const firstItem = menuRef.current?.querySelector<HTMLButtonElement>(
       ':is([role="menuitem"],[role="menuitemradio"],[role="menuitemcheckbox"]):not([disabled])',
     );

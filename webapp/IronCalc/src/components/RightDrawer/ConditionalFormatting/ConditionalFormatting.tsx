@@ -51,7 +51,9 @@ function rangesIntersect(
 ): boolean {
   const [aSheet, aR1, aC1, aR2, aC2] = a;
   const [bSheet, bR1, bC1, bR2, bC2] = b;
-  if (aSheet !== bSheet) return false;
+  if (aSheet !== bSheet) {
+    return false;
+  }
   const aMinR = Math.min(aR1, aR2);
   const aMaxR = Math.max(aR1, aR2);
   const aMinC = Math.min(aC1, aC2);
@@ -102,7 +104,9 @@ const ConditionalFormatting = ({
     const list = model.getConditionalFormattingList(sheet) as CfEntry[];
     return list.flatMap((cf, modelIndex) => {
       const partial = cfRuleToRuleData(cf);
-      if (!partial) return [];
+      if (!partial) {
+        return [];
+      }
       const ruleType = partial.ruleType ?? "cell_value";
       const dxf = ruleTypeUsesDxf(ruleType)
         ? (model.getDxfForConditionalFormatting(
@@ -233,12 +237,20 @@ const ConditionalFormatting = ({
   const filteredRules = rules.filter((rule) => {
     if (filterOption === "selection") {
       const selectedParsed = parseRangeInSheet(model, getSelectedArea());
-      if (!selectedParsed) return false;
+      if (!selectedParsed) {
+        return false;
+      }
       const ruleParsed = parseRangeInSheet(model, getRuleRange(rule));
-      if (!ruleParsed) return false;
-      if (!rangesIntersect(selectedParsed, ruleParsed)) return false;
+      if (!ruleParsed) {
+        return false;
+      }
+      if (!rangesIntersect(selectedParsed, ruleParsed)) {
+        return false;
+      }
     }
-    if (!searchQuery.trim()) return true;
+    if (!searchQuery.trim()) {
+      return true;
+    }
     const q = searchQuery.trim().toLowerCase();
     return (
       rule.applyTo.toLowerCase().includes(q) ||

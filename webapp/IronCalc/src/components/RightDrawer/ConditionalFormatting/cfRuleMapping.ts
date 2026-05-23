@@ -128,11 +128,21 @@ export function formatStyleToDxf(style: FormatStyle): Dxf {
     !!style.fontColor;
   if (hasFont) {
     const font: DxfFont = {};
-    if (style.bold) font.b = true;
-    if (style.italic) font.i = true;
-    if (style.underline) font.u = true;
-    if (style.strike) font.strike = true;
-    if (style.fontColor) font.color = style.fontColor;
+    if (style.bold) {
+      font.b = true;
+    }
+    if (style.italic) {
+      font.i = true;
+    }
+    if (style.underline) {
+      font.u = true;
+    }
+    if (style.strike) {
+      font.strike = true;
+    }
+    if (style.fontColor) {
+      font.color = style.fontColor;
+    }
     dxf.font = font;
   }
 
@@ -178,14 +188,21 @@ function stopToCfvo(stop: ColorScaleStop): Cfvo {
 }
 
 function cfvoToStop(cfvo: Cfvo, color: string): ColorScaleStop {
-  if (cfvo === "Min") return { type: "min", value: "", color };
-  if (cfvo === "Max") return { type: "max", value: "", color };
-  if ("Number" in cfvo)
+  if (cfvo === "Min") {
+    return { type: "min", value: "", color };
+  }
+  if (cfvo === "Max") {
+    return { type: "max", value: "", color };
+  }
+  if ("Number" in cfvo) {
     return { type: "number", value: `${cfvo.Number}`, color };
-  if ("Percent" in cfvo)
+  }
+  if ("Percent" in cfvo) {
     return { type: "percent", value: `${cfvo.Percent}`, color };
-  if ("Percentile" in cfvo)
+  }
+  if ("Percentile" in cfvo) {
     return { type: "percentile", value: `${cfvo.Percentile}`, color };
+  }
   return { type: "formula", value: cfvo.Formula, color };
 }
 
@@ -262,34 +279,38 @@ function cfvoToThreshold(
   cfvo: Cfvo,
   color: string,
 ): { operator: "<="; value: string; type: ThresholdType; color: string } {
-  if (cfvo === "Min" || cfvo === "Max")
+  if (cfvo === "Min" || cfvo === "Max") {
     return {
       operator: "<=",
       value: "",
       type: cfvo === "Min" ? "min" : "max",
       color,
     };
-  if ("Percent" in cfvo)
+  }
+  if ("Percent" in cfvo) {
     return {
       operator: "<=",
       value: `${cfvo.Percent}`,
       type: "percent",
       color,
     };
-  if ("Number" in cfvo)
+  }
+  if ("Number" in cfvo) {
     return {
       operator: "<=",
       value: `${cfvo.Number}`,
       type: "number",
       color,
     };
-  if ("Percentile" in cfvo)
+  }
+  if ("Percentile" in cfvo) {
     return {
       operator: "<=",
       value: `${cfvo.Percentile}`,
       type: "percentile",
       color,
     };
+  }
   return { operator: "<=", value: cfvo.Formula, type: "formula", color };
 }
 
@@ -422,7 +443,9 @@ export function ruleDataToCfRule(data: RuleData): CfRuleInput | null {
       };
     }
     case "icon_sets": {
-      if (!data.iconSets) return null;
+      if (!data.iconSets) {
+        return null;
+      }
       const { presetId, rating, thresholds, showValue } = data.iconSets;
       const sv = showValue ?? true;
 
@@ -454,7 +477,9 @@ export function ruleDataToCfRule(data: RuleData): CfRuleInput | null {
         return null;
       }
       const n = icons.length;
-      if (thresholds.length !== n) return null;
+      if (thresholds.length !== n) {
+        return null;
+      }
       // UI thresholds are HIGH→LOW (thresholds[0] = highest icon bucket).
       // Backend iconThresholds must be LOW→HIGH: backend index j maps to display row d = n-1-j.
       // operator ">=" → is_strict=true (bucket starts at >=)
@@ -472,7 +497,9 @@ export function ruleDataToCfRule(data: RuleData): CfRuleInput | null {
     }
     case "cell_value": {
       const operator = UI_TO_VALUE_OP[data.ruleOperator];
-      if (!operator) return null;
+      if (!operator) {
+        return null;
+      }
       const isBetween =
         data.ruleOperator === "between" || data.ruleOperator === "not_between";
       return {
@@ -486,7 +513,9 @@ export function ruleDataToCfRule(data: RuleData): CfRuleInput | null {
     }
     case "text": {
       const operator = UI_TO_TEXT_OP[data.ruleOperator];
-      if (!operator) return null;
+      if (!operator) {
+        return null;
+      }
       return {
         type: "Text",
         operator,
@@ -497,7 +526,9 @@ export function ruleDataToCfRule(data: RuleData): CfRuleInput | null {
     }
     case "date": {
       const timePeriod = UI_TO_PERIOD[data.ruleOperator];
-      if (!timePeriod) return null;
+      if (!timePeriod) {
+        return null;
+      }
       const isBetween =
         data.ruleOperator === "between" || data.ruleOperator === "not_between";
       return {
@@ -669,7 +700,9 @@ export function cfRuleToRuleData(
     }
     case "CellIs": {
       const ruleOperator = VALUE_OP_TO_UI[cf_rule.operator];
-      if (!ruleOperator) return null;
+      if (!ruleOperator) {
+        return null;
+      }
       return {
         ruleType: "cell_value",
         ruleOperator,
@@ -680,7 +713,9 @@ export function cfRuleToRuleData(
     }
     case "Text": {
       const ruleOperator = TEXT_OP_TO_UI[cf_rule.operator];
-      if (!ruleOperator) return null;
+      if (!ruleOperator) {
+        return null;
+      }
       return {
         ruleType: "text",
         ruleOperator,
@@ -691,7 +726,9 @@ export function cfRuleToRuleData(
     }
     case "TimePeriod": {
       const ruleOperator = PERIOD_TO_UI[cf_rule.time_period];
-      if (!ruleOperator) return null;
+      if (!ruleOperator) {
+        return null;
+      }
       return {
         ruleType: "date",
         ruleOperator,

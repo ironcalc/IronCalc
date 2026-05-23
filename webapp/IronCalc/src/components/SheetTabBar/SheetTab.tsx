@@ -63,7 +63,9 @@ function SheetTab(props: SheetTabProps) {
 
   function getMenuAnchorPosition() {
     const rect = tabRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
+    if (!rect) {
+      return { x: 0, y: 0 };
+    }
     return { x: rect.right - 24, y: rect.top };
   }
 

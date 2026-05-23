@@ -101,7 +101,9 @@ export function getFullRangeToString(
  * Used for keyboard navigation (Tab/arrow keys) and focus management.
  */
 export function getFocusableElements(root: HTMLElement | null): HTMLElement[] {
-  if (!root) return [];
+  if (!root) {
+    return [];
+  }
 
   return Array.from(
     root.querySelectorAll<HTMLElement>(

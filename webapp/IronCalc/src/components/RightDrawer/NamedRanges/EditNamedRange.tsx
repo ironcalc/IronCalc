@@ -52,7 +52,9 @@ const EditNamedRange = ({
 }: EditNamedRangeProps) => {
   const { t } = useTranslation();
   const getDefaultName = () => {
-    if (initialName) return initialName;
+    if (initialName) {
+      return initialName;
+    }
     const rangePrefix = t("name_manager_dialog.default_range_prefix");
     let counter = 1;
     let defaultName = `${rangePrefix}${counter}`;
@@ -112,7 +114,9 @@ const EditNamedRange = ({
   const hasAnyError = nameError !== "" || formulaError !== "";
 
   const handleSave = () => {
-    if (hasAnyError) return;
+    if (hasAnyError) {
+      return;
+    }
     const error = onSave(name.trim(), scope, formula);
     if (error.nameError) {
       setNameError(error.nameError);

@@ -31,8 +31,12 @@ export interface NamedStyleSavePayload {
 
 function formatStyleToPreview(formatStyle: FormatStyle): CSSProperties {
   const decorations: string[] = [];
-  if (formatStyle.underline) decorations.push("underline");
-  if (formatStyle.strike) decorations.push("line-through");
+  if (formatStyle.underline) {
+    decorations.push("underline");
+  }
+  if (formatStyle.strike) {
+    decorations.push("line-through");
+  }
   return {
     backgroundColor: formatStyle.fillColor || undefined,
     color: formatStyle.fontColor || undefined,
