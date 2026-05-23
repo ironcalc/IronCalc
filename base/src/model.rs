@@ -1375,8 +1375,20 @@ impl<'a> Model<'a> {
                         // it is a single cell range, we can just return the value of the cell
                         self.evaluate_cell(left)
                     } else {
-                        let array = self.evaluate_range(left, right);
-                        CalcResult::Array(array)
+                        let array_height = right.row - left.row + 1;
+                        let array_width = right.column - left.column + 1;
+                        let last_row = cell_reference.row + array_height - 1;
+                        let last_col = cell_reference.column + array_width - 1;
+                        if last_row > LAST_ROW || last_col > LAST_COLUMN {
+                            CalcResult::new_error(
+                                Error::SPILL,
+                                cell_reference,
+                                "Spill would exceed worksheet bounds".to_string(),
+                            )
+                        } else {
+                            let array = self.evaluate_range(left, right);
+                            CalcResult::Array(array)
+                        }
                     }
                 } else if matches!(result, CalcResult::Lambda(_)) {
                     CalcResult::new_error(
