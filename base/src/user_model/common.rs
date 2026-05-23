@@ -2386,16 +2386,41 @@ impl<'a> UserModel<'a> {
                         column,
                         width: 1,
                         height: 1,
-                        old_value: vec![vec![old_value]],
+                        old_value: vec![vec![old_value.clone()]],
                     });
-                    let area = Area {
-                        sheet: source_sheet,
-                        row,
-                        column,
-                        width: 1,
-                        height: 1,
+
+                    // If the source is a dynamic formula anchor, range_clear_contents
+                    // would erase its entire spill — including cells that were just
+                    // written to by this paste.  Clear the anchor and its spill cells
+                    // individually instead, skipping any paste-target cells.
+                    let spill_dims = match &old_value {
+                        Some(Cell::ArrayFormula {
+                            kind: ArrayKind::Dynamic,
+                            r,
+                            ..
+                        }) => Some(*r),
+                        _ => None,
                     };
-                    self.model.range_clear_contents(&area)?;
+                    if let Some((spill_w, spill_h)) = spill_dims {
+                        let ws = self.model.workbook.worksheet_mut(source_sheet)?;
+                        for sr in row..row + spill_h {
+                            for sc in column..column + spill_w {
+                                if (source_sheet == sheet) && seen_cells.contains(&(sr, sc)) {
+                                    continue;
+                                }
+                                let _ = ws.cell_clear_contents(sr, sc);
+                            }
+                        }
+                    } else {
+                        let area = Area {
+                            sheet: source_sheet,
+                            row,
+                            column,
+                            width: 1,
+                            height: 1,
+                        };
+                        self.model.range_clear_contents(&area)?;
+                    }
                 }
             }
         }
