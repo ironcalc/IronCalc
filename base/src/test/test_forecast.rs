@@ -23,7 +23,10 @@ fn test_forecast_basic() {
     // FORECAST(8) ≈ 0.04839 + (83/124)*8 ≈ 5.40323
     let result = model._get_text("C1");
     let v: f64 = result.parse().unwrap();
-    assert!((v - 5.40323).abs() < 0.001, "FORECAST result {v} not close to expected 5.40323");
+    assert!(
+        (v - 5.40323).abs() < 0.001,
+        "FORECAST result {v} not close to expected 5.40323"
+    );
 }
 
 #[test]
@@ -40,7 +43,10 @@ fn test_forecast_perfect_line() {
     model.evaluate();
     let result = model._get_text("C1");
     let v: f64 = result.parse().unwrap();
-    assert!((v - 9.0).abs() < 1e-10, "FORECAST(4) on y=2x+1 should be 9, got {v}");
+    assert!(
+        (v - 9.0).abs() < 1e-10,
+        "FORECAST(4) on y=2x+1 should be 9, got {v}"
+    );
 }
 
 #[test]

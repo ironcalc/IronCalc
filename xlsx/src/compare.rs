@@ -144,6 +144,12 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                     (FormulaValue::Error { ei: e1, .. }, FormulaValue::Error { ei: e2, .. }) => {
                         e1 != e2
                     }
+                    // Some xlsx files store formula errors as t="str" with the error code as
+                    // text instead of the correct t="e". Treat them as equivalent.
+                    (FormulaValue::Text(s), FormulaValue::Error { ei, .. })
+                    | (FormulaValue::Error { ei, .. }, FormulaValue::Text(s)) => {
+                        s != &format!("{ei}")
+                    }
                     _ => true,
                 };
                 if mismatch {

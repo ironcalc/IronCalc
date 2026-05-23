@@ -1320,6 +1320,23 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Forecast | Function::ForecastLinear => {
             vec![Signature::Scalar, Signature::Vector, Signature::Vector]
         }
+        Function::Frequency => vec![Signature::Vector, Signature::Vector],
+        Function::Growth => vec![Signature::Vector; arg_count],
+        Function::Linest | Function::Logest => vec![Signature::Vector; arg_count],
+        Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
+        Function::PercentileExc | Function::PercentileInc => {
+            vec![Signature::Vector, Signature::Scalar]
+        }
+        Function::PercentrankExc | Function::PercentrankInc => {
+            vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+        }
+        Function::Permut | Function::Permutationa => vec![Signature::Scalar; 2],
+        Function::Prob => vec![Signature::Vector; arg_count],
+        Function::QuartileExc | Function::QuartileInc => {
+            vec![Signature::Vector, Signature::Scalar]
+        }
+        Function::Trend => vec![Signature::Vector; arg_count],
+        Function::Trimmean => vec![Signature::Vector, Signature::Scalar],
         Function::Gauss => args_signature_scalars(arg_count, 1, 0),
         Function::Harmean => vec![Signature::Vector; arg_count],
         Function::Kurt => vec![Signature::Vector; arg_count],
@@ -1739,6 +1756,25 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Steyx => StaticResult::Scalar,
         Function::Forecast => StaticResult::Scalar,
         Function::ForecastLinear => StaticResult::Scalar,
+        // Spill-returning functions
+        Function::Frequency => StaticResult::Unknown,
+        Function::Growth => StaticResult::Unknown,
+        Function::Linest => StaticResult::Unknown,
+        Function::Logest => StaticResult::Unknown,
+        Function::ModeMult => StaticResult::Unknown,
+        Function::Trend => StaticResult::Unknown,
+        // Scalar-returning functions
+        Function::ModeSingl => StaticResult::Scalar,
+        Function::PercentileExc => StaticResult::Scalar,
+        Function::PercentileInc => StaticResult::Scalar,
+        Function::PercentrankExc => StaticResult::Scalar,
+        Function::PercentrankInc => StaticResult::Scalar,
+        Function::Permut => StaticResult::Scalar,
+        Function::Permutationa => StaticResult::Scalar,
+        Function::Prob => StaticResult::Scalar,
+        Function::QuartileExc => StaticResult::Scalar,
+        Function::QuartileInc => StaticResult::Scalar,
+        Function::Trimmean => StaticResult::Scalar,
         Function::Gauss => StaticResult::Scalar,
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,

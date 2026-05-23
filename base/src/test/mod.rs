@@ -15,13 +15,14 @@ mod test_days360_month_end;
 mod test_degrees_radians;
 mod test_error_propagation;
 mod test_fact_factdouble;
-mod test_forecast;
 mod test_fn_accrintm;
 mod test_fn_average;
 mod test_fn_averageifs;
 mod test_fn_choose;
 mod test_fn_concatenate;
 mod test_fn_count;
+mod test_forecast;
+mod test_statistical_functions;
 // FIXME: These tests are failing
 // mod test_fn_datevalue_datedif;
 mod test_fn_day;
