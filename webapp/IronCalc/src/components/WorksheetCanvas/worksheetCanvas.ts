@@ -47,7 +47,7 @@ export interface CanvasSettings {
 }
 
 export const headerRowHeight = 28;
-export const headerColumnWidth = 30;
+export const headerColumnWidth = 40;
 export const devicePixelRatio = window.devicePixelRatio || 1;
 
 export const frozenSeparatorWidth = 3;
@@ -1140,6 +1140,8 @@ export default class WorksheetCanvas {
 
     let topLeftCornerY = headerRowHeight + 0.5;
     const firstRow = frozenRows === 0 ? topLeftCell.row : 1;
+    const isRowHidden = (r: number): boolean =>
+      r >= 1 && r <= LAST_ROW && this.getRowHeight(selectedSheet, r) === 0;
 
     for (let row = firstRow; row <= bottomRightCell.row; row += 1) {
       const rowHeight = this.getRowHeight(selectedSheet, row);
@@ -1176,6 +1178,27 @@ export default class WorksheetCanvas {
         topLeftCornerY + rowHeight / 2,
         headerColumnWidth,
       );
+
+      const centerX = 8;
+      if (isRowHidden(row - 1)) {
+        const tip = topLeftCornerY + 8;
+        context.beginPath();
+        context.moveTo(centerX, tip);
+        context.lineTo(centerX - 4, tip - 4);
+        context.lineTo(centerX + 4, tip - 4);
+        context.closePath();
+        context.fill();
+      }
+      if (isRowHidden(row + 1)) {
+        const tip = topLeftCornerY + rowHeight - 8;
+        context.beginPath();
+        context.moveTo(centerX, tip);
+        context.lineTo(centerX - 4, tip + 4);
+        context.lineTo(centerX + 4, tip + 4);
+        context.closePath();
+        context.fill();
+      }
+
       topLeftCornerY += rowHeight;
       this.addRowResizeHandle(topLeftCornerY, row, rowHeight);
       if (row === frozenRows) {
