@@ -196,9 +196,14 @@
     "apply": "Anwenden",
     "back_to_list": "Zurück zur Liste",
     "cancel": "Abbrechen",
+    "confirm_delete_message": "Möchten Sie wirklich löschen",
+    "delete_style": "Stil löschen",
     "name_already_exists": "Ein Stil mit diesem Namen existiert bereits",
     "new_style": "Neuer Stil",
-    "panel_title": "Zellformate"
+    "panel_title": "Zellformate",
+    "pick_to_delete": "Stil zum Löschen auswählen",
+    "pick_to_edit": "Stil zum Bearbeiten auswählen",
+    "update_style": "Stil bearbeiten"
   },
   "navigation": {
     "add_sheet": "Tabellenblatt hinzufügen",
