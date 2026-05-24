@@ -1,25 +1,21 @@
-import type { Model } from "@ironcalc/wasm";
-import { Search, SearchX, SquareArrowRightEnter, X } from "lucide-react";
+import { Search, SearchX, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../../Button/IconButton";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
-import type { WorkbookState } from "../../workbookState";
 import functionsDb from "./functions-db.json";
 import "./functions.css";
 
 type FunctionEntry = {
   c: string;
-  i?: boolean;
   d: string;
   a: string[];
 };
 
 const DB = functionsDb as Record<string, FunctionEntry>;
 const FUNCTIONS = Object.keys(DB).sort();
-const COMMONLY_USED = ["SUM", "AVERAGE", "COUNT", "MAX", "MIN"];
 const CATEGORIES = [
   "[all]",
   ...Array.from(new Set(FUNCTIONS.map((name) => DB[name].c))).sort(),
@@ -32,49 +28,22 @@ const buildSyntax = (name: string, args: string[]): string => {
   return `${name}(${formatted.join(", ")})`;
 };
 
-type FunctionsProps = {
-  onClose: () => void;
-  model: Model;
-  workbookState: WorkbookState;
-  onUpdate: () => void;
+const buildDocsUrl = (name: string): string => {
+  const category = DB[name].c.toLowerCase().replace(/ /g, "_");
+  return `https://docs.ironcalc.com/functions/${category}/${name.toLowerCase()}.html`;
 };
 
-const Functions = ({
-  onClose,
-  model,
-  workbookState,
-  onUpdate,
-}: FunctionsProps) => {
+type FunctionsProps = {
+  onClose: () => void;
+};
+
+const Functions = ({ onClose }: FunctionsProps) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("[all]");
   const [expandedName, setExpandedName] = useState<string | null>(null);
-  const isFiltering = searchQuery !== "" || categoryFilter !== "[all]";
-
-  const handleInsert = (name: string) => {
-    const { sheet, row, column } = model.getSelectedView();
-    const text = `=${name}(`;
-    workbookState.setEditingCell({
-      sheet,
-      row,
-      column,
-      text,
-      cursorStart: text.length,
-      cursorEnd: text.length,
-      referencedRange: null,
-      focus: "cell",
-      activeRanges: [],
-      mode: "accept",
-      editorWidth: model.getColumnWidth(sheet, column),
-      editorHeight: model.getRowHeight(sheet, row),
-    });
-    onUpdate();
-  };
 
   const filteredFunctions = FUNCTIONS.filter((name) => {
-    if (!isFiltering && COMMONLY_USED.includes(name)) {
-      return false;
-    }
     if (categoryFilter !== "[all]" && DB[name].c !== categoryFilter) {
       return false;
     }
@@ -94,37 +63,27 @@ const Functions = ({
         key={name}
         className={`ic-functions-list-item${isOpen ? " ic-functions-list-item--open" : ""}`}
       >
-        <div className="ic-functions-list-item-header">
-          <button
-            type="button"
-            className="ic-functions-list-item-toggle"
-            onClick={() => setExpandedName(isOpen ? null : name)}
-          >
-            {name}
-            {entry.i === false && (
-              <span className="ic-functions-not-implemented">
-                {t("functions.not_implemented")}
-              </span>
-            )}
-          </button>
-          {entry.i !== false && (
-            <div className="ic-functions-list-item-insert">
-              <Tooltip title={t("functions.insert_function")}>
-                <IconButton
-                  icon={<SquareArrowRightEnter />}
-                  aria-label={t("functions.insert_function")}
-                  onClick={() => handleInsert(name)}
-                />
-              </Tooltip>
-            </div>
-          )}
-        </div>
+        <button
+          type="button"
+          className="ic-functions-list-item-header"
+          onClick={() => setExpandedName(isOpen ? null : name)}
+        >
+          {name}
+        </button>
         {isOpen && (
           <div className="ic-functions-detail">
             <div className="ic-functions-detail-description">{entry.d}</div>
             <div className="ic-functions-detail-syntax">
               {buildSyntax(name, entry.a)}
             </div>
+            <a
+              href={buildDocsUrl(name)}
+              target="_blank"
+              rel="noreferrer"
+              className="ic-functions-read-more"
+            >
+              {t("functions.read_more")}
+            </a>
           </div>
         )}
       </div>
@@ -162,16 +121,7 @@ const Functions = ({
         />
       </div>
       <div className="ic-functions-list">
-        {!isFiltering && (
-          <>
-            <div className="ic-functions-section-header">
-              {t("functions.commonly_used")}
-            </div>
-            {COMMONLY_USED.map(renderItem)}
-            <div className="ic-functions-divider" />
-          </>
-        )}
-        {isFiltering && filteredFunctions.length === 0 ? (
+        {filteredFunctions.length === 0 ? (
           <div className="ic-functions-empty-state">
             <div className="ic-functions-icon-wrapper">
               <SearchX />
@@ -179,14 +129,7 @@ const Functions = ({
             {t("functions.no_search_results")}
           </div>
         ) : (
-          <>
-            {!isFiltering && (
-              <div className="ic-functions-section-header">
-                {t("functions.all_functions")}
-              </div>
-            )}
-            {filteredFunctions.map(renderItem)}
-          </>
+          filteredFunctions.map(renderItem)
         )}
       </div>
     </div>

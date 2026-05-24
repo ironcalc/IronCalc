@@ -163,13 +163,9 @@
     "manage_named_ranges": "Manage Named Ranges"
   },
   "functions": {
-    "all_functions": "All functions",
-    "category_label": "Category",
-    "commonly_used": "Commonly used",
     "filter_all": "All categories",
-    "insert_function": "Insert function",
     "no_search_results": "No functions match your search.",
-    "not_implemented": "Not implemented",
+    "read_more": "Read more",
     "search_placeholder": "Search...",
     "title": "Functions"
   },

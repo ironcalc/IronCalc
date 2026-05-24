@@ -6,7 +6,6 @@
   },
   "ACCRINT": {
     "c": "Financial",
-    "i": false,
     "d": "Returns the accrued interest for a security that pays periodic interest.",
     "a": ["id", "fid", "sd", "rate", "par", "freq", "basis*", "calc*"]
   },
@@ -45,30 +44,982 @@
     "d": "Returns an aggregate calculation (sum, average, etc.) while ignoring errors or hidden rows.",
     "a": ["fn", "opts", "ref1", "ref2*"]
   },
+  "AND": {
+    "c": "Logical",
+    "d": "Returns TRUE if all arguments are TRUE.",
+    "a": ["logical1", "logical2*"]
+  },
+  "ARABIC": {
+    "c": "Math and Trigonometry",
+    "d": "Converts a Roman numeral to an Arabic numeral.",
+    "a": ["text"]
+  },
+  "AREAS": {
+    "c": "Lookup and Reference",
+    "d": "Returns the number of areas in a reference.",
+    "a": ["reference"]
+  },
+  "ARRAYTOTEXT": {
+    "c": "Text",
+    "d": "Returns an array of text values from any specified range.",
+    "a": ["array", "format*"]
+  },
+  "ASC": {
+    "c": "Text",
+    "d": "Converts full-width characters to half-width characters.",
+    "a": ["text"]
+  },
+  "ASIN": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the arcsine of a number, in radians.",
+    "a": ["number"]
+  },
+  "ASINH": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the inverse hyperbolic sine of a number.",
+    "a": ["number"]
+  },
+  "ATAN": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the arctangent of a number, in radians.",
+    "a": ["number"]
+  },
+  "ATAN2": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the arctangent from x- and y-coordinates.",
+    "a": ["x_num", "y_num"]
+  },
+  "ATANH": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the inverse hyperbolic tangent of a number.",
+    "a": ["number"]
+  },
+  "AVEDEV": {
+    "c": "Statistical",
+    "d": "Returns the average of the absolute deviations of data points from their mean.",
+    "a": ["number1", "number2*"]
+  },
   "AVERAGE": {
     "c": "Statistical",
     "d": "Returns the average (arithmetic mean) of its arguments.",
     "a": ["number1", "number2*"]
+  },
+  "AVERAGEA": {
+    "c": "Statistical",
+    "d": "Returns the average of its arguments, including numbers, text, and logical values.",
+    "a": ["value1", "value2*"]
+  },
+  "AVERAGEIF": {
+    "c": "Statistical",
+    "d": "Returns the average of all cells in a range that meet a given criteria.",
+    "a": ["range", "criteria", "average_range*"]
+  },
+  "AVERAGEIFS": {
+    "c": "Statistical",
+    "d": "Returns the average of all cells that meet multiple criteria.",
+    "a": [
+      "average_range",
+      "criteria_range1",
+      "criteria1",
+      "criteria_range2*",
+      "criteria2*"
+    ]
+  },
+  "BASE": {
+    "c": "Math and Trigonometry",
+    "d": "Converts a number into a text representation with the given base.",
+    "a": ["number", "base", "min_length*"]
+  },
+  "BESSELI": {
+    "c": "Engineering",
+    "d": "Returns the modified Bessel function In(x).",
+    "a": ["x", "n"]
+  },
+  "BESSELJ": {
+    "c": "Engineering",
+    "d": "Returns the Bessel function Jn(x).",
+    "a": ["x", "n"]
+  },
+  "BESSELK": {
+    "c": "Engineering",
+    "d": "Returns the modified Bessel function Kn(x).",
+    "a": ["x", "n"]
+  },
+  "BESSELY": {
+    "c": "Engineering",
+    "d": "Returns the Bessel function Yn(x).",
+    "a": ["x", "n"]
+  },
+  "BETA.DIST": {
+    "c": "Statistical",
+    "d": "Returns the beta cumulative distribution function.",
+    "a": ["x", "alpha", "beta", "cumulative", "A*", "B*"]
+  },
+  "BETA.INV": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the cumulative distribution function for a specified beta distribution.",
+    "a": ["probability", "alpha", "beta", "A*", "B*"]
+  },
+  "BIN2DEC": {
+    "c": "Engineering",
+    "d": "Converts a binary number to decimal.",
+    "a": ["number"]
+  },
+  "BIN2HEX": {
+    "c": "Engineering",
+    "d": "Converts a binary number to hexadecimal.",
+    "a": ["number", "places*"]
+  },
+  "BIN2OCT": {
+    "c": "Engineering",
+    "d": "Converts a binary number to octal.",
+    "a": ["number", "places*"]
+  },
+  "BINOM.DIST": {
+    "c": "Statistical",
+    "d": "Returns the individual term binomial distribution probability.",
+    "a": ["number_s", "trials", "probability_s", "cumulative"]
+  },
+  "BINOM.DIST.RANGE": {
+    "c": "Statistical",
+    "d": "Returns the probability of a trial result using a binomial distribution.",
+    "a": ["trials", "probability_s", "number_s", "number_s2*"]
+  },
+  "BINOM.INV": {
+    "c": "Statistical",
+    "d": "Returns the smallest value for which the cumulative binomial distribution is less than or equal to a criterion value.",
+    "a": ["trials", "probability_s", "alpha"]
+  },
+  "BITAND": {
+    "c": "Engineering",
+    "d": "Returns a bitwise AND of two numbers.",
+    "a": ["number1", "number2"]
+  },
+  "BITLSHIFT": {
+    "c": "Engineering",
+    "d": "Returns a number shifted left by shift_amount bits.",
+    "a": ["number", "shift_amount"]
+  },
+  "BITOR": {
+    "c": "Engineering",
+    "d": "Returns a bitwise OR of two numbers.",
+    "a": ["number1", "number2"]
+  },
+  "BITRSHIFT": {
+    "c": "Engineering",
+    "d": "Returns a number shifted right by shift_amount bits.",
+    "a": ["number", "shift_amount"]
+  },
+  "BITXOR": {
+    "c": "Engineering",
+    "d": "Returns a bitwise XOR of two numbers.",
+    "a": ["number1", "number2"]
+  },
+  "BYCOL": {
+    "c": "Logical",
+    "d": "Applies a LAMBDA to each column and returns an array of the results.",
+    "a": ["array", "lambda"]
+  },
+  "BYROW": {
+    "c": "Logical",
+    "d": "Applies a LAMBDA to each row and returns an array of the results.",
+    "a": ["array", "lambda"]
+  },
+  "CEILING": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number up to the nearest integer or nearest multiple of significance.",
+    "a": ["number", "significance"]
+  },
+  "CEILING.MATH": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number up to the nearest integer or to the nearest multiple of significance.",
+    "a": ["number", "significance*", "mode*"]
+  },
+  "CEILING.PRECISE": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number up to the nearest integer or to the nearest multiple of significance.",
+    "a": ["number", "significance*"]
   },
   "CELL": {
     "c": "Information",
     "d": "Returns information about the formatting, location, or contents of a cell.",
     "a": ["info_type", "reference*"]
   },
+  "CHAR": {
+    "c": "Text",
+    "d": "Returns the character specified by the code number.",
+    "a": ["number"]
+  },
+  "CHISQ.DIST": {
+    "c": "Statistical",
+    "d": "Returns the cumulative chi-squared distribution.",
+    "a": ["x", "deg_freedom", "cumulative"]
+  },
+  "CHISQ.DIST.RT": {
+    "c": "Statistical",
+    "d": "Returns the one-tailed probability of the chi-squared distribution.",
+    "a": ["x", "deg_freedom"]
+  },
+  "CHISQ.INV": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the left-tailed probability of the chi-squared distribution.",
+    "a": ["probability", "deg_freedom"]
+  },
+  "CHISQ.INV.RT": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the one-tailed probability of the chi-squared distribution.",
+    "a": ["probability", "deg_freedom"]
+  },
+  "CHISQ.TEST": {
+    "c": "Statistical",
+    "d": "Returns the test for independence.",
+    "a": ["actual_range", "expected_range"]
+  },
+  "CHOOSE": {
+    "c": "Lookup and Reference",
+    "d": "Chooses a value from a list of values.",
+    "a": ["index_num", "value1", "value2*"]
+  },
+  "CHOOSECOLS": {
+    "c": "Lookup and Reference",
+    "d": "Returns the specified columns from an array.",
+    "a": ["array", "col_num1", "col_num2*"]
+  },
+  "CHOOSEROWS": {
+    "c": "Lookup and Reference",
+    "d": "Returns the specified rows from an array.",
+    "a": ["array", "row_num1", "row_num2*"]
+  },
+  "CLEAN": {
+    "c": "Text",
+    "d": "Removes all nonprintable characters from text.",
+    "a": ["text"]
+  },
+  "CODE": {
+    "c": "Text",
+    "d": "Returns a numeric code for the first character in a text string.",
+    "a": ["text"]
+  },
+  "COLUMN": {
+    "c": "Lookup and Reference",
+    "d": "Returns the column number of a reference.",
+    "a": ["reference*"]
+  },
+  "COLUMNS": {
+    "c": "Lookup and Reference",
+    "d": "Returns the number of columns in a reference.",
+    "a": ["array"]
+  },
+  "COMBIN": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the number of combinations for a given number of objects.",
+    "a": ["number", "number_chosen"]
+  },
+  "COMBINA": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the number of combinations with repetitions for a given number of items.",
+    "a": ["number", "number_chosen"]
+  },
+  "COMPLEX": {
+    "c": "Engineering",
+    "d": "Converts real and imaginary coefficients into a complex number.",
+    "a": ["real_num", "i_num", "suffix*"]
+  },
+  "CONCAT": {
+    "c": "Text",
+    "d": "Joins several text strings into one text string.",
+    "a": ["text1", "text2*"]
+  },
+  "CONCATENATE": {
+    "c": "Text",
+    "d": "Joins several text strings into one text string.",
+    "a": ["text1", "text2*"]
+  },
+  "CONFIDENCE.NORM": {
+    "c": "Statistical",
+    "d": "Returns the confidence interval for a population mean, using a normal distribution.",
+    "a": ["alpha", "standard_dev", "size"]
+  },
+  "CONFIDENCE.T": {
+    "c": "Statistical",
+    "d": "Returns the confidence interval for a population mean, using a Student's t distribution.",
+    "a": ["alpha", "standard_dev", "size"]
+  },
+  "CONVERT": {
+    "c": "Engineering",
+    "d": "Converts a number from one measurement system to another.",
+    "a": ["number", "from_unit", "to_unit"]
+  },
+  "CORREL": {
+    "c": "Statistical",
+    "d": "Returns the correlation coefficient between two data sets.",
+    "a": ["array1", "array2"]
+  },
+  "COS": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the cosine of a number.",
+    "a": ["number"]
+  },
+  "COSH": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the hyperbolic cosine of a number.",
+    "a": ["number"]
+  },
+  "COT": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the cotangent of an angle.",
+    "a": ["number"]
+  },
+  "COTH": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the hyperbolic cotangent of a number.",
+    "a": ["number"]
+  },
   "COUNT": {
     "c": "Statistical",
     "d": "Counts the cells in a range that contain numbers.",
     "a": ["value1", "value2*"]
+  },
+  "COUNTA": {
+    "c": "Statistical",
+    "d": "Counts the number of cells in a range that are not empty.",
+    "a": ["value1", "value2*"]
+  },
+  "COUNTBLANK": {
+    "c": "Statistical",
+    "d": "Counts the number of empty cells in a range.",
+    "a": ["range"]
+  },
+  "COUNTIF": {
+    "c": "Statistical",
+    "d": "Counts the number of cells in a range that meet a given condition.",
+    "a": ["range", "criteria"]
+  },
+  "COUNTIFS": {
+    "c": "Statistical",
+    "d": "Counts the number of cells in multiple ranges that meet multiple criteria.",
+    "a": ["criteria_range1", "criteria1", "criteria_range2*", "criteria2*"]
+  },
+  "COVARIANCE.P": {
+    "c": "Statistical",
+    "d": "Returns population covariance, the average of the products of deviations for each data point pair.",
+    "a": ["array1", "array2"]
+  },
+  "COVARIANCE.S": {
+    "c": "Statistical",
+    "d": "Returns the sample covariance, the average of the products of deviations for each data point pair.",
+    "a": ["array1", "array2"]
+  },
+  "CSC": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the cosecant of an angle.",
+    "a": ["number"]
+  },
+  "CSCH": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the hyperbolic cosecant of an angle.",
+    "a": ["number"]
+  },
+  "CUMIPMT": {
+    "c": "Financial",
+    "d": "Returns the cumulative interest paid between two periods.",
+    "a": ["rate", "nper", "pv", "start_period", "end_period", "type"]
+  },
+  "CUMPRINC": {
+    "c": "Financial",
+    "d": "Returns the cumulative principal paid on a loan between two periods.",
+    "a": ["rate", "nper", "pv", "start_period", "end_period", "type"]
+  },
+  "DATE": {
+    "c": "Date and Time",
+    "d": "Returns the serial number of a particular date.",
+    "a": ["year", "month", "day"]
+  },
+  "DATEDIF": {
+    "c": "Date and Time",
+    "d": "Calculates the number of days, months, or years between two dates.",
+    "a": ["start_date", "end_date", "unit"]
+  },
+  "DATEVALUE": {
+    "c": "Date and Time",
+    "d": "Converts a date in the form of text to a serial number.",
+    "a": ["date_text"]
+  },
+  "DAVERAGE": {
+    "c": "Database",
+    "d": "Returns the average of selected database entries.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DAY": {
+    "c": "Date and Time",
+    "d": "Converts a serial number to a day of the month.",
+    "a": ["serial_number"]
+  },
+  "DAYS": {
+    "c": "Date and Time",
+    "d": "Returns the number of days between two dates.",
+    "a": ["end_date", "start_date"]
+  },
+  "DAYS360": {
+    "c": "Date and Time",
+    "d": "Calculates the number of days between two dates based on a 360-day year.",
+    "a": ["start_date", "end_date", "method*"]
+  },
+  "DB": {
+    "c": "Financial",
+    "d": "Returns the depreciation of an asset for a specified period using the fixed-declining balance method.",
+    "a": ["cost", "salvage", "life", "period", "month*"]
+  },
+  "DCOUNT": {
+    "c": "Database",
+    "d": "Counts the cells that contain numbers in a database.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DCOUNTA": {
+    "c": "Database",
+    "d": "Counts non-empty cells in a database.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DDB": {
+    "c": "Financial",
+    "d": "Returns the depreciation of an asset for a specified period using the double-declining balance method.",
+    "a": ["cost", "salvage", "life", "period", "factor*"]
+  },
+  "DEC2BIN": {
+    "c": "Engineering",
+    "d": "Converts a decimal number to binary.",
+    "a": ["number", "places*"]
+  },
+  "DEC2HEX": {
+    "c": "Engineering",
+    "d": "Converts a decimal number to hexadecimal.",
+    "a": ["number", "places*"]
+  },
+  "DEC2OCT": {
+    "c": "Engineering",
+    "d": "Converts a decimal number to octal.",
+    "a": ["number", "places*"]
+  },
+  "DECIMAL": {
+    "c": "Math and Trigonometry",
+    "d": "Converts a text representation of a number in a given base into a decimal number.",
+    "a": ["text", "base"]
+  },
+  "DEGREES": {
+    "c": "Math and Trigonometry",
+    "d": "Converts radians to degrees.",
+    "a": ["angle"]
+  },
+  "DELTA": {
+    "c": "Engineering",
+    "d": "Tests whether two values are equal.",
+    "a": ["number1", "number2*"]
+  },
+  "DEVSQ": {
+    "c": "Statistical",
+    "d": "Returns the sum of squares of deviations.",
+    "a": ["number1", "number2*"]
+  },
+  "DGET": {
+    "c": "Database",
+    "d": "Extracts from a database a single record that matches the specified criteria.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DMAX": {
+    "c": "Database",
+    "d": "Returns the maximum value from selected database entries.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DMIN": {
+    "c": "Database",
+    "d": "Returns the minimum value from selected database entries.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DOLLAR": {
+    "c": "Text",
+    "d": "Converts a number to text using the dollar currency format.",
+    "a": ["number", "decimals*"]
+  },
+  "DOLLARDE": {
+    "c": "Financial",
+    "d": "Converts a dollar price expressed as a fraction into a decimal number.",
+    "a": ["fractional_dollar", "fraction"]
+  },
+  "DOLLARFR": {
+    "c": "Financial",
+    "d": "Converts a dollar price expressed as a decimal number into a fraction.",
+    "a": ["decimal_dollar", "fraction"]
+  },
+  "DPRODUCT": {
+    "c": "Database",
+    "d": "Multiplies the values in a field of records in a database that match the criteria.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DROP": {
+    "c": "Lookup and Reference",
+    "d": "Excludes a specified number of rows or columns from the start or end of an array.",
+    "a": ["array", "rows", "columns*"]
+  },
+  "DSTDEV": {
+    "c": "Database",
+    "d": "Estimates the standard deviation based on a sample of selected database entries.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DSTDEVP": {
+    "c": "Database",
+    "d": "Calculates the standard deviation based on the entire population of selected database entries.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DSUM": {
+    "c": "Database",
+    "d": "Adds the numbers in the field column of records in the database that match the criteria.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DVAR": {
+    "c": "Database",
+    "d": "Estimates variance based on a sample from selected database entries.",
+    "a": ["database", "field", "criteria"]
+  },
+  "DVARP": {
+    "c": "Database",
+    "d": "Calculates variance based on the entire population of selected database entries.",
+    "a": ["database", "field", "criteria"]
+  },
+  "EDATE": {
+    "c": "Date and Time",
+    "d": "Returns the serial number of the date that is the indicated number of months before or after the start date.",
+    "a": ["start_date", "months"]
+  },
+  "EFFECT": {
+    "c": "Financial",
+    "d": "Returns the effective annual interest rate.",
+    "a": ["nominal_rate", "npery"]
+  },
+  "EOMONTH": {
+    "c": "Date and Time",
+    "d": "Returns the serial number of the last day of the month before or after a specified number of months.",
+    "a": ["start_date", "months"]
+  },
+  "ERF": {
+    "c": "Engineering",
+    "d": "Returns the error function.",
+    "a": ["lower_limit", "upper_limit*"]
+  },
+  "ERF.PRECISE": {
+    "c": "Engineering",
+    "d": "Returns the error function.",
+    "a": ["x"]
+  },
+  "ERFC": {
+    "c": "Engineering",
+    "d": "Returns the complementary error function.",
+    "a": ["x"]
+  },
+  "ERFC.PRECISE": {
+    "c": "Engineering",
+    "d": "Returns the complementary error function.",
+    "a": ["x"]
   },
   "ERROR.TYPE": {
     "c": "Information",
     "d": "Returns a number corresponding to one of the error values.",
     "a": ["error_val"]
   },
+  "EVEN": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number up to the nearest even integer.",
+    "a": ["number"]
+  },
+  "EXACT": {
+    "c": "Text",
+    "d": "Checks to see if two text values are identical.",
+    "a": ["text1", "text2"]
+  },
+  "EXP": {
+    "c": "Math and Trigonometry",
+    "d": "Returns e raised to the power of a given number.",
+    "a": ["number"]
+  },
+  "EXPAND": {
+    "c": "Lookup and Reference",
+    "d": "Expands or pads an array to specified row and column dimensions.",
+    "a": ["array", "rows", "columns*", "pad_with*"]
+  },
+  "EXPON.DIST": {
+    "c": "Statistical",
+    "d": "Returns the exponential distribution.",
+    "a": ["x", "lambda", "cumulative"]
+  },
+  "F.DIST": {
+    "c": "Statistical",
+    "d": "Returns the F probability distribution.",
+    "a": ["x", "deg_freedom1", "deg_freedom2", "cumulative"]
+  },
+  "F.DIST.RT": {
+    "c": "Statistical",
+    "d": "Returns the right-tailed F probability distribution.",
+    "a": ["x", "deg_freedom1", "deg_freedom2"]
+  },
+  "F.INV": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the F probability distribution.",
+    "a": ["probability", "deg_freedom1", "deg_freedom2"]
+  },
+  "F.INV.RT": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the right-tailed F probability distribution.",
+    "a": ["probability", "deg_freedom1", "deg_freedom2"]
+  },
+  "F.TEST": {
+    "c": "Statistical",
+    "d": "Returns the result of an F-test.",
+    "a": ["array1", "array2"]
+  },
+  "FACT": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the factorial of a number.",
+    "a": ["number"]
+  },
+  "FACTDOUBLE": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the double factorial of a number.",
+    "a": ["number"]
+  },
+  "FALSE": {
+    "c": "Logical",
+    "d": "Returns the logical value FALSE.",
+    "a": []
+  },
+  "FILTER": {
+    "c": "Lookup and Reference",
+    "d": "Filters a range of data based on criteria you define.",
+    "a": ["array", "include", "if_empty*"]
+  },
+  "FIND": {
+    "c": "Text",
+    "d": "Finds one text string within another (case-sensitive).",
+    "a": ["find_text", "within_text", "start_num*"]
+  },
+  "FINDB": {
+    "c": "Text",
+    "d": "Finds one text string within another (case-sensitive, byte-based).",
+    "a": ["find_text", "within_text", "start_num*"]
+  },
+  "FISHER": {
+    "c": "Statistical",
+    "d": "Returns the Fisher transformation.",
+    "a": ["x"]
+  },
+  "FISHERINV": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the Fisher transformation.",
+    "a": ["y"]
+  },
+  "FIXED": {
+    "c": "Text",
+    "d": "Formats a number as text with a fixed number of decimals.",
+    "a": ["number", "decimals*", "no_commas*"]
+  },
+  "FLOOR": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number down, toward zero.",
+    "a": ["number", "significance"]
+  },
+  "FLOOR.MATH": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number down to the nearest integer or to the nearest multiple of significance.",
+    "a": ["number", "significance*", "mode*"]
+  },
+  "FLOOR.PRECISE": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number down to the nearest integer or to the nearest multiple of significance.",
+    "a": ["number", "significance*"]
+  },
+  "FORMULATEXT": {
+    "c": "Information",
+    "d": "Returns the formula at the given reference as text.",
+    "a": ["reference"]
+  },
+  "FV": {
+    "c": "Financial",
+    "d": "Returns the future value of an investment.",
+    "a": ["rate", "nper", "pmt", "pv*", "type*"]
+  },
+  "GAMMA": {
+    "c": "Statistical",
+    "d": "Returns the Gamma function value.",
+    "a": ["number"]
+  },
+  "GAMMA.DIST": {
+    "c": "Statistical",
+    "d": "Returns the gamma distribution.",
+    "a": ["x", "alpha", "beta", "cumulative"]
+  },
+  "GAMMA.INV": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the gamma cumulative distribution.",
+    "a": ["probability", "alpha", "beta"]
+  },
+  "GAMMALN": {
+    "c": "Statistical",
+    "d": "Returns the natural logarithm of the gamma function.",
+    "a": ["x"]
+  },
+  "GAMMALN.PRECISE": {
+    "c": "Statistical",
+    "d": "Returns the natural logarithm of the gamma function.",
+    "a": ["x"]
+  },
+  "GAUSS": {
+    "c": "Statistical",
+    "d": "Returns 0.5 less than the standard normal cumulative distribution.",
+    "a": ["z"]
+  },
+  "GCD": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the greatest common divisor.",
+    "a": ["number1", "number2*"]
+  },
+  "GEOMEAN": {
+    "c": "Statistical",
+    "d": "Returns the geometric mean.",
+    "a": ["number1", "number2*"]
+  },
+  "GESTEP": {
+    "c": "Engineering",
+    "d": "Tests whether a number is greater than a threshold value.",
+    "a": ["number", "step*"]
+  },
+  "HARMEAN": {
+    "c": "Statistical",
+    "d": "Returns the harmonic mean.",
+    "a": ["number1", "number2*"]
+  },
+  "HEX2BIN": {
+    "c": "Engineering",
+    "d": "Converts a hexadecimal number to binary.",
+    "a": ["number", "places*"]
+  },
+  "HEX2DEC": {
+    "c": "Engineering",
+    "d": "Converts a hexadecimal number to decimal.",
+    "a": ["number"]
+  },
+  "HEX2OCT": {
+    "c": "Engineering",
+    "d": "Converts a hexadecimal number to octal.",
+    "a": ["number", "places*"]
+  },
+  "HLOOKUP": {
+    "c": "Lookup and Reference",
+    "d": "Looks for a value in the top row of a table and returns the value in the same column from a row you specify.",
+    "a": ["lookup_value", "table_array", "row_index_num", "range_lookup*"]
+  },
+  "HOUR": {
+    "c": "Date and Time",
+    "d": "Converts a serial number to an hour.",
+    "a": ["serial_number"]
+  },
+  "HSTACK": {
+    "c": "Lookup and Reference",
+    "d": "Appends arrays horizontally and in sequence to return a larger array.",
+    "a": ["array1", "array2*"]
+  },
+  "HYPGEOM.DIST": {
+    "c": "Statistical",
+    "d": "Returns the hypergeometric distribution.",
+    "a": [
+      "sample_s",
+      "number_sample",
+      "population_s",
+      "number_pop",
+      "cumulative"
+    ]
+  },
+  "IF": {
+    "c": "Logical",
+    "d": "Specifies a logical test to perform.",
+    "a": ["logical_test", "value_if_true", "value_if_false*"]
+  },
+  "IFERROR": {
+    "c": "Logical",
+    "d": "Returns a value you specify if a formula evaluates to an error.",
+    "a": ["value", "value_if_error"]
+  },
+  "IFNA": {
+    "c": "Logical",
+    "d": "Returns the value you specify if the expression resolves to #N/A, otherwise returns the result of the expression.",
+    "a": ["value", "value_if_na"]
+  },
+  "IFS": {
+    "c": "Logical",
+    "d": "Checks whether one or more conditions are met and returns a value that corresponds to the first TRUE condition.",
+    "a": [
+      "logical_test1",
+      "value_if_true1",
+      "logical_test2*",
+      "value_if_true2*"
+    ]
+  },
+  "IMABS": {
+    "c": "Engineering",
+    "d": "Returns the absolute value (modulus) of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMAGINARY": {
+    "c": "Engineering",
+    "d": "Returns the imaginary coefficient of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMARGUMENT": {
+    "c": "Engineering",
+    "d": "Returns the argument theta, an angle expressed in radians.",
+    "a": ["inumber"]
+  },
+  "IMCONJUGATE": {
+    "c": "Engineering",
+    "d": "Returns the complex conjugate of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMCOS": {
+    "c": "Engineering",
+    "d": "Returns the cosine of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMCOSH": {
+    "c": "Engineering",
+    "d": "Returns the hyperbolic cosine of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMCOT": {
+    "c": "Engineering",
+    "d": "Returns the cotangent of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMCSC": {
+    "c": "Engineering",
+    "d": "Returns the cosecant of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMCSCH": {
+    "c": "Engineering",
+    "d": "Returns the hyperbolic cosecant of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMDIV": {
+    "c": "Engineering",
+    "d": "Returns the quotient of two complex numbers.",
+    "a": ["inumber1", "inumber2"]
+  },
+  "IMEXP": {
+    "c": "Engineering",
+    "d": "Returns the exponential of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMLN": {
+    "c": "Engineering",
+    "d": "Returns the natural logarithm of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMLOG10": {
+    "c": "Engineering",
+    "d": "Returns the base-10 logarithm of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMLOG2": {
+    "c": "Engineering",
+    "d": "Returns the base-2 logarithm of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMPOWER": {
+    "c": "Engineering",
+    "d": "Returns a complex number raised to an integer power.",
+    "a": ["inumber", "number"]
+  },
+  "IMPRODUCT": {
+    "c": "Engineering",
+    "d": "Returns the product of 2 to 255 complex numbers.",
+    "a": ["inumber1", "inumber2*"]
+  },
+  "IMREAL": {
+    "c": "Engineering",
+    "d": "Returns the real coefficient of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMSEC": {
+    "c": "Engineering",
+    "d": "Returns the secant of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMSECH": {
+    "c": "Engineering",
+    "d": "Returns the hyperbolic secant of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMSIN": {
+    "c": "Engineering",
+    "d": "Returns the sine of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMSINH": {
+    "c": "Engineering",
+    "d": "Returns the hyperbolic sine of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMSQRT": {
+    "c": "Engineering",
+    "d": "Returns the square root of a complex number.",
+    "a": ["inumber"]
+  },
+  "IMSUB": {
+    "c": "Engineering",
+    "d": "Returns the difference between two complex numbers.",
+    "a": ["inumber1", "inumber2"]
+  },
+  "IMSUM": {
+    "c": "Engineering",
+    "d": "Returns the sum of complex numbers.",
+    "a": ["inumber1", "inumber2*"]
+  },
+  "IMTAN": {
+    "c": "Engineering",
+    "d": "Returns the tangent of a complex number.",
+    "a": ["inumber"]
+  },
+  "INDEX": {
+    "c": "Lookup and Reference",
+    "d": "Uses an index to choose a value from a reference or array.",
+    "a": ["array", "row_num", "column_num*"]
+  },
+  "INDIRECT": {
+    "c": "Lookup and Reference",
+    "d": "Returns a reference indicated by a text value.",
+    "a": ["ref_text", "a1*"]
+  },
   "INFO": {
     "c": "Information",
     "d": "Returns information about the current operating environment.",
     "a": ["type_text"]
+  },
+  "INT": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number down to the nearest integer.",
+    "a": ["number"]
+  },
+  "INTERCEPT": {
+    "c": "Statistical",
+    "d": "Returns the intercept of the linear regression line.",
+    "a": ["known_ys", "known_xs"]
+  },
+  "IPMT": {
+    "c": "Financial",
+    "d": "Returns the interest payment for an investment for a given period.",
+    "a": ["rate", "per", "nper", "pv", "fv*", "type*"]
+  },
+  "IRR": {
+    "c": "Financial",
+    "d": "Returns the internal rate of return for a series of cash flows.",
+    "a": ["values", "guess*"]
   },
   "ISBLANK": {
     "c": "Information",
@@ -115,34 +1066,990 @@
     "d": "Returns TRUE if the value is a number.",
     "a": ["value"]
   },
+  "ISO.CEILING": {
+    "c": "Math and Trigonometry",
+    "d": "Returns a number that is rounded up to the nearest integer or to the nearest multiple of significance.",
+    "a": ["number", "significance*"]
+  },
   "ISODD": {
     "c": "Information",
     "d": "Returns TRUE if the number is odd.",
     "a": ["number"]
+  },
+  "ISOMITTED": {
+    "c": "Information",
+    "d": "Checks whether the value in a LAMBDA is missing and returns TRUE or FALSE.",
+    "a": ["argument"]
+  },
+  "ISOWEEKNUM": {
+    "c": "Date and Time",
+    "d": "Returns the number of the ISO week number of the year for a given date.",
+    "a": ["date"]
+  },
+  "ISPMT": {
+    "c": "Financial",
+    "d": "Calculates the interest paid during a specific period of an investment.",
+    "a": ["rate", "per", "nper", "pv"]
+  },
+  "ISREF": {
+    "c": "Information",
+    "d": "Returns TRUE if the value is a reference.",
+    "a": ["value"]
+  },
+  "ISTEXT": {
+    "c": "Information",
+    "d": "Returns TRUE if the value is text.",
+    "a": ["value"]
+  },
+  "KURT": {
+    "c": "Statistical",
+    "d": "Returns the kurtosis of a data set.",
+    "a": ["number1", "number2*"]
   },
   "LAMBDA": {
     "c": "Logical",
     "d": "Creates a custom reusable function with named parameters.",
     "a": ["param*", "body"]
   },
+  "LARGE": {
+    "c": "Statistical",
+    "d": "Returns the k-th largest value in a data set.",
+    "a": ["array", "k"]
+  },
+  "LCM": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the least common multiple.",
+    "a": ["number1", "number2*"]
+  },
+  "LEFT": {
+    "c": "Text",
+    "d": "Returns the leftmost characters from a text value.",
+    "a": ["text", "num_chars*"]
+  },
+  "LEFTB": {
+    "c": "Text",
+    "d": "Returns the leftmost characters from a text value (byte-based).",
+    "a": ["text", "num_bytes*"]
+  },
+  "LEN": {
+    "c": "Text",
+    "d": "Returns the number of characters in a text string.",
+    "a": ["text"]
+  },
+  "LENB": {
+    "c": "Text",
+    "d": "Returns the number of bytes used to represent the characters in a text string.",
+    "a": ["text"]
+  },
   "LET": {
     "c": "Logical",
     "d": "Assigns names to calculation results and returns the final formula.",
     "a": ["name1", "value1", "name_value*", "formula"]
+  },
+  "LN": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the natural logarithm of a number.",
+    "a": ["number"]
+  },
+  "LOG": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the logarithm of a number to a specified base.",
+    "a": ["number", "base*"]
+  },
+  "LOG10": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the base-10 logarithm of a number.",
+    "a": ["number"]
+  },
+  "LOGNORM.DIST": {
+    "c": "Statistical",
+    "d": "Returns the lognormal distribution of x.",
+    "a": ["x", "mean", "standard_dev", "cumulative"]
+  },
+  "LOGNORM.INV": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the lognormal cumulative distribution function.",
+    "a": ["probability", "mean", "standard_dev"]
+  },
+  "LOOKUP": {
+    "c": "Lookup and Reference",
+    "d": "Looks up values in a vector or array.",
+    "a": ["lookup_value", "lookup_vector", "result_vector*"]
+  },
+  "LOWER": {
+    "c": "Text",
+    "d": "Converts text to lowercase.",
+    "a": ["text"]
+  },
+  "MAP": {
+    "c": "Logical",
+    "d": "Returns an array formed by mapping each value in the array to a new value by applying a LAMBDA.",
+    "a": ["array1", "lambda"]
+  },
+  "MATCH": {
+    "c": "Lookup and Reference",
+    "d": "Looks up values in a reference or array.",
+    "a": ["lookup_value", "lookup_array", "match_type*"]
   },
   "MAX": {
     "c": "Statistical",
     "d": "Returns the largest value in a set of values.",
     "a": ["number1", "number2*"]
   },
+  "MAXA": {
+    "c": "Statistical",
+    "d": "Returns the maximum value in a list of arguments, including numbers, text, and logical values.",
+    "a": ["value1", "value2*"]
+  },
+  "MAXIFS": {
+    "c": "Statistical",
+    "d": "Returns the maximum value among cells specified by a given set of conditions or criteria.",
+    "a": [
+      "max_range",
+      "criteria_range1",
+      "criteria1",
+      "criteria_range2*",
+      "criteria2*"
+    ]
+  },
+  "MEDIAN": {
+    "c": "Statistical",
+    "d": "Returns the median of the given numbers.",
+    "a": ["number1", "number2*"]
+  },
+  "MID": {
+    "c": "Text",
+    "d": "Returns a specific number of characters from a text string, starting at the position you specify.",
+    "a": ["text", "start_num", "num_chars"]
+  },
+  "MIDB": {
+    "c": "Text",
+    "d": "Returns a specific number of characters from a text string, starting at the position you specify (byte-based).",
+    "a": ["text", "start_num", "num_bytes"]
+  },
   "MIN": {
     "c": "Statistical",
     "d": "Returns the smallest value in a set of values.",
     "a": ["number1", "number2*"]
   },
+  "MINA": {
+    "c": "Statistical",
+    "d": "Returns the smallest value in a list of arguments, including numbers, text, and logical values.",
+    "a": ["value1", "value2*"]
+  },
+  "MINIFS": {
+    "c": "Statistical",
+    "d": "Returns the minimum value among cells specified by a given set of conditions or criteria.",
+    "a": [
+      "min_range",
+      "criteria_range1",
+      "criteria1",
+      "criteria_range2*",
+      "criteria2*"
+    ]
+  },
+  "MINUTE": {
+    "c": "Date and Time",
+    "d": "Converts a serial number to a minute.",
+    "a": ["serial_number"]
+  },
+  "MIRR": {
+    "c": "Financial",
+    "d": "Returns the internal rate of return where positive and negative cash flows are financed at different rates.",
+    "a": ["values", "finance_rate", "reinvest_rate"]
+  },
+  "MOD": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the remainder from division.",
+    "a": ["number", "divisor"]
+  },
+  "MONTH": {
+    "c": "Date and Time",
+    "d": "Converts a serial number to a month.",
+    "a": ["serial_number"]
+  },
+  "MROUND": {
+    "c": "Math and Trigonometry",
+    "d": "Returns a number rounded to the desired multiple.",
+    "a": ["number", "multiple"]
+  },
+  "N": {
+    "c": "Information",
+    "d": "Returns a value converted to a number.",
+    "a": ["value"]
+  },
+  "NA": {
+    "c": "Information",
+    "d": "Returns the error value #N/A.",
+    "a": []
+  },
+  "NEGBINOM.DIST": {
+    "c": "Statistical",
+    "d": "Returns the negative binomial distribution.",
+    "a": ["number_f", "number_s", "probability_s", "cumulative"]
+  },
+  "NETWORKDAYS": {
+    "c": "Date and Time",
+    "d": "Returns the number of whole workdays between two dates.",
+    "a": ["start_date", "end_date", "holidays*"]
+  },
+  "NETWORKDAYS.INTL": {
+    "c": "Date and Time",
+    "d": "Returns the number of whole workdays between two dates using parameters to indicate which days are weekend days.",
+    "a": ["start_date", "end_date", "weekend*", "holidays*"]
+  },
+  "NOMINAL": {
+    "c": "Financial",
+    "d": "Returns the annual nominal interest rate.",
+    "a": ["effect_rate", "npery"]
+  },
+  "NORM.DIST": {
+    "c": "Statistical",
+    "d": "Returns the normal cumulative distribution.",
+    "a": ["x", "mean", "standard_dev", "cumulative"]
+  },
+  "NORM.INV": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the normal cumulative distribution.",
+    "a": ["probability", "mean", "standard_dev"]
+  },
+  "NORM.S.DIST": {
+    "c": "Statistical",
+    "d": "Returns the standard normal cumulative distribution.",
+    "a": ["z", "cumulative"]
+  },
+  "NORM.S.INV": {
+    "c": "Statistical",
+    "d": "Returns the inverse of the standard normal cumulative distribution.",
+    "a": ["probability"]
+  },
+  "NOT": {
+    "c": "Logical",
+    "d": "Reverses the logic of its argument.",
+    "a": ["logical"]
+  },
+  "NOW": {
+    "c": "Date and Time",
+    "d": "Returns the serial number of the current date and time.",
+    "a": []
+  },
+  "NPER": {
+    "c": "Financial",
+    "d": "Returns the number of periods for an investment.",
+    "a": ["rate", "pmt", "pv", "fv*", "type*"]
+  },
+  "NPV": {
+    "c": "Financial",
+    "d": "Returns the net present value of an investment based on a series of periodic cash flows and a discount rate.",
+    "a": ["rate", "value1", "value2*"]
+  },
+  "NUMBERVALUE": {
+    "c": "Text",
+    "d": "Converts text to a number in a locale-independent manner.",
+    "a": ["text", "decimal_separator*", "group_separator*"]
+  },
+  "OCT2BIN": {
+    "c": "Engineering",
+    "d": "Converts an octal number to binary.",
+    "a": ["number", "places*"]
+  },
+  "OCT2DEC": {
+    "c": "Engineering",
+    "d": "Converts an octal number to decimal.",
+    "a": ["number"]
+  },
+  "OCT2HEX": {
+    "c": "Engineering",
+    "d": "Converts an octal number to hexadecimal.",
+    "a": ["number", "places*"]
+  },
+  "ODD": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number up to the nearest odd integer.",
+    "a": ["number"]
+  },
+  "OFFSET": {
+    "c": "Lookup and Reference",
+    "d": "Returns a reference offset from a given reference.",
+    "a": ["reference", "rows", "cols", "height*", "width*"]
+  },
+  "OR": {
+    "c": "Logical",
+    "d": "Returns TRUE if any argument is TRUE.",
+    "a": ["logical1", "logical2*"]
+  },
+  "PDURATION": {
+    "c": "Financial",
+    "d": "Returns the number of periods required by an investment to reach a specified value.",
+    "a": ["rate", "pv", "fv"]
+  },
+  "PEARSON": {
+    "c": "Statistical",
+    "d": "Returns the Pearson product moment correlation coefficient.",
+    "a": ["array1", "array2"]
+  },
+  "PHI": {
+    "c": "Statistical",
+    "d": "Returns the value of the density function for a standard normal distribution.",
+    "a": ["x"]
+  },
+  "PI": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the value of pi.",
+    "a": []
+  },
+  "PMT": {
+    "c": "Financial",
+    "d": "Returns the periodic payment for an annuity.",
+    "a": ["rate", "nper", "pv", "fv*", "type*"]
+  },
+  "POISSON.DIST": {
+    "c": "Statistical",
+    "d": "Returns the Poisson distribution.",
+    "a": ["x", "mean", "cumulative"]
+  },
+  "POWER": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the result of a number raised to a power.",
+    "a": ["number", "power"]
+  },
+  "PPMT": {
+    "c": "Financial",
+    "d": "Returns the payment on the principal for an investment for a given period.",
+    "a": ["rate", "per", "nper", "pv", "fv*", "type*"]
+  },
+  "PRODUCT": {
+    "c": "Math and Trigonometry",
+    "d": "Multiplies its arguments.",
+    "a": ["number1", "number2*"]
+  },
+  "PROPER": {
+    "c": "Text",
+    "d": "Capitalizes the first letter in each word of a text value.",
+    "a": ["text"]
+  },
+  "PV": {
+    "c": "Financial",
+    "d": "Returns the present value of an investment.",
+    "a": ["rate", "nper", "pmt", "fv*", "type*"]
+  },
+  "QUOTIENT": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the integer portion of a division.",
+    "a": ["numerator", "denominator"]
+  },
+  "RADIANS": {
+    "c": "Math and Trigonometry",
+    "d": "Converts degrees to radians.",
+    "a": ["angle"]
+  },
+  "RAND": {
+    "c": "Math and Trigonometry",
+    "d": "Returns a random number between 0 and 1.",
+    "a": []
+  },
+  "RANDARRAY": {
+    "c": "Math and Trigonometry",
+    "d": "Returns an array of random numbers.",
+    "a": ["rows*", "columns*", "min*", "max*", "whole_number*"]
+  },
+  "RANDBETWEEN": {
+    "c": "Math and Trigonometry",
+    "d": "Returns a random integer between two numbers.",
+    "a": ["bottom", "top"]
+  },
+  "RANK.AVG": {
+    "c": "Statistical",
+    "d": "Returns the rank of a number in a list of numbers.",
+    "a": ["number", "ref", "order*"]
+  },
+  "RANK.EQ": {
+    "c": "Statistical",
+    "d": "Returns the rank of a number in a list of numbers.",
+    "a": ["number", "ref", "order*"]
+  },
+  "RATE": {
+    "c": "Financial",
+    "d": "Returns the interest rate per period of an annuity.",
+    "a": ["nper", "pmt", "pv", "fv*", "type*", "guess*"]
+  },
+  "REDUCE": {
+    "c": "Logical",
+    "d": "Reduces an array to an accumulated value by applying a LAMBDA to each value.",
+    "a": ["initial_value", "array", "lambda"]
+  },
+  "REGEXEXTRACT": {
+    "c": "Text",
+    "d": "Extracts matching substrings according to a regular expression.",
+    "a": ["text", "regular_expression"]
+  },
+  "REGEXREPLACE": {
+    "c": "Text",
+    "d": "Replaces part of a text string with a different text string using regular expressions.",
+    "a": ["text", "regular_expression", "replacement"]
+  },
+  "REGEXTEST": {
+    "c": "Text",
+    "d": "Tests whether any part of provided text matches a regular expression.",
+    "a": ["text", "regular_expression"]
+  },
+  "REPLACE": {
+    "c": "Text",
+    "d": "Replaces characters within text.",
+    "a": ["old_text", "start_num", "num_chars", "new_text"]
+  },
+  "REPLACEB": {
+    "c": "Text",
+    "d": "Replaces characters within text (byte-based).",
+    "a": ["old_text", "start_num", "num_bytes", "new_text"]
+  },
+  "REPT": {
+    "c": "Text",
+    "d": "Repeats text a given number of times.",
+    "a": ["text", "number_times"]
+  },
+  "RIGHT": {
+    "c": "Text",
+    "d": "Returns the rightmost characters from a text value.",
+    "a": ["text", "num_chars*"]
+  },
+  "RIGHTB": {
+    "c": "Text",
+    "d": "Returns the rightmost characters from a text value (byte-based).",
+    "a": ["text", "num_bytes*"]
+  },
+  "ROMAN": {
+    "c": "Math and Trigonometry",
+    "d": "Converts an Arabic numeral to Roman, as text.",
+    "a": ["number", "form*"]
+  },
+  "ROUND": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number to a specified number of digits.",
+    "a": ["number", "num_digits"]
+  },
+  "ROUNDDOWN": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number down, toward zero.",
+    "a": ["number", "num_digits"]
+  },
+  "ROUNDUP": {
+    "c": "Math and Trigonometry",
+    "d": "Rounds a number up, away from zero.",
+    "a": ["number", "num_digits"]
+  },
+  "ROW": {
+    "c": "Lookup and Reference",
+    "d": "Returns the row number of a reference.",
+    "a": ["reference*"]
+  },
+  "ROWS": {
+    "c": "Lookup and Reference",
+    "d": "Returns the number of rows in a reference.",
+    "a": ["array"]
+  },
+  "RRI": {
+    "c": "Financial",
+    "d": "Returns an equivalent interest rate for the growth of an investment.",
+    "a": ["nper", "pv", "fv"]
+  },
+  "RSQ": {
+    "c": "Statistical",
+    "d": "Returns the square of the Pearson product moment correlation coefficient.",
+    "a": ["known_ys", "known_xs"]
+  },
+  "SCAN": {
+    "c": "Logical",
+    "d": "Scans an array by applying a LAMBDA to each value and returns an array that has each intermediate value.",
+    "a": ["initial_value", "array", "lambda"]
+  },
+  "SEARCH": {
+    "c": "Text",
+    "d": "Finds one text value within another (not case-sensitive).",
+    "a": ["find_text", "within_text", "start_num*"]
+  },
+  "SEARCHB": {
+    "c": "Text",
+    "d": "Finds one text value within another (not case-sensitive, byte-based).",
+    "a": ["find_text", "within_text", "start_num*"]
+  },
+  "SEC": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the secant of an angle.",
+    "a": ["number"]
+  },
+  "SECH": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the hyperbolic secant of an angle.",
+    "a": ["number"]
+  },
+  "SECOND": {
+    "c": "Date and Time",
+    "d": "Converts a serial number to a second.",
+    "a": ["serial_number"]
+  },
+  "SEQUENCE": {
+    "c": "Math and Trigonometry",
+    "d": "Generates a list of sequential numbers in an array.",
+    "a": ["rows", "columns*", "start*", "step*"]
+  },
+  "SHEET": {
+    "c": "Information",
+    "d": "Returns the sheet number of the referenced sheet.",
+    "a": ["value*"]
+  },
+  "SHEETS": {
+    "c": "Information",
+    "d": "Returns the number of sheets in a reference.",
+    "a": ["reference*"]
+  },
+  "SIGN": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the sign of a number.",
+    "a": ["number"]
+  },
+  "SIN": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the sine of the given angle.",
+    "a": ["number"]
+  },
+  "SINH": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the hyperbolic sine of a number.",
+    "a": ["number"]
+  },
+  "SKEW": {
+    "c": "Statistical",
+    "d": "Returns the skewness of a distribution.",
+    "a": ["number1", "number2*"]
+  },
+  "SKEW.P": {
+    "c": "Statistical",
+    "d": "Returns the skewness of a distribution based on a population.",
+    "a": ["number1", "number2*"]
+  },
+  "SLOPE": {
+    "c": "Statistical",
+    "d": "Returns the slope of the linear regression line.",
+    "a": ["known_ys", "known_xs"]
+  },
+  "SMALL": {
+    "c": "Statistical",
+    "d": "Returns the k-th smallest value in a data set.",
+    "a": ["array", "k"]
+  },
+  "SORT": {
+    "c": "Lookup and Reference",
+    "d": "Sorts the contents of a range or array.",
+    "a": ["array", "sort_index*", "sort_order*", "by_col*"]
+  },
+  "SORTBY": {
+    "c": "Lookup and Reference",
+    "d": "Sorts the contents of a range or array based on the values in a corresponding range or array.",
+    "a": ["array", "by_array1", "sort_order1*", "by_array2*", "sort_order2*"]
+  },
+  "SQRT": {
+    "c": "Math and Trigonometry",
+    "d": "Returns a positive square root.",
+    "a": ["number"]
+  },
+  "SQRTPI": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the square root of (number * pi).",
+    "a": ["number"]
+  },
+  "STANDARDIZE": {
+    "c": "Statistical",
+    "d": "Returns a normalized value from a distribution characterized by mean and standard_dev.",
+    "a": ["x", "mean", "standard_dev"]
+  },
+  "STDEV.P": {
+    "c": "Statistical",
+    "d": "Calculates standard deviation based on the entire population.",
+    "a": ["number1", "number2*"]
+  },
+  "STDEV.S": {
+    "c": "Statistical",
+    "d": "Estimates standard deviation based on a sample.",
+    "a": ["number1", "number2*"]
+  },
+  "STDEVA": {
+    "c": "Statistical",
+    "d": "Estimates standard deviation based on a sample, including numbers, text, and logical values.",
+    "a": ["value1", "value2*"]
+  },
+  "STDEVPA": {
+    "c": "Statistical",
+    "d": "Calculates standard deviation based on the entire population, including numbers, text, and logical values.",
+    "a": ["value1", "value2*"]
+  },
+  "STEYX": {
+    "c": "Statistical",
+    "d": "Returns the standard error of the predicted y-value for each x in the regression.",
+    "a": ["known_ys", "known_xs"]
+  },
+  "SUBSTITUTE": {
+    "c": "Text",
+    "d": "Substitutes new text for old text in a text string.",
+    "a": ["text", "old_text", "new_text", "instance_num*"]
+  },
+  "SUBTOTAL": {
+    "c": "Math and Trigonometry",
+    "d": "Returns a subtotal in a list or database.",
+    "a": ["function_num", "ref1", "ref2*"]
+  },
   "SUM": {
     "c": "Math and Trigonometry",
     "d": "Adds all the numbers in a range of cells.",
+    "a": ["number1", "number2*", "..."]
+  },
+  "SUMIF": {
+    "c": "Math and Trigonometry",
+    "d": "Adds the cells specified by a given condition or criteria.",
+    "a": ["range", "criteria", "sum_range*"]
+  },
+  "SUMIFS": {
+    "c": "Math and Trigonometry",
+    "d": "Adds the cells in a range that meet multiple criteria.",
+    "a": [
+      "sum_range",
+      "criteria_range1",
+      "criteria1",
+      "criteria_range2*",
+      "criteria2*"
+    ]
+  },
+  "SUMX2MY2": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the sum of the difference of squares of corresponding values in two arrays.",
+    "a": ["array_x", "array_y"]
+  },
+  "SUMX2PY2": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the sum of the sum of squares of corresponding values in two arrays.",
+    "a": ["array_x", "array_y"]
+  },
+  "SUMXMY2": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the sum of squares of differences of corresponding values in two arrays.",
+    "a": ["array_x", "array_y"]
+  },
+  "SUMSQ": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the sum of the squares of the arguments.",
     "a": ["number1", "number2*"]
+  },
+  "SWITCH": {
+    "c": "Logical",
+    "d": "Evaluates an expression against a list of values and returns the result corresponding to the first matching value.",
+    "a": ["expression", "value1", "result1", "value2*", "result2*", "default*"]
+  },
+  "T": {
+    "c": "Text",
+    "d": "Converts its arguments to text.",
+    "a": ["value"]
+  },
+  "T.DIST": {
+    "c": "Statistical",
+    "d": "Returns the Student's left-tailed t-distribution.",
+    "a": ["x", "deg_freedom", "cumulative"]
+  },
+  "T.DIST.2T": {
+    "c": "Statistical",
+    "d": "Returns the two-tailed Student's t-distribution.",
+    "a": ["x", "deg_freedom"]
+  },
+  "T.DIST.RT": {
+    "c": "Statistical",
+    "d": "Returns the right-tailed Student's t-distribution.",
+    "a": ["x", "deg_freedom"]
+  },
+  "T.INV": {
+    "c": "Statistical",
+    "d": "Returns the left-tailed inverse of the Student's t-distribution.",
+    "a": ["probability", "deg_freedom"]
+  },
+  "T.INV.2T": {
+    "c": "Statistical",
+    "d": "Returns the two-tailed inverse of the Student's t-distribution.",
+    "a": ["probability", "deg_freedom"]
+  },
+  "T.TEST": {
+    "c": "Statistical",
+    "d": "Returns the probability associated with a Student's t-test.",
+    "a": ["array1", "array2", "tails", "type"]
+  },
+  "TAKE": {
+    "c": "Lookup and Reference",
+    "d": "Returns a specified number of contiguous rows or columns from the start or end of an array.",
+    "a": ["array", "rows", "columns*"]
+  },
+  "TAN": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the tangent of a number.",
+    "a": ["number"]
+  },
+  "TANH": {
+    "c": "Math and Trigonometry",
+    "d": "Returns the hyperbolic tangent of a number.",
+    "a": ["number"]
+  },
+  "TBILLEQ": {
+    "c": "Financial",
+    "d": "Returns the bond-equivalent yield for a Treasury bill.",
+    "a": ["settlement", "maturity", "discount"]
+  },
+  "TBILLPRICE": {
+    "c": "Financial",
+    "d": "Returns the price per $100 face value for a Treasury bill.",
+    "a": ["settlement", "maturity", "discount"]
+  },
+  "TBILLYIELD": {
+    "c": "Financial",
+    "d": "Returns the yield for a Treasury bill.",
+    "a": ["settlement", "maturity", "pr"]
+  },
+  "TEXT": {
+    "c": "Text",
+    "d": "Formats a number and converts it to text.",
+    "a": ["value", "format_text"]
+  },
+  "TEXTAFTER": {
+    "c": "Text",
+    "d": "Returns text that occurs after a given character or string.",
+    "a": [
+      "text",
+      "delimiter",
+      "instance_num*",
+      "match_mode*",
+      "match_end*",
+      "if_not_found*"
+    ]
+  },
+  "TEXTBEFORE": {
+    "c": "Text",
+    "d": "Returns text that occurs before a given character or string.",
+    "a": [
+      "text",
+      "delimiter",
+      "instance_num*",
+      "match_mode*",
+      "match_end*",
+      "if_not_found*"
+    ]
+  },
+  "TEXTJOIN": {
+    "c": "Text",
+    "d": "Combines the text from multiple ranges and/or strings, with a delimiter you specify.",
+    "a": ["delimiter", "ignore_empty", "text1", "text2*"]
+  },
+  "TEXTSPLIT": {
+    "c": "Text",
+    "d": "Splits text strings by using column and row delimiters.",
+    "a": [
+      "text",
+      "col_delimiter",
+      "row_delimiter*",
+      "ignore_empty*",
+      "match_mode*",
+      "pad_with*"
+    ]
+  },
+  "TIME": {
+    "c": "Date and Time",
+    "d": "Returns the serial number of a particular time.",
+    "a": ["hour", "minute", "second"]
+  },
+  "TIMEVALUE": {
+    "c": "Date and Time",
+    "d": "Converts a time in the form of text to a serial number.",
+    "a": ["time_text"]
+  },
+  "TODAY": {
+    "c": "Date and Time",
+    "d": "Returns the serial number of today's date.",
+    "a": []
+  },
+  "TOCOL": {
+    "c": "Lookup and Reference",
+    "d": "Returns the array in a single column.",
+    "a": ["array", "ignore*", "scan_by_column*"]
+  },
+  "TOROW": {
+    "c": "Lookup and Reference",
+    "d": "Returns the array in a single row.",
+    "a": ["array", "ignore*", "scan_by_column*"]
+  },
+  "TRANSPOSE": {
+    "c": "Lookup and Reference",
+    "d": "Returns the transpose of an array.",
+    "a": ["array"]
+  },
+  "TRIM": {
+    "c": "Text",
+    "d": "Removes spaces from text.",
+    "a": ["text"]
+  },
+  "TRIMRANGE": {
+    "c": "Lookup and Reference",
+    "d": "Trims empty rows and columns from the edges of an array.",
+    "a": ["range"]
+  },
+  "TRUE": {
+    "c": "Logical",
+    "d": "Returns the logical value TRUE.",
+    "a": []
+  },
+  "TRUNC": {
+    "c": "Math and Trigonometry",
+    "d": "Truncates a number to an integer.",
+    "a": ["number", "num_digits*"]
+  },
+  "TYPE": {
+    "c": "Information",
+    "d": "Returns a number indicating the data type of a value.",
+    "a": ["value"]
+  },
+  "UNICHAR": {
+    "c": "Text",
+    "d": "Returns the Unicode character that is referenced by the given numeric value.",
+    "a": ["number"]
+  },
+  "UNICODE": {
+    "c": "Text",
+    "d": "Returns the number (code point) of the first character of the text.",
+    "a": ["text"]
+  },
+  "UNIQUE": {
+    "c": "Lookup and Reference",
+    "d": "Returns a list of unique values in a list or range.",
+    "a": ["array", "by_col*", "exactly_once*"]
+  },
+  "UPPER": {
+    "c": "Text",
+    "d": "Converts text to uppercase.",
+    "a": ["text"]
+  },
+  "VALUE": {
+    "c": "Text",
+    "d": "Converts a text argument to a number.",
+    "a": ["text"]
+  },
+  "VALUETOTEXT": {
+    "c": "Text",
+    "d": "Returns text from any specified value.",
+    "a": ["value", "format*"]
+  },
+  "VAR.P": {
+    "c": "Statistical",
+    "d": "Calculates variance based on the entire population.",
+    "a": ["number1", "number2*"]
+  },
+  "VAR.S": {
+    "c": "Statistical",
+    "d": "Estimates variance based on a sample.",
+    "a": ["number1", "number2*"]
+  },
+  "VARA": {
+    "c": "Statistical",
+    "d": "Estimates variance based on a sample, including numbers, text, and logical values.",
+    "a": ["value1", "value2*"]
+  },
+  "VARPA": {
+    "c": "Statistical",
+    "d": "Calculates variance based on the entire population, including numbers, text, and logical values.",
+    "a": ["value1", "value2*"]
+  },
+  "VLOOKUP": {
+    "c": "Lookup and Reference",
+    "d": "Looks in the first column of an array and moves across the row to return the value of a cell.",
+    "a": ["lookup_value", "table_array", "col_index_num", "range_lookup*"]
+  },
+  "VSTACK": {
+    "c": "Lookup and Reference",
+    "d": "Appends arrays vertically and in sequence to return a larger array.",
+    "a": ["array1", "array2*"]
+  },
+  "WEEKDAY": {
+    "c": "Date and Time",
+    "d": "Converts a serial number to a day of the week.",
+    "a": ["serial_number", "return_type*"]
+  },
+  "WEEKNUM": {
+    "c": "Date and Time",
+    "d": "Converts a serial number to a number representing where the week falls numerically with a year.",
+    "a": ["serial_number", "return_type*"]
+  },
+  "WEIBULL.DIST": {
+    "c": "Statistical",
+    "d": "Returns the Weibull distribution.",
+    "a": ["x", "alpha", "beta", "cumulative"]
+  },
+  "WORKDAY": {
+    "c": "Date and Time",
+    "d": "Returns the serial number of the date before or after a specified number of workdays.",
+    "a": ["start_date", "days", "holidays*"]
+  },
+  "WORKDAY.INTL": {
+    "c": "Date and Time",
+    "d": "Returns the serial number of the date before or after a specified number of workdays using parameters to indicate which days are weekend days.",
+    "a": ["start_date", "days", "weekend*", "holidays*"]
+  },
+  "WRAPCOLS": {
+    "c": "Lookup and Reference",
+    "d": "Wraps the provided row or column of values by columns after a specified number of elements.",
+    "a": ["vector", "wrap_count", "pad_with*"]
+  },
+  "WRAPROWS": {
+    "c": "Lookup and Reference",
+    "d": "Wraps the provided row or column of values by rows after a specified number of elements.",
+    "a": ["vector", "wrap_count", "pad_with*"]
+  },
+  "XIRR": {
+    "c": "Financial",
+    "d": "Returns the internal rate of return for a schedule of cash flows that is not necessarily periodic.",
+    "a": ["values", "dates", "guess*"]
+  },
+  "XLOOKUP": {
+    "c": "Lookup and Reference",
+    "d": "Searches a range or an array, and returns an item corresponding to the first match it finds.",
+    "a": [
+      "lookup_value",
+      "lookup_array",
+      "return_array",
+      "if_not_found*",
+      "match_mode*",
+      "search_mode*"
+    ]
+  },
+  "XMATCH": {
+    "c": "Lookup and Reference",
+    "d": "Returns the relative position of an item in an array or range of cells.",
+    "a": ["lookup_value", "lookup_array", "match_mode*", "search_mode*"]
+  },
+  "XNPV": {
+    "c": "Financial",
+    "d": "Returns the net present value for a schedule of cash flows that is not necessarily periodic.",
+    "a": ["rate", "values", "dates"]
+  },
+  "XOR": {
+    "c": "Logical",
+    "d": "Returns a logical Exclusive Or of all arguments.",
+    "a": ["logical1", "logical2*"]
+  },
+  "YEAR": {
+    "c": "Date and Time",
+    "d": "Converts a serial number to a year.",
+    "a": ["serial_number"]
+  },
+  "YEARFRAC": {
+    "c": "Date and Time",
+    "d": "Returns the year fraction representing the number of whole days between start_date and end_date.",
+    "a": ["start_date", "end_date", "basis*"]
+  },
+  "Z.TEST": {
+    "c": "Statistical",
+    "d": "Returns the one-tailed probability-value of a z-test.",
+    "a": ["array", "x", "sigma*"]
   }
 }

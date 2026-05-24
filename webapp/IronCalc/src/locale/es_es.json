@@ -162,6 +162,13 @@
   "formula_bar": {
     "manage_named_ranges": "Gestionar rangos con nombre"
   },
+  "functions": {
+    "filter_all": "Todas las categorías",
+    "no_search_results": "Ninguna función coincide con tu búsqueda.",
+    "read_more": "Leer más",
+    "search_placeholder": "Buscar...",
+    "title": "Funciones"
+  },
   "name_manager_dialog": {
     "add_new_range": "Añadir un nuevo rango",
     "apply": "Aplicar cambios",

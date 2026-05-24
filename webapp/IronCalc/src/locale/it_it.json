@@ -162,6 +162,13 @@
   "formula_bar": {
     "manage_named_ranges": "Gestisci intervalli denominati"
   },
+  "functions": {
+    "filter_all": "Tutte le categorie",
+    "no_search_results": "Nessuna funzione corrisponde alla tua ricerca.",
+    "read_more": "Leggi di più",
+    "search_placeholder": "Cerca...",
+    "title": "Funzioni"
+  },
   "name_manager_dialog": {
     "add_new_range": "Aggiungi nuovo intervallo",
     "apply": "Applica modifiche",

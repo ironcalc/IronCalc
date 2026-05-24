@@ -76,26 +76,21 @@
 
 .ic-functions-list-item--open {
   background-color: var(--palette-grey-50);
+  border-top: 1px solid var(--palette-grey-200);
+  border-bottom: 1px solid var(--palette-grey-200);
 }
 
 .ic-functions-list-item-header {
   display: flex;
   align-items: center;
+  gap: 8px;
+  width: 100%;
   padding: 4px 6px 4px 12px;
   height: 36px;
   box-sizing: border-box;
-}
-
-.ic-functions-list-item-toggle {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
   text-align: left;
   font-size: var(--typography-font-size);
   font-family: var(--typography-font-family);
@@ -125,7 +120,7 @@
   padding: 0 12px 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .ic-functions-detail-description {
@@ -144,6 +139,17 @@
   padding: 8px;
   border-radius: 4px;
   border: 1px solid var(--palette-grey-300);
+}
+
+.ic-functions-read-more {
+  font-size: var(--typography-font-size);
+  color: var(--palette-primary-main);
+  text-decoration: none;
+  width: fit-content;
+}
+
+.ic-functions-read-more:hover {
+  text-decoration: underline;
 }
 
 .ic-functions-empty-state {

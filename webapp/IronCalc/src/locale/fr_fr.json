@@ -162,6 +162,13 @@
   "formula_bar": {
     "manage_named_ranges": "Gérer les plages nommées"
   },
+  "functions": {
+    "filter_all": "Toutes les catégories",
+    "no_search_results": "Aucune fonction ne correspond à votre recherche.",
+    "read_more": "En savoir plus",
+    "search_placeholder": "Rechercher...",
+    "title": "Fonctions"
+  },
   "name_manager_dialog": {
     "add_new_range": "Ajouter une nouvelle plage",
     "apply": "Appliquer les modifications",

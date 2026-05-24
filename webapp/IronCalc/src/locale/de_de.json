@@ -162,6 +162,13 @@
   "formula_bar": {
     "manage_named_ranges": "Benannte Bereiche verwalten"
   },
+  "functions": {
+    "filter_all": "Alle Kategorien",
+    "no_search_results": "Keine Funktionen entsprechen Ihrer Suche.",
+    "read_more": "Mehr lesen",
+    "search_placeholder": "Suchen...",
+    "title": "Funktionen"
+  },
   "name_manager_dialog": {
     "add_new_range": "Neuen Bereich hinzufügen",
     "apply": "Änderungen übernehmen",
