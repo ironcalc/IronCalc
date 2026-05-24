@@ -206,6 +206,20 @@ export function attachOutlineHandle(
       lastUsedRow = r;
     }
 
+    for (let r = rowEnd + 1; r <= lastUsedRow; r += 1) {
+      let isAnyCellNotEmpty = false;
+      for (let c = columnStart; c <= columnEnd; c += 1) {
+        if (worksheet.model.getFormattedCellValue(sheet, r, c) !== "") {
+          isAnyCellNotEmpty = true;
+          break;
+        }
+      }
+      if (isAnyCellNotEmpty) {
+        lastUsedRow = r - 1;
+        break;
+      }
+    }
+
     if (lastUsedRow <= rowEnd) {
       return;
     }
