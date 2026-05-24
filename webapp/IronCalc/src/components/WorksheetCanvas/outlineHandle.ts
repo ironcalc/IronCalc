@@ -219,6 +219,12 @@ export function attachOutlineHandle(
     };
 
     worksheet.model.autoFillRows(area, lastUsedRow);
+    worksheet.model.setSelectedRange(
+      rowStart,
+      columnStart,
+      lastUsedRow,
+      columnEnd,
+    );
     worksheet.renderSheet();
   });
   return cellOutlineHandle;
