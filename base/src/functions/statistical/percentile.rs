@@ -141,11 +141,11 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
 
-        if sorted.is_empty() {
+        if sorted.len() < 2 {
             return CalcResult::new_error(
                 Error::NA,
                 cell,
-                "PERCENTRANK.INC: empty array".to_string(),
+                "PERCENTRANK.INC: array must have at least 2 values".to_string(),
             );
         }
 
