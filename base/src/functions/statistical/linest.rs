@@ -27,7 +27,7 @@ fn solve_system(a: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
                     .partial_cmp(&m[r2][col].abs())
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .unwrap();
+            .unwrap_or(col);
         m.swap(col, pivot_row);
 
         let pivot = m[col][col];
@@ -75,7 +75,7 @@ fn invert_matrix(a: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
                     .partial_cmp(&m[r2][col].abs())
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .unwrap();
+            .unwrap_or(col);
         m.swap(col, pivot_row);
 
         let pivot = m[col][col];
