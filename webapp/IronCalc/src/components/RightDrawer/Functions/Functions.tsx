@@ -8,18 +8,20 @@ import { Tooltip } from "../../Tooltip/Tooltip";
 import functionsDb from "./functions-db.json";
 import "./functions.css";
 
-type FunctionEntry = {
-  c: string;
-  d: string;
-  a: string[];
-};
+type FunctionsDb = Record<string, Record<string, [string, string[]]>>;
 
-const DB = functionsDb as Record<string, FunctionEntry>;
-const FUNCTIONS = Object.keys(DB).sort();
-const CATEGORIES = [
-  "[all]",
-  ...Array.from(new Set(FUNCTIONS.map((name) => DB[name].c))).sort(),
-];
+const DB = functionsDb as unknown as FunctionsDb;
+
+const CATEGORIES = ["[all]", ...Object.keys(DB).sort()];
+
+type FlatEntry = { category: string; d: string; a: string[] };
+const ENTRIES: Record<string, FlatEntry> = {};
+for (const [category, fns] of Object.entries(DB)) {
+  for (const [name, [d, a]] of Object.entries(fns)) {
+    ENTRIES[name] = { category, d, a };
+  }
+}
+const FUNCTIONS = Object.keys(ENTRIES).sort();
 
 const buildSyntax = (name: string, args: string[]): string => {
   const formatted = args.map((a) =>
@@ -29,7 +31,7 @@ const buildSyntax = (name: string, args: string[]): string => {
 };
 
 const buildDocsUrl = (name: string): string => {
-  const category = DB[name].c.toLowerCase().replace(/ /g, "_");
+  const category = ENTRIES[name].category.toLowerCase().replace(/ /g, "_");
   return `https://docs.ironcalc.com/functions/${category}/${name.toLowerCase()}.html`;
 };
 
@@ -44,7 +46,10 @@ const Functions = ({ onClose }: FunctionsProps) => {
   const [expandedName, setExpandedName] = useState<string | null>(null);
 
   const filteredFunctions = FUNCTIONS.filter((name) => {
-    if (categoryFilter !== "[all]" && DB[name].c !== categoryFilter) {
+    if (
+      categoryFilter !== "[all]" &&
+      ENTRIES[name].category !== categoryFilter
+    ) {
       return false;
     }
     return name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -56,7 +61,7 @@ const Functions = ({ onClose }: FunctionsProps) => {
   }));
 
   const renderItem = (name: string) => {
-    const entry = DB[name];
+    const entry = ENTRIES[name];
     const isOpen = expandedName === name;
     return (
       <div
@@ -72,7 +77,11 @@ const Functions = ({ onClose }: FunctionsProps) => {
         </button>
         {isOpen && (
           <div className="ic-functions-detail">
-            <div className="ic-functions-detail-description">{entry.d}</div>
+            <div className="ic-functions-detail-description">
+              {entry.d.split("\n").map((para) => (
+                <p key={para}>{para}</p>
+              ))}
+            </div>
             <div className="ic-functions-detail-syntax">
               {buildSyntax(name, entry.a)}
             </div>

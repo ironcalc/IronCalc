@@ -1,2055 +1,1670 @@
 {
-  "ABS": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the absolute value of a number.",
-    "a": ["number"]
-  },
-  "ACCRINT": {
-    "c": "Financial",
-    "d": "Returns the accrued interest for a security that pays periodic interest.",
-    "a": ["id", "fid", "sd", "rate", "par", "freq", "basis*", "calc*"]
-  },
-  "ACCRINTM": {
-    "c": "Financial",
-    "d": "Returns the accrued interest for a security that pays interest at maturity.",
-    "a": ["id", "sd", "rate", "par", "basis*"]
-  },
-  "ACOS": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the arccosine of a number, in radians.",
-    "a": ["number"]
-  },
-  "ACOSH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the inverse hyperbolic cosine of a number.",
-    "a": ["number"]
-  },
-  "ACOT": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the arccotangent of a number, in radians.",
-    "a": ["number"]
-  },
-  "ACOTH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the inverse hyperbolic cotangent of a number.",
-    "a": ["number"]
-  },
-  "ADDRESS": {
-    "c": "Lookup and Reference",
-    "d": "Returns a cell address as text, given row and column numbers.",
-    "a": ["row", "col", "abs*", "a1*", "sheet*"]
-  },
-  "AGGREGATE": {
-    "c": "Math and Trigonometry",
-    "d": "Returns an aggregate calculation (sum, average, etc.) while ignoring errors or hidden rows.",
-    "a": ["fn", "opts", "ref1", "ref2*"]
-  },
-  "AND": {
-    "c": "Logical",
-    "d": "Returns TRUE if all arguments are TRUE.",
-    "a": ["logical1", "logical2*"]
-  },
-  "ARABIC": {
-    "c": "Math and Trigonometry",
-    "d": "Converts a Roman numeral to an Arabic numeral.",
-    "a": ["text"]
-  },
-  "AREAS": {
-    "c": "Lookup and Reference",
-    "d": "Returns the number of areas in a reference.",
-    "a": ["reference"]
-  },
-  "ARRAYTOTEXT": {
-    "c": "Text",
-    "d": "Returns an array of text values from any specified range.",
-    "a": ["array", "format*"]
-  },
-  "ASC": {
-    "c": "Text",
-    "d": "Converts full-width characters to half-width characters.",
-    "a": ["text"]
-  },
-  "ASIN": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the arcsine of a number, in radians.",
-    "a": ["number"]
-  },
-  "ASINH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the inverse hyperbolic sine of a number.",
-    "a": ["number"]
-  },
-  "ATAN": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the arctangent of a number, in radians.",
-    "a": ["number"]
-  },
-  "ATAN2": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the arctangent from x- and y-coordinates.",
-    "a": ["x_num", "y_num"]
-  },
-  "ATANH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the inverse hyperbolic tangent of a number.",
-    "a": ["number"]
-  },
-  "AVEDEV": {
-    "c": "Statistical",
-    "d": "Returns the average of the absolute deviations of data points from their mean.",
-    "a": ["number1", "number2*"]
-  },
-  "AVERAGE": {
-    "c": "Statistical",
-    "d": "Returns the average (arithmetic mean) of its arguments.",
-    "a": ["number1", "number2*"]
-  },
-  "AVERAGEA": {
-    "c": "Statistical",
-    "d": "Returns the average of its arguments, including numbers, text, and logical values.",
-    "a": ["value1", "value2*"]
-  },
-  "AVERAGEIF": {
-    "c": "Statistical",
-    "d": "Returns the average of all cells in a range that meet a given criteria.",
-    "a": ["range", "criteria", "average_range*"]
-  },
-  "AVERAGEIFS": {
-    "c": "Statistical",
-    "d": "Returns the average of all cells that meet multiple criteria.",
-    "a": [
-      "average_range",
-      "criteria_range1",
-      "criteria1",
-      "criteria_range2*",
-      "criteria2*"
+  "Database": {
+    "DAVERAGE": [
+      "Calculates the average of values in a column of a list or database that match a specified condition. Use it when you need a conditional average across a structured table - for example, the average sales for a particular region. You provide the full table range, a field name or column number, and a small criteria range that defines your filter.\n\nExample: =DAVERAGE(A1:D100, \"Sales\", F1:F2) returns the average sales where the criteria in F1:F2 are met.",
+      ["database", "field", "criteria"]
+    ],
+    "DCOUNT": [
+      "Counts the cells containing numbers in a database column that match a set of conditions. Use it to tally how many numeric records exist in a filtered dataset - for instance, how many employees in a department have a recorded salary.\n\nExample: =DCOUNT(A1:D50, \"Salary\", G1:G2) counts rows with numeric salaries matching your criteria.",
+      ["database", "field", "criteria"]
+    ],
+    "DCOUNTA": [
+      "Counts all non-empty cells in a database column that match the criteria - including text entries. Use it instead of DCOUNT when the column you're counting contains text, such as names or status codes.\n\nExample: =DCOUNTA(A1:D50, \"Name\", G1:G2) counts all non-blank name entries matching your filter.",
+      ["database", "field", "criteria"]
+    ],
+    "DGET": [
+      "Retrieves a single value from a database column that matches the specified criteria, returning an error if more than one row matches. Use it as a precise single-record lookup when you expect exactly one result.\n\nExample: =DGET(A1:D50, \"Phone\", G1:G2) returns the phone number of the one employee matching your criteria.",
+      ["database", "field", "criteria"]
+    ],
+    "DMAX": [
+      "Returns the largest value in a database column that meets the given criteria. Use it to find the highest figure in a filtered subset - for example, the maximum sale amount for a specific product category.\n\nExample: =DMAX(A1:D100, \"Amount\", F1:F2) returns the largest matching sale.",
+      ["database", "field", "criteria"]
+    ],
+    "DMIN": [
+      "Returns the smallest value in a database column that meets the given criteria. Use it to find the lowest recorded value in a filtered set - the counterpart of DMAX.\n\nExample: =DMIN(A1:D100, \"Amount\", F1:F2) returns the smallest matching sale.",
+      ["database", "field", "criteria"]
+    ],
+    "DPRODUCT": [
+      "Multiplies all values in a database column that match the criteria and returns the result. Use it when you need a running product over a filtered subset of numbers - a rare but occasionally necessary calculation in scientific or financial models.\n\nExample: =DPRODUCT(A1:D20, \"Factor\", G1:G2) multiplies all factor values that match the conditions.",
+      ["database", "field", "criteria"]
+    ],
+    "DSTDEV": [
+      "Estimates the standard deviation of values in a database column matching the criteria, treating the matching rows as a sample. Use it to measure the spread of a filtered subset of data.\n\nExample: =DSTDEV(A1:D100, \"Score\", F1:F2) estimates the variability of scores in the matched group.",
+      ["database", "field*", "..."]
+    ],
+    "DSTDEVP": [
+      "Like DSTDEV, but treats the filtered rows as the entire population rather than a sample. Use it when the matching records represent the complete group, not just a portion of it.\n\nExample: =DSTDEVP(A1:D100, \"Score\", F1:F2).",
+      ["database", "field*", "..."]
+    ],
+    "DSUM": [
+      "Adds up all values in a database column that match the specified criteria. A classic use case is totaling sales for a particular product or region within a larger table.\n\nExample: =DSUM(A1:D100, \"Revenue\", F1:F2) sums all revenue rows where the criteria are met.",
+      ["database", "field", "criteria"]
+    ],
+    "DVAR": [
+      "Estimates the variance of values in a database column matching the criteria, treating the result as a sample. Variance measures how spread out values are; DVAR gives you that for a filtered subset.\n\nExample: =DVAR(A1:D100, \"Score\", G1:G2).",
+      ["database", "field*", "..."]
+    ],
+    "DVARP": [
+      "Like DVAR, but assumes the matched records represent the whole population rather than a sample. Use it when your filter captures every relevant record.\n\nExample: =DVARP(A1:D100, \"Score\", G1:G2).",
+      ["database", "field*", "..."]
     ]
   },
-  "BASE": {
-    "c": "Math and Trigonometry",
-    "d": "Converts a number into a text representation with the given base.",
-    "a": ["number", "base", "min_length*"]
-  },
-  "BESSELI": {
-    "c": "Engineering",
-    "d": "Returns the modified Bessel function In(x).",
-    "a": ["x", "n"]
-  },
-  "BESSELJ": {
-    "c": "Engineering",
-    "d": "Returns the Bessel function Jn(x).",
-    "a": ["x", "n"]
-  },
-  "BESSELK": {
-    "c": "Engineering",
-    "d": "Returns the modified Bessel function Kn(x).",
-    "a": ["x", "n"]
-  },
-  "BESSELY": {
-    "c": "Engineering",
-    "d": "Returns the Bessel function Yn(x).",
-    "a": ["x", "n"]
-  },
-  "BETA.DIST": {
-    "c": "Statistical",
-    "d": "Returns the beta cumulative distribution function.",
-    "a": ["x", "alpha", "beta", "cumulative", "A*", "B*"]
-  },
-  "BETA.INV": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the cumulative distribution function for a specified beta distribution.",
-    "a": ["probability", "alpha", "beta", "A*", "B*"]
-  },
-  "BIN2DEC": {
-    "c": "Engineering",
-    "d": "Converts a binary number to decimal.",
-    "a": ["number"]
-  },
-  "BIN2HEX": {
-    "c": "Engineering",
-    "d": "Converts a binary number to hexadecimal.",
-    "a": ["number", "places*"]
-  },
-  "BIN2OCT": {
-    "c": "Engineering",
-    "d": "Converts a binary number to octal.",
-    "a": ["number", "places*"]
-  },
-  "BINOM.DIST": {
-    "c": "Statistical",
-    "d": "Returns the individual term binomial distribution probability.",
-    "a": ["number_s", "trials", "probability_s", "cumulative"]
-  },
-  "BINOM.DIST.RANGE": {
-    "c": "Statistical",
-    "d": "Returns the probability of a trial result using a binomial distribution.",
-    "a": ["trials", "probability_s", "number_s", "number_s2*"]
-  },
-  "BINOM.INV": {
-    "c": "Statistical",
-    "d": "Returns the smallest value for which the cumulative binomial distribution is less than or equal to a criterion value.",
-    "a": ["trials", "probability_s", "alpha"]
-  },
-  "BITAND": {
-    "c": "Engineering",
-    "d": "Returns a bitwise AND of two numbers.",
-    "a": ["number1", "number2"]
-  },
-  "BITLSHIFT": {
-    "c": "Engineering",
-    "d": "Returns a number shifted left by shift_amount bits.",
-    "a": ["number", "shift_amount"]
-  },
-  "BITOR": {
-    "c": "Engineering",
-    "d": "Returns a bitwise OR of two numbers.",
-    "a": ["number1", "number2"]
-  },
-  "BITRSHIFT": {
-    "c": "Engineering",
-    "d": "Returns a number shifted right by shift_amount bits.",
-    "a": ["number", "shift_amount"]
-  },
-  "BITXOR": {
-    "c": "Engineering",
-    "d": "Returns a bitwise XOR of two numbers.",
-    "a": ["number1", "number2"]
-  },
-  "BYCOL": {
-    "c": "Logical",
-    "d": "Applies a LAMBDA to each column and returns an array of the results.",
-    "a": ["array", "lambda"]
-  },
-  "BYROW": {
-    "c": "Logical",
-    "d": "Applies a LAMBDA to each row and returns an array of the results.",
-    "a": ["array", "lambda"]
-  },
-  "CEILING": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number up to the nearest integer or nearest multiple of significance.",
-    "a": ["number", "significance"]
-  },
-  "CEILING.MATH": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number up to the nearest integer or to the nearest multiple of significance.",
-    "a": ["number", "significance*", "mode*"]
-  },
-  "CEILING.PRECISE": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number up to the nearest integer or to the nearest multiple of significance.",
-    "a": ["number", "significance*"]
-  },
-  "CELL": {
-    "c": "Information",
-    "d": "Returns information about the formatting, location, or contents of a cell.",
-    "a": ["info_type", "reference*"]
-  },
-  "CHAR": {
-    "c": "Text",
-    "d": "Returns the character specified by the code number.",
-    "a": ["number"]
-  },
-  "CHISQ.DIST": {
-    "c": "Statistical",
-    "d": "Returns the cumulative chi-squared distribution.",
-    "a": ["x", "deg_freedom", "cumulative"]
-  },
-  "CHISQ.DIST.RT": {
-    "c": "Statistical",
-    "d": "Returns the one-tailed probability of the chi-squared distribution.",
-    "a": ["x", "deg_freedom"]
-  },
-  "CHISQ.INV": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the left-tailed probability of the chi-squared distribution.",
-    "a": ["probability", "deg_freedom"]
-  },
-  "CHISQ.INV.RT": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the one-tailed probability of the chi-squared distribution.",
-    "a": ["probability", "deg_freedom"]
-  },
-  "CHISQ.TEST": {
-    "c": "Statistical",
-    "d": "Returns the test for independence.",
-    "a": ["actual_range", "expected_range"]
-  },
-  "CHOOSE": {
-    "c": "Lookup and Reference",
-    "d": "Chooses a value from a list of values.",
-    "a": ["index_num", "value1", "value2*"]
-  },
-  "CHOOSECOLS": {
-    "c": "Lookup and Reference",
-    "d": "Returns the specified columns from an array.",
-    "a": ["array", "col_num1", "col_num2*"]
-  },
-  "CHOOSEROWS": {
-    "c": "Lookup and Reference",
-    "d": "Returns the specified rows from an array.",
-    "a": ["array", "row_num1", "row_num2*"]
-  },
-  "CLEAN": {
-    "c": "Text",
-    "d": "Removes all nonprintable characters from text.",
-    "a": ["text"]
-  },
-  "CODE": {
-    "c": "Text",
-    "d": "Returns a numeric code for the first character in a text string.",
-    "a": ["text"]
-  },
-  "COLUMN": {
-    "c": "Lookup and Reference",
-    "d": "Returns the column number of a reference.",
-    "a": ["reference*"]
-  },
-  "COLUMNS": {
-    "c": "Lookup and Reference",
-    "d": "Returns the number of columns in a reference.",
-    "a": ["array"]
-  },
-  "COMBIN": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the number of combinations for a given number of objects.",
-    "a": ["number", "number_chosen"]
-  },
-  "COMBINA": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the number of combinations with repetitions for a given number of items.",
-    "a": ["number", "number_chosen"]
-  },
-  "COMPLEX": {
-    "c": "Engineering",
-    "d": "Converts real and imaginary coefficients into a complex number.",
-    "a": ["real_num", "i_num", "suffix*"]
-  },
-  "CONCAT": {
-    "c": "Text",
-    "d": "Joins several text strings into one text string.",
-    "a": ["text1", "text2*"]
-  },
-  "CONCATENATE": {
-    "c": "Text",
-    "d": "Joins several text strings into one text string.",
-    "a": ["text1", "text2*"]
-  },
-  "CONFIDENCE.NORM": {
-    "c": "Statistical",
-    "d": "Returns the confidence interval for a population mean, using a normal distribution.",
-    "a": ["alpha", "standard_dev", "size"]
-  },
-  "CONFIDENCE.T": {
-    "c": "Statistical",
-    "d": "Returns the confidence interval for a population mean, using a Student's t distribution.",
-    "a": ["alpha", "standard_dev", "size"]
-  },
-  "CONVERT": {
-    "c": "Engineering",
-    "d": "Converts a number from one measurement system to another.",
-    "a": ["number", "from_unit", "to_unit"]
-  },
-  "CORREL": {
-    "c": "Statistical",
-    "d": "Returns the correlation coefficient between two data sets.",
-    "a": ["array1", "array2"]
-  },
-  "COS": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the cosine of a number.",
-    "a": ["number"]
-  },
-  "COSH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the hyperbolic cosine of a number.",
-    "a": ["number"]
-  },
-  "COT": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the cotangent of an angle.",
-    "a": ["number"]
-  },
-  "COTH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the hyperbolic cotangent of a number.",
-    "a": ["number"]
-  },
-  "COUNT": {
-    "c": "Statistical",
-    "d": "Counts the cells in a range that contain numbers.",
-    "a": ["value1", "value2*"]
-  },
-  "COUNTA": {
-    "c": "Statistical",
-    "d": "Counts the number of cells in a range that are not empty.",
-    "a": ["value1", "value2*"]
-  },
-  "COUNTBLANK": {
-    "c": "Statistical",
-    "d": "Counts the number of empty cells in a range.",
-    "a": ["range"]
-  },
-  "COUNTIF": {
-    "c": "Statistical",
-    "d": "Counts the number of cells in a range that meet a given condition.",
-    "a": ["range", "criteria"]
-  },
-  "COUNTIFS": {
-    "c": "Statistical",
-    "d": "Counts the number of cells in multiple ranges that meet multiple criteria.",
-    "a": ["criteria_range1", "criteria1", "criteria_range2*", "criteria2*"]
-  },
-  "COVARIANCE.P": {
-    "c": "Statistical",
-    "d": "Returns population covariance, the average of the products of deviations for each data point pair.",
-    "a": ["array1", "array2"]
-  },
-  "COVARIANCE.S": {
-    "c": "Statistical",
-    "d": "Returns the sample covariance, the average of the products of deviations for each data point pair.",
-    "a": ["array1", "array2"]
-  },
-  "CSC": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the cosecant of an angle.",
-    "a": ["number"]
-  },
-  "CSCH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the hyperbolic cosecant of an angle.",
-    "a": ["number"]
-  },
-  "CUMIPMT": {
-    "c": "Financial",
-    "d": "Returns the cumulative interest paid between two periods.",
-    "a": ["rate", "nper", "pv", "start_period", "end_period", "type"]
-  },
-  "CUMPRINC": {
-    "c": "Financial",
-    "d": "Returns the cumulative principal paid on a loan between two periods.",
-    "a": ["rate", "nper", "pv", "start_period", "end_period", "type"]
-  },
-  "DATE": {
-    "c": "Date and Time",
-    "d": "Returns the serial number of a particular date.",
-    "a": ["year", "month", "day"]
-  },
-  "DATEDIF": {
-    "c": "Date and Time",
-    "d": "Calculates the number of days, months, or years between two dates.",
-    "a": ["start_date", "end_date", "unit"]
-  },
-  "DATEVALUE": {
-    "c": "Date and Time",
-    "d": "Converts a date in the form of text to a serial number.",
-    "a": ["date_text"]
-  },
-  "DAVERAGE": {
-    "c": "Database",
-    "d": "Returns the average of selected database entries.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DAY": {
-    "c": "Date and Time",
-    "d": "Converts a serial number to a day of the month.",
-    "a": ["serial_number"]
-  },
-  "DAYS": {
-    "c": "Date and Time",
-    "d": "Returns the number of days between two dates.",
-    "a": ["end_date", "start_date"]
-  },
-  "DAYS360": {
-    "c": "Date and Time",
-    "d": "Calculates the number of days between two dates based on a 360-day year.",
-    "a": ["start_date", "end_date", "method*"]
-  },
-  "DB": {
-    "c": "Financial",
-    "d": "Returns the depreciation of an asset for a specified period using the fixed-declining balance method.",
-    "a": ["cost", "salvage", "life", "period", "month*"]
-  },
-  "DCOUNT": {
-    "c": "Database",
-    "d": "Counts the cells that contain numbers in a database.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DCOUNTA": {
-    "c": "Database",
-    "d": "Counts non-empty cells in a database.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DDB": {
-    "c": "Financial",
-    "d": "Returns the depreciation of an asset for a specified period using the double-declining balance method.",
-    "a": ["cost", "salvage", "life", "period", "factor*"]
-  },
-  "DEC2BIN": {
-    "c": "Engineering",
-    "d": "Converts a decimal number to binary.",
-    "a": ["number", "places*"]
-  },
-  "DEC2HEX": {
-    "c": "Engineering",
-    "d": "Converts a decimal number to hexadecimal.",
-    "a": ["number", "places*"]
-  },
-  "DEC2OCT": {
-    "c": "Engineering",
-    "d": "Converts a decimal number to octal.",
-    "a": ["number", "places*"]
-  },
-  "DECIMAL": {
-    "c": "Math and Trigonometry",
-    "d": "Converts a text representation of a number in a given base into a decimal number.",
-    "a": ["text", "base"]
-  },
-  "DEGREES": {
-    "c": "Math and Trigonometry",
-    "d": "Converts radians to degrees.",
-    "a": ["angle"]
-  },
-  "DELTA": {
-    "c": "Engineering",
-    "d": "Tests whether two values are equal.",
-    "a": ["number1", "number2*"]
-  },
-  "DEVSQ": {
-    "c": "Statistical",
-    "d": "Returns the sum of squares of deviations.",
-    "a": ["number1", "number2*"]
-  },
-  "DGET": {
-    "c": "Database",
-    "d": "Extracts from a database a single record that matches the specified criteria.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DMAX": {
-    "c": "Database",
-    "d": "Returns the maximum value from selected database entries.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DMIN": {
-    "c": "Database",
-    "d": "Returns the minimum value from selected database entries.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DOLLAR": {
-    "c": "Text",
-    "d": "Converts a number to text using the dollar currency format.",
-    "a": ["number", "decimals*"]
-  },
-  "DOLLARDE": {
-    "c": "Financial",
-    "d": "Converts a dollar price expressed as a fraction into a decimal number.",
-    "a": ["fractional_dollar", "fraction"]
-  },
-  "DOLLARFR": {
-    "c": "Financial",
-    "d": "Converts a dollar price expressed as a decimal number into a fraction.",
-    "a": ["decimal_dollar", "fraction"]
-  },
-  "DPRODUCT": {
-    "c": "Database",
-    "d": "Multiplies the values in a field of records in a database that match the criteria.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DROP": {
-    "c": "Lookup and Reference",
-    "d": "Excludes a specified number of rows or columns from the start or end of an array.",
-    "a": ["array", "rows", "columns*"]
-  },
-  "DSTDEV": {
-    "c": "Database",
-    "d": "Estimates the standard deviation based on a sample of selected database entries.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DSTDEVP": {
-    "c": "Database",
-    "d": "Calculates the standard deviation based on the entire population of selected database entries.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DSUM": {
-    "c": "Database",
-    "d": "Adds the numbers in the field column of records in the database that match the criteria.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DVAR": {
-    "c": "Database",
-    "d": "Estimates variance based on a sample from selected database entries.",
-    "a": ["database", "field", "criteria"]
-  },
-  "DVARP": {
-    "c": "Database",
-    "d": "Calculates variance based on the entire population of selected database entries.",
-    "a": ["database", "field", "criteria"]
-  },
-  "EDATE": {
-    "c": "Date and Time",
-    "d": "Returns the serial number of the date that is the indicated number of months before or after the start date.",
-    "a": ["start_date", "months"]
-  },
-  "EFFECT": {
-    "c": "Financial",
-    "d": "Returns the effective annual interest rate.",
-    "a": ["nominal_rate", "npery"]
-  },
-  "EOMONTH": {
-    "c": "Date and Time",
-    "d": "Returns the serial number of the last day of the month before or after a specified number of months.",
-    "a": ["start_date", "months"]
-  },
-  "ERF": {
-    "c": "Engineering",
-    "d": "Returns the error function.",
-    "a": ["lower_limit", "upper_limit*"]
-  },
-  "ERF.PRECISE": {
-    "c": "Engineering",
-    "d": "Returns the error function.",
-    "a": ["x"]
-  },
-  "ERFC": {
-    "c": "Engineering",
-    "d": "Returns the complementary error function.",
-    "a": ["x"]
-  },
-  "ERFC.PRECISE": {
-    "c": "Engineering",
-    "d": "Returns the complementary error function.",
-    "a": ["x"]
-  },
-  "ERROR.TYPE": {
-    "c": "Information",
-    "d": "Returns a number corresponding to one of the error values.",
-    "a": ["error_val"]
-  },
-  "EVEN": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number up to the nearest even integer.",
-    "a": ["number"]
-  },
-  "EXACT": {
-    "c": "Text",
-    "d": "Checks to see if two text values are identical.",
-    "a": ["text1", "text2"]
-  },
-  "EXP": {
-    "c": "Math and Trigonometry",
-    "d": "Returns e raised to the power of a given number.",
-    "a": ["number"]
-  },
-  "EXPAND": {
-    "c": "Lookup and Reference",
-    "d": "Expands or pads an array to specified row and column dimensions.",
-    "a": ["array", "rows", "columns*", "pad_with*"]
-  },
-  "EXPON.DIST": {
-    "c": "Statistical",
-    "d": "Returns the exponential distribution.",
-    "a": ["x", "lambda", "cumulative"]
-  },
-  "F.DIST": {
-    "c": "Statistical",
-    "d": "Returns the F probability distribution.",
-    "a": ["x", "deg_freedom1", "deg_freedom2", "cumulative"]
-  },
-  "F.DIST.RT": {
-    "c": "Statistical",
-    "d": "Returns the right-tailed F probability distribution.",
-    "a": ["x", "deg_freedom1", "deg_freedom2"]
-  },
-  "F.INV": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the F probability distribution.",
-    "a": ["probability", "deg_freedom1", "deg_freedom2"]
-  },
-  "F.INV.RT": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the right-tailed F probability distribution.",
-    "a": ["probability", "deg_freedom1", "deg_freedom2"]
-  },
-  "F.TEST": {
-    "c": "Statistical",
-    "d": "Returns the result of an F-test.",
-    "a": ["array1", "array2"]
-  },
-  "FACT": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the factorial of a number.",
-    "a": ["number"]
-  },
-  "FACTDOUBLE": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the double factorial of a number.",
-    "a": ["number"]
-  },
-  "FALSE": {
-    "c": "Logical",
-    "d": "Returns the logical value FALSE.",
-    "a": []
-  },
-  "FILTER": {
-    "c": "Lookup and Reference",
-    "d": "Filters a range of data based on criteria you define.",
-    "a": ["array", "include", "if_empty*"]
-  },
-  "FIND": {
-    "c": "Text",
-    "d": "Finds one text string within another (case-sensitive).",
-    "a": ["find_text", "within_text", "start_num*"]
-  },
-  "FINDB": {
-    "c": "Text",
-    "d": "Finds one text string within another (case-sensitive, byte-based).",
-    "a": ["find_text", "within_text", "start_num*"]
-  },
-  "FISHER": {
-    "c": "Statistical",
-    "d": "Returns the Fisher transformation.",
-    "a": ["x"]
-  },
-  "FISHERINV": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the Fisher transformation.",
-    "a": ["y"]
-  },
-  "FIXED": {
-    "c": "Text",
-    "d": "Formats a number as text with a fixed number of decimals.",
-    "a": ["number", "decimals*", "no_commas*"]
-  },
-  "FLOOR": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number down, toward zero.",
-    "a": ["number", "significance"]
-  },
-  "FLOOR.MATH": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number down to the nearest integer or to the nearest multiple of significance.",
-    "a": ["number", "significance*", "mode*"]
-  },
-  "FLOOR.PRECISE": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number down to the nearest integer or to the nearest multiple of significance.",
-    "a": ["number", "significance*"]
-  },
-  "FORMULATEXT": {
-    "c": "Information",
-    "d": "Returns the formula at the given reference as text.",
-    "a": ["reference"]
-  },
-  "FV": {
-    "c": "Financial",
-    "d": "Returns the future value of an investment.",
-    "a": ["rate", "nper", "pmt", "pv*", "type*"]
-  },
-  "GAMMA": {
-    "c": "Statistical",
-    "d": "Returns the Gamma function value.",
-    "a": ["number"]
-  },
-  "GAMMA.DIST": {
-    "c": "Statistical",
-    "d": "Returns the gamma distribution.",
-    "a": ["x", "alpha", "beta", "cumulative"]
-  },
-  "GAMMA.INV": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the gamma cumulative distribution.",
-    "a": ["probability", "alpha", "beta"]
-  },
-  "GAMMALN": {
-    "c": "Statistical",
-    "d": "Returns the natural logarithm of the gamma function.",
-    "a": ["x"]
-  },
-  "GAMMALN.PRECISE": {
-    "c": "Statistical",
-    "d": "Returns the natural logarithm of the gamma function.",
-    "a": ["x"]
-  },
-  "GAUSS": {
-    "c": "Statistical",
-    "d": "Returns 0.5 less than the standard normal cumulative distribution.",
-    "a": ["z"]
-  },
-  "GCD": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the greatest common divisor.",
-    "a": ["number1", "number2*"]
-  },
-  "GEOMEAN": {
-    "c": "Statistical",
-    "d": "Returns the geometric mean.",
-    "a": ["number1", "number2*"]
-  },
-  "GESTEP": {
-    "c": "Engineering",
-    "d": "Tests whether a number is greater than a threshold value.",
-    "a": ["number", "step*"]
-  },
-  "HARMEAN": {
-    "c": "Statistical",
-    "d": "Returns the harmonic mean.",
-    "a": ["number1", "number2*"]
-  },
-  "HEX2BIN": {
-    "c": "Engineering",
-    "d": "Converts a hexadecimal number to binary.",
-    "a": ["number", "places*"]
-  },
-  "HEX2DEC": {
-    "c": "Engineering",
-    "d": "Converts a hexadecimal number to decimal.",
-    "a": ["number"]
-  },
-  "HEX2OCT": {
-    "c": "Engineering",
-    "d": "Converts a hexadecimal number to octal.",
-    "a": ["number", "places*"]
-  },
-  "HLOOKUP": {
-    "c": "Lookup and Reference",
-    "d": "Looks for a value in the top row of a table and returns the value in the same column from a row you specify.",
-    "a": ["lookup_value", "table_array", "row_index_num", "range_lookup*"]
-  },
-  "HOUR": {
-    "c": "Date and Time",
-    "d": "Converts a serial number to an hour.",
-    "a": ["serial_number"]
-  },
-  "HSTACK": {
-    "c": "Lookup and Reference",
-    "d": "Appends arrays horizontally and in sequence to return a larger array.",
-    "a": ["array1", "array2*"]
-  },
-  "HYPGEOM.DIST": {
-    "c": "Statistical",
-    "d": "Returns the hypergeometric distribution.",
-    "a": [
-      "sample_s",
-      "number_sample",
-      "population_s",
-      "number_pop",
-      "cumulative"
+  "Date and Time": {
+    "DATE": [
+      "Creates a proper date value from separate year, month, and day numbers. Use it when you need to assemble a date from components stored in different cells - for instance, building a due date from a year column, a month column, and a day column.\n\nExample: =DATE(2025, 12, 31) returns December 31, 2025.",
+      ["year", "month*", "..."]
+    ],
+    "DATEDIF": [
+      "Calculates the difference between two dates in the unit you specify - years, months, or days. Use it most often to calculate someone's age in complete years, or the number of complete months between two events.\n\nExample: =DATEDIF(B2, TODAY(), \"Y\") returns a person's age in whole years.",
+      ["start_date", "end_date", "unit"]
+    ],
+    "DATEVALUE": [
+      "Converts a date stored as text (such as \"January 15, 2025\") into a numeric date serial that Excel can sort and calculate with. Use it when importing data where dates arrived as text strings.\n\nExample: =DATEVALUE(\"2025-01-15\") returns the serial number for that date.",
+      ["date_text"]
+    ],
+    "DAY": [
+      "Extracts the day of the month (1–31) from a date value. Use it to isolate the day component - for example, to check whether a transaction occurred in the first or second half of the month.\n\nExample: =DAY(A2) returns 15 if A2 contains January 15, 2025.",
+      ["date"]
+    ],
+    "DAYS": [
+      "Returns the number of days between two dates. Use it for simple deadline calculations or duration tracking - it's just a more readable way to subtract two dates.\n\nExample: =DAYS(B2, A2) returns how many days elapsed between the date in A2 and the date in B2.",
+      ["end_date", "start_date"]
+    ],
+    "DAYS360": [
+      "Calculates the number of days between two dates using a 360-day year (twelve 30-day months). Use it for financial calculations - such as interest accrual - that follow a 30/360 day-count convention.\n\nExample: =DAYS360(A2, B2) returns the day count under the 30/360 assumption.",
+      ["start_date", "end_date", "method*"]
+    ],
+    "EDATE": [
+      "Returns the date that is a specified number of months before or after a start date, landing on the same day of the month. Use it to calculate subscription renewals, installment due dates, or contract end dates.\n\nExample: =EDATE(A2, 6) returns the date six months after the date in A2.",
+      ["start_date", "..."]
+    ],
+    "EOMONTH": [
+      "Returns the last day of the month a given number of months before or after a start date. Use it to generate month-end reporting dates or to find when a monthly period closes.\n\nExample: =EOMONTH(A2, 0) returns the last day of the month containing A2; =EOMONTH(A2, 1) returns the last day of the following month.",
+      ["start_date", "..."]
+    ],
+    "HOUR": [
+      "Extracts the hour component (0–23) from a time value. Use it to group transactions by time of day or to filter records to a specific hour.\n\nExample: =HOUR(A2) returns 14 if A2 contains 2:45 PM.",
+      ["serial_number"]
+    ],
+    "ISOWEEKNUM": [
+      "Returns the ISO week number (1–53) of a given date, following the international standard where weeks start on Monday and week 1 contains the year's first Thursday. Use it for scheduling in industries that track work by ISO week numbers.\n\nExample: =ISOWEEKNUM(DATE(2025,1,1)) returns 1.",
+      ["date"]
+    ],
+    "MINUTE": [
+      "Extracts the minute component (0–59) from a time value. Use it whenever you need the minute portion of a timestamp - for instance, to check whether a meeting started on time.\n\nExample: =MINUTE(A2) returns 30 if A2 contains 9:30 AM.",
+      ["serial_number"]
+    ],
+    "MONTH": [
+      "Extracts the month number (1–12) from a date. Use it to group data by month, build pivot helper columns, or test whether a date falls in a particular month.\n\nExample: =MONTH(A2) returns 3 for any date in March.",
+      ["date"]
+    ],
+    "NETWORKDAYS": [
+      "Counts the number of working days (Monday–Friday) between two dates, optionally excluding a list of holidays. Use it to calculate how many business days remain until a deadline or between two events.\n\nExample: =NETWORKDAYS(A2, B2, Holidays) returns the count of business days, skipping dates listed in the Holidays range.",
+      ["start_date", "end_date", "holidays*"]
+    ],
+    "NETWORKDAYSINTL": [
+      "Like NETWORKDAYS, but lets you define which days of the week are the weekend using a mask or preset code. Use it for international teams where the weekend might be Friday–Saturday or another combination.\n\nExample: =NETWORKDAYS.INTL(A2, B2, 7, Holidays) treats Friday and Saturday as the weekend.",
+      []
+    ],
+    "NOW": [
+      "Returns the current date and time as a date-time serial number, recalculating on every worksheet change. Use it to timestamp entries or to compute elapsed time from the current moment.\n\nExample: =NOW()-A2 shows how many days (and fraction of a day) have passed since the date in A2.",
+      []
+    ],
+    "SECOND": [
+      "Extracts the seconds component (0–59) from a time value. Useful for precise time analysis - for example, checking whether a process completed within an expected number of seconds.\n\nExample: =SECOND(A2) returns 45 if A2 contains 10:15:45.",
+      ["serial_number"]
+    ],
+    "TIME": [
+      "Creates a time value from separate hour, minute, and second numbers. Use it to assemble a time from components or to add a precise time increment to a date.\n\nExample: =TIME(14, 30, 0) returns 2:30 PM.",
+      ["hour", "minute", "second"]
+    ],
+    "TIMEVALUE": [
+      "Converts a time stored as text (such as \"2:30 PM\") into a decimal fraction that Excel can calculate with. Use it when time values arrived as text strings after an import.\n\nExample: =TIMEVALUE(\"14:30:00\") returns 0.6042, the fraction of a 24-hour day.",
+      ["time_text"]
+    ],
+    "TODAY": [
+      "Returns today's date (with no time component) and updates on every recalculation. Use it for age calculations, days-until-deadline formulas, or any formula that should always reflect the current date.\n\nExample: =TODAY()-A2 gives the number of days since the date in A2.",
+      []
+    ],
+    "WEEKDAY": [
+      "Returns a number representing the day of the week for a given date, using a return_type you specify (e.g., 1 = Sunday through 7 = Saturday). Use it to highlight weekends, filter to specific days, or build conditional formatting rules.\n\nExample: =WEEKDAY(A2, 2) returns 1 for Monday and 7 for Sunday.",
+      ["serial_number", "return_type*"]
+    ],
+    "WEEKNUM": [
+      "Returns the week number of the year (1–53) for a given date. Use it to group data by week or to calculate how many weeks into the year a date falls.\n\nExample: =WEEKNUM(A2) returns the calendar week number for the date in A2.",
+      ["serial_num", "return_type*"]
+    ],
+    "WORKDAY": [
+      "Returns the date that is a specified number of working days before or after a start date, optionally skipping holidays. Use it to calculate delivery deadlines, response-time commitments, or any milestone defined in business days.\n\nExample: =WORKDAY(A2, 10, Holidays) returns the date 10 business days after A2.",
+      ["start_date", "days", "holidays*"]
+    ],
+    "WORKDAYINTL": [
+      "Like WORKDAY, but lets you define a custom weekend using a mask or preset code. Use it when your organization operates on a non-standard weekly schedule - for instance, a Friday–Saturday weekend.\n\nExample: =WORKDAY.INTL(A2, 10, 7, Holidays) treats Friday and Saturday as the weekend.",
+      []
+    ],
+    "YEAR": [
+      "Extracts the four-digit year from a date value. Use it to group data by year, filter records to a specific year, or build year-over-year calculations.\n\nExample: =YEAR(A2) returns 2025 for any date in that year.",
+      ["date"]
+    ],
+    "YEARFRAC": [
+      "Returns the fraction of a year represented by the number of days between two dates, using a specified day-count basis. Use it for financial calculations such as accrued interest, partial-year proration, or annualized returns.\n\nExample: =YEARFRAC(A2, B2, 1) returns the actual fraction of a year between the two dates.",
+      ["start_date", "end_date", "basis*"]
     ]
   },
-  "IF": {
-    "c": "Logical",
-    "d": "Specifies a logical test to perform.",
-    "a": ["logical_test", "value_if_true", "value_if_false*"]
-  },
-  "IFERROR": {
-    "c": "Logical",
-    "d": "Returns a value you specify if a formula evaluates to an error.",
-    "a": ["value", "value_if_error"]
-  },
-  "IFNA": {
-    "c": "Logical",
-    "d": "Returns the value you specify if the expression resolves to #N/A, otherwise returns the result of the expression.",
-    "a": ["value", "value_if_na"]
-  },
-  "IFS": {
-    "c": "Logical",
-    "d": "Checks whether one or more conditions are met and returns a value that corresponds to the first TRUE condition.",
-    "a": [
-      "logical_test1",
-      "value_if_true1",
-      "logical_test2*",
-      "value_if_true2*"
+  "Engineering": {
+    "BESSELI": [
+      "Returns the modified Bessel function of the first kind, Iₙ(x). Use it in science and engineering for problems involving heat conduction, signal processing, or cylindrical wave patterns.\n\nExample: =BESSELI(2.5, 1) returns I₁(2.5).",
+      []
+    ],
+    "BESSELJ": [
+      "Returns the Bessel function of the first kind, Jₙ(x). Used in physics and engineering - particularly for vibrating membranes, antenna design, and acoustics.\n\nExample: =BESSELJ(2.5, 1) returns J₁(2.5).",
+      []
+    ],
+    "BESSELK": [
+      "Returns the modified Bessel function of the second kind, Kₙ(x). Appears in engineering problems involving heat flow and diffusion in cylindrical geometries.\n\nExample: =BESSELK(2.5, 1) returns K₁(2.5).",
+      []
+    ],
+    "BESSELY": [
+      "Returns the Bessel function of the second kind (Neumann function), Yₙ(x). Used alongside BESSELJ in wave and vibration problems where a second independent solution is required.\n\nExample: =BESSELY(2.5, 1) returns Y₁(2.5).",
+      []
+    ],
+    "BIN2DEC": [
+      "Converts a binary number (base 2) to its decimal equivalent. Use it when working with digital logic, bitwise operations, or any data that arrives in binary format.\n\nExample: =BIN2DEC(\"1010\") returns 10.",
+      ["number"]
+    ],
+    "BIN2HEX": [
+      "Converts a binary number to hexadecimal. Use it when you need to move between binary and hex - common in programming and hardware documentation.\n\nExample: =BIN2HEX(\"11111111\") returns \"FF\".",
+      ["number", "places*"]
+    ],
+    "BIN2OCT": [
+      "Converts a binary number to octal (base 8). Useful in computing contexts where octal notation is used, such as Unix file permissions.\n\nExample: =BIN2OCT(\"111\") returns \"7\".",
+      ["number", "places*"]
+    ],
+    "BITAND": [
+      "Returns a bitwise AND of two numbers - the result has a 1 bit only where both inputs have a 1 bit. Use it for flag testing, permission masking, or any low-level binary calculation.\n\nExample: =BITAND(12, 10) returns 8 (1100 AND 1010 = 1000).",
+      ["number1", "number2"]
+    ],
+    "BITLSHIFT": [
+      "Shifts a number's binary representation left by a given number of bits, multiplying by 2 for each shift. Use it for bit manipulation in data encoding or protocol analysis.\n\nExample: =BITLSHIFT(4, 2) returns 16.",
+      ["number", "shift_amount"]
+    ],
+    "BITOR": [
+      "Returns a bitwise OR of two numbers - the result has a 1 bit wherever either input has a 1. Use it to combine bit flags or to set specific bits in a value.\n\nExample: =BITOR(12, 10) returns 14 (1100 OR 1010 = 1110).",
+      ["number1", "number2"]
+    ],
+    "BITRSHIFT": [
+      "Shifts a number's bits right by a given count, dividing by 2 for each shift. Use it to extract the upper bits of a value or to reverse a left shift.\n\nExample: =BITRSHIFT(16, 2) returns 4.",
+      ["number", "shift_amount"]
+    ],
+    "BITXOR": [
+      "Returns a bitwise XOR (exclusive OR) of two numbers - the result has a 1 bit where the inputs differ. Use it for checksum calculations or to toggle specific bits.\n\nExample: =BITXOR(12, 10) returns 6 (1100 XOR 1010 = 0110).",
+      ["number1", "number2"]
+    ],
+    "COMPLEX": [
+      "Creates a complex number text string from real and imaginary parts in the form \"a+bi\". Use it as the starting point for complex-number calculations in engineering or signal analysis.\n\nExample: =COMPLEX(3, 4) returns \"3+4i\".",
+      ["real_num", "i_num", "suffix*"]
+    ],
+    "CONVERT": [
+      "Converts a measurement from one unit to another - miles to kilometers, pounds to kilograms, inches to centimeters, and many more. Use it whenever you need to bridge different unit systems without hand-coding conversion factors.\n\nExample: =CONVERT(100, \"mi\", \"km\") returns the equivalent distance in kilometers.",
+      ["number", "from_unit", "to_unit"]
+    ],
+    "DEC2BIN": [
+      "Converts a decimal integer to binary. Use it to translate regular numbers into binary format for digital logic work or data encoding.\n\nExample: =DEC2BIN(10) returns \"1010\".",
+      ["number", "places*"]
+    ],
+    "DEC2HEX": [
+      "Converts a decimal integer to hexadecimal. Use it when working with memory addresses, color codes, or any system that uses hex notation.\n\nExample: =DEC2HEX(255) returns \"FF\".",
+      ["number", "places*"]
+    ],
+    "DEC2OCT": [
+      "Converts a decimal integer to octal (base 8). Useful in Unix/Linux contexts where file permissions and other values use octal notation.\n\nExample: =DEC2OCT(8) returns \"10\".",
+      ["number", "places*"]
+    ],
+    "DELTA": [
+      "Tests whether two numbers are equal, returning 1 if they are and 0 otherwise - the Kronecker delta function. Use it as a compact equality check whose result can be used directly in arithmetic.\n\nExample: =DELTA(5, 5) returns 1; =DELTA(5, 6) returns 0.",
+      ["number1", "number2*"]
+    ],
+    "ERF": [
+      "Returns the error function integrated between 0 and a given value. Used in statistics and physics for normal distribution calculations and diffusion problems.\n\nExample: =ERF(1) returns approximately 0.8427.",
+      []
+    ],
+    "ERF.PRECISE": [
+      "A single-argument version of ERF that always integrates from 0 to the given upper limit, with higher numerical precision. Use it when you need the standard error function with more accuracy.\n\nExample: =ERF.PRECISE(1) returns approximately 0.8427.",
+      []
+    ],
+    "ERFC": [
+      "Returns the complementary error function: 1 minus ERF. Use it when you need the probability that a value lies beyond a threshold in a normal distribution context.\n\nExample: =ERFC(1) returns approximately 0.1573.",
+      []
+    ],
+    "ERFC.PRECISE": [
+      "A higher-precision version of ERFC. Use it in scientific and engineering applications where numerical accuracy is critical.\n\nExample: =ERFC.PRECISE(1) returns approximately 0.1573.",
+      []
+    ],
+    "GESTEP": [
+      "Returns 1 if a number is greater than or equal to a step value, and 0 otherwise. Use it to implement threshold comparisons in engineering models without writing an IF formula.\n\nExample: =GESTEP(5, 3) returns 1; =GESTEP(2, 3) returns 0.",
+      []
+    ],
+    "HEX2BIN": [
+      "Converts a hexadecimal number to binary. Use it to inspect the individual bits of a hex value - common in network protocols and hardware analysis.\n\nExample: =HEX2BIN(\"F\") returns \"1111\".",
+      ["number", "places*"]
+    ],
+    "HEX2DEC": [
+      "Converts a hexadecimal number to decimal. Use it to translate memory addresses, web color codes, or protocol fields into regular numbers.\n\nExample: =HEX2DEC(\"FF\") returns 255.",
+      ["number"]
+    ],
+    "HEX2OCT": [
+      "Converts a hexadecimal number to octal. A utility for moving between hex and octal representations when both notations appear in the same system.\n\nExample: =HEX2OCT(\"F\") returns \"17\".",
+      ["number", "places*"]
+    ],
+    "IMABS": [
+      "Returns the modulus (absolute value) of a complex number - its distance from the origin in the complex plane. Use it to find the magnitude of a complex quantity such as an impedance or a phasor.\n\nExample: =IMABS(\"3+4i\") returns 5.",
+      ["inumber"]
+    ],
+    "IMAGINARY": [
+      "Extracts the imaginary part from a complex number string. Use it when you need just the \"b\" coefficient from \"a+bi\" for further calculations.\n\nExample: =IMAGINARY(\"3+4i\") returns 4.",
+      ["inumber"]
+    ],
+    "IMARGUMENT": [
+      "Returns the angle (argument) of a complex number in radians - the angle it makes with the positive real axis. Use it in signal processing to find the phase of a complex quantity.\n\nExample: =IMARGUMENT(\"1+1i\") returns π/4 ≈ 0.785.",
+      ["inumber"]
+    ],
+    "IMCONJUGATE": [
+      "Returns the complex conjugate of a complex number - same real part, negated imaginary part. Use it in complex division or AC circuit analysis to simplify expressions.\n\nExample: =IMCONJUGATE(\"3+4i\") returns \"3-4i\".",
+      ["inumber"]
+    ],
+    "IMCOS": [
+      "Returns the cosine of a complex number. Used in advanced mathematical and engineering analysis where trigonometric functions take complex arguments.\n\nExample: =IMCOS(\"1+1i\") returns a complex result.",
+      ["complex_num"]
+    ],
+    "IMCOSH": [
+      "Returns the hyperbolic cosine of a complex number. Appears in advanced mathematics and physics involving complex arguments to hyperbolic functions.\n\nExample: =IMCOSH(\"1+1i\").",
+      ["complex_num"]
+    ],
+    "IMCOT": [
+      "Returns the cotangent of a complex number. A specialized function for advanced mathematical derivations.\n\nExample: =IMCOT(\"1+1i\").",
+      ["complex_num"]
+    ],
+    "IMCSC": [
+      "Returns the cosecant (1/sin) of a complex number. Used in specialized mathematical computations.\n\nExample: =IMCSC(\"1+1i\").",
+      ["complex_num"]
+    ],
+    "IMCSCH": [
+      "Returns the hyperbolic cosecant of a complex number. Appears in advanced physics and mathematics.\n\nExample: =IMCSCH(\"1+1i\").",
+      ["complex_num"]
+    ],
+    "IMDIV": [
+      "Divides one complex number by another and returns the result as a complex number. Use it for complex arithmetic in circuit analysis or signal processing.\n\nExample: =IMDIV(\"3+4i\", \"1+2i\") returns the complex quotient.",
+      ["complex_num1", "complex_num2"]
+    ],
+    "IMEXP": [
+      "Returns e raised to the power of a complex number. Essential in signal analysis and Fourier-related calculations where complex exponentials appear.\n\nExample: =IMEXP(\"1+1i\") returns e^(1+i).",
+      ["complex_num"]
+    ],
+    "IMLN": [
+      "Returns the natural logarithm of a complex number. Use it in engineering and physics where the log of a complex quantity is needed.\n\nExample: =IMLN(\"3+4i\") returns the complex natural logarithm.",
+      ["complex_num"]
+    ],
+    "IMLOG10": [
+      "Returns the base-10 logarithm of a complex number. Use it in decibel calculations or other logarithmic engineering measures with complex inputs.\n\nExample: =IMLOG10(\"3+4i\").",
+      ["complex_num"]
+    ],
+    "IMLOG2": [
+      "Returns the base-2 logarithm of a complex number. Useful in information theory and digital signal processing with complex inputs.\n\nExample: =IMLOG2(\"3+4i\").",
+      ["complex_num"]
+    ],
+    "IMPOWER": [
+      "Raises a complex number to a given power and returns the result as a complex number. Use it in physics, control theory, or mathematical analysis.\n\nExample: =IMPOWER(\"1+1i\", 3) returns (1+i)³.",
+      ["inumber", "number"]
+    ],
+    "IMPRODUCT": [
+      "Multiplies two or more complex numbers together. Use it to chain complex multiplications in AC circuit or signal-processing calculations.\n\nExample: =IMPRODUCT(\"1+2i\", \"3+4i\") returns the complex product.",
+      ["inumber1", "inumber2"]
+    ],
+    "IMREAL": [
+      "Extracts the real part from a complex number string. Use it when you need just the \"a\" coefficient from \"a+bi\" for further arithmetic.\n\nExample: =IMREAL(\"3+4i\") returns 3.",
+      ["inumber"]
+    ],
+    "IMSEC": [
+      "Returns the secant (1/cos) of a complex number. A specialized function for advanced mathematical use cases.\n\nExample: =IMSEC(\"1+1i\").",
+      ["complex_num"]
+    ],
+    "IMSECH": [
+      "Returns the hyperbolic secant of a complex number. Appears in advanced mathematical and physical derivations.\n\nExample: =IMSECH(\"1+1i\").",
+      ["complex_num"]
+    ],
+    "IMSIN": [
+      "Returns the sine of a complex number. Used in Fourier analysis, quantum mechanics, and other fields involving complex arguments to sine.\n\nExample: =IMSIN(\"1+1i\").",
+      ["complex_num"]
+    ],
+    "IMSINH": [
+      "Returns the hyperbolic sine of a complex number. Used in advanced physics and mathematics involving hyperbolic functions of complex arguments.\n\nExample: =IMSINH(\"1+1i\").",
+      ["complex_num"]
+    ],
+    "IMSQRT": [
+      "Returns the principal square root of a complex number. Use it to take the square root of a negative or complex quantity without getting an error.\n\nExample: =IMSQRT(\"-1+0i\") returns \"0+1i\" (the imaginary unit).",
+      ["inumber"]
+    ],
+    "IMSUB": [
+      "Subtracts one complex number from another and returns the result as a complex number. Use it for complex arithmetic - for instance, finding the difference between two phasors.\n\nExample: =IMSUB(\"5+3i\", \"2+1i\") returns \"3+2i\".",
+      ["inumber1", "inumber2"]
+    ],
+    "IMSUM": [
+      "Adds two or more complex numbers together. Use it to sum phasors or complex vectors in electrical or mechanical engineering analysis.\n\nExample: =IMSUM(\"1+2i\", \"3+4i\") returns \"4+6i\".",
+      ["inumber1", "inumber2"]
+    ],
+    "IMTAN": [
+      "Returns the tangent of a complex number. A specialized function for advanced mathematical computations.\n\nExample: =IMTAN(\"1+1i\").",
+      ["complex_num"]
+    ],
+    "OCT2BIN": [
+      "Converts an octal number to binary. Use it in computing contexts where you need to inspect the bits of an octal value.\n\nExample: =OCT2BIN(\"7\") returns \"111\".",
+      ["number", "places*"]
+    ],
+    "OCT2DEC": [
+      "Converts an octal number to decimal. Use it when working with Unix permissions (e.g., \"755\") or other octal-notated values that you need to calculate with.\n\nExample: =OCT2DEC(\"17\") returns 15.",
+      ["number"]
+    ],
+    "OCT2HEX": [
+      "Converts an octal number to hexadecimal. A utility for moving between number systems when both appear in the same data.\n\nExample: =OCT2HEX(\"77\") returns \"3F\".",
+      ["number", "places*"]
     ]
   },
-  "IMABS": {
-    "c": "Engineering",
-    "d": "Returns the absolute value (modulus) of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMAGINARY": {
-    "c": "Engineering",
-    "d": "Returns the imaginary coefficient of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMARGUMENT": {
-    "c": "Engineering",
-    "d": "Returns the argument theta, an angle expressed in radians.",
-    "a": ["inumber"]
-  },
-  "IMCONJUGATE": {
-    "c": "Engineering",
-    "d": "Returns the complex conjugate of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMCOS": {
-    "c": "Engineering",
-    "d": "Returns the cosine of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMCOSH": {
-    "c": "Engineering",
-    "d": "Returns the hyperbolic cosine of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMCOT": {
-    "c": "Engineering",
-    "d": "Returns the cotangent of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMCSC": {
-    "c": "Engineering",
-    "d": "Returns the cosecant of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMCSCH": {
-    "c": "Engineering",
-    "d": "Returns the hyperbolic cosecant of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMDIV": {
-    "c": "Engineering",
-    "d": "Returns the quotient of two complex numbers.",
-    "a": ["inumber1", "inumber2"]
-  },
-  "IMEXP": {
-    "c": "Engineering",
-    "d": "Returns the exponential of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMLN": {
-    "c": "Engineering",
-    "d": "Returns the natural logarithm of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMLOG10": {
-    "c": "Engineering",
-    "d": "Returns the base-10 logarithm of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMLOG2": {
-    "c": "Engineering",
-    "d": "Returns the base-2 logarithm of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMPOWER": {
-    "c": "Engineering",
-    "d": "Returns a complex number raised to an integer power.",
-    "a": ["inumber", "number"]
-  },
-  "IMPRODUCT": {
-    "c": "Engineering",
-    "d": "Returns the product of 2 to 255 complex numbers.",
-    "a": ["inumber1", "inumber2*"]
-  },
-  "IMREAL": {
-    "c": "Engineering",
-    "d": "Returns the real coefficient of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMSEC": {
-    "c": "Engineering",
-    "d": "Returns the secant of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMSECH": {
-    "c": "Engineering",
-    "d": "Returns the hyperbolic secant of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMSIN": {
-    "c": "Engineering",
-    "d": "Returns the sine of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMSINH": {
-    "c": "Engineering",
-    "d": "Returns the hyperbolic sine of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMSQRT": {
-    "c": "Engineering",
-    "d": "Returns the square root of a complex number.",
-    "a": ["inumber"]
-  },
-  "IMSUB": {
-    "c": "Engineering",
-    "d": "Returns the difference between two complex numbers.",
-    "a": ["inumber1", "inumber2"]
-  },
-  "IMSUM": {
-    "c": "Engineering",
-    "d": "Returns the sum of complex numbers.",
-    "a": ["inumber1", "inumber2*"]
-  },
-  "IMTAN": {
-    "c": "Engineering",
-    "d": "Returns the tangent of a complex number.",
-    "a": ["inumber"]
-  },
-  "INDEX": {
-    "c": "Lookup and Reference",
-    "d": "Uses an index to choose a value from a reference or array.",
-    "a": ["array", "row_num", "column_num*"]
-  },
-  "INDIRECT": {
-    "c": "Lookup and Reference",
-    "d": "Returns a reference indicated by a text value.",
-    "a": ["ref_text", "a1*"]
-  },
-  "INFO": {
-    "c": "Information",
-    "d": "Returns information about the current operating environment.",
-    "a": ["type_text"]
-  },
-  "INT": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number down to the nearest integer.",
-    "a": ["number"]
-  },
-  "INTERCEPT": {
-    "c": "Statistical",
-    "d": "Returns the intercept of the linear regression line.",
-    "a": ["known_ys", "known_xs"]
-  },
-  "IPMT": {
-    "c": "Financial",
-    "d": "Returns the interest payment for an investment for a given period.",
-    "a": ["rate", "per", "nper", "pv", "fv*", "type*"]
-  },
-  "IRR": {
-    "c": "Financial",
-    "d": "Returns the internal rate of return for a series of cash flows.",
-    "a": ["values", "guess*"]
-  },
-  "ISBLANK": {
-    "c": "Information",
-    "d": "Returns TRUE if the value is blank.",
-    "a": ["value"]
-  },
-  "ISERR": {
-    "c": "Information",
-    "d": "Returns TRUE if the value is any error value except #N/A.",
-    "a": ["value"]
-  },
-  "ISERROR": {
-    "c": "Information",
-    "d": "Returns TRUE if the value is any error value.",
-    "a": ["value"]
-  },
-  "ISEVEN": {
-    "c": "Information",
-    "d": "Returns TRUE if the number is even.",
-    "a": ["number"]
-  },
-  "ISFORMULA": {
-    "c": "Information",
-    "d": "Returns TRUE if there is a formula in the referenced cell.",
-    "a": ["reference"]
-  },
-  "ISLOGICAL": {
-    "c": "Information",
-    "d": "Returns TRUE if the value is a logical value.",
-    "a": ["value"]
-  },
-  "ISNA": {
-    "c": "Information",
-    "d": "Returns TRUE if the value is the #N/A error value.",
-    "a": ["value"]
-  },
-  "ISNONTEXT": {
-    "c": "Information",
-    "d": "Returns TRUE if the value is not text.",
-    "a": ["value"]
-  },
-  "ISNUMBER": {
-    "c": "Information",
-    "d": "Returns TRUE if the value is a number.",
-    "a": ["value"]
-  },
-  "ISO.CEILING": {
-    "c": "Math and Trigonometry",
-    "d": "Returns a number that is rounded up to the nearest integer or to the nearest multiple of significance.",
-    "a": ["number", "significance*"]
-  },
-  "ISODD": {
-    "c": "Information",
-    "d": "Returns TRUE if the number is odd.",
-    "a": ["number"]
-  },
-  "ISOMITTED": {
-    "c": "Information",
-    "d": "Checks whether the value in a LAMBDA is missing and returns TRUE or FALSE.",
-    "a": ["argument"]
-  },
-  "ISOWEEKNUM": {
-    "c": "Date and Time",
-    "d": "Returns the number of the ISO week number of the year for a given date.",
-    "a": ["date"]
-  },
-  "ISPMT": {
-    "c": "Financial",
-    "d": "Calculates the interest paid during a specific period of an investment.",
-    "a": ["rate", "per", "nper", "pv"]
-  },
-  "ISREF": {
-    "c": "Information",
-    "d": "Returns TRUE if the value is a reference.",
-    "a": ["value"]
-  },
-  "ISTEXT": {
-    "c": "Information",
-    "d": "Returns TRUE if the value is text.",
-    "a": ["value"]
-  },
-  "KURT": {
-    "c": "Statistical",
-    "d": "Returns the kurtosis of a data set.",
-    "a": ["number1", "number2*"]
-  },
-  "LAMBDA": {
-    "c": "Logical",
-    "d": "Creates a custom reusable function with named parameters.",
-    "a": ["param*", "body"]
-  },
-  "LARGE": {
-    "c": "Statistical",
-    "d": "Returns the k-th largest value in a data set.",
-    "a": ["array", "k"]
-  },
-  "LCM": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the least common multiple.",
-    "a": ["number1", "number2*"]
-  },
-  "LEFT": {
-    "c": "Text",
-    "d": "Returns the leftmost characters from a text value.",
-    "a": ["text", "num_chars*"]
-  },
-  "LEFTB": {
-    "c": "Text",
-    "d": "Returns the leftmost characters from a text value (byte-based).",
-    "a": ["text", "num_bytes*"]
-  },
-  "LEN": {
-    "c": "Text",
-    "d": "Returns the number of characters in a text string.",
-    "a": ["text"]
-  },
-  "LENB": {
-    "c": "Text",
-    "d": "Returns the number of bytes used to represent the characters in a text string.",
-    "a": ["text"]
-  },
-  "LET": {
-    "c": "Logical",
-    "d": "Assigns names to calculation results and returns the final formula.",
-    "a": ["name1", "value1", "name_value*", "formula"]
-  },
-  "LN": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the natural logarithm of a number.",
-    "a": ["number"]
-  },
-  "LOG": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the logarithm of a number to a specified base.",
-    "a": ["number", "base*"]
-  },
-  "LOG10": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the base-10 logarithm of a number.",
-    "a": ["number"]
-  },
-  "LOGNORM.DIST": {
-    "c": "Statistical",
-    "d": "Returns the lognormal distribution of x.",
-    "a": ["x", "mean", "standard_dev", "cumulative"]
-  },
-  "LOGNORM.INV": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the lognormal cumulative distribution function.",
-    "a": ["probability", "mean", "standard_dev"]
-  },
-  "LOOKUP": {
-    "c": "Lookup and Reference",
-    "d": "Looks up values in a vector or array.",
-    "a": ["lookup_value", "lookup_vector", "result_vector*"]
-  },
-  "LOWER": {
-    "c": "Text",
-    "d": "Converts text to lowercase.",
-    "a": ["text"]
-  },
-  "MAP": {
-    "c": "Logical",
-    "d": "Returns an array formed by mapping each value in the array to a new value by applying a LAMBDA.",
-    "a": ["array1", "lambda"]
-  },
-  "MATCH": {
-    "c": "Lookup and Reference",
-    "d": "Looks up values in a reference or array.",
-    "a": ["lookup_value", "lookup_array", "match_type*"]
-  },
-  "MAX": {
-    "c": "Statistical",
-    "d": "Returns the largest value in a set of values.",
-    "a": ["number1", "number2*"]
-  },
-  "MAXA": {
-    "c": "Statistical",
-    "d": "Returns the maximum value in a list of arguments, including numbers, text, and logical values.",
-    "a": ["value1", "value2*"]
-  },
-  "MAXIFS": {
-    "c": "Statistical",
-    "d": "Returns the maximum value among cells specified by a given set of conditions or criteria.",
-    "a": [
-      "max_range",
-      "criteria_range1",
-      "criteria1",
-      "criteria_range2*",
-      "criteria2*"
+  "Financial": {
+    "ACCRINTM": [
+      "Returns the accrued interest on a security that pays interest at maturity rather than periodically. Use it when pricing zero-coupon or discount instruments where interest accumulates and is paid in full at the end.\n\nExample: =ACCRINTM(issue, settlement, rate, par, basis) returns the total interest earned.",
+      ["id", "sd", "rate", "par*", "basis*"]
+    ],
+    "CUMIPMT": [
+      "Returns the cumulative interest paid on a loan between two payment periods. Use it to find out how much total interest you paid during a specific part of a loan - for instance, during year two of a five-year mortgage.\n\nExample: =CUMIPMT(rate, nper, pv, start_period, end_period, type) returns the total interest over that span.",
+      ["rate", "nper", "pv", "start_period", "end_period", "type"]
+    ],
+    "CUMPRINC": [
+      "Returns the cumulative principal paid on a loan between two periods. Use it alongside CUMIPMT to understand what portion of your payments reduced the balance during a given window.\n\nExample: =CUMPRINC(rate, nper, pv, 13, 24, 0) returns principal paid in months 13 through 24.",
+      ["rate", "nper", "pv", "start_period", "end_period", "type"]
+    ],
+    "DB": [
+      "Returns the depreciation of an asset for a given period using the fixed-declining-balance method. Use it when accounting rules require declining-balance depreciation - common for machinery, vehicles, and equipment.\n\nExample: =DB(cost, salvage, life, period) returns the depreciation charge for that period.",
+      ["cost", "salvage", "life", "period", "month*"]
+    ],
+    "DDB": [
+      "Calculates depreciation using the double-declining-balance method (or any other factor you specify). Use it for assets that lose value faster in early years - it produces higher charges at the start and lower amounts later.\n\nExample: =DDB(cost, salvage, life, period, 2) applies double the straight-line rate.",
+      ["cost", "salvage", "life", "period", "factor*"]
+    ],
+    "DOLLARDE": [
+      "Converts a price expressed in fractional dollar notation (as used in bond markets, e.g., 1.02 meaning 1 and 2/32) to a decimal price. Use it when your data comes from markets that quote in fractional form.\n\nExample: =DOLLARDE(1.02, 32) returns 1.0625.",
+      ["fractional_dollar", "fraction"]
+    ],
+    "DOLLARFR": [
+      "Converts a decimal price back to fractional dollar notation. The reverse of DOLLARDE - use it when you need to display a price in the market's native fractional format.\n\nExample: =DOLLARFR(1.0625, 32) returns 1.02 (meaning 1 and 2/32).",
+      ["decimal_dollar", "fraction"]
+    ],
+    "EFFECT": [
+      "Returns the effective annual interest rate given a nominal rate and the number of compounding periods per year. Use it to compare loan or investment products that compound at different frequencies - daily compounding at 5% is not the same as annual 5%.\n\nExample: =EFFECT(0.05, 12) returns the effective rate with monthly compounding.",
+      ["nominal_rate", "npery"]
+    ],
+    "FV": [
+      "Calculates the future value of an investment based on regular payments and a constant interest rate. Use it to project how much money you'll have after making regular contributions - like a retirement savings plan.\n\nExample: =FV(rate, nper, pmt) returns the total amount accumulated.",
+      ["rate", "nper", "pmt", "pv*", "type*"]
+    ],
+    "IPMT": [
+      "Returns the interest portion of a specific loan payment. Use it to see exactly how much of a given month's payment goes toward interest versus principal.\n\nExample: =IPMT(rate, period, nper, pv) returns the interest amount for that one period.",
+      ["rate", "per", "nper", "pv", "fv*", "type*"]
+    ],
+    "IRR": [
+      "Calculates the Internal Rate of Return for a series of cash flows. Use it to evaluate whether an investment project is worthwhile - the IRR is the discount rate that makes the NPV equal to zero, and you compare it against your required return.\n\nExample: =IRR(A2:A10) returns the annualized rate of return for the cash-flow series.",
+      ["values", "..."]
+    ],
+    "ISPMT": [
+      "Returns the interest paid during a specific period of a loan assuming simple interest (equal principal payments each period). It differs from IPMT in its loan structure assumption. Use it for loans structured on a simple-interest basis.\n\nExample: =ISPMT(rate, period, nper, pv).",
+      ["rate", "per", "nper", "pv"]
+    ],
+    "MIRR": [
+      "Returns the Modified Internal Rate of Return, which accounts for different financing and reinvestment rates. Use it when the standard IRR assumption - that cash flows are reinvested at the IRR - is unrealistic.\n\nExample: =MIRR(values, finance_rate, reinvest_rate).",
+      ["values", "finance_rate", "reinvest_rate"]
+    ],
+    "NOMINAL": [
+      "Returns the nominal annual interest rate given an effective rate and the number of compounding periods per year. The reverse of EFFECT - use it to back-calculate the stated rate from an observed effective rate.\n\nExample: =NOMINAL(0.0512, 12) returns the nominal rate with monthly compounding.",
+      ["effect_rate", "npery"]
+    ],
+    "NPER": [
+      "Returns the number of periods required to pay off a loan given a constant payment and interest rate. Use it to answer \"how many months until this loan is paid off?\" for any fixed-rate loan.\n\nExample: =NPER(rate, pmt, pv) returns the number of payment periods.",
+      ["rate", "pmt", "pv", "fv*", "type*"]
+    ],
+    "NPV": [
+      "Calculates the Net Present Value of a series of future cash flows discounted at a given rate. Use it to evaluate whether an investment creates value - if NPV is positive, the project earns more than the required rate. Note that the first cash flow is assumed to occur one period from now.\n\nExample: =NPV(rate, value1, value2, ...) + initial_investment.",
+      ["rate", "value1*", "..."]
+    ],
+    "PDURATION": [
+      "Returns the number of periods required for an investment to reach a target value at a given interest rate. Use it to answer \"how long will it take for my investment to double?\" at a given return rate.\n\nExample: =PDURATION(rate, pv, fv) returns the number of periods needed.",
+      ["rate", "pv", "fv"]
+    ],
+    "PMT": [
+      "Calculates the fixed periodic payment required to fully amortize a loan at a constant interest rate. Use it to determine monthly mortgage or car loan payments before committing to a loan.\n\nExample: =PMT(5%/12, 360, -200000) returns the monthly payment for a $200,000 mortgage at 5% over 30 years.",
+      ["rate", "nper", "pv", "fv*", "type*"]
+    ],
+    "PPMT": [
+      "Returns the principal portion of a specific loan payment. Use it alongside IPMT to understand how much of a given payment reduces the outstanding balance.\n\nExample: =PPMT(rate, period, nper, pv) returns the principal for that period.",
+      ["rate", "per", "nper", "pv", "fv*", "type*"]
+    ],
+    "PV": [
+      "Returns the present value of a series of future payments discounted at a constant rate. Use it to answer \"what is a stream of future payments worth today?\" - for loan valuations, annuity pricing, or lease analysis.\n\nExample: =PV(rate, nper, pmt) returns the lump-sum equivalent value today.",
+      ["rate", "nper", "pmt", "fv*", "type*"]
+    ],
+    "RATE": [
+      "Calculates the periodic interest rate of an annuity given the number of periods, payment amount, and present value. Use it to determine the implied interest rate on a loan when you know the payment schedule.\n\nExample: =RATE(nper, pmt, pv) returns the per-period rate; multiply by 12 for an annual figure.",
+      ["nper", "pmt", "pv", "fv*", "type*", "guess*"]
+    ],
+    "RRI": [
+      "Returns the equivalent interest rate needed to grow an investment from a present value to a future value over a number of periods. Use it to calculate a Compound Annual Growth Rate (CAGR).\n\nExample: =RRI(5, 100, 150) returns the per-period growth rate over 5 periods.",
+      ["nper", "pv", "fv"]
+    ],
+    "SLN": [
+      "Returns the straight-line depreciation of an asset for one period. Use it when accounting rules require equal depreciation charges every year over the asset's useful life.\n\nExample: =SLN(10000, 1000, 5) returns $1,800 per year for a $10,000 asset with $1,000 salvage value and a 5-year life.",
+      ["cost", "salvage", "life"]
+    ],
+    "SYD": [
+      "Returns the sum-of-years'-digits depreciation for a specific period - a method that allocates more depreciation to early years and less to later ones. Use it when accelerated depreciation is required but double-declining balance is too aggressive.\n\nExample: =SYD(cost, salvage, life, period).",
+      ["cost", "salvage", "life", "period"]
+    ],
+    "TBILLEQ": [
+      "Returns the bond-equivalent yield of a Treasury bill. Use it to compare a T-bill's return to coupon-bearing bonds on a consistent annual-yield basis.\n\nExample: =TBILLEQ(settlement, maturity, discount) returns the equivalent annual yield.",
+      ["settlement", "maturity", "discount"]
+    ],
+    "TBILLPRICE": [
+      "Returns the price per $100 face value of a Treasury bill. Use it to calculate what you pay today for a T-bill given its discount rate and dates.\n\nExample: =TBILLPRICE(settlement, maturity, discount).",
+      ["settlement", "maturity", "discount"]
+    ],
+    "TBILLYIELD": [
+      "Returns the yield of a Treasury bill given its price and dates. Use it to find the return on a T-bill you already hold or are evaluating.\n\nExample: =TBILLYIELD(settlement, maturity, pr).",
+      ["settlement", "maturity", "price"]
+    ],
+    "XIRR": [
+      "Calculates the Internal Rate of Return for a series of cash flows occurring on irregular (non-periodic) dates. Use it for real-world investment analysis where cash flows don't land on regular intervals.\n\nExample: =XIRR(values, dates) returns the annualized IRR.",
+      ["values", "dates", "guess*"]
+    ],
+    "XNPV": [
+      "Returns the Net Present Value of a series of cash flows at irregular dates, discounted at a specified rate. Use it when cash flows occur on specific but non-uniform dates - a more realistic alternative to NPV.\n\nExample: =XNPV(rate, values, dates).",
+      ["rate", "values", "dates*"]
     ]
   },
-  "MEDIAN": {
-    "c": "Statistical",
-    "d": "Returns the median of the given numbers.",
-    "a": ["number1", "number2*"]
-  },
-  "MID": {
-    "c": "Text",
-    "d": "Returns a specific number of characters from a text string, starting at the position you specify.",
-    "a": ["text", "start_num", "num_chars"]
-  },
-  "MIDB": {
-    "c": "Text",
-    "d": "Returns a specific number of characters from a text string, starting at the position you specify (byte-based).",
-    "a": ["text", "start_num", "num_bytes"]
-  },
-  "MIN": {
-    "c": "Statistical",
-    "d": "Returns the smallest value in a set of values.",
-    "a": ["number1", "number2*"]
-  },
-  "MINA": {
-    "c": "Statistical",
-    "d": "Returns the smallest value in a list of arguments, including numbers, text, and logical values.",
-    "a": ["value1", "value2*"]
-  },
-  "MINIFS": {
-    "c": "Statistical",
-    "d": "Returns the minimum value among cells specified by a given set of conditions or criteria.",
-    "a": [
-      "min_range",
-      "criteria_range1",
-      "criteria1",
-      "criteria_range2*",
-      "criteria2*"
+  "Information": {
+    "CELL": [
+      "Returns information about a cell's formatting, location, or contents - such as its address, column width, or format code. Use it for dynamic reporting where you need to inspect cell metadata rather than its value.\n\nExample: =CELL(\"address\", A1) returns \"$A$1\".",
+      ["info_type", "..."]
+    ],
+    "ERRORTYPE": [
+      "Returns a number corresponding to the type of error in a cell (1 for #NULL!, 2 for #DIV/0!, etc.). Use it inside error-handling formulas to take different actions depending on which error occurred.\n\nExample: =ERRORTYPE(A2) returns 2 if A2 contains #DIV/0!.",
+      []
+    ],
+    "INFO": [
+      "Returns information about the current operating environment - such as the Excel version, operating system, or number of sheets. Use it for diagnostics or to make formulas behave differently across environments.\n\nExample: =INFO(\"version\") returns the Excel version string.",
+      ["type_text"]
+    ],
+    "ISBLANK": [
+      "Returns TRUE if a cell is completely empty, FALSE otherwise. Use it to check for missing data before performing calculations, or to drive conditional formatting on empty cells.\n\nExample: =ISBLANK(A2) returns TRUE only if A2 has no content at all.",
+      ["value"]
+    ],
+    "ISERR": [
+      "Returns TRUE if a cell contains any error except #N/A. Use it when you want to catch all errors except #N/A separately - distinguishing \"not found\" from other problems.\n\nExample: =ISERR(A2) returns TRUE for #DIV/0!, #VALUE!, and #REF!, but not for #N/A.",
+      ["value"]
+    ],
+    "ISERROR": [
+      "Returns TRUE if a cell contains any error value, including #N/A. Use it as a general error trap to display a friendly message instead of an error code.\n\nExample: =IF(ISERROR(VLOOKUP(...)), \"Not found\", VLOOKUP(...)).",
+      ["value"]
+    ],
+    "ISEVEN": [
+      "Returns TRUE if a number is even, FALSE if odd. Use it to alternate row styles in a table (combined with ROW()), to flag even quantities, or as a simple parity check.\n\nExample: =ISEVEN(4) returns TRUE; =ISEVEN(3) returns FALSE.",
+      ["value"]
+    ],
+    "ISFORMULA": [
+      "Returns TRUE if a cell contains a formula, FALSE if it contains a plain value. Use it to audit spreadsheets and identify which cells are computed versus hard-coded.\n\nExample: =ISFORMULA(A2) returns TRUE if A2 has a formula.",
+      ["reference"]
+    ],
+    "ISLOGICAL": [
+      "Returns TRUE if a cell contains a logical value (TRUE or FALSE). Use it to validate inputs or to distinguish logical values from numbers and text in mixed-type data.\n\nExample: =ISLOGICAL(TRUE) returns TRUE; =ISLOGICAL(1) returns FALSE.",
+      ["value"]
+    ],
+    "ISNA": [
+      "Returns TRUE if a cell contains the #N/A error. Use it specifically to detect \"not found\" results from lookup functions without trapping other error types.\n\nExample: =IF(ISNA(VLOOKUP(...)), \"Not found\", VLOOKUP(...)).",
+      ["value"]
+    ],
+    "ISNONTEXT": [
+      "Returns TRUE if a cell does not contain text - including numbers, logical values, dates, errors, and blanks. Use it to validate that a field contains a non-text value.\n\nExample: =ISNONTEXT(42) returns TRUE; =ISNONTEXT(\"hello\") returns FALSE.",
+      ["value"]
+    ],
+    "ISNUMBER": [
+      "Returns TRUE if a cell contains a number. Use it to validate numeric inputs or to filter mixed-type arrays where only numbers should be processed.\n\nExample: =ISNUMBER(A2) returns TRUE if A2 holds a numeric value.",
+      ["value"]
+    ],
+    "ISODD": [
+      "Returns TRUE if a number is odd, FALSE if even. Use it alongside ISEVEN for alternating logic - for instance, treating odd-numbered periods differently from even ones.\n\nExample: =ISODD(3) returns TRUE; =ISODD(4) returns FALSE.",
+      ["value"]
+    ],
+    "ISOMITTED": [
+      "Returns TRUE if an argument passed to a LAMBDA is missing (omitted by the caller). Use it inside LAMBDA definitions to detect optional arguments and supply default values.\n\nExample: inside a LAMBDA, =IF(ISOMITTED(x), 0, x) defaults x to 0 when not provided.",
+      ["argument"]
+    ],
+    "ISREF": [
+      "Returns TRUE if a value is a valid cell reference. Use it to check whether an INDIRECT formula produced a valid reference before using it.\n\nExample: =ISREF(INDIRECT(A2)) returns TRUE if A2 holds a valid cell address.",
+      ["value"]
+    ],
+    "ISTEXT": [
+      "Returns TRUE if a cell contains text. Use it to validate text inputs, filter text values in arrays, or guard against text accidentally entering a numeric calculation.\n\nExample: =ISTEXT(\"hello\") returns TRUE; =ISTEXT(42) returns FALSE.",
+      ["value"]
+    ],
+    "N": [
+      "Converts a value to a number: TRUE becomes 1, FALSE becomes 0, text becomes 0, and a number is unchanged. Use it to coerce logical or text values into numbers when a formula requires numeric input.\n\nExample: =N(TRUE) returns 1; =N(\"hello\") returns 0.",
+      ["..."]
+    ],
+    "NA": [
+      "Returns the #N/A error value deliberately. Use it to mark missing or unavailable data in a range so that charts skip the gap and lookups handle it explicitly rather than treating it as zero.\n\nExample: =IF(A2=\"\", NA(), A2) inserts #N/A wherever A2 is blank.",
+      []
+    ],
+    "SHEET": [
+      "Returns the sheet number of a reference or the current sheet if no argument is given. Use it to identify which sheet a reference belongs to or to build formulas that react to their position in the workbook.\n\nExample: =SHEET() returns the index number of the current sheet.",
+      ["..."]
+    ],
+    "SHEETS": [
+      "Returns the total number of sheets in a workbook, or the number of sheets covered by a 3D reference. Use it to build dynamic formulas that adapt when sheets are added or removed.\n\nExample: =SHEETS() returns how many sheets the workbook contains.",
+      ["..."]
+    ],
+    "TYPE": [
+      "Returns a number indicating the data type of a value: 1 for number, 2 for text, 4 for logical, 16 for error, 64 for array. Use it to write type-safe formulas or to diagnose unexpected data types in a cell.\n\nExample: =TYPE(\"hello\") returns 2; =TYPE(3.14) returns 1.",
+      ["value"]
     ]
   },
-  "MINUTE": {
-    "c": "Date and Time",
-    "d": "Converts a serial number to a minute.",
-    "a": ["serial_number"]
-  },
-  "MIRR": {
-    "c": "Financial",
-    "d": "Returns the internal rate of return where positive and negative cash flows are financed at different rates.",
-    "a": ["values", "finance_rate", "reinvest_rate"]
-  },
-  "MOD": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the remainder from division.",
-    "a": ["number", "divisor"]
-  },
-  "MONTH": {
-    "c": "Date and Time",
-    "d": "Converts a serial number to a month.",
-    "a": ["serial_number"]
-  },
-  "MROUND": {
-    "c": "Math and Trigonometry",
-    "d": "Returns a number rounded to the desired multiple.",
-    "a": ["number", "multiple"]
-  },
-  "N": {
-    "c": "Information",
-    "d": "Returns a value converted to a number.",
-    "a": ["value"]
-  },
-  "NA": {
-    "c": "Information",
-    "d": "Returns the error value #N/A.",
-    "a": []
-  },
-  "NEGBINOM.DIST": {
-    "c": "Statistical",
-    "d": "Returns the negative binomial distribution.",
-    "a": ["number_f", "number_s", "probability_s", "cumulative"]
-  },
-  "NETWORKDAYS": {
-    "c": "Date and Time",
-    "d": "Returns the number of whole workdays between two dates.",
-    "a": ["start_date", "end_date", "holidays*"]
-  },
-  "NETWORKDAYS.INTL": {
-    "c": "Date and Time",
-    "d": "Returns the number of whole workdays between two dates using parameters to indicate which days are weekend days.",
-    "a": ["start_date", "end_date", "weekend*", "holidays*"]
-  },
-  "NOMINAL": {
-    "c": "Financial",
-    "d": "Returns the annual nominal interest rate.",
-    "a": ["effect_rate", "npery"]
-  },
-  "NORM.DIST": {
-    "c": "Statistical",
-    "d": "Returns the normal cumulative distribution.",
-    "a": ["x", "mean", "standard_dev", "cumulative"]
-  },
-  "NORM.INV": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the normal cumulative distribution.",
-    "a": ["probability", "mean", "standard_dev"]
-  },
-  "NORM.S.DIST": {
-    "c": "Statistical",
-    "d": "Returns the standard normal cumulative distribution.",
-    "a": ["z", "cumulative"]
-  },
-  "NORM.S.INV": {
-    "c": "Statistical",
-    "d": "Returns the inverse of the standard normal cumulative distribution.",
-    "a": ["probability"]
-  },
-  "NOT": {
-    "c": "Logical",
-    "d": "Reverses the logic of its argument.",
-    "a": ["logical"]
-  },
-  "NOW": {
-    "c": "Date and Time",
-    "d": "Returns the serial number of the current date and time.",
-    "a": []
-  },
-  "NPER": {
-    "c": "Financial",
-    "d": "Returns the number of periods for an investment.",
-    "a": ["rate", "pmt", "pv", "fv*", "type*"]
-  },
-  "NPV": {
-    "c": "Financial",
-    "d": "Returns the net present value of an investment based on a series of periodic cash flows and a discount rate.",
-    "a": ["rate", "value1", "value2*"]
-  },
-  "NUMBERVALUE": {
-    "c": "Text",
-    "d": "Converts text to a number in a locale-independent manner.",
-    "a": ["text", "decimal_separator*", "group_separator*"]
-  },
-  "OCT2BIN": {
-    "c": "Engineering",
-    "d": "Converts an octal number to binary.",
-    "a": ["number", "places*"]
-  },
-  "OCT2DEC": {
-    "c": "Engineering",
-    "d": "Converts an octal number to decimal.",
-    "a": ["number"]
-  },
-  "OCT2HEX": {
-    "c": "Engineering",
-    "d": "Converts an octal number to hexadecimal.",
-    "a": ["number", "places*"]
-  },
-  "ODD": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number up to the nearest odd integer.",
-    "a": ["number"]
-  },
-  "OFFSET": {
-    "c": "Lookup and Reference",
-    "d": "Returns a reference offset from a given reference.",
-    "a": ["reference", "rows", "cols", "height*", "width*"]
-  },
-  "OR": {
-    "c": "Logical",
-    "d": "Returns TRUE if any argument is TRUE.",
-    "a": ["logical1", "logical2*"]
-  },
-  "PDURATION": {
-    "c": "Financial",
-    "d": "Returns the number of periods required by an investment to reach a specified value.",
-    "a": ["rate", "pv", "fv"]
-  },
-  "PEARSON": {
-    "c": "Statistical",
-    "d": "Returns the Pearson product moment correlation coefficient.",
-    "a": ["array1", "array2"]
-  },
-  "PHI": {
-    "c": "Statistical",
-    "d": "Returns the value of the density function for a standard normal distribution.",
-    "a": ["x"]
-  },
-  "PI": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the value of pi.",
-    "a": []
-  },
-  "PMT": {
-    "c": "Financial",
-    "d": "Returns the periodic payment for an annuity.",
-    "a": ["rate", "nper", "pv", "fv*", "type*"]
-  },
-  "POISSON.DIST": {
-    "c": "Statistical",
-    "d": "Returns the Poisson distribution.",
-    "a": ["x", "mean", "cumulative"]
-  },
-  "POWER": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the result of a number raised to a power.",
-    "a": ["number", "power"]
-  },
-  "PPMT": {
-    "c": "Financial",
-    "d": "Returns the payment on the principal for an investment for a given period.",
-    "a": ["rate", "per", "nper", "pv", "fv*", "type*"]
-  },
-  "PRODUCT": {
-    "c": "Math and Trigonometry",
-    "d": "Multiplies its arguments.",
-    "a": ["number1", "number2*"]
-  },
-  "PROPER": {
-    "c": "Text",
-    "d": "Capitalizes the first letter in each word of a text value.",
-    "a": ["text"]
-  },
-  "PV": {
-    "c": "Financial",
-    "d": "Returns the present value of an investment.",
-    "a": ["rate", "nper", "pmt", "fv*", "type*"]
-  },
-  "QUOTIENT": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the integer portion of a division.",
-    "a": ["numerator", "denominator"]
-  },
-  "RADIANS": {
-    "c": "Math and Trigonometry",
-    "d": "Converts degrees to radians.",
-    "a": ["angle"]
-  },
-  "RAND": {
-    "c": "Math and Trigonometry",
-    "d": "Returns a random number between 0 and 1.",
-    "a": []
-  },
-  "RANDARRAY": {
-    "c": "Math and Trigonometry",
-    "d": "Returns an array of random numbers.",
-    "a": ["rows*", "columns*", "min*", "max*", "whole_number*"]
-  },
-  "RANDBETWEEN": {
-    "c": "Math and Trigonometry",
-    "d": "Returns a random integer between two numbers.",
-    "a": ["bottom", "top"]
-  },
-  "RANK.AVG": {
-    "c": "Statistical",
-    "d": "Returns the rank of a number in a list of numbers.",
-    "a": ["number", "ref", "order*"]
-  },
-  "RANK.EQ": {
-    "c": "Statistical",
-    "d": "Returns the rank of a number in a list of numbers.",
-    "a": ["number", "ref", "order*"]
-  },
-  "RATE": {
-    "c": "Financial",
-    "d": "Returns the interest rate per period of an annuity.",
-    "a": ["nper", "pmt", "pv", "fv*", "type*", "guess*"]
-  },
-  "REDUCE": {
-    "c": "Logical",
-    "d": "Reduces an array to an accumulated value by applying a LAMBDA to each value.",
-    "a": ["initial_value", "array", "lambda"]
-  },
-  "REGEXEXTRACT": {
-    "c": "Text",
-    "d": "Extracts matching substrings according to a regular expression.",
-    "a": ["text", "regular_expression"]
-  },
-  "REGEXREPLACE": {
-    "c": "Text",
-    "d": "Replaces part of a text string with a different text string using regular expressions.",
-    "a": ["text", "regular_expression", "replacement"]
-  },
-  "REGEXTEST": {
-    "c": "Text",
-    "d": "Tests whether any part of provided text matches a regular expression.",
-    "a": ["text", "regular_expression"]
-  },
-  "REPLACE": {
-    "c": "Text",
-    "d": "Replaces characters within text.",
-    "a": ["old_text", "start_num", "num_chars", "new_text"]
-  },
-  "REPLACEB": {
-    "c": "Text",
-    "d": "Replaces characters within text (byte-based).",
-    "a": ["old_text", "start_num", "num_bytes", "new_text"]
-  },
-  "REPT": {
-    "c": "Text",
-    "d": "Repeats text a given number of times.",
-    "a": ["text", "number_times"]
-  },
-  "RIGHT": {
-    "c": "Text",
-    "d": "Returns the rightmost characters from a text value.",
-    "a": ["text", "num_chars*"]
-  },
-  "RIGHTB": {
-    "c": "Text",
-    "d": "Returns the rightmost characters from a text value (byte-based).",
-    "a": ["text", "num_bytes*"]
-  },
-  "ROMAN": {
-    "c": "Math and Trigonometry",
-    "d": "Converts an Arabic numeral to Roman, as text.",
-    "a": ["number", "form*"]
-  },
-  "ROUND": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number to a specified number of digits.",
-    "a": ["number", "num_digits"]
-  },
-  "ROUNDDOWN": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number down, toward zero.",
-    "a": ["number", "num_digits"]
-  },
-  "ROUNDUP": {
-    "c": "Math and Trigonometry",
-    "d": "Rounds a number up, away from zero.",
-    "a": ["number", "num_digits"]
-  },
-  "ROW": {
-    "c": "Lookup and Reference",
-    "d": "Returns the row number of a reference.",
-    "a": ["reference*"]
-  },
-  "ROWS": {
-    "c": "Lookup and Reference",
-    "d": "Returns the number of rows in a reference.",
-    "a": ["array"]
-  },
-  "RRI": {
-    "c": "Financial",
-    "d": "Returns an equivalent interest rate for the growth of an investment.",
-    "a": ["nper", "pv", "fv"]
-  },
-  "RSQ": {
-    "c": "Statistical",
-    "d": "Returns the square of the Pearson product moment correlation coefficient.",
-    "a": ["known_ys", "known_xs"]
-  },
-  "SCAN": {
-    "c": "Logical",
-    "d": "Scans an array by applying a LAMBDA to each value and returns an array that has each intermediate value.",
-    "a": ["initial_value", "array", "lambda"]
-  },
-  "SEARCH": {
-    "c": "Text",
-    "d": "Finds one text value within another (not case-sensitive).",
-    "a": ["find_text", "within_text", "start_num*"]
-  },
-  "SEARCHB": {
-    "c": "Text",
-    "d": "Finds one text value within another (not case-sensitive, byte-based).",
-    "a": ["find_text", "within_text", "start_num*"]
-  },
-  "SEC": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the secant of an angle.",
-    "a": ["number"]
-  },
-  "SECH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the hyperbolic secant of an angle.",
-    "a": ["number"]
-  },
-  "SECOND": {
-    "c": "Date and Time",
-    "d": "Converts a serial number to a second.",
-    "a": ["serial_number"]
-  },
-  "SEQUENCE": {
-    "c": "Math and Trigonometry",
-    "d": "Generates a list of sequential numbers in an array.",
-    "a": ["rows", "columns*", "start*", "step*"]
-  },
-  "SHEET": {
-    "c": "Information",
-    "d": "Returns the sheet number of the referenced sheet.",
-    "a": ["value*"]
-  },
-  "SHEETS": {
-    "c": "Information",
-    "d": "Returns the number of sheets in a reference.",
-    "a": ["reference*"]
-  },
-  "SIGN": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the sign of a number.",
-    "a": ["number"]
-  },
-  "SIN": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the sine of the given angle.",
-    "a": ["number"]
-  },
-  "SINH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the hyperbolic sine of a number.",
-    "a": ["number"]
-  },
-  "SKEW": {
-    "c": "Statistical",
-    "d": "Returns the skewness of a distribution.",
-    "a": ["number1", "number2*"]
-  },
-  "SKEW.P": {
-    "c": "Statistical",
-    "d": "Returns the skewness of a distribution based on a population.",
-    "a": ["number1", "number2*"]
-  },
-  "SLOPE": {
-    "c": "Statistical",
-    "d": "Returns the slope of the linear regression line.",
-    "a": ["known_ys", "known_xs"]
-  },
-  "SMALL": {
-    "c": "Statistical",
-    "d": "Returns the k-th smallest value in a data set.",
-    "a": ["array", "k"]
-  },
-  "SORT": {
-    "c": "Lookup and Reference",
-    "d": "Sorts the contents of a range or array.",
-    "a": ["array", "sort_index*", "sort_order*", "by_col*"]
-  },
-  "SORTBY": {
-    "c": "Lookup and Reference",
-    "d": "Sorts the contents of a range or array based on the values in a corresponding range or array.",
-    "a": ["array", "by_array1", "sort_order1*", "by_array2*", "sort_order2*"]
-  },
-  "SQRT": {
-    "c": "Math and Trigonometry",
-    "d": "Returns a positive square root.",
-    "a": ["number"]
-  },
-  "SQRTPI": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the square root of (number * pi).",
-    "a": ["number"]
-  },
-  "STANDARDIZE": {
-    "c": "Statistical",
-    "d": "Returns a normalized value from a distribution characterized by mean and standard_dev.",
-    "a": ["x", "mean", "standard_dev"]
-  },
-  "STDEV.P": {
-    "c": "Statistical",
-    "d": "Calculates standard deviation based on the entire population.",
-    "a": ["number1", "number2*"]
-  },
-  "STDEV.S": {
-    "c": "Statistical",
-    "d": "Estimates standard deviation based on a sample.",
-    "a": ["number1", "number2*"]
-  },
-  "STDEVA": {
-    "c": "Statistical",
-    "d": "Estimates standard deviation based on a sample, including numbers, text, and logical values.",
-    "a": ["value1", "value2*"]
-  },
-  "STDEVPA": {
-    "c": "Statistical",
-    "d": "Calculates standard deviation based on the entire population, including numbers, text, and logical values.",
-    "a": ["value1", "value2*"]
-  },
-  "STEYX": {
-    "c": "Statistical",
-    "d": "Returns the standard error of the predicted y-value for each x in the regression.",
-    "a": ["known_ys", "known_xs"]
-  },
-  "SUBSTITUTE": {
-    "c": "Text",
-    "d": "Substitutes new text for old text in a text string.",
-    "a": ["text", "old_text", "new_text", "instance_num*"]
-  },
-  "SUBTOTAL": {
-    "c": "Math and Trigonometry",
-    "d": "Returns a subtotal in a list or database.",
-    "a": ["function_num", "ref1", "ref2*"]
-  },
-  "SUM": {
-    "c": "Math and Trigonometry",
-    "d": "Adds all the numbers in a range of cells.",
-    "a": ["number1", "number2*", "..."]
-  },
-  "SUMIF": {
-    "c": "Math and Trigonometry",
-    "d": "Adds the cells specified by a given condition or criteria.",
-    "a": ["range", "criteria", "sum_range*"]
-  },
-  "SUMIFS": {
-    "c": "Math and Trigonometry",
-    "d": "Adds the cells in a range that meet multiple criteria.",
-    "a": [
-      "sum_range",
-      "criteria_range1",
-      "criteria1",
-      "criteria_range2*",
-      "criteria2*"
+  "Logical": {
+    "AND": [
+      "Returns TRUE if all of its arguments evaluate to TRUE, FALSE if any is FALSE. Use it to combine multiple conditions in an IF formula - for example, flagging rows where both a sales target and a margin target are met.\n\nExample: =AND(A2>100, B2>0.2) returns TRUE only when both conditions hold.",
+      ["logical1", "..."]
+    ],
+    "BYCOL": [
+      "Applies a LAMBDA or built-in function to each column of an array and returns one result per column. Use it to compute column-wise summaries - like summing or averaging each column of a data block - without writing separate formulas for each column.\n\nExample: =BYCOL(A1:D10, LAMBDA(col, SUM(col))) returns the sum of each of the four columns as a single row.",
+      ["array", "lambda"]
+    ],
+    "BYROW": [
+      "Applies a LAMBDA or built-in function to each row of an array and returns one result per row. Use it to compute row-wise summaries - for instance, the maximum value in each row of a multi-column dataset.\n\nExample: =BYROW(A1:D10, LAMBDA(row, MAX(row))) returns the row maximum for each of the 10 rows.",
+      ["array", "function"]
+    ],
+    "FALSE": [
+      "Returns the logical value FALSE. Use it in formulas that require a literal FALSE as a function argument - for instance, as the match_type parameter in VLOOKUP to force an exact match.\n\nExample: =VLOOKUP(A2, B:C, 2, FALSE) performs an exact lookup.",
+      []
+    ],
+    "IF": [
+      "Returns one value when a condition is TRUE and a different value when it is FALSE. The most fundamental branching function in Excel - use it whenever your output depends on whether a condition is met.\n\nExample: =IF(A2>0, \"Positive\", \"Zero or negative\") labels each row based on its value.",
+      ["logical_test", "value_if_true", "value_if_false*"]
+    ],
+    "IFERROR": [
+      "Returns a value you specify if a formula produces any error; otherwise returns the formula's normal result. Use it to replace error codes with a blank, zero, or friendly message - most often around VLOOKUP or division formulas.\n\nExample: =IFERROR(VLOOKUP(A2, B:C, 2, 0), \"Not found\").",
+      ["value", "value_if_error"]
+    ],
+    "IFNA": [
+      "Returns the value you specify only if the formula produces #N/A; all other errors pass through unchanged. Use it when you specifically want to catch \"not found\" from lookups without suppressing other error types.\n\nExample: =IFNA(VLOOKUP(A2, B:C, 2, 0), \"Not found\") catches only #N/A.",
+      ["value", "value_if_na"]
+    ],
+    "IFS": [
+      "Tests multiple conditions in order and returns the value associated with the first TRUE one. Use it as a cleaner replacement for nested IF formulas when you have three or more distinct branches.\n\nExample: =IFS(A2>=90, \"A\", A2>=80, \"B\", A2>=70, \"C\", TRUE, \"F\") assigns a letter grade.",
+      ["test1", "value1*", "..."]
+    ],
+    "LAMBDA": [
+      "Defines a custom, reusable function with named parameters that you can store in the Name Manager and call like any built-in function. Use it to package a complex formula you repeat often into a named function, making your workbook easier to maintain and understand.\n\nExample: =LAMBDA(x, x^2)(5) returns 25 inline; stored as SQUARE, you can use =SQUARE(5) anywhere.",
+      ["parameter", "..."]
+    ],
+    "LET": [
+      "Assigns names to intermediate calculation results within a formula, letting you reuse them without repeating the expression. Use it to make complex formulas more readable and to avoid calculating the same subexpression multiple times.\n\nExample: =LET(rate, 0.2, gross, A2*1.15, gross*(1-rate)) computes the net amount.",
+      ["name1", "value1", "name2/value2", "..."]
+    ],
+    "MAP": [
+      "Applies a LAMBDA function to each element of one or more arrays and returns an array of results. Use it to transform every value in a list with a custom calculation - a type-safe alternative to array formulas.\n\nExample: =MAP(A2:A10, LAMBDA(x, x^2)) returns the squares of each value.",
+      ["array1", "array2", "..."]
+    ],
+    "NOT": [
+      "Reverses a logical value - TRUE becomes FALSE and FALSE becomes TRUE. Use it to negate a condition in an IF, or to filter records where a condition is not met.\n\nExample: =NOT(ISBLANK(A2)) returns TRUE when A2 has content.",
+      ["logical"]
+    ],
+    "OR": [
+      "Returns TRUE if any of its arguments evaluates to TRUE, FALSE only if all are FALSE. Use it to check whether at least one of several conditions holds - for example, flagging rows that belong to any of a set of categories.\n\nExample: =OR(A2=\"East\", A2=\"West\") returns TRUE for either region.",
+      ["logical1", "..."]
+    ],
+    "REDUCE": [
+      "Applies a LAMBDA iteratively over an array to accumulate a single result, returning only the final value. Use it to build custom aggregations - like summing only values above a threshold - that no built-in aggregate handles.\n\nExample: =REDUCE(0, A2:A10, LAMBDA(acc, x, IF(x>100, acc+x, acc))) sums only values over 100.",
+      ["initial_value", "array", "..."]
+    ],
+    "SCAN": [
+      "Like REDUCE, but returns an array showing the accumulated value after each step rather than just the final result. Use it to create running totals or cumulative calculations where you want to see every intermediate value.\n\nExample: =SCAN(0, A2:A10, LAMBDA(acc, x, acc+x)) returns the running sum at each row.",
+      ["initial_value", "array", "..."]
+    ],
+    "SWITCH": [
+      "Compares an expression against a list of values and returns the result paired with the first match. Use it instead of nested IFs when you are matching a single value against several exact cases - like translating a status code into a readable label.\n\nExample: =SWITCH(A2, 1, \"Low\", 2, \"Medium\", 3, \"High\", \"Unknown\").",
+      ["expression", "val1/result1*", "val2/result2*", "..."]
+    ],
+    "TRUE": [
+      "Returns the logical value TRUE. Use it in formulas that require a literal TRUE as a function argument - for instance, when specifying cumulative probability in a distribution function.\n\nExample: =NORM.DIST(75, 70, 10, TRUE) returns the cumulative probability.",
+      []
+    ],
+    "XOR": [
+      "Returns TRUE if an odd number of its arguments are TRUE (exclusive OR). Use it to detect whether exactly one of two conditions is met - for instance, when a record must have a start date or an end date but not both.\n\nExample: =XOR(ISBLANK(A2), ISBLANK(B2)) returns TRUE when exactly one date is missing.",
+      ["logical1", "..."]
     ]
   },
-  "SUMX2MY2": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the sum of the difference of squares of corresponding values in two arrays.",
-    "a": ["array_x", "array_y"]
-  },
-  "SUMX2PY2": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the sum of the sum of squares of corresponding values in two arrays.",
-    "a": ["array_x", "array_y"]
-  },
-  "SUMXMY2": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the sum of squares of differences of corresponding values in two arrays.",
-    "a": ["array_x", "array_y"]
-  },
-  "SUMSQ": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the sum of the squares of the arguments.",
-    "a": ["number1", "number2*"]
-  },
-  "SWITCH": {
-    "c": "Logical",
-    "d": "Evaluates an expression against a list of values and returns the result corresponding to the first matching value.",
-    "a": ["expression", "value1", "result1", "value2*", "result2*", "default*"]
-  },
-  "T": {
-    "c": "Text",
-    "d": "Converts its arguments to text.",
-    "a": ["value"]
-  },
-  "T.DIST": {
-    "c": "Statistical",
-    "d": "Returns the Student's left-tailed t-distribution.",
-    "a": ["x", "deg_freedom", "cumulative"]
-  },
-  "T.DIST.2T": {
-    "c": "Statistical",
-    "d": "Returns the two-tailed Student's t-distribution.",
-    "a": ["x", "deg_freedom"]
-  },
-  "T.DIST.RT": {
-    "c": "Statistical",
-    "d": "Returns the right-tailed Student's t-distribution.",
-    "a": ["x", "deg_freedom"]
-  },
-  "T.INV": {
-    "c": "Statistical",
-    "d": "Returns the left-tailed inverse of the Student's t-distribution.",
-    "a": ["probability", "deg_freedom"]
-  },
-  "T.INV.2T": {
-    "c": "Statistical",
-    "d": "Returns the two-tailed inverse of the Student's t-distribution.",
-    "a": ["probability", "deg_freedom"]
-  },
-  "T.TEST": {
-    "c": "Statistical",
-    "d": "Returns the probability associated with a Student's t-test.",
-    "a": ["array1", "array2", "tails", "type"]
-  },
-  "TAKE": {
-    "c": "Lookup and Reference",
-    "d": "Returns a specified number of contiguous rows or columns from the start or end of an array.",
-    "a": ["array", "rows", "columns*"]
-  },
-  "TAN": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the tangent of a number.",
-    "a": ["number"]
-  },
-  "TANH": {
-    "c": "Math and Trigonometry",
-    "d": "Returns the hyperbolic tangent of a number.",
-    "a": ["number"]
-  },
-  "TBILLEQ": {
-    "c": "Financial",
-    "d": "Returns the bond-equivalent yield for a Treasury bill.",
-    "a": ["settlement", "maturity", "discount"]
-  },
-  "TBILLPRICE": {
-    "c": "Financial",
-    "d": "Returns the price per $100 face value for a Treasury bill.",
-    "a": ["settlement", "maturity", "discount"]
-  },
-  "TBILLYIELD": {
-    "c": "Financial",
-    "d": "Returns the yield for a Treasury bill.",
-    "a": ["settlement", "maturity", "pr"]
-  },
-  "TEXT": {
-    "c": "Text",
-    "d": "Formats a number and converts it to text.",
-    "a": ["value", "format_text"]
-  },
-  "TEXTAFTER": {
-    "c": "Text",
-    "d": "Returns text that occurs after a given character or string.",
-    "a": [
-      "text",
-      "delimiter",
-      "instance_num*",
-      "match_mode*",
-      "match_end*",
-      "if_not_found*"
+  "Lookup and Reference": {
+    "ADDRESS": [
+      "Returns a cell address as a text string given a row number and column number. Use it to build dynamic cell references you can then pass to INDIRECT - for instance, constructing a reference from a formula-driven row and column.\n\nExample: =ADDRESS(2, 3) returns \"$C$2\".",
+      ["row_num", "col_num", "abs_num*", "a1*", "..."]
+    ],
+    "AREAS": [
+      "Returns the number of separate areas (contiguous ranges) in a reference. Use it to count how many distinct blocks are included in a multi-area selection or named range.\n\nExample: =AREAS((A1:B2, D4:E5)) returns 2.",
+      ["reference"]
+    ],
+    "CHOOSE": [
+      "Returns a value from a list based on an index number. Use it to map a numeric code to a corresponding label or value - like converting 1, 2, 3 into \"Low\", \"Medium\", \"High\" without nested IFs.\n\nExample: =CHOOSE(2, \"Low\", \"Medium\", \"High\") returns \"Medium\".",
+      ["index_num", "value1", "..."]
+    ],
+    "CHOOSECOLS": [
+      "Returns the specified columns from an array, in the order you list them. Use it to reorder or select a subset of columns from a table without writing multiple INDEX formulas.\n\nExample: =CHOOSECOLS(A1:D10, 3, 1) returns columns C and A of the table (in that order).",
+      ["array", "col_num1", "..."]
+    ],
+    "CHOOSEROWS": [
+      "Returns the specified rows from an array. Use it to extract or reorder rows by position - for instance, to pull specific rows from a result set.\n\nExample: =CHOOSEROWS(A1:D10, 1, 5, 10) returns rows 1, 5, and 10.",
+      ["array", "row_num1", "..."]
+    ],
+    "COLUMN": [
+      "Returns the column number of a reference (or the current cell if no reference is given). Use it to generate column-position helpers, to build dynamic ranges, or in array formulas that need to know the column index.\n\nExample: =COLUMN(C5) returns 3.",
+      ["..."]
+    ],
+    "COLUMNS": [
+      "Returns the number of columns in a range or array. Use it when you need to know the width of a dynamic range - for instance, to construct an offset or to validate array dimensions.\n\nExample: =COLUMNS(A1:E1) returns 5.",
+      ["array"]
+    ],
+    "DROP": [
+      "Removes a specified number of rows or columns from the start or end of an array. Use it to skip header rows or to trim trailing rows from a returned range before using it in further calculations.\n\nExample: =DROP(A1:D10, 1) removes the first row; =DROP(A1:D10, -2) removes the last two rows.",
+      ["array", "rows", "..."]
+    ],
+    "EXPAND": [
+      "Expands an array to a specified number of rows and columns, filling new cells with a pad value (default #N/A). Use it to ensure an array has a consistent size before combining it with other arrays of fixed dimensions.\n\nExample: =EXPAND(A1:B3, 5, 3, 0) extends the range to 5 rows and 3 columns, padding with 0.",
+      ["array", "rows", "columns*", "..."]
+    ],
+    "FILTER": [
+      "Returns only the rows (or columns) from a range that meet a specified condition. Use it instead of AutoFilter when you want filtered results to spill directly into formulas - the output updates automatically as data changes.\n\nExample: =FILTER(A2:D100, C2:C100=\"West\") returns all rows where column C is \"West\".",
+      ["array", "include", "..."]
+    ],
+    "FORMULATEXT": [
+      "Returns the formula in a referenced cell as a text string. Use it to display or audit formulas - for example, to show the formula alongside its result in a report.\n\nExample: =FORMULATEXT(B2) returns the text of whatever formula is in B2.",
+      ["reference"]
+    ],
+    "HLOOKUP": [
+      "Looks up a value in the first row of a table and returns a value from the same column a specified number of rows down. Use it for horizontal lookup tables where categories are in the first row and data sits below them.\n\nExample: =HLOOKUP(\"Q2\", A1:D5, 3, FALSE) finds \"Q2\" in row 1 and returns the value in row 3 of that column.",
+      ["lookup_value", "table_array", "row_index", "range_lookup"]
+    ],
+    "HSTACK": [
+      "Combines multiple arrays or ranges side by side (horizontally) into a single array. Use it to merge separate datasets that have the same number of rows into one wider table.\n\nExample: =HSTACK(A1:B10, D1:E10) joins two two-column ranges into a single four-column array.",
+      ["array1", "..."]
+    ],
+    "INDEX": [
+      "Returns the value at a specified row and column within a range. Most often combined with MATCH to create a flexible two-way lookup that works from left to right - unlike VLOOKUP.\n\nExample: =INDEX(B2:D10, MATCH(\"Alice\", A2:A10, 0), 2) returns Alice's value from the second column of the data.",
+      ["array", "row_num", "col_num", "area_num*"]
+    ],
+    "INDIRECT": [
+      "Returns a cell or range reference built from a text string, evaluated at runtime. Use it to create dynamic references - for instance, referencing a sheet name stored in a cell, or building a range address from row and column variables.\n\nExample: =INDIRECT(\"Sheet2!A1\") returns whatever is in Sheet2's A1.",
+      ["ref_text", "..."]
+    ],
+    "LOOKUP": [
+      "Searches a one-row or one-column range for a value and returns a corresponding value from another range. An older function largely superseded by VLOOKUP and XLOOKUP, but still useful for approximate-match lookups in sorted data.\n\nExample: =LOOKUP(B2, rate_column, bracket_column) returns the bracket corresponding to B2.",
+      ["lookup_value", "lookup_vector*", "..."]
+    ],
+    "MATCH": [
+      "Searches for a value in a range and returns its relative position. Most often paired with INDEX for flexible lookups; also useful on its own to find where an item sits in a list.\n\nExample: =MATCH(\"Alice\", A2:A100, 0) returns the row number of \"Alice\" in the range.",
+      ["lookup_value", "lookup_array", "match_type"]
+    ],
+    "OFFSET": [
+      "Returns a reference shifted a specified number of rows and columns from a starting cell, with an optional width and height. Use it to build dynamic ranges whose size or position changes based on inputs - for instance, a rolling 12-month window.\n\nExample: =SUM(OFFSET(A1, 0, 0, 12, 1)) sums a 12-row column starting at A1.",
+      ["reference", "rows*", "cols*", "height*", "..."]
+    ],
+    "ROW": [
+      "Returns the row number of a reference (or the current cell if no reference is given). Use it to generate row-number sequences, add a row-number column, or control array formula behavior.\n\nExample: =ROW(A5) returns 5; =ROW() in cell B3 returns 3.",
+      ["reference"]
+    ],
+    "ROWS": [
+      "Returns the number of rows in a range or array. Use it to find the height of a dynamic range, or when you need to loop over all rows in a computed result.\n\nExample: =ROWS(A1:A10) returns 10.",
+      ["array"]
+    ],
+    "SORT": [
+      "Returns a sorted copy of an array based on one or more columns, in ascending or descending order. Use it to present data in order without disturbing the source - the result spills automatically and updates as data changes.\n\nExample: =SORT(A2:B20, 2, -1) sorts by column B in descending order.",
+      ["array", "sort_index*", "sort_order*", "..."]
+    ],
+    "SORTBY": [
+      "Sorts an array by the values in one or more external arrays rather than by its own columns. Use it to sort one list based on the order defined in a separate related list.\n\nExample: =SORTBY(A2:A10, B2:B10) sorts the names in A2:A10 by the scores in B2:B10.",
+      ["array", "by_array*", "sort_order*", "..."]
+    ],
+    "TAKE": [
+      "Returns a specified number of rows or columns from the start or end of an array. Use it to grab the top N or bottom N rows from a dataset - for instance, to show the five most recent entries.\n\nExample: =TAKE(A2:D100, 5) returns the first 5 rows; =TAKE(A2:D100, -5) returns the last 5.",
+      ["array", "rows", "..."]
+    ],
+    "TOCOL": [
+      "Converts an array or range into a single column, optionally ignoring blanks or errors. Use it to flatten a two-dimensional table into a vertical list for further processing or deduplication.\n\nExample: =TOCOL(A1:D5) stacks all 20 values into one column.",
+      ["array", "ignore*", "..."]
+    ],
+    "TOROW": [
+      "Converts an array or range into a single row, optionally ignoring blanks or errors. Use it to flatten a table into a horizontal list.\n\nExample: =TOROW(A1:D5) returns all 20 values in a single row.",
+      ["array", "ignore*", "..."]
+    ],
+    "TRANSPOSE": [
+      "Rotates an array so that rows become columns and columns become rows. Use it to reorient data - for example, converting a vertical list of months into a horizontal header row, or vice versa.\n\nExample: =TRANSPOSE(A1:A12) returns a 12-column, 1-row array.",
+      ["array"]
+    ],
+    "TRIMRANGE": [
+      "Trims rows and/or columns of empty cells from the edges of an array. Use it to remove trailing blanks from a dynamic spill result before passing it to another function that would be thrown off by extra empty rows.\n\nExample: =TRIMRANGE(A1:D20) removes any all-blank rows or columns at the edges.",
+      ["range", "trim_rows*", "..."]
+    ],
+    "UNIQUE": [
+      "Returns the distinct values from a list or table, removing duplicates. Use it to build a unique list of items - categories, customers, regions - that updates automatically as new data is added.\n\nExample: =UNIQUE(A2:A100) spills the distinct values found in column A.",
+      ["array", "by_col*", "..."]
+    ],
+    "VLOOKUP": [
+      "Searches for a value in the first column of a table and returns a value from another column in the same row. The classic lookup function - use it to join tables on a key, like finding a price for a product code. Note: XLOOKUP is more flexible for complex lookups.\n\nExample: =VLOOKUP(A2, PriceTable, 3, FALSE) returns the value from column 3 of PriceTable where column 1 matches A2.",
+      ["lookup_value", "table_array", "column_index_num", "range_lookup"]
+    ],
+    "VSTACK": [
+      "Combines multiple arrays or ranges one on top of the other (vertically) into a single array. Use it to concatenate tables that share the same column structure.\n\nExample: =VSTACK(A1:C10, A12:C20) stacks two tables into one continuous block.",
+      ["array1", "..."]
+    ],
+    "WRAPCOLS": [
+      "Wraps a one-dimensional array into a multi-column layout of a specified row height. Use it to reflow a vertical list into a grid - for instance, turning 12 month names into a 3×4 block.\n\nExample: =WRAPCOLS(A1:A12, 4) creates three columns of four items each.",
+      ["vector", "wrap_count", "..."]
+    ],
+    "WRAPROWS": [
+      "Wraps a one-dimensional array into a multi-row layout of a specified width. The horizontal counterpart to WRAPCOLS - use it to arrange a list into rows of fixed length.\n\nExample: =WRAPROWS(A1:A12, 4) creates three rows of four items each.",
+      ["vector", "wrap_count", "..."]
+    ],
+    "XLOOKUP": [
+      "Searches for a value in a lookup array and returns the corresponding value from a result array, with options for match mode and search direction. Use it as the modern replacement for VLOOKUP and HLOOKUP - it can search in any direction, return multiple columns, and handle missing values gracefully.\n\nExample: =XLOOKUP(A2, B2:B100, C2:D100, \"Not found\") returns two columns of results where B matches A2.",
+      [
+        "lookup",
+        "lookup_array",
+        "return_array",
+        "if_not_found*",
+        "match_mode*",
+        "..."
+      ]
+    ],
+    "XMATCH": [
+      "Searches for a value in an array and returns its position, with options for match type and search direction. Use it as a more capable replacement for MATCH - it supports wildcards, binary search, and reverse lookup.\n\nExample: =XMATCH(A2, B2:B100, 0, -1) finds the last exact match position.",
+      ["lookup_value", "lookup_array", "match_mode*", "..."]
     ]
   },
-  "TEXTBEFORE": {
-    "c": "Text",
-    "d": "Returns text that occurs before a given character or string.",
-    "a": [
-      "text",
-      "delimiter",
-      "instance_num*",
-      "match_mode*",
-      "match_end*",
-      "if_not_found*"
+  "Math and Trigonometry": {
+    "ABS": [
+      "Returns the absolute value of a number, making negatives positive while leaving positives unchanged. Use it whenever the sign doesn't matter and you only care about magnitude - error distances, deviations, or the difference between two values regardless of direction.\n\nExample: =ABS(-5) returns 5.",
+      ["number"]
+    ],
+    "ACOS": [
+      "Returns the arccosine (inverse cosine) of a number, in radians. Use it in geometry and trigonometry when you know the cosine of an angle and need to find the angle itself.\n\nExample: =ACOS(0.5) returns π/3 ≈ 1.047 radians (60°).",
+      ["number"]
+    ],
+    "ACOSH": [
+      "Returns the inverse hyperbolic cosine of a number. Used in advanced mathematics and physics for problems involving hyperbolic geometry or special functions.\n\nExample: =ACOSH(2) returns approximately 1.317.",
+      ["number"]
+    ],
+    "ACOT": [
+      "Returns the inverse cotangent of a number, in radians. A specialized trigonometric function used in surveying and engineering calculations.\n\nExample: =ACOT(1) returns π/4 ≈ 0.785 radians (45°).",
+      ["number"]
+    ],
+    "ACOTH": [
+      "Returns the inverse hyperbolic cotangent of a number. Appears in advanced mathematical and physical analysis.\n\nExample: =ACOTH(2) returns approximately 0.549.",
+      ["number"]
+    ],
+    "ARABIC": [
+      "Converts a Roman numeral text string to a regular number. Use it when historical or legacy data uses Roman numerals and you need to perform arithmetic on the values.\n\nExample: =ARABIC(\"XIV\") returns 14.",
+      ["roman_text"]
+    ],
+    "ASIN": [
+      "Returns the arcsine (inverse sine) of a number, in radians. Use it in geometry when you know the sine of an angle and need the angle itself.\n\nExample: =ASIN(0.5) returns π/6 ≈ 0.524 radians (30°).",
+      ["number"]
+    ],
+    "ASINH": [
+      "Returns the inverse hyperbolic sine of a number. Used in engineering and advanced mathematics where hyperbolic functions arise.\n\nExample: =ASINH(1) returns approximately 0.881.",
+      ["number"]
+    ],
+    "ATAN": [
+      "Returns the arctangent (inverse tangent) of a number in radians, in the range −π/2 to π/2. Use it to find an angle from a slope or ratio when the quadrant doesn't matter.\n\nExample: =ATAN(1) returns π/4 ≈ 0.785 radians (45°).",
+      ["number"]
+    ],
+    "ATAN2": [
+      "Returns the arctangent of a point defined by x and y coordinates in radians, correctly handling all four quadrants. Use it when you have x and y components and need the direction angle of a vector.\n\nExample: =ATAN2(1, 1) returns π/4; =ATAN2(-1, 0) returns π (pointing left).",
+      ["x_num", "y_num"]
+    ],
+    "ATANH": [
+      "Returns the inverse hyperbolic tangent of a number. Used in advanced statistics (the Fisher z-transformation) and mathematics.\n\nExample: =ATANH(0.5) returns approximately 0.549.",
+      ["number"]
+    ],
+    "BASE": [
+      "Converts a number to a text string representation in any base (radix) from 2 to 36. Use it as a general-purpose base converter - handy for bases not covered by DEC2BIN or DEC2HEX.\n\nExample: =BASE(255, 16) returns \"FF\"; =BASE(10, 2) returns \"1010\".",
+      ["number", "radix", "min_length*"]
+    ],
+    "CEILING": [
+      "Rounds a number up to the nearest multiple of a significance value. Use it when you need to round up to a specific increment - for example, always rounding prices up to the nearest $0.05 or time up to the next 15 minutes.\n\nExample: =CEILING(4.3, 0.5) returns 4.5.",
+      ["number", "significance"]
+    ],
+    "CEILING.MATH": [
+      "Rounds a number up to the nearest multiple of significance, with a mode argument that controls how negative numbers are handled. Use it when you need consistent rounding for both positive and negative values.\n\nExample: =CEILING.MATH(-4.3, 1) returns -4 (toward zero by default).",
+      ["number", "significance*", "mode*"]
+    ],
+    "CEILING.PRECISE": [
+      "Rounds a number up toward positive infinity to the nearest multiple of significance, regardless of sign. Use it when you always want to round toward positive infinity for both positive and negative numbers.\n\nExample: =CEILING.PRECISE(-4.3, 1) returns -4.",
+      ["number", "significance*"]
+    ],
+    "COMBIN": [
+      "Returns the number of combinations of n items taken k at a time, ignoring order. Use it in probability and statistics to count how many ways you can choose a subset from a larger group.\n\nExample: =COMBIN(10, 3) returns 120 (the number of ways to choose 3 from 10).",
+      ["number", "number_chosen"]
+    ],
+    "COMBINA": [
+      "Returns the number of combinations with repetition allowed (multiset coefficients). Use it when items can be chosen more than once - for instance, counting selections from a menu where items repeat.\n\nExample: =COMBINA(4, 2) returns 10.",
+      ["number", "number_chosen"]
+    ],
+    "COS": [
+      "Returns the cosine of an angle given in radians. Use it in geometry, physics, and engineering wherever the cosine function is needed.\n\nExample: =COS(PI()/3) returns 0.5 (cosine of 60°).",
+      ["number"]
+    ],
+    "COSH": [
+      "Returns the hyperbolic cosine of a number. Used in engineering and physics - for instance, in catenary curve calculations and heat transfer problems.\n\nExample: =COSH(1) returns approximately 1.543.",
+      ["number"]
+    ],
+    "COT": [
+      "Returns the cotangent of an angle in radians (cosine divided by sine). A derived trigonometric function used in some geometry and physics applications.\n\nExample: =COT(PI()/4) returns 1.",
+      ["number"]
+    ],
+    "COTH": [
+      "Returns the hyperbolic cotangent of a number. Appears in advanced mathematical and physical analysis.\n\nExample: =COTH(1) returns approximately 1.313.",
+      ["number"]
+    ],
+    "CSC": [
+      "Returns the cosecant of an angle in radians (1 divided by sine). Used in trigonometry where the reciprocal of sine is needed.\n\nExample: =CSC(PI()/2) returns 1.",
+      ["number"]
+    ],
+    "CSCH": [
+      "Returns the hyperbolic cosecant of a number. Appears in advanced mathematics and physics.\n\nExample: =CSCH(1) returns approximately 0.851.",
+      ["number"]
+    ],
+    "DECIMAL": [
+      "Converts a text representation of a number in a given base into its decimal equivalent. Use it when you have numbers in binary, octal, or hexadecimal stored as text and need a decimal number to calculate with.\n\nExample: =DECIMAL(\"FF\", 16) returns 255; =DECIMAL(\"1010\", 2) returns 10.",
+      ["number", "radix"]
+    ],
+    "DEGREES": [
+      "Converts an angle from radians to degrees. Use it after trigonometric functions that return results in radians when you want the angle expressed in degrees for display or further calculation.\n\nExample: =DEGREES(PI()) returns 180.",
+      ["angle"]
+    ],
+    "EVEN": [
+      "Rounds a number up to the nearest even integer. Use it when you need to ensure a quantity is even - for instance, packaging items that must come in pairs.\n\nExample: =EVEN(3) returns 4; =EVEN(-3) returns -4.",
+      ["number"]
+    ],
+    "EXP": [
+      "Returns e (Euler's number ≈ 2.71828) raised to the power of a given number. Use it for exponential growth and decay models, as the inverse of LN, or in any formula involving the mathematical constant e.\n\nExample: =EXP(1) returns e; =EXP(LN(x)) returns x.",
+      ["number"]
+    ],
+    "FACT": [
+      "Returns the factorial of a non-negative integer (n! = 1 × 2 × … × n). Use it in combinatorics to count the number of ways to arrange items, or in probability formulas that require factorials.\n\nExample: =FACT(5) returns 120.",
+      ["number"]
+    ],
+    "FACTDOUBLE": [
+      "Returns the double factorial of a number (n!! = n × (n−2) × (n−4) × … down to 1 or 2). Used in combinatorics and probability, particularly with Gaussian integrals and binomial series.\n\nExample: =FACTDOUBLE(7) returns 105 (7×5×3×1).",
+      ["number"]
+    ],
+    "FLOOR": [
+      "Rounds a number down to the nearest multiple of a significance value. Use it when you always want to round down to a specific increment - for example, discarding partial hours when computing billable time.\n\nExample: =FLOOR(4.7, 0.5) returns 4.5.",
+      ["number", "significance"]
+    ],
+    "FLOOR.MATH": [
+      "Rounds a number down to the nearest multiple of significance, with a mode argument controlling behavior for negative numbers. More flexible than FLOOR when you need consistent rounding across positive and negative values.\n\nExample: =FLOOR.MATH(-4.7, 1) returns -5 (away from zero by default).",
+      ["number", "significance*", "mode*"]
+    ],
+    "FLOOR.PRECISE": [
+      "Rounds a number down toward negative infinity to the nearest multiple of significance, regardless of sign. Use it for consistent rounding direction across both positive and negative numbers.\n\nExample: =FLOOR.PRECISE(-4.3, 1) returns -5.",
+      ["number", "significance*"]
+    ],
+    "GCD": [
+      "Returns the greatest common divisor of two or more integers - the largest number that divides all of them evenly. Use it to simplify fractions or to find the largest common factor shared between quantities.\n\nExample: =GCD(12, 8) returns 4.",
+      ["number1", "..."]
+    ],
+    "INT": [
+      "Rounds a number down to the nearest integer, toward negative infinity. Use it to truncate a decimal to a whole number - but note that for negative numbers, =INT(-4.2) returns -5, not -4; use TRUNC if you always want rounding toward zero.\n\nExample: =INT(4.9) returns 4.",
+      ["number"]
+    ],
+    "ISO.CEILING": [
+      "Rounds a number up toward positive infinity to the nearest multiple of significance. Equivalent to CEILING.PRECISE - provided for ISO standard compatibility.\n\nExample: =ISO.CEILING(4.3, 0.5) returns 4.5.",
+      []
+    ],
+    "LCM": [
+      "Returns the least common multiple of two or more integers - the smallest number that is a multiple of all the supplied values. Use it to synchronize repeating events or to find a common denominator.\n\nExample: =LCM(4, 6) returns 12.",
+      ["number1", "..."]
+    ],
+    "LN": [
+      "Returns the natural logarithm of a number (logarithm base e). Use it for exponential growth/decay analysis, probability distributions, and any formula where the natural log is required.\n\nExample: =LN(EXP(1)) returns 1; =LN(100) ≈ 4.605.",
+      ["number"]
+    ],
+    "LOG": [
+      "Returns the logarithm of a number to a specified base (default is 10). Use it when working in a particular base - base-2 for information theory, base-10 for decibels, or a custom base for specialized formulas.\n\nExample: =LOG(1000, 10) returns 3; =LOG(8, 2) returns 3.",
+      ["number", "..."]
+    ],
+    "LOG10": [
+      "Returns the base-10 logarithm of a number. Use it for decibel calculations, pH calculations, and any formula where common (base-10) logarithms are the standard.\n\nExample: =LOG10(1000) returns 3.",
+      ["number"]
+    ],
+    "MAX": [
+      "Returns the largest value in a set of numbers. Use it to find the peak figure in a list - highest sales amount, latest date, or fastest time.\n\nExample: =MAX(A2:A100) returns the largest value in the range.",
+      ["number1", "..."]
+    ],
+    "MDETERM": [
+      "Returns the determinant of a square matrix. Use it in linear algebra - for instance, to check whether a system of equations has a unique solution (a non-zero determinant) or to apply Cramer's rule.\n\nExample: =MDETERM(A1:D4) returns the determinant of the 4×4 matrix.",
+      ["array"]
+    ],
+    "MIN": [
+      "Returns the smallest value in a set of numbers. Use it to find the minimum - lowest score, earliest date, smallest quantity - in a list or range.\n\nExample: =MIN(A2:A100) returns the smallest value.",
+      ["number1", "..."]
+    ],
+    "MINVERSE": [
+      "Returns the inverse of a square matrix. Use it in linear algebra to solve systems of equations, since multiplying a matrix by its inverse yields the identity matrix. Enter as an array formula over a range the same size as the input.\n\nExample: =MINVERSE(A1:B2) returns the 2×2 inverse.",
+      ["array"]
+    ],
+    "MMULT": [
+      "Multiplies two matrices and returns the result matrix. Use it for matrix arithmetic in linear algebra, portfolio analysis, or any application requiring matrix multiplication. Enter as an array formula over a range sized rows(array1) × cols(array2).\n\nExample: =MMULT(A1:B2, D1:E2) multiplies the two 2×2 matrices.",
+      ["array1", "array2"]
+    ],
+    "MOD": [
+      "Returns the remainder after dividing one number by another. Use it to detect multiples (MOD(n, 3)=0 means n is divisible by 3), alternate row patterns (odd/even), or wrap a numeric sequence.\n\nExample: =MOD(10, 3) returns 1.",
+      ["number", "divisor"]
+    ],
+    "MROUND": [
+      "Rounds a number to the nearest multiple of a specified value. Use it to round prices to the nearest nickel, booking times to the nearest 15 minutes, or quantities to the nearest dozen.\n\nExample: =MROUND(37, 5) returns 35; =MROUND(38, 5) returns 40.",
+      ["number", "significance"]
+    ],
+    "MULTINOMIAL": [
+      "Returns the multinomial coefficient - the number of ways to partition a set into ordered groups of given sizes. Used in combinatorics and probability theory for counting problems with multiple groups.\n\nExample: =MULTINOMIAL(2, 3, 4) returns 9!/(2!×3!×4!) = 1260.",
+      ["number1", "..."]
+    ],
+    "MUNIT": [
+      "Returns the unit (identity) matrix of a given dimension - a square matrix with 1s on the diagonal and 0s elsewhere. Use it as a starting point for matrix operations or to build identity-based transformations.\n\nExample: =MUNIT(3) returns a 3×3 identity matrix.",
+      ["dimension"]
+    ],
+    "ODD": [
+      "Rounds a number up to the nearest odd integer. Use it when you need to ensure a value is odd - for example, certain packaging, layout, or algorithm requirements.\n\nExample: =ODD(4) returns 5; =ODD(-4) returns -5.",
+      ["number"]
+    ],
+    "PI": [
+      "Returns the mathematical constant π (approximately 3.14159265358979). Use it in any formula involving circles, angles, or trigonometry where π is needed.\n\nExample: =PI()*r^2 computes the area of a circle with radius r.",
+      []
+    ],
+    "POWER": [
+      "Returns a number raised to a given power - equivalent to the ^ operator but sometimes clearer in complex formulas. Use it for any exponentiation: squaring values, computing compound growth, or applying a known power law.\n\nExample: =POWER(2, 10) returns 1024.",
+      ["number", "power"]
+    ],
+    "PRODUCT": [
+      "Multiplies all numbers in a list together and returns the result. Use it to find the product of a range - for instance, computing compound growth over multiple periods by multiplying a series of growth factors.\n\nExample: =PRODUCT(A2:A10) multiplies all values in the range.",
+      ["number1", "..."]
+    ],
+    "QUOTIENT": [
+      "Returns the integer portion of a division result, discarding the remainder. Use it when you only want the whole-number quotient without dealing with decimals.\n\nExample: =QUOTIENT(10, 3) returns 3 (10 ÷ 3 = 3 remainder 1).",
+      ["numerator", "denominator"]
+    ],
+    "RADIANS": [
+      "Converts an angle from degrees to radians. Use it before passing degree values to trigonometric functions (SIN, COS, TAN), which expect radians.\n\nExample: =RADIANS(180) returns π ≈ 3.14159.",
+      ["angle"]
+    ],
+    "RAND": [
+      "Returns a random number between 0 (inclusive) and 1 (exclusive), recalculated on every worksheet change. Use it to generate random values for simulations or random sampling.\n\nExample: =INT(RAND()*100)+1 returns a random integer from 1 to 100.",
+      []
+    ],
+    "RANDARRAY": [
+      "Returns a two-dimensional array of random numbers between specified minimum and maximum values. Use it to fill a range with random data for simulations or testing - all values generated at once with a single formula.\n\nExample: =RANDARRAY(5, 3, 1, 100, TRUE) fills a 5×3 block with random integers from 1 to 100.",
+      ["rows", "columns*", "min*", "max*", "..."]
+    ],
+    "RANDBETWEEN": [
+      "Returns a random integer between two specified values (inclusive), recalculated on every change. Use it to simulate dice rolls, random assignment, or integer random sampling.\n\nExample: =RANDBETWEEN(1, 6) simulates rolling a six-sided die.",
+      ["bottom", "top"]
+    ],
+    "ROMAN": [
+      "Converts an Arabic number to Roman numeral notation, returned as text. Use it to format numbers in classical style for titles, outlines, or documents where Roman numerals are conventional.\n\nExample: =ROMAN(2024) returns \"MMXXIV\".",
+      ["number", "..."]
+    ],
+    "ROUND": [
+      "Rounds a number to a specified number of decimal places, using standard rounding (≥0.5 rounds up). Use it to control precision in financial totals, measurements, or any calculated value shown to users.\n\nExample: =ROUND(3.14159, 2) returns 3.14.",
+      ["number", "num_digits"]
+    ],
+    "ROUNDDOWN": [
+      "Rounds a number toward zero to a specified number of decimal places - always rounding down regardless of the digit that follows. Use it when you always want the more conservative value.\n\nExample: =ROUNDDOWN(3.79, 1) returns 3.7.",
+      ["number", "num_digits"]
+    ],
+    "ROUNDUP": [
+      "Rounds a number away from zero to a specified number of decimal places - always rounding up regardless of the digit that follows. Use it when you always want to round conservatively upward.\n\nExample: =ROUNDUP(3.21, 1) returns 3.3.",
+      ["number", "num_digits"]
+    ],
+    "SEC": [
+      "Returns the secant of an angle in radians (1 divided by cosine). A trigonometric function used in geometry and physics.\n\nExample: =SEC(0) returns 1.",
+      ["number"]
+    ],
+    "SECH": [
+      "Returns the hyperbolic secant of a number. Used in advanced mathematical and physical analysis.\n\nExample: =SECH(1) returns approximately 0.648.",
+      ["number"]
+    ],
+    "SEQUENCE": [
+      "Generates a two-dimensional array of sequential numbers with a specified start and step. Use it to fill a range with a number series without dragging or entering values manually.\n\nExample: =SEQUENCE(5, 1, 1, 2) returns 1, 3, 5, 7, 9 in a column.",
+      ["rows", "columns*", "start*", "..."]
+    ],
+    "SERIESSUM": [
+      "Returns the sum of a power series: Σ aᵢ × x^(n+m×i). Use it in engineering and mathematics to evaluate polynomial approximations of functions.\n\nExample: =SERIESSUM(x, 0, 1, coefficients) evaluates the polynomial at x using the given coefficient array.",
+      []
+    ],
+    "SIGN": [
+      "Returns 1 if a number is positive, −1 if negative, and 0 if zero. Use it to determine the direction of a value without caring about its magnitude - for instance, to check whether a change is an increase or decrease.\n\nExample: =SIGN(-5) returns -1; =SIGN(0) returns 0.",
+      ["number"]
+    ],
+    "SIN": [
+      "Returns the sine of an angle given in radians. Core trigonometric function used in geometry, physics, signal processing, and engineering.\n\nExample: =SIN(PI()/2) returns 1 (sine of 90°).",
+      ["number"]
+    ],
+    "SINH": [
+      "Returns the hyperbolic sine of a number. Used in engineering and physics - for instance, in calculations involving hanging cables (catenary) and heat transfer.\n\nExample: =SINH(1) returns approximately 1.175.",
+      ["number"]
+    ],
+    "SQRT": [
+      "Returns the positive square root of a number. Use it whenever square roots appear in formulas - distance calculations, statistical formulas, geometry.\n\nExample: =SQRT(16) returns 4.",
+      ["number"]
+    ],
+    "SQRTPI": [
+      "Returns the square root of (number × π). Useful in probability and statistics - particularly for formulas derived from the normal distribution.\n\nExample: =SQRTPI(1) returns √π ≈ 1.772.",
+      ["number"]
+    ],
+    "SUBTOTAL": [
+      "Returns a subtotal of a list using any of 11 aggregation functions (SUM, AVERAGE, COUNT, etc.), and can ignore hidden rows. Use it in filtered tables so that your aggregate updates to reflect only the visible data - unlike SUM, which always includes hidden rows.\n\nExample: =SUBTOTAL(9, A2:A100) sums only visible rows.",
+      ["function_num", "ref1", "..."]
+    ],
+    "SUM": [
+      "Adds all numbers in a range together and returns the total. The most-used function in Excel - use it to total a column of sales, sum expenses, or add up any list of numbers.\n\nExample: =SUM(A2:A100) returns the total of the entire range.",
+      ["number1", "number2*", "..."]
+    ],
+    "SUMIF": [
+      "Adds values in a range that meet a single condition. Use it to total a specific category - for instance, summing sales for the \"West\" region only, or summing amounts above a threshold.\n\nExample: =SUMIF(B2:B100, \"West\", C2:C100) sums C where B is \"West\".",
+      ["range", "criteria", "sum_range*"]
+    ],
+    "SUMIFS": [
+      "Adds values in a range that meet multiple conditions simultaneously. Use it like SUMIF but with several filters at once - for example, sales in the West region for a specific product and month.\n\nExample: =SUMIFS(C2:C100, B2:B100, \"West\", D2:D100, \"Widgets\") sums C where both conditions are met.",
+      ["sum_range", "range1", "criteria1*", "range2*", "criteria2*"]
+    ],
+    "SUMPRODUCT": [
+      "Multiplies corresponding elements in two or more arrays, then sums all the products. Use it for weighted averages, multi-criteria conditional sums without SUMIFS, or any calculation that involves pairing and aggregating two lists.\n\nExample: =SUMPRODUCT((C2:C10=\"West\")*(D2:D10)) sums D where C is \"West\".",
+      ["array1", "..."]
+    ],
+    "SUMSQ": [
+      "Returns the sum of the squares of its arguments. Use it in statistics and engineering - for instance, when computing the sum of squared errors or the squared magnitude of a vector.\n\nExample: =SUMSQ(3, 4) returns 25 (9 + 16).",
+      ["number1", "..."]
+    ],
+    "SUMX2MY2": [
+      "Returns the sum of differences of squares of corresponding values in two arrays: Σ(x²−y²). Used in specialized mathematical and physics calculations.\n\nExample: =SUMX2MY2(A2:A5, B2:B5) computes Σ(A²−B²).",
+      ["array_x", "..."]
+    ],
+    "SUMX2PY2": [
+      "Returns the sum of sums of squares of corresponding values in two arrays: Σ(x²+y²). Useful for computing the sum of squared magnitudes of paired values.\n\nExample: =SUMX2PY2(A2:A5, B2:B5) computes Σ(A²+B²).",
+      ["array_x", "..."]
+    ],
+    "SUMXMY2": [
+      "Returns the sum of squared differences of corresponding values in two arrays: Σ(x−y)². Use it to compute the total squared error between two sets of values - for example, between predictions and actuals.\n\nExample: =SUMXMY2(predicted, actual) returns Σ(pred−actual)².",
+      ["array_x", "..."]
+    ],
+    "TAN": [
+      "Returns the tangent of an angle given in radians. Use it in geometry and physics for slope calculations, angle problems, and wave analysis.\n\nExample: =TAN(PI()/4) returns 1 (tangent of 45°).",
+      ["number"]
+    ],
+    "TANH": [
+      "Returns the hyperbolic tangent of a number, always between −1 and 1. Used in engineering, statistics, and as a smooth sigmoid-like function in mathematical models.\n\nExample: =TANH(1) returns approximately 0.762.",
+      ["number"]
+    ],
+    "TRUNC": [
+      "Removes the fractional part of a number, always rounding toward zero regardless of sign. Use it when you want to drop decimals without rounding - unlike INT, =TRUNC(-4.9) returns -4, not -5.\n\nExample: =TRUNC(4.9) returns 4; =TRUNC(-4.9) returns -4.",
+      ["number", "num_digits*"]
     ]
   },
-  "TEXTJOIN": {
-    "c": "Text",
-    "d": "Combines the text from multiple ranges and/or strings, with a delimiter you specify.",
-    "a": ["delimiter", "ignore_empty", "text1", "text2*"]
-  },
-  "TEXTSPLIT": {
-    "c": "Text",
-    "d": "Splits text strings by using column and row delimiters.",
-    "a": [
-      "text",
-      "col_delimiter",
-      "row_delimiter*",
-      "ignore_empty*",
-      "match_mode*",
-      "pad_with*"
+  "Statistical": {
+    "AVEDEV": [
+      "Returns the average of the absolute deviations of data points from their mean - a simple, intuitive measure of spread. Use it to communicate variability to an audience that finds standard deviation abstract.\n\nExample: =AVEDEV(A2:A20) returns the mean absolute deviation.",
+      ["number1", "..."]
+    ],
+    "AVERAGE": [
+      "Returns the arithmetic mean of a set of numbers. The most fundamental summary statistic - use it to find the central value of any numeric dataset.\n\nExample: =AVERAGE(A2:A100) returns the mean of the range.",
+      ["number1", "..."]
+    ],
+    "AVERAGEA": [
+      "Like AVERAGE, but includes text (counted as 0) and logical values (TRUE=1, FALSE=0) in the calculation. Use it when your range has mixed types and non-numeric entries should pull the average down rather than be ignored.\n\nExample: =AVERAGEA(A2:A20) treats text and FALSE as 0.",
+      ["value1", "..."]
+    ],
+    "AVERAGEIF": [
+      "Returns the average of cells that meet a single condition. Use it to find the mean for a specific category - for example, the average sale amount for a particular product.\n\nExample: =AVERAGEIF(B2:B100, \"Widgets\", C2:C100) averages C where B is \"Widgets\".",
+      ["range", "criteria", "average_range*"]
+    ],
+    "AVERAGEIFS": [
+      "Returns the average of cells that meet multiple conditions simultaneously. The multi-condition version of AVERAGEIF - use it when you need to average a filtered subset with two or more criteria.\n\nExample: =AVERAGEIFS(C2:C100, B2:B100, \"West\", D2:D100, \"Q1\") averages where both conditions are met.",
+      ["avg_rng", "range1*", "criteria1*", "range2*", "..."]
+    ],
+    "BETA.DIST": [
+      "Returns the beta distribution probability - either the cumulative probability (CDF) or the probability density (PDF) at a given value. Use it in project management and Bayesian statistics to model probabilities constrained between 0 and 1.\n\nExample: =BETA.DIST(0.4, 2, 5, TRUE) returns the cumulative probability at 0.4.",
+      []
+    ],
+    "BETA.INV": [
+      "Returns the inverse of the beta cumulative distribution - the value at which the CDF reaches a given probability. Use it to find percentile values of a beta-distributed variable.\n\nExample: =BETA.INV(0.95, 2, 5) returns the 95th percentile.",
+      []
+    ],
+    "BINOM.DIST": [
+      "Returns the binomial distribution probability for exactly k successes in n independent trials. Use it for quality control, survey analysis, and any yes/no experiment - for instance, the probability of exactly 3 heads in 10 coin flips.\n\nExample: =BINOM.DIST(3, 10, 0.5, FALSE) returns that exact probability.",
+      ["number_s", "trials", "probability_s", "cumulative"]
+    ],
+    "BINOM.DIST.RANGE": [
+      "Returns the probability that the number of successes in a binomial trial falls within a specified range. Use it when you want \"between k₁ and k₂ successes\" rather than an exact count.\n\nExample: =BINOM.DIST.RANGE(10, 0.5, 3, 7) returns P(3 ≤ X ≤ 7) for 10 fair coin flips.",
+      []
+    ],
+    "BINOM.INV": [
+      "Returns the smallest number of successes such that the cumulative binomial probability reaches at least a given value. Use it to find the threshold count for a given confidence level in quality or acceptance sampling.\n\nExample: =BINOM.INV(10, 0.5, 0.75) returns the 75th-percentile count.",
+      []
+    ],
+    "CHISQ.DIST": [
+      "Returns the chi-squared distribution probability (left-tailed CDF or PDF). Use it in goodness-of-fit tests and tests of independence when analyzing categorical data.\n\nExample: =CHISQ.DIST(5, 3, TRUE) returns the left-tail CDF at 5 with 3 degrees of freedom.",
+      []
+    ],
+    "CHISQ.DIST.RT": [
+      "Returns the right-tailed chi-squared distribution probability. Use it to find the p-value for a chi-squared test statistic - values close to 0 indicate statistical significance.\n\nExample: =CHISQ.DIST.RT(5, 3) returns the right-tail probability.",
+      []
+    ],
+    "CHISQ.INV": [
+      "Returns the inverse of the left-tailed chi-squared distribution - the value at which the CDF equals a given probability. Use it to find percentile values or critical values for chi-squared tests.\n\nExample: =CHISQ.INV(0.95, 3) returns the 95th percentile with 3 degrees of freedom.",
+      []
+    ],
+    "CHISQ.INV.RT": [
+      "Returns the inverse of the right-tailed chi-squared distribution. Use it to find the critical value at a given significance level for a chi-squared test.\n\nExample: =CHISQ.INV.RT(0.05, 3) returns the critical value at the 5% level.",
+      []
+    ],
+    "CHISQ.TEST": [
+      "Returns the p-value for a chi-squared test of independence between observed and expected frequencies. Use it to determine whether an association between two categorical variables is statistically significant.\n\nExample: =CHISQ.TEST(observed_range, expected_range) returns the p-value.",
+      []
+    ],
+    "CONFIDENCE.NORM": [
+      "Returns the margin of error for a population mean using the normal distribution. Use it to build a confidence interval: the true mean is likely between AVERAGE ± CONFIDENCE.NORM.\n\nExample: =CONFIDENCE.NORM(0.05, STDEV(A2:A100), COUNT(A2:A100)) returns the margin for a 95% confidence interval.",
+      []
+    ],
+    "CONFIDENCE.T": [
+      "Like CONFIDENCE.NORM but uses the Student's t-distribution, appropriate for small samples where the population standard deviation is unknown. Use it when your sample size is small (typically under 30).\n\nExample: =CONFIDENCE.T(0.05, STDEV(A2:A20), 20) returns the margin for 20 data points.",
+      []
+    ],
+    "CORREL": [
+      "Returns the Pearson correlation coefficient (r) between two datasets, ranging from −1 to 1. Use it to measure how strongly two variables move together - for instance, whether advertising spend correlates with sales.\n\nExample: =CORREL(A2:A100, B2:B100) returns the correlation coefficient.",
+      ["array1", "..."]
+    ],
+    "COUNT": [
+      "Counts the number of cells that contain numeric values in a range. Use it to know how many valid data points you have before computing averages or to verify data completeness.\n\nExample: =COUNT(A2:A100) returns how many cells in the range hold numbers.",
+      ["value1", "..."]
+    ],
+    "COUNTA": [
+      "Counts all non-empty cells in a range regardless of content type. Use it when your data includes text, numbers, and logical values and you want the total number of entries, not just numeric ones.\n\nExample: =COUNTA(A2:A100) counts all non-blank cells.",
+      ["value1", "..."]
+    ],
+    "COUNTBLANK": [
+      "Counts the empty cells in a range. Use it to find missing data - a high COUNTBLANK on a critical column signals incomplete records that need attention.\n\nExample: =COUNTBLANK(A2:A100) returns how many cells have no content.",
+      ["range"]
+    ],
+    "COUNTIF": [
+      "Counts cells in a range that meet a single condition. Use it to tally how many records match a criterion - how many sales are in the West region, how many scores exceed 90, etc.\n\nExample: =COUNTIF(B2:B100, \"West\") counts the \"West\" entries.",
+      ["range", "criteria"]
+    ],
+    "COUNTIFS": [
+      "Counts cells that meet multiple conditions simultaneously. Use it when you need to count records matching two or more filters at once.\n\nExample: =COUNTIFS(B2:B100, \"West\", C2:C100, \">1000\") counts rows where region is West and sales exceed 1000.",
+      ["range1", "criteria1*", "range2*", "..."]
+    ],
+    "COVARIANCE.P": [
+      "Returns the population covariance of two datasets - a measure of how much they vary together. Use it in finance and statistics to quantify the relationship between two variables when you have the entire population.\n\nExample: =COVARIANCE.P(A2:A100, B2:B100).",
+      ["array1", "array2"]
+    ],
+    "COVARIANCE.S": [
+      "Returns the sample covariance, dividing by n−1 instead of n - appropriate when your data is a sample rather than the full population. Use it alongside CORREL or as a building block for more advanced statistical analysis.\n\nExample: =COVARIANCE.S(A2:A50, B2:B50).",
+      ["array1", "array2"]
+    ],
+    "DEVSQ": [
+      "Returns the sum of squared deviations from the mean for a dataset: Σ(xᵢ−x̄)². Use it as an intermediate step in variance or regression calculations.\n\nExample: =DEVSQ(A2:A20).",
+      ["number1", "..."]
+    ],
+    "EXPON.DIST": [
+      "Returns the exponential distribution probability - either the cumulative or probability density. Use it to model the time between events in a Poisson process, such as the probability that a customer arrives within the next minute.\n\nExample: =EXPON.DIST(2, 0.5, TRUE) returns the cumulative probability.",
+      ["x", "lambda", "cumulative"]
+    ],
+    "F.DIST": [
+      "Returns the F-distribution probability (left-tailed CDF or PDF). Use it in ANOVA and regression analysis when evaluating variance ratios.\n\nExample: =F.DIST(2.5, 5, 10, TRUE) returns the left-tail probability for an F-statistic of 2.5.",
+      []
+    ],
+    "F.DIST.RT": [
+      "Returns the right-tailed F-distribution probability. Use it to find the p-value for an F-test - values near 0 indicate that the variances are significantly different.\n\nExample: =F.DIST.RT(2.5, 5, 10) returns the right-tail p-value.",
+      []
+    ],
+    "F.INV": [
+      "Returns the inverse of the left-tailed F-distribution - the F-value at which the CDF equals a given probability. Use it to find critical values for F-tests or to construct F-distribution confidence intervals.\n\nExample: =F.INV(0.95, 5, 10) returns the 95th-percentile F-value.",
+      []
+    ],
+    "F.INV.RT": [
+      "Returns the inverse of the right-tailed F-distribution. Use it to find the critical F-value at a given significance level for an F-test.\n\nExample: =F.INV.RT(0.05, 5, 10) returns the critical value at the 5% level.",
+      []
+    ],
+    "F.TEST": [
+      "Returns the p-value for an F-test comparing the variances of two datasets. Use it to determine whether two groups have significantly different variability before applying certain other statistical tests.\n\nExample: =F.TEST(A2:A20, B2:B20) returns the two-tailed p-value.",
+      []
+    ],
+    "FISHER": [
+      "Returns the Fisher transformation of a correlation coefficient r, converting it to a value with approximately normal distribution. Use it to construct confidence intervals for r or to test whether two correlations are significantly different.\n\nExample: =FISHER(0.8) returns approximately 1.099.",
+      []
+    ],
+    "FISHERINV": [
+      "Returns the inverse of the Fisher transformation - converts a Fisher z-value back to a correlation coefficient. Use it after computing confidence intervals in z-space to report results as r-values.\n\nExample: =FISHERINV(1.099) returns approximately 0.8.",
+      []
+    ],
+    "GAMMA": [
+      "Returns the value of the gamma function Γ(x), which extends the factorial to non-integer values (Γ(n) = (n-1)! for positive integers). Use it in advanced probability and statistics.\n\nExample: =GAMMA(5) returns 24 (= 4!).",
+      ["number"]
+    ],
+    "GAMMA.INV": [
+      "Returns the inverse of the gamma cumulative distribution - the value at which the CDF equals a given probability. Use it for quantile calculations with gamma-distributed data.\n\nExample: =GAMMA.INV(0.95, 2, 1) returns the 95th percentile.",
+      ["probability", "alpha", "beta"]
+    ],
+    "GAMMADIST": [
+      "Returns the gamma distribution probability - an older function name for what is now GAMMA.DIST. Use it to model waiting times or other positive-valued data following a gamma distribution.\n\nExample: =GAMMADIST(2, 2, 1, TRUE) returns the cumulative probability.",
+      ["x", "alpha", "beta", "cumulative"]
+    ],
+    "GAMMALN": [
+      "Returns the natural logarithm of the gamma function. Use it to avoid numeric overflow when computing large factorials or gamma values - working in log-space keeps numbers manageable.\n\nExample: =GAMMALN(10) returns ln(9!) ≈ 12.802.",
+      ["x"]
+    ],
+    "GAMMALN.PRECISE": [
+      "A higher-precision version of GAMMALN, using a more accurate algorithm. Use it when numerical precision matters in scientific or statistical computations.\n\nExample: =GAMMALN.PRECISE(10).",
+      ["..."]
+    ],
+    "GAUSS": [
+      "Returns the probability that a standard normal variable falls between 0 and z - equal to Φ(z) − 0.5. Use it when you need the one-sided probability from the mean to a specific z-score.\n\nExample: =GAUSS(1) returns approximately 0.3413.",
+      []
+    ],
+    "GEOMEAN": [
+      "Returns the geometric mean of a set of positive numbers. Use it to average rates of change or growth rates - for instance, the average annual return of an investment, where the geometric mean correctly accounts for compounding.\n\nExample: =GEOMEAN(1.05, 1.08, 0.97) returns the average growth factor.",
+      ["number1", "..."]
+    ],
+    "HARMEAN": [
+      "Returns the harmonic mean of a set of numbers. Use it to average rates - speeds, prices per unit, or yields - where the reciprocal relationship matters more than simple averaging.\n\nExample: =HARMEAN(A2:A10) returns the harmonic average.",
+      ["number1", "..."]
+    ],
+    "HYPGEOM.DIST": [
+      "Returns the hypergeometric distribution probability - the probability of exactly k successes when drawing n items without replacement from a population of N containing K successes. Use it for quality sampling when items are not returned after each draw.\n\nExample: =HYPGEOM.DIST(3, 10, 20, 100, FALSE) returns the exact probability.",
+      []
+    ],
+    "INTERCEPT": [
+      "Returns the y-intercept of the linear regression line through a set of data points. Use it with SLOPE to build a simple linear model: predicted_y = SLOPE × x + INTERCEPT.\n\nExample: =INTERCEPT(B2:B20, A2:A20) returns the constant term of the best-fit line.",
+      ["known_ys", "..."]
+    ],
+    "KURT": [
+      "Returns the kurtosis of a dataset - a measure of how heavy the tails are compared to a normal distribution. Positive kurtosis means more extreme outliers than normal; negative means fewer. Use it to understand whether your data has unusual outlier behavior.\n\nExample: =KURT(A2:A100) returns the excess kurtosis.",
+      []
+    ],
+    "LARGE": [
+      "Returns the k-th largest value in a dataset. Use it to find top-N values - the second-highest score, third-largest sale - without sorting the data.\n\nExample: =LARGE(A2:A100, 3) returns the third-largest value.",
+      ["array", "k"]
+    ],
+    "LOGNORM.DIST": [
+      "Returns the log-normal distribution probability (CDF or PDF). Use it to model data that is the product of many positive factors - stock prices, income distributions, particle sizes.\n\nExample: =LOGNORM.DIST(4, 1, 0.5, TRUE) returns the cumulative probability.",
+      []
+    ],
+    "LOGNORM.INV": [
+      "Returns the inverse of the log-normal cumulative distribution - the value at a given percentile. Use it to find percentile values for a log-normally distributed variable.\n\nExample: =LOGNORM.INV(0.9, 1, 0.5) returns the 90th percentile.",
+      []
+    ],
+    "MAXA": [
+      "Returns the largest value in a range, treating text as 0 and TRUE as 1. Use it when you want the maximum across a mixed-type range and need non-numeric values to be counted rather than skipped.\n\nExample: =MAXA(A2:A20) returns the maximum even if the range contains text.",
+      ["value1", "..."]
+    ],
+    "MAXIFS": [
+      "Returns the maximum value among cells that meet one or more conditions. Use it to find the highest value within a filtered group - for instance, the largest sale in the West region.\n\nExample: =MAXIFS(C2:C100, B2:B100, \"West\") returns the largest value in C where B is \"West\".",
+      ["max_range", "range1*", "criteria1*", "range2*", "..."]
+    ],
+    "MEDIAN": [
+      "Returns the middle value of a sorted dataset - half the values are above it and half below. Use it as a more outlier-resistant measure of center than the average.\n\nExample: =MEDIAN(A2:A100) returns the midpoint value.",
+      ["number1", "..."]
+    ],
+    "MINA": [
+      "Returns the smallest value in a range, treating text as 0 and FALSE as 0. The counterpart of MAXA - use it when non-numeric entries should be considered in the minimum calculation.\n\nExample: =MINA(A2:A20) returns the minimum including any text (as 0) or FALSE values.",
+      ["value1", "..."]
+    ],
+    "MINIFS": [
+      "Returns the minimum value among cells that meet one or more conditions. Use it to find the lowest value within a filtered subset - the smallest order, earliest date within a category.\n\nExample: =MINIFS(C2:C100, B2:B100, \"West\") returns the smallest value in C where B is \"West\".",
+      ["min_range", "range1*", "criteria1*", "range2*", "..."]
+    ],
+    "NEGBINOM.DIST": [
+      "Returns the negative binomial distribution probability - the probability of exactly k failures before achieving the r-th success. Use it in reliability testing and sequential sampling scenarios.\n\nExample: =NEGBINOM.DIST(5, 3, 0.5, FALSE) returns the probability of 5 failures before the 3rd success.",
+      []
+    ],
+    "NORM.DIST": [
+      "Returns the normal distribution probability (CDF or PDF) for a given mean and standard deviation. Use it to find how likely a value is under a normal distribution - for instance, what fraction of products fall within spec.\n\nExample: =NORM.DIST(75, 70, 10, TRUE) returns P(X ≤ 75) for a N(70, 10) distribution.",
+      ["x", "mean", "standard_dev", "cumulative"]
+    ],
+    "NORM.INV": [
+      "Returns the inverse of the normal CDF - the value at a given cumulative probability. Use it to find percentile values for any normal distribution.\n\nExample: =NORM.INV(0.95, 70, 10) returns the 95th percentile of a N(70, 10) distribution.",
+      ["probability", "mean", "standard_dev"]
+    ],
+    "NORM.S.DIST": [
+      "Returns the standard normal distribution probability (mean=0, standard deviation=1). Use it for z-table lookups - finding the probability that a standard normal variable is at most z.\n\nExample: =NORM.S.DIST(1.96, TRUE) returns approximately 0.975.",
+      ["z", "cumulative"]
+    ],
+    "NORM.S.INV": [
+      "Returns the inverse of the standard normal CDF - the z-score for a given cumulative probability. Use it to find critical z-values for confidence intervals and hypothesis tests.\n\nExample: =NORM.S.INV(0.975) returns approximately 1.96.",
+      ["probability"]
+    ],
+    "PEARSON": [
+      "Returns the Pearson product-moment correlation coefficient between two datasets. Functionally identical to CORREL - use either one to measure the linear relationship between two variables.\n\nExample: =PEARSON(A2:A50, B2:B50) returns the correlation coefficient.",
+      ["array1", "..."]
+    ],
+    "PHI": [
+      "Returns the value of the standard normal probability density function at a given z-value. Use it in mathematical and statistical derivations where the normal PDF is needed directly.\n\nExample: =PHI(0) returns approximately 0.3989 (the peak of the bell curve).",
+      ["x"]
+    ],
+    "POISSON.DIST": [
+      "Returns the Poisson distribution probability for a given number of events and average rate. Use it to model the probability of a count of rare, independent events - customer arrivals, server requests, or defects per unit.\n\nExample: =POISSON.DIST(3, 5, FALSE) returns P(X=3) when the average is 5 events.",
+      []
+    ],
+    "RANK.AVG": [
+      "Returns the rank of a number within a list, averaging the rank when ties occur. Use it for fair ranking where you want tied values to share the average of their positions rather than one getting an arbitrary advantage.\n\nExample: =RANK.AVG(A2, A$2:A$100, 0) returns A2's rank in descending order.",
+      ["number", "ref", "order*"]
+    ],
+    "RANK.EQ": [
+      "Returns the rank of a number within a list; all tied values receive the top rank in the group. Use it for traditional ranking where tied values claim the same (highest) position in the tie.\n\nExample: =RANK.EQ(A2, A$2:A$100, 0) returns A2's descending rank.",
+      ["number", "ref", "order*"]
+    ],
+    "RSQ": [
+      "Returns the square of the Pearson correlation coefficient (R²) - the proportion of variance in y explained by x. Use it to evaluate how well a linear regression fits your data; R²=1 means a perfect fit.\n\nExample: =RSQ(B2:B20, A2:A20) returns R² for the linear relationship.",
+      []
+    ],
+    "SKEW": [
+      "Returns the skewness of a distribution - a measure of asymmetry around the mean. Positive skew means a longer right tail; negative means a longer left tail. Use it to check whether data is approximately symmetric before applying methods that assume normality.\n\nExample: =SKEW(A2:A100) returns the sample skewness.",
+      ["number1", "..."]
+    ],
+    "SKEW.P": [
+      "Returns the population skewness, dividing by n instead of n−1. Use it when your data represents the entire population rather than a sample.\n\nExample: =SKEW.P(A2:A100).",
+      ["number1", "..."]
+    ],
+    "SLOPE": [
+      "Returns the slope of the linear regression line through a set of data points - how much y changes for each unit increase in x. Use it with INTERCEPT to build a simple linear model for prediction or trend analysis.\n\nExample: =SLOPE(B2:B20, A2:A20) returns the slope coefficient.",
+      ["known_ys", "..."]
+    ],
+    "SMALL": [
+      "Returns the k-th smallest value in a dataset. Use it to find bottom-N values - the second-lowest, third-cheapest - without sorting the data.\n\nExample: =SMALL(A2:A100, 2) returns the second-smallest value.",
+      ["array", "k"]
+    ],
+    "STANDARDIZE": [
+      "Returns the standardized (z-score) equivalent of a value: (x − mean) / standard_deviation. Use it to convert raw values to standard deviations from the mean for comparison across different scales or distributions.\n\nExample: =STANDARDIZE(A2, AVERAGE(A$2:A$100), STDEV(A$2:A$100)) returns the z-score.",
+      ["x", "mean", "standard_dev"]
+    ],
+    "STDEV.P": [
+      "Returns the population standard deviation (divides by n). Use it when your values represent the entire population and you want the exact spread of that population.\n\nExample: =STDEV.P(A2:A100).",
+      ["number1", "..."]
+    ],
+    "STDEV.S": [
+      "Returns the sample standard deviation (divides by n−1). The most common standard deviation function - use it when your data is a sample from a larger population and you want an unbiased estimate of the population spread.\n\nExample: =STDEV.S(A2:A20).",
+      ["number1", "..."]
+    ],
+    "STDEVA": [
+      "Like STDEV.S but includes text (as 0) and logical values in the calculation. Use it when your range has mixed types and non-numeric entries should contribute to the spread.\n\nExample: =STDEVA(A2:A20).",
+      ["number1", "..."]
+    ],
+    "STDEVPA": [
+      "Like STDEV.P but includes text and logical values. Use it for population standard deviation over a mixed-type range.\n\nExample: =STDEVPA(A2:A100).",
+      ["number1", "..."]
+    ],
+    "STEYX": [
+      "Returns the standard error of the predicted y values in a linear regression - a measure of how accurate the regression line's predictions are on average. Use it to gauge the precision of your linear model.\n\nExample: =STEYX(B2:B20, A2:A20) returns the standard error of the estimate.",
+      []
+    ],
+    "T.DIST": [
+      "Returns the Student's t-distribution probability (left-tailed CDF or PDF). Use it in hypothesis testing for small samples when the population standard deviation is unknown.\n\nExample: =T.DIST(2.0, 10, TRUE) returns the left-tail probability with 10 degrees of freedom.",
+      []
+    ],
+    "T.DIST.2T": [
+      "Returns the two-tailed t-distribution probability for a given t-statistic. Use it for two-tailed t-tests - when you're testing whether a difference is non-zero in either direction.\n\nExample: =T.DIST.2T(2.0, 10) returns the two-tailed p-value.",
+      []
+    ],
+    "T.DIST.RT": [
+      "Returns the right-tailed t-distribution probability. Use it for one-tailed t-tests where you're testing whether a value is greater than a null hypothesis value.\n\nExample: =T.DIST.RT(2.0, 10) returns the right-tail p-value.",
+      []
+    ],
+    "T.INV": [
+      "Returns the inverse of the left-tailed t-distribution - the t-value at a given probability. Use it to find critical values for one-tailed tests or to construct confidence intervals.\n\nExample: =T.INV(0.95, 10) returns the one-tailed 95th-percentile t-value.",
+      []
+    ],
+    "T.INV.2T": [
+      "Returns the inverse of the two-tailed t-distribution. Use it to find the critical t-value for a two-tailed hypothesis test at a given significance level.\n\nExample: =T.INV.2T(0.05, 10) returns the critical value for a 5% two-tailed test with 10 degrees of freedom.",
+      []
+    ],
+    "T.TEST": [
+      "Returns the p-value for a Student's t-test comparing two datasets. Use it to determine whether the difference in means between two groups is statistically significant.\n\nExample: =T.TEST(A2:A20, B2:B20, 2, 2) performs a two-tailed, two-sample t-test.",
+      []
+    ],
+    "VAR.P": [
+      "Returns the population variance (divides by n). Use it when your values are the entire population and you want the average squared deviation from the mean.\n\nExample: =VAR.P(A2:A100).",
+      ["number1", "..."]
+    ],
+    "VAR.S": [
+      "Returns the sample variance (divides by n−1). The most common variance function - use it when your data is a sample from a larger population.\n\nExample: =VAR.S(A2:A20).",
+      ["number1", "..."]
+    ],
+    "VARA": [
+      "Like VAR.S but includes text (as 0) and logical values. Use it when your range has mixed types and non-numeric entries should be counted.\n\nExample: =VARA(A2:A20).",
+      ["number1", "..."]
+    ],
+    "VARPA": [
+      "Like VAR.P but includes text and logical values. Use it for population variance over a mixed-type range.\n\nExample: =VARPA(A2:A100).",
+      ["number1", "..."]
+    ],
+    "WEIBULL.DIST": [
+      "Returns the Weibull distribution probability (CDF or PDF). Use it to model time-to-failure or reliability data - the Weibull distribution is widely used in engineering for survival and failure analysis.\n\nExample: =WEIBULL.DIST(100, 1.5, 200, TRUE) returns the probability that a component fails by time 100.",
+      ["x", "alpha", "beta", "cumulative"]
+    ],
+    "Z.TEST": [
+      "Returns the one-tailed p-value of a z-test - the probability that the sample mean is at least as extreme as observed, given a hypothesized population mean. Use it to test whether a sample mean is consistent with a known or assumed population mean.\n\nExample: =Z.TEST(A2:A30, 50, 10) tests the sample against a hypothesized mean of 50 with standard deviation 10.",
+      []
     ]
   },
-  "TIME": {
-    "c": "Date and Time",
-    "d": "Returns the serial number of a particular time.",
-    "a": ["hour", "minute", "second"]
-  },
-  "TIMEVALUE": {
-    "c": "Date and Time",
-    "d": "Converts a time in the form of text to a serial number.",
-    "a": ["time_text"]
-  },
-  "TODAY": {
-    "c": "Date and Time",
-    "d": "Returns the serial number of today's date.",
-    "a": []
-  },
-  "TOCOL": {
-    "c": "Lookup and Reference",
-    "d": "Returns the array in a single column.",
-    "a": ["array", "ignore*", "scan_by_column*"]
-  },
-  "TOROW": {
-    "c": "Lookup and Reference",
-    "d": "Returns the array in a single row.",
-    "a": ["array", "ignore*", "scan_by_column*"]
-  },
-  "TRANSPOSE": {
-    "c": "Lookup and Reference",
-    "d": "Returns the transpose of an array.",
-    "a": ["array"]
-  },
-  "TRIM": {
-    "c": "Text",
-    "d": "Removes spaces from text.",
-    "a": ["text"]
-  },
-  "TRIMRANGE": {
-    "c": "Lookup and Reference",
-    "d": "Trims empty rows and columns from the edges of an array.",
-    "a": ["range"]
-  },
-  "TRUE": {
-    "c": "Logical",
-    "d": "Returns the logical value TRUE.",
-    "a": []
-  },
-  "TRUNC": {
-    "c": "Math and Trigonometry",
-    "d": "Truncates a number to an integer.",
-    "a": ["number", "num_digits*"]
-  },
-  "TYPE": {
-    "c": "Information",
-    "d": "Returns a number indicating the data type of a value.",
-    "a": ["value"]
-  },
-  "UNICHAR": {
-    "c": "Text",
-    "d": "Returns the Unicode character that is referenced by the given numeric value.",
-    "a": ["number"]
-  },
-  "UNICODE": {
-    "c": "Text",
-    "d": "Returns the number (code point) of the first character of the text.",
-    "a": ["text"]
-  },
-  "UNIQUE": {
-    "c": "Lookup and Reference",
-    "d": "Returns a list of unique values in a list or range.",
-    "a": ["array", "by_col*", "exactly_once*"]
-  },
-  "UPPER": {
-    "c": "Text",
-    "d": "Converts text to uppercase.",
-    "a": ["text"]
-  },
-  "VALUE": {
-    "c": "Text",
-    "d": "Converts a text argument to a number.",
-    "a": ["text"]
-  },
-  "VALUETOTEXT": {
-    "c": "Text",
-    "d": "Returns text from any specified value.",
-    "a": ["value", "format*"]
-  },
-  "VAR.P": {
-    "c": "Statistical",
-    "d": "Calculates variance based on the entire population.",
-    "a": ["number1", "number2*"]
-  },
-  "VAR.S": {
-    "c": "Statistical",
-    "d": "Estimates variance based on a sample.",
-    "a": ["number1", "number2*"]
-  },
-  "VARA": {
-    "c": "Statistical",
-    "d": "Estimates variance based on a sample, including numbers, text, and logical values.",
-    "a": ["value1", "value2*"]
-  },
-  "VARPA": {
-    "c": "Statistical",
-    "d": "Calculates variance based on the entire population, including numbers, text, and logical values.",
-    "a": ["value1", "value2*"]
-  },
-  "VLOOKUP": {
-    "c": "Lookup and Reference",
-    "d": "Looks in the first column of an array and moves across the row to return the value of a cell.",
-    "a": ["lookup_value", "table_array", "col_index_num", "range_lookup*"]
-  },
-  "VSTACK": {
-    "c": "Lookup and Reference",
-    "d": "Appends arrays vertically and in sequence to return a larger array.",
-    "a": ["array1", "array2*"]
-  },
-  "WEEKDAY": {
-    "c": "Date and Time",
-    "d": "Converts a serial number to a day of the week.",
-    "a": ["serial_number", "return_type*"]
-  },
-  "WEEKNUM": {
-    "c": "Date and Time",
-    "d": "Converts a serial number to a number representing where the week falls numerically with a year.",
-    "a": ["serial_number", "return_type*"]
-  },
-  "WEIBULL.DIST": {
-    "c": "Statistical",
-    "d": "Returns the Weibull distribution.",
-    "a": ["x", "alpha", "beta", "cumulative"]
-  },
-  "WORKDAY": {
-    "c": "Date and Time",
-    "d": "Returns the serial number of the date before or after a specified number of workdays.",
-    "a": ["start_date", "days", "holidays*"]
-  },
-  "WORKDAY.INTL": {
-    "c": "Date and Time",
-    "d": "Returns the serial number of the date before or after a specified number of workdays using parameters to indicate which days are weekend days.",
-    "a": ["start_date", "days", "weekend*", "holidays*"]
-  },
-  "WRAPCOLS": {
-    "c": "Lookup and Reference",
-    "d": "Wraps the provided row or column of values by columns after a specified number of elements.",
-    "a": ["vector", "wrap_count", "pad_with*"]
-  },
-  "WRAPROWS": {
-    "c": "Lookup and Reference",
-    "d": "Wraps the provided row or column of values by rows after a specified number of elements.",
-    "a": ["vector", "wrap_count", "pad_with*"]
-  },
-  "XIRR": {
-    "c": "Financial",
-    "d": "Returns the internal rate of return for a schedule of cash flows that is not necessarily periodic.",
-    "a": ["values", "dates", "guess*"]
-  },
-  "XLOOKUP": {
-    "c": "Lookup and Reference",
-    "d": "Searches a range or an array, and returns an item corresponding to the first match it finds.",
-    "a": [
-      "lookup_value",
-      "lookup_array",
-      "return_array",
-      "if_not_found*",
-      "match_mode*",
-      "search_mode*"
+  "Text": {
+    "ARRAYTOTEXT": [
+      "Converts an array or range to a text string, either in a concise display format or a strict parseable format. Use it when you want to show the contents of a spilled array as a single readable cell entry.\n\nExample: =ARRAYTOTEXT(A2:A5, 1) returns \"{value1,value2,value3,value4}\".",
+      ["array", "..."]
+    ],
+    "ASC": [
+      "Converts full-width (double-byte) characters to half-width (single-byte) equivalents in East Asian text. Use it to normalize text that may contain full-width characters entered via Japanese or Chinese input.\n\nExample: =ASC(\"ＡＢＣＤ\") returns the half-width \"ABCD\".",
+      []
+    ],
+    "CHAR": [
+      "Returns the character corresponding to a given character code (ASCII or Unicode). Use it to insert special characters - a line break (CHAR(10)), a tab (CHAR(9)), or any character that can't be typed directly - into text formulas.\n\nExample: =A2&CHAR(10)&B2 creates a two-line cell entry.",
+      ["number"]
+    ],
+    "CLEAN": [
+      "Removes non-printable characters (the first 32 ASCII control characters) from a text string. Use it to scrub imported data that contains hidden control characters causing display or formula problems.\n\nExample: =CLEAN(A2) strips any control characters from the text.",
+      ["text"]
+    ],
+    "CODE": [
+      "Returns the numeric character code of the first character in a text string. The inverse of CHAR - use it to find the code for an unusual character so you can reference it with CHAR or identify unexpected characters in data.\n\nExample: =CODE(\"A\") returns 65.",
+      ["text"]
+    ],
+    "CONCAT": [
+      "Joins multiple text strings or ranges together into one string, with no separator between them. Use it to combine text from several cells - for instance, assembling a full name from first-name and last-name columns.\n\nExample: =CONCAT(A2, \" \", B2) joins first and last names with a space.",
+      ["text1", "..."]
+    ],
+    "CONCATENATE": [
+      "Joins text strings together - an older function superseded by CONCAT. CONCAT is preferred because it also accepts ranges, while CONCATENATE requires individual cell references listed one by one.\n\nExample: =CONCATENATE(A2, \" \", B2).",
+      ["text1", "text2", "text3*"]
+    ],
+    "DOLLAR": [
+      "Converts a number to text formatted as currency, with a specified number of decimal places and a dollar sign. Use it to embed a formatted currency value inside a text string - for example, in a generated message.\n\nExample: =DOLLAR(1234.5, 2) returns \"$1,234.50\".",
+      ["number", "decimals"]
+    ],
+    "EXACT": [
+      "Compares two text strings and returns TRUE only if they are character-for-character identical, including case. Use it when case-sensitivity matters - \"Apple\" and \"apple\" are not equal under EXACT even though = treats them as the same.\n\nExample: =EXACT(\"Apple\", \"apple\") returns FALSE.",
+      ["text1", "text2"]
+    ],
+    "FIND": [
+      "Returns the position of one text string within another, case-sensitively. Use it to locate exactly where a substring begins - then combine with MID or LEFT to extract the relevant portion.\n\nExample: =FIND(\"@\", A2) returns the position of the \"@\" in an email address.",
+      ["find_text", "within_text", "start_num"]
+    ],
+    "FINDB": [
+      "Like FIND but counts positions in bytes rather than characters - relevant for double-byte East Asian character sets. Use it when working with mixed single- and double-byte text in CJK locales.\n\nExample: =FINDB(\"A\", A2) returns the byte position of \"A\".",
+      []
+    ],
+    "FIXED": [
+      "Rounds a number to a specified number of decimal places and returns it as formatted text, optionally with thousands separators. Use it to embed a formatted number inside a text formula without changing the cell's number format.\n\nExample: =FIXED(1234567.89, 2) returns \"1,234,567.89\".",
+      ["number", "decimals*", "no_commas"]
+    ],
+    "LEFT": [
+      "Returns the specified number of characters from the start of a text string. Use it to extract a prefix - for instance, the first three characters of a product code.\n\nExample: =LEFT(A2, 3) returns the first 3 characters of A2.",
+      ["text", "num_chars"]
+    ],
+    "LEFTB": [
+      "Like LEFT but counts characters in bytes. Use it in East Asian locales where double-byte characters each take two bytes.\n\nExample: =LEFTB(A2, 4) returns the leftmost 4 bytes.",
+      []
+    ],
+    "LEN": [
+      "Returns the number of characters in a text string. Use it to check entry lengths - validating that a field isn't too long, detecting trailing spaces, or building dynamic formulas that depend on string length.\n\nExample: =LEN(A2) returns the character count.",
+      ["text"]
+    ],
+    "LENB": [
+      "Returns the number of bytes in a text string, counting double-byte characters as two. Use it in East Asian locales to measure byte length rather than character count.\n\nExample: =LENB(A2) returns the byte length.",
+      []
+    ],
+    "LOWER": [
+      "Converts all letters in a text string to lowercase. Use it to normalize text before comparing or storing it - for instance, ensuring all email addresses are consistently lowercase.\n\nExample: =LOWER(\"HELLO WORLD\") returns \"hello world\".",
+      ["text"]
+    ],
+    "MID": [
+      "Returns a specified number of characters from a text string, starting at a given position. Use it to extract a substring from the middle of text - pulling the area code from a phone number or a segment from a fixed-format code.\n\nExample: =MID(A2, 5, 3) returns 3 characters starting at position 5.",
+      ["text", "start_num", "num_chars"]
+    ],
+    "MIDB": [
+      "Like MID but counts positions and lengths in bytes rather than characters. Used for double-byte character processing in East Asian locales.\n\nExample: =MIDB(A2, 3, 4) returns 4 bytes starting at byte position 3.",
+      []
+    ],
+    "NUMBERVALUE": [
+      "Converts a number stored as text to an actual number, letting you specify the decimal and thousands separators. Use it when importing data from locales that use commas as decimal separators.\n\nExample: =NUMBERVALUE(\"1.234,56\", \",\", \".\") returns 1234.56.",
+      ["text", "decimal_separator*", "..."]
+    ],
+    "PROPER": [
+      "Capitalizes the first letter of each word in a text string and lowercases the rest. Use it to standardize names and titles that arrived in inconsistent case - all-caps, all-lowercase, or random mixed case.\n\nExample: =PROPER(\"john smith\") returns \"John Smith\".",
+      ["text"]
+    ],
+    "REGEXEXTRACT": [
+      "Extracts the first substring that matches a regular expression pattern from a text string. Use it to pull structured data out of free-form text - phone numbers, postal codes, dates - without complex nested formulas.\n\nExample: =REGEXEXTRACT(A2, \"\\d{5}\") returns the first 5-digit sequence in A2.",
+      ["text", "pattern", "return_mode*", "..."]
+    ],
+    "REGEXREPLACE": [
+      "Replaces substrings that match a regular expression pattern with a replacement string. Use it for advanced find-and-replace operations that plain SUBSTITUTE can't handle - removing all punctuation, replacing multiple patterns at once, or manipulating structured text.\n\nExample: =REGEXREPLACE(A2, \"[^a-zA-Z0-9]\", \"\") strips all non-alphanumeric characters.",
+      ["text", "pattern", "replacement", "occurrence*", "case_sensitivity*"]
+    ],
+    "REGEXTEST": [
+      "Returns TRUE if a text string contains a match for a regular expression pattern. Use it to validate data formats - checking whether a cell holds a valid email, phone number, or date pattern - without extracting the value.\n\nExample: =REGEXTEST(A2, \"^\\d{5}(-\\d{4})?$\") returns TRUE for a valid US ZIP code.",
+      ["text", "pattern", "case_sensitivity*"]
+    ],
+    "REPLACE": [
+      "Replaces a specified number of characters at a given position in a text string with a new string. Use it when you know the exact position of what you want to replace - updating a fixed-format code field or inserting a character at a known offset.\n\nExample: =REPLACE(A2, 4, 2, \"XX\") replaces characters 4–5 with \"XX\".",
+      ["old_text", "start_num", "num_chars", "new_text"]
+    ],
+    "REPLACEB": [
+      "Like REPLACE but counts positions and lengths in bytes. Used for double-byte character processing in East Asian locales.\n\nExample: =REPLACEB(A2, 3, 2, \"AB\") replaces 2 bytes starting at byte 3.",
+      []
+    ],
+    "REPT": [
+      "Repeats a text string a specified number of times. Use it to build simple in-cell bar charts, pad strings to a fixed width, or create repeated separator patterns inside a formula.\n\nExample: =REPT(\"|\", A2) creates a bar whose length matches the value in A2.",
+      ["text", "number_times"]
+    ],
+    "RIGHT": [
+      "Returns the specified number of characters from the end of a text string. Use it to extract a suffix - the last four digits of an account number, a file extension, or a trailing code.\n\nExample: =RIGHT(A2, 4) returns the last 4 characters.",
+      ["text", "..."]
+    ],
+    "RIGHTB": [
+      "Like RIGHT but counts characters in bytes. Used in East Asian locale text processing.\n\nExample: =RIGHTB(A2, 4) returns the rightmost 4 bytes.",
+      []
+    ],
+    "SEARCH": [
+      "Returns the position of one text string within another, case-insensitively, with support for the wildcards ? (any single character) and * (any sequence). Use it for flexible substring searches when the exact capitalization of the target may vary.\n\nExample: =SEARCH(\"ap*e\", A2) finds \"apple\", \"ape\", or \"Appetite\" in A2.",
+      ["find_text", "within_text", "..."]
+    ],
+    "SEARCHB": [
+      "Like SEARCH but counts positions in bytes for East Asian locales.\n\nExample: =SEARCHB(\"A\", A2) returns the byte position of the first case-insensitive match of \"A\".",
+      []
+    ],
+    "SUBSTITUTE": [
+      "Replaces all occurrences (or a specific occurrence) of a substring within a text string. Use it for formula-driven find-and-replace when you don't know the position - replacing spaces with underscores, removing unwanted characters, or swapping out a code value.\n\nExample: =SUBSTITUTE(A2, \" \", \"_\") replaces all spaces with underscores.",
+      ["text", "old_text", "new_text*", "instance_num*"]
+    ],
+    "T": [
+      "Returns the text value in a cell, or an empty string if the cell doesn't contain text. Use it as a type gate to pass only text values through a formula while silently converting numbers and other types to an empty string.\n\nExample: =T(A2) returns A2's text if it is text, otherwise \"\".",
+      ["value"]
+    ],
+    "TEXT": [
+      "Formats a number as text using a custom number-format code. Use it to embed a formatted number inside a text string - for example, to display a date or currency amount with the formatting intact when concatenating with other text.\n\nExample: =\"Revenue: \"&TEXT(A2, \"$#,##0.00\") produces \"Revenue: $1,234.56\".",
+      ["value", "format_text"]
+    ],
+    "TEXTAFTER": [
+      "Returns the text that occurs after a specified delimiter, with options to select which occurrence and how to handle a missing match. Use it to split text without knowing the character position - extracting the domain from an email address, for instance.\n\nExample: =TEXTAFTER(A2, \"@\") returns everything after the first \"@\".",
+      [
+        "text",
+        "delimiter",
+        "instance_num*",
+        "match_mode*",
+        "match_end*",
+        "if_not_found*"
+      ]
+    ],
+    "TEXTBEFORE": [
+      "Returns the text that occurs before a specified delimiter. The counterpart of TEXTAFTER - use it to extract the portion of a string that comes before a known separator.\n\nExample: =TEXTBEFORE(A2, \"@\") returns the username portion of an email address.",
+      [
+        "text",
+        "delimiter",
+        "instance_num*",
+        "match_mode*",
+        "match_end*",
+        "if_not_found*"
+      ]
+    ],
+    "TEXTJOIN": [
+      "Joins a range of text values with a specified delimiter, optionally skipping blank cells. Use it to build a comma-separated list, a readable sentence, or any delimited string from a column or row of values.\n\nExample: =TEXTJOIN(\", \", TRUE, A2:A10) produces \"Alice, Bob, Carol\" (skipping any blanks).",
+      ["delimiter", "ignore_empty*", "text1*", "..."]
+    ],
+    "TEXTSPLIT": [
+      "Splits a text string into a two-dimensional array using row and/or column delimiters. Use it to parse delimited data - splitting a CSV line into separate columns or a multi-line block into rows - in a single formula that spills automatically.\n\nExample: =TEXTSPLIT(A2, \",\") splits comma-separated values into individual cells.",
+      [
+        "text",
+        "col_delimiter",
+        "row_delimiter*",
+        "ignore_empty*",
+        "match_mode*",
+        "..."
+      ]
+    ],
+    "TRIM": [
+      "Removes leading and trailing spaces from a text string and collapses internal multiple spaces to single spaces. Use it to clean up data entered or imported with extra whitespace, which prevents correct matching, sorting, and lookups.\n\nExample: =TRIM(A2) normalizes spacing in the text.",
+      ["text"]
+    ],
+    "UNICHAR": [
+      "Returns the Unicode character corresponding to a given code point. Use it to insert any Unicode character - symbols, accented letters, emojis - by their code number when you can't type them directly.\n\nExample: =UNICHAR(9829) returns \"♥\".",
+      ["number"]
+    ],
+    "UNICODE": [
+      "Returns the Unicode code point of the first character in a text string. Use it alongside UNICHAR to inspect or transform individual Unicode characters.\n\nExample: =UNICODE(\"A\") returns 65; =UNICODE(\"♥\") returns 9829.",
+      ["text"]
+    ],
+    "UPPER": [
+      "Converts all letters in a text string to uppercase. Use it to normalize text for display or comparison - ensuring all ticker symbols, country codes, or identifiers are consistently uppercase.\n\nExample: =UPPER(\"hello world\") returns \"HELLO WORLD\".",
+      ["text"]
+    ],
+    "VALUE": [
+      "Converts a text string that looks like a number into an actual numeric value. Use it when numbers are stored as text - a common problem after imports - causing arithmetic to fail or sort incorrectly.\n\nExample: =VALUE(\"1,234.56\") returns 1234.56.",
+      ["text"]
+    ],
+    "VALUETOTEXT": [
+      "Converts any value - including arrays, errors, and logical values - to its text representation in a concise or strict format. Use it to display or inspect a value as a string, especially for debugging or generating readable output from dynamic arrays.\n\nExample: =VALUETOTEXT(TRUE, 0) returns \"TRUE\".",
+      ["value", "format*"]
     ]
-  },
-  "XMATCH": {
-    "c": "Lookup and Reference",
-    "d": "Returns the relative position of an item in an array or range of cells.",
-    "a": ["lookup_value", "lookup_array", "match_mode*", "search_mode*"]
-  },
-  "XNPV": {
-    "c": "Financial",
-    "d": "Returns the net present value for a schedule of cash flows that is not necessarily periodic.",
-    "a": ["rate", "values", "dates"]
-  },
-  "XOR": {
-    "c": "Logical",
-    "d": "Returns a logical Exclusive Or of all arguments.",
-    "a": ["logical1", "logical2*"]
-  },
-  "YEAR": {
-    "c": "Date and Time",
-    "d": "Converts a serial number to a year.",
-    "a": ["serial_number"]
-  },
-  "YEARFRAC": {
-    "c": "Date and Time",
-    "d": "Returns the year fraction representing the number of whole days between start_date and end_date.",
-    "a": ["start_date", "end_date", "basis*"]
-  },
-  "Z.TEST": {
-    "c": "Statistical",
-    "d": "Returns the one-tailed probability-value of a z-test.",
-    "a": ["array", "x", "sigma*"]
   }
 }

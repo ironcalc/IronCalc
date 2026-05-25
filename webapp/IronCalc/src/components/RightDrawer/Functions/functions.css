@@ -66,7 +66,6 @@
 }
 
 .ic-functions-list-item {
-  cursor: pointer;
   box-sizing: border-box;
 }
 
@@ -120,14 +119,20 @@
   padding: 0 12px 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
-.ic-functions-detail-description {
+.ic-functions-detail-description p {
   font-size: var(--typography-font-size);
   line-height: 1.4;
   color: var(--palette-grey-600);
   font-family: var(--typography-font-family);
+  margin: 0;
+}
+
+.ic-functions-detail-description p + p {
+  margin-top: 10px;
+  font-style: italic;
 }
 
 .ic-functions-detail-syntax {
