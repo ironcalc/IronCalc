@@ -1321,8 +1321,30 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             vec![Signature::Scalar, Signature::Vector, Signature::Vector]
         }
         Function::Frequency => vec![Signature::Vector, Signature::Vector],
-        Function::Growth => vec![Signature::Vector; arg_count],
-        Function::Linest | Function::Logest => vec![Signature::Vector; arg_count],
+        Function::Growth | Function::Trend => match arg_count {
+            1 => vec![Signature::Vector],
+            2 => vec![Signature::Vector, Signature::Vector],
+            3 => vec![Signature::Vector, Signature::Vector, Signature::Vector],
+            4 => vec![
+                Signature::Vector,
+                Signature::Vector,
+                Signature::Vector,
+                Signature::Scalar,
+            ],
+            _ => vec![Signature::Error; arg_count],
+        },
+        Function::Linest | Function::Logest => match arg_count {
+            1 => vec![Signature::Vector],
+            2 => vec![Signature::Vector, Signature::Vector],
+            3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
+            4 => vec![
+                Signature::Vector,
+                Signature::Vector,
+                Signature::Scalar,
+                Signature::Scalar,
+            ],
+            _ => vec![Signature::Error; arg_count],
+        },
         Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
         Function::PercentileExc | Function::PercentileInc => {
             vec![Signature::Vector, Signature::Scalar]
@@ -1331,11 +1353,19 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
         }
         Function::Permut | Function::Permutationa => vec![Signature::Scalar; 2],
-        Function::Prob => vec![Signature::Vector; arg_count],
+        Function::Prob => match arg_count {
+            3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
+            4 => vec![
+                Signature::Vector,
+                Signature::Vector,
+                Signature::Scalar,
+                Signature::Scalar,
+            ],
+            _ => vec![Signature::Error; arg_count],
+        },
         Function::QuartileExc | Function::QuartileInc => {
             vec![Signature::Vector, Signature::Scalar]
         }
-        Function::Trend => vec![Signature::Vector; arg_count],
         Function::Trimmean => vec![Signature::Vector, Signature::Scalar],
         Function::Gauss => args_signature_scalars(arg_count, 1, 0),
         Function::Harmean => vec![Signature::Vector; arg_count],
