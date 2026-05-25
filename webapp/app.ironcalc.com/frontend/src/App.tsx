@@ -231,6 +231,15 @@ function App() {
             }
             setShowWelcomeDialog(false);
           }}
+          onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
+            const blob = await uploadFile(arrayBuffer, fileName);
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            const locale = loadDefaultLocaleFromStorage();
+            const languageId = getLanguageFromLocale(locale);
+            const newModel = Model.from_bytes(bytes, languageId);
+            saveModelToStorage(newModel);
+            setModel(newModel);
+          }}
           onSelectTemplate={async (templateId) => {
             switch (templateId) {
               case "blank": {
