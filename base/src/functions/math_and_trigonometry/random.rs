@@ -103,14 +103,14 @@ impl<'a> Model<'a> {
                             return CalcResult::new_error(
                                 Error::CALC,
                                 cell,
-                                "cols must be >= 1".to_string(),
+                                "columns must be >= 1".to_string(),
                             );
                         }
                         if n < 0 {
                             return CalcResult::new_error(
                                 Error::VALUE,
                                 cell,
-                                "cols must be >= 1".to_string(),
+                                "columns must be >= 1".to_string(),
                             );
                         }
                         n as usize
