@@ -812,7 +812,15 @@ impl<'a> Model<'a> {
         // `new_cell` match below.
         if let CalcResult::Array(array) = result {
             if array.is_empty() || array[0].is_empty() {
-                return Ok(());
+                return self.set_cells_with_result(
+                    cell_reference,
+                    cell,
+                    &CalcResult::new_error(
+                        Error::CALC,
+                        cell_reference,
+                        "Formula produced a zero-size array".to_string(),
+                    ),
+                );
             }
             let array_width = array[0].len() as i32;
             let array_height = array.len() as i32;
