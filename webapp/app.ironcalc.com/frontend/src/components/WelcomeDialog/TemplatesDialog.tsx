@@ -4,6 +4,7 @@ import { useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import TemplatesList from "./TemplatesList";
+import { TEMPLATE_CATEGORIES } from "./templates";
 import { useDialogFocus } from "./useDialogFocus";
 import { useDialogKeyDown } from "./useDialogKeyDown";
 import "./welcome-dialog.css";
@@ -24,6 +25,7 @@ function TemplatesDialog({
   const [selectedTemplate, setSelectedTemplate] = useState(
     "mortgage_calculator",
   );
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const dialogRef = useDialogFocus(open);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
@@ -45,7 +47,7 @@ function TemplatesDialog({
     <div className="app-ic-wd-backdrop" onClick={handleClose} role="none">
       <div
         ref={dialogRef}
-        className="app-ic-wd-paper"
+        className="app-ic-wd-paper app-ic-wd-paper--templates"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onKeyDown}
         role="dialog"
@@ -64,10 +66,30 @@ function TemplatesDialog({
             onClick={handleClose}
           />
         </div>
+        <div className="app-ic-wd-filters">
+          <button
+            type="button"
+            className={`app-ic-wd-filter-pill${selectedCategory === "all" ? " app-ic-wd-filter-pill--active" : ""}`}
+            onClick={() => setSelectedCategory("all")}
+          >
+            {t("welcome_dialog.templates.category_all")}
+          </button>
+          {TEMPLATE_CATEGORIES.map(({ id, labelKey }) => (
+            <button
+              key={id}
+              type="button"
+              className={`app-ic-wd-filter-pill${selectedCategory === id ? " app-ic-wd-filter-pill--active" : ""}`}
+              onClick={() => setSelectedCategory(id)}
+            >
+              {t(labelKey)}
+            </button>
+          ))}
+        </div>
         <div className="app-ic-wd-content">
           <TemplatesList
             selectedTemplate={selectedTemplate}
             handleTemplateSelect={setSelectedTemplate}
+            categoryFilter={selectedCategory}
           />
         </div>
         <div className="app-ic-wd-footer">

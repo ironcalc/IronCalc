@@ -1,36 +1,53 @@
-import { House, TicketsPlane } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import TemplatesListItem from "./TemplatesListItem";
+import { TEMPLATES } from "./templates";
 import "./welcome-dialog.css";
 
 function TemplatesList(props: {
   selectedTemplate: string;
   handleTemplateSelect: (templateId: string) => void;
+  categoryFilter?: string;
+  limit?: number;
+  columns?: number;
+  onScroll?: React.UIEventHandler<HTMLDivElement>;
 }) {
-  const { selectedTemplate, handleTemplateSelect } = props;
+  const {
+    selectedTemplate,
+    handleTemplateSelect,
+    categoryFilter,
+    limit,
+    columns,
+    onScroll,
+  } = props;
   const { t } = useTranslation();
+
+  const filtered =
+    !categoryFilter || categoryFilter === "all"
+      ? TEMPLATES
+      : TEMPLATES.filter((tmpl) => tmpl.categoryId === categoryFilter);
+
+  const visible = limit ? filtered.slice(0, limit) : filtered;
+
   return (
-    <div className="app-ic-wd-templates-list">
-      <TemplatesListItem
-        title={t("welcome_dialog.templates.mortgage_calculator")}
-        description={t(
-          "welcome_dialog.templates.mortgage_calculator_description",
-        )}
-        icon={<House />}
-        iconColor="#2F80ED"
-        active={selectedTemplate === "mortgage_calculator"}
-        onClick={() => handleTemplateSelect("mortgage_calculator")}
-      />
-      <TemplatesListItem
-        title={t("welcome_dialog.templates.travel_expenses_tracker")}
-        description={t(
-          "welcome_dialog.templates.travel_expenses_tracker_description",
-        )}
-        icon={<TicketsPlane />}
-        iconColor="#EB5757"
-        active={selectedTemplate === "travel_expenses_tracker"}
-        onClick={() => handleTemplateSelect("travel_expenses_tracker")}
-      />
+    <div
+      className="app-ic-wd-templates-list"
+      onScroll={onScroll}
+      style={
+        columns !== undefined
+          ? { gridTemplateColumns: `repeat(${columns}, 1fr)` }
+          : undefined
+      }
+    >
+      {visible.map((tmpl) => (
+        <TemplatesListItem
+          key={tmpl.id}
+          title={t(tmpl.titleKey)}
+          category={t(tmpl.categoryKey)}
+          active={selectedTemplate === tmpl.id}
+          thumbnailUrl={`/templates/${tmpl.id}.png`}
+          onClick={() => handleTemplateSelect(tmpl.id)}
+        />
+      ))}
     </div>
   );
 }
