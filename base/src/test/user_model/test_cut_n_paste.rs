@@ -243,6 +243,74 @@ fn cut_non_anchor_part_of_array() {
     assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "5");
 }
 
+// Bug: cutting a non-anchor part of a dynamic-array formula does not clear the
+// style from the source cells — the style should be moved, not copied.
+#[test]
+fn cut_and_paste_clears_source_style() {
+    let mut model = new_empty_user_model();
+
+    // Apply bold to A3:A5
+    let a3_a5 = Area {
+        sheet: 0,
+        row: 3,
+        column: 1,
+        width: 1,
+        height: 3,
+    };
+    model.update_range_style(&a3_a5, "font.b", "true").unwrap();
+
+    // Cut A3:A5 and paste to C3
+    model.set_selected_cell(3, 1).unwrap();
+    model.set_selected_range(3, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(3, 3).unwrap();
+    model
+        .paste_from_clipboard(0, (3, 1, 5, 1), &cp.data, /*is_cut*/ true)
+        .unwrap();
+
+    // Source A3:A5: bold must be gone — the style was cut, not copied
+    assert!(
+        !model.get_cell_style(0, 3, 1).unwrap().font.b,
+        "A3 should no longer be bold after cut"
+    );
+    assert!(
+        !model.get_cell_style(0, 4, 1).unwrap().font.b,
+        "A4 should no longer be bold after cut"
+    );
+    assert!(
+        !model.get_cell_style(0, 5, 1).unwrap().font.b,
+        "A5 should no longer be bold after cut"
+    );
+    model.undo().unwrap();
+    // After undo, bold should be back in A3:A5
+    assert!(
+        model.get_cell_style(0, 3, 1).unwrap().font.b,
+        "A3 should be bold again after undo"
+    );
+    assert!(
+        model.get_cell_style(0, 4, 1).unwrap().font.b,
+        "A4 should be bold again after undo"
+    );
+    assert!(
+        model.get_cell_style(0, 5, 1).unwrap().font.b,
+        "A5 should be bold again after undo"
+    );
+    model.redo().unwrap();
+    // After redo, bold should be gone again in A3:A5
+    assert!(
+        !model.get_cell_style(0, 3, 1).unwrap().font.b,
+        "A3 should no longer be bold after redo"
+    );
+    assert!(
+        !model.get_cell_style(0, 4, 1).unwrap().font.b,
+        "A4 should no longer be bold after redo"
+    );
+    assert!(
+        !model.get_cell_style(0, 5, 1).unwrap().font.b,
+        "A5 should no longer be bold after redo"
+    );
+}
+
 // Regression test for: cutting a dynamic-array formula and pasting it over
 // another dynamic-array formula, then undoing, left stray SpillCells behind
 // from the paste.
