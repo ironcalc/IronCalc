@@ -273,6 +273,19 @@ impl<'a> UserModel<'a> {
                         };
                         self.model.range_clear_contents(&area)?;
                     }
+                    let old_style = self
+                        .model
+                        .get_cell_style_or_none(source_sheet, row, column)?;
+                    let default_style = Style::default();
+                    self.model
+                        .set_cell_style(source_sheet, row, column, &default_style)?;
+                    diff_list.push(Diff::SetCellStyle {
+                        sheet: source_sheet,
+                        row,
+                        column,
+                        old_value: Box::new(old_style),
+                        new_value: Box::new(default_style),
+                    });
                 }
             }
         }
