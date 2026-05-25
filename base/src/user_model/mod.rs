@@ -2,6 +2,7 @@
 
 mod border;
 mod border_utils;
+mod clipboard;
 mod common;
 mod conditional_formatting;
 pub(crate) mod history;
@@ -14,5 +15,5 @@ pub use common::UserModel;
 #[cfg(test)]
 pub use ui::SelectedView;
 
+pub use clipboard::ClipboardData;
 pub use common::BorderArea;
-pub use common::ClipboardData;

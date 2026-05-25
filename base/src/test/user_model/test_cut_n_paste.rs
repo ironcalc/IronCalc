@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::expressions::types::Area;
 use crate::test::user_model::util::new_empty_user_model;
 use crate::test::util::new_empty_model;
 use crate::UserModel;
@@ -97,6 +98,149 @@ fn cun_n_paste_different_sheet() {
     assert_eq!(model.get_formatted_cell_value(0, 5, 2).unwrap(), "");
     assert_eq!(model.get_formatted_cell_value(0, 5, 3).unwrap(), "");
     assert_eq!(model.get_formatted_cell_value(0, 5, 4).unwrap(), "");
+}
+
+// Regression test for: cutting a non anchor part of a dynamic-array formula
+//
+// Steps that reproduce the bug:
+//   1. =SEQUENCE(10) in A1  → spills down A1:A10 (values 1..10)
+//   2. Copy A3:A5
+//   3. Paste to C3
+//      → C3:C5 should not show values
+#[test]
+fn copy_non_anchor_part_of_array() {
+    let mut model = new_empty_user_model();
+
+    // Step 1: =SEQUENCE(10) in A1 — spills down A1:A10
+    model.set_user_input(0, 1, 1, "=SEQUENCE(10)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "3");
+
+    // Apply a bold style to A3:A5 before copying
+    let a3_a5 = Area {
+        sheet: 0,
+        row: 3,
+        column: 1,
+        width: 1,
+        height: 3,
+    };
+    model.update_range_style(&a3_a5, "font.b", "true").unwrap();
+    assert!(model.get_cell_style(0, 3, 1).unwrap().font.b);
+    assert!(model.get_cell_style(0, 4, 1).unwrap().font.b);
+    assert!(model.get_cell_style(0, 5, 1).unwrap().font.b);
+
+    // Step 2: copy A3:A5
+    model.set_selected_cell(3, 1).unwrap();
+    model.set_selected_range(3, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+
+    // Step 3: paste to C3
+    model.set_selected_cell(3, 3).unwrap();
+    model
+        .paste_from_clipboard(0, (3, 1, 5, 1), &cp.data, true)
+        .unwrap();
+
+    // C3:C5 should be empty — only the anchor cell of a dynamic array formula is copied
+    assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 3).unwrap(), "");
+    assert_eq!(model.get_formatted_cell_value(0, 5, 3).unwrap(), "");
+
+    // The style (bold) should have been copied to C3:C5
+    assert!(
+        model.get_cell_style(0, 3, 3).unwrap().font.b,
+        "C3 should be bold"
+    );
+    assert!(
+        model.get_cell_style(0, 4, 3).unwrap().font.b,
+        "C4 should be bold"
+    );
+    assert!(
+        model.get_cell_style(0, 5, 3).unwrap().font.b,
+        "C5 should be bold"
+    );
+}
+
+// When the same non-anchor selection is pasted as CSV the spill values should
+// land as plain numbers in the target cells.
+#[test]
+fn copy_non_anchor_part_of_array_paste_as_csv() {
+    let mut model = new_empty_user_model();
+
+    // =SEQUENCE(10) in A1 — spills down A1:A10 (values 1..10)
+    model.set_user_input(0, 1, 1, "=SEQUENCE(10)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "3");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 1).unwrap(), "4");
+    assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "5");
+
+    // Copy A3:A5
+    model.set_selected_cell(3, 1).unwrap();
+    model.set_selected_range(3, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    // copied as CSV should be the rendered values, not the formula
+    assert_eq!(cp.csv, "3\n4\n5");
+}
+
+// Cutting a non-anchor part of a dynamic-array formula:
+//   - values must NOT appear at the destination (spill cells carry no formula)
+//   - styles must be moved to the destination
+//   - source cells must lose their style (it was cut, not copied)
+//   - source cells still show spill values because the anchor formula is intact
+#[test]
+fn cut_non_anchor_part_of_array() {
+    let mut model = new_empty_user_model();
+
+    // =SEQUENCE(10) in A1 — spills down A1:A10
+    model.set_user_input(0, 1, 1, "=SEQUENCE(10)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "3");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 1).unwrap(), "4");
+    assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "5");
+
+    // Apply bold to A3:A5
+    let a3_a5 = Area {
+        sheet: 0,
+        row: 3,
+        column: 1,
+        width: 1,
+        height: 3,
+    };
+    model.update_range_style(&a3_a5, "font.b", "true").unwrap();
+    assert!(model.get_cell_style(0, 3, 1).unwrap().font.b);
+    assert!(model.get_cell_style(0, 4, 1).unwrap().font.b);
+    assert!(model.get_cell_style(0, 5, 1).unwrap().font.b);
+
+    // Cut A3:A5 and paste to C3
+    model.set_selected_cell(3, 1).unwrap();
+    model.set_selected_range(3, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(3, 3).unwrap();
+    model
+        .paste_from_clipboard(0, (3, 1, 5, 1), &cp.data, true)
+        .unwrap();
+
+    // Destination C3:C5: no values (spill cells carry no formula)
+    assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 3).unwrap(), "");
+    assert_eq!(model.get_formatted_cell_value(0, 5, 3).unwrap(), "");
+
+    // Destination C3:C5: style was moved here
+    assert!(
+        model.get_cell_style(0, 3, 3).unwrap().font.b,
+        "C3 should be bold"
+    );
+    assert!(
+        model.get_cell_style(0, 4, 3).unwrap().font.b,
+        "C4 should be bold"
+    );
+    assert!(
+        model.get_cell_style(0, 5, 3).unwrap().font.b,
+        "C5 should be bold"
+    );
+
+    // Source A3:A5: spill values are still there (anchor formula untouched)
+    assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "3");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 1).unwrap(), "4");
+    assert_eq!(model.get_formatted_cell_value(0, 5, 1).unwrap(), "5");
 }
 
 // Regression test for: cutting a dynamic-array formula and pasting it over
