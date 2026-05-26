@@ -59,6 +59,8 @@ export default defineConfig({
             link: "/features/name-manager",
           },
           { text: "Using Styles", link: "/features/using-styles" },
+          { text: "Cell Styles", link: "/features/cell-styles" },
+          { text: "Conditional Formatting", link: "/features/conditional-formatting" },
           { text: "Keyboard Shortcuts", link: "/features/keyboard-shortcuts" },
           {
             text: "Error Types",
