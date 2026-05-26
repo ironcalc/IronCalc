@@ -259,7 +259,12 @@ export function deleteSelectedModel(): Model | null {
   if (uuids.length === 0) {
     return createNewModel();
   }
-  return selectModelFromStorage(uuids[0]);
+  const newestUuid = uuids.reduce((newest, current) => {
+    const newestTime = metadata[newest]?.createdAt || 0;
+    const currentTime = metadata[current]?.createdAt || 0;
+    return currentTime > newestTime ? current : newest;
+  });
+  return selectModelFromStorage(newestUuid);
 }
 
 export function deleteModelByUuid(uuid: string): Model | null {
