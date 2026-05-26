@@ -1,7 +1,13 @@
 import "./App.css";
 import type { IronCalcHandle } from "@ironcalc/workbook";
 // From IronCalc
-import { IronCalc, IronCalcIcon, init, Model } from "@ironcalc/workbook";
+import {
+  IronCalc,
+  IronCalcIcon,
+  init,
+  Model,
+  PortalProvider,
+} from "@ironcalc/workbook";
 import "@ironcalc/workbook/style.css";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -174,98 +180,106 @@ function App() {
   // Passing the property down makes sure it is always defined.
 
   return (
-    <div className="app-ic-wrapper">
-      <LeftDrawer
-        open={isDrawerOpen}
-        newModel={handleNewModel}
-        setModel={handleSetModel}
-        onDelete={handleDeleteModelByUuid}
-        localStorageId={localStorageId}
-      />
-      <div
-        className={`app-ic-main-content${isDrawerOpen ? " app-ic-main-content--open" : ""}`}
-        style={{
-          marginLeft: isDrawerOpen ? 0 : -DRAWER_WIDTH,
-          width: isDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%",
-        }}
-      >
-        <FileBar
-          model={model}
-          onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
-            const blob = await uploadFile(arrayBuffer, fileName);
-
-            const bytes = new Uint8Array(await blob.arrayBuffer());
-            const locale = loadDefaultLocaleFromStorage();
-            const languageId = getLanguageFromLocale(locale);
-            const newModel = Model.from_bytes(bytes, languageId);
-            saveModelToStorage(newModel);
-
-            setModel(newModel);
-          }}
+    <PortalProvider>
+      <div className="app-ic-wrapper">
+        <LeftDrawer
+          open={isDrawerOpen}
           newModel={handleNewModel}
-          newModelFromTemplate={() => {
-            setTemplatesDialogOpen(true);
-          }}
           setModel={handleSetModel}
-          onDelete={handleDeleteModel}
-          isDrawerOpen={isDrawerOpen}
-          setIsDrawerOpen={setIsDrawerOpen}
-          setLocalStorageId={setLocalStorageId}
-          onLanguageChange={handleLanguageChange}
+          onDelete={handleDeleteModelByUuid}
+          localStorageId={localStorageId}
         />
-        <IronCalc model={model} ref={ironCalcRef} />
-        {isDrawerOpen && (
-          <div
-            className="app-ic-mobile-overlay"
-            onClick={() => setIsDrawerOpen(false)}
-            role="none"
-          />
-        )}
-      </div>
-      {showWelcomeDialog && (
-        <WelcomeDialog
-          onClose={() => {
-            if (isStorageEmpty()) {
-              const createdModel = createNewModel();
-              setModel(createdModel);
-            }
-            setShowWelcomeDialog(false);
+        <div
+          className={`app-ic-main-content${isDrawerOpen ? " app-ic-main-content--open" : ""}`}
+          style={{
+            marginLeft: isDrawerOpen ? 0 : -DRAWER_WIDTH,
+            width: isDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%",
           }}
-          onSelectTemplate={async (templateId) => {
-            switch (templateId) {
-              case "blank": {
+        >
+          <FileBar
+            model={model}
+            onModelUpload={async (
+              arrayBuffer: ArrayBuffer,
+              fileName: string,
+            ) => {
+              const blob = await uploadFile(arrayBuffer, fileName);
+
+              const bytes = new Uint8Array(await blob.arrayBuffer());
+              const locale = loadDefaultLocaleFromStorage();
+              const languageId = getLanguageFromLocale(locale);
+              const newModel = Model.from_bytes(bytes, languageId);
+              saveModelToStorage(newModel);
+
+              setModel(newModel);
+            }}
+            newModel={handleNewModel}
+            newModelFromTemplate={() => {
+              setTemplatesDialogOpen(true);
+            }}
+            setModel={handleSetModel}
+            onDelete={handleDeleteModel}
+            isDrawerOpen={isDrawerOpen}
+            setIsDrawerOpen={setIsDrawerOpen}
+            setLocalStorageId={setLocalStorageId}
+            onLanguageChange={handleLanguageChange}
+          />
+          <IronCalc model={model} ref={ironCalcRef} />
+          {isDrawerOpen && (
+            <div
+              className="app-ic-mobile-overlay"
+              onClick={() => setIsDrawerOpen(false)}
+              role="none"
+            />
+          )}
+        </div>
+        {showWelcomeDialog && (
+          <WelcomeDialog
+            onClose={() => {
+              if (isStorageEmpty()) {
                 const createdModel = createNewModel();
                 setModel(createdModel);
-                break;
               }
-              default: {
-                const model_bytes = await get_documentation_model(templateId);
-                const locale = loadDefaultLocaleFromStorage();
-                const languageId = getLanguageFromLocale(locale);
-                const importedModel = Model.from_bytes(model_bytes, languageId);
-                saveModelToStorage(importedModel);
-                setModel(importedModel);
-                break;
+              setShowWelcomeDialog(false);
+            }}
+            onSelectTemplate={async (templateId) => {
+              switch (templateId) {
+                case "blank": {
+                  const createdModel = createNewModel();
+                  setModel(createdModel);
+                  break;
+                }
+                default: {
+                  const model_bytes = await get_documentation_model(templateId);
+                  const locale = loadDefaultLocaleFromStorage();
+                  const languageId = getLanguageFromLocale(locale);
+                  const importedModel = Model.from_bytes(
+                    model_bytes,
+                    languageId,
+                  );
+                  saveModelToStorage(importedModel);
+                  setModel(importedModel);
+                  break;
+                }
               }
-            }
-            setShowWelcomeDialog(false);
+              setShowWelcomeDialog(false);
+            }}
+          />
+        )}
+        <TemplatesDialog
+          open={isTemplatesDialogOpen}
+          onClose={() => setTemplatesDialogOpen(false)}
+          onSelectTemplate={async (fileName) => {
+            const model_bytes = await get_documentation_model(fileName);
+            const locale = loadDefaultLocaleFromStorage();
+            const languageId = getLanguageFromLocale(locale);
+            const importedModel = Model.from_bytes(model_bytes, languageId);
+            saveModelToStorage(importedModel);
+            setModel(importedModel);
+            setTemplatesDialogOpen(false);
           }}
         />
-      )}
-      <TemplatesDialog
-        open={isTemplatesDialogOpen}
-        onClose={() => setTemplatesDialogOpen(false)}
-        onSelectTemplate={async (fileName) => {
-          const model_bytes = await get_documentation_model(fileName);
-          const locale = loadDefaultLocaleFromStorage();
-          const languageId = getLanguageFromLocale(locale);
-          const importedModel = Model.from_bytes(model_bytes, languageId);
-          saveModelToStorage(importedModel);
-          setModel(importedModel);
-          setTemplatesDialogOpen(false);
-        }}
-      />
-    </div>
+      </div>
+    </PortalProvider>
   );
 }
 
