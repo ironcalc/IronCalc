@@ -34,3 +34,7 @@ The **Name Manager** lets you assign custom names to specific cells or ranges, m
 - In the drawer, click any named range to select it on the canvas.
 - To **edit** a range, click the **pencil button**.
 - To **delete** a range, click the **trashcan icon**.
+
+## Searching and Filtering
+
+Use the **search input** above the list to find a named range by name. To narrow the list by scope, use the filter to show **All**, **Global**, or **Current sheet** ranges only.
