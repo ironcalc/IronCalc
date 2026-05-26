@@ -2524,43 +2524,22 @@ impl<'a> UserModel<'a> {
                             .set_cell_style(*sheet, *row, *column, old_style)?;
                     } else {
                         // The cell had no explicit style before this operation.
-                        // Normally range_clear_all removes the cell from sheet_data so
-                        // that row/column styles are inherited again.  But for a dynamic
-                        // array formula anchor, range_clear_all would expand to the full
-                        // spill range and wipe cells restored by earlier diffs in the
-                        // same undo.  In that case, clear only the anchor itself.
-                        let spill_dims = self
+                        // If it still holds formula/value content, only reset the style
+                        // index — never touch content, and never call range_clear_all
+                        // (which would expand across a dynamic spill range).
+                        // If it is truly empty, remove it from sheet_data so that
+                        // row/column styles are inherited again.
+                        let has_content = self
                             .model
                             .workbook
                             .worksheet(*sheet)
                             .ok()
                             .and_then(|ws| ws.cell(*row, *column))
-                            .and_then(|c| match c {
-                                Cell::ArrayFormula {
-                                    kind: ArrayKind::Dynamic,
-                                    r,
-                                    ..
-                                } => Some(*r),
-                                _ => None,
-                            });
-                        if let Some((w, h)) = spill_dims {
-                            // For a dynamic formula anchor, range_clear_all would
-                            // expand to the full spill range and wipe cells restored
-                            // by earlier diffs in the same undo.  Clear the anchor
-                            // and only its own SpillCells instead.
-                            let ws = self.model.workbook.worksheet_mut(*sheet)?;
-                            for r in *row..*row + h {
-                                for c in *column..*column + w {
-                                    if r == *row && c == *column {
-                                        let _ = ws.cell_clear_contents(r, c);
-                                        continue;
-                                    }
-                                    if matches!(ws.cell(r, c), Some(Cell::SpillCell { a, .. }) if *a == (*row, *column))
-                                    {
-                                        let _ = ws.cell_clear_contents(r, c);
-                                    }
-                                }
-                            }
+                            .map(|c| !matches!(c, Cell::EmptyCell { .. }))
+                            .unwrap_or(false);
+                        if has_content {
+                            self.model
+                                .set_cell_style(*sheet, *row, *column, &Style::default())?;
                         } else {
                             let area = Area {
                                 sheet: *sheet,

@@ -597,3 +597,66 @@ fn paste_from_cell_beyond_dimension_clears_style() {
     let style = model.get_cell_style(0, 6, 4).unwrap();
     assert_eq!(style.fill.bg_color, None);
 }
+
+// Regression test: undo of cut-paste leaves green style on the paste target.
+// Steps: =SEQUENCE(5) in C3 → green on C3 → cut C3 → paste to H3 → undo.
+// After undo, H3 should have no explicit style (it was empty before the paste).
+#[test]
+fn undo_cut_paste_removes_style_from_target() {
+    let mut model = new_empty_user_model();
+
+    // =SEQUENCE(5) in C3 — spills to C3:C7
+    model.set_user_input(0, 3, 3, "=SEQUENCE(5)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 4, 3).unwrap(), "2");
+
+    // Apply green background to C3 (the anchor only)
+    let c3 = Area {
+        sheet: 0,
+        row: 3,
+        column: 3,
+        width: 1,
+        height: 1,
+    };
+    model
+        .update_range_style(&c3, "fill.bg_color", "#00FF00")
+        .unwrap();
+    assert_eq!(
+        model.get_cell_style(0, 3, 3).unwrap().fill.bg_color,
+        Some("#00FF00".to_owned())
+    );
+
+    // Cut C3 and paste to H3
+    model.set_selected_cell(3, 3).unwrap();
+    model.set_selected_range(3, 3, 3, 3).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(3, 8).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, true)
+        .unwrap();
+
+    // H3 should now have the formula and green style
+    assert_eq!(model.get_formatted_cell_value(0, 3, 8).unwrap(), "1");
+    assert_eq!(
+        model.get_cell_style(0, 3, 8).unwrap().fill.bg_color,
+        Some("#00FF00".to_owned())
+    );
+
+    // Undo the cut-paste
+    model.undo().unwrap();
+
+    // C3 should be fully restored
+    assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "1");
+    assert_eq!(
+        model.get_cell_style(0, 3, 3).unwrap().fill.bg_color,
+        Some("#00FF00".to_owned()),
+        "C3 should have its green background restored after undo"
+    );
+
+    // H3 was empty before the paste — it must have no style after undo
+    assert_eq!(
+        model.get_cell_style(0, 3, 8).unwrap().fill.bg_color,
+        None,
+        "H3 should have no style after undo (it was empty before the paste)"
+    );
+}
