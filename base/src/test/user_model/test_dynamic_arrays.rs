@@ -164,6 +164,34 @@ fn array_in_spill_formula() {
     );
 }
 
+// Regression test for: CSE (Ctrl+Shift+Enter) on a cell with an existing spill does not clean up spilled cells
+// Steps: enter =SEQUENCE(6) in H3 (spills H4:H8) → press CSE on H3 to make it a 1×1 array formula
+//        → H4:H8 should be cleared, not left showing stale spill values
+#[test]
+fn cse_on_dynamic_array_clears_old_spill() {
+    let mut model = new_empty_user_model();
+
+    // =SEQUENCE(6) in H3 (sheet 0, row 3, column 8) spills values 1-6 into H3:H8
+    model.set_user_input(0, 3, 8, "=SEQUENCE(6)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 3, 8), Ok("1".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 4, 8), Ok("2".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 8, 8), Ok("6".to_string()));
+
+    // Ctrl+Shift+Enter on H3: creates a 1×1 array formula from the same formula text.
+    // This should replace the dynamic spill with a bounded array formula and clear H4:H8.
+    model
+        .set_user_array_formula(0, 3, 8, 1, 1, "=SEQUENCE(6)")
+        .unwrap();
+
+    // H3 is now a CSE formula — it evaluates to the first element (1)
+    assert_eq!(model.get_formatted_cell_value(0, 3, 8), Ok("1".to_string()));
+
+    // H4:H8 must be empty — the old spill must have been cleared
+    assert_eq!(model.get_formatted_cell_value(0, 4, 8), Ok("".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 5, 8), Ok("".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 8, 8), Ok("".to_string()));
+}
+
 // Regression test for: cell styling lost when undoing an edit that caused a spill error
 // Steps: apply style to a spilled cell → block the spill → undo the block → style must survive
 #[test]

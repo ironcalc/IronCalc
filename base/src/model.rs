@@ -2365,12 +2365,7 @@ impl<'a> Model<'a> {
         height: i32,
         value: &str,
     ) -> Result<(), String> {
-        if matches!(
-            self.get_cell_structure(sheet, row, column)?,
-            CellStructure::SpillArray { .. }
-        ) {
-            return Err("Cannot write in a cell that is part of an array formula".to_string());
-        }
+        self.prepare_cell_for_user_input(sheet, row, column)?;
         // If value starts with "'" then we force the style to be quote_prefix
         let style_index = self.get_cell_style_index(sheet, row, column)?;
         if value.strip_prefix('\'').is_none() {
