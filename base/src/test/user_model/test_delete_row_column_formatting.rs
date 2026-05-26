@@ -241,3 +241,57 @@ fn column_row_row_height_undo() {
     let style = model.get_cell_style(0, 3, 7).unwrap();
     assert_eq!(style.fill.bg_color, Some("#555666".to_string()));
 }
+
+// Regression test: deleting a row removes SpillCell style information.
+// reset_dynamic_array_spills() removes SpillCells entirely (with ws.remove_cell)
+// before the row-shift moves other styled cells into their old positions.
+// After evaluate() re-creates the SpillCells they use existing_style from sheet_data,
+// but the positions are now empty so they get the default style instead of the
+// background colour that was set on the region containing the spill area.
+#[test]
+fn delete_row_preserves_spill_cell_style() {
+    let mut model = new_empty_user_model();
+
+    // Step 1: =SEQUENCE(3) in D5 — spills to D5 (anchor), D6, D7
+    model.set_user_input(0, 5, 4, "=SEQUENCE(3)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 6, 4).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 7, 4).unwrap(), "3");
+
+    // Step 2: apply green background to C4:E9 (includes the spill cells D6 and D7)
+    let range = Area {
+        sheet: 0,
+        row: 4,
+        column: 3,
+        width: 3,  // C, D, E
+        height: 6, // rows 4–9
+    };
+    model
+        .update_range_style(&range, "fill.bg_color", "#00FF00")
+        .unwrap();
+
+    // Verify D6 and D7 carry the green style before deletion
+    assert_eq!(
+        model.get_cell_style(0, 6, 4).unwrap().fill.bg_color,
+        Some("#00FF00".to_owned())
+    );
+    assert_eq!(
+        model.get_cell_style(0, 7, 4).unwrap().fill.bg_color,
+        Some("#00FF00".to_owned())
+    );
+
+    // Step 3: delete row 1 — everything shifts up by one
+    // Old D6 → new D5, old D7 → new D6
+    model.delete_rows(0, 1, 1).unwrap();
+
+    // The spill cells (now at D5 and D6) must still carry the green background
+    assert_eq!(
+        model.get_cell_style(0, 5, 4).unwrap().fill.bg_color,
+        Some("#00FF00".to_owned()),
+        "D5 (ex-D6 spill cell) should retain green background after row deletion"
+    );
+    assert_eq!(
+        model.get_cell_style(0, 6, 4).unwrap().fill.bg_color,
+        Some("#00FF00".to_owned()),
+        "D6 (ex-D7 spill cell) should retain green background after row deletion"
+    );
+}

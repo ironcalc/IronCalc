@@ -3171,7 +3171,7 @@ impl<'a> Model<'a> {
                     if r == row && c == column {
                         continue;
                     }
-                    ws.remove_cell(r, c)?;
+                    let _ = ws.cell_clear_contents(r, c);
                 }
             }
         }
