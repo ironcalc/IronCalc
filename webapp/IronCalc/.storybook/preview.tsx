@@ -5,6 +5,7 @@ import i18n from "../src/i18n";
 import type { PartialIronCalcThemeVariables } from "../src/theme";
 import { defaultThemeVariables, setThemeVariables } from "../src/theme/theme";
 import "../src/theme/theme.css";
+import "../src/index.css";
 
 const crazyThemeVariables: PartialIronCalcThemeVariables = {
   "--palette-common-black": "#2f1616",
