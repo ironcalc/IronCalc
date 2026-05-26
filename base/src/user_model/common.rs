@@ -2388,14 +2388,10 @@ impl<'a> UserModel<'a> {
                                     .worksheet_mut(*sheet)?
                                     .cell_clear_contents(*row, *column);
                             } else {
-                                let area = Area {
-                                    sheet: *sheet,
-                                    row: *row,
-                                    column: *column,
-                                    width: 1,
-                                    height: 1,
-                                };
-                                self.model.range_clear_all(&area)?;
+                                self.model
+                                    .workbook
+                                    .worksheet_mut(*sheet)?
+                                    .cell_clear_contents(*row, *column)?;
                             }
                         }
                     }
