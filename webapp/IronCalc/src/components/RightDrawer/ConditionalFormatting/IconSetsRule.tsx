@@ -429,7 +429,7 @@ const IconSetsRule = ({
   const initialMode: Mode = initialValues?.rating ? "rating" : "preset";
   const [mode, setMode] = useState<Mode>(initialMode);
   const [selected, setSelected] = useState<string>(
-    initialValues?.presetId ?? DIRECTIONAL[0].id,
+    initialValues?.presetId ?? INDICATORS[0].id,
   );
   const [ratingCount, setRatingCount] = useState<3 | 4 | 5>(
     (initialValues?.rating?.count as (3 | 4 | 5) | undefined) ?? 3,
@@ -451,7 +451,7 @@ const IconSetsRule = ({
             initialValues?.rating?.color ?? DEFAULT_RATING_COLOR,
             initialValues?.rating?.icon ?? "Star",
           )
-        : defaultThresholds(DIRECTIONAL[0].icons)),
+        : defaultThresholds(INDICATORS[0].icons)),
   );
   const [showValue, setShowValue] = useState<boolean>(
     initialValues?.showValue ?? true,
@@ -462,7 +462,7 @@ const IconSetsRule = ({
   const [colorOpenIndex, setColorOpenIndex] = useState<number | null>(null);
 
   const selectedPreset =
-    ALL_PRESETS.find((p) => p.id === selected) ?? DIRECTIONAL[0];
+    ALL_PRESETS.find((p) => p.id === selected) ?? INDICATORS[0];
 
   useEffect(() => {
     if (mode === "preset") {
