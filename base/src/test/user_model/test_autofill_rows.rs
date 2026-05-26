@@ -974,3 +974,71 @@ fn invalid_parameters() {
         Err("Invalid parameters for autofill".to_string())
     );
 }
+
+// When the fill target completely covers a CSE array formula the formula should be
+// removed and the fill should proceed normally.
+#[test]
+fn extend_down_completely_covers_cse() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    // CSE formula ={1,2,3} in C5:E5 (row 5, col 3, width=3, height=1)
+    model
+        .set_user_array_formula(0, 5, 3, 3, 1, "={1,2,3}")
+        .unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 5, 3), Ok("1".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 5, 4), Ok("2".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 5, 5), Ok("3".to_string()));
+
+    // Extend C2:E2 (empty) down to row 6.
+    // Fill target row 3–6, cols 3–5 completely contains the CSE (row 5, cols 3–5).
+    // The CSE must be deleted and the fill must succeed.
+    model
+        .auto_fill_rows(
+            &Area {
+                sheet: 0,
+                row: 2,
+                column: 3,
+                width: 3,
+                height: 1,
+            },
+            6,
+        )
+        .unwrap();
+
+    // CSE is gone — C5:E5 are overwritten with the fill value (empty from C2:E2).
+    assert_eq!(model.get_formatted_cell_value(0, 5, 3), Ok("".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 5, 4), Ok("".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 5, 5), Ok("".to_string()));
+}
+
+// When the fill target only partially covers a CSE array formula the operation must
+// fail with an error.
+#[test]
+fn extend_down_partially_covers_cse_returns_error() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    // CSE formula in C5:E6 (row 5, col 3, width=3, height=2) — spans two rows.
+    model
+        .set_user_array_formula(0, 5, 3, 3, 2, "={1,2,3;4,5,6}")
+        .unwrap();
+
+    // Extend C2:E2 down to row 5 only.
+    // Fill target row 3–5, cols 3–5 hits row 5 of the CSE, but row 6 is outside → partial overlap.
+    let result = model.auto_fill_rows(
+        &Area {
+            sheet: 0,
+            row: 2,
+            column: 3,
+            width: 3,
+            height: 1,
+        },
+        5,
+    );
+    assert!(
+        result.is_err(),
+        "expected error for partial CSE overlap, got Ok"
+    );
+    // CSE must be untouched.
+    assert_eq!(model.get_formatted_cell_value(0, 5, 3), Ok("1".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 6, 3), Ok("4".to_string()));
+}
