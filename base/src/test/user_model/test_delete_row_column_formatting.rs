@@ -295,3 +295,50 @@ fn delete_row_preserves_spill_cell_style() {
         "D6 (ex-D7 spill cell) should retain green background after row deletion"
     );
 }
+
+// Regression test: undoing a row-6 deletion loses the green style on D6 (a SpillCell).
+// After undo the row is restored, but D6 ends up with the default style instead of the
+// background colour that was set before the deletion.
+#[test]
+fn undo_delete_row_preserves_spill_cell_style() {
+    let mut model = new_empty_user_model();
+
+    // =SEQUENCE(3) in D5 spills to D5 (anchor), D6, D7
+    model.set_user_input(0, 5, 4, "=SEQUENCE(3)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 6, 4).unwrap(), "2");
+    assert_eq!(model.get_formatted_cell_value(0, 7, 4).unwrap(), "3");
+
+    // Apply green background to C4:E9 (covers D5, D6, D7)
+    let range = Area {
+        sheet: 0,
+        row: 4,
+        column: 3,
+        width: 3,  // C, D, E
+        height: 6, // rows 4–9
+    };
+    model
+        .update_range_style(&range, "fill.bg_color", "#00FF00")
+        .unwrap();
+
+    assert_eq!(
+        model.get_cell_style(0, 6, 4).unwrap().fill.bg_color,
+        Some("#00FF00".to_owned())
+    );
+
+    // Delete row 6 (the first spill cell of the array)
+    model.delete_rows(0, 6, 1).unwrap();
+
+    // Undo the deletion — D6 must recover the green background
+    model.undo().unwrap();
+
+    assert_eq!(
+        model.get_formatted_cell_value(0, 6, 4).unwrap(),
+        "2",
+        "D6 should show the spilled value 2 after undo"
+    );
+    assert_eq!(
+        model.get_cell_style(0, 6, 4).unwrap().fill.bg_color,
+        Some("#00FF00".to_owned()),
+        "D6 (spill cell) should retain green background after undo of row deletion"
+    );
+}
