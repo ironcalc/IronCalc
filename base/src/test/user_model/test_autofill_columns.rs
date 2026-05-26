@@ -944,3 +944,76 @@ fn invalid_parameters() {
         Err("Invalid parameters for autofill".to_string())
     );
 }
+
+// When the fill target completely covers a CSE array formula the formula should be
+// removed and the fill should proceed normally.
+#[test]
+fn extend_left_completely_covers_cse() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    // CSE formula ={1;2;3} in F8:F10 (row 8, col 6, width=1, height=3)
+    model
+        .set_user_array_formula(0, 8, 6, 1, 3, "={1;2;3}")
+        .unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 8, 6), Ok("1".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 9, 6), Ok("2".to_string()));
+    assert_eq!(
+        model.get_formatted_cell_value(0, 10, 6),
+        Ok("3".to_string())
+    );
+
+    // Extend H8:H10 (empty) left to column D (4).
+    // Fill target rows 8–10, cols 4–7 completely contains the CSE (rows 8–10, col 6).
+    // The CSE must be deleted and the fill must succeed.
+    model
+        .auto_fill_columns(
+            &Area {
+                sheet: 0,
+                row: 8,
+                column: 8,
+                width: 1,
+                height: 3,
+            },
+            4,
+        )
+        .unwrap();
+
+    // CSE is gone — F8:F10 are now overwritten with the fill value (empty from H8:H10).
+    assert_eq!(model.get_formatted_cell_value(0, 8, 6), Ok("".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 9, 6), Ok("".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 10, 6), Ok("".to_string()));
+}
+
+// When the fill target only partially covers a CSE array formula the operation must
+// fail with an error — a partial overwrite of a CSE formula is not allowed.
+#[test]
+fn extend_left_partially_covers_cse_returns_error() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+    // CSE formula in E8:G10 (row 8, col 5, width=3, height=3) — cols E, F, G.
+    model
+        .set_user_array_formula(0, 8, 5, 3, 3, "={1,2,3;4,5,6;7,8,9}")
+        .unwrap();
+
+    // Extend H8:H10 left to column G (7).
+    // Fill target rows 8–10, col 7 (G) only — hits G8:G10 (SpillArray of E8:G10),
+    // but anchor E (col 5) is outside the fill target → partial overlap → must error.
+    let result = model.auto_fill_columns(
+        &Area {
+            sheet: 0,
+            row: 8,
+            column: 8,
+            width: 1,
+            height: 3,
+        },
+        7,
+    );
+    assert!(
+        result.is_err(),
+        "expected error for partial CSE overlap, got Ok"
+    );
+    // CSE must be untouched.
+    assert_eq!(model.get_formatted_cell_value(0, 8, 5), Ok("1".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 8, 6), Ok("2".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 8, 7), Ok("3".to_string()));
+}
