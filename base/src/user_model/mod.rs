@@ -9,6 +9,7 @@ pub(crate) mod history;
 mod named_cell_styles;
 mod sequence_detector;
 mod ui;
+mod undo_redo;
 
 pub use common::UserModel;
 
