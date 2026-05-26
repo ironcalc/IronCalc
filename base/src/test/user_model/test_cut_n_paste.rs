@@ -554,3 +554,46 @@ fn cut_paste_overlap_spill_undo_restores_formula() {
     assert_eq!(model.get_formatted_cell_value(0, 2, 1).unwrap(), ""); // A2 empty
     assert_eq!(model.get_formatted_cell_value(0, 13, 1).unwrap(), ""); // A13 empty
 }
+
+// Regression test: copying a cell whose column (or row) lies beyond the worksheet's
+// max_column (or max_row) produces an empty clipboard, so pasting it has no effect.
+// Repro: =SEQUENCE(3) in D5 spills D5:D7; green background on C4:E9; copy H6
+// (column H=8 > max_column=5); paste onto D6 → D6 keeps its green style unchanged.
+#[test]
+fn paste_from_cell_beyond_dimension_clears_style() {
+    let mut model = new_empty_user_model();
+
+    // Step 1: SEQUENCE(3) in D5 — spills to D5:D7
+    model.set_user_input(0, 5, 4, "=SEQUENCE(3)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 5, 4).unwrap(), "1");
+    assert_eq!(model.get_formatted_cell_value(0, 6, 4).unwrap(), "2"); // D6 is a spill cell
+
+    // Step 2: apply green background to C4:E9 (cols 3–5, rows 4–9)
+    let range = Area {
+        sheet: 0,
+        row: 4,
+        column: 3,
+        width: 3,
+        height: 6,
+    };
+    model
+        .update_range_style(&range, "fill.bg_color", "#00FF00")
+        .unwrap();
+    let style = model.get_cell_style(0, 6, 4).unwrap();
+    assert_eq!(style.fill.bg_color, Some("#00FF00".to_owned()));
+
+    // Step 3: copy H6 (row=6, col=8) — column H is beyond max_column (E=5)
+    model.set_selected_cell(6, 8).unwrap();
+    model.set_selected_range(6, 8, 6, 8).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+
+    // Step 4: paste onto D6 (row=6, col=4)
+    model.set_selected_cell(6, 4).unwrap();
+    model
+        .paste_from_clipboard(0, clipboard.range, &clipboard.data, false)
+        .unwrap();
+
+    // D6's background should now match H6 (no fill), not retain the green from step 2
+    let style = model.get_cell_style(0, 6, 4).unwrap();
+    assert_eq!(style.fill.bg_color, None);
+}

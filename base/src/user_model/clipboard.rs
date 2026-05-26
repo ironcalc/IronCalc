@@ -47,8 +47,8 @@ impl<'a> UserModel<'a> {
         let mut data = HashMap::new();
         let [row_start, column_start, row_end, column_end] = selected_area.range;
         let dimension = self.model.workbook.worksheet(sheet)?.dimension();
-        let row_end = row_end.min(dimension.max_row);
-        let column_end = column_end.min(dimension.max_column);
+        let row_end = row_end.min(dimension.max_row).max(row_start);
+        let column_end = column_end.min(dimension.max_column).max(column_start);
         for row in row_start..=row_end {
             let mut data_row = HashMap::new();
             let mut text_row = Vec::new();
