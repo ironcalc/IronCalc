@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-use crate::test::user_model::util::new_empty_user_model;
+use crate::{expressions::types::Area, test::user_model::util::new_empty_user_model};
 
 #[test]
 fn undo_redo_dynamic_array() {
@@ -162,4 +162,45 @@ fn array_in_spill_formula() {
         model.get_formatted_cell_value(0, 13, 4),
         Ok("#SPILL!".to_string())
     );
+}
+
+// Regression test for: cell styling lost when undoing an edit that caused a spill error
+// Steps: apply style to a spilled cell → block the spill → undo the block → style must survive
+#[test]
+fn undo_spill_error_preserves_styling_on_spilled_cells() {
+    let mut model = new_empty_user_model();
+
+    // SEQUENCE(5) in A1 spills values 1–5 into A1:A5
+    model.set_user_input(0, 1, 1, "=SEQUENCE(5)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1), Ok("2".to_string()));
+
+    // Apply a background color to A2 (a spilled cell)
+    let a2 = Area {
+        sheet: 0,
+        row: 2,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+    model
+        .update_range_style(&a2, "fill.bg_color", "#FF0000")
+        .unwrap();
+    let style = model.get_cell_style(0, 2, 1).unwrap();
+    assert_eq!(style.fill.bg_color, Some("#FF0000".to_owned()));
+
+    // Enter a value in A2, blocking the spill → A1 shows #SPILL!
+    model.set_user_input(0, 2, 1, "blocking").unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 1, 1),
+        Ok("#SPILL!".to_string())
+    );
+
+    // Undo the blocking edit — the spill should be restored
+    model.undo().unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("1".to_string()));
+    assert_eq!(model.get_formatted_cell_value(0, 2, 1), Ok("2".to_string()));
+
+    // The background color applied before the spill-blocking edit must still be present
+    let style = model.get_cell_style(0, 2, 1).unwrap();
+    assert_eq!(style.fill.bg_color, Some("#FF0000".to_owned()));
 }
