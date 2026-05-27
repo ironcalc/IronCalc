@@ -11,7 +11,7 @@ use crate::{
     expressions::{
         lexer::LexerMode,
         parser::{
-            move_formula::{move_formula, MoveContext},
+            move_formula::{move_formula, ref_is_in_area, MoveContext},
             static_analysis::StaticResult,
             stringify::{rename_defined_name_in_node, to_localized_string, to_rc_format},
             ArrayNode, NamedVariable, Node, Parser,
@@ -1848,6 +1848,84 @@ impl<'a> Model<'a> {
         }
 
         Ok(updates)
+    }
+
+    /// Returns updated formula strings for all defined names whose cell or range
+    /// reference falls entirely inside `area`, after a cut-paste that moves `area`
+    /// to (`target_row`, `target_column`).
+    ///
+    /// Returns `(name, scope_sheet_index, old_formula, new_formula)` for each
+    /// defined name whose formula changed.
+    pub(crate) fn get_defined_name_updates_for_cut(
+        &self,
+        area: &Area,
+        target_row: i32,
+        target_column: i32,
+    ) -> Vec<(String, Option<u32>, String, String)> {
+        let row_delta = target_row - area.row;
+        let column_delta = target_column - area.column;
+        if row_delta == 0 && column_delta == 0 {
+            return vec![];
+        }
+
+        let names_with_scope = self.workbook.get_defined_names_with_scope();
+        let mut updates = Vec::new();
+
+        for (name, scope, formula) in names_with_scope {
+            let parsed = common::ParsedReference::parse_reference_formula(
+                None,
+                &formula,
+                self.locale,
+                |n| self.get_sheet_index_by_name(n),
+            );
+            let Ok(parsed) = parsed else {
+                continue; // LAMBDA or invalid — skip
+            };
+
+            let new_formula = match parsed {
+                common::ParsedReference::CellReference(cell_ref) => {
+                    if !ref_is_in_area(cell_ref.sheet, cell_ref.row, cell_ref.column, area) {
+                        continue;
+                    }
+                    let new_row = cell_ref.row + row_delta;
+                    let new_col = cell_ref.column + column_delta;
+                    let sheet_name = utils::quote_name(
+                        &self.workbook.worksheets[cell_ref.sheet as usize].get_name(),
+                    );
+                    let Some(col_str) = utils::number_to_column(new_col) else {
+                        continue;
+                    };
+                    format!("{sheet_name}!${col_str}${new_row}")
+                }
+                common::ParsedReference::Range(left, right) => {
+                    if !ref_is_in_area(left.sheet, left.row, left.column, area)
+                        || !ref_is_in_area(right.sheet, right.row, right.column, area)
+                    {
+                        continue;
+                    }
+                    let new_row1 = left.row + row_delta;
+                    let new_col1 = left.column + column_delta;
+                    let new_row2 = right.row + row_delta;
+                    let new_col2 = right.column + column_delta;
+                    let sheet_name = utils::quote_name(
+                        &self.workbook.worksheets[left.sheet as usize].get_name(),
+                    );
+                    let (Some(col1_str), Some(col2_str)) = (
+                        utils::number_to_column(new_col1),
+                        utils::number_to_column(new_col2),
+                    ) else {
+                        continue;
+                    };
+                    format!("{sheet_name}!${col1_str}${new_row1}:${col2_str}${new_row2}")
+                }
+            };
+
+            if new_formula != formula {
+                updates.push((name, scope, formula, new_formula));
+            }
+        }
+
+        updates
     }
 
     /// 'Extends' the value from cell (`sheet`, `row`, `column`) to (`target_row`, `target_column`) in the same sheet
