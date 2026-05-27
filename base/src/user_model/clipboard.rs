@@ -319,6 +319,29 @@ impl<'a> UserModel<'a> {
                     old_value: Box::new(old_cell),
                 });
             }
+            // Update defined names whose references land inside the moved area.
+            let dn_updates = self.model.get_defined_name_updates_for_cut(
+                &ext_area,
+                selected_row,
+                selected_column,
+            );
+            for (dn_name, dn_scope, old_formula, new_formula) in dn_updates {
+                diff_list.push(Diff::UpdateDefinedName {
+                    name: dn_name.clone(),
+                    scope: dn_scope,
+                    old_formula: old_formula.clone(),
+                    new_name: dn_name.clone(),
+                    new_scope: dn_scope,
+                    new_formula: new_formula.clone(),
+                });
+                self.model.update_defined_name(
+                    &dn_name,
+                    dn_scope,
+                    &dn_name,
+                    dn_scope,
+                    &new_formula,
+                )?;
+            }
         }
         self.push_diff_list(diff_list);
         // select the pasted area
