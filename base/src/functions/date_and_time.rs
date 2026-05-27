@@ -75,7 +75,13 @@ macro_rules! date_part_fn {
                                     Ok(n) => ArrayNode::Number(n),
                                     Err(e) => ArrayNode::Error(e),
                                 },
-                                ArrayNode::String(_) => ArrayNode::Error(Error::VALUE),
+                                ArrayNode::String(s) => match self.cast_number(&s) {
+                                    Some(f) => match apply(f) {
+                                        Ok(n) => ArrayNode::Number(n),
+                                        Err(e) => ArrayNode::Error(e),
+                                    },
+                                    None => ArrayNode::Error(Error::VALUE),
+                                },
                             };
                             data_row.push(out);
                         }
