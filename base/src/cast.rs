@@ -240,7 +240,7 @@ impl<'a> Model<'a> {
         self.cast_to_bool(result, cell)
     }
 
-    fn cast_to_bool(
+    pub(crate) fn cast_to_bool(
         &mut self,
         result: CalcResult,
         cell: CellReferenceIndex,

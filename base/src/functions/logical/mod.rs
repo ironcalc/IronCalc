@@ -55,35 +55,6 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
-/// Cast a scalar CalcResult to bool (mirrors cast_to_bool for the scalar path).
-fn scalar_to_bool(result: CalcResult, cell: CellReferenceIndex) -> Result<bool, CalcResult> {
-    match result {
-        CalcResult::Boolean(b) => Ok(b),
-        CalcResult::Number(n) => Ok(n != 0.0),
-        CalcResult::String(s) => {
-            let lower = s.to_lowercase();
-            if lower == "true" {
-                Ok(true)
-            } else if lower == "false" {
-                Ok(false)
-            } else {
-                Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Expected boolean".to_string(),
-                ))
-            }
-        }
-        CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(false),
-        error @ CalcResult::Error { .. } => Err(error),
-        _ => Err(CalcResult::new_error(
-            Error::VALUE,
-            cell,
-            "Expected boolean".to_string(),
-        )),
-    }
-}
-
 /// Cast one element of a cond array to bool. Returns Err with the error node to
 /// place in the output when the element is itself an error or unparseable string.
 fn array_node_to_bool(node: &ArrayNode) -> Result<bool, ArrayNode> {
@@ -139,7 +110,7 @@ impl<'a> Model<'a> {
             other => {
                 // Scalar cond: cast to bool and evaluate the chosen branch directly.
                 // The branch result may itself be an array (it will spill).
-                let b = match scalar_to_bool(other, cell) {
+                let b = match self.cast_to_bool(other, cell) {
                     Ok(b) => b,
                     Err(e) => return e,
                 };
