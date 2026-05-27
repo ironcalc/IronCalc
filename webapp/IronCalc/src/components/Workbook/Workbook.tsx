@@ -165,6 +165,10 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     updateRangeStyle("font.size_delta", `${delta}`);
   };
 
+  const onSetFontSize = (size: number) => {
+    updateRangeStyle("font.size", `${size}`);
+  };
+
   const handlePaste = useCallback(async (): Promise<void> => {
     focusWorkbook();
     try {
@@ -687,6 +691,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }}
         onIncreaseFontSize={(delta: number) => {
           onIncreaseFontSize(delta);
+        }}
+        onSetFontSize={(size: number) => {
+          onSetFontSize(size);
         }}
         onDownloadPNG={() => {
           // creates a new canvas element in the visible part of the the selected area

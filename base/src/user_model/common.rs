@@ -124,6 +124,15 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
         "font.color" => {
             style.font.color = color(value)?;
         }
+        "font.size" => {
+            let new_size: i32 = value
+                .parse()
+                .map_err(|_| format!("Invalid value for font size: '{value}'."))?;
+            if new_size < 1 {
+                return Err(format!("Invalid value for font size: '{new_size}'."));
+            }
+            style.font.sz = new_size;
+        }
         "font.size_delta" => {
             // This is a special case, we need to add the value to the current size
             let size_delta: i32 = value

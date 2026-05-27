@@ -74,6 +74,7 @@ type ToolbarProperties = {
   onBorderChanged: (border: BorderOptions) => void;
   onClearFormatting: () => void;
   onIncreaseFontSize: (delta: number) => void;
+  onSetFontSize: (size: number) => void;
   onDownloadPNG: () => void;
   fillColor: string;
   fontColor: string;
@@ -102,6 +103,7 @@ function Toolbar(properties: ToolbarProperties) {
   const [borderPickerOpen, setBorderPickerOpen] = useState(false);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
+  const [fontSizeInput, setFontSizeInput] = useState(`${properties.fontSize}`);
 
   const fontColorButton = useRef(null);
   const fillColorButton = useRef(null);
@@ -111,6 +113,10 @@ function Toolbar(properties: ToolbarProperties) {
   const { t } = useTranslation();
 
   const { canEdit } = properties;
+
+  useEffect(() => {
+    setFontSizeInput(`${properties.fontSize}`);
+  }, [properties.fontSize]);
 
   const scrollLeft = () =>
     toolbarRef.current?.scrollBy({ left: -200, behavior: "smooth" });
@@ -282,7 +288,32 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-          <div className="ic-toolbar-font-size-box">{properties.fontSize}</div>
+          <input
+            className="ic-toolbar-font-size-box"
+            type="text"
+            inputMode="numeric"
+            value={fontSizeInput}
+            disabled={!canEdit}
+            onClick={(e) => e.stopPropagation()}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setFontSizeInput(e.target.value)}
+            onBlur={() => {
+              const parsed = parseInt(fontSizeInput, 10);
+              if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 400) {
+                properties.onSetFontSize(parsed);
+              } else {
+                setFontSizeInput(`${properties.fontSize}`);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.currentTarget.blur();
+              } else if (e.key === "Escape") {
+                setFontSizeInput(`${properties.fontSize}`);
+                e.currentTarget.blur();
+              }
+            }}
+          />
           <Tooltip title={t("toolbar.increase_font_size")}>
             <IconButton
               icon={<Plus />}
