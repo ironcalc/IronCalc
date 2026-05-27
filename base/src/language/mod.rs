@@ -367,6 +367,7 @@ pub struct Functions {
     pub phi: String,
     pub poissondist: String,
     pub standardize: String,
+    pub stdev: String,
     pub stdevp: String,
     pub stdevs: String,
     pub stdeva: String,
