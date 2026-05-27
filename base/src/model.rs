@@ -31,7 +31,10 @@ use crate::{
     utils as common,
 };
 
-use crate::{cf_types::CfCellResult, tz::Tz};
+use crate::{
+    cf_types::{CfCellResult, CfRule},
+    tz::Tz,
+};
 
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -163,6 +166,72 @@ fn formula_value_to_spill_value(v: &FormulaValue) -> SpillValue {
         FormulaValue::Text(s) => SpillValue::Text(s.clone()),
         FormulaValue::Error { ei, .. } => SpillValue::Error(ei.clone()),
     }
+}
+
+/// Updates a single sqref range part if both corners are fully inside the cut area.
+fn cf_range_part_update_for_cut(
+    part: &str,
+    area: &Area,
+    row_delta: i32,
+    col_delta: i32,
+) -> String {
+    let upper = part.to_uppercase();
+    let segs: Vec<&str> = upper.splitn(2, ':').collect();
+    match segs.len() {
+        1 => {
+            if let Some(r) = utils::parse_reference_a1(segs[0]) {
+                if ref_is_in_area(area.sheet, r.row, r.column, area) {
+                    if let Some(c) = utils::number_to_column(r.column + col_delta) {
+                        return format!("{}{}", c, r.row + row_delta);
+                    }
+                }
+            }
+            part.to_string()
+        }
+        2 => {
+            if let (Some(r1), Some(r2)) = (
+                utils::parse_reference_a1(segs[0]),
+                utils::parse_reference_a1(segs[1]),
+            ) {
+                if ref_is_in_area(area.sheet, r1.row, r1.column, area)
+                    && ref_is_in_area(area.sheet, r2.row, r2.column, area)
+                {
+                    if let (Some(c1), Some(c2)) = (
+                        utils::number_to_column(r1.column + col_delta),
+                        utils::number_to_column(r2.column + col_delta),
+                    ) {
+                        return format!(
+                            "{}{}:{}{}",
+                            c1,
+                            r1.row + row_delta,
+                            c2,
+                            r2.row + row_delta
+                        );
+                    }
+                }
+            }
+            part.to_string()
+        }
+        _ => part.to_string(),
+    }
+}
+
+/// Updates every part of a space-separated sqref string for a cut operation.
+fn cf_sqref_update_for_cut(sqref: &str, area: &Area, row_delta: i32, col_delta: i32) -> String {
+    sqref
+        .split_whitespace()
+        .map(|p| cf_range_part_update_for_cut(p, area, row_delta, col_delta))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Returns the (row, column) of the top-left cell in a sqref string.
+fn cf_sqref_anchor(sqref: &str) -> Option<(i32, i32)> {
+    let part = sqref.split_whitespace().next()?;
+    let upper = part.to_uppercase();
+    let first = upper.splitn(2, ':').next()?;
+    let r = utils::parse_reference_a1(first)?;
+    Some((r.row, r.column))
 }
 
 pub(crate) enum CellOrRange {
@@ -1926,6 +1995,137 @@ impl<'a> Model<'a> {
         }
 
         updates
+    }
+
+    /// Returns updated range strings and CF rules for all conditional formatting entries
+    /// on `area.sheet` whose applied range or formula references land inside `area`,
+    /// after a cut-paste that moves `area` to (`target_row`, `target_column`).
+    ///
+    /// Returns `(sheet, cf_idx, new_range, new_rule)` for each entry that changed.
+    pub(crate) fn get_conditional_formatting_updates_for_cut(
+        &mut self,
+        area: &Area,
+        target_row: i32,
+        target_column: i32,
+    ) -> Result<Vec<(u32, usize, String, CfRule)>, String> {
+        let row_delta = target_row - area.row;
+        let column_delta = target_column - area.column;
+        if row_delta == 0 && column_delta == 0 {
+            return Ok(vec![]);
+        }
+
+        let sheet = area.sheet;
+        let sheet_name = self
+            .workbook
+            .worksheets
+            .get(sheet as usize)
+            .ok_or_else(|| format!("Sheet {sheet} not found"))?
+            .get_name();
+
+        // Phase 1 – collect CF data (immutable reads)
+        let cf_entries: Vec<(String, CfRule)> = self.workbook.worksheets[sheet as usize]
+            .conditional_formatting
+            .iter()
+            .map(|cf| (cf.range.clone(), cf.cf_rule.clone()))
+            .collect();
+
+        // Phase 2 – compute updates (may need &mut self.parser)
+        let mut updates = Vec::new();
+        for (cf_idx, (old_range, old_rule)) in cf_entries.into_iter().enumerate() {
+            let new_range =
+                cf_sqref_update_for_cut(&old_range, area, row_delta, column_delta);
+
+            // Use the top-left cell of the CF range as the formula parse anchor.
+            let anchor = cf_sqref_anchor(&old_range);
+            let new_rule = if let Some((anchor_row, anchor_col)) = anchor {
+                self.cf_rule_move_formulas(
+                    old_rule.clone(),
+                    &sheet_name,
+                    anchor_row,
+                    anchor_col,
+                    area,
+                    row_delta,
+                    column_delta,
+                )
+            } else {
+                old_rule.clone()
+            };
+
+            if new_range != old_range || new_rule != old_rule {
+                updates.push((sheet, cf_idx, new_range, new_rule));
+            }
+        }
+
+        Ok(updates)
+    }
+
+    /// Updates formula fields inside a `CfRule` using `move_formula`.
+    fn cf_rule_move_formulas(
+        &mut self,
+        rule: CfRule,
+        sheet_name: &str,
+        anchor_row: i32,
+        anchor_col: i32,
+        area: &Area,
+        row_delta: i32,
+        col_delta: i32,
+    ) -> CfRule {
+        let mut move_f = |formula: &str| -> String {
+            let trimmed = formula.trim();
+            let has_eq = trimmed.starts_with('=');
+            let body = if has_eq { &trimmed[1..] } else { trimmed };
+            let cell_ref = CellReferenceRC {
+                sheet: sheet_name.to_string(),
+                row: anchor_row,
+                column: anchor_col,
+            };
+            let node = self.parser.parse(body, &cell_ref);
+            let new_body = move_formula(
+                &node,
+                &MoveContext {
+                    source_sheet_name: sheet_name,
+                    row: anchor_row,
+                    column: anchor_col,
+                    area,
+                    target_sheet_name: sheet_name,
+                    row_delta,
+                    column_delta: col_delta,
+                },
+                self.locale,
+                self.language,
+            );
+            if has_eq {
+                format!("={new_body}")
+            } else {
+                new_body
+            }
+        };
+
+        match rule {
+            CfRule::Formula {
+                formula,
+                dxf_id,
+                stop_if_true,
+            } => CfRule::Formula {
+                formula: move_f(&formula),
+                dxf_id,
+                stop_if_true,
+            },
+            CfRule::CellIs {
+                operator,
+                formula,
+                formula2,
+                dxf_id,
+                stop_if_true,
+            } => CfRule::CellIs {
+                operator,
+                formula: move_f(&formula),
+                formula2: formula2.as_deref().map(|f| move_f(f)),
+                dxf_id,
+                stop_if_true,
+            },
+            other => other,
+        }
     }
 
     /// 'Extends' the value from cell (`sheet`, `row`, `column`) to (`target_row`, `target_column`) in the same sheet
