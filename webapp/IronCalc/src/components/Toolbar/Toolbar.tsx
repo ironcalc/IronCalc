@@ -109,6 +109,7 @@ function Toolbar(properties: ToolbarProperties) {
   const fillColorButton = useRef(null);
   const borderButton = useRef(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const fontSizeInputRef = useRef<HTMLInputElement>(null);
 
   const { t } = useTranslation();
 
@@ -289,12 +290,16 @@ function Toolbar(properties: ToolbarProperties) {
             />
           </Tooltip>
           <input
+            ref={fontSizeInputRef}
             className="ic-toolbar-font-size-box"
             type="text"
             inputMode="numeric"
             value={fontSizeInput}
             disabled={!canEdit}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.currentTarget.select();
+            }}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setFontSizeInput(e.target.value)}
             onBlur={() => {
@@ -311,6 +316,21 @@ function Toolbar(properties: ToolbarProperties) {
               } else if (e.key === "Escape") {
                 setFontSizeInput(`${properties.fontSize}`);
                 e.currentTarget.blur();
+              } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                e.preventDefault();
+                const current = parseInt(fontSizeInput, 10);
+                if (!Number.isNaN(current)) {
+                  const delta = e.shiftKey ? 10 : 1;
+                  const next =
+                    e.key === "ArrowUp"
+                      ? Math.min(current + delta, 400)
+                      : Math.max(current - delta, 1);
+                  setFontSizeInput(`${next}`);
+                  properties.onSetFontSize(next);
+                  requestAnimationFrame(() =>
+                    fontSizeInputRef.current?.focus(),
+                  );
+                }
               }
             }}
           />
