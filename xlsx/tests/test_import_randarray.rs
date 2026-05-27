@@ -12,5 +12,12 @@ fn test_import_randarray_correctly() {
 
     // A19 has the formula RANDARRAY(3,3,0,100,TRUE) in the DynamicArrays.xlsx file,
     // which should return a 3x3 array of random integers between 0 and 100.
-    assert_ne!(cell_b20, "#ERROR!");
+    let cell_b20_value = cell_b20
+        .parse::<i32>()
+        .unwrap_or_else(|_| panic!("Expected B20 to contain an integer, got {:?}", cell_b20));
+    assert!(
+        (0..=100).contains(&cell_b20_value),
+        "Expected B20 to contain an integer in [0, 100], got {}",
+        cell_b20_value
+    );
 }

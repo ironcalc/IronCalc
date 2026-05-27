@@ -940,7 +940,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             // TODO: This algorithm could end up with "repeated" shared formulas
             //       We could solve that with a second transversal.
 
-            // In Excel a volatile spill formula might have and f element in the spilled cells.
+            // In Excel a volatile spill formula might have an f element in the spilled cells.
             // But it is not a shared formula. For example:
             // <c r="A19" s="3" cm="1">
             //   <f t="array" aca="1" ref="A19:C21" ca="1">_xlfn.RANDARRAY(3,3, 0, 100,TRUE)</f>
@@ -957,7 +957,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             // aca: Always Calculate Array
             // ca: Calculate Always
             // Those are hints Excel uses to always calculate volatiles
-            // We don not use those in IronCalc
+            // We do not use those in IronCalc
             let fs: Vec<Node> = cell.children().filter(|n| n.has_tag_name("f")).collect();
             let mut formula_index = -1;
             let mut array_kind = CellArrayKind::None;
