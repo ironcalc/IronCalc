@@ -52,7 +52,7 @@
   justify-content: center;
   text-align: center;
   font-family: var(--typography-font-family);
-  font-size: 12px;
+  font-size: var(--typography-font-size);
   border: 1px solid var(--palette-grey-300);
   border-radius: 6px;
   min-width: 24px;
@@ -63,7 +63,7 @@
   box-sizing: border-box;
 }
 .ic-toolbar-font-size-box:focus {
-  background: var(--palette-grey-100, #f5f5f5);
+  background: var(--palette-common-white);
   border: 1px solid var(--palette-grey-500);
 }
 
