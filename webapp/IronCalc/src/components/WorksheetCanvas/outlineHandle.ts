@@ -126,22 +126,28 @@ export function attachOutlineHandle(
       height,
     };
 
-    switch (extendedArea.type) {
-      case AreaType.rowsDown:
-        worksheet.model.autoFillRows(area, extendedArea.rowEnd);
-        break;
-      case AreaType.rowsUp: {
-        worksheet.model.autoFillRows(area, extendedArea.rowStart);
-        break;
+    try {
+      switch (extendedArea.type) {
+        case AreaType.rowsDown:
+          worksheet.model.autoFillRows(area, extendedArea.rowEnd);
+          break;
+        case AreaType.rowsUp: {
+          worksheet.model.autoFillRows(area, extendedArea.rowStart);
+          break;
+        }
+        case AreaType.columnsRight: {
+          worksheet.model.autoFillColumns(area, extendedArea.columnEnd);
+          break;
+        }
+        case AreaType.columnsLeft: {
+          worksheet.model.autoFillColumns(area, extendedArea.columnStart);
+          break;
+        }
       }
-      case AreaType.columnsRight: {
-        worksheet.model.autoFillColumns(area, extendedArea.columnEnd);
-        break;
-      }
-      case AreaType.columnsLeft: {
-        worksheet.model.autoFillColumns(area, extendedArea.columnStart);
-        break;
-      }
+    } catch (_) {
+      // This could fail if, for instnace we are breaking an array formula
+      // Here we fail silently
+      // TODO: Could we shouw a message to the user?
     }
     const selectedRowStart = Math.min(rowStart, extendedArea.rowStart);
     const selectedColumnStart = Math.min(columnStart, extendedArea.columnStart);
