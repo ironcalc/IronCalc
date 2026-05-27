@@ -667,3 +667,137 @@ fn cut_paste_undo_restores_cf_range() {
         "A1:A5"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Copy-and-paste: CF rule duplication
+// ---------------------------------------------------------------------------
+
+#[test]
+fn copy_paste_duplicates_cf_rule_for_pasted_range() {
+    let mut model = new_empty_user_model();
+    // CF rule exactly covering the cells to copy
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+
+    // Copy A1:A5, paste at F11
+    model.set_selected_range(1, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 5, 1), &cp.data, false)
+        .unwrap();
+
+    // Should now have two CF rules: original + new for pasted area
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list.len(), 2);
+    let ranges: Vec<&str> = list.iter().map(|cf| cf.range.as_str()).collect();
+    assert!(ranges.contains(&"A1:A5"), "original CF range missing");
+    assert!(ranges.contains(&"F11:F15"), "pasted CF range missing");
+}
+
+#[test]
+fn copy_paste_original_cf_rule_unchanged() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+
+    model.set_selected_range(1, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 5, 1), &cp.data, false)
+        .unwrap();
+
+    // Original CF rule should be unchanged
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    let original = list.iter().find(|cf| cf.range == "A1:A5");
+    assert!(original.is_some(), "original CF rule should still exist");
+}
+
+#[test]
+fn copy_paste_no_cf_when_source_has_none() {
+    let mut model = new_empty_user_model();
+    // No CF rules at all
+
+    model.set_selected_range(1, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 5, 1), &cp.data, false)
+        .unwrap();
+
+    assert!(model.get_conditional_formatting_list(0).unwrap().is_empty());
+}
+
+#[test]
+fn copy_paste_cf_intersection_with_copy_range() {
+    let mut model = new_empty_user_model();
+    // CF rule covers more than the copied range
+    model
+        .add_conditional_formatting(0, "A1:A10", color_scale())
+        .unwrap();
+
+    // Copy only A1:A5, paste at F11
+    model.set_selected_range(1, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 5, 1), &cp.data, false)
+        .unwrap();
+
+    // New rule should only cover F11:F15 (intersection A1:A5 mapped to target)
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list.len(), 2);
+    let new_range = list
+        .iter()
+        .find(|cf| cf.range != "A1:A10")
+        .map(|cf| cf.range.as_str());
+    assert_eq!(new_range, Some("F11:F15"));
+}
+
+#[test]
+fn copy_paste_no_cf_when_rule_outside_copy_range() {
+    let mut model = new_empty_user_model();
+    // CF rule covers C1:C5, copied range is A1:A3 — no overlap
+    model
+        .add_conditional_formatting(0, "C1:C5", color_scale())
+        .unwrap();
+
+    model.set_selected_range(1, 1, 3, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 3, 1), &cp.data, false)
+        .unwrap();
+
+    // Only the original CF rule, nothing added
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].range, "C1:C5");
+}
+
+#[test]
+fn copy_paste_undo_removes_duplicated_cf_rule() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+
+    model.set_selected_range(1, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 5, 1), &cp.data, false)
+        .unwrap();
+
+    assert_eq!(model.get_conditional_formatting_list(0).unwrap().len(), 2);
+
+    model.undo().unwrap();
+
+    // Undo should remove the duplicated rule
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].range, "A1:A5");
+}

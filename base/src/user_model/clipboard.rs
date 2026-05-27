@@ -9,6 +9,7 @@ use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cf_types::ConditionalFormatting,
     expressions::types::{Area, CellReferenceIndex},
     model::CellStructure,
     types::{ArrayKind, Cell, Style},
@@ -370,6 +371,44 @@ impl<'a> UserModel<'a> {
                     old_priority: old_cf.priority,
                     new_range,
                     new_rule: Box::new(new_rule),
+                });
+            }
+        } else {
+            // Copy-paste: duplicate CF rules from the source area to the target.
+            let cf_copies = self.model.get_cf_rules_to_copy(
+                source_sheet,
+                source_first_row,
+                source_first_column,
+                source_last_row,
+                source_last_column,
+                selected_row,
+                selected_column,
+            );
+            for (new_range, new_rule) in cf_copies {
+                let priority = self
+                    .model
+                    .workbook
+                    .worksheet(sheet)?
+                    .conditional_formatting
+                    .iter()
+                    .map(|cf| cf.priority)
+                    .max()
+                    .map(|m| m + 1)
+                    .unwrap_or(1);
+                self.model
+                    .workbook
+                    .worksheet_mut(sheet)?
+                    .conditional_formatting
+                    .push(ConditionalFormatting {
+                        range: new_range.clone(),
+                        cf_rule: new_rule.clone(),
+                        priority,
+                    });
+                diff_list.push(Diff::AddConditionalFormatting {
+                    sheet,
+                    range: new_range,
+                    rule: Box::new(new_rule),
+                    priority,
                 });
             }
         }

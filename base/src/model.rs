@@ -169,12 +169,7 @@ fn formula_value_to_spill_value(v: &FormulaValue) -> SpillValue {
 }
 
 /// Updates a single sqref range part if both corners are fully inside the cut area.
-fn cf_range_part_update_for_cut(
-    part: &str,
-    area: &Area,
-    row_delta: i32,
-    col_delta: i32,
-) -> String {
+fn cf_range_part_update_for_cut(part: &str, area: &Area, row_delta: i32, col_delta: i32) -> String {
     let upper = part.to_uppercase();
     let segs: Vec<&str> = upper.splitn(2, ':').collect();
     match segs.len() {
@@ -216,6 +211,76 @@ fn cf_range_part_update_for_cut(
     }
 }
 
+/// Maps a single CF sqref range part to the target location, intersecting with the copied area.
+/// Returns `None` if the CF range part does not overlap the copy source.
+fn map_cf_range_part_to_target(
+    part: &str,
+    src_r1: i32,
+    src_c1: i32,
+    src_r2: i32,
+    src_c2: i32,
+    tgt_row: i32,
+    tgt_col: i32,
+) -> Option<String> {
+    let upper = part.to_uppercase();
+    let segs: Vec<&str> = upper.splitn(2, ':').collect();
+    let (rule_r1, rule_c1, rule_r2, rule_c2) = match segs.len() {
+        1 => {
+            let r = utils::parse_reference_a1(segs[0])?;
+            (r.row, r.column, r.row, r.column)
+        }
+        2 => {
+            let r1 = utils::parse_reference_a1(segs[0])?;
+            let r2 = utils::parse_reference_a1(segs[1])?;
+            (r1.row, r1.column, r2.row, r2.column)
+        }
+        _ => return None,
+    };
+
+    // Intersection with copy source
+    let int_r1 = rule_r1.max(src_r1);
+    let int_c1 = rule_c1.max(src_c1);
+    let int_r2 = rule_r2.min(src_r2);
+    let int_c2 = rule_c2.min(src_c2);
+    if int_r1 > int_r2 || int_c1 > int_c2 {
+        return None;
+    }
+
+    // Map intersection to target coordinates
+    let new_r1 = tgt_row + (int_r1 - src_r1);
+    let new_c1 = tgt_col + (int_c1 - src_c1);
+    let new_r2 = tgt_row + (int_r2 - src_r1);
+    let new_c2 = tgt_col + (int_c2 - src_c1);
+
+    let c1 = utils::number_to_column(new_c1)?;
+    let c2 = utils::number_to_column(new_c2)?;
+    if new_r1 == new_r2 && new_c1 == new_c2 {
+        Some(format!("{c1}{new_r1}"))
+    } else {
+        Some(format!("{c1}{new_r1}:{c2}{new_r2}"))
+    }
+}
+
+/// Maps every part of a space-separated sqref string to the target location,
+/// dropping parts that fall entirely outside the copy source.
+fn map_cf_sqref_to_target(
+    sqref: &str,
+    src_r1: i32,
+    src_c1: i32,
+    src_r2: i32,
+    src_c2: i32,
+    tgt_row: i32,
+    tgt_col: i32,
+) -> String {
+    sqref
+        .split_whitespace()
+        .filter_map(|p| {
+            map_cf_range_part_to_target(p, src_r1, src_c1, src_r2, src_c2, tgt_row, tgt_col)
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Updates every part of a space-separated sqref string for a cut operation.
 fn cf_sqref_update_for_cut(sqref: &str, area: &Area, row_delta: i32, col_delta: i32) -> String {
     sqref
@@ -229,7 +294,7 @@ fn cf_sqref_update_for_cut(sqref: &str, area: &Area, row_delta: i32, col_delta: 
 fn cf_sqref_anchor(sqref: &str) -> Option<(i32, i32)> {
     let part = sqref.split_whitespace().next()?;
     let upper = part.to_uppercase();
-    let first = upper.splitn(2, ':').next()?;
+    let first = upper.split(':').next()?;
     let r = utils::parse_reference_a1(first)?;
     Some((r.row, r.column))
 }
@@ -2032,8 +2097,7 @@ impl<'a> Model<'a> {
         // Phase 2 – compute updates (may need &mut self.parser)
         let mut updates = Vec::new();
         for (cf_idx, (old_range, old_rule)) in cf_entries.into_iter().enumerate() {
-            let new_range =
-                cf_sqref_update_for_cut(&old_range, area, row_delta, column_delta);
+            let new_range = cf_sqref_update_for_cut(&old_range, area, row_delta, column_delta);
 
             // Use the top-left cell of the CF range as the formula parse anchor.
             let anchor = cf_sqref_anchor(&old_range);
@@ -2120,12 +2184,46 @@ impl<'a> Model<'a> {
             } => CfRule::CellIs {
                 operator,
                 formula: move_f(&formula),
-                formula2: formula2.as_deref().map(|f| move_f(f)),
+                formula2: formula2.as_deref().map(move_f),
                 dxf_id,
                 stop_if_true,
             },
             other => other,
         }
+    }
+
+    /// Returns CF rules to add when copy-pasting cells from `source_sheet`.
+    ///
+    /// For each CF rule on `source_sheet` that overlaps the copied rectangle
+    /// (`src_row1..src_row2`, `src_col1..src_col2`), computes the intersection
+    /// and maps it to the target location starting at (`tgt_row`, `tgt_col`).
+    ///
+    /// Returns `(new_range_sqref, cf_rule)` for each overlapping CF entry.
+    pub(crate) fn get_cf_rules_to_copy(
+        &self,
+        source_sheet: u32,
+        src_row1: i32,
+        src_col1: i32,
+        src_row2: i32,
+        src_col2: i32,
+        tgt_row: i32,
+        tgt_col: i32,
+    ) -> Vec<(String, CfRule)> {
+        let ws = match self.workbook.worksheets.get(source_sheet as usize) {
+            Some(ws) => ws,
+            None => return vec![],
+        };
+
+        let mut results = Vec::new();
+        for cf in &ws.conditional_formatting {
+            let new_range = map_cf_sqref_to_target(
+                &cf.range, src_row1, src_col1, src_row2, src_col2, tgt_row, tgt_col,
+            );
+            if !new_range.is_empty() {
+                results.push((new_range, cf.cf_rule.clone()));
+            }
+        }
+        results
     }
 
     /// 'Extends' the value from cell (`sheet`, `row`, `column`) to (`target_row`, `target_column`) in the same sheet
