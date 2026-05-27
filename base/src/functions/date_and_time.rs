@@ -39,18 +39,52 @@ fn is_feb_29_between_dates(start: chrono::NaiveDate, end: chrono::NaiveDate) -> 
 macro_rules! date_part_fn {
     ($name:ident, $method:ident) => {
         pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+            use crate::cast::NumberOrArray;
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            let serial_number = match self.get_number(&args[0], cell) {
-                Ok(num) => num.floor() as i64,
-                Err(e) => return e,
+            // Applies the date component extraction to a single serial number.
+            // Uses the free function from_excel_date to avoid borrowing self.
+            let apply = |f: f64| -> Result<f64, Error> {
+                match from_excel_date(f.floor() as i64) {
+                    Ok(date) => Ok(date.$method() as f64),
+                    Err(_) => Err(Error::NUM),
+                }
             };
-            let date = match self.excel_date(serial_number, cell) {
-                Ok(d) => d,
-                Err(e) => return e,
-            };
-            CalcResult::Number(date.$method() as f64)
+            match self.get_number_or_array(&args[0], cell) {
+                Ok(NumberOrArray::Number(f)) => match apply(f) {
+                    Ok(n) => CalcResult::Number(n),
+                    Err(e) => CalcResult::new_error(e, cell, "Invalid date".to_string()),
+                },
+                Ok(NumberOrArray::Array(a)) => {
+                    let mut result = Vec::new();
+                    for row in a {
+                        let mut data_row = Vec::new();
+                        for node in row {
+                            let out = match node {
+                                ArrayNode::Number(f) => match apply(f) {
+                                    Ok(n) => ArrayNode::Number(n),
+                                    Err(e) => ArrayNode::Error(e),
+                                },
+                                ArrayNode::Boolean(b) => match apply(if b { 1.0 } else { 0.0 }) {
+                                    Ok(n) => ArrayNode::Number(n),
+                                    Err(e) => ArrayNode::Error(e),
+                                },
+                                ArrayNode::Error(e) => ArrayNode::Error(e),
+                                ArrayNode::Empty => match apply(0.0) {
+                                    Ok(n) => ArrayNode::Number(n),
+                                    Err(e) => ArrayNode::Error(e),
+                                },
+                                ArrayNode::String(_) => ArrayNode::Error(Error::VALUE),
+                            };
+                            data_row.push(out);
+                        }
+                        result.push(data_row);
+                    }
+                    CalcResult::Array(result)
+                }
+                Err(e) => e,
+            }
         }
     };
 }
