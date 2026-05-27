@@ -1760,6 +1760,96 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// Returns updated formula strings for all cells whose formulas reference
+    /// cells inside `area`, excluding cells that are themselves inside `area`.
+    /// Used during cut-paste to propagate the move to external observers.
+    ///
+    /// Returns `(sheet_index, row, column, new_formula_string)` for each cell
+    /// whose formula changed.
+    pub(crate) fn get_external_formula_updates_for_cut(
+        &mut self,
+        area: &Area,
+        target_row: i32,
+        target_column: i32,
+    ) -> Result<Vec<(u32, i32, i32, String)>, String> {
+        let row_delta = target_row - area.row;
+        let column_delta = target_column - area.column;
+        if row_delta == 0 && column_delta == 0 {
+            return Ok(vec![]);
+        }
+
+        let num_sheets = self.workbook.worksheets.len();
+
+        // Phase 1 – collect formula cells outside the cut area (immutable reads only)
+        let mut candidates: Vec<(u32, i32, i32, String)> = Vec::new();
+        for ws_idx in 0..num_sheets {
+            let ws_idx_u32 = ws_idx as u32;
+            // collect (row, col) pairs first to avoid holding the ws borrow
+            let formula_positions: Vec<(i32, i32)> = {
+                let ws = &self.workbook.worksheets[ws_idx];
+                ws.sheet_data
+                    .iter()
+                    .flat_map(|(&row, col_map)| {
+                        col_map.iter().filter_map(move |(&col, cell)| {
+                            cell.get_formula()?;
+                            // skip cells inside the area being moved
+                            if ws_idx_u32 == area.sheet
+                                && row >= area.row
+                                && row < area.row + area.height
+                                && col >= area.column
+                                && col < area.column + area.width
+                            {
+                                return None;
+                            }
+                            Some((row, col))
+                        })
+                    })
+                    .collect()
+            };
+            // now collect the user-facing formula strings
+            for (row, col) in formula_positions {
+                let formula_str = self.get_localized_cell_content(ws_idx_u32, row, col)?;
+                candidates.push((ws_idx_u32, row, col, formula_str));
+            }
+        }
+
+        // Phase 2 – rewrite references that land inside the moved area
+        let mut updates: Vec<(u32, i32, i32, String)> = Vec::new();
+        for (ws_idx_u32, row, col, formula_str) in candidates {
+            let sheet_name = self.workbook.worksheets[ws_idx_u32 as usize].get_name();
+            let formula_body = match self.formula_without_prefix(&formula_str) {
+                Some(s) => s.to_owned(),
+                None => continue,
+            };
+            let cell_ref = CellReferenceRC {
+                sheet: sheet_name.clone(),
+                row,
+                column: col,
+            };
+            let node = self.parser.parse(&formula_body, &cell_ref);
+            let new_body = move_formula(
+                &node,
+                &MoveContext {
+                    source_sheet_name: &sheet_name,
+                    row,
+                    column: col,
+                    area,
+                    target_sheet_name: &sheet_name,
+                    row_delta,
+                    column_delta,
+                },
+                self.locale,
+                self.language,
+            );
+            let new_formula = format!("={new_body}");
+            if new_formula != formula_str {
+                updates.push((ws_idx_u32, row, col, new_formula));
+            }
+        }
+
+        Ok(updates)
+    }
+
     /// 'Extends' the value from cell (`sheet`, `row`, `column`) to (`target_row`, `target_column`) in the same sheet
     ///
     /// # Examples

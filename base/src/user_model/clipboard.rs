@@ -288,6 +288,37 @@ impl<'a> UserModel<'a> {
                     });
                 }
             }
+            // Update external formulas that reference cells in the moved area.
+            // source_sheet is used here (not `sheet`) so cross-sheet paste works.
+            let ext_area = Area {
+                sheet: source_sheet,
+                row: source_first_row,
+                column: source_first_column,
+                width: source_last_column - source_first_column + 1,
+                height: source_last_row - source_first_row + 1,
+            };
+            let ext_updates = self.model.get_external_formula_updates_for_cut(
+                &ext_area,
+                selected_row,
+                selected_column,
+            )?;
+            for (ext_sheet, ext_row, ext_col, new_formula) in ext_updates {
+                let old_cell = self
+                    .model
+                    .workbook
+                    .worksheet(ext_sheet)?
+                    .cell(ext_row, ext_col)
+                    .cloned();
+                self.model
+                    .set_user_input(ext_sheet, ext_row, ext_col, new_formula.clone())?;
+                diff_list.push(Diff::SetCellValue {
+                    sheet: ext_sheet,
+                    row: ext_row,
+                    column: ext_col,
+                    new_value: new_formula,
+                    old_value: Box::new(old_cell),
+                });
+            }
         }
         self.push_diff_list(diff_list);
         // select the pasted area
