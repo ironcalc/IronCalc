@@ -104,7 +104,11 @@ impl<'a> Model<'a> {
             Ok(f) => {
                 let n = f.floor() as i64;
                 if n < 1 {
-                    return CalcResult::new_error(Error::VALUE, cell, "rows must be >= 1".to_string());
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "rows must be >= 1".to_string(),
+                    );
                 }
                 n as usize
             }
@@ -115,7 +119,11 @@ impl<'a> Model<'a> {
             Ok(f) => {
                 let n = f.floor() as i64;
                 if n < 1 {
-                    return CalcResult::new_error(Error::VALUE, cell, "cols must be >= 1".to_string());
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "cols must be >= 1".to_string(),
+                    );
                 }
                 n as usize
             }
