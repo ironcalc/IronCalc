@@ -74,7 +74,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     // Basically prevents the workbook from stealing focus when the user is interacting with the color picker, border picker or advanced color picker
     if (
       active?.closest(
-        ".ic-color-picker, .ic-advanced-color-picker-panel, .ic-border-picker",
+        ".ic-color-picker, .ic-advanced-color-picker-panel, .ic-border-picker, .ic-modal-dialog",
       )
     ) {
       return;

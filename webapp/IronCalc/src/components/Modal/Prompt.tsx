@@ -69,7 +69,12 @@ export function Prompt({
   }
 
   return createPortal(
-    <div className="ic-modal-dialog-backdrop" onClick={closeModal} role="none">
+    <div
+      className="ic-modal-dialog-backdrop"
+      onClick={closeModal}
+      onPointerDown={(event) => event.stopPropagation()}
+      role="none"
+    >
       <div
         ref={modalRef}
         className={["ic-modal-dialog", className].filter(Boolean).join(" ")}

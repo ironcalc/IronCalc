@@ -46,7 +46,12 @@ export function Alert({
   }
 
   return createPortal(
-    <div className="ic-modal-dialog-backdrop" onClick={closeModal} role="none">
+    <div
+      className="ic-modal-dialog-backdrop"
+      onClick={closeModal}
+      onPointerDown={(event) => event.stopPropagation()}
+      role="none"
+    >
       <div
         ref={modalRef}
         className="ic-modal-dialog"
