@@ -3,7 +3,11 @@ use chrono::Datelike;
 use crate::{
     calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     formatter::dates::from_excel_date,
     model::Model,
 };
@@ -258,6 +262,32 @@ impl<'a> Model<'a> {
                             CalcResult::Number(value) => values.push(value),
                             error @ CalcResult::Error { .. } => return Err(error),
                             CalcResult::EmptyCell => {
+                                if let Some(value) = handle_empty_cell()? {
+                                    values.push(value);
+                                }
+                            }
+                            _ => {
+                                if let Some(value) = handle_non_number_cell()? {
+                                    values.push(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            CalcResult::Array(arr) => {
+                for row in arr {
+                    for node in row {
+                        match node {
+                            ArrayNode::Number(f) => values.push(f),
+                            ArrayNode::Error(e) => {
+                                return Err(CalcResult::new_error(
+                                    e,
+                                    *cell,
+                                    "Error in array".to_string(),
+                                ));
+                            }
+                            ArrayNode::Empty => {
                                 if let Some(value) = handle_empty_cell()? {
                                     values.push(value);
                                 }
@@ -1884,5 +1914,451 @@ impl<'a> Model<'a> {
             CalcResult::Number(yf) => CalcResult::Number(par * rate * yf),
             error => error,
         }
+    }
+
+    fn get_yearfrac(
+        &mut self,
+        start: i64,
+        end: i64,
+        basis: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let args = [
+            Node::NumberKind(start as f64),
+            Node::NumberKind(end as f64),
+            Node::NumberKind(basis),
+        ];
+        match self.fn_yearfrac(&args, cell) {
+            CalcResult::Number(yf) => Ok(yf),
+            error => Err(error),
+        }
+    }
+
+    // DISC(settlement, maturity, pr, redemption, [basis])
+    pub(crate) fn fn_disc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(4..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let pr = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let basis = if arg_count == 5 {
+            match self.get_number_no_bools(&args[4], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if pr <= 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "pr and redemption must be > 0".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement must be before maturity".to_string(),
+            );
+        }
+        let yf = match self.get_yearfrac(settlement, maturity, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        if yf == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        }
+        CalcResult::Number((1.0 - pr / redemption) / yf)
+    }
+
+    // FVSCHEDULE(principal, schedule)
+    pub(crate) fn fn_fvschedule(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let principal = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let schedule = match self.get_array_of_numbers(&args[1], &cell) {
+            Ok(s) => s,
+            Err(e) => return e,
+        };
+        let mut result = principal;
+        for rate in schedule {
+            result *= 1.0 + rate;
+        }
+        if result.is_infinite() {
+            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        }
+        CalcResult::Number(result)
+    }
+
+    // INTRATE(settlement, maturity, investment, redemption, [basis])
+    pub(crate) fn fn_intrate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(4..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let investment = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let basis = if arg_count == 5 {
+            match self.get_number_no_bools(&args[4], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if investment <= 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "investment and redemption must be > 0".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement must be before maturity".to_string(),
+            );
+        }
+        let yf = match self.get_yearfrac(settlement, maturity, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        if yf == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        }
+        CalcResult::Number((redemption / investment - 1.0) / yf)
+    }
+
+    // PRICEDISC(settlement, maturity, discount, redemption, [basis])
+    pub(crate) fn fn_pricedisc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(4..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let discount = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let basis = if arg_count == 5 {
+            match self.get_number_no_bools(&args[4], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if discount <= 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "discount and redemption must be > 0".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement must be before maturity".to_string(),
+            );
+        }
+        let yf = match self.get_yearfrac(settlement, maturity, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        CalcResult::Number(redemption * (1.0 - discount * yf))
+    }
+
+    // PRICEMAT(settlement, maturity, issue, rate, yld, [basis])
+    pub(crate) fn fn_pricemat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(5..=6).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let issue = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let yld = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let basis = if arg_count == 6 {
+            match self.get_number_no_bools(&args[5], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if rate < 0.0 || yld < 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate and yld must be >= 0".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement must be before maturity".to_string(),
+            );
+        }
+        let dim = match self.get_yearfrac(issue, maturity, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        let dis = match self.get_yearfrac(issue, settlement, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        let dsm = match self.get_yearfrac(settlement, maturity, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        let denom = 1.0 + yld * dsm;
+        if denom == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        }
+        CalcResult::Number(100.0 * ((1.0 + rate * dim) / denom - rate * dis))
+    }
+
+    // RECEIVED(settlement, maturity, investment, discount, [basis])
+    pub(crate) fn fn_received(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(4..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let investment = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let discount = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let basis = if arg_count == 5 {
+            match self.get_number_no_bools(&args[4], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if investment <= 0.0 || discount <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "investment and discount must be > 0".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement must be before maturity".to_string(),
+            );
+        }
+        let yf = match self.get_yearfrac(settlement, maturity, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        let denom = 1.0 - discount * yf;
+        if denom <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "discount * yearfrac >= 1".to_string());
+        }
+        CalcResult::Number(investment / denom)
+    }
+
+    // YIELDDISC(settlement, maturity, pr, redemption, [basis])
+    pub(crate) fn fn_yielddisc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(4..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let pr = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let basis = if arg_count == 5 {
+            match self.get_number_no_bools(&args[4], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if pr <= 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "pr and redemption must be > 0".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement must be before maturity".to_string(),
+            );
+        }
+        let yf = match self.get_yearfrac(settlement, maturity, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        if yf == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        }
+        CalcResult::Number((redemption / pr - 1.0) / yf)
+    }
+
+    // YIELDMAT(settlement, maturity, issue, rate, price, [basis])
+    pub(crate) fn fn_yieldmat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(5..=6).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let settlement = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let maturity = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let issue = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let price = match self.get_number_no_bools(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let basis = if arg_count == 6 {
+            match self.get_number_no_bools(&args[5], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            0.0
+        };
+        if price <= 0.0 || rate < 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "price must be > 0 and rate >= 0".to_string(),
+            );
+        }
+        if settlement >= maturity {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement must be before maturity".to_string(),
+            );
+        }
+        let dim = match self.get_yearfrac(issue, maturity, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        let dis = match self.get_yearfrac(issue, settlement, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        let dsm = match self.get_yearfrac(settlement, maturity, basis, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        let denom = price / 100.0 + rate * dis;
+        if denom == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        }
+        if dsm == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        }
+        CalcResult::Number(((1.0 + rate * dim) / denom - 1.0) / dsm)
     }
 }
