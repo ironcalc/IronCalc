@@ -324,6 +324,7 @@ pub enum Function {
     SkewP,
     Small,
     Standardize,
+    Stdev,
     StDevP,
     StDevS,
     Stdeva,
@@ -781,6 +782,7 @@ impl_function_lookup! {
     skewp          => SkewP,
     small          => Small,
     standardize    => Standardize,
+    stdev          => Stdev,
     stdevp         => StDevP,
     stdevs         => StDevS,
     stdeva         => Stdeva,
@@ -1229,6 +1231,7 @@ impl Function {
             Function::SkewP => functions.skewp.clone(),
             Function::Small => functions.small.clone(),
             Function::Standardize => functions.standardize.clone(),
+            Function::Stdev => functions.stdev.clone(),
             Function::StDevP => functions.stdevp.clone(),
             Function::StDevS => functions.stdevs.clone(),
             Function::Stdeva => functions.stdeva.clone(),
@@ -1393,7 +1396,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 424> {
+    pub fn into_iter() -> IntoIter<Function, 425> {
         [
             Function::And,
             Function::False,
@@ -1767,6 +1770,7 @@ impl Function {
             Function::Phi,
             Function::PoissonDist,
             Function::Standardize,
+            Function::Stdev,
             Function::StDevP,
             Function::StDevS,
             Function::Stdeva,
@@ -2381,6 +2385,7 @@ impl<'a> Model<'a> {
             Function::Phi => self.fn_phi(args, cell),
             Function::PoissonDist => self.fn_poisson_dist(args, cell),
             Function::Standardize => self.fn_standardize(args, cell),
+            Function::Stdev => self.fn_stdev_s(args, cell),
             Function::StDevP => self.fn_stdev_p(args, cell),
             Function::StDevS => self.fn_stdev_s(args, cell),
             Function::Stdeva => self.fn_stdeva(args, cell),
