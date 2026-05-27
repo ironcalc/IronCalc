@@ -1,5 +1,6 @@
 mod test_add_implicit_intersection;
 mod test_arrays;
+mod test_complex_precedence;
 mod test_general;
 mod test_implicit_intersection;
 mod test_issue_155;
