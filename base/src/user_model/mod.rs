@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 
+mod autofill;
 mod border;
 mod border_utils;
 mod clipboard;
