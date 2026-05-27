@@ -443,6 +443,7 @@ pub struct Functions {
     pub map: String,
     pub reduce: String,
     pub scan: String,
+    pub makearray: String,
     pub address: String,
     pub areas: String,
     pub choosecols: String,

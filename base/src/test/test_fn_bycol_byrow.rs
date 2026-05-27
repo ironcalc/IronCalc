@@ -111,3 +111,72 @@ fn byrow_wrong_arg_count() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+// ── MAKEARRAY ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn makearray_multiplication_table() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAKEARRAY(3, 3, LAMBDA(x, y, x * y))");
+    model.evaluate();
+    // Row 1: 1*1, 1*2, 1*3
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("C1"), "3");
+    // Row 2: 2*1, 2*2, 2*3
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("B2"), "4");
+    assert_eq!(model._get_text("C2"), "6");
+    // Row 3: 3*1, 3*2, 3*3
+    assert_eq!(model._get_text("A3"), "3");
+    assert_eq!(model._get_text("B3"), "6");
+    assert_eq!(model._get_text("C3"), "9");
+    assert_eq!(model._get_text("D1"), "");
+}
+
+#[test]
+fn makearray_row_indices() {
+    let mut model = new_empty_model();
+    // 4×1 column of row indices
+    model._set("A1", "=MAKEARRAY(4, 1, LAMBDA(x, y, x))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("A3"), "3");
+    assert_eq!(model._get_text("A4"), "4");
+    assert_eq!(model._get_text("A5"), "");
+}
+
+#[test]
+fn makearray_single_cell() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAKEARRAY(1, 1, LAMBDA(x, y, 42))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "42");
+    assert_eq!(model._get_text("A2"), "");
+    assert_eq!(model._get_text("B1"), "");
+}
+
+#[test]
+fn makearray_wrong_arg_count() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAKEARRAY(3, 3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+}
+
+#[test]
+fn makearray_invalid_rows() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAKEARRAY(0, 3, LAMBDA(x, y, x))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+}
+
+#[test]
+fn makearray_invalid_cols() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAKEARRAY(3, 0, LAMBDA(x, y, y))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+}

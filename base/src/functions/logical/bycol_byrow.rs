@@ -91,4 +91,56 @@ impl<'a> Model<'a> {
 
         CalcResult::Array(results)
     }
+
+    /// `=MAKEARRAY(rows, cols, lambda)`
+    ///
+    /// Returns an array of the given size by calling `lambda(row, col)` (1-based) for each cell.
+    pub(crate) fn fn_makearray(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let rows = match self.get_number(&args[0], cell) {
+            Ok(f) => {
+                let n = f.floor() as i64;
+                if n < 1 {
+                    return CalcResult::new_error(Error::VALUE, cell, "rows must be >= 1".to_string());
+                }
+                n as usize
+            }
+            Err(e) => return e,
+        };
+
+        let cols = match self.get_number(&args[1], cell) {
+            Ok(f) => {
+                let n = f.floor() as i64;
+                if n < 1 {
+                    return CalcResult::new_error(Error::VALUE, cell, "cols must be >= 1".to_string());
+                }
+                n as usize
+            }
+            Err(e) => return e,
+        };
+
+        let lambda_result = self.evaluate_node_in_context(&args[2], cell);
+        if lambda_result.is_error() {
+            return lambda_result;
+        }
+
+        let mut result = Vec::with_capacity(rows);
+        for r in 1..=rows {
+            let mut row = Vec::with_capacity(cols);
+            for c in 1..=cols {
+                let cell_result = self.call_lambda_with_values(
+                    lambda_result.clone(),
+                    vec![CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
+                    cell,
+                );
+                row.push(calc_result_to_array_node(cell_result));
+            }
+            result.push(row);
+        }
+
+        CalcResult::Array(result)
+    }
 }
