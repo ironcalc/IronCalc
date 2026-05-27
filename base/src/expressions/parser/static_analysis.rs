@@ -182,7 +182,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                     add_implicit_intersection(&mut args[index], false);
                 }
             }
-            if add
+            // There are some function that will never add an automatic II:
+            let new_function = matches!(kind, Function::Let | Function::Lambda);
+            if !new_function && add
                 && matches!(
                     run_static_analysis_on_node(node),
                     StaticResult::Range(_, _) | StaticResult::Unknown
