@@ -373,6 +373,14 @@ pub enum Function {
 
     // Financial
     Accrintm,
+    Disc,
+    Fvschedule,
+    Intrate,
+    Pricedisc,
+    Pricemat,
+    Received,
+    Yielddisc,
+    Yieldmat,
     Cumipmt,
     Cumprinc,
     Db,
@@ -829,6 +837,14 @@ impl_function_lookup! {
 
     // Financial
     accrintm   => Accrintm,
+    disc       => Disc,
+    fvschedule => Fvschedule,
+    intrate    => Intrate,
+    pricedisc  => Pricedisc,
+    pricemat   => Pricemat,
+    received   => Received,
+    yielddisc  => Yielddisc,
+    yieldmat   => Yieldmat,
     cumipmt    => Cumipmt,
     cumprinc   => Cumprinc,
     db         => Db,
@@ -1274,6 +1290,14 @@ impl Function {
             Function::Yearfrac => functions.yearfrac.clone(),
             Function::Isoweeknum => functions.isoweeknum.clone(),
             Function::Accrintm => functions.accrintm.clone(),
+            Function::Disc => functions.disc.clone(),
+            Function::Fvschedule => functions.fvschedule.clone(),
+            Function::Intrate => functions.intrate.clone(),
+            Function::Pricedisc => functions.pricedisc.clone(),
+            Function::Pricemat => functions.pricemat.clone(),
+            Function::Received => functions.received.clone(),
+            Function::Yielddisc => functions.yielddisc.clone(),
+            Function::Yieldmat => functions.yieldmat.clone(),
             Function::Cumipmt => functions.cumipmt.clone(),
             Function::Cumprinc => functions.cumprinc.clone(),
             Function::Db => functions.db.clone(),
@@ -1396,7 +1420,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 425> {
+    pub fn into_iter() -> IntoIter<Function, 433> {
         [
             Function::And,
             Function::False,
@@ -1648,6 +1672,14 @@ impl Function {
             Function::Cumprinc,
             Function::Cumipmt,
             Function::Accrintm,
+            Function::Disc,
+            Function::Fvschedule,
+            Function::Intrate,
+            Function::Pricedisc,
+            Function::Pricemat,
+            Function::Received,
+            Function::Yielddisc,
+            Function::Yieldmat,
             Function::Besseli,
             Function::Besselj,
             Function::Besselk,
@@ -2231,6 +2263,14 @@ impl<'a> Model<'a> {
             Function::Cumprinc => self.fn_cumprinc(args, cell),
             Function::Cumipmt => self.fn_cumipmt(args, cell),
             Function::Accrintm => self.fn_accrintm(args, cell),
+            Function::Disc => self.fn_disc(args, cell),
+            Function::Fvschedule => self.fn_fvschedule(args, cell),
+            Function::Intrate => self.fn_intrate(args, cell),
+            Function::Pricedisc => self.fn_pricedisc(args, cell),
+            Function::Pricemat => self.fn_pricemat(args, cell),
+            Function::Received => self.fn_received(args, cell),
+            Function::Yielddisc => self.fn_yielddisc(args, cell),
+            Function::Yieldmat => self.fn_yieldmat(args, cell),
             Function::Besseli => self.fn_besseli(args, cell),
             Function::Besselj => self.fn_besselj(args, cell),
             Function::Besselk => self.fn_besselk(args, cell),
