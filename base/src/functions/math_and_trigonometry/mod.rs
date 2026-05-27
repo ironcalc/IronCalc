@@ -1,5 +1,5 @@
 mod arabic_roman;
-mod array_size;
+pub(crate) mod array_size;
 mod gcd_lcm;
 mod mathematical;
 mod matrix;

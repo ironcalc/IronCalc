@@ -5,6 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::math_and_trigonometry::array_size::check_array_size,
     model::Model,
 };
 
@@ -129,6 +130,10 @@ impl<'a> Model<'a> {
             }
             Err(e) => return e,
         };
+
+        if let Some((error, message)) = check_array_size(rows, cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
 
         let lambda_result = self.evaluate_node_in_context(&args[2], cell);
         if lambda_result.is_error() {
