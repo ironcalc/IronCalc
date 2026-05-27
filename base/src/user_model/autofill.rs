@@ -29,7 +29,9 @@ impl<'a> UserModel<'a> {
         col_start: i32,
         col_end: i32,
     ) -> Result<HashMap<(i32, i32), Option<crate::types::Cell>>, String> {
-        let mut saved: HashMap<(i32, i32), Option<crate::types::Cell>> = HashMap::new();
+        // First pass: validate all affected CSE anchors without mutating the worksheet.
+        // An error here leaves the sheet untouched.
+        let mut anchors: Vec<(i32, i32, i32, i32)> = Vec::new();
         let mut handled: Vec<(i32, i32)> = Vec::new();
         for row in row_start..=row_end {
             for col in col_start..=col_end {
@@ -57,18 +59,23 @@ impl<'a> UserModel<'a> {
                             .to_string(),
                     );
                 }
-                // Save the old cell values before clearing so that undo diffs are correct.
-                for r in ar..ar + h {
-                    for c in ac..ac + w {
-                        let cell = self.model.workbook.worksheet(sheet)?.cell(r, c).cloned();
-                        saved.insert((r, c), cell);
-                    }
+                anchors.push((ar, ac, w, h));
+            }
+        }
+
+        // Second pass: all anchors are completely covered — safe to save and clear.
+        let mut saved: HashMap<(i32, i32), Option<crate::types::Cell>> = HashMap::new();
+        for (ar, ac, w, h) in anchors {
+            for r in ar..ar + h {
+                for c in ac..ac + w {
+                    let cell = self.model.workbook.worksheet(sheet)?.cell(r, c).cloned();
+                    saved.insert((r, c), cell);
                 }
-                let ws = self.model.workbook.worksheet_mut(sheet)?;
-                for r in ar..ar + h {
-                    for c in ac..ac + w {
-                        let _ = ws.cell_clear_contents(r, c);
-                    }
+            }
+            let ws = self.model.workbook.worksheet_mut(sheet)?;
+            for r in ar..ar + h {
+                for c in ac..ac + w {
+                    let _ = ws.cell_clear_contents(r, c);
                 }
             }
         }
