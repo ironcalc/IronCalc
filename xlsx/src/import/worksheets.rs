@@ -926,12 +926,12 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             //   <f>C2+1</f>
             //   <v>3</v>
             // </c>
-            // A cell with a shared formula will be either a "mother" cell:
+            // A cell with a shared formula will be either an "anchor" cell:
             // <c r="D2">
             //   <f t="shared" ref="D2:D3" si="0">C2+1</f>
             //   <v>3</v>
             // </c>
-            // Or a "daughter" cell:
+            // Or a child cell:
             // <c r="D3">
             //   <f t="shared" si="0"/>
             //   <v>4</v>
@@ -939,6 +939,25 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             // In IronCalc two cells have the same formula iff the R1C1 representation is the same
             // TODO: This algorithm could end up with "repeated" shared formulas
             //       We could solve that with a second transversal.
+
+            // In Excel a volatile spill formula might have and f element in the spilled cells.
+            // But it is not a shared formula. For example:
+            // <c r="A19" s="3" cm="1">
+            //   <f t="array" aca="1" ref="A19:C21" ca="1">_xlfn.RANDARRAY(3,3, 0, 100,TRUE)</f>
+            //   <v>52</v>
+            // </c>
+            // <c r="B19" s="3">
+            //   <f ca="1"/>
+            //   <v>20</v>
+            // </c>
+            // <c r="C19" s="3">
+            //   <f ca="1"/>
+            //   <v>41</v>
+            // </c>
+            // aca: Always Calculate Array
+            // ca: Calculate Always
+            // Those are hints Excel uses to always calculate volatiles
+            // We don not use those in IronCalc
             let fs: Vec<Node> = cell.children().filter(|n| n.has_tag_name("f")).collect();
             let mut formula_index = -1;
             let mut array_kind = CellArrayKind::None;
@@ -950,8 +969,17 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                 // normal (Normal) Formula is a regular cell formula. (Default)
                 // shared (Shared Formula) Formula is part of a shared formula.
                 let formula_node = fs[0];
-                let formula_type = formula_node.attribute("t").unwrap_or("normal");
+                let mut formula_type = formula_node.attribute("t").unwrap_or("normal");
                 let formula_ref = formula_node.attribute("ref");
+                if formula_node.attribute("ca") == Some("1")
+                    && formula_node.text().is_none()
+                    && !formula_node.children().any(|n| n.is_element())
+                {
+                    // This is a volatile formula that needs to be recalculated at each calculation.
+                    // exit the if statement
+                    // <f ca="1"/>
+                    formula_type = "hint-volatile";
+                }
                 match formula_type {
                     "shared" => {
                         // We have a shared formula
@@ -959,7 +987,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                         let si = si.parse::<i32>()?;
                         match formula_ref {
                             Some(_) => {
-                                // It's the mother cell. We do not use the ref attribute in IronCalc
+                                // It's the anchor cell. We do not use the ref attribute in IronCalc
                                 let formula = formula_node.text().unwrap_or("").to_string();
                                 let context = format!("{sheet_name}!{cell_ref}");
                                 let formula = from_a1_to_rc(
@@ -1000,8 +1028,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                                         formula_index = *index;
                                     }
                                     None => {
-                                        // Haven't bumped into the mother cell yet. We insert a placeholder.
-                                        // Note that it is perfectly possible that the formula of the mother cell
+                                        // Haven't bumped into the anchor cell yet. We insert a placeholder.
+                                        // Note that it is perfectly possible that the formula of the anchor cell
                                         // is already in the set of array formulas. This will lead to the above mention duplicity.
                                         // This is not a problem
                                         let placeholder = "".to_string();
@@ -1031,7 +1059,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                         // (row1, colum1) has to be this cell. We need to mark all the other ones as part of the array formula
                         if row1 != row_index || column1 != column_index {
                             return Err(XlsxError::Xml(
-                                "The first cell of the range of an array formula must be the mother cell".to_string(),
+                                "The first cell of the range of an array formula must be the anchor cell".to_string(),
                             ));
                         }
                         for r in row1..=row2 {
@@ -1090,6 +1118,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                             }
                         }
                     }
+                    "hint-volatile" => {}
                     _ => {
                         return Err(XlsxError::Xml(format!(
                             "Invalid formula type {formula_type:?}.",
