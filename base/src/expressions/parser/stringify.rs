@@ -613,14 +613,29 @@ fn stringify(
             )
         ),
         OpSumKind { kind, left, right } => {
-            let left_str = stringify(
-                left,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language,
-            );
+            // CompareKind has lower precedence than +/-, so wrap it to preserve semantics
+            let left_str = if matches!(**left, CompareKind { .. }) {
+                format!(
+                    "({})",
+                    stringify(
+                        left,
+                        context,
+                        displace_data,
+                        export_to_excel,
+                        locale,
+                        language
+                    )
+                )
+            } else {
+                stringify(
+                    left,
+                    context,
+                    displace_data,
+                    export_to_excel,
+                    locale,
+                    language,
+                )
+            };
             // if kind is minus then we need parentheses in the right side if they are OpSumKind or CompareKind
             let right_str = if (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }))
                 | matches!(**right, CompareKind { .. })
