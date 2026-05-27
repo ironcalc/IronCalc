@@ -1042,3 +1042,72 @@ fn extend_down_partially_covers_cse_returns_error() {
     assert_eq!(model.get_formatted_cell_value(0, 5, 3), Ok("1".to_string()));
     assert_eq!(model.get_formatted_cell_value(0, 6, 3), Ok("4".to_string()));
 }
+
+// Regression test for: collect_and_clear_cse_in_fill_target mutates the worksheet before
+// completing validation. If the first CSE is fully covered (gets cleared) and a later CSE
+// is only partially covered (returns Err), the first CSE has already been deleted even
+// though the overall operation failed.
+//
+// Setup: two CSEs in the fill target
+//   CSE A — C4:E4 (row 4, w=3): fully inside fill target rows 3–7, cols 3–5 → would be cleared
+//   CSE B — C6:F6 (row 6, w=4): anchor col+w-1=6 exceeds col_end=5 → partial → triggers Err
+//
+// After the failed call, CSE A must still be intact.
+#[test]
+fn failed_autofill_rows_does_not_corrupt_cse() {
+    let model = new_empty_model();
+    let mut model = UserModel::from_model(model);
+
+    // CSE A: C4:E4 — values 10, 20, 30
+    model
+        .set_user_array_formula(0, 4, 3, 3, 1, "={10,20,30}")
+        .unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 3),
+        Ok("10".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 4),
+        Ok("20".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 5),
+        Ok("30".to_string())
+    );
+
+    // CSE B: C6:F6 — anchor at col 3, extends to col 6 which is outside the col band 3–5
+    model
+        .set_user_array_formula(0, 6, 3, 4, 1, "={1,2,3,4}")
+        .unwrap();
+
+    // Extend C2:E2 down to row 7 — fill target is rows 3–7, cols 3–5.
+    // CSE A is fully covered; CSE B is partially covered (anchor col+w-1=6 > col_end=5) → must Err.
+    let result = model.auto_fill_rows(
+        &Area {
+            sheet: 0,
+            row: 2,
+            column: 3,
+            width: 3,
+            height: 1,
+        },
+        7,
+    );
+    assert!(
+        result.is_err(),
+        "expected error for partial CSE overlap, got Ok"
+    );
+
+    // CSE A must be untouched — C4:E4 still hold 10, 20, 30
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 3),
+        Ok("10".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 4),
+        Ok("20".to_string())
+    );
+    assert_eq!(
+        model.get_formatted_cell_value(0, 4, 5),
+        Ok("30".to_string())
+    );
+}
