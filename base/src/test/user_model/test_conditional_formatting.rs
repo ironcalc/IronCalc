@@ -535,3 +535,135 @@ fn test_priority_of_overlapping_rules() {
         )
         .unwrap();
 }
+
+// ---------------------------------------------------------------------------
+// Cut-and-paste: CF range and formula reference updates
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cut_paste_updates_cf_range_fully_inside_moved_area() {
+    let mut model = new_empty_user_model();
+    // CF rule covers exactly the cells being cut: A1:A5
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+
+    // Cut A1:A5 and paste at F11
+    model.set_selected_range(1, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 5, 1), &cp.data, true)
+        .unwrap();
+
+    // CF range should have moved to F11:F15
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].range, "F11:F15");
+}
+
+#[test]
+fn cut_paste_cf_range_outside_moved_area_unchanged() {
+    let mut model = new_empty_user_model();
+    // CF rule covers C1:C5, which is NOT in the cut area
+    model
+        .add_conditional_formatting(0, "C1:C5", color_scale())
+        .unwrap();
+
+    // Cut A1:A3 and paste at F11
+    model.set_selected_range(1, 1, 3, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 3, 1), &cp.data, true)
+        .unwrap();
+
+    // CF range should be unchanged
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].range, "C1:C5");
+}
+
+#[test]
+fn cut_paste_cf_range_partial_overlap_unchanged() {
+    let mut model = new_empty_user_model();
+    // CF rule covers A1:A5, but we only cut A1:A3 (partial overlap)
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+
+    // Cut A1:A3 and paste at F11
+    model.set_selected_range(1, 1, 3, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 3, 1), &cp.data, true)
+        .unwrap();
+
+    // CF range should be unchanged (partial overlap → no update)
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].range, "A1:A5");
+}
+
+#[test]
+fn cut_paste_updates_absolute_ref_in_cf_formula() {
+    let mut model = new_empty_user_model();
+    // CF rule on B1:B5 with formula that has an absolute ref to A1
+    model
+        .add_conditional_formatting(
+            0,
+            "B1:B5",
+            CfRuleInput::Formula {
+                formula: "=$A$1>5".to_string(),
+                format: Dxf::default(),
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+
+    // Cut A1 and paste at F11
+    model.set_selected_range(1, 1, 1, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 1, 1), &cp.data, true)
+        .unwrap();
+
+    // CF formula should reference F11 now
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list.len(), 1);
+    if let CfRule::Formula { formula, .. } = &list[0].cf_rule {
+        assert_eq!(formula, "=$F$11>5");
+    } else {
+        panic!("Expected Formula CF rule");
+    }
+}
+
+#[test]
+fn cut_paste_undo_restores_cf_range() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+
+    // Cut A1:A5 and paste at F11
+    model.set_selected_range(1, 1, 5, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 5, 1), &cp.data, true)
+        .unwrap();
+
+    assert_eq!(
+        model.get_conditional_formatting_list(0).unwrap()[0].range,
+        "F11:F15"
+    );
+
+    // Undo should restore original CF range
+    model.undo().unwrap();
+    assert_eq!(
+        model.get_conditional_formatting_list(0).unwrap()[0].range,
+        "A1:A5"
+    );
+}

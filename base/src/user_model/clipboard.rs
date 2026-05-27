@@ -342,6 +342,36 @@ impl<'a> UserModel<'a> {
                     &new_formula,
                 )?;
             }
+            // Update conditional formatting ranges and formula references.
+            let cf_updates = self.model.get_conditional_formatting_updates_for_cut(
+                &ext_area,
+                selected_row,
+                selected_column,
+            )?;
+            for (cf_sheet, cf_idx, new_range, new_rule) in cf_updates {
+                let old_cf = self
+                    .model
+                    .workbook
+                    .worksheet(cf_sheet)?
+                    .conditional_formatting
+                    .get(cf_idx)
+                    .ok_or_else(|| format!("CF index {cf_idx} not found"))?
+                    .clone();
+                {
+                    let ws = self.model.workbook.worksheet_mut(cf_sheet)?;
+                    ws.conditional_formatting[cf_idx].range = new_range.clone();
+                    ws.conditional_formatting[cf_idx].cf_rule = new_rule.clone();
+                }
+                diff_list.push(Diff::UpdateConditionalFormatting {
+                    sheet: cf_sheet,
+                    index: cf_idx as u32,
+                    old_range: old_cf.range,
+                    old_rule: Box::new(old_cf.cf_rule),
+                    old_priority: old_cf.priority,
+                    new_range,
+                    new_rule: Box::new(new_rule),
+                });
+            }
         }
         self.push_diff_list(diff_list);
         // select the pasted area
