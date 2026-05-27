@@ -186,3 +186,17 @@ fn if_2d_array_cond() {
     assert_eq!(model._get_text("A2"), "C");
     assert_eq!(model._get_text("B2"), "4");
 }
+
+#[test]
+fn let_calendar_function() {
+    let mut model = new_empty_model();
+    model._set("B2", "2026");
+    model._set("B6", "May");
+    let formula = r#"=LET(mo,MONTH(DATEVALUE("1/"&B6&"/2026")),yr,$B$2,anchor,DATE(yr,mo,1),first_mon,anchor-(WEEKDAY(anchor,2)-1),grid,SEQUENCE(6,7,0),d,first_mon+grid,IF(MONTH(d)=mo,DAY(d),""))"#;
+    model._set("B9", formula);
+    model.evaluate();
+
+    assert_eq!(model._get_text("B10"), "4");
+    assert_eq!(model._get_text("C10"), "5");
+    assert_eq!(model._get_text("H13"), "31");
+}
