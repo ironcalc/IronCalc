@@ -598,6 +598,78 @@ fn paste_from_cell_beyond_dimension_clears_style() {
     assert_eq!(style.fill.bg_color, None);
 }
 
+// When a cell/range is cut and pasted, absolute references in external formulas
+// that point to cells within the moved area should be updated to the new location.
+
+#[test]
+fn cut_paste_updates_absolute_cell_reference_in_external_formula() {
+    let mut model = new_empty_user_model();
+
+    // A1 = 11, C3 = =SEQUENCE($A$1)
+    model.set_user_input(0, 1, 1, "11").unwrap();
+    model.set_user_input(0, 3, 3, "=SEQUENCE($A$1)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "1");
+
+    // Cut A1, paste to F11
+    model.set_selected_cell(1, 1).unwrap();
+    model.set_selected_range(1, 1, 1, 1).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(11, 6).unwrap();
+    model
+        .paste_from_clipboard(0, (1, 1, 1, 1), &cp.data, true)
+        .unwrap();
+
+    // C3's formula must now reference $F$11 (absolute refs follow the moved cell)
+    assert_eq!(model.get_cell_content(0, 3, 3).unwrap(), "=SEQUENCE($F$11)");
+}
+
+#[test]
+fn cut_paste_range_updates_absolute_reference_pointing_inside_moved_area() {
+    let mut model = new_empty_user_model();
+
+    // F11 = 11, C3 = =SEQUENCE($F$11)
+    model.set_user_input(0, 11, 6, "11").unwrap();
+    model.set_user_input(0, 3, 3, "=SEQUENCE($F$11)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "1");
+
+    // Cut F10:F20, paste starting at H1 → F11 maps to H2
+    model.set_selected_cell(10, 6).unwrap();
+    model.set_selected_range(10, 6, 20, 6).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(1, 8).unwrap();
+    model
+        .paste_from_clipboard(0, (10, 6, 20, 6), &cp.data, true)
+        .unwrap();
+
+    // $F$11 is inside F10:F20; delta = row -9, col +2 → lands at $H$2
+    assert_eq!(model.get_cell_content(0, 3, 3).unwrap(), "=SEQUENCE($H$2)");
+}
+
+#[test]
+fn cut_paste_updates_absolute_range_reference_in_external_formula() {
+    let mut model = new_empty_user_model();
+
+    // C3:C5 = 1,2,3; B1 = =SUM($C$3:$C$5)
+    model.set_user_input(0, 3, 3, "1").unwrap();
+    model.set_user_input(0, 4, 3, "2").unwrap();
+    model.set_user_input(0, 5, 3, "3").unwrap();
+    model.set_user_input(0, 1, 2, "=SUM($C$3:$C$5)").unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "6");
+
+    // Cut C3:C5, paste to H3:H5
+    model.set_selected_cell(3, 3).unwrap();
+    model.set_selected_range(3, 3, 5, 3).unwrap();
+    let cp = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(3, 8).unwrap();
+    model
+        .paste_from_clipboard(0, (3, 3, 5, 3), &cp.data, true)
+        .unwrap();
+
+    // B1's formula must now reference $H$3:$H$5; value is still 6
+    assert_eq!(model.get_cell_content(0, 1, 2).unwrap(), "=SUM($H$3:$H$5)");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "6");
+}
+
 // Regression test: undo of cut-paste leaves green style on the paste target.
 // Steps: =SEQUENCE(5) in C3 → green on C3 → cut C3 → paste to H3 → undo.
 // After undo, H3 should have no explicit style (it was empty before the paste).
