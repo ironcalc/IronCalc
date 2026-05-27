@@ -71,6 +71,5 @@ fn precedence() {
 
     let parsed = parser.parse(formula, &cell_reference);
     let result = to_english_localized_string(&parsed, &cell_reference);
-    println!("Parsed formula: {}", result);
     assert_eq!(result, expected, "Failed for formula '{}'", formula);
 }
