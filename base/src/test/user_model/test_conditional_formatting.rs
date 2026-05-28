@@ -801,3 +801,121 @@ fn copy_paste_undo_removes_duplicated_cf_rule() {
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].range, "A1:A5");
 }
+
+// ---------------------------------------------------------------------------
+// Row/column insert / delete / move: CF range updates
+// ---------------------------------------------------------------------------
+
+#[test]
+fn insert_row_above_cf_range_shifts_down() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A5:A10", color_scale())
+        .unwrap();
+    model.insert_rows(0, 2, 1).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A6:A11");
+}
+
+#[test]
+fn insert_row_inside_cf_range_expands() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+    model.insert_rows(0, 3, 1).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A1:A6");
+}
+
+#[test]
+fn insert_row_below_cf_range_unchanged() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+    model.insert_rows(0, 10, 1).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A1:A5");
+}
+
+#[test]
+fn delete_row_above_cf_range_shifts_up() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A5:A10", color_scale())
+        .unwrap();
+    model.delete_rows(0, 2, 1).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A4:A9");
+}
+
+#[test]
+fn delete_row_inside_cf_range_contracts() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+    model.delete_rows(0, 3, 1).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A1:A4");
+}
+
+#[test]
+fn insert_column_left_of_cf_range_shifts_right() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "C1:C5", color_scale())
+        .unwrap();
+    model.insert_columns(0, 1, 1).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "D1:D5");
+}
+
+#[test]
+fn insert_column_inside_cf_range_expands() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:E5", color_scale())
+        .unwrap();
+    model.insert_columns(0, 3, 1).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A1:F5");
+}
+
+#[test]
+fn delete_column_inside_cf_range_contracts() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:E5", color_scale())
+        .unwrap();
+    model.delete_columns(0, 3, 1).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A1:D5");
+}
+
+#[test]
+fn move_row_up_shifts_intermediate_cf_range() {
+    let mut model = new_empty_user_model();
+    // CF on A1:A3; move row 5 up to row 1 (delta=-4).
+    // Rows 1–4 are intermediate and each shift down by 1: A1:A3 → A2:A4.
+    model
+        .add_conditional_formatting(0, "A1:A3", color_scale())
+        .unwrap();
+    model.move_rows_action(0, 5, 1, -4).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "A2:A4");
+}
+
+#[test]
+fn move_column_right_shifts_intermediate_cf_range() {
+    let mut model = new_empty_user_model();
+    // CF on C1:C5 (col 3); move col B (col 2) right to col D (delta=2).
+    // Col C is intermediate and shifts left to col B: "C1:C5" → "B1:B5".
+    model
+        .add_conditional_formatting(0, "C1:C5", color_scale())
+        .unwrap();
+    model.move_columns_action(0, 2, 1, 2).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list[0].range, "B1:B5");
+}
