@@ -259,6 +259,40 @@ fn lambda_optional_called_with_one_arg() {
     assert_eq!(t, expected);
 }
 
+#[test]
+fn lambda_r_and_c_parameters() {
+    // r and c must be valid LAMBDA parameter names (they are not restricted
+    // to R1C1 notation in A1 mode when used as formula identifiers).
+    let mut p = parser();
+    let t = p.parse("LAMBDA(r, c, r+c)", &cell());
+    let expected = Node::LambdaDefKind {
+        parameters: vec![
+            NamedVariable {
+                name: "r".to_string(),
+                id: None,
+                is_optional: false,
+            },
+            NamedVariable {
+                name: "c".to_string(),
+                id: None,
+                is_optional: false,
+            },
+        ],
+        body: Box::new(Node::OpSumKind {
+            kind: token::OpSum::Add,
+            left: Box::new(Node::NamedVariableKind {
+                name: "r".to_string(),
+                id: None,
+            }),
+            right: Box::new(Node::NamedVariableKind {
+                name: "c".to_string(),
+                id: None,
+            }),
+        }),
+    };
+    assert_eq!(t, expected);
+}
+
 // SIN(x) is a fully-resolved function call, not a lambda — calling it with (3)
 // afterwards is syntactically invalid per the grammar.  The parser returns just
 // SIN(x) and the trailing (3) is left unconsumed (no parse error is raised at
