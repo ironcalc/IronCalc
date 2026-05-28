@@ -110,6 +110,7 @@ function Toolbar(properties: ToolbarProperties) {
   const borderButton = useRef(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const fontSizeInputRef = useRef<HTMLInputElement>(null);
+  const cancelFontSizeCommit = useRef(false);
 
   const { t } = useTranslation();
 
@@ -304,8 +305,12 @@ function Toolbar(properties: ToolbarProperties) {
             onFocus={(e) => e.target.select()}
             onChange={(e) => setFontSizeInput(e.target.value)}
             onBlur={() => {
-              const parsed = parseInt(fontSizeInput, 10);
-              if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 400) {
+              if (cancelFontSizeCommit.current) {
+                cancelFontSizeCommit.current = false;
+                return;
+              }
+              const parsed = Number(fontSizeInput.trim());
+              if (Number.isInteger(parsed) && parsed > 0 && parsed <= 400) {
                 properties.onSetFontSize(parsed);
               } else {
                 setFontSizeInput(`${properties.fontSize}`);
@@ -315,12 +320,13 @@ function Toolbar(properties: ToolbarProperties) {
               if (e.key === "Enter") {
                 e.currentTarget.blur();
               } else if (e.key === "Escape") {
+                cancelFontSizeCommit.current = true;
                 setFontSizeInput(`${properties.fontSize}`);
                 e.currentTarget.blur();
               } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
                 e.preventDefault();
-                const current = parseInt(fontSizeInput, 10);
-                if (!Number.isNaN(current)) {
+                const current = Number(fontSizeInput.trim());
+                if (Number.isInteger(current)) {
                   const delta = e.shiftKey ? 10 : 1;
                   const next =
                     e.key === "ArrowUp"
