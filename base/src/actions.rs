@@ -3,8 +3,135 @@ use crate::expressions::parser::stringify::{
     to_localized_string, to_string_displaced, DisplaceData,
 };
 use crate::expressions::types::CellReferenceRC;
+use crate::expressions::utils;
 use crate::model::{CellStructure, Model};
 use crate::types::{ArrayKind, Cell};
+
+/// Returns the new row after displacement, or `None` if the row was deleted.
+fn displace_cf_row(row: i32, data: &DisplaceData, sheet: u32) -> Option<i32> {
+    match data {
+        DisplaceData::Row {
+            sheet: s,
+            row: dr,
+            delta,
+        } if *s == sheet => {
+            if row >= *dr {
+                if *delta < 0 && row < *dr - *delta {
+                    None
+                } else {
+                    Some(row + *delta)
+                }
+            } else {
+                Some(row)
+            }
+        }
+        DisplaceData::RowMove {
+            sheet: s,
+            row: mr,
+            delta,
+        } if *s == sheet => {
+            if row == *mr {
+                Some(row + *delta)
+            } else if *delta > 0 && row > *mr && row <= *mr + *delta {
+                Some(row - 1)
+            } else if *delta < 0 && row < *mr && row >= *mr + *delta {
+                Some(row + 1)
+            } else {
+                Some(row)
+            }
+        }
+        _ => Some(row),
+    }
+}
+
+/// Returns the new column after displacement, or `None` if the column was deleted.
+fn displace_cf_col(col: i32, data: &DisplaceData, sheet: u32) -> Option<i32> {
+    match data {
+        DisplaceData::Column {
+            sheet: s,
+            column: dc,
+            delta,
+        } if *s == sheet => {
+            if col >= *dc {
+                if *delta < 0 && col < *dc - *delta {
+                    None
+                } else {
+                    Some(col + *delta)
+                }
+            } else {
+                Some(col)
+            }
+        }
+        DisplaceData::ColumnMove {
+            sheet: s,
+            column: mc,
+            delta,
+        } if *s == sheet => {
+            if col == *mc {
+                Some(col + *delta)
+            } else if *delta > 0 && col > *mc && col <= *mc + *delta {
+                Some(col - 1)
+            } else if *delta < 0 && col < *mc && col >= *mc + *delta {
+                Some(col + 1)
+            } else {
+                Some(col)
+            }
+        }
+        _ => Some(col),
+    }
+}
+
+/// Displaces a single A1-style sqref part (e.g. "A1" or "A1:B5").
+/// Returns the original string unchanged if any corner would become #REF!.
+fn displace_cf_sqref_part(part: &str, data: &DisplaceData, sheet: u32) -> String {
+    let upper = part.to_uppercase();
+    let segs: Vec<&str> = upper.splitn(2, ':').collect();
+    match segs.len() {
+        1 => {
+            if let Some(r) = utils::parse_reference_a1(segs[0]) {
+                if let (Some(nr), Some(nc)) = (
+                    displace_cf_row(r.row, data, sheet),
+                    displace_cf_col(r.column, data, sheet),
+                ) {
+                    if let Some(c) = utils::number_to_column(nc) {
+                        return format!("{c}{nr}");
+                    }
+                }
+            }
+            part.to_string()
+        }
+        2 => {
+            if let (Some(r1), Some(r2)) = (
+                utils::parse_reference_a1(segs[0]),
+                utils::parse_reference_a1(segs[1]),
+            ) {
+                if let (Some(nr1), Some(nc1), Some(nr2), Some(nc2)) = (
+                    displace_cf_row(r1.row, data, sheet),
+                    displace_cf_col(r1.column, data, sheet),
+                    displace_cf_row(r2.row, data, sheet),
+                    displace_cf_col(r2.column, data, sheet),
+                ) {
+                    if let (Some(c1), Some(c2)) =
+                        (utils::number_to_column(nc1), utils::number_to_column(nc2))
+                    {
+                        return format!("{c1}{nr1}:{c2}{nr2}");
+                    }
+                }
+            }
+            part.to_string()
+        }
+        _ => part.to_string(),
+    }
+}
+
+/// Displaces every part of a space-separated sqref string.
+fn displace_cf_sqref(sqref: &str, data: &DisplaceData, sheet: u32) -> String {
+    sqref
+        .split_whitespace()
+        .map(|p| displace_cf_sqref_part(p, data, sheet))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
 
 // NOTE: There is a difference with Excel behaviour when deleting cells/rows/columns
 // In Excel if the whole range is deleted then it will substitute for #REF!
@@ -51,6 +178,23 @@ impl<'a> Model<'a> {
             self.shift_cell_formula(cell.index, cell.row, cell.column, displace_data)?;
         }
         Ok(())
+    }
+
+    /// Updates the `range` field of every CF rule on `sheet` according to `displace_data`.
+    fn displace_cf_ranges(&mut self, sheet: u32, displace_data: &DisplaceData) {
+        let count = match self.workbook.worksheets.get(sheet as usize) {
+            Some(ws) => ws.conditional_formatting.len(),
+            None => return,
+        };
+        for idx in 0..count {
+            let old = self.workbook.worksheets[sheet as usize].conditional_formatting[idx]
+                .range
+                .clone();
+            let new = displace_cf_sqref(&old, displace_data, sheet);
+            if new != old {
+                self.workbook.worksheets[sheet as usize].conditional_formatting[idx].range = new;
+            }
+        }
     }
 
     /// Retrieves the column indices for a specific row in a given sheet, sorted in ascending or descending order.
@@ -233,13 +377,13 @@ impl<'a> Model<'a> {
         }
 
         // Update all formulas in the workbook
-        self.displace_cells(
-            &(DisplaceData::Column {
-                sheet,
-                column,
-                delta: column_count,
-            }),
-        )?;
+        let disp = DisplaceData::Column {
+            sheet,
+            column,
+            delta: column_count,
+        };
+        self.displace_cells(&disp)?;
+        self.displace_cf_ranges(sheet, &disp);
 
         // In the list of columns:
         // * Keep all the columns to the left
@@ -324,14 +468,13 @@ impl<'a> Model<'a> {
             }
         }
         // Update all formulas in the workbook
-
-        self.displace_cells(
-            &(DisplaceData::Column {
-                sheet,
-                column,
-                delta: -column_count,
-            }),
-        )?;
+        let disp = DisplaceData::Column {
+            sheet,
+            column,
+            delta: -column_count,
+        };
+        self.displace_cells(&disp)?;
+        self.displace_cf_ranges(sheet, &disp);
         let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
 
         // deletes all the column styles
@@ -568,13 +711,13 @@ impl<'a> Model<'a> {
         self.workbook.worksheets[sheet as usize].rows = new_rows;
 
         // Update all formulas in the workbook
-        self.displace_cells(
-            &(DisplaceData::Row {
-                sheet,
-                row,
-                delta: row_count,
-            }),
-        )?;
+        let disp = DisplaceData::Row {
+            sheet,
+            row,
+            delta: row_count,
+        };
+        self.displace_cells(&disp)?;
+        self.displace_cf_ranges(sheet, &disp);
 
         Ok(())
     }
@@ -637,13 +780,13 @@ impl<'a> Model<'a> {
             }
         }
         self.workbook.worksheets[sheet as usize].rows = new_rows;
-        self.displace_cells(
-            &(DisplaceData::Row {
-                sheet,
-                row,
-                delta: -row_count,
-            }),
-        )?;
+        let disp = DisplaceData::Row {
+            sheet,
+            row,
+            delta: -row_count,
+        };
+        self.displace_cells(&disp)?;
+        self.displace_cf_ranges(sheet, &disp);
         Ok(())
     }
 
@@ -761,13 +904,13 @@ impl<'a> Model<'a> {
         self.workbook
             .worksheet_mut(sheet)?
             .set_column_width_and_style(target_column, width, hidden, style)?;
-        self.displace_cells(
-            &(DisplaceData::ColumnMove {
-                sheet,
-                column,
-                delta,
-            }),
-        )?;
+        let disp = DisplaceData::ColumnMove {
+            sheet,
+            column,
+            delta,
+        };
+        self.displace_cells(&disp)?;
+        self.displace_cf_ranges(sheet, &disp);
         Ok(())
     }
 
@@ -879,7 +1022,9 @@ impl<'a> Model<'a> {
             }
         }
         worksheet.rows = new_rows;
-        self.displace_cells(&(DisplaceData::RowMove { sheet, row, delta }))?;
+        let disp = DisplaceData::RowMove { sheet, row, delta };
+        self.displace_cells(&disp)?;
+        self.displace_cf_ranges(sheet, &disp);
         Ok(())
     }
 
