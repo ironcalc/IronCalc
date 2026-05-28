@@ -376,7 +376,7 @@ impl<'a> Lexer<'a> {
                                             return TokenType::Illegal(error);
                                         }
                                     }
-                                } else if utils::is_valid_identifier(&name) {
+                                } else if utils::is_valid_a1_identifier(&name) {
                                     if peek_char == Some('[') {
                                         if let Ok(r) = self.consume_structured_reference(&name) {
                                             return r;

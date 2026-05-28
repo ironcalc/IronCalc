@@ -59,3 +59,21 @@ fn test_let_rebind_same_name_within_single_let() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+#[test]
+fn test_let_r_and_c_variables() {
+    let mut model = new_empty_model();
+    // r and c must work as LET variable names
+    model._set("A1", "=LET(r,3,c,4,r+c)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "7");
+}
+
+#[test]
+fn test_lambda_r_and_c_parameters() {
+    let mut model = new_empty_model();
+    // r and c must work as LAMBDA parameter names
+    model._set("A1", "=LAMBDA(r,c,r+c)(3,4)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "7");
+}
