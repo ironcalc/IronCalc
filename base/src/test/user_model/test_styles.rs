@@ -482,3 +482,67 @@ fn cell_clear_formatting() {
     assert!(!style.font.b);
     assert_eq!(style.alignment, None);
 }
+
+#[test]
+fn basic_font_size() {
+    let mut model = new_empty_user_model();
+    let range = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 13);
+
+    model
+        .update_range_style(&range, "font.size", "24")
+        .unwrap();
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 24);
+
+    model.undo().unwrap();
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 13);
+
+    model.redo().unwrap();
+    let style = model.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 24);
+
+    let send_queue = model.flush_send_queue();
+    let mut model2 = new_empty_user_model();
+    model2.apply_external_diffs(&send_queue).unwrap();
+    let style = model2.get_cell_style(0, 1, 1).unwrap();
+    assert_eq!(style.font.sz, 24);
+}
+
+#[test]
+fn font_size_errors() {
+    let mut model = new_empty_user_model();
+    let range = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+
+    assert_eq!(
+        model.update_range_style(&range, "font.size", "abc"),
+        Err("Invalid value for font size: 'abc'.".to_string())
+    );
+    assert_eq!(
+        model.update_range_style(&range, "font.size", ""),
+        Err("Invalid value for font size: ''.".to_string())
+    );
+    assert_eq!(
+        model.update_range_style(&range, "font.size", "0"),
+        Err("Invalid value for font size: '0'.".to_string())
+    );
+    assert_eq!(
+        model.update_range_style(&range, "font.size", "-1"),
+        Err("Invalid value for font size: '-1'.".to_string())
+    );
+}
