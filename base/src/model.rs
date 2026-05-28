@@ -2124,6 +2124,7 @@ impl<'a> Model<'a> {
     }
 
     /// Updates formula fields inside a `CfRule` using `move_formula`.
+    #[allow(clippy::too_many_arguments)]
     fn cf_rule_move_formulas(
         &mut self,
         rule: CfRule,
@@ -2199,6 +2200,7 @@ impl<'a> Model<'a> {
     /// and maps it to the target location starting at (`tgt_row`, `tgt_col`).
     ///
     /// Returns `(new_range_sqref, cf_rule)` for each overlapping CF entry.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn get_cf_rules_to_copy(
         &self,
         source_sheet: u32,
