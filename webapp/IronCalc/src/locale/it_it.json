@@ -289,6 +289,7 @@
     "download_png": "Scarica come PNG",
     "fill_color": "Colore riempimento",
     "font_color": "Colore carattere",
+    "font_size": "Dimensione carattere",
     "format_menu": {
       "auto": "Automatico",
       "currency_eur": "Euro (EUR)",
