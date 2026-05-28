@@ -22,6 +22,7 @@ export function ModalDialog({
     <div
       className="ic-modal-dialog-backdrop"
       onClick={onClose}
+      // HACK: prevents the workbook from stealing focus while the modal is open
       onPointerDown={(event) => event.stopPropagation()}
       role="none"
     >
