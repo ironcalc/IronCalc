@@ -1,5 +1,6 @@
 use crate::cf_types::{CfRule, Cfvo};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::cut_paste::cf_sqref_anchor;
 use crate::expressions::parser::stringify::{
     to_localized_string, to_string_displaced, DisplaceData,
 };
@@ -140,14 +141,6 @@ fn displace_cf_sqref(sqref: &str, data: &DisplaceData, sheet: u32) -> String {
 // In IronCalc, if one of the edges of the range is deleted will replace the edge with #REF!
 // I feel this is unimportant for now.
 
-/// Extracts the top-left cell (row, column) from the first part of a sqref string.
-fn get_cf_sqref_anchor(sqref: &str) -> Option<(i32, i32)> {
-    let first_part = sqref.split_whitespace().next()?;
-    let top_left = first_part.splitn(2, ':').next()?;
-    let r = utils::parse_reference_a1(&top_left.to_uppercase())?;
-    Some((r.row, r.column))
-}
-
 /// Displaces a single formula string (with or without leading `=`) using `to_string_displaced`.
 fn displace_cf_formula_str(
     parser: &mut ExprParser<'_>,
@@ -206,8 +199,7 @@ fn displace_cf_rule_formulas(
         } => CfRule::CellIs {
             operator,
             formula: displace_cf_formula_str(parser, &formula, context, data),
-            formula2: formula2
-                .map(|f| displace_cf_formula_str(parser, &f, context, data)),
+            formula2: formula2.map(|f| displace_cf_formula_str(parser, &f, context, data)),
             dxf_id,
             stop_if_true,
         },
@@ -324,7 +316,7 @@ impl<'a> Model<'a> {
             let old_range = cf.range.clone();
             let new_range = displace_cf_sqref(&old_range, displace_data, sheet);
             let rule = cf.cf_rule.clone();
-            if let Some((anchor_row, anchor_col)) = get_cf_sqref_anchor(&old_range) {
+            if let Some((anchor_row, anchor_col)) = cf_sqref_anchor(&old_range) {
                 phase1.push((idx, new_range, rule, anchor_row, anchor_col));
             }
         }
