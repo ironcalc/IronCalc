@@ -1,10 +1,10 @@
 import "./modal-dialog.css";
 import { X } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
 import { Input, type InputProperties } from "../Input/Input";
+import { ModalDialog } from "./ModalDialog";
 import { useModalFocus } from "./useModalFocus";
 import { useModalKeyDown } from "./useModalKeyDown";
 
@@ -68,68 +68,56 @@ export function Prompt({
     return null;
   }
 
-  return createPortal(
-    <div
-      className="ic-modal-dialog-backdrop"
-      onClick={closeModal}
-      onPointerDown={(event) => event.stopPropagation()}
-      role="none"
+  return (
+    <ModalDialog
+      modalRef={modalRef}
+      titleId={titleId}
+      onClose={closeModal}
+      onKeyDown={onKeyDown}
+      className={className}
     >
-      <div
-        ref={modalRef}
-        className={["ic-modal-dialog", className].filter(Boolean).join(" ")}
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={onKeyDown}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
-        <div className="ic-modal-dialog-header">
-          <h2 id={titleId}>{title}</h2>
-          <IconButton
-            ref={closeButtonRef}
-            icon={<X />}
-            aria-label={closeLabel}
-            onClick={closeModal}
-          />
-        </div>
-        <div className="ic-modal-dialog-body">
-          {message &&
-            (typeof message === "string" ? <p>{message}</p> : message)}
-          <Input
-            autoFocus
-            {...inputProps}
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            onKeyDown={(event) => {
-              event.stopPropagation();
-              if (event.key === "Escape") {
-                event.preventDefault();
-                closeModal();
-              } else if (event.key === "Enter") {
-                event.preventDefault();
-                submitButtonRef.current?.focus();
-              }
-              inputProps?.onKeyDown?.(event);
-            }}
-            onClick={(event) => {
-              event.stopPropagation();
-              inputProps?.onClick?.(event);
-            }}
-          />
-        </div>
-        <div className="ic-modal-dialog-footer">
-          <Button size="md" variant="secondary" onClick={closeModal}>
-            {cancelLabel}
-          </Button>
-          <Button ref={submitButtonRef} size="md" onClick={handleSubmit}>
-            {confirmLabel}
-          </Button>
-        </div>
+      <div className="ic-modal-dialog-header">
+        <h2 id={titleId}>{title}</h2>
+        <IconButton
+          ref={closeButtonRef}
+          icon={<X />}
+          aria-label={closeLabel}
+          onClick={closeModal}
+        />
       </div>
-    </div>,
-    document.body,
+      <div className="ic-modal-dialog-body">
+        {message && (typeof message === "string" ? <p>{message}</p> : message)}
+        <Input
+          autoFocus
+          {...inputProps}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === "Escape") {
+              event.preventDefault();
+              closeModal();
+            } else if (event.key === "Enter") {
+              event.preventDefault();
+              submitButtonRef.current?.focus();
+            }
+            inputProps?.onKeyDown?.(event);
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+            inputProps?.onClick?.(event);
+          }}
+        />
+      </div>
+      <div className="ic-modal-dialog-footer">
+        <Button size="md" variant="secondary" onClick={closeModal}>
+          {cancelLabel}
+        </Button>
+        <Button ref={submitButtonRef} size="md" onClick={handleSubmit}>
+          {confirmLabel}
+        </Button>
+      </div>
+    </ModalDialog>
   );
 }
 

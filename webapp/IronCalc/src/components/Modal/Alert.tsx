@@ -1,9 +1,9 @@
 import "./modal-dialog.css";
 import { X } from "lucide-react";
 import { type ReactNode, useId, useRef } from "react";
-import { createPortal } from "react-dom";
 import { Button } from "../Button/Button";
 import { IconButton } from "../Button/IconButton";
+import { ModalDialog } from "./ModalDialog";
 import { useModalFocus } from "./useModalFocus";
 import { useModalKeyDown } from "./useModalKeyDown";
 
@@ -45,49 +45,31 @@ export function Alert({
     return null;
   }
 
-  return createPortal(
-    <div
-      className="ic-modal-dialog-backdrop"
-      onClick={closeModal}
-      // HACK: prevents the workbook from stealing focus while the modal is open
-      onPointerDown={(event) => event.stopPropagation()}
-      role="none"
+  return (
+    <ModalDialog
+      modalRef={modalRef}
+      titleId={titleId}
+      onClose={closeModal}
+      onKeyDown={onKeyDown}
     >
-      <div
-        ref={modalRef}
-        className="ic-modal-dialog"
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={onKeyDown}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
-        <div className="ic-modal-dialog-header">
-          <h2 id={titleId}>{title}</h2>
-          <IconButton
-            ref={closeButtonRef}
-            icon={<X />}
-            aria-label={closeLabel}
-            onClick={closeModal}
-          />
-        </div>
-        <div className="ic-modal-dialog-body">
-          {typeof message === "string" ? <p>{message}</p> : message}
-        </div>
-        <div className="ic-modal-dialog-footer">
-          <Button
-            ref={confirmButtonRef}
-            size="md"
-            onClick={closeModal}
-            autoFocus
-          >
-            {confirmLabel}
-          </Button>
-        </div>
+      <div className="ic-modal-dialog-header">
+        <h2 id={titleId}>{title}</h2>
+        <IconButton
+          ref={closeButtonRef}
+          icon={<X />}
+          aria-label={closeLabel}
+          onClick={closeModal}
+        />
       </div>
-    </div>,
-    document.body,
+      <div className="ic-modal-dialog-body">
+        {typeof message === "string" ? <p>{message}</p> : message}
+      </div>
+      <div className="ic-modal-dialog-footer">
+        <Button ref={confirmButtonRef} size="md" onClick={closeModal} autoFocus>
+          {confirmLabel}
+        </Button>
+      </div>
+    </ModalDialog>
   );
 }
 
