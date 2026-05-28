@@ -497,9 +497,7 @@ fn basic_font_size() {
     let style = model.get_cell_style(0, 1, 1).unwrap();
     assert_eq!(style.font.sz, 13);
 
-    model
-        .update_range_style(&range, "font.size", "24")
-        .unwrap();
+    model.update_range_style(&range, "font.size", "24").unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
     assert_eq!(style.font.sz, 24);
 
