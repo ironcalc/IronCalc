@@ -294,6 +294,7 @@ function Toolbar(properties: ToolbarProperties) {
             className="ic-toolbar-font-size-box"
             type="text"
             inputMode="numeric"
+            aria-label={t("toolbar.font_size")}
             value={fontSizeInput}
             disabled={!canEdit}
             onClick={(e) => {
