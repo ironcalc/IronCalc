@@ -1,7 +1,9 @@
+use crate::cf_types::{CfRule, Cfvo};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::stringify::{
     to_localized_string, to_string_displaced, DisplaceData,
 };
+use crate::expressions::parser::Parser as ExprParser;
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils;
 use crate::model::{CellStructure, Model};
@@ -138,6 +140,133 @@ fn displace_cf_sqref(sqref: &str, data: &DisplaceData, sheet: u32) -> String {
 // In IronCalc, if one of the edges of the range is deleted will replace the edge with #REF!
 // I feel this is unimportant for now.
 
+/// Extracts the top-left cell (row, column) from the first part of a sqref string.
+fn get_cf_sqref_anchor(sqref: &str) -> Option<(i32, i32)> {
+    let first_part = sqref.split_whitespace().next()?;
+    let top_left = first_part.splitn(2, ':').next()?;
+    let r = utils::parse_reference_a1(&top_left.to_uppercase())?;
+    Some((r.row, r.column))
+}
+
+/// Displaces a single formula string (with or without leading `=`) using `to_string_displaced`.
+fn displace_cf_formula_str(
+    parser: &mut ExprParser<'_>,
+    formula: &str,
+    context: &CellReferenceRC,
+    data: &DisplaceData,
+) -> String {
+    let trimmed = formula.trim();
+    let has_eq = trimmed.starts_with('=');
+    let body = if has_eq { &trimmed[1..] } else { trimmed };
+    let node = parser.parse(body, context);
+    let displaced = to_string_displaced(&node, context, data);
+    if has_eq {
+        format!("={displaced}")
+    } else {
+        displaced
+    }
+}
+
+fn displace_cfvo(
+    parser: &mut ExprParser<'_>,
+    cfvo: Cfvo,
+    context: &CellReferenceRC,
+    data: &DisplaceData,
+) -> Cfvo {
+    if let Cfvo::Formula(f) = cfvo {
+        Cfvo::Formula(displace_cf_formula_str(parser, &f, context, data))
+    } else {
+        cfvo
+    }
+}
+
+/// Displaces all formula fields inside a `CfRule`.
+fn displace_cf_rule_formulas(
+    parser: &mut ExprParser<'_>,
+    rule: CfRule,
+    context: &CellReferenceRC,
+    data: &DisplaceData,
+) -> CfRule {
+    match rule {
+        CfRule::Formula {
+            formula,
+            dxf_id,
+            stop_if_true,
+        } => CfRule::Formula {
+            formula: displace_cf_formula_str(parser, &formula, context, data),
+            dxf_id,
+            stop_if_true,
+        },
+        CfRule::CellIs {
+            operator,
+            formula,
+            formula2,
+            dxf_id,
+            stop_if_true,
+        } => CfRule::CellIs {
+            operator,
+            formula: displace_cf_formula_str(parser, &formula, context, data),
+            formula2: formula2
+                .map(|f| displace_cf_formula_str(parser, &f, context, data)),
+            dxf_id,
+            stop_if_true,
+        },
+        CfRule::ColorScale { thresholds } => CfRule::ColorScale {
+            thresholds: thresholds
+                .into_iter()
+                .map(|mut t| {
+                    t.cfvo = displace_cfvo(parser, t.cfvo, context, data);
+                    t
+                })
+                .collect(),
+        },
+        CfRule::DataBar {
+            min,
+            max,
+            positive_color,
+            negative_color,
+            is_gradient,
+            show_value,
+        } => CfRule::DataBar {
+            min: min.map(|c| displace_cfvo(parser, c, context, data)),
+            max: max.map(|c| displace_cfvo(parser, c, context, data)),
+            positive_color,
+            negative_color,
+            is_gradient,
+            show_value,
+        },
+        CfRule::IconSet {
+            thresholds,
+            show_value,
+        } => CfRule::IconSet {
+            thresholds: thresholds
+                .into_iter()
+                .map(|mut t| {
+                    t.cfvo = displace_cfvo(parser, t.cfvo, context, data);
+                    t
+                })
+                .collect(),
+            show_value,
+        },
+        CfRule::IconRating {
+            icon,
+            color,
+            thresholds,
+            show_value,
+        } => CfRule::IconRating {
+            icon,
+            color,
+            thresholds: thresholds
+                .into_iter()
+                .map(|(cfvo, strict)| (displace_cfvo(parser, cfvo, context, data), strict))
+                .collect(),
+            show_value,
+        },
+        // No formula fields in remaining variants
+        other => other,
+    }
+}
+
 impl<'a> Model<'a> {
     fn shift_cell_formula(
         &mut self,
@@ -180,20 +309,37 @@ impl<'a> Model<'a> {
         Ok(())
     }
 
-    /// Updates the `range` field of every CF rule on `sheet` according to `displace_data`.
+    /// Updates the `range` field and formula fields of every CF rule on `sheet` according to `displace_data`.
     fn displace_cf_ranges(&mut self, sheet: u32, displace_data: &DisplaceData) {
         let count = match self.workbook.worksheets.get(sheet as usize) {
             Some(ws) => ws.conditional_formatting.len(),
             None => return,
         };
+
+        // Phase 1: collect (index, new_range, old_rule, anchor) without holding a borrow on self.
+        let sheet_name = self.workbook.worksheets[sheet as usize].get_name();
+        let mut phase1: Vec<(usize, String, CfRule, i32, i32)> = Vec::with_capacity(count);
         for idx in 0..count {
-            let old = self.workbook.worksheets[sheet as usize].conditional_formatting[idx]
-                .range
-                .clone();
-            let new = displace_cf_sqref(&old, displace_data, sheet);
-            if new != old {
-                self.workbook.worksheets[sheet as usize].conditional_formatting[idx].range = new;
+            let cf = &self.workbook.worksheets[sheet as usize].conditional_formatting[idx];
+            let old_range = cf.range.clone();
+            let new_range = displace_cf_sqref(&old_range, displace_data, sheet);
+            let rule = cf.cf_rule.clone();
+            if let Some((anchor_row, anchor_col)) = get_cf_sqref_anchor(&old_range) {
+                phase1.push((idx, new_range, rule, anchor_row, anchor_col));
             }
+        }
+
+        // Phase 2: displace formula fields (requires &mut self.parser) then write back.
+        for (idx, new_range, rule, anchor_row, anchor_col) in phase1 {
+            let context = CellReferenceRC {
+                sheet: sheet_name.clone(),
+                row: anchor_row,
+                column: anchor_col,
+            };
+            let new_rule =
+                displace_cf_rule_formulas(&mut self.parser, rule, &context, displace_data);
+            self.workbook.worksheets[sheet as usize].conditional_formatting[idx].range = new_range;
+            self.workbook.worksheets[sheet as usize].conditional_formatting[idx].cf_rule = new_rule;
         }
     }
 

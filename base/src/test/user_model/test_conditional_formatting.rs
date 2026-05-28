@@ -920,3 +920,117 @@ fn move_column_right_shifts_intermediate_cf_range() {
     let list = model.get_conditional_formatting_list(0).unwrap();
     assert_eq!(list[0].range, "B1:B5");
 }
+
+// ---------------------------------------------------------------------------
+// Row/column insert / delete / move: CF formula reference updates
+// ---------------------------------------------------------------------------
+
+#[test]
+fn insert_row_updates_formula_in_cf_formula_rule() {
+    // CfRule::Formula with =$A$1>5 should shift to =$A$3>5 when 2 rows inserted above row 1.
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(
+            0,
+            "B5:B10",
+            CfRuleInput::Formula {
+                formula: "=$A$1>5".to_string(),
+                format: Dxf::default(),
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+    model.insert_rows(0, 1, 2).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    // Range also shifts: B5:B10 → B7:B12
+    assert_eq!(list[0].range, "B7:B12");
+    if let CfRule::Formula { formula, .. } = &list[0].cf_rule {
+        assert_eq!(formula, "=$A$3>5");
+    } else {
+        panic!("Expected Formula CF rule");
+    }
+}
+
+#[test]
+fn delete_row_updates_formula_in_cf_cell_is_rule() {
+    // CfRule::CellIs with formula =$B$3 should shift to =$B$2 when row 2 is deleted.
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(
+            0,
+            "A5:A10",
+            CfRuleInput::CellIs {
+                operator: ValueOperator::GreaterThan,
+                formula: "=$B$3".to_string(),
+                formula2: None,
+                format: Dxf::default(),
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+    model.delete_rows(0, 2, 1).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    // Range shifts: A5:A10 → A4:A9
+    assert_eq!(list[0].range, "A4:A9");
+    if let CfRule::CellIs { formula, .. } = &list[0].cf_rule {
+        assert_eq!(formula, "=$B$2");
+    } else {
+        panic!("Expected CellIs CF rule");
+    }
+}
+
+#[test]
+fn insert_column_updates_formula_in_cf_formula_rule() {
+    // CfRule::Formula with =$C$1>5 should shift to =$E$1>5 when 2 columns inserted left of C.
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(
+            0,
+            "D1:D5",
+            CfRuleInput::Formula {
+                formula: "=$C$1>5".to_string(),
+                format: Dxf::default(),
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+    model.insert_columns(0, 1, 2).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    // Range shifts: D1:D5 → F1:F5
+    assert_eq!(list[0].range, "F1:F5");
+    if let CfRule::Formula { formula, .. } = &list[0].cf_rule {
+        assert_eq!(formula, "=$E$1>5");
+    } else {
+        panic!("Expected Formula CF rule");
+    }
+}
+
+#[test]
+fn insert_row_updates_cfvo_formula_in_data_bar() {
+    // DataBar with Cfvo::Formula("=$A$2") should shift to Cfvo::Formula("=$A$4") when 2 rows inserted above row 2.
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(
+            0,
+            "B3:B8",
+            CfRuleInput::DataBar {
+                min: Some(Cfvo::Formula("=$A$2".to_string())),
+                max: Some(Cfvo::Formula("=$A$10".to_string())),
+                positive_color: "#0000FF".to_string(),
+                negative_color: "#FF0000".to_string(),
+                is_gradient: true,
+                show_value: true,
+            },
+        )
+        .unwrap();
+    model.insert_rows(0, 1, 2).unwrap();
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    // Range shifts: B3:B8 → B5:B10
+    assert_eq!(list[0].range, "B5:B10");
+    if let CfRule::DataBar { min, max, .. } = &list[0].cf_rule {
+        assert_eq!(min.as_ref(), Some(&Cfvo::Formula("=$A$4".to_string())));
+        assert_eq!(max.as_ref(), Some(&Cfvo::Formula("=$A$12".to_string())));
+    } else {
+        panic!("Expected DataBar CF rule");
+    }
+}
