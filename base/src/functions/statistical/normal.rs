@@ -322,4 +322,17 @@ impl<'a> Model<'a> {
         let margin = t_crit * std_dev / size.sqrt();
         CalcResult::Number(margin)
     }
+
+    // NORMSDIST(z) — always cumulative=TRUE, 1 arg
+    pub(crate) fn fn_normsdist_compat(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let new_args = vec![args[0].clone(), Node::BooleanKind(true)];
+        self.fn_norm_s_dist(&new_args, cell)
+    }
 }

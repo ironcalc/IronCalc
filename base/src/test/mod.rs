@@ -79,6 +79,7 @@ mod test_fn_offset;
 mod test_number_format;
 
 mod array_formulas;
+mod compatibility;
 mod dynamic_evaluation;
 mod logical;
 mod lookup_and_reference;

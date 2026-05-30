@@ -309,4 +309,18 @@ impl<'a> Model<'a> {
 
         CalcResult::Number(result)
     }
+
+    // NEGBINOMDIST(number_f, number_s, probability_s) — always PMF (cumulative=FALSE), 3 args
+    pub(crate) fn fn_negbinomdist_compat(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut new_args = args.to_vec();
+        new_args.push(Node::BooleanKind(false));
+        self.fn_negbinom_dist(&new_args, cell)
+    }
 }
