@@ -1322,6 +1322,96 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
                 vec![Signature::Error; arg_count]
             }
         }
+        // Compatibility wrappers
+        Function::BetaDistCompat => args_signature_scalars(arg_count, 3, 2),
+        Function::HypGeomDistCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::LogNormDistCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::NegbinomDistCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::NormSDistCompat => args_signature_scalars(arg_count, 1, 0),
+        Function::TDistCompat => args_signature_scalars(arg_count, 3, 0),
+        // Compatibility aliases
+        Function::BetaInvCompat => args_signature_scalars(arg_count, 3, 2),
+        Function::BinomDistCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::ChiDistCompat => args_signature_scalars(arg_count, 2, 0),
+        Function::ChiInvCompat => args_signature_scalars(arg_count, 2, 0),
+        Function::ChiTestCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::ConfidenceCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::CovarCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::CritbinomCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::ExponDistCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::FDistCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::FInvCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::FTestCompat => vec![Signature::Vector; 2],
+        Function::GammaDistCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::GammaInvCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::LoginvCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::ModeCompat => vec![Signature::Vector; arg_count],
+        Function::NormDistCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::NormInvCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::NormSInvCompat => args_signature_scalars(arg_count, 1, 0),
+        Function::PercentileCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::PercentrankCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::PoissonCompat => args_signature_scalars(arg_count, 3, 0),
+        Function::QuartileCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
+        Function::StDevPCompat => vec![Signature::Vector; arg_count],
+        Function::TInvCompat => args_signature_scalars(arg_count, 2, 0),
+        Function::TTestCompat => {
+            if arg_count == 4 {
+                vec![
+                    Signature::Vector,
+                    Signature::Vector,
+                    Signature::Scalar,
+                    Signature::Scalar,
+                ]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::VarCompat => vec![Signature::Vector; arg_count],
+        Function::VarPCompat => vec![Signature::Vector; arg_count],
+        Function::WeibullCompat => args_signature_scalars(arg_count, 4, 0),
+        Function::ZTestCompat => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::Sumx2my2 => vec![Signature::Vector; 2],
         Function::Sumx2py2 => vec![Signature::Vector; 2],
         Function::Sumxmy2 => vec![Signature::Vector; 2],
@@ -1799,6 +1889,43 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::VarA => StaticResult::Scalar,
         Function::WeibullDist => StaticResult::Scalar,
         Function::ZTest => StaticResult::Scalar,
+        Function::BetaDistCompat => StaticResult::Scalar,
+        Function::HypGeomDistCompat => StaticResult::Scalar,
+        Function::LogNormDistCompat => StaticResult::Scalar,
+        Function::NegbinomDistCompat => StaticResult::Scalar,
+        Function::NormSDistCompat => StaticResult::Scalar,
+        Function::TDistCompat => StaticResult::Scalar,
+        Function::BetaInvCompat => StaticResult::Scalar,
+        Function::BinomDistCompat => StaticResult::Scalar,
+        Function::ChiDistCompat => StaticResult::Scalar,
+        Function::ChiInvCompat => StaticResult::Scalar,
+        Function::ChiTestCompat => StaticResult::Scalar,
+        Function::ConfidenceCompat => StaticResult::Scalar,
+        Function::CovarCompat => StaticResult::Scalar,
+        Function::CritbinomCompat => StaticResult::Scalar,
+        Function::ExponDistCompat => StaticResult::Scalar,
+        Function::FDistCompat => StaticResult::Scalar,
+        Function::FInvCompat => StaticResult::Scalar,
+        Function::FTestCompat => StaticResult::Scalar,
+        Function::GammaDistCompat => StaticResult::Scalar,
+        Function::GammaInvCompat => StaticResult::Scalar,
+        Function::LoginvCompat => StaticResult::Scalar,
+        Function::ModeCompat => StaticResult::Scalar,
+        Function::NormDistCompat => StaticResult::Scalar,
+        Function::NormInvCompat => StaticResult::Scalar,
+        Function::NormSInvCompat => StaticResult::Scalar,
+        Function::PercentileCompat => StaticResult::Scalar,
+        Function::PercentrankCompat => StaticResult::Scalar,
+        Function::PoissonCompat => StaticResult::Scalar,
+        Function::QuartileCompat => StaticResult::Scalar,
+        Function::RankCompat => StaticResult::Scalar,
+        Function::StDevPCompat => StaticResult::Scalar,
+        Function::TInvCompat => StaticResult::Scalar,
+        Function::TTestCompat => StaticResult::Scalar,
+        Function::VarCompat => StaticResult::Scalar,
+        Function::VarPCompat => StaticResult::Scalar,
+        Function::WeibullCompat => StaticResult::Scalar,
+        Function::ZTestCompat => StaticResult::Scalar,
         Function::Sumx2my2 => StaticResult::Scalar,
         Function::Sumx2py2 => StaticResult::Scalar,
         Function::Sumxmy2 => StaticResult::Scalar,

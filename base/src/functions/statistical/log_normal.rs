@@ -121,4 +121,18 @@ impl<'a> Model<'a> {
 
         CalcResult::Number(result)
     }
+
+    // LOGNORMDIST(x, mean, standard_dev) — always cumulative=TRUE, 3 args
+    pub(crate) fn fn_lognormdist_compat(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut new_args = args.to_vec();
+        new_args.push(Node::BooleanKind(true));
+        self.fn_log_norm_dist(&new_args, cell)
+    }
 }
