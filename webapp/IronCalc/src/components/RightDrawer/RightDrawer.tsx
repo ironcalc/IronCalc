@@ -207,6 +207,8 @@ const RightDrawer = ({
       className="ic-drawer-container"
       style={{ ["--ic-runtime-drawer-width" as string]: `${drawerWidth}px` }}
     >
+      <div className="ic-drawer-divider" />
+      <div className="ic-drawer-content">{renderDrawerContent()}</div>
       <hr
         className={`ic-drawer-resize-handle ${isResizing ? "ic-drawer-resize-handle--resizing" : ""}`}
         tabIndex={0}
@@ -215,8 +217,6 @@ const RightDrawer = ({
         onMouseDown={handleMouseDown}
         onKeyDown={handleKeyDown}
       />
-      <div className="ic-drawer-divider" />
-      <div className="ic-drawer-content">{renderDrawerContent()}</div>
     </div>
   );
 };

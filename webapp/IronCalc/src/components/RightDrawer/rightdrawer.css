@@ -42,7 +42,7 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: 4px;
+  width: 3px;
   cursor: col-resize;
   background-color: transparent;
   transition: background-color 0.2s ease;
