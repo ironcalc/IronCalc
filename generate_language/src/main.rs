@@ -378,6 +378,20 @@ pub struct Functions {
     pub received: String,
     pub yielddisc: String,
     pub yieldmat: String,
+    pub duration: String,
+    pub mduration: String,
+    pub price: String,
+    pub r#yield: String,
+    pub oddfprice: String,
+    pub oddfyield: String,
+    pub oddlprice: String,
+    pub oddlyield: String,
+    pub coupdaybs: String,
+    pub coupdays: String,
+    pub coupdaysnc: String,
+    pub coupncd: String,
+    pub coupnum: String,
+    pub couppcd: String,
     pub stdevp: String,
     pub stdevs: String,
     pub stdeva: String,
@@ -499,6 +513,7 @@ pub struct Functions {
     pub multinomial: String,
     pub seriessum: String,
     pub sumproduct: String,
+    pub percentof: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]
@@ -511,8 +526,9 @@ pub struct Language {
 }
 
 fn main() {
-    let languages: BTreeMap<String, Language> = serde_json::from_str(include_str!("languages.json"))
-        .expect("Failed parsing languages.json");
+    let languages: BTreeMap<String, Language> =
+        serde_json::from_str(include_str!("languages.json"))
+            .expect("Failed parsing languages.json");
     let encoded = bitcode::encode(&languages);
     std::fs::write("language.bin", encoded).expect("Failed writing language.bin");
 }
