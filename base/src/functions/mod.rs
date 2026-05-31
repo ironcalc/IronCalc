@@ -12,6 +12,7 @@ mod database;
 mod date_and_time;
 mod engineering;
 mod financial;
+mod financial_bonds;
 mod financial_util;
 mod information;
 mod logical;
@@ -131,6 +132,7 @@ pub enum Function {
     Multinomial,
     Seriessum,
     Sumproduct,
+    Percentof,
 
     // Information
     ErrorType,
@@ -451,6 +453,20 @@ pub enum Function {
     Tbillyield,
     Xirr,
     Xnpv,
+    Duration,
+    Mduration,
+    Price,
+    Yield,
+    Oddfprice,
+    Oddfyield,
+    Oddlprice,
+    Oddlyield,
+    Coupdaybs,
+    Coupdays,
+    Coupdaysnc,
+    Coupncd,
+    Coupnum,
+    Couppcd,
 
     // Engineering: Bessel and transcendental functions
     Besseli,
@@ -658,6 +674,7 @@ impl_function_lookup! {
     multinomial     => Multinomial,
     seriessum       => Seriessum,
     sumproduct      => Sumproduct,
+    percentof       => Percentof,
 
     // Information
     errortype   => ErrorType,
@@ -957,6 +974,20 @@ impl_function_lookup! {
     tbillyield => Tbillyield,
     xirr       => Xirr,
     xnpv       => Xnpv,
+    duration   => Duration,
+    mduration  => Mduration,
+    price      => Price,
+    r#yield    => Yield,
+    oddfprice  => Oddfprice,
+    oddfyield  => Oddfyield,
+    oddlprice  => Oddlprice,
+    oddlyield  => Oddlyield,
+    coupdaybs  => Coupdaybs,
+    coupdays   => Coupdays,
+    coupdaysnc => Coupdaysnc,
+    coupncd    => Coupncd,
+    coupnum    => Coupnum,
+    couppcd    => Couppcd,
 
     // Engineering: Bessel and transcendental functions
     besseli       => Besseli,
@@ -1168,6 +1199,7 @@ impl Function {
             Function::Multinomial => functions.multinomial.clone(),
             Function::Seriessum => functions.seriessum.clone(),
             Function::Sumproduct => functions.sumproduct.clone(),
+            Function::Percentof => functions.percentof.clone(),
             Function::ErrorType => functions.errortype.clone(),
             Function::Formulatext => functions.formulatext.clone(),
             Function::Isblank => functions.isblank.clone(),
@@ -1449,6 +1481,20 @@ impl Function {
             Function::Tbillyield => functions.tbillyield.clone(),
             Function::Xirr => functions.xirr.clone(),
             Function::Xnpv => functions.xnpv.clone(),
+            Function::Duration => functions.duration.clone(),
+            Function::Mduration => functions.mduration.clone(),
+            Function::Price => functions.price.clone(),
+            Function::Yield => functions.r#yield.clone(),
+            Function::Oddfprice => functions.oddfprice.clone(),
+            Function::Oddfyield => functions.oddfyield.clone(),
+            Function::Oddlprice => functions.oddlprice.clone(),
+            Function::Oddlyield => functions.oddlyield.clone(),
+            Function::Coupdaybs => functions.coupdaybs.clone(),
+            Function::Coupdays => functions.coupdays.clone(),
+            Function::Coupdaysnc => functions.coupdaysnc.clone(),
+            Function::Coupncd => functions.coupncd.clone(),
+            Function::Coupnum => functions.coupnum.clone(),
+            Function::Couppcd => functions.couppcd.clone(),
             Function::Besseli => functions.besseli.clone(),
             Function::Besselj => functions.besselj.clone(),
             Function::Besselk => functions.besselk.clone(),
@@ -1543,7 +1589,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 472> {
+    pub fn into_iter() -> IntoIter<Function, 487> {
         [
             Function::And,
             Function::False,
@@ -1805,6 +1851,20 @@ impl Function {
             Function::Received,
             Function::Yielddisc,
             Function::Yieldmat,
+            Function::Duration,
+            Function::Mduration,
+            Function::Price,
+            Function::Yield,
+            Function::Oddfprice,
+            Function::Oddfyield,
+            Function::Oddlprice,
+            Function::Oddlyield,
+            Function::Coupdaybs,
+            Function::Coupdays,
+            Function::Coupdaysnc,
+            Function::Coupncd,
+            Function::Coupnum,
+            Function::Couppcd,
             Function::Besseli,
             Function::Besselj,
             Function::Besselk,
@@ -1871,6 +1931,7 @@ impl Function {
             Function::Multinomial,
             Function::Seriessum,
             Function::Sumproduct,
+            Function::Percentof,
             Function::N,
             Function::Cell,
             Function::Info,
@@ -2436,6 +2497,20 @@ impl<'a> Model<'a> {
             Function::Received => self.fn_received(args, cell),
             Function::Yielddisc => self.fn_yielddisc(args, cell),
             Function::Yieldmat => self.fn_yieldmat(args, cell),
+            Function::Duration => self.fn_duration(args, cell),
+            Function::Mduration => self.fn_mduration(args, cell),
+            Function::Price => self.fn_price(args, cell),
+            Function::Yield => self.fn_yield(args, cell),
+            Function::Oddfprice => self.fn_oddfprice(args, cell),
+            Function::Oddfyield => self.fn_oddfyield(args, cell),
+            Function::Oddlprice => self.fn_oddlprice(args, cell),
+            Function::Oddlyield => self.fn_oddlyield(args, cell),
+            Function::Coupdaybs => self.fn_coupdaybs(args, cell),
+            Function::Coupdays => self.fn_coupdays(args, cell),
+            Function::Coupdaysnc => self.fn_coupdaysnc(args, cell),
+            Function::Coupncd => self.fn_coupncd(args, cell),
+            Function::Coupnum => self.fn_coupnum(args, cell),
+            Function::Couppcd => self.fn_couppcd(args, cell),
             Function::Besseli => self.fn_besseli(args, cell),
             Function::Besselj => self.fn_besselj(args, cell),
             Function::Besselk => self.fn_besselk(args, cell),
@@ -2534,6 +2609,7 @@ impl<'a> Model<'a> {
             Function::Multinomial => self.fn_multinomial(args, cell),
             Function::Seriessum => self.fn_seriessum(args, cell),
             Function::Sumproduct => self.fn_sumproduct(args, cell),
+            Function::Percentof => self.fn_percentof(args, cell),
             Function::N => self.fn_n(args, cell),
             Function::Cell => self.fn_cell(args, cell),
             Function::Info => self.fn_info(args, cell),

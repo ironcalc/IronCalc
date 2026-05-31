@@ -231,6 +231,20 @@
       "received": "RECEIVED",
       "yielddisc": "YIELDDISC",
       "yieldmat": "YIELDMAT",
+      "duration": "DURATION",
+      "mduration": "MDURATION",
+      "price": "PRICE",
+      "yield": "YIELD",
+      "oddfprice": "ODDFPRICE",
+      "oddfyield": "ODDFYIELD",
+      "oddlprice": "ODDLPRICE",
+      "oddlyield": "ODDLYIELD",
+      "coupdaybs": "COUPDAYBS",
+      "coupdays": "COUPDAYS",
+      "coupdaysnc": "COUPDAYSNC",
+      "coupncd": "COUPNCD",
+      "coupnum": "COUPNUM",
+      "couppcd": "COUPPCD",
       "besseli": "BESSELI",
       "besselj": "BESSELJ",
       "besselk": "BESSELK",
@@ -492,7 +506,8 @@
       "munit": "MUNIT",
       "multinomial": "MULTINOMIAL",
       "seriessum": "SERIESSUM",
-      "sumproduct": "SUMPRODUCT"
+      "sumproduct": "SUMPRODUCT",
+      "percentof": "PERCENTOF"
     }
   },
   "it": {
@@ -727,6 +742,20 @@
       "received": "INTERESSI.RATA",
       "yielddisc": "REND.TITOLO.SCONT",
       "yieldmat": "REND.SCAD",
+      "duration": "DURATA",
+      "mduration": "DURATA.M",
+      "price": "PREZZO",
+      "yield": "REND.TITOLO",
+      "oddfprice": "PREZZO.PRIMO.IRREGOLARE",
+      "oddfyield": "REND.PRIMO.IRREGOLARE",
+      "oddlprice": "PREZZO.ULT.IRREGOLARE",
+      "oddlyield": "REND.ULT.IRREGOLARE",
+      "coupdaybs": "GIORNI.CED.INIZ.LIQ",
+      "coupdays": "GIORNI.CED",
+      "coupdaysnc": "GIORNI.CED.NUOVI",
+      "coupncd": "PROSSIMA.SCAD.CED",
+      "coupnum": "NUM.CED",
+      "couppcd": "SCAD.CED.PREC",
       "besseli": "BESSEL.I",
       "besselj": "BESSEL.J",
       "besselk": "BESSEL.K",
@@ -988,7 +1017,8 @@
       "munit": "MUNIT",
       "multinomial": "MULTINOMIALE",
       "seriessum": "SOMMA.SERIE",
-      "sumproduct": "MATR.SOMMA.PRODOTTO"
+      "sumproduct": "MATR.SOMMA.PRODOTTO",
+      "percentof": "PERCENTUALE.DI"
     }
   },
   "fr": {
@@ -1223,6 +1253,20 @@
       "received": "VALEUR.NOMINALE",
       "yielddisc": "TAUX.ESCOMPTE.R",
       "yieldmat": "RENDEMENT.TITRE.ECHEANCE",
+      "duration": "DUREE",
+      "mduration": "DUREE.MODIFIEE",
+      "price": "PRIX.TITRE",
+      "yield": "RENDEMENT",
+      "oddfprice": "PRIX.TITRE.PREMIER.COUPON",
+      "oddfyield": "REND.PREMIER.COUPON",
+      "oddlprice": "PRIX.TITRE.DERNIER.COUPON",
+      "oddlyield": "REND.DERNIER.COUPON",
+      "coupdaybs": "NB.JOURS.COUPON.PREC",
+      "coupdays": "NB.JOURS.COUPON",
+      "coupdaysnc": "NB.JOURS.COUPON.SUIV",
+      "coupncd": "DATE.COUPON.SUIV",
+      "coupnum": "NB.COUPONS",
+      "couppcd": "DATE.COUPON.PREC",
       "besseli": "BESSELI",
       "besselj": "BESSELJ",
       "besselk": "BESSELK",
@@ -1484,7 +1528,8 @@
       "munit": "MUNIT",
       "multinomial": "MULTINOMIALE",
       "seriessum": "SOMME.SERIE",
-      "sumproduct": "SOMMEPROD"
+      "sumproduct": "SOMMEPROD",
+      "percentof": "POURCENTDE"
     }
   },
   "de": {
@@ -1719,6 +1764,20 @@
       "received": "AUSZAHLUNG",
       "yielddisc": "RENDITEDIS",
       "yieldmat": "RENDITEFÄLL",
+      "duration": "DAUER",
+      "mduration": "MDURATION",
+      "price": "KURS",
+      "yield": "RENDITE",
+      "oddfprice": "KURS.UNREG.E",
+      "oddfyield": "RENDITE.UNREG.E",
+      "oddlprice": "KURS.UNREG.L",
+      "oddlyield": "RENDITE.UNREG.L",
+      "coupdaybs": "ZINSTERMTAGE.NZ",
+      "coupdays": "ZINSTERMTAGE",
+      "coupdaysnc": "ZINSTERMTAGENL",
+      "coupncd": "ZINSTERMNZ",
+      "coupnum": "ZINSTERMZAHL",
+      "couppcd": "ZINSTERMVZ",
       "besseli": "BESSELI",
       "besselj": "BESSELJ",
       "besselk": "BESSELK",
@@ -1980,7 +2039,8 @@
       "munit": "MEINHEIT",
       "multinomial": "MULTINOMIAL",
       "seriessum": "POTENZREIHE",
-      "sumproduct": "SUMMENPRODUKT"
+      "sumproduct": "SUMMENPRODUKT",
+      "percentof": "PROZENTVON"
     }
   },
   "es": {
@@ -2215,6 +2275,20 @@
       "received": "VNA.NO.PER",
       "yielddisc": "RENDTO.DESC",
       "yieldmat": "RENDTO.VENCTO",
+      "duration": "DURACION",
+      "mduration": "MDURACION",
+      "price": "PRECIO",
+      "yield": "RENDTO",
+      "oddfprice": "PRECIO.PER.IRREGULAR.1",
+      "oddfyield": "RENDTO.PER.IRREGULAR.1",
+      "oddlprice": "PRECIO.PER.IRREGULAR.2",
+      "oddlyield": "RENDTO.PER.IRREGULAR.2",
+      "coupdaybs": "CUPON.DIAS.L1",
+      "coupdays": "CUPON.DIAS",
+      "coupdaysnc": "CUPON.DIAS.L2",
+      "coupncd": "CUPON.FECHA.L2",
+      "coupnum": "CUPON.NUM",
+      "couppcd": "CUPON.FECHA.L1",
       "besseli": "BESSELI",
       "besselj": "BESSELJ",
       "besselk": "BESSELK",
@@ -2476,7 +2550,8 @@
       "munit": "MUNIT",
       "multinomial": "MULTINOMIAL",
       "seriessum": "SUMA.SERIE",
-      "sumproduct": "SUMAPRODUCTO"
+      "sumproduct": "SUMAPRODUCTO",
+      "percentof": "PORCENTAJEDE"
     }
   }
 }
