@@ -377,6 +377,20 @@ pub struct Functions {
     pub received: String,
     pub yielddisc: String,
     pub yieldmat: String,
+    pub duration: String,
+    pub mduration: String,
+    pub price: String,
+    pub r#yield: String,
+    pub oddfprice: String,
+    pub oddfyield: String,
+    pub oddlprice: String,
+    pub oddlyield: String,
+    pub coupdaybs: String,
+    pub coupdays: String,
+    pub coupdaysnc: String,
+    pub coupncd: String,
+    pub coupnum: String,
+    pub couppcd: String,
     pub stdevp: String,
     pub stdevs: String,
     pub stdeva: String,
@@ -498,6 +512,7 @@ pub struct Functions {
     pub multinomial: String,
     pub seriessum: String,
     pub sumproduct: String,
+    pub percentof: String,
 }
 
 #[derive(Encode, Decode)]

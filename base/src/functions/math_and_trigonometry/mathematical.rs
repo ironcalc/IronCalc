@@ -1314,6 +1314,25 @@ impl<'a> Model<'a> {
         CalcResult::Number(result)
     }
 
+    // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction.
+    pub(crate) fn fn_percentof(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let part = match self.fn_sum(&args[0..1], cell) {
+            CalcResult::Number(v) => v,
+            other => return other,
+        };
+        let total = match self.fn_sum(&args[1..2], cell) {
+            CalcResult::Number(v) => v,
+            other => return other,
+        };
+        if total == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        }
+        CalcResult::Number(part / total)
+    }
+
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
