@@ -35,6 +35,7 @@ import {
   Redo2,
   RemoveFormatting,
   Strikethrough,
+  SwatchBook,
   Type,
   Underline,
   Undo2,
@@ -100,6 +101,8 @@ type ToolbarProperties = {
   themes: IronCalcTheme[];
   currentTheme: IronCalcTheme;
   onThemePicked: (theme: IronCalcTheme) => void;
+  onOpenThemes: () => void;
+  isThemesOpen: boolean;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -461,6 +464,15 @@ function Toolbar(properties: ToolbarProperties) {
               aria-label={t("toolbar.conditional_formatting")}
               pressed={properties.isConditionalFormattingOpen}
               onClick={properties.onOpenConditionalFormatting}
+              disabled={!canEdit}
+            />
+          </Tooltip>
+          <Tooltip title={t("toolbar.themes")}>
+            <IconButton
+              icon={<SwatchBook />}
+              aria-label={t("toolbar.themes")}
+              pressed={properties.isThemesOpen}
+              onClick={properties.onOpenThemes}
               disabled={!canEdit}
             />
           </Tooltip>
