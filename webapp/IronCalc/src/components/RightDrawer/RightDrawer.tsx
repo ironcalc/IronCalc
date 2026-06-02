@@ -5,6 +5,7 @@ import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting
 import NamedRanges from "./NamedRanges/NamedRanges";
 import NamedStylesPanel from "./NamedStyles/NamedStylesPanel";
 import RegionalSettings from "./RegionalSettings/RegionalSettings";
+import Themes from "./Themes/themes";
 import "./rightdrawer.css";
 import { useTranslation } from "react-i18next";
 import type {
@@ -23,7 +24,8 @@ export type DrawerType =
   | "namedRanges"
   | "namedStyles"
   | "regionalSettings"
-  | "conditionalFormatting";
+  | "conditionalFormatting"
+  | "themes";
 
 interface RightDrawerProps {
   isOpen: boolean;
@@ -191,6 +193,8 @@ const RightDrawer = ({
             model={model}
           />
         );
+      case "themes":
+        return <Themes onClose={onClose} />;
       default:
         return (
           <NamedRanges

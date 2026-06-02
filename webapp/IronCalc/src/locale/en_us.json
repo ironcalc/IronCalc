@@ -259,6 +259,9 @@
     "open_menu": "Open sheet menu",
     "rename": "Rename"
   },
+  "themes": {
+    "panel_title": "Themes"
+  },
   "toolbar": {
     "align_center": "Align center",
     "align_left": "Align left",
@@ -317,6 +320,7 @@
     "show_hide_grid_lines": "Show/hide grid lines",
     "strike_through": "Strikethrough",
     "theme": "Theme",
+    "themes": "Themes",
     "underline": "Underline",
     "undo": "Undo",
     "vertical_align_bottom": "Align bottom",

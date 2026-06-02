@@ -811,6 +811,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           model.setTheme(theme);
           setRedrawId((id) => id + 1);
         }}
+        onOpenThemes={() => openDrawer("themes")}
+        isThemesOpen={isDrawerOpen && drawerType === "themes"}
       />
       <div
         className="ic-workbook-worksheet-area-left"
