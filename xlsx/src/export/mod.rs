@@ -1,10 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
 mod _rels;
+mod conditional_formatting;
 mod doc_props;
+mod dxfs_styles;
 mod escape;
 mod shared_strings;
 mod styles;
+mod styles_util;
 mod workbook;
 mod workbook_xml_rels;
 mod worksheets;
