@@ -11,13 +11,13 @@
         "Samstag"
       ],
       "day_names_short": [
-        "So.",
-        "Mo.",
-        "Di.",
-        "Mi.",
-        "Do.",
-        "Fr.",
-        "Sa."
+        "So",
+        "Mo",
+        "Di",
+        "Mi",
+        "Do",
+        "Fr",
+        "Sa"
       ],
       "months": [
         "Januar",
@@ -34,18 +34,18 @@
         "Dezember"
       ],
       "months_short": [
-        "Jan.",
-        "Feb.",
-        "März",
-        "Apr.",
+        "Jan",
+        "Feb",
+        "Mär",
+        "Apr",
         "Mai",
-        "Juni",
-        "Juli",
-        "Aug.",
-        "Sept.",
-        "Okt.",
-        "Nov.",
-        "Dez."
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Okt",
+        "Nov",
+        "Dez"
       ],
       "months_letter": [
         "J",
@@ -101,10 +101,10 @@
       },
       "currencyFormats-numberSystem-latn": {
         "standard": "#,##0.00 ¤",
-        "standard-alphaNextToNumber": "¤ #,##0.00",
+        "standard-alphaNextToNumber": "#,##0.00 ¤",
         "standard-noCurrency": "#,##0.00",
         "accounting": "#,##0.00 ¤",
-        "accounting-alphaNextToNumber": "¤ #,##0.00",
+        "accounting-alphaNextToNumber": "#,##0.00 ¤",
         "accounting-noCurrency": "#,##0.00"
       }
     },
@@ -215,10 +215,10 @@
       },
       "currencyFormats-numberSystem-latn": {
         "standard": "#,##0.00 ¤",
-        "standard-alphaNextToNumber": "¤ #,##0.00",
+        "standard-alphaNextToNumber": "#,##0.00 ¤",
         "standard-noCurrency": "#,##0.00",
         "accounting": "#,##0.00 ¤",
-        "accounting-alphaNextToNumber": "¤ #,##0.00",
+        "accounting-alphaNextToNumber": "#,##0.00 ¤",
         "accounting-noCurrency": "#,##0.00"
       }
     },
@@ -557,10 +557,10 @@
       },
       "currencyFormats-numberSystem-latn": {
         "standard": "#,##0.00 ¤",
-        "standard-alphaNextToNumber": "¤ #,##0.00",
+        "standard-alphaNextToNumber": "#,##0.00 ¤",
         "standard-noCurrency": "#,##0.00",
         "accounting": "#,##0.00 ¤;(#,##0.00 ¤)",
-        "accounting-alphaNextToNumber": "¤ #,##0.00",
+        "accounting-alphaNextToNumber": "#,##0.00 ¤;(#,##0.00 ¤)",
         "accounting-noCurrency": "#,##0.00;(#,##0.00)"
       }
     },
@@ -671,10 +671,10 @@
       },
       "currencyFormats-numberSystem-latn": {
         "standard": "#,##0.00 ¤",
-        "standard-alphaNextToNumber": "¤ #,##0.00",
+        "standard-alphaNextToNumber": "#,##0.00 ¤",
         "standard-noCurrency": "#,##0.00",
         "accounting": "#,##0.00 ¤",
-        "accounting-alphaNextToNumber": "¤ #,##0.00",
+        "accounting-alphaNextToNumber": "#,##0.00 ¤",
         "accounting-noCurrency": "#,##0.00"
       }
     },
