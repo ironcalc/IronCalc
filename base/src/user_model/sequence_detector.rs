@@ -737,11 +737,11 @@ mod tests {
 
         let values = vec!["Jan".to_string(), "Feb".to_string()];
         let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "März");
+        assert_eq!(progression.next(0), "Mär");
 
         let values = vec!["So.".to_string(), "Mo.".to_string()];
         let progression = detector.detect(&values).unwrap();
-        assert_eq!(progression.next(0), "Di.");
+        assert_eq!(progression.next(0), "Di");
     }
 
     #[test]
