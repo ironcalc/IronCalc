@@ -449,6 +449,19 @@ pub(super) fn load_conditional_formatting(
                     dxf_id,
                     stop_if_true,
                 },
+                "expression" => {
+                    let formula = cf_rule
+                        .children()
+                        .find(|n| n.has_tag_name("formula"))
+                        .and_then(|n| n.text())
+                        .unwrap_or("")
+                        .to_string();
+                    CfRule::Formula {
+                        formula: format!("={}", formula),
+                        dxf_id,
+                        stop_if_true,
+                    }
+                }
                 "aboveAverage" => {
                     if cf_rule.attribute("aboveAverage") == Some("0") {
                         CfRule::BelowAverage {
