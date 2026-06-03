@@ -333,7 +333,7 @@ fn parse_operator(s: &str) -> Result<ValueOperator, XlsxError> {
 fn parse_text_operator(s: &str) -> Option<TextOperator> {
     match s {
         "containsText" => Some(TextOperator::Contains),
-        "notContains" => Some(TextOperator::DoesNotContain),
+        "notContainsText" => Some(TextOperator::DoesNotContain),
         "beginsWith" => Some(TextOperator::BeginsWith),
         "endsWith" => Some(TextOperator::EndsWith),
         _ => None,
@@ -612,6 +612,22 @@ pub(super) fn load_conditional_formatting(
                         }
                     }
                 }
+                "containsBlanks" => CfRule::Blanks {
+                    dxf_id,
+                    stop_if_true,
+                },
+                "notContainsBlanks" => CfRule::NotBlanks {
+                    dxf_id,
+                    stop_if_true,
+                },
+                "containsErrors" => CfRule::Errors {
+                    dxf_id,
+                    stop_if_true,
+                },
+                "notContainsErrors" => CfRule::NoErrors {
+                    dxf_id,
+                    stop_if_true,
+                },
                 "containsText" | "notContainsText" | "beginsWith" | "endsWith" => {
                     let raw_type = cf_rule.attribute("type").unwrap_or("");
                     let operator = match parse_text_operator(raw_type) {

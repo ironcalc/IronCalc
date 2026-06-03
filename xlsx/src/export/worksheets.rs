@@ -29,6 +29,8 @@ use ironcalc_base::{
     types::{ArrayKind, Cell, FormulaValue, SpillValue, Worksheet},
 };
 
+use crate::export::conditional_formatting::get_conditional_formatting_xml;
+
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
 
 fn get_range_str(row: i32, column: i32, width: i32, height: i32) -> Option<String> {
@@ -552,6 +554,9 @@ pub(crate) fn get_worksheet_xml(
         format!(r#"<selection activeCell="{active_cell}" sqref="{sqref}"/>"#)
     };
 
+    let (cf_sections, cf_ext_lst) =
+        get_conditional_formatting_xml(&worksheet.conditional_formatting);
+
     format!(
         "{XML_DECLARATION}\
 <worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
@@ -566,6 +571,8 @@ pub(crate) fn get_worksheet_xml(
   {sheet_data}\
   </sheetData>\
   {merge_cells_section}\
+  {cf_sections}\
+  {cf_ext_lst}\
 </worksheet>"
     )
 }
