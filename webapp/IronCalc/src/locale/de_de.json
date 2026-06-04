@@ -259,6 +259,16 @@
     "open_menu": "Tabellenblattmenü öffnen",
     "rename": "Umbenennen"
   },
+  "themes": {
+    "accent_color_label": "Akzent {{n}}",
+    "apply": "Anwenden",
+    "back_to_list": "Zurück zur Liste",
+    "bg_color_label": "Hintergrund",
+    "cancel": "Abbrechen",
+    "edit_theme": "Design bearbeiten",
+    "panel_title": "Designs",
+    "text_color_label": "Text"
+  },
   "toolbar": {
     "align_center": "Zentrieren",
     "align_left": "Links ausrichten",

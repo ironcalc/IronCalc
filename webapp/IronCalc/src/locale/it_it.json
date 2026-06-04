@@ -259,6 +259,16 @@
     "open_menu": "Apri menu del foglio",
     "rename": "Rinomina"
   },
+  "themes": {
+    "accent_color_label": "Accento {{n}}",
+    "apply": "Applica",
+    "back_to_list": "Torna alla lista",
+    "bg_color_label": "Sfondo",
+    "cancel": "Annulla",
+    "edit_theme": "Modifica tema",
+    "panel_title": "Temi",
+    "text_color_label": "Testo"
+  },
   "toolbar": {
     "align_center": "Allinea al centro",
     "align_left": "Allinea a sinistra",

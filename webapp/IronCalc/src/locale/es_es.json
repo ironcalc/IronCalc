@@ -259,6 +259,16 @@
     "open_menu": "Abrir menú de hoja",
     "rename": "Renombrar"
   },
+  "themes": {
+    "accent_color_label": "Acento {{n}}",
+    "apply": "Aplicar",
+    "back_to_list": "Volver a la lista",
+    "bg_color_label": "Fondo",
+    "cancel": "Cancelar",
+    "edit_theme": "Editar tema",
+    "panel_title": "Temas",
+    "text_color_label": "Texto"
+  },
   "toolbar": {
     "align_center": "Alinear al centro",
     "align_left": "Alinear a la izquierda",
