@@ -260,7 +260,14 @@
     "rename": "Rename"
   },
   "themes": {
-    "panel_title": "Themes"
+    "accent_color_label": "Accent {{n}}",
+    "apply": "Apply",
+    "back_to_list": "Back to list",
+    "bg_color_label": "Background",
+    "cancel": "Cancel",
+    "edit_theme": "Edit theme",
+    "panel_title": "Themes",
+    "text_color_label": "Text"
   },
   "toolbar": {
     "align_center": "Align center",

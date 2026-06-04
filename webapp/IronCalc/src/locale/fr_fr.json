@@ -259,6 +259,16 @@
     "open_menu": "Ouvrir le menu de la feuille",
     "rename": "Renommer"
   },
+  "themes": {
+    "accent_color_label": "Accent {{n}}",
+    "apply": "Appliquer",
+    "back_to_list": "Retour à la liste",
+    "bg_color_label": "Arrière-plan",
+    "cancel": "Annuler",
+    "edit_theme": "Modifier le thème",
+    "panel_title": "Thèmes",
+    "text_color_label": "Texte"
+  },
   "toolbar": {
     "align_center": "Centrer",
     "align_left": "Aligner à gauche",
