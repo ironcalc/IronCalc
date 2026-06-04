@@ -25,7 +25,7 @@ fn test_cf_file() {
                 .unwrap();
             let style = extended_style.style;
             assert_eq!(style.font.color, Some("#9C0006".to_string()));
-            assert_eq!(style.fill.bg_color, Some("#FFC7CE".to_string()));
+            assert_eq!(style.fill.color, Some("#FFC7CE".to_string()));
         }
     }
 

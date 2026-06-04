@@ -38,7 +38,7 @@ fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         == Some("#FF0000".to_string())
 }
 
@@ -168,6 +168,6 @@ fn test_above_and_below_average_are_disjoint() {
         let style = model.get_extended_style_for_cell(0, row, 1).unwrap();
         // Both rules write to bg_color via Dxf; if both matched the last one would win.
         // What we verify is that the value is never something impossible.
-        let _ = style.style.fill.bg_color; // just ensure no panic
+        let _ = style.style.fill.color; // just ensure no panic
     }
 }

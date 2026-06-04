@@ -477,5 +477,5 @@ fn test_relationship_whitespace_example() {
 fn test_workbook_theme_colors() {
     let model = load_from_xlsx("tests/custom_theme_colors.xlsx", "en", "UTC", "en").unwrap();
     let style_b15 = model.get_style_for_cell(0, 15, 2).unwrap();
-    assert_eq!(style_b15.fill.fg_color.as_deref(), Some("#C9211E"));
+    assert_eq!(style_b15.fill.color.as_deref(), Some("#C9211E"));
 }

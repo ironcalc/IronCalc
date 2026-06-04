@@ -11,8 +11,7 @@ fn simple_pasting() {
     let mut style = model.get_cell_style(0, 1, 1).unwrap();
     style.fill = Fill {
         pattern_type: "solid".to_string(),
-        fg_color: Some("#FF5577".to_string()),
-        bg_color: Some("#33FF44".to_string()),
+        color: Some("#FF5577".to_string()),
     };
     let styles = vec![vec![style.clone()]];
 

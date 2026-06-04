@@ -125,8 +125,7 @@ export interface WorksheetProperties {
 
 interface CellStyleFill {
   pattern_type: string;
-  fg_color?: string;
-  bg_color?: string;
+  color?: string;
 }
 
 interface CellStyleFont {
@@ -343,8 +342,7 @@ export interface DxfFont {
 
 export interface DxfFill {
   pattern_type: string;
-  fg_color?: string;
-  bg_color?: string;
+  color?: string;
 }
 
 export interface DxfBorderItem {

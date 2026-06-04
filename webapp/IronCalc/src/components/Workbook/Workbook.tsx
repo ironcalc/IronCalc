@@ -154,7 +154,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   };
 
   const onFillColorPicked = (hex: string) => {
-    updateRangeStyle("fill.fg_color", hex);
+    updateRangeStyle("fill.color", hex);
   };
 
   const onNumberFormatPicked = (numberFmt: string) => {
@@ -764,7 +764,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           );
           setRedrawId((id) => id + 1);
         }}
-        fillColor={style.fill.fg_color || "#FFFFFF"}
+        fillColor={style.fill.color || "#FFFFFF"}
         fontColor={style.font.color || "#000000"}
         fontSize={style.font.sz}
         bold={style.font.b}

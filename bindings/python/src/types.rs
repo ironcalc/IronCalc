@@ -156,9 +156,7 @@ pub struct PyFill {
     #[pyo3(get)]
     pub pattern_type: String,
     #[pyo3(get)]
-    pub fg_color: Option<String>,
-    #[pyo3(get)]
-    pub bg_color: Option<String>,
+    pub color: Option<String>,
 }
 
 #[pyclass(eq, eq_int)]
@@ -235,8 +233,7 @@ impl From<&PyFill> for Fill {
     fn from(py_fill: &PyFill) -> Self {
         Fill {
             pattern_type: py_fill.pattern_type.clone(),
-            fg_color: py_fill.fg_color.clone(),
-            bg_color: py_fill.bg_color.clone(),
+            color: py_fill.color.clone(),
         }
     }
 }
@@ -308,8 +305,7 @@ impl From<Fill> for PyFill {
     fn from(fill: Fill) -> Self {
         PyFill {
             pattern_type: fill.pattern_type,
-            fg_color: fill.fg_color,
-            bg_color: fill.bg_color,
+            color: fill.color,
         }
     }
 }

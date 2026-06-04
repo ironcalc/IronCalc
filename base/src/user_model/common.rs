@@ -144,12 +144,8 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
             }
             style.font.sz = new_size;
         }
-        "fill.bg_color" => {
-            style.fill.bg_color = color(value)?;
-            style.fill.pattern_type = "solid".to_string();
-        }
-        "fill.fg_color" => {
-            style.fill.fg_color = color(value)?;
+        "fill.color" | "fill.bg_color" | "fill.fg_color" => {
+            style.fill.color = color(value)?;
             style.fill.pattern_type = "solid".to_string();
         }
         "num_fmt" => {

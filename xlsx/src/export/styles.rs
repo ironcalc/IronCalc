@@ -2,7 +2,7 @@ use ironcalc_base::types::{Styles, Workbook};
 
 use crate::export::{
     dxfs_styles::get_dxfs_xml,
-    styles_util::{get_alignment, get_border_xml, get_color_xml, get_fill_xml},
+    styles_util::{get_alignment, get_border_xml, get_fill_xml},
 };
 
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};

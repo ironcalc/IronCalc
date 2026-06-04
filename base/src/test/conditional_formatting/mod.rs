@@ -69,8 +69,7 @@ fn red_fill() -> Dxf {
     Dxf {
         fill: Some(Fill {
             pattern_type: "solid".to_string(),
-            fg_color: None,
-            bg_color: Some("#FF0000".to_string()),
+            color: Some("#FF0000".to_string()),
         }),
         font: None,
         border: None,
@@ -264,8 +263,8 @@ fn test_color_scale_applies_fill() {
 
     let style_a1 = model.get_extended_style_for_cell(0, 1, 1).unwrap();
     let style_a5 = model.get_extended_style_for_cell(0, 5, 1).unwrap();
-    assert_eq!(style_a1.style.fill.bg_color, Some("#FF0000".to_string()));
-    assert_eq!(style_a5.style.fill.bg_color, Some("#00FF00".to_string()));
+    assert_eq!(style_a1.style.fill.color, Some("#FF0000".to_string()));
+    assert_eq!(style_a5.style.fill.color, Some("#00FF00".to_string()));
 }
 
 #[test]
@@ -294,7 +293,7 @@ fn test_delete_removes_applied_style() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_some());
 
     model.delete_conditional_formatting(0, 0).unwrap();
@@ -304,7 +303,7 @@ fn test_delete_removes_applied_style() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -321,7 +320,7 @@ fn test_rule_only_applies_inside_range() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -355,7 +354,7 @@ fn test_higher_priority_number_wins() {
 
     // A1 = min: the second rule (higher priority number) must win → blue.
     let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
-    assert_eq!(style.style.fill.bg_color, Some("#0000FF".to_string()));
+    assert_eq!(style.style.fill.color, Some("#0000FF".to_string()));
 }
 
 #[test]
@@ -417,11 +416,11 @@ fn test_cell_is_with_format_applies_fill() {
 
     // A4 = 4 > 3, should have red fill
     let style_a4 = model.get_extended_style_for_cell(0, 4, 1).unwrap();
-    assert_eq!(style_a4.style.fill.bg_color, Some("#FF0000".to_string()));
+    assert_eq!(style_a4.style.fill.color, Some("#FF0000".to_string()));
 
     // A1 = 1, not > 3, no CF fill
     let style_a1 = model.get_extended_style_for_cell(0, 1, 1).unwrap();
-    assert!(style_a1.style.fill.bg_color.is_none());
+    assert!(style_a1.style.fill.color.is_none());
 }
 
 #[test]
@@ -443,7 +442,7 @@ fn test_format_retrieved_via_get_dxf() {
         .unwrap()
         .unwrap();
     let fill = dxf.fill.unwrap();
-    assert_eq!(fill.bg_color, Some("#FF0000".to_string()));
+    assert_eq!(fill.color, Some("#FF0000".to_string()));
 }
 
 #[test]
@@ -503,7 +502,7 @@ fn test_cell_is_threshold_from_sum() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     // A3=3 is not > 3
@@ -512,7 +511,7 @@ fn test_cell_is_threshold_from_sum() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -549,7 +548,7 @@ fn test_cell_is_threshold_addition() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     // A3=3 is not > 3
@@ -558,7 +557,7 @@ fn test_cell_is_threshold_addition() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -594,7 +593,7 @@ fn test_blanks_applies_to_empty_cells() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     assert_eq!(
@@ -603,7 +602,7 @@ fn test_blanks_applies_to_empty_cells() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     // A1, A2, A4 are not blank → unstyled
@@ -612,21 +611,21 @@ fn test_blanks_applies_to_empty_cells() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
     assert!(model
         .get_extended_style_for_cell(0, 2, 1)
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
     assert!(model
         .get_extended_style_for_cell(0, 4, 1)
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -658,7 +657,7 @@ fn test_not_blanks_applies_to_non_empty_cells() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     assert_eq!(
@@ -667,7 +666,7 @@ fn test_not_blanks_applies_to_non_empty_cells() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     assert_eq!(
@@ -676,7 +675,7 @@ fn test_not_blanks_applies_to_non_empty_cells() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     // A3, A5 are blank → unstyled
@@ -685,14 +684,14 @@ fn test_not_blanks_applies_to_non_empty_cells() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
     assert!(model
         .get_extended_style_for_cell(0, 5, 1)
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -728,7 +727,7 @@ fn test_errors_applies_to_error_cells() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     // A1 (number), A3 (string), A4 (blank) are not errors → unstyled
@@ -737,21 +736,21 @@ fn test_errors_applies_to_error_cells() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
     assert!(model
         .get_extended_style_for_cell(0, 3, 1)
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
     assert!(model
         .get_extended_style_for_cell(0, 4, 1)
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -783,7 +782,7 @@ fn test_no_errors_applies_to_non_error_cells() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     assert_eq!(
@@ -792,7 +791,7 @@ fn test_no_errors_applies_to_non_error_cells() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     // A2 is an error → unstyled
@@ -801,7 +800,7 @@ fn test_no_errors_applies_to_non_error_cells() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -847,7 +846,7 @@ fn test_color_scale_formula_cfvo_with_sum() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#FF0000".to_string())
     );
     // A5=5 is at the maximum (SUM=5) → green
@@ -857,7 +856,7 @@ fn test_color_scale_formula_cfvo_with_sum() {
             .unwrap()
             .style
             .fill
-            .bg_color,
+            .color,
         Some("#00FF00".to_string())
     );
 }

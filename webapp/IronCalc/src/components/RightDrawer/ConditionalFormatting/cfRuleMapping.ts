@@ -147,7 +147,7 @@ export function formatStyleToDxf(style: FormatStyle): Dxf {
   }
 
   if (style.fillColor) {
-    const fill: DxfFill = { pattern_type: "solid", fg_color: style.fillColor };
+    const fill: DxfFill = { pattern_type: "solid", color: style.fillColor };
     dxf.fill = fill;
   }
 
@@ -161,7 +161,7 @@ export function dxfToFormatStyle(dxf: Dxf | null | undefined): FormatStyle {
     underline: dxf?.font?.u ?? false,
     strike: dxf?.font?.strike ?? false,
     fontColor: dxf?.font?.color ?? "#000000",
-    fillColor: dxf?.fill?.fg_color ?? "",
+    fillColor: dxf?.fill?.color ?? "",
   };
 }
 

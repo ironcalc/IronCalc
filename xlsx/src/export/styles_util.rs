@@ -49,9 +49,11 @@ pub(crate) fn get_border_xml(border: &Border) -> String {
 
 pub(crate) fn get_fill_xml(fill: &Fill) -> String {
     let pattern_type = &fill.pattern_type;
-    let fg_color = get_color_xml(&fill.fg_color, "fgColor");
-    let bg_color = get_color_xml(&fill.bg_color, "bgColor");
-    format!(
-        "<fill><patternFill patternType=\"{pattern_type}\">{fg_color}{bg_color}</patternFill></fill>"
-    )
+    let bg_color = get_color_xml(&fill.color, "bgColor");
+    format!("<fill><patternFill patternType=\"{pattern_type}\">{bg_color}</patternFill></fill>")
+}
+
+pub(crate) fn get_dxf_fill_xml(fill: &Fill) -> String {
+    let bg_color = get_color_xml(&fill.color, "bgColor");
+    format!("<fill><patternFill>{bg_color}</patternFill></fill>")
 }
