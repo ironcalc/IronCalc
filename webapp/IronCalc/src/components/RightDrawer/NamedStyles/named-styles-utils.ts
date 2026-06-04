@@ -48,7 +48,7 @@ export function getTileStyle(style: CellStyle): CSSProperties {
     decorations.push("line-through");
   }
   return {
-    backgroundColor: style.fill.fg_color || undefined,
+    backgroundColor: style.fill.color || undefined,
     color: style.font.color || undefined,
     fontWeight: style.font.b ? "bold" : undefined,
     fontStyle: style.font.i ? "italic" : undefined,

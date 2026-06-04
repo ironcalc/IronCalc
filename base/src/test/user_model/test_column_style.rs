@@ -68,29 +68,29 @@ fn existing_style() {
 
     // Set G123 background to red
     model
-        .update_range_style(&cell_g123, "fill.bg_color", "#333444")
+        .update_range_style(&cell_g123, "fill.color", "#333444")
         .unwrap();
 
     // Now set the style of the whole column
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_g_range, "fill.color", "#555666")
         .unwrap();
 
     // Get the style of G123
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Some("#555666".to_owned()));
 
     model.undo().unwrap();
 
     // Check the style of G123 is now what it was before
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Some("#333444".to_owned()));
 
     model.redo().unwrap();
 
     // Check G123 has the column style now
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Some("#555666".to_owned()));
 }
 
 #[test]
@@ -116,25 +116,25 @@ fn row_column() {
 
     // update the row style
     model
-        .update_range_style(&row_3_range, "fill.bg_color", "#333444")
+        .update_range_style(&row_3_range, "fill.color", "#333444")
         .unwrap();
 
     // update the column style
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_g_range, "fill.color", "#555666")
         .unwrap();
 
     // Check G3 has the column style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Some("#555666".to_owned()));
 
     // undo twice. Color must be default
     model.undo().unwrap();
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Some("#333444".to_owned()));
     model.undo().unwrap();
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, None);
 }
 
 #[test]
@@ -161,29 +161,29 @@ fn column_row() {
 
     // update the column style
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_g_range, "fill.color", "#555666")
         .unwrap();
 
     // update the row style
     model
-        .update_range_style(&row_3_range, "fill.bg_color", "#333444")
+        .update_range_style(&row_3_range, "fill.color", "#333444")
         .unwrap();
 
     // Check G3 has the row style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Some("#333444".to_owned()));
 
     model.undo().unwrap();
 
     // Check G3 has the column style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Some("#555666".to_owned()));
 
     model.undo().unwrap();
 
     // Check G3 has the default_style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, default_style.fill.bg_color);
+    assert_eq!(style.fill.color, default_style.fill.color);
 }
 
 #[test]
@@ -216,16 +216,16 @@ fn row_column_column() {
 
     // update the row style
     model
-        .update_range_style(&row_5_range, "fill.bg_color", "#333444")
+        .update_range_style(&row_5_range, "fill.color", "#333444")
         .unwrap();
 
     // update the column style
     model
-        .update_range_style(&column_c_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_c_range, "fill.color", "#555666")
         .unwrap();
 
     model
-        .update_range_style(&column_e_range, "fill.bg_color", "#CCC111")
+        .update_range_style(&column_e_range, "fill.color", "#CCC111")
         .unwrap();
 
     model.undo().unwrap();
@@ -234,7 +234,7 @@ fn row_column_column() {
 
     // Test E5 has the default style
     let style = model.get_cell_style(0, 5, 5).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, None);
 }
 
 #[test]
@@ -253,7 +253,7 @@ fn width_column_undo() {
         height: LAST_ROW,
     };
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#CCC111")
+        .update_range_style(&column_g_range, "fill.color", "#CCC111")
         .unwrap();
 
     model.undo().unwrap();
@@ -280,7 +280,7 @@ fn height_row_undo() {
     };
 
     model
-        .update_range_style(&row_10_range, "fill.bg_color", "#CCC111")
+        .update_range_style(&row_10_range, "fill.color", "#CCC111")
         .unwrap();
 
     assert_eq!(
@@ -317,19 +317,19 @@ fn cell_row_undo() {
 
     // Set G12 background to red
     model
-        .update_range_style(&cell_g12, "fill.bg_color", "#333444")
+        .update_range_style(&cell_g12, "fill.color", "#333444")
         .unwrap();
 
     model
-        .update_range_style(&row_12_range, "fill.bg_color", "#CCC111")
+        .update_range_style(&row_12_range, "fill.color", "#CCC111")
         .unwrap();
 
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#CCC111".to_string()));
+    assert_eq!(style.fill.color, Some("#CCC111".to_string()));
     model.undo().unwrap();
 
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#333444".to_string()));
+    assert_eq!(style.fill.color, Some("#333444".to_string()));
 }
 
 #[test]
@@ -355,7 +355,7 @@ fn set_column_style_then_cell() {
 
     // Set G12 background to red
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#333444")
+        .update_range_style(&column_g_range, "fill.color", "#333444")
         .unwrap();
 
     model
@@ -363,12 +363,12 @@ fn set_column_style_then_cell() {
         .unwrap();
 
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#333444".to_string()));
+    assert_eq!(style.fill.color, Some("#333444".to_string()));
 
     model.undo().unwrap();
     model.undo().unwrap();
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, None);
 }
 
 #[test]
@@ -394,7 +394,7 @@ fn set_row_style_then_cell() {
 
     // Set G12 background to red
     model
-        .update_range_style(&row_12_range, "fill.bg_color", "#333444")
+        .update_range_style(&row_12_range, "fill.color", "#333444")
         .unwrap();
 
     model
@@ -402,7 +402,7 @@ fn set_row_style_then_cell() {
         .unwrap();
 
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#333444".to_string()));
+    assert_eq!(style.fill.color, Some("#333444".to_string()));
 }
 
 #[test]
@@ -423,14 +423,14 @@ fn column_style_then_row_alignment() {
         height: 1,
     };
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_g_range, "fill.color", "#555666")
         .unwrap();
     model
         .update_range_style(&row_3_range, "alignment.horizontal", "center")
         .unwrap();
     // check the row alignment does not affect the column style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#555666".to_string()));
+    assert_eq!(style.fill.color, Some("#555666".to_string()));
 }
 
 #[test]
@@ -444,7 +444,7 @@ fn column_style_then_width() {
         height: LAST_ROW,
     };
     model
-        .update_range_style(&column_g_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_g_range, "fill.color", "#555666")
         .unwrap();
     model
         .set_columns_width(0, 7, 7, DEFAULT_COLUMN_WIDTH * 2.0)
@@ -487,19 +487,19 @@ fn test_row_column_column() {
 
     // update the row style
     model
-        .update_range_style(&row_5_range, "fill.bg_color", "#333444")
+        .update_range_style(&row_5_range, "fill.color", "#333444")
         .unwrap();
 
     // update the column style
     model
-        .update_range_style(&column_c_range, "fill.bg_color", "#555666")
+        .update_range_style(&column_c_range, "fill.color", "#555666")
         .unwrap();
 
     model
-        .update_range_style(&column_e_range, "fill.bg_color", "#CCC111")
+        .update_range_style(&column_e_range, "fill.color", "#CCC111")
         .unwrap();
 
     // test E5 has the column style
     let style = model.get_cell_style(0, 5, 5).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#CCC111".to_string()));
+    assert_eq!(style.fill.color, Some("#CCC111".to_string()));
 }

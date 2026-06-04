@@ -11,11 +11,10 @@ const ACCENT5: &str = "#5B9BD5";
 const ACCENT6: &str = "#70AD47";
 const DK2: &str = "#44546A";
 
-fn solid_fill(color: &str) -> Fill {
+fn solid_fill(c: &str) -> Fill {
     Fill {
         pattern_type: "solid".to_string(),
-        fg_color: Some(color.to_string()),
-        bg_color: None,
+        color: Some(c.to_string()),
     }
 }
 

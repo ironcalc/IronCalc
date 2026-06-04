@@ -709,7 +709,7 @@ fn styles() {
 
     model.update_range_style(&a2, "font.i", "true").unwrap();
     model
-        .update_range_style(&a3, "fill.bg_color", "#334455")
+        .update_range_style(&a3, "fill.color", "#334455")
         .unwrap();
 
     // We autofill from A1:A3 to A9
@@ -731,7 +731,7 @@ fn styles() {
     assert!(style.font.i);
     // A6 would have the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#334455".to_string()));
+    assert_eq!(style.fill.color, Some("#334455".to_string()));
 
     model.undo().unwrap();
 
@@ -743,7 +743,7 @@ fn styles() {
 
     // A6 would have NOT the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, None);
 
     model.redo().unwrap();
     assert_eq!(
@@ -757,7 +757,7 @@ fn styles() {
 
     // A6 would have the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#334455".to_string()));
+    assert_eq!(style.fill.color, Some("#334455".to_string()));
 }
 
 #[test]

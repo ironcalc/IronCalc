@@ -683,7 +683,7 @@ fn styles() {
 
     model.update_range_style(&b1, "font.i", "true").unwrap();
     model
-        .update_range_style(&c1, "fill.bg_color", "#334455")
+        .update_range_style(&c1, "fill.color", "#334455")
         .unwrap();
 
     model
@@ -704,7 +704,7 @@ fn styles() {
     assert!(style.font.i);
     // A6 would have the style of A3
     let style = model.get_cell_style(0, 1, 6).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#334455".to_string()));
+    assert_eq!(style.fill.color, Some("#334455".to_string()));
 
     model.undo().unwrap();
 
@@ -714,7 +714,7 @@ fn styles() {
     assert!(!style.font.i);
     // A6 would have the style of A3
     let style = model.get_cell_style(0, 1, 6).unwrap();
-    assert_eq!(style.fill.bg_color, None);
+    assert_eq!(style.fill.color, None);
 
     model.redo().unwrap();
     assert_eq!(
@@ -726,7 +726,7 @@ fn styles() {
     assert!(style.font.i);
     // A6 would have the style of A3
     let style = model.get_cell_style(0, 1, 6).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#334455".to_string()));
+    assert_eq!(style.fill.color, Some("#334455".to_string()));
 }
 
 #[test]

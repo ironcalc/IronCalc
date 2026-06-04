@@ -49,7 +49,7 @@ fn is_red(model: &crate::Model<'static>, row: i32, col: i32) -> bool {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         == Some("#FF0000".to_string())
 }
 

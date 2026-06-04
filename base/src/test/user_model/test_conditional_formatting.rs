@@ -103,7 +103,7 @@ fn test_add_triggers_evaluation() {
 
     // No explicit evaluate() needed — UserModel auto-evaluates
     let style = model.get_extended_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.style.fill.bg_color, Some("#FF0000".to_string()));
+    assert_eq!(style.style.fill.color, Some("#FF0000".to_string()));
 }
 
 #[test]
@@ -120,7 +120,7 @@ fn test_delete_triggers_evaluation() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_some());
 
     model.delete_conditional_formatting(0, 0).unwrap();
@@ -129,7 +129,7 @@ fn test_delete_triggers_evaluation() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -152,7 +152,7 @@ fn test_update_triggers_evaluation() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -198,7 +198,7 @@ fn test_undo_add_removes_applied_style() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_some());
 
     model.undo().unwrap();
@@ -207,7 +207,7 @@ fn test_undo_add_removes_applied_style() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 }
 
@@ -256,7 +256,7 @@ fn test_undo_delete_restores_applied_style() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_none());
 
     model.undo().unwrap();
@@ -265,7 +265,7 @@ fn test_undo_delete_restores_applied_style() {
         .unwrap()
         .style
         .fill
-        .bg_color
+        .color
         .is_some());
 }
 

@@ -53,7 +53,7 @@ function initFormatStyle(style: CellStyle): FormatStyle {
     underline: style.font.u,
     strike: style.font.strike,
     fontColor: style.font.color ?? "",
-    fillColor: style.fill.fg_color ?? "",
+    fillColor: style.fill.color ?? "",
   };
 }
 
@@ -154,7 +154,7 @@ const EditNamedStyle = ({
       fill: {
         ...style.fill,
         pattern_type: formatStyle.fillColor ? "solid" : "none",
-        fg_color: formatStyle.fillColor || undefined,
+        color: formatStyle.fillColor || undefined,
       },
       font: {
         ...style.font,

@@ -1110,8 +1110,7 @@ impl<'a> Model<'a> {
                     }
                 }
                 CfCellResult::ColorScale(color) => {
-                    style.fill.fg_color = None;
-                    style.fill.bg_color = Some(color.clone());
+                    style.fill.color = Some(color.clone());
                     style.fill.pattern_type = "solid".to_string();
                 }
                 CfCellResult::DataBar {

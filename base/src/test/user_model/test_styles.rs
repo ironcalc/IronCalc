@@ -145,20 +145,14 @@ fn basic_fill() {
     };
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.fill.bg_color, None);
-    assert_eq!(style.fill.fg_color, None);
+    assert_eq!(style.fill.color, None);
     assert_eq!(&style.fill.pattern_type, "none");
 
-    // bg_color
     model
-        .update_range_style(&range, "fill.bg_color", "#F2F2F2")
-        .unwrap();
-    model
-        .update_range_style(&range, "fill.fg_color", "#F3F4F5")
+        .update_range_style(&range, "fill.color", "#F3F4F5")
         .unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#F2F2F2".to_owned()));
-    assert_eq!(style.fill.fg_color, Some("#F3F4F5".to_owned()));
+    assert_eq!(style.fill.color, Some("#F3F4F5".to_owned()));
     assert_eq!(&style.fill.pattern_type, "solid");
 
     let send_queue = model.flush_send_queue();
@@ -167,8 +161,7 @@ fn basic_fill() {
     model2.apply_external_diffs(&send_queue).unwrap();
 
     let style = model2.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.fill.bg_color, Some("#F2F2F2".to_owned()));
-    assert_eq!(style.fill.fg_color, Some("#F3F4F5".to_owned()));
+    assert_eq!(style.fill.color, Some("#F3F4F5".to_owned()));
 }
 
 #[test]
@@ -182,12 +175,7 @@ fn fill_errors() {
         height: 1,
     };
     assert_eq!(
-        model.update_range_style(&range, "fill.bg_color", "#FFF"),
-        Err("Invalid color: '#FFF'.".to_string())
-    );
-
-    assert_eq!(
-        model.update_range_style(&range, "fill.fg_color", "#FFF"),
+        model.update_range_style(&range, "fill.color", "#FFF"),
         Err("Invalid color: '#FFF'.".to_string())
     );
 }

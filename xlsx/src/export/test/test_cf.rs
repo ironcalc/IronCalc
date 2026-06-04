@@ -95,12 +95,11 @@ fn test_values() {
 }
 
 /// Helpers for building Dxf test values.
-fn fill_dxf(fg: &str) -> Dxf {
+fn fill_dxf(color: &str) -> Dxf {
     Dxf {
         fill: Some(Fill {
             pattern_type: "solid".to_string(),
-            fg_color: Some(fg.to_string()),
-            bg_color: None,
+            color: Some(color.to_string()),
         }),
         ..Default::default()
     }
@@ -118,19 +117,19 @@ fn font_dxf(color: &str) -> Dxf {
 }
 
 /// Verify that a Dxf fill color round-trips correctly.
-fn assert_dxf_fill(model: &Model, dxf_id: u32, expected_fg: &str) {
+fn assert_dxf_fill(model: &Model, dxf_id: u32, expected_color: &str) {
     let dxf = model
         .workbook
         .styles
         .dxfs
         .get(dxf_id as usize)
         .expect("dxf not found");
-    let fg = dxf
+    let color = dxf
         .fill
         .as_ref()
-        .and_then(|f| f.fg_color.as_deref())
+        .and_then(|f| f.color.as_deref())
         .unwrap_or("");
-    assert_eq!(fg, expected_fg, "dxfId={dxf_id} fill mismatch");
+    assert_eq!(color, expected_color, "dxfId={dxf_id} fill mismatch");
 }
 
 #[test]

@@ -187,7 +187,7 @@ fn apply_builtin_named_style_lazy_adds_to_model() {
     let style = model.get_cell_style(0, 1, 1).unwrap();
     assert!(style.font.b);
     assert_eq!(style.font.color.as_deref(), Some("#FA7D00"));
-    assert_eq!(style.fill.fg_color.as_deref(), Some("#F2F2F2"));
+    assert_eq!(style.fill.color.as_deref(), Some("#F2F2F2"));
 
     // Applying again does not add a duplicate entry
     model.on_apply_named_style("Calculation").unwrap();

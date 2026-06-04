@@ -98,13 +98,13 @@ fn test_priority() {
     // Color scale applies: A1 is the min (red) and A5 is the max (green).
     let style_a1 = model.get_extended_style_for_cell(0, 1, 1).unwrap();
     assert_eq!(
-        style_a1.style.fill.bg_color,
+        style_a1.style.fill.color,
         Some("#FF0000".to_string()),
         "A1 (min value) should be red from the color scale"
     );
     let style_a5 = model.get_extended_style_for_cell(0, 5, 1).unwrap();
     assert_eq!(
-        style_a5.style.fill.bg_color,
+        style_a5.style.fill.color,
         Some("#00FF00".to_string()),
         "A5 (max value) should be green from the color scale"
     );
@@ -113,7 +113,7 @@ fn test_priority() {
     // color scale applies; the background must be set (non-None).
     let style_a2 = model.get_extended_style_for_cell(0, 2, 1).unwrap();
     assert!(
-        style_a2.style.fill.bg_color.is_some(),
+        style_a2.style.fill.color.is_some(),
         "A2 should have a color-scale fill even though it is also in the CellIs range"
     );
 
@@ -121,7 +121,7 @@ fn test_priority() {
     // value is empty (0), which does not satisfy > 3, so no fill at all.
     let style_b2 = model.get_extended_style_for_cell(0, 2, 2).unwrap();
     assert!(
-        style_b2.style.fill.bg_color.is_none(),
+        style_b2.style.fill.color.is_none(),
         "B2 (empty cell in CellIs range) should have no fill"
     );
 }
@@ -150,7 +150,7 @@ fn test_all_three_in_same_cell() {
     // A1 = 1 (min): color-scale red, data-bar value 0, arrow-down icon.
     let s1 = model.get_extended_style_for_cell(0, 1, 1).unwrap();
     assert_eq!(
-        s1.style.fill.bg_color,
+        s1.style.fill.color,
         Some("#FF0000".to_string()),
         "A1 should have color-scale red fill"
     );
@@ -162,7 +162,7 @@ fn test_all_three_in_same_cell() {
     // A3 = 3 (middle value): color-scale blends, data-bar at 50%, arrow-right.
     let s3 = model.get_extended_style_for_cell(0, 3, 1).unwrap();
     assert!(
-        s3.style.fill.bg_color.is_some(),
+        s3.style.fill.color.is_some(),
         "A3 should have a color-scale fill"
     );
     let db3 = s3.data_bar.expect("A3 should have a data bar");
@@ -176,7 +176,7 @@ fn test_all_three_in_same_cell() {
     // A5 = 5 (max): color-scale green, data-bar at 1, arrow-up icon.
     let s5 = model.get_extended_style_for_cell(0, 5, 1).unwrap();
     assert_eq!(
-        s5.style.fill.bg_color,
+        s5.style.fill.color,
         Some("#00FF00".to_string()),
         "A5 should have color-scale green fill"
     );
@@ -219,7 +219,7 @@ fn test_higher_priority_number_wins() {
 
     // Rule 2 has the higher priority number and must win: A1 (min) should be blue.
     let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
-    assert_eq!(style.style.fill.bg_color, Some("#0000FF".to_string()));
+    assert_eq!(style.style.fill.color, Some("#0000FF".to_string()));
 }
 
 // Same as above but for icon sets.
@@ -276,8 +276,8 @@ fn test_color_scale_vs_dxf_fill_priority() {
     let blue_fill = Dxf {
         fill: Some(Fill {
             pattern_type: "solid".to_string(),
-            fg_color: None,
-            bg_color: Some("#0000FF".to_string()),
+
+            color: Some("#0000FF".to_string()),
         }),
         ..Dxf::default()
     };
@@ -307,7 +307,7 @@ fn test_color_scale_vs_dxf_fill_priority() {
         // A1=1 matches both; Dxf (priority=2) must override the ColorScale fill.
         let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
         assert_eq!(
-            style.style.fill.bg_color,
+            style.style.fill.color,
             Some("#0000FF".to_string()),
             "Dxf fill (higher priority) should override ColorScale"
         );
@@ -338,7 +338,7 @@ fn test_color_scale_vs_dxf_fill_priority() {
         // A1=1 (min): ColorScale (priority=2) sets red; must override Dxf blue.
         let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
         assert_eq!(
-            style.style.fill.bg_color,
+            style.style.fill.color,
             Some("#FF0000".to_string()),
             "ColorScale (higher priority) should override Dxf fill"
         );

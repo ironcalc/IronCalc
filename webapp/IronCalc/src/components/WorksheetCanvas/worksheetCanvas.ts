@@ -761,12 +761,9 @@ export default class WorksheetCanvas {
     const extended = this.model.getCellStyle(selectedSheet, row, column);
     const style = extended.style;
 
-    // Background: prefer fg_color, then bg_color (used by color-scale CF rules).
     let backgroundColor = this.theme.backgroundColor;
-    if (style.fill.fg_color) {
-      backgroundColor = style.fill.fg_color;
-    } else if (style.fill.pattern_type === "solid" && style.fill.bg_color) {
-      backgroundColor = style.fill.bg_color;
+    if (style.fill.color) {
+      backgroundColor = style.fill.color;
     }
     const cellGridColor = this.model.getShowGridLines(selectedSheet)
       ? this.theme.gridColor
@@ -817,10 +814,10 @@ export default class WorksheetCanvas {
         if (leftStyle.border.right) {
           borderLeftColor = leftStyle.border.right.color;
           borderLeftStyle = leftStyle.border.right.style;
-        } else if (style.fill.fg_color) {
-          borderLeftColor = style.fill.fg_color;
-        } else if (leftStyle.fill.fg_color) {
-          borderLeftColor = leftStyle.fill.fg_color;
+        } else if (style.fill.color) {
+          borderLeftColor = style.fill.color;
+        } else if (leftStyle.fill.color) {
+          borderLeftColor = leftStyle.fill.color;
         }
       }
 
@@ -851,10 +848,10 @@ export default class WorksheetCanvas {
       if (topStyle.border.bottom) {
         borderTopColor = topStyle.border.bottom.color;
         borderTopStyle = topStyle.border.bottom.style;
-      } else if (style.fill.fg_color) {
-        borderTopColor = style.fill.fg_color;
-      } else if (topStyle.fill.fg_color) {
-        borderTopColor = topStyle.fill.fg_color;
+      } else if (style.fill.color) {
+        borderTopColor = style.fill.color;
+      } else if (topStyle.fill.color) {
+        borderTopColor = topStyle.fill.color;
       }
     }
     drawBorder(
@@ -1594,7 +1591,7 @@ export default class WorksheetCanvas {
     // );
     // cellOutline.style.fontWeight = style.font.b ? "bold" : "normal";
     // cellOutline.style.fontStyle = style.font.i ? "italic" : "normal";
-    // cellOutline.style.backgroundColor = style.fill.fg_color;
+    // cellOutline.style.backgroundColor = style.fill.color;
     // TODO: Should we add the same color as the text?
     // Only if it is not a formula?
     // cellOutline.style.color = style.font.color;

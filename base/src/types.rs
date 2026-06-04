@@ -370,8 +370,7 @@ impl Default for Styles {
                 Default::default(),
                 Fill {
                     pattern_type: "gray125".to_string(),
-                    fg_color: None,
-                    bg_color: None,
+                    color: None,
                 },
             ],
             borders: vec![Default::default()],
@@ -492,33 +491,18 @@ impl Default for Font {
     }
 }
 
-// A note on fg and bg color
-// For a solid fill (patternType="solid"), there's no visible pattern
-// the entire cell is filled with the foreground color.
-// So fg_color is what you see as the cell background.
-// bg_color is irrelevant and is set to indexed="64" (automatic/transparent).
-// For a patterned fill (e.g. patternType="darkGrid"), both matter:
-//   * fg_color = the grid lines color
-//   * bg_color = the space between them.
-//
-// TODO: Maybe use an enum for the pattern_type values here?
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Fill {
     pub pattern_type: String,
-    // Foreground color: the color of the pattern itself (the dots, stripes, etc.)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub fg_color: Option<String>,
-    // Background color: the color behind the pattern
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub bg_color: Option<String>,
+    pub color: Option<String>,
 }
 
 impl Default for Fill {
     fn default() -> Self {
         Fill {
             pattern_type: "none".to_string(),
-            fg_color: Default::default(),
-            bg_color: Default::default(),
+            color: Default::default(),
         }
     }
 }

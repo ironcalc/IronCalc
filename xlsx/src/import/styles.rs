@@ -179,8 +179,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
             // Some fills do not have a patternFill, but they have gradientFill
             fills.push(Fill {
                 pattern_type: "solid".to_string(),
-                fg_color: None,
-                bg_color: None,
+                color: None,
             });
             continue;
         }
@@ -206,10 +205,10 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
                 }
             }
         }
+        // Prefer fgColor (solid fill convention); fall back to bgColor
         fills.push(Fill {
             pattern_type,
-            fg_color,
-            bg_color,
+            color: fg_color.or(bg_color),
         })
     }
 
@@ -458,10 +457,10 @@ fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
                                 _ => {}
                             }
                         }
+                        // Prefer fgColor (solid fill convention); fall back to bgColor
                         fill = Some(Fill {
                             pattern_type,
-                            fg_color,
-                            bg_color,
+                            color: fg_color.or(bg_color),
                         });
                     }
                 }

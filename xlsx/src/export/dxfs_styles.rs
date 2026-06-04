@@ -1,5 +1,5 @@
-use crate::export::styles_util::{get_alignment, get_border_xml, get_color_xml, get_fill_xml};
-use ironcalc_base::types::{Dxf, DxfFont, Fill, NumFmt, Styles};
+use crate::export::styles_util::{get_alignment, get_border_xml, get_dxf_fill_xml};
+use ironcalc_base::types::{Dxf, DxfFont, NumFmt, Styles};
 
 use super::escape::escape_xml;
 
@@ -46,7 +46,7 @@ fn get_dxf_xml(dxf: &Dxf) -> String {
         }
     }
     if let Some(fill) = &dxf.fill {
-        parts.push(get_fill_xml(fill));
+        parts.push(get_dxf_fill_xml(fill));
     }
     if let Some(border) = &dxf.border {
         parts.push(get_border_xml(border));
