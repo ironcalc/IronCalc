@@ -147,7 +147,7 @@ export function formatStyleToDxf(style: FormatStyle): Dxf {
   }
 
   if (style.fillColor) {
-    const fill: DxfFill = { pattern_type: "solid", color: style.fillColor };
+    const fill: DxfFill = { color: style.fillColor };
     dxf.fill = fill;
   }
 

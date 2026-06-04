@@ -194,143 +194,6 @@ fn icon_rating_set_name(icon: &Icon, count: usize) -> Option<&'static str> {
     }
 }
 
-/// Maps an IronCalc (Icon, color) pair to an Excel (iconSet, iconId) reference.
-/// First tries for an exact color match; falls back to icon-type only.
-fn icon_to_excel_ref(icon: &Icon, color: &str) -> (&'static str, u32) {
-    // Try standard sets with exact (icon, color) match.
-    for &name in KNOWN_ICON_SETS {
-        if let Some(icons) = icon_set_icons(name) {
-            for (id, (set_icon, set_color)) in icons.iter().enumerate() {
-                if set_icon == icon && set_color.as_str() == color {
-                    return (name, id as u32);
-                }
-            }
-        }
-    }
-    // Try x14 rating sets with exact color.
-    const RATING_SETS: &[(&str, &[(Icon, &str)])] = &[
-        (
-            "3Stars",
-            &[
-                (Icon::Star, "#808080"),
-                (Icon::Star, "#FFD700"),
-                (Icon::Star, "#FFD700"),
-            ],
-        ),
-        (
-            "5Quarters",
-            &[
-                (Icon::Circle, "#808080"),
-                (Icon::Circle, "#ffeb84"),
-                (Icon::Circle, "#ffeb84"),
-                (Icon::Circle, "#ffeb84"),
-                (Icon::Circle, "#FFD700"),
-            ],
-        ),
-        (
-            "3Rating",
-            &[
-                (Icon::FlatRectangle, "#808080"),
-                (Icon::FlatRectangle, "#ffeb84"),
-                (Icon::FlatRectangle, "#4472C4"),
-            ],
-        ),
-        (
-            "4Rating",
-            &[
-                (Icon::FlatRectangle, "#808080"),
-                (Icon::FlatRectangle, "#ffeb84"),
-                (Icon::FlatRectangle, "#ffeb84"),
-                (Icon::FlatRectangle, "#4472C4"),
-            ],
-        ),
-        (
-            "5Rating",
-            &[
-                (Icon::FlatRectangle, "#808080"),
-                (Icon::FlatRectangle, "#ffeb84"),
-                (Icon::FlatRectangle, "#ffeb84"),
-                (Icon::FlatRectangle, "#ffeb84"),
-                (Icon::FlatRectangle, "#4472C4"),
-            ],
-        ),
-    ];
-    for &(set_name, icons) in RATING_SETS {
-        for (id, (set_icon, set_color)) in icons.iter().enumerate() {
-            if set_icon == icon && *set_color == color {
-                return (set_name, id as u32);
-            }
-        }
-    }
-    // Fallback by icon type, ignoring color.
-    match icon {
-        Icon::Star => ("3Stars", 2),
-        Icon::ArrowUp => ("3Arrows", 2),
-        Icon::ArrowRight => ("3Arrows", 1),
-        Icon::ArrowDown => ("3Arrows", 0),
-        Icon::ArrowAngleUp => ("4Arrows", 2),
-        Icon::ArrowAngleDown => ("4Arrows", 1),
-        Icon::Circle => ("3TrafficLights1", 2),
-        Icon::TriangleUp | Icon::TriangleUpFilled => ("3Triangles", 2),
-        Icon::TriangleDown | Icon::TriangleDownFilled => ("3Triangles", 0),
-        Icon::FlatRectangle | Icon::Rhombus => ("3Triangles", 1),
-        Icon::Flag => ("3Flags", 2),
-        Icon::Check | Icon::ThumbsUp => ("3Symbols", 2),
-        Icon::Cross | Icon::ThumbsDown => ("3Symbols", 0),
-        Icon::Exclamation => ("3Symbols", 1),
-        Icon::Heart => ("3TrafficLights1", 2),
-    }
-}
-
-/// Builds the x14:conditionalFormatting block for a custom icon set (IconSet or IconRating).
-/// This goes into the worksheet extLst when there is no matching named Excel icon set.
-fn build_x14_custom_icon_xml(
-    range: &str,
-    excel_priority: u32,
-    cfvos_with_strict: &[(Cfvo, bool)],
-    icons_colors: &[(Icon, String)],
-    show_value: bool,
-) -> String {
-    let show_val = if !show_value { r#" showValue="0""# } else { "" };
-    let cfvo_xml: String = cfvos_with_strict
-        .iter()
-        .map(|(cfvo, is_strict)| {
-            let gte = if *is_strict {
-                r#" gte="1""#
-            } else {
-                r#" gte="0""#
-            };
-            match cfvo {
-                Cfvo::Min => format!(r#"<x14:cfvo type="min"{gte}/>"#),
-                Cfvo::Max => format!(r#"<x14:cfvo type="max"{gte}/>"#),
-                Cfvo::Number(n) => {
-                    format!(r#"<x14:cfvo type="num"{gte}><xm:f>{n}</xm:f></x14:cfvo>"#)
-                }
-                Cfvo::Percent(p) => {
-                    format!(r#"<x14:cfvo type="percent"{gte}><xm:f>{p}</xm:f></x14:cfvo>"#)
-                }
-                Cfvo::Percentile(p) => {
-                    format!(r#"<x14:cfvo type="percentile"{gte}><xm:f>{p}</xm:f></x14:cfvo>"#)
-                }
-                Cfvo::Formula(f) => format!(
-                    r#"<x14:cfvo type="formula"{gte}><xm:f>{}</xm:f></x14:cfvo>"#,
-                    escape_xml(f)
-                ),
-            }
-        })
-        .collect();
-    let icon_refs: String = icons_colors
-        .iter()
-        .map(|(icon, color)| {
-            let (set, id) = icon_to_excel_ref(icon, color);
-            format!(r#"<x14:cfIcon iconSet="{set}" iconId="{id}"/>"#)
-        })
-        .collect();
-    format!(
-        r#"<x14:conditionalFormatting xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main"><x14:cfRule type="iconSet" priority="{excel_priority}"><x14:iconSet custom="1"{show_val}>{cfvo_xml}{icon_refs}</x14:iconSet></x14:cfRule><xm:sqref>{range}</xm:sqref></x14:conditionalFormatting>"#
-    )
-}
-
 fn make_guid(idx: usize) -> String {
     format!("{{{:08X}-0000-0000-0000-000000000000}}", idx + 1)
 }
@@ -583,30 +446,15 @@ fn build_cf_rule_xml(
                     r#"<conditionalFormatting sqref="{range}"><cfRule type="iconSet" priority="{excel_priority}"><iconSet iconSet="{set_name}"{show_val}>{cfvos}</iconSet></cfRule></conditionalFormatting>"#
                 )
             } else {
-                // Custom / unrecognized icon set → x14 custom block only.
-                let cfvos_with_strict: Vec<(Cfvo, bool)> = thresholds
-                    .iter()
-                    .map(|t| (t.cfvo.clone(), t.is_strict))
-                    .collect();
-                let icons_colors: Vec<(Icon, String)> = thresholds
-                    .iter()
-                    .map(|t| (t.icon.clone(), t.color.clone()))
-                    .collect();
-                x14_parts.push(build_x14_custom_icon_xml(
-                    range,
-                    excel_priority,
-                    &cfvos_with_strict,
-                    &icons_colors,
-                    *show_value,
-                ));
+                // TODO: unrecognized set → emit as x14 custom with repeated icon references.
                 return None;
             }
         }
         CfRule::IconRating {
             icon,
-            color,
             thresholds,
             show_value,
+            ..
         } => {
             if let Some(set_name) = icon_rating_set_name(icon, thresholds.len()) {
                 // Known rating set → standard conditionalFormatting element.
@@ -619,20 +467,7 @@ fn build_cf_rule_xml(
                     r#"<conditionalFormatting sqref="{range}"><cfRule type="iconSet" priority="{excel_priority}"><iconSet iconSet="{set_name}"{show_val}>{cfvos}</iconSet></cfRule></conditionalFormatting>"#
                 )
             } else {
-                // Unrecognized rating → emit as x14 custom with repeated icon references.
-                let cfvos_with_strict: Vec<(Cfvo, bool)> =
-                    thresholds.iter().map(|(c, s)| (c.clone(), *s)).collect();
-                let icons_colors: Vec<(Icon, String)> = thresholds
-                    .iter()
-                    .map(|_| (icon.clone(), color.clone()))
-                    .collect();
-                x14_parts.push(build_x14_custom_icon_xml(
-                    range,
-                    excel_priority,
-                    &cfvos_with_strict,
-                    &icons_colors,
-                    *show_value,
-                ));
+                // TODO: unrecognized rating → emit as x14 custom with repeated icon references.
                 return None;
             }
         }
