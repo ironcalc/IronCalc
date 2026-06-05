@@ -1,4 +1,4 @@
-import type { CellStyle, FmtSettings } from "@ironcalc/wasm";
+import type { CellStyle, FmtSettings, Model } from "@ironcalc/wasm";
 import { Check } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,7 @@ export interface SaveError {
 }
 
 interface EditNamedStyleProps {
+  model: Model;
   name: string;
   style: CellStyle;
   formatOptions: FmtSettings;
@@ -46,20 +47,21 @@ function formatStyleToPreview(formatStyle: FormatStyle): CSSProperties {
   };
 }
 
-function initFormatStyle(style: CellStyle): FormatStyle {
+function initFormatStyle(model: Model, style: CellStyle): FormatStyle {
   return {
     bold: style.font.b,
     italic: style.font.i,
     underline: style.font.u,
     strike: style.font.strike,
-    fontColor: style.font.color ?? "",
-    fillColor: style.fill.color ?? "",
+    fontColor: model.resolveColor(style.font.color),
+    fillColor: model.resolveColor(style.fill.color),
   };
 }
 
 const CUSTOM_VALUE = "__custom__";
 
 const EditNamedStyle = ({
+  model,
   name: initialName,
   style,
   formatOptions,
@@ -86,7 +88,7 @@ const EditNamedStyle = ({
   const [name, setName] = useState(getDefaultName);
   const [nameError, setNameError] = useState("");
   const [formatStyle, setFormatStyle] = useState<FormatStyle>(() =>
-    initFormatStyle(style),
+    initFormatStyle(model, style),
   );
   const [numFmt, setNumFmt] = useState<string>(style.num_fmt);
   const [customFmt, setCustomFmt] = useState("");

@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 // All tests use Excel date-formula expressions (TODAY(), DATE(), YEAR()) so that
 // the cell values are always relative to "today" at evaluation time.  This makes
@@ -26,7 +27,7 @@ fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
         .style
         .fill
         .color
-        == Some("#FF0000".to_string())
+        == Color::Rgb("#FF0000".to_string())
 }
 
 // Sets a formula in A{row} and returns the model after evaluating it.

@@ -1106,23 +1106,23 @@ impl<'a> Model<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # use ironcalc_base::Model;
+    /// # use ironcalc_base::{Model, types::Color};
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
-    /// assert_eq!(model.workbook.worksheet(0)?.color, None);
+    /// assert_eq!(model.workbook.worksheet(0)?.color, Color::None);
     /// model.set_sheet_color(0, "#DBBE29")?;
-    /// assert_eq!(model.workbook.worksheet(0)?.color, Some("#DBBE29".to_string()));
+    /// assert_eq!(model.workbook.worksheet(0)?.color, Color::Rgb("#DBBE29".to_string()));
     /// # Ok(())
     /// # }
     /// ```
     pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> Result<(), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         if color.is_empty() {
-            worksheet.color = None;
+            worksheet.color = Color::None;
             return Ok(());
         }
         if common::is_valid_hex_color(color) {
-            worksheet.color = Some(color.to_string());
+            worksheet.color = Color::Rgb(color.to_string());
             return Ok(());
         }
         Err(format!("Invalid color: {color}"))
@@ -1133,6 +1133,16 @@ impl<'a> Model<'a> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         worksheet.state = state;
         Ok(())
+    }
+
+    /// Sets the workbook theme.
+    pub fn set_theme(&mut self, theme: crate::types::Theme) {
+        self.workbook.theme = theme;
+    }
+
+    /// Returns the name of the current workbook theme.
+    pub fn get_theme_name(&self) -> &str {
+        &self.workbook.theme.name
     }
 
     /// Makes the grid lines in the sheet visible (`true`) or hidden (`false`)

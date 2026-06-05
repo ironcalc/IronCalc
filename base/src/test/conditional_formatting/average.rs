@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::types::Color;
 use crate::{cf_types::CfRuleInput, test::util::new_empty_model};
 
 // Ten evenly-spaced values: 10, 20, …, 100.
@@ -39,7 +40,7 @@ fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
         .style
         .fill
         .color
-        == Some("#FF0000".to_string())
+        == Color::Rgb("#FF0000".to_string())
 }
 
 // ---------------------------------------------------------------------------

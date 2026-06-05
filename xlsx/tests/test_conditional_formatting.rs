@@ -5,7 +5,7 @@
 use std::fs;
 
 use ironcalc::{export::save_to_xlsx, import::load_from_xlsx};
-use ironcalc_base::{cf_types::Icon, Model, UserModel};
+use ironcalc_base::{cf_types::Icon, types::Color, Model, UserModel};
 
 #[test]
 fn test_cf_file() {
@@ -27,8 +27,8 @@ fn test_cf_file() {
                 .get_extended_style_for_cell(sheet, row, column)
                 .unwrap();
             let style = extended_style.style;
-            assert_eq!(style.font.color, Some("#9C0006".to_string()));
-            assert_eq!(style.fill.color, Some("#FFC7CE".to_string()));
+            assert_eq!(style.font.color, Color::Rgb("#9C0006".to_string()));
+            assert_eq!(style.fill.color, Color::Rgb("#FFC7CE".to_string()));
         }
     }
 

@@ -321,6 +321,12 @@ impl<'a> UserModel<'a> {
                 } => {
                     self.model.set_show_grid_lines(*sheet, *old_value)?;
                 }
+                Diff::SetTheme {
+                    old_value,
+                    new_value: _,
+                } => {
+                    self.model.workbook.theme = *old_value.clone();
+                }
                 Diff::CreateDefinedName {
                     name,
                     scope,
@@ -759,6 +765,12 @@ impl<'a> UserModel<'a> {
                     new_value,
                 } => {
                     self.model.set_show_grid_lines(*sheet, *new_value)?;
+                }
+                Diff::SetTheme {
+                    old_value: _,
+                    new_value,
+                } => {
+                    self.model.workbook.theme = *new_value.clone();
                 }
                 Diff::CreateDefinedName { name, scope, value } => {
                     self.model.new_defined_name(name, *scope, value)?

@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::test::util::new_empty_model;
 use crate::types::{ArrayKind, Cell, FormulaValue, SpillValue};
@@ -19,11 +20,11 @@ fn spill_preserves_background_color_in_column_direction() {
     // Set background color on D5 and D6 (which will be in the spill range of D2)
     // D2 + 5 rows = D2:D6, so D5 and D6 are in the spill area
     let mut style_d5 = model.get_style_for_cell(0, 5, 4).unwrap();
-    style_d5.fill.color = Some("#FF0000".to_string());
+    style_d5.fill.color = Color::Rgb("#FF0000".to_string());
     model.set_cell_style(0, 5, 4, &style_d5).unwrap();
 
     let mut style_d6 = model.get_style_for_cell(0, 6, 4).unwrap();
-    style_d6.fill.color = Some("#00FF00".to_string());
+    style_d6.fill.color = Color::Rgb("#00FF00".to_string());
     model.set_cell_style(0, 6, 4, &style_d6).unwrap();
 
     // Enter =A4:A8 in D2 — it spills into D3:D6
@@ -39,14 +40,14 @@ fn spill_preserves_background_color_in_column_direction() {
     let style_d5_after = model.get_style_for_cell(0, 5, 4).unwrap();
     assert_eq!(
         style_d5_after.fill.color,
-        Some("#FF0000".to_string()),
+        Color::Rgb("#FF0000".to_string()),
         "D5 background color should be preserved after spill"
     );
 
     let style_d6_after = model.get_style_for_cell(0, 6, 4).unwrap();
     assert_eq!(
         style_d6_after.fill.color,
-        Some("#00FF00".to_string()),
+        Color::Rgb("#00FF00".to_string()),
         "D6 background color should be preserved after spill"
     );
 }
@@ -65,11 +66,11 @@ fn spill_preserves_background_color_in_row_direction() {
     // Set background color on D3 and E3 (which will be in the spill range of B3)
     // =A1:E1 entered in B3 spills right: B3:F3, so D3 and E3 are spill cells
     let mut style_d3 = model.get_style_for_cell(0, 3, 4).unwrap();
-    style_d3.fill.color = Some("#0000FF".to_string());
+    style_d3.fill.color = Color::Rgb("#0000FF".to_string());
     model.set_cell_style(0, 3, 4, &style_d3).unwrap();
 
     let mut style_e3 = model.get_style_for_cell(0, 3, 5).unwrap();
-    style_e3.fill.color = Some("#FFFF00".to_string());
+    style_e3.fill.color = Color::Rgb("#FFFF00".to_string());
     model.set_cell_style(0, 3, 5, &style_e3).unwrap();
 
     // Enter =A1:E1 in B3 — it spills right into C3:F3
@@ -85,14 +86,14 @@ fn spill_preserves_background_color_in_row_direction() {
     let style_d3_after = model.get_style_for_cell(0, 3, 4).unwrap();
     assert_eq!(
         style_d3_after.fill.color,
-        Some("#0000FF".to_string()),
+        Color::Rgb("#0000FF".to_string()),
         "D3 background color should be preserved after horizontal spill"
     );
 
     let style_e3_after = model.get_style_for_cell(0, 3, 5).unwrap();
     assert_eq!(
         style_e3_after.fill.color,
-        Some("#FFFF00".to_string()),
+        Color::Rgb("#FFFF00".to_string()),
         "E3 background color should be preserved after horizontal spill"
     );
 }
@@ -326,11 +327,11 @@ fn cse_array_formula_preserves_background_color_in_column_direction() {
 
     // Set background colors on A2 and A3 before entering the CSE formula A1:A3
     let mut style_a2 = model.get_style_for_cell(0, 2, 1).unwrap();
-    style_a2.fill.color = Some("#FF0000".to_string());
+    style_a2.fill.color = Color::Rgb("#FF0000".to_string());
     model.set_cell_style(0, 2, 1, &style_a2).unwrap();
 
     let mut style_a3 = model.get_style_for_cell(0, 3, 1).unwrap();
-    style_a3.fill.color = Some("#00FF00".to_string());
+    style_a3.fill.color = Color::Rgb("#00FF00".to_string());
     model.set_cell_style(0, 3, 1, &style_a3).unwrap();
 
     // Enter CSE formula =123 over A1:A3
@@ -345,14 +346,14 @@ fn cse_array_formula_preserves_background_color_in_column_direction() {
     let style_a2_after = model.get_style_for_cell(0, 2, 1).unwrap();
     assert_eq!(
         style_a2_after.fill.color,
-        Some("#FF0000".to_string()),
+        Color::Rgb("#FF0000".to_string()),
         "A2 background color should be preserved after CSE array formula"
     );
 
     let style_a3_after = model.get_style_for_cell(0, 3, 1).unwrap();
     assert_eq!(
         style_a3_after.fill.color,
-        Some("#00FF00".to_string()),
+        Color::Rgb("#00FF00".to_string()),
         "A3 background color should be preserved after CSE array formula"
     );
 }
@@ -363,11 +364,11 @@ fn cse_array_formula_preserves_background_color_in_row_direction() {
 
     // Set background colors on B1 and C1 before entering the CSE formula A1:C1
     let mut style_b1 = model.get_style_for_cell(0, 1, 2).unwrap();
-    style_b1.fill.color = Some("#0000FF".to_string());
+    style_b1.fill.color = Color::Rgb("#0000FF".to_string());
     model.set_cell_style(0, 1, 2, &style_b1).unwrap();
 
     let mut style_c1 = model.get_style_for_cell(0, 1, 3).unwrap();
-    style_c1.fill.color = Some("#FFFF00".to_string());
+    style_c1.fill.color = Color::Rgb("#FFFF00".to_string());
     model.set_cell_style(0, 1, 3, &style_c1).unwrap();
 
     // Enter CSE formula =456 over A1:C1
@@ -382,14 +383,14 @@ fn cse_array_formula_preserves_background_color_in_row_direction() {
     let style_b1_after = model.get_style_for_cell(0, 1, 2).unwrap();
     assert_eq!(
         style_b1_after.fill.color,
-        Some("#0000FF".to_string()),
+        Color::Rgb("#0000FF".to_string()),
         "B1 background color should be preserved after CSE array formula"
     );
 
     let style_c1_after = model.get_style_for_cell(0, 1, 3).unwrap();
     assert_eq!(
         style_c1_after.fill.color,
-        Some("#FFFF00".to_string()),
+        Color::Rgb("#FFFF00".to_string()),
         "C1 background color should be preserved after CSE array formula"
     );
 }

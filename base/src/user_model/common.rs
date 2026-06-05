@@ -13,7 +13,7 @@ use crate::{
     },
     model::{FmtSettings, Model},
     types::{
-        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, HorizontalAlignment,
+        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
         SheetProperties, SheetState, Style, VerticalAlignment,
     },
     utils::is_valid_hex_color,
@@ -69,14 +69,14 @@ fn boolean(value: &str) -> Result<bool, String> {
     }
 }
 
-fn color(value: &str) -> Result<Option<String>, String> {
+fn color(value: &str) -> Result<Color, String> {
     if value.is_empty() {
-        return Ok(None);
+        return Ok(Color::None);
     }
     if !is_valid_hex_color(value) {
         return Err(format!("Invalid color: '{value}'."));
     }
-    Ok(Some(value.to_owned()))
+    Ok(Color::Rgb(value.to_owned()))
 }
 
 fn horizontal(value: &str) -> Result<HorizontalAlignment, String> {
@@ -599,8 +599,9 @@ impl<'a> UserModel<'a> {
     /// * [UserModel::get_worksheets_properties]
     pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> Result<(), String> {
         let old_value = match &self.model.workbook.worksheet(sheet)?.color {
-            Some(c) => c.clone(),
-            None => "".to_string(),
+            Color::Rgb(s) => s.clone(),
+            Color::Theme(idx, tint) => self.model.workbook.theme.resolve(*idx, *tint),
+            Color::None => "".to_string(),
         };
         self.model.set_sheet_color(sheet, color)?;
         self.push_diff_list(vec![Diff::SetSheetColor {
@@ -1755,6 +1756,28 @@ impl<'a> UserModel<'a> {
     #[inline]
     pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
         self.model.get_worksheets_properties()
+    }
+
+    /// Sets the workbook theme.
+    pub fn set_theme(&mut self, theme: crate::types::Theme) {
+        let old_value = self.model.workbook.theme.clone();
+        let new_value = theme.clone();
+        self.model.set_theme(theme);
+        self.push_diff_list(vec![Diff::SetTheme {
+            old_value: Box::new(old_value),
+            new_value: Box::new(new_value),
+        }]);
+    }
+
+    /// Returns the name of the current workbook theme.
+    pub fn get_theme_name(&self) -> &str {
+        self.model.get_theme_name()
+    }
+
+    /// Resolves a `Color` value to a CSS hex string using the current workbook theme.
+    /// Returns an empty string for `Color::None`.
+    pub fn resolve_color(&self, color: &crate::types::Color) -> String {
+        color.to_rgb(&self.model.workbook.theme)
     }
 
     /// Set the gid lines in the worksheet to visible (`true`) or hidden (`false`)

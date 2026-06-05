@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::test::util::new_empty_model;
 use crate::types::Fill;
@@ -10,7 +11,7 @@ fn simple_pasting() {
     let mut model = UserModel::from_model(model);
     let mut style = model.get_cell_style(0, 1, 1).unwrap();
     style.fill = Fill {
-        color: Some("#FF5577".to_string()),
+        color: Color::Rgb("#FF5577".to_string()),
     };
     let styles = vec![vec![style.clone()]];
 

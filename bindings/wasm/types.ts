@@ -118,13 +118,24 @@ export type CellArrayStructure =
 
 export interface WorksheetProperties {
   name: string;
-  color: string;
+  /** Tab color. Absent when Color::None. */
+  color?: Color;
   sheet_id: number;
   state: string;
 }
 
+/**
+ * A cell color value. Matches the Rust `Color` enum serialized with `#[serde(untagged)]`:
+ * - `string`           → `Color::Rgb("#RRGGBB")`
+ * - `[number, number]` → `Color::Theme(index, tint)`
+ * - absent/undefined   → `Color::None` (field omitted via skip_serializing_if)
+ *
+ * Pass to `model.resolveColor(color)` to get the final CSS hex string.
+ */
+export type Color = string | [number, number];
+
 interface CellStyleFill {
-  color?: string;
+  color?: Color;
 }
 
 interface CellStyleFont {
@@ -133,7 +144,7 @@ interface CellStyleFont {
   i: boolean;
   strike: boolean;
   sz: number;
-  color?: string;
+  color?: Color;
   name: string;
   family: number;
   scheme: string;
@@ -159,7 +170,7 @@ export enum BorderStyle {
 
 interface BorderItem {
   style: string;
-  color: string;
+  color?: Color;
 }
 
 interface CellStyleBorder {
@@ -333,19 +344,19 @@ export interface DxfFont {
   b?: boolean;
   i?: boolean;
   sz?: number;
-  color?: string;
+  color?: Color;
   name?: string;
   family?: number;
   scheme?: FontScheme;
 }
 
 export interface DxfFill {
-  color?: string;
+  color?: Color;
 }
 
 export interface DxfBorderItem {
   style: BorderStyle;
-  color?: string;
+  color?: Color;
 }
 
 export interface DxfBorder {
@@ -482,4 +493,28 @@ export interface NamedStyle {
   name: string;
   /** The full style definition. */
   style: CellStyle;
+}
+
+/** A builtin workbook color theme returned by `getThemeList`. */
+export interface IronCalcTheme {
+  /** Display name, e.g. "Office", "Retrospect". */
+  name: string;
+  /** Dark 1 (text/background). */
+  dk1: string;
+  /** Light 1 (text/background). */
+  lt1: string;
+  /** Dark 2 (text/background). */
+  dk2: string;
+  /** Light 2 (text/background). */
+  lt2: string;
+  accent1: string;
+  accent2: string;
+  accent3: string;
+  accent4: string;
+  accent5: string;
+  accent6: string;
+  /** Hyperlink color. */
+  hlink: string;
+  /** Followed-hyperlink color. */
+  fol_hlink: string;
 }

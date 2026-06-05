@@ -4,7 +4,7 @@
 use crate::{
     cf_types::{CfRule, CfRuleInput, Cfvo, ColorScaleThreshold, Icon, ValueOperator},
     test::user_model::util::new_empty_user_model,
-    types::Dxf,
+    types::{Color, Dxf},
 };
 
 fn color_scale() -> CfRuleInput {
@@ -103,7 +103,7 @@ fn test_add_triggers_evaluation() {
 
     // No explicit evaluate() needed — UserModel auto-evaluates
     let style = model.get_extended_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.style.fill.color, Some("#FF0000".to_string()));
+    assert_eq!(style.style.fill.color, Color::Rgb("#FF0000".to_string()));
 }
 
 #[test]

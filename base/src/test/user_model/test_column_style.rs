@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
@@ -21,7 +22,7 @@ fn column_width() {
     assert!(!style.font.u);
     assert!(!style.font.strike);
     // Default font has no color set — see Font::default() in types.rs.
-    assert_eq!(style.font.color, None);
+    assert_eq!(style.font.color, Color::None);
 
     // Set the whole column style and check it works
     model.update_range_style(&range, "font.b", "true").unwrap();
@@ -78,19 +79,19 @@ fn existing_style() {
 
     // Get the style of G123
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#555666".to_owned()));
 
     model.undo().unwrap();
 
     // Check the style of G123 is now what it was before
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_owned()));
 
     model.redo().unwrap();
 
     // Check G123 has the column style now
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#555666".to_owned()));
 }
 
 #[test]
@@ -126,15 +127,15 @@ fn row_column() {
 
     // Check G3 has the column style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#555666".to_owned()));
 
     // undo twice. Color must be default
     model.undo().unwrap();
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_owned()));
     model.undo().unwrap();
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 }
 
 #[test]
@@ -171,13 +172,13 @@ fn column_row() {
 
     // Check G3 has the row style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_owned()));
 
     model.undo().unwrap();
 
     // Check G3 has the column style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#555666".to_owned()));
 
     model.undo().unwrap();
 
@@ -234,7 +235,7 @@ fn row_column_column() {
 
     // Test E5 has the default style
     let style = model.get_cell_style(0, 5, 5).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 }
 
 #[test]
@@ -325,11 +326,11 @@ fn cell_row_undo() {
         .unwrap();
 
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#CCC111".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#CCC111".to_string()));
     model.undo().unwrap();
 
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#333444".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_string()));
 }
 
 #[test]
@@ -363,12 +364,12 @@ fn set_column_style_then_cell() {
         .unwrap();
 
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#333444".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_string()));
 
     model.undo().unwrap();
     model.undo().unwrap();
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 }
 
 #[test]
@@ -402,7 +403,7 @@ fn set_row_style_then_cell() {
         .unwrap();
 
     let style = model.get_cell_style(0, 12, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#333444".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_string()));
 }
 
 #[test]
@@ -430,7 +431,7 @@ fn column_style_then_row_alignment() {
         .unwrap();
     // check the row alignment does not affect the column style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#555666".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#555666".to_string()));
 }
 
 #[test]
@@ -501,5 +502,5 @@ fn test_row_column_column() {
 
     // test E5 has the column style
     let style = model.get_cell_style(0, 5, 5).unwrap();
-    assert_eq!(style.fill.color, Some("#CCC111".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#CCC111".to_string()));
 }

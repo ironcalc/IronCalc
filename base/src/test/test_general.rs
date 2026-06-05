@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::constants::DEFAULT_ROW_HEIGHT;
 
@@ -333,18 +334,18 @@ fn test_style_fmt_id() {
 #[test]
 fn test_set_sheet_color() {
     let mut model = new_empty_model();
-    assert_eq!(model.workbook.worksheet(0).unwrap().color, None);
+    assert_eq!(model.workbook.worksheet(0).unwrap().color, Color::None);
     assert!(model.set_sheet_color(0, "#FFFAAA").is_ok());
 
     // Test new tab color is properly set
     assert_eq!(
         model.workbook.worksheet(0).unwrap().color,
-        Some("#FFFAAA".to_string())
+        Color::Rgb("#FFFAAA".to_string())
     );
 
     // Test we can remove it
     assert!(model.set_sheet_color(0, "").is_ok());
-    assert_eq!(model.workbook.worksheet(0).unwrap().color, None);
+    assert_eq!(model.workbook.worksheet(0).unwrap().color, Color::None);
 }
 
 #[test]

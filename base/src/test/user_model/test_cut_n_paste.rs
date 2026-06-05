@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::expressions::types::Area;
 use crate::test::user_model::util::new_empty_user_model;
@@ -580,7 +581,7 @@ fn paste_from_cell_beyond_dimension_clears_style() {
         .update_range_style(&range, "fill.color", "#00FF00")
         .unwrap();
     let style = model.get_cell_style(0, 6, 4).unwrap();
-    assert_eq!(style.fill.color, Some("#00FF00".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#00FF00".to_owned()));
 
     // Step 3: copy H6 (row=6, col=8) — column H is beyond max_column (E=5)
     model.set_selected_cell(6, 8).unwrap();
@@ -595,7 +596,7 @@ fn paste_from_cell_beyond_dimension_clears_style() {
 
     // D6's background should now match H6 (no fill), not retain the green from step 2
     let style = model.get_cell_style(0, 6, 4).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 }
 
 // When a cell/range is cut and pasted, absolute references in external formulas
@@ -695,7 +696,7 @@ fn undo_cut_paste_removes_style_from_target() {
         .unwrap();
     assert_eq!(
         model.get_cell_style(0, 3, 3).unwrap().fill.color,
-        Some("#00FF00".to_owned())
+        Color::Rgb("#00FF00".to_owned())
     );
 
     // Cut C3 and paste to H3
@@ -711,7 +712,7 @@ fn undo_cut_paste_removes_style_from_target() {
     assert_eq!(model.get_formatted_cell_value(0, 3, 8).unwrap(), "1");
     assert_eq!(
         model.get_cell_style(0, 3, 8).unwrap().fill.color,
-        Some("#00FF00".to_owned())
+        Color::Rgb("#00FF00".to_owned())
     );
 
     // Undo the cut-paste
@@ -721,14 +722,14 @@ fn undo_cut_paste_removes_style_from_target() {
     assert_eq!(model.get_formatted_cell_value(0, 3, 3).unwrap(), "1");
     assert_eq!(
         model.get_cell_style(0, 3, 3).unwrap().fill.color,
-        Some("#00FF00".to_owned()),
+        Color::Rgb("#00FF00".to_owned()),
         "C3 should have its green background restored after undo"
     );
 
     // H3 was empty before the paste — it must have no style after undo
     assert_eq!(
         model.get_cell_style(0, 3, 8).unwrap().fill.color,
-        None,
+        Color::None,
         "H3 should have no style after undo (it was empty before the paste)"
     );
 }

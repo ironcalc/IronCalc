@@ -1,9 +1,11 @@
 import type {
   BorderOptions,
   ClipboardCell,
+  IronCalcTheme,
   Model,
   WorksheetProperties,
 } from "@ironcalc/wasm";
+import { getThemeList } from "@ironcalc/wasm";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -65,7 +67,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const worksheets = model.getWorksheetsProperties();
   const info = worksheets.map(
     ({ name, color, sheet_id, state }: WorksheetProperties) => {
-      return { name, color: color ? color : "#FFF", sheetId: sheet_id, state };
+      return {
+        name,
+        color: model.resolveColor(color) || "#FFF",
+        sheetId: sheet_id,
+        state,
+      };
     },
   );
   const focusWorkbook = useCallback(() => {
@@ -243,6 +250,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   };
 
   const fmtSettings = model.getFmtSettings();
+  const themes = getThemeList() as IronCalcTheme[];
+  const currentThemeName = model.getThemeName();
 
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
   // the Rust backend
@@ -764,8 +773,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           );
           setRedrawId((id) => id + 1);
         }}
-        fillColor={style.fill.color || "#FFFFFF"}
-        fontColor={style.font.color || "#000000"}
+        fillColor={model.resolveColor(style.fill.color) || "#FFFFFF"}
+        fontColor={model.resolveColor(style.font.color) || "#000000"}
         fontSize={style.font.sz}
         bold={style.font.b}
         underline={style.font.u}
@@ -793,6 +802,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }
         onOpenNamedStyles={() => openDrawer("namedStyles")}
         isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
+        themes={themes}
+        currentThemeName={currentThemeName}
+        onThemePicked={(theme: IronCalcTheme) => {
+          model.setTheme(theme);
+          setRedrawId((id) => id + 1);
+        }}
       />
       <div
         className="ic-workbook-worksheet-area-left"

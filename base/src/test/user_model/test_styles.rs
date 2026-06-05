@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::{
     expressions::types::Area,
@@ -23,7 +24,7 @@ fn basic_fonts() {
     assert!(!style.font.u);
     assert!(!style.font.strike);
     // Default font has no color set — see Font::default() in types.rs.
-    assert_eq!(style.font.color, None);
+    assert_eq!(style.font.color, Color::None);
 
     // bold
     model.update_range_style(&range, "font.b", "true").unwrap();
@@ -52,7 +53,7 @@ fn basic_fonts() {
         .update_range_style(&range, "font.color", "#F1F1F1")
         .unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.font.color, Some("#F1F1F1".to_owned()));
+    assert_eq!(style.font.color, Color::Rgb("#F1F1F1".to_owned()));
 
     while model.can_undo() {
         model.undo().unwrap();
@@ -64,7 +65,7 @@ fn basic_fonts() {
     assert!(!style.font.u);
     assert!(!style.font.strike);
     // After undo, font returns to the default — see Font::default() in types.rs.
-    assert_eq!(style.font.color, None);
+    assert_eq!(style.font.color, Color::None);
 
     while model.can_redo() {
         model.redo().unwrap();
@@ -75,7 +76,7 @@ fn basic_fonts() {
     assert!(style.font.b);
     assert!(style.font.u);
     assert!(style.font.strike);
-    assert_eq!(style.font.color, Some("#F1F1F1".to_owned()));
+    assert_eq!(style.font.color, Color::Rgb("#F1F1F1".to_owned()));
 
     let send_queue = model.flush_send_queue();
 
@@ -87,7 +88,7 @@ fn basic_fonts() {
     assert!(style.font.b);
     assert!(style.font.u);
     assert!(style.font.strike);
-    assert_eq!(style.font.color, Some("#F1F1F1".to_owned()));
+    assert_eq!(style.font.color, Color::Rgb("#F1F1F1".to_owned()));
 }
 
 #[test]
@@ -145,13 +146,13 @@ fn basic_fill() {
     };
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     model
         .update_range_style(&range, "fill.color", "#F3F4F5")
         .unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.fill.color, Some("#F3F4F5".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#F3F4F5".to_owned()));
 
     let send_queue = model.flush_send_queue();
 
@@ -159,7 +160,7 @@ fn basic_fill() {
     model2.apply_external_diffs(&send_queue).unwrap();
 
     let style = model2.get_cell_style(0, 1, 1).unwrap();
-    assert_eq!(style.fill.color, Some("#F3F4F5".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#F3F4F5".to_owned()));
 }
 
 #[test]

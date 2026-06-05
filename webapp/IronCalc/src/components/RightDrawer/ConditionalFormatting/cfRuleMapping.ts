@@ -8,6 +8,7 @@ import type {
   DxfFont,
   Icon,
   IconThreshold,
+  Model,
   PeriodType,
   TextOperator,
   ValueOperator,
@@ -154,14 +155,17 @@ export function formatStyleToDxf(style: FormatStyle): Dxf {
   return dxf;
 }
 
-export function dxfToFormatStyle(dxf: Dxf | null | undefined): FormatStyle {
+export function dxfToFormatStyle(
+  model: Model,
+  dxf: Dxf | null | undefined,
+): FormatStyle {
   return {
     bold: dxf?.font?.b ?? false,
     italic: dxf?.font?.i ?? false,
     underline: dxf?.font?.u ?? false,
     strike: dxf?.font?.strike ?? false,
-    fontColor: dxf?.font?.color ?? "#000000",
-    fillColor: dxf?.fill?.color ?? "",
+    fontColor: model.resolveColor(dxf?.font?.color) || "#000000",
+    fillColor: model.resolveColor(dxf?.fill?.color),
   };
 }
 

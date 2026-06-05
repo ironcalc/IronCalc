@@ -1,14 +1,13 @@
 use std::{collections::HashMap, io::Read};
 
 use ironcalc_base::types::{
-    Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Dxf, DxfFont,
-    Fill, Font, FontScheme, HorizontalAlignment, NumFmt, Styles, VerticalAlignment,
+    Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Color, Dxf,
+    DxfFont, Fill, Font, FontScheme, HorizontalAlignment, NumFmt, Styles, Theme, VerticalAlignment,
 };
 use roxmltree::Node;
 
 use crate::error::XlsxError;
 
-use super::theme::Theme;
 use super::util::{get_attribute, get_bool, get_bool_false, get_color, get_number};
 
 fn get_border(node: Node, name: &str, theme: &Theme) -> Result<Option<BorderItem>, XlsxError> {
@@ -43,7 +42,7 @@ fn get_border(node: Node, name: &str, theme: &Theme) -> Result<Option<BorderItem
         if color_node.len() == 1 {
             color = get_color(color_node[0], theme)?;
         } else {
-            color = None;
+            color = Color::None;
         }
     } else {
         return Ok(None);
@@ -99,7 +98,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         // both mean "use the automatic/default color", which we represent as None.
         // Collapsing this to Some("#000000") would make it indistinguishable from an
         // explicit <color rgb="FF000000"/>.
-        let mut color: Option<String> = None;
+        let mut color: Color = Color::None;
         let mut family = 2;
         let mut scheme = FontScheme::default();
         for feature in font.children() {
@@ -182,8 +181,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         }
         let pattern_fill = pattern_fill[0];
 
-        let mut fg_color = None;
-        let mut bg_color = None;
+        let mut fg_color = Color::None;
+        let mut bg_color = Color::None;
         for feature in pattern_fill.children() {
             match feature.tag_name().name() {
                 "fgColor" => {
@@ -200,7 +199,11 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         }
         // Prefer fgColor (solid fill convention); fall back to bgColor
         fills.push(Fill {
-            color: fg_color.or(bg_color),
+            color: if fg_color.is_some() {
+                fg_color
+            } else {
+                bg_color
+            },
         })
     }
 
@@ -438,8 +441,8 @@ fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
                         .collect::<Vec<Node>>();
                     if pattern_fill_nodes.len() == 1 {
                         let pf = pattern_fill_nodes[0];
-                        let mut fg_color = None;
-                        let mut bg_color = None;
+                        let mut fg_color = Color::None;
+                        let mut bg_color = Color::None;
                         for feat in pf.children() {
                             match feat.tag_name().name() {
                                 "fgColor" => fg_color = get_color(feat, theme)?,
@@ -449,7 +452,11 @@ fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
                         }
                         // Prefer fgColor (solid fill convention); fall back to bgColor
                         fill = Some(Fill {
-                            color: fg_color.or(bg_color),
+                            color: if fg_color.is_some() {
+                                fg_color
+                            } else {
+                                bg_color
+                            },
                         });
                     }
                 }

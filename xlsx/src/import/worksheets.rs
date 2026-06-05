@@ -13,8 +13,8 @@ use ironcalc_base::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        ArrayKind, Cell, Col, Comment, DefinedName, FormulaValue, Row, SheetData, SheetState,
-        SpillValue, Table, Worksheet, WorksheetView,
+        ArrayKind, Cell, Col, Color, Comment, DefinedName, FormulaValue, Row, SheetData,
+        SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
 use roxmltree::Node;
@@ -26,7 +26,6 @@ use super::{
     conditional_formatting::load_conditional_formatting,
     shared_strings::decode_xlsx_escapes,
     tables::load_table,
-    theme::Theme,
     util::{get_attribute, get_color, get_number},
 };
 
@@ -196,11 +195,11 @@ fn load_merge_cells(ws: Node) -> Result<Vec<String>, XlsxError> {
     Ok(merge_cells)
 }
 
-fn load_sheet_color(ws: Node, theme: &Theme) -> Result<Option<String>, XlsxError> {
+fn load_sheet_color(ws: Node, theme: &Theme) -> Result<Color, XlsxError> {
     // <sheetPr>
     //     <tabColor theme="5" tint="-0.249977111117893"/>
     // </sheetPr>
-    let mut color = None;
+    let mut color = Color::None;
     let sheet_pr = ws
         .children()
         .filter(|n| n.has_tag_name("sheetPr"))

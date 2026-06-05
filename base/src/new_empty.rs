@@ -469,6 +469,7 @@ impl<'a> Model<'a> {
             },
             tables: HashMap::new(),
             views,
+            theme: Default::default(),
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;

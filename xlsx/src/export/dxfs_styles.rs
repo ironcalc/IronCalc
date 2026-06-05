@@ -1,5 +1,5 @@
 use crate::export::styles_util::{get_alignment, get_border_xml, get_dxf_fill_xml};
-use ironcalc_base::types::{Dxf, DxfFont, NumFmt, Styles};
+use ironcalc_base::types::{Color, Dxf, DxfFont, NumFmt, Styles};
 
 use super::escape::escape_xml;
 
@@ -20,11 +20,18 @@ fn get_dxf_font_xml(font: &DxfFont) -> String {
     if let Some(sz) = font.sz {
         parts.push(format!("<sz val=\"{sz}\"/>"));
     }
-    if let Some(color) = &font.color {
-        parts.push(format!(
-            "<color rgb=\"FF{}\"/>",
-            color.trim_start_matches('#')
-        ));
+    match &font.color {
+        Color::Rgb(s) => {
+            parts.push(format!("<color rgb=\"FF{}\"/>", s.trim_start_matches('#')));
+        }
+        Color::Theme(idx, tint) => {
+            if *tint == 0.0 {
+                parts.push(format!("<color theme=\"{idx}\"/>"));
+            } else {
+                parts.push(format!("<color theme=\"{idx}\" tint=\"{:.16}\"/>", tint));
+            }
+        }
+        Color::None => {}
     }
     parts.join("")
 }

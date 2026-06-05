@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::{
     cf_types::{CfRule, CfRuleInput, Cfvo, ValueOperator},
@@ -9,7 +10,7 @@ use crate::{
 fn blue_fill() -> Dxf {
     Dxf {
         fill: Some(Fill {
-            color: Some("#0000FF".to_string()),
+            color: Color::Rgb("#0000FF".to_string()),
         }),
         font: None,
         border: None,
@@ -151,7 +152,7 @@ fn test_stop_if_true_matched_cell_gets_matching_rule_fill() {
     let style_a4 = model.get_extended_style_for_cell(0, 4, 1).unwrap();
     assert_eq!(
         style_a4.style.fill.color,
-        Some("#0000FF".to_string()),
+        Color::Rgb("#0000FF".to_string()),
         "A4 should show the blue fill from the stop_if_true rule"
     );
 }
@@ -200,7 +201,7 @@ fn test_no_stop_if_true_matched_cell_has_both_fill_and_data_bar() {
     let style_a4 = model.get_extended_style_for_cell(0, 4, 1).unwrap();
     assert_eq!(
         style_a4.style.fill.color,
-        Some("#0000FF".to_string()),
+        Color::Rgb("#0000FF".to_string()),
         "A4 should have the blue fill"
     );
     assert!(

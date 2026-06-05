@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::test::user_model::util::new_empty_user_model;
 
@@ -186,8 +187,8 @@ fn apply_builtin_named_style_lazy_adds_to_model() {
     // The cell A1 carries the correct Calculation properties
     let style = model.get_cell_style(0, 1, 1).unwrap();
     assert!(style.font.b);
-    assert_eq!(style.font.color.as_deref(), Some("#FA7D00"));
-    assert_eq!(style.fill.color.as_deref(), Some("#F2F2F2"));
+    assert_eq!(style.font.color, Color::Rgb("#FA7D00".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#F2F2F2".to_string()));
 
     // Applying again does not add a duplicate entry
     model.on_apply_named_style("Calculation").unwrap();

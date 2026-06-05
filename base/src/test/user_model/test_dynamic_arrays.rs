@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 use crate::{expressions::types::Area, test::user_model::util::new_empty_user_model};
 
 #[test]
@@ -214,7 +215,7 @@ fn undo_spill_error_preserves_styling_on_spilled_cells() {
         .update_range_style(&a2, "fill.color", "#FF0000")
         .unwrap();
     let style = model.get_cell_style(0, 2, 1).unwrap();
-    assert_eq!(style.fill.color, Some("#FF0000".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#FF0000".to_owned()));
 
     // Enter a value in A2, blocking the spill → A1 shows #SPILL!
     model.set_user_input(0, 2, 1, "blocking").unwrap();
@@ -230,5 +231,5 @@ fn undo_spill_error_preserves_styling_on_spilled_cells() {
 
     // The background color applied before the spill-blocking edit must still be present
     let style = model.get_cell_style(0, 2, 1).unwrap();
-    assert_eq!(style.fill.color, Some("#FF0000".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#FF0000".to_owned()));
 }

@@ -11,7 +11,7 @@ use crate::{
         ValueOperator,
     },
     expressions::types::{CellReferenceIndex, CellReferenceRC},
-    types::Dxf,
+    types::{Color, Dxf},
     Model,
 };
 
@@ -1110,7 +1110,7 @@ impl<'a> Model<'a> {
                     }
                 }
                 CfCellResult::ColorScale(color) => {
-                    style.fill.color = Some(color.clone());
+                    style.fill.color = Color::Rgb(color.clone());
                 }
                 CfCellResult::DataBar {
                     positive_color,
