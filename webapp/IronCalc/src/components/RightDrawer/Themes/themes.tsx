@@ -12,6 +12,8 @@ const INITIAL_THEMES: ThemeData[] = [
     name: "Default",
     textColor: "#272525",
     bgColor: "#FFFFFF",
+    lightColor: "#F5F5F5",
+    darkColor: "#333333",
     accentColors: [
       "#4472C4",
       "#ED7D31",
@@ -25,6 +27,8 @@ const INITIAL_THEMES: ThemeData[] = [
     name: "Ocean",
     textColor: "#1A2B3C",
     bgColor: "#F0F7FF",
+    lightColor: "#E8F4FD",
+    darkColor: "#1A2B3C",
     accentColors: [
       "#0066CC",
       "#00A3BF",
@@ -38,6 +42,8 @@ const INITIAL_THEMES: ThemeData[] = [
     name: "Forest",
     textColor: "#1B3A1F",
     bgColor: "#F0FFF4",
+    lightColor: "#E8F5E9",
+    darkColor: "#1B3A1F",
     accentColors: [
       "#2D6A4F",
       "#40916C",
@@ -101,6 +107,8 @@ const Themes = ({ onClose }: ThemesProps) => {
             initialName={editing.theme.name}
             initialTextColor={editing.theme.textColor}
             initialBgColor={editing.theme.bgColor}
+            initialLightColor={editing.theme.lightColor}
+            initialDarkColor={editing.theme.darkColor}
             initialAccentColors={editing.theme.accentColors}
             onSave={handleSave}
             onClose={() => setEditing(null)}

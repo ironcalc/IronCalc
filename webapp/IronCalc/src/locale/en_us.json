@@ -265,7 +265,9 @@
     "back_to_list": "Back to list",
     "bg_color_label": "Background",
     "cancel": "Cancel",
+    "dark_color_label": "Dark",
     "edit_theme": "Edit theme",
+    "light_color_label": "Light",
     "panel_title": "Themes",
     "text_color_label": "Text"
   },

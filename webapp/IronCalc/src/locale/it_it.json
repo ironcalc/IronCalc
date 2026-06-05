@@ -265,7 +265,9 @@
     "back_to_list": "Torna alla lista",
     "bg_color_label": "Sfondo",
     "cancel": "Annulla",
+    "dark_color_label": "Scuro",
     "edit_theme": "Modifica tema",
+    "light_color_label": "Chiaro",
     "panel_title": "Temi",
     "text_color_label": "Testo"
   },

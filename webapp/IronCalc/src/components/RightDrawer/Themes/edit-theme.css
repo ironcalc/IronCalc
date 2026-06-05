@@ -20,7 +20,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  border-bottom: 1px solid var(--palette-grey-200);
+  border-bottom: 1px solid var(--palette-grey-300);
 }
 
 .ic-edit-theme-header-box-text {
