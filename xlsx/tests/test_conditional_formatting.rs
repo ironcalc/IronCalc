@@ -1,8 +1,11 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::panic)]
+#![allow(clippy::expect_used)]
 
-use ironcalc::import::load_from_xlsx;
-use ironcalc_base::cf_types::Icon;
+use std::fs;
+
+use ironcalc::{export::save_to_xlsx, import::load_from_xlsx};
+use ironcalc_base::{cf_types::Icon, Model, UserModel};
 
 #[test]
 fn test_cf_file() {
@@ -62,4 +65,62 @@ fn test_cf_file() {
         assert_eq!(icon.icon, Icon::Flag);
         assert_eq!(icon.color, "#f8696b".to_string());
     }
+}
+
+fn test_cf_lists(model: Model) {
+    let model = UserModel::from_model(model);
+    {
+        // Sheet1
+        let list = model.get_conditional_formatting_list(0).unwrap();
+        assert_eq!(list.len(), 18);
+    }
+    {
+        // IconSets
+        let list = model.get_conditional_formatting_list(1).unwrap();
+        assert_eq!(list.len(), 20);
+    }
+    {
+        // Text
+        let list = model.get_conditional_formatting_list(2).unwrap();
+        assert_eq!(list.len(), 3);
+    }
+    {
+        // TimePeriod
+        let list = model.get_conditional_formatting_list(3).unwrap();
+        assert_eq!(list.len(), 4);
+    }
+    {
+        // ColorScales3
+        let list = model.get_conditional_formatting_list(4).unwrap();
+        assert_eq!(list.len(), 3);
+    }
+    {
+        // ColorScales2
+        let list = model.get_conditional_formatting_list(5).unwrap();
+        assert_eq!(list.len(), 2);
+    }
+    {
+        // stop-if-true
+        let list = model.get_conditional_formatting_list(6).unwrap();
+        assert_eq!(list.len(), 4);
+    }
+}
+
+#[test]
+fn test_conditional_formatting_lists() {
+    let model = load_from_xlsx(
+        "tests/conditional_formatting/cf_tests.xlsx",
+        "en",
+        "UTC",
+        "en",
+    )
+    .unwrap();
+    // save and load back to check that lists are preserved
+    let temp_file_name = "tests/conditional_formatting/cf_tests_round_trip.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    test_cf_lists(model);
+
+    let imported = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    test_cf_lists(imported);
+    fs::remove_file(temp_file_name).unwrap();
 }

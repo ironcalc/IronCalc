@@ -1,3 +1,7 @@
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::panic)]
+#![allow(clippy::expect_used)]
+
 use std::fs;
 
 use ironcalc_base::{
@@ -1078,10 +1082,11 @@ fn test_cf_custom_icon_set_round_trip() {
         "custom mixed-icon set not found in imported model"
     );
 
-    // The Heart rating (B1:B10) should come back as an IconSet (from x14 custom).
-    let has_heart = imp_cfs
-        .iter()
-        .any(|cf| cf.range == "B1:B10" && matches!(&cf.cf_rule, CfRule::IconSet { .. }));
+    // The Heart rating (B1:B10) should come back as an IconSet with 3 thresholds.
+    let has_heart = imp_cfs.iter().any(|cf| {
+        cf.range == "B1:B10"
+            && matches!(&cf.cf_rule, CfRule::IconRating { thresholds, .. } if thresholds.len() == 3)
+    });
     assert!(has_heart, "heart rating icon not found in imported model");
 
     // The ThumbsUp/Down set (C1:C10) will be missed.
