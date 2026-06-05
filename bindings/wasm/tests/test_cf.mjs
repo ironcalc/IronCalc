@@ -92,7 +92,7 @@ test('CF: color scale applies fill to cells', () => {
     model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
     // A1 is the minimum value → gets the min color
     const extended = model.getCellStyle(0, 1, 1);
-    assert.strictEqual(extended.style.fill.bg_color, '#FF0000');
+    assert.strictEqual(extended.style.fill.color, '#FF0000');
 });
 
 test('CF: data bar sets fill proportion on cells', () => {
@@ -113,13 +113,14 @@ test('CF: CellIs GreaterThan applies fill color', () => {
         operator: 'GreaterThan',
         formula: '3',
         formula2: null,
-        format: { fill: { bg_color: '#FF0000' } },
+        format: { fill: { color: '#FF0000' } },
+        stop_if_true: false,
     };
     model.addConditionalFormatting(0, 'A1:A5', rule);
     // A4=4 > 3 → red fill
-    assert.strictEqual(model.getCellStyle(0, 4, 1).style.fill.bg_color, '#FF0000');
+    assert.strictEqual(model.getCellStyle(0, 4, 1).style.fill.color, '#FF0000');
     // A1=1, not > 3 → no CF fill
-    const a1Fill = model.getCellStyle(0, 1, 1).style.fill.bg_color;
+    const a1Fill = model.getCellStyle(0, 1, 1).style.fill.color;
     assert.ok(a1Fill === undefined || a1Fill === null || a1Fill === '');
 });
 
@@ -131,16 +132,17 @@ test('CF: CellIs Between applies fill to cells in range', () => {
         operator: 'Between',
         formula: '2',
         formula2: '4',
-        format: { fill: { bg_color: '#FF0000' } },
+        format: { fill: { color: '#FF0000' } },
+        stop_if_true: false,
     };
     model.addConditionalFormatting(0, 'A1:A5', rule);
     // A2=2, A3=3, A4=4 are between 2 and 4 → red fill
-    assert.strictEqual(model.getCellStyle(0, 2, 1).style.fill.bg_color, '#FF0000');
-    assert.strictEqual(model.getCellStyle(0, 3, 1).style.fill.bg_color, '#FF0000');
-    assert.strictEqual(model.getCellStyle(0, 4, 1).style.fill.bg_color, '#FF0000');
+    assert.strictEqual(model.getCellStyle(0, 2, 1).style.fill.color, '#FF0000');
+    assert.strictEqual(model.getCellStyle(0, 3, 1).style.fill.color, '#FF0000');
+    assert.strictEqual(model.getCellStyle(0, 4, 1).style.fill.color, '#FF0000');
     // A1=1, A5=5 are outside the range → no fill
-    const a1Fill = model.getCellStyle(0, 1, 1).style.fill.bg_color;
-    const a5Fill = model.getCellStyle(0, 5, 1).style.fill.bg_color;
+    const a1Fill = model.getCellStyle(0, 1, 1).style.fill.color;
+    const a5Fill = model.getCellStyle(0, 5, 1).style.fill.color;
     assert.ok(a1Fill === undefined || a1Fill === null || a1Fill === '');
     assert.ok(a5Fill === undefined || a5Fill === null || a5Fill === '');
 });
@@ -153,14 +155,15 @@ test('CF: CellIs Equal applies fill only to matching cell', () => {
         operator: 'Equal',
         formula: '2',
         formula2: null,
-        format: { fill: { bg_color: '#0000FF' } },
+        format: { fill: { color: '#0000FF' } },
+        stop_if_true: false,
     };
     model.addConditionalFormatting(0, 'A1:A3', rule);
     // A2=2 matches → blue fill
-    assert.strictEqual(model.getCellStyle(0, 2, 1).style.fill.bg_color, '#0000FF');
+    assert.strictEqual(model.getCellStyle(0, 2, 1).style.fill.color, '#0000FF');
     // A1=1, A3=3 don't match → no fill
-    const a1Fill = model.getCellStyle(0, 1, 1).style.fill.bg_color;
-    const a3Fill = model.getCellStyle(0, 3, 1).style.fill.bg_color;
+    const a1Fill = model.getCellStyle(0, 1, 1).style.fill.color;
+    const a3Fill = model.getCellStyle(0, 3, 1).style.fill.color;
     assert.ok(a1Fill === undefined || a1Fill === null || a1Fill === '');
     assert.ok(a3Fill === undefined || a3Fill === null || a3Fill === '');
 });
@@ -174,14 +177,15 @@ test('CF: Text Contains applies fill to matching cells', () => {
         type: 'Text',
         operator: 'Contains',
         value: 'hello',
-        format: { fill: { bg_color: '#00FF00' } },
+        format: { fill: { color: '#00FF00' } },
+        stop_if_true: false,
     };
     model.addConditionalFormatting(0, 'A1:A3', rule);
     // A1 and A3 contain "hello" → green fill
-    assert.strictEqual(model.getCellStyle(0, 1, 1).style.fill.bg_color, '#00FF00');
-    assert.strictEqual(model.getCellStyle(0, 3, 1).style.fill.bg_color, '#00FF00');
+    assert.strictEqual(model.getCellStyle(0, 1, 1).style.fill.color, '#00FF00');
+    assert.strictEqual(model.getCellStyle(0, 3, 1).style.fill.color, '#00FF00');
     // A2 does not contain "hello" → no fill
-    const a2Fill = model.getCellStyle(0, 2, 1).style.fill.bg_color;
+    const a2Fill = model.getCellStyle(0, 2, 1).style.fill.color;
     assert.ok(a2Fill === undefined || a2Fill === null || a2Fill === '');
 });
 
@@ -189,12 +193,13 @@ test('CF: getDxfForConditionalFormatting returns format', () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     const rule = {
         type: 'DuplicateValues',
-        format: { fill: { bg_color: '#AABBCC' } },
+        format: { fill: { color: '#AABBCC' } },
+        stop_if_true: false,
     };
     model.addConditionalFormatting(0, 'A1:A5', rule);
     const dxf = model.getDxfForConditionalFormatting(0, 0);
     assert.ok(dxf != null, 'dxf should be present');
-    assert.strictEqual(dxf.fill.bg_color, '#AABBCC');
+    assert.strictEqual(dxf.fill.color, '#AABBCC');
 });
 
 test('CF: getDxfForConditionalFormatting returns undefined for ColorScale', () => {
