@@ -62,10 +62,12 @@ fn value_operator_to_str(op: &ValueOperator) -> &'static str {
 
 fn text_operator_to_type(op: &TextOperator) -> &'static str {
     match op {
-        TextOperator::Contains | TextOperator::Equals => "containsText",
+        TextOperator::Contains => "containsText",
         TextOperator::DoesNotContain => "notContainsText",
         TextOperator::BeginsWith => "beginsWith",
         TextOperator::EndsWith => "endsWith",
+        // Equals is handled separately as an "expression" rule
+        TextOperator::Equals => "expression",
     }
 }
 
@@ -141,10 +143,13 @@ fn time_period_formula_str(anchor: &str, period: &PeriodType) -> String {
 }
 
 fn text_formula_str(anchor: &str, op: &TextOperator, value: &str) -> String {
+    // For Equals, double any embedded quotes (Excel formula string escaping)
+    let escaped = value.replace('"', "\"\"");
     match op {
-        TextOperator::Contains | TextOperator::Equals => {
+        TextOperator::Contains => {
             format!(r#"NOT(ISERROR(SEARCH("{value}",{anchor})))"#)
         }
+        TextOperator::Equals => format!(r#"{anchor}="{escaped}""#),
         TextOperator::DoesNotContain => format!(r#"ISERROR(SEARCH("{value}",{anchor}))"#),
         TextOperator::BeginsWith => format!(r#"LEFT({anchor},LEN("{value}"))="{value}""#),
         TextOperator::EndsWith => format!(r#"RIGHT({anchor},LEN("{value}"))="{value}""#),
@@ -321,29 +326,56 @@ fn build_cf_rule_xml(
             stop_if_true,
         } => {
             let sif = stop_if_true_attr(*stop_if_true);
-            let type_str = text_operator_to_type(operator);
             let anchor = anchor_cell_from_sqref(range);
             let formula = text_formula_str(anchor, operator, value);
-            format!(
-                r#"<conditionalFormatting sqref="{range}"><cfRule type="{type_str}" dxfId="{dxf_id}" priority="{excel_priority}"{sif} text="{}"><formula>{}</formula></cfRule></conditionalFormatting>"#,
-                escape_xml(value),
-                escape_xml(&formula),
-            )
+            if *operator == TextOperator::Equals {
+                // "expression" rules don't use a text= attribute
+                format!(
+                    r#"<conditionalFormatting sqref="{range}"><cfRule type="expression" dxfId="{dxf_id}" priority="{excel_priority}"{sif}><formula>{}</formula></cfRule></conditionalFormatting>"#,
+                    escape_xml(&formula),
+                )
+            } else {
+                let type_str = text_operator_to_type(operator);
+                format!(
+                    r#"<conditionalFormatting sqref="{range}"><cfRule type="{type_str}" dxfId="{dxf_id}" priority="{excel_priority}"{sif} text="{}"><formula>{}</formula></cfRule></conditionalFormatting>"#,
+                    escape_xml(value),
+                    escape_xml(&formula),
+                )
+            }
         }
         CfRule::TimePeriod {
             time_period,
+            date1,
+            date2,
             dxf_id,
             stop_if_true,
-            ..
         } => {
-            let period_str = period_type_to_str(time_period)?;
             let sif = stop_if_true_attr(*stop_if_true);
             let anchor = anchor_cell_from_sqref(range);
-            let formula = time_period_formula_str(anchor, time_period);
-            format!(
-                r#"<conditionalFormatting sqref="{range}"><cfRule type="timePeriod" dxfId="{dxf_id}" priority="{excel_priority}"{sif} timePeriod="{period_str}"><formula>{}</formula></cfRule></conditionalFormatting>"#,
-                escape_xml(&formula),
-            )
+            match time_period {
+                PeriodType::Between | PeriodType::NotBetween => {
+                    let (d1, d2) = (date1.as_deref()?, date2.as_deref()?);
+                    let and_formula =
+                        format!(r#"AND({anchor}>=DATEVALUE("{d1}"),{anchor}<=DATEVALUE("{d2}"))"#);
+                    let formula = if matches!(time_period, PeriodType::NotBetween) {
+                        format!("NOT({and_formula})")
+                    } else {
+                        and_formula
+                    };
+                    format!(
+                        r#"<conditionalFormatting sqref="{range}"><cfRule type="expression" dxfId="{dxf_id}" priority="{excel_priority}"{sif}><formula>{}</formula></cfRule></conditionalFormatting>"#,
+                        escape_xml(&formula),
+                    )
+                }
+                _ => {
+                    let period_str = period_type_to_str(time_period)?;
+                    let formula = time_period_formula_str(anchor, time_period);
+                    format!(
+                        r#"<conditionalFormatting sqref="{range}"><cfRule type="timePeriod" dxfId="{dxf_id}" priority="{excel_priority}"{sif} timePeriod="{period_str}"><formula>{}</formula></cfRule></conditionalFormatting>"#,
+                        escape_xml(&formula),
+                    )
+                }
+            }
         }
         CfRule::Blanks {
             dxf_id,

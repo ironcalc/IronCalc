@@ -49,7 +49,7 @@ fn test_values() {
     // noop
     model.evaluate();
     {
-        let temp_file_name = "temp_file_test_values.xlsx";
+        let temp_file_name = "temp_file_test_cf_values.xlsx";
         save_to_xlsx(&model, temp_file_name).unwrap();
 
         let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
@@ -73,7 +73,7 @@ fn test_values() {
         fs::remove_file(temp_file_name).unwrap();
     }
     {
-        let temp_file_name = "temp_file_test_values.ic";
+        let temp_file_name = "temp_file_test_cf_values.ic";
         save_to_icalc(&model, temp_file_name).unwrap();
 
         let model = load_from_icalc(temp_file_name, "en").unwrap();
