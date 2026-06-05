@@ -11,6 +11,8 @@ export interface ThemeData {
   name: string;
   textColor: string;
   bgColor: string;
+  lightColor: string;
+  darkColor: string;
   accentColors: [string, string, string, string, string, string];
 }
 
@@ -18,6 +20,8 @@ interface EditThemeProps {
   initialName?: string;
   initialTextColor?: string;
   initialBgColor?: string;
+  initialLightColor?: string;
+  initialDarkColor?: string;
   initialAccentColors?: [string, string, string, string, string, string];
   onSave: (data: ThemeData) => void;
   onClose: () => void;
@@ -79,6 +83,8 @@ const EditTheme = ({
   initialName = "",
   initialTextColor = "#000000",
   initialBgColor = "#FFFFFF",
+  initialLightColor = "#F5F5F5",
+  initialDarkColor = "#333333",
   initialAccentColors = DEFAULT_ACCENT_COLORS,
   onSave,
   onClose,
@@ -86,6 +92,8 @@ const EditTheme = ({
   const { t } = useTranslation();
   const [textColor, setTextColor] = useState(initialTextColor);
   const [bgColor, setBgColor] = useState(initialBgColor);
+  const [lightColor, setLightColor] = useState(initialLightColor);
+  const [darkColor, setDarkColor] = useState(initialDarkColor);
   const [accentColors, setAccentColors] = useState(initialAccentColors);
 
   const setAccent = (index: number, color: string) => {
@@ -97,7 +105,14 @@ const EditTheme = ({
   };
 
   const handleSave = () => {
-    onSave({ name: initialName, textColor, bgColor, accentColors });
+    onSave({
+      name: initialName,
+      textColor,
+      bgColor,
+      lightColor,
+      darkColor,
+      accentColors,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -130,6 +145,20 @@ const EditTheme = ({
             label={t("themes.bg_color_label")}
             value={bgColor}
             onChange={setBgColor}
+            onKeyDown={handleKeyDown}
+          />
+        </div>
+        <div className="ic-edit-theme-section">
+          <ColorField
+            label={t("themes.dark_color_label")}
+            value={darkColor}
+            onChange={setDarkColor}
+            onKeyDown={handleKeyDown}
+          />
+          <ColorField
+            label={t("themes.light_color_label")}
+            value={lightColor}
+            onChange={setLightColor}
             onKeyDown={handleKeyDown}
           />
         </div>
