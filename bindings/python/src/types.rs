@@ -154,8 +154,6 @@ pub struct PyFont {
 #[derive(Clone)]
 pub struct PyFill {
     #[pyo3(get)]
-    pub pattern_type: String,
-    #[pyo3(get)]
     pub color: Option<String>,
 }
 
@@ -232,7 +230,6 @@ impl From<&PyBorderStyle> for BorderStyle {
 impl From<&PyFill> for Fill {
     fn from(py_fill: &PyFill) -> Self {
         Fill {
-            pattern_type: py_fill.pattern_type.clone(),
             color: py_fill.color.clone(),
         }
     }
@@ -303,10 +300,7 @@ impl From<&PyStyle> for Style {
 // From non-Py to Py
 impl From<Fill> for PyFill {
     fn from(fill: Fill) -> Self {
-        PyFill {
-            pattern_type: fill.pattern_type,
-            color: fill.color,
-        }
+        PyFill { color: fill.color }
     }
 }
 

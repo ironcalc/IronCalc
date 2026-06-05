@@ -102,7 +102,6 @@ fn test_values() {
 fn fill_dxf(color: &str) -> Dxf {
     Dxf {
         fill: Some(Fill {
-            pattern_type: "solid".to_string(),
             color: Some(color.to_string()),
         }),
         ..Default::default()

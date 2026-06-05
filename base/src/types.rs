@@ -366,13 +366,7 @@ impl Default for Styles {
         Styles {
             num_fmts: vec![],
             fonts: vec![Default::default()],
-            fills: vec![
-                Default::default(),
-                Fill {
-                    pattern_type: "gray125".to_string(),
-                    color: None,
-                },
-            ],
+            fills: vec![Default::default(), Default::default()],
             borders: vec![Default::default()],
             cell_style_xfs: vec![Default::default()],
             cell_xfs: vec![Default::default()],
@@ -491,20 +485,10 @@ impl Default for Font {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct Fill {
-    pub pattern_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
-}
-
-impl Default for Fill {
-    fn default() -> Self {
-        Fill {
-            pattern_type: "none".to_string(),
-            color: Default::default(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]

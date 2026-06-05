@@ -9,7 +9,6 @@ use crate::{
 fn blue_fill() -> Dxf {
     Dxf {
         fill: Some(Fill {
-            pattern_type: "solid".to_string(),
             color: Some("#0000FF".to_string()),
         }),
         font: None,

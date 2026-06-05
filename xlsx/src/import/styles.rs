@@ -177,18 +177,11 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         if pattern_fill.len() != 1 {
             // safety belt
             // Some fills do not have a patternFill, but they have gradientFill
-            fills.push(Fill {
-                pattern_type: "solid".to_string(),
-                color: None,
-            });
+            fills.push(Fill::default());
             continue;
         }
         let pattern_fill = pattern_fill[0];
 
-        let pattern_type = pattern_fill
-            .attribute("patternType")
-            .unwrap_or("none")
-            .to_string();
         let mut fg_color = None;
         let mut bg_color = None;
         for feature in pattern_fill.children() {
@@ -207,7 +200,6 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         }
         // Prefer fgColor (solid fill convention); fall back to bgColor
         fills.push(Fill {
-            pattern_type,
             color: fg_color.or(bg_color),
         })
     }
@@ -446,8 +438,6 @@ fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
                         .collect::<Vec<Node>>();
                     if pattern_fill_nodes.len() == 1 {
                         let pf = pattern_fill_nodes[0];
-                        let pattern_type =
-                            pf.attribute("patternType").unwrap_or("solid").to_string();
                         let mut fg_color = None;
                         let mut bg_color = None;
                         for feat in pf.children() {
@@ -459,7 +449,6 @@ fn load_dxfs(style_sheet: Node, theme: &Theme) -> Result<Vec<Dxf>, XlsxError> {
                         }
                         // Prefer fgColor (solid fill convention); fall back to bgColor
                         fill = Some(Fill {
-                            pattern_type,
                             color: fg_color.or(bg_color),
                         });
                     }

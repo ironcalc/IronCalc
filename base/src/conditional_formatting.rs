@@ -1111,7 +1111,6 @@ impl<'a> Model<'a> {
                 }
                 CfCellResult::ColorScale(color) => {
                     style.fill.color = Some(color.clone());
-                    style.fill.pattern_type = "solid".to_string();
                 }
                 CfCellResult::DataBar {
                     positive_color,
