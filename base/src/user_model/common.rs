@@ -146,7 +146,6 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
         }
         "fill.color" | "fill.bg_color" | "fill.fg_color" => {
             style.fill.color = color(value)?;
-            style.fill.pattern_type = "solid".to_string();
         }
         "num_fmt" => {
             value.clone_into(&mut style.num_fmt);

@@ -13,7 +13,6 @@ const DK2: &str = "#44546A";
 
 fn solid_fill(c: &str) -> Fill {
     Fill {
-        pattern_type: "solid".to_string(),
         color: Some(c.to_string()),
     }
 }

@@ -146,14 +146,12 @@ fn basic_fill() {
 
     let style = model.get_cell_style(0, 1, 1).unwrap();
     assert_eq!(style.fill.color, None);
-    assert_eq!(&style.fill.pattern_type, "none");
 
     model
         .update_range_style(&range, "fill.color", "#F3F4F5")
         .unwrap();
     let style = model.get_cell_style(0, 1, 1).unwrap();
     assert_eq!(style.fill.color, Some("#F3F4F5".to_owned()));
-    assert_eq!(&style.fill.pattern_type, "solid");
 
     let send_queue = model.flush_send_queue();
 

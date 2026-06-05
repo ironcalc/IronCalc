@@ -275,8 +275,6 @@ fn test_higher_priority_icon_set_wins() {
 fn test_color_scale_vs_dxf_fill_priority() {
     let blue_fill = Dxf {
         fill: Some(Fill {
-            pattern_type: "solid".to_string(),
-
             color: Some("#0000FF".to_string()),
         }),
         ..Dxf::default()

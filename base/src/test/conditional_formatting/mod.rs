@@ -68,7 +68,6 @@ fn cell_is_gt(threshold: &str) -> CfRuleInput {
 fn red_fill() -> Dxf {
     Dxf {
         fill: Some(Fill {
-            pattern_type: "solid".to_string(),
             color: Some("#FF0000".to_string()),
         }),
         font: None,
