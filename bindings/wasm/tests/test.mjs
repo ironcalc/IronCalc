@@ -44,7 +44,7 @@ test('Evaluates correctly', (t) => {
 
 const DEFAULT_STYLE = {
     num_fmt: 'general',
-    fill: { pattern_type: 'none' },
+    fill: { },
     font: { sz: 13, color: undefined, name: 'Calibri', family: 2, scheme: 'minor' },
     border: {},
     quote_prefix: false,

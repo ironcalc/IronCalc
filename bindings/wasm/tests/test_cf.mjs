@@ -113,7 +113,7 @@ test('CF: CellIs GreaterThan applies fill color', () => {
         operator: 'GreaterThan',
         formula: '3',
         formula2: null,
-        format: { fill: { pattern_type: 'solid', bg_color: '#FF0000' } },
+        format: { fill: { bg_color: '#FF0000' } },
     };
     model.addConditionalFormatting(0, 'A1:A5', rule);
     // A4=4 > 3 → red fill
@@ -131,7 +131,7 @@ test('CF: CellIs Between applies fill to cells in range', () => {
         operator: 'Between',
         formula: '2',
         formula2: '4',
-        format: { fill: { pattern_type: 'solid', bg_color: '#FF0000' } },
+        format: { fill: { bg_color: '#FF0000' } },
     };
     model.addConditionalFormatting(0, 'A1:A5', rule);
     // A2=2, A3=3, A4=4 are between 2 and 4 → red fill
@@ -153,7 +153,7 @@ test('CF: CellIs Equal applies fill only to matching cell', () => {
         operator: 'Equal',
         formula: '2',
         formula2: null,
-        format: { fill: { pattern_type: 'solid', bg_color: '#0000FF' } },
+        format: { fill: { bg_color: '#0000FF' } },
     };
     model.addConditionalFormatting(0, 'A1:A3', rule);
     // A2=2 matches → blue fill
@@ -174,7 +174,7 @@ test('CF: Text Contains applies fill to matching cells', () => {
         type: 'Text',
         operator: 'Contains',
         value: 'hello',
-        format: { fill: { pattern_type: 'solid', bg_color: '#00FF00' } },
+        format: { fill: { bg_color: '#00FF00' } },
     };
     model.addConditionalFormatting(0, 'A1:A3', rule);
     // A1 and A3 contain "hello" → green fill
@@ -189,7 +189,7 @@ test('CF: getDxfForConditionalFormatting returns format', () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     const rule = {
         type: 'DuplicateValues',
-        format: { fill: { pattern_type: 'solid', bg_color: '#AABBCC' } },
+        format: { fill: { bg_color: '#AABBCC' } },
     };
     model.addConditionalFormatting(0, 'A1:A5', rule);
     const dxf = model.getDxfForConditionalFormatting(0, 0);

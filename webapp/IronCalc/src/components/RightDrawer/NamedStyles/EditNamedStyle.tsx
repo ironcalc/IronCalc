@@ -153,7 +153,6 @@ const EditNamedStyle = ({
       num_fmt: numFmt,
       fill: {
         ...style.fill,
-        pattern_type: formatStyle.fillColor ? "solid" : "none",
         color: formatStyle.fillColor || undefined,
       },
       font: {
