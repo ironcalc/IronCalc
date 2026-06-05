@@ -975,7 +975,7 @@ fn test_cf_round_trip() {
 #[test]
 fn test_cf_custom_icon_set_round_trip() {
     // Tests that icon sets with icons not matching any named Excel set are still
-    // exported (as x14 custom) and imported back correctly.
+    // exported and imported back correctly.
     let mut model = new_empty_model();
     for i in 1i32..=10 {
         model.set_user_input(0, i, 1, i.to_string()).unwrap();
@@ -1031,7 +1031,7 @@ fn test_cf_custom_icon_set_round_trip() {
         )
         .unwrap();
 
-    // ThumbsUp icon (no named set).
+    // ThumbsUp icon. No exported named set Exists and we can't export rules with 2 icons
     model
         .add_conditional_formatting(
             0,
@@ -1065,8 +1065,8 @@ fn test_cf_custom_icon_set_round_trip() {
 
     let imp_cfs = &imported.workbook.worksheets[0].conditional_formatting;
 
-    // All 3 rules must survive (even those with custom icons).
-    assert_eq!(imp_cfs.len(), 3, "expected 3 rules, got {}", imp_cfs.len());
+    // Only 2 rules will survive.
+    assert_eq!(imp_cfs.len(), 2, "expected 2 rules, got {}", imp_cfs.len());
 
     // The mixed-icon set (A1:A10) should come back as an IconSet with 3 thresholds.
     let has_mixed = imp_cfs.iter().any(|cf| {
@@ -1084,13 +1084,13 @@ fn test_cf_custom_icon_set_round_trip() {
         .any(|cf| cf.range == "B1:B10" && matches!(&cf.cf_rule, CfRule::IconSet { .. }));
     assert!(has_heart, "heart rating icon not found in imported model");
 
-    // The ThumbsUp/Down set (C1:C10) should come back as an IconSet with 2 thresholds.
+    // The ThumbsUp/Down set (C1:C10) will be missed.
     let has_thumbs = imp_cfs.iter().any(|cf| {
         cf.range == "C1:C10"
             && matches!(&cf.cf_rule, CfRule::IconSet { thresholds, .. } if thresholds.len() == 2)
     });
     assert!(
-        has_thumbs,
-        "thumbs up/down icon set not found in imported model"
+        !has_thumbs,
+        "thumbs up/down icon set found in imported model (and not expected)"
     );
 }

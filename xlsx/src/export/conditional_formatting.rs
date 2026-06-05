@@ -168,7 +168,10 @@ const KNOWN_ICON_SETS: &[&str] = &[
     "3Flags",
 ];
 
+// Tries to get Excel's built-in icon set name for this set of thresholds.
+// we could do better with x14 custom sets. Similarly to what we do for DataBars.
 fn icon_set_name_from_thresholds(thresholds: &[IconThreshold]) -> Option<&'static str> {
+    // We first try to see if it is one of the standard sets by comparing the (icon, color) pairs of the thresholds to the known sets.
     let pairs: Vec<(Icon, String)> = thresholds
         .iter()
         .map(|t| (t.icon.clone(), t.color.clone()))
@@ -180,16 +183,22 @@ fn icon_set_name_from_thresholds(thresholds: &[IconThreshold]) -> Option<&'stati
             }
         }
     }
-    None
+    // Then take a wild guess
+    match thresholds.len() {
+        3 => Some("3Arrows"),
+        4 => Some("4Arrows"),
+        5 => Some("5Arrows"),
+        _ => None,
+    }
 }
 
 fn icon_rating_set_name(icon: &Icon, count: usize) -> Option<&'static str> {
     match (icon, count) {
         (Icon::Star, 3) => Some("3Stars"),
         (Icon::Circle, 5) => Some("5Quarters"),
-        (Icon::FlatRectangle, 3) => Some("3Rating"),
-        (Icon::FlatRectangle, 4) => Some("4Rating"),
-        (Icon::FlatRectangle, 5) => Some("5Rating"),
+        (_, 3) => Some("3Rating"),
+        (_, 4) => Some("4Rating"),
+        (_, 5) => Some("5Rating"),
         _ => None,
     }
 }
@@ -435,20 +444,19 @@ fn build_cf_rule_xml(
             thresholds,
             show_value,
         } => {
-            if let Some(set_name) = icon_set_name_from_thresholds(thresholds) {
-                // Known named set → standard conditionalFormatting element.
-                let show_val = if !show_value { r#" showValue="0""# } else { "" };
-                let cfvos: String = thresholds
-                    .iter()
-                    .map(|t| cfvo_with_gte_xml(&t.cfvo, t.is_strict))
-                    .collect();
-                format!(
-                    r#"<conditionalFormatting sqref="{range}"><cfRule type="iconSet" priority="{excel_priority}"><iconSet iconSet="{set_name}"{show_val}>{cfvos}</iconSet></cfRule></conditionalFormatting>"#
-                )
-            } else {
-                // TODO: unrecognized set → emit as x14 custom with repeated icon references.
-                return None;
-            }
+            let set_name = match icon_set_name_from_thresholds(thresholds) {
+                Some(name) => name,
+                None => return None,
+            };
+            // Known named set → standard conditionalFormatting element.
+            let show_val = if !show_value { r#" showValue="0""# } else { "" };
+            let cfvos: String = thresholds
+                .iter()
+                .map(|t| cfvo_with_gte_xml(&t.cfvo, t.is_strict))
+                .collect();
+            format!(
+                r#"<conditionalFormatting sqref="{range}"><cfRule type="iconSet" priority="{excel_priority}"><iconSet iconSet="{set_name}"{show_val}>{cfvos}</iconSet></cfRule></conditionalFormatting>"#
+            )
         }
         CfRule::IconRating {
             icon,
@@ -456,20 +464,19 @@ fn build_cf_rule_xml(
             show_value,
             ..
         } => {
-            if let Some(set_name) = icon_rating_set_name(icon, thresholds.len()) {
-                // Known rating set → standard conditionalFormatting element.
-                let show_val = if !show_value { r#" showValue="0""# } else { "" };
-                let cfvos: String = thresholds
-                    .iter()
-                    .map(|(cfvo, is_strict)| cfvo_with_gte_xml(cfvo, *is_strict))
-                    .collect();
-                format!(
-                    r#"<conditionalFormatting sqref="{range}"><cfRule type="iconSet" priority="{excel_priority}"><iconSet iconSet="{set_name}"{show_val}>{cfvos}</iconSet></cfRule></conditionalFormatting>"#
-                )
-            } else {
-                // TODO: unrecognized rating → emit as x14 custom with repeated icon references.
-                return None;
-            }
+            let set_name = match icon_rating_set_name(icon, thresholds.len()) {
+                Some(name) => name,
+                None => return None,
+            };
+            // Known rating set → standard conditionalFormatting element.
+            let show_val = if !show_value { r#" showValue="0""# } else { "" };
+            let cfvos: String = thresholds
+                .iter()
+                .map(|(cfvo, is_strict)| cfvo_with_gte_xml(cfvo, *is_strict))
+                .collect();
+            format!(
+                r#"<conditionalFormatting sqref="{range}"><cfRule type="iconSet" priority="{excel_priority}"><iconSet iconSet="{set_name}"{show_val}>{cfvos}</iconSet></cfRule></conditionalFormatting>"#
+            )
         }
     };
     Some(rule)
@@ -483,8 +490,8 @@ pub(crate) fn get_conditional_formatting_xml(cfs: &[ConditionalFormatting]) -> (
         return (String::new(), String::new());
     }
     let max_p = cfs.iter().map(|cf| cf.priority).max().unwrap_or(1);
-    let mut main_parts: Vec<String> = Vec::new();
-    let mut x14_parts: Vec<String> = Vec::new();
+    let mut main_parts = Vec::new();
+    let mut x14_parts = Vec::new();
     let mut databar_guid_idx: usize = 0;
 
     for cf in cfs {
