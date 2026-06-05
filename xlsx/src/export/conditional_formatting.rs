@@ -444,10 +444,7 @@ fn build_cf_rule_xml(
             thresholds,
             show_value,
         } => {
-            let set_name = match icon_set_name_from_thresholds(thresholds) {
-                Some(name) => name,
-                None => return None,
-            };
+            let set_name = icon_set_name_from_thresholds(thresholds)?;
             // Known named set → standard conditionalFormatting element.
             let show_val = if !show_value { r#" showValue="0""# } else { "" };
             let cfvos: String = thresholds
@@ -464,10 +461,7 @@ fn build_cf_rule_xml(
             show_value,
             ..
         } => {
-            let set_name = match icon_rating_set_name(icon, thresholds.len()) {
-                Some(name) => name,
-                None => return None,
-            };
+            let set_name = icon_rating_set_name(icon, thresholds.len())?;
             // Known rating set → standard conditionalFormatting element.
             let show_val = if !show_value { r#" showValue="0""# } else { "" };
             let cfvos: String = thresholds
