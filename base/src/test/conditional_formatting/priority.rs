@@ -3,7 +3,7 @@
 use crate::{
     cf_types::{CfRuleInput, Cfvo, ColorScaleThreshold, Icon, IconThreshold, ValueOperator},
     test::util::new_empty_model,
-    types::{Dxf, Fill},
+    types::{Color, Dxf, Fill},
 };
 
 fn color_scale_rule() -> CfRuleInput {
@@ -99,13 +99,13 @@ fn test_priority() {
     let style_a1 = model.get_extended_style_for_cell(0, 1, 1).unwrap();
     assert_eq!(
         style_a1.style.fill.color,
-        Some("#FF0000".to_string()),
+        Color::Rgb("#FF0000".to_string()),
         "A1 (min value) should be red from the color scale"
     );
     let style_a5 = model.get_extended_style_for_cell(0, 5, 1).unwrap();
     assert_eq!(
         style_a5.style.fill.color,
-        Some("#00FF00".to_string()),
+        Color::Rgb("#00FF00".to_string()),
         "A5 (max value) should be green from the color scale"
     );
 
@@ -151,7 +151,7 @@ fn test_all_three_in_same_cell() {
     let s1 = model.get_extended_style_for_cell(0, 1, 1).unwrap();
     assert_eq!(
         s1.style.fill.color,
-        Some("#FF0000".to_string()),
+        Color::Rgb("#FF0000".to_string()),
         "A1 should have color-scale red fill"
     );
     let db1 = s1.data_bar.expect("A1 should have a data bar");
@@ -177,7 +177,7 @@ fn test_all_three_in_same_cell() {
     let s5 = model.get_extended_style_for_cell(0, 5, 1).unwrap();
     assert_eq!(
         s5.style.fill.color,
-        Some("#00FF00".to_string()),
+        Color::Rgb("#00FF00".to_string()),
         "A5 should have color-scale green fill"
     );
     let db5 = s5.data_bar.expect("A5 should have a data bar");
@@ -219,7 +219,7 @@ fn test_higher_priority_number_wins() {
 
     // Rule 2 has the higher priority number and must win: A1 (min) should be blue.
     let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
-    assert_eq!(style.style.fill.color, Some("#0000FF".to_string()));
+    assert_eq!(style.style.fill.color, Color::Rgb("#0000FF".to_string()));
 }
 
 // Same as above but for icon sets.
@@ -275,7 +275,7 @@ fn test_higher_priority_icon_set_wins() {
 fn test_color_scale_vs_dxf_fill_priority() {
     let blue_fill = Dxf {
         fill: Some(Fill {
-            color: Some("#0000FF".to_string()),
+            color: Color::Rgb("#0000FF".to_string()),
         }),
         ..Dxf::default()
     };
@@ -306,7 +306,7 @@ fn test_color_scale_vs_dxf_fill_priority() {
         let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
         assert_eq!(
             style.style.fill.color,
-            Some("#0000FF".to_string()),
+            Color::Rgb("#0000FF".to_string()),
             "Dxf fill (higher priority) should override ColorScale"
         );
     }
@@ -337,7 +337,7 @@ fn test_color_scale_vs_dxf_fill_priority() {
         let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
         assert_eq!(
             style.style.fill.color,
-            Some("#FF0000".to_string()),
+            Color::Rgb("#FF0000".to_string()),
             "ColorScale (higher priority) should override Dxf fill"
         );
     }

@@ -45,7 +45,7 @@ test('Evaluates correctly', (t) => {
 const DEFAULT_STYLE = {
     num_fmt: 'general',
     fill: { },
-    font: { sz: 13, color: undefined, name: 'Calibri', family: 2, scheme: 'minor' },
+    font: { sz: 13, name: 'Calibri', family: 2, scheme: 'minor' },
     border: {},
     quote_prefix: false,
 };

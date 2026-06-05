@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::Area;
@@ -731,7 +732,7 @@ fn styles() {
     assert!(style.font.i);
     // A6 would have the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
-    assert_eq!(style.fill.color, Some("#334455".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#334455".to_string()));
 
     model.undo().unwrap();
 
@@ -743,7 +744,7 @@ fn styles() {
 
     // A6 would have NOT the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     model.redo().unwrap();
     assert_eq!(
@@ -757,7 +758,7 @@ fn styles() {
 
     // A6 would have the style of A3
     let style = model.get_cell_style(0, 6, 1).unwrap();
-    assert_eq!(style.fill.color, Some("#334455".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#334455".to_string()));
 }
 
 #[test]

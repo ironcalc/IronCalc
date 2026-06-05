@@ -1,88 +1,46 @@
 use std::io::Read;
 
-use ironcalc_base::colors::hex_with_tint_to_rgb;
+use ironcalc_base::types::Theme;
 use roxmltree::Node;
 
 use crate::error::XlsxError;
 
-const PALETTE_LEN: usize = 12;
-
-const SCHEME_TAGS: [&str; PALETTE_LEN] = [
-    "dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6",
-    "hlink", "folHlink",
-];
-
-const DEFAULT_PALETTE: [&str; PALETTE_LEN] = [
-    "#000000", // dk1
-    "#FFFFFF", // lt1
-    "#44546A", // dk2
-    "#E7E6E6", // lt2
-    "#4472C4", // accent1
-    "#ED7D31", // accent2
-    "#A5A5A5", // accent3
-    "#FFC000", // accent4
-    "#5B9BD5", // accent5
-    "#70AD47", // accent6
-    "#0563C1", // hlink
-    "#954F72", // folHlink
-];
-
-/// Per-workbook OOXML theme color palette.
-///
-/// Colors are stored in `xl/theme/theme1.xml` declaration order:
-/// `dk1, lt1, dk2, lt2, accent1..accent6, hlink, folHlink`.
-#[derive(Clone, Debug)]
-pub(crate) struct Theme {
-    palette: [String; PALETTE_LEN],
-}
-
-impl Default for Theme {
-    fn default() -> Self {
-        Theme {
-            palette: DEFAULT_PALETTE.map(String::from),
+/// Reads the theme part at `path`. Returns `Theme::default()` if the workbook
+/// has no theme relationship or if parsing fails.
+pub(crate) fn load<R: Read + std::io::Seek>(
+    archive: &mut zip::ZipArchive<R>,
+    path: Option<&str>,
+) -> Theme {
+    let Some(path) = path else {
+        return Theme::default();
+    };
+    match try_load(archive, path) {
+        Ok(theme) => theme,
+        Err(e) => {
+            eprintln!(
+                "IronCalc: falling back to default theme palette (could not read {path}: {e})"
+            );
+            Theme::default()
         }
     }
 }
 
-impl Theme {
-    /// Resolves a `theme="N"` attribute (and optional `tint`) to an `#RRGGBB`
-    /// string. The first four indices apply the OOXML dk/lt swap; the rest are
-    /// straight-through.
-    pub(crate) fn resolve(&self, theme_index: i32, tint: f64) -> String {
-        let position = match theme_index {
-            // theme=0 → lt1, theme=1 → dk1, theme=2 → lt2, theme=3 → dk2.
-            0 => 1,
-            1 => 0,
-            2 => 3,
-            3 => 2,
-            n if (4..PALETTE_LEN as i32).contains(&n) => n as usize,
-            _ => return hex_with_tint_to_rgb(&self.palette[0], tint),
-        };
-        hex_with_tint_to_rgb(&self.palette[position], tint)
-    }
-
-    /// Reads the theme part at `path` (resolved from the workbook's
-    /// `_rels/workbook.xml.rels`). `None` means the workbook declares no theme
-    /// relationship, so we silently use [`Theme::default`]. A `Some` path that
-    /// fails to parse falls back to the default and logs to stderr.
-    pub(crate) fn load<R: Read + std::io::Seek>(
-        archive: &mut zip::ZipArchive<R>,
-        path: Option<&str>,
-    ) -> Theme {
-        let Some(path) = path else {
-            return Theme::default();
-        };
-        match try_load(archive, path) {
-            Ok(theme) => theme,
-            Err(e) => {
-                eprintln!(
-                    "IronCalc: falling back to default theme palette (could not read {path}: {e})"
-                );
-                Theme::default()
-            }
-        }
-    }
-}
+// XML tag name → setter closure, in OOXML declaration order.
+type Setter = fn(&mut Theme, String);
+const SLOTS: [(&str, Setter); 12] = [
+    ("dk1", |t, v| t.dk1 = v),
+    ("lt1", |t, v| t.lt1 = v),
+    ("dk2", |t, v| t.dk2 = v),
+    ("lt2", |t, v| t.lt2 = v),
+    ("accent1", |t, v| t.accent1 = v),
+    ("accent2", |t, v| t.accent2 = v),
+    ("accent3", |t, v| t.accent3 = v),
+    ("accent4", |t, v| t.accent4 = v),
+    ("accent5", |t, v| t.accent5 = v),
+    ("accent6", |t, v| t.accent6 = v),
+    ("hlink", |t, v| t.hlink = v),
+    ("folHlink", |t, v| t.fol_hlink = v),
+];
 
 fn try_load<R: Read + std::io::Seek>(
     archive: &mut zip::ZipArchive<R>,
@@ -98,16 +56,31 @@ fn try_load<R: Read + std::io::Seek>(
         .find(|n| n.has_tag_name("clrScheme"))
         .ok_or_else(|| XlsxError::Xml(format!("Missing clrScheme in {path}")))?;
 
-    let mut palette: [String; PALETTE_LEN] = DEFAULT_PALETTE.map(String::from);
-    for (i, tag) in SCHEME_TAGS.iter().enumerate() {
+    let theme_name = doc
+        .descendants()
+        .find(|n| n.has_tag_name("theme"))
+        .and_then(|n| n.attribute("name"))
+        .unwrap_or("Office Theme")
+        .to_string();
+    // strips "Theme" suffix if present, to avoid redundant "Office Theme Theme" default name.
+    let theme_name = theme_name
+        .strip_suffix(" Theme")
+        .unwrap_or(&theme_name)
+        .to_string();
+    let mut theme = Theme {
+        name: theme_name,
+        ..Default::default()
+    };
+
+    for (tag, set) in &SLOTS {
         if let Some(slot) = scheme.children().find(|n| n.has_tag_name(*tag)) {
             if let Some(hex) = read_color(&slot) {
-                palette[i] = hex;
+                set(&mut theme, hex);
             }
         }
     }
 
-    Ok(Theme { palette })
+    Ok(theme)
 }
 
 fn read_color(slot: &Node) -> Option<String> {
@@ -119,9 +92,6 @@ fn read_color(slot: &Node) -> Option<String> {
                 }
             }
             "sysClr" => {
-                // sysClr carries a logical reference (e.g. "windowText") plus
-                // the resolved value in `lastClr`. Use that — only fall back
-                // to `val` if the resolver is absent.
                 if let Some(val) = child
                     .attribute("lastClr")
                     .or_else(|| child.attribute("val"))
@@ -136,8 +106,6 @@ fn read_color(slot: &Node) -> Option<String> {
 }
 
 fn format_hex(raw: &str) -> String {
-    // OOXML stores hex without leading '#'. Some files wrap in alpha (8 hex
-    // chars) — strip the leading two if present.
     let trimmed = raw.trim_start_matches('#');
     let rgb = if trimmed.len() == 8 {
         &trimmed[2..]
@@ -153,9 +121,6 @@ mod tests {
 
     #[test]
     fn resolve_default_palette_matches_legacy_array() {
-        // Same expectations as the legacy hardcoded `get_themed_color` table:
-        // theme indices map directly to entries in [white, black, lightgray,
-        // darkgray, accent1..accent6, hlink, folHlink].
         let theme = Theme::default();
         let cases = [
             (0, "#FFFFFF"),  // lt1
@@ -177,38 +142,8 @@ mod tests {
     }
 
     #[test]
-    fn resolve_swaps_dk_lt_pairs_for_custom_theme() {
-        // Custom palette where dk1/lt1 and dk2/lt2 are distinguishable, so a
-        // missed swap would be visible.
-        let theme = Theme {
-            palette: [
-                "#111111".into(), // dk1   (XML 0)
-                "#EEEEEE".into(), // lt1   (XML 1)
-                "#222222".into(), // dk2   (XML 2)
-                "#DDDDDD".into(), // lt2   (XML 3)
-                "#18A303".into(), // accent1
-                "#0369A3".into(), // accent2
-                "#A33E03".into(), // accent3
-                "#8E03A3".into(), // accent4
-                "#C99C00".into(), // accent5
-                "#C9211E".into(), // accent6
-                "#0000EE".into(), // hlink
-                "#551A8B".into(), // folHlink
-            ],
-        };
-        assert_eq!(theme.resolve(0, 0.0), "#EEEEEE"); // theme=0 → lt1
-        assert_eq!(theme.resolve(1, 0.0), "#111111"); // theme=1 → dk1
-        assert_eq!(theme.resolve(2, 0.0), "#DDDDDD"); // theme=2 → lt2
-        assert_eq!(theme.resolve(3, 0.0), "#222222"); // theme=3 → dk2
-        assert_eq!(theme.resolve(9, 0.0), "#C9211E"); // theme=9 → accent6
-        assert_eq!(theme.resolve(10, 0.0), "#0000EE"); // theme=10 → hlink
-        assert_eq!(theme.resolve(11, 0.0), "#551A8B"); // theme=11 → folHlink
-    }
-
-    #[test]
     fn resolve_applies_tint_via_existing_algorithm() {
         let theme = Theme::default();
-        // Same expectations as the original `colors::tests::test_known_colors`.
         assert_eq!(theme.resolve(0, -0.05), "#F2F2F2");
         assert_eq!(theme.resolve(5, -0.25), "#C55911");
         assert_eq!(theme.resolve(4, 0.6), "#B5C8E8");

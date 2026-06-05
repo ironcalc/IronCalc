@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::panic)]
 
+use ironcalc::base::types::Color;
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::load_from_xlsx;
 use std::fs;
@@ -23,7 +24,7 @@ fn test_font_with_no_color_element_is_none() {
     let fonts = &model.workbook.styles.fonts;
 
     let no_color_font = fonts.iter().find(|f| f.sz == 8).unwrap();
-    assert_eq!(no_color_font.color, None);
+    assert_eq!(no_color_font.color, Color::None);
 
     let themed_fonts: Vec<_> = fonts.iter().filter(|f| f.sz == 11).collect();
     assert!(!themed_fonts.is_empty());
@@ -43,5 +44,5 @@ fn test_font_with_no_color_element_is_none() {
         .iter()
         .find(|f| f.sz == 8)
         .unwrap();
-    assert_eq!(reloaded_no_color.color, None);
+    assert_eq!(reloaded_no_color.color, Color::None);
 }

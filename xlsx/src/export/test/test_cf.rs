@@ -9,7 +9,7 @@ use ironcalc_base::{
         icon_set_icons, CfRule, CfRuleInput, Cfvo, ColorScaleThreshold, Icon, IconThreshold,
         PeriodType, TextOperator, ValueOperator,
     },
-    types::{Dxf, DxfFont, Fill},
+    types::{Color, Dxf, DxfFont, Fill},
     Model,
 };
 
@@ -102,7 +102,7 @@ fn test_values() {
 fn fill_dxf(color: &str) -> Dxf {
     Dxf {
         fill: Some(Fill {
-            color: Some(color.to_string()),
+            color: Color::Rgb(color.to_string()),
         }),
         ..Default::default()
     }
@@ -111,7 +111,7 @@ fn fill_dxf(color: &str) -> Dxf {
 fn font_dxf(color: &str) -> Dxf {
     Dxf {
         font: Some(DxfFont {
-            color: Some(color.to_string()),
+            color: Color::Rgb(color.to_string()),
             b: Some(true),
             ..Default::default()
         }),
@@ -130,7 +130,10 @@ fn assert_dxf_fill(model: &Model, dxf_id: u32, expected_color: &str) {
     let color = dxf
         .fill
         .as_ref()
-        .and_then(|f| f.color.as_deref())
+        .and_then(|f| match &f.color {
+            Color::Rgb(s) => Some(s.as_str()),
+            _ => None,
+        })
         .unwrap_or("");
     assert_eq!(color, expected_color, "dxfId={dxf_id} fill mismatch");
 }
@@ -787,7 +790,10 @@ fn test_cf_round_trip() {
         // DXF should have a bold red font
         let dxf = imported.workbook.styles.dxfs.get(*dxf_id as usize).unwrap();
         assert_eq!(
-            dxf.font.as_ref().and_then(|f| f.color.as_deref()),
+            dxf.font.as_ref().and_then(|f| match &f.color {
+                Color::Rgb(s) => Some(s.as_str()),
+                _ => None,
+            }),
             Some("#FF0000")
         );
         assert_eq!(dxf.font.as_ref().and_then(|f| f.b), Some(true));

@@ -2,6 +2,7 @@ import type {
   BorderOptions,
   FmtSettings,
   HorizontalAlignment,
+  IronCalcTheme,
   VerticalAlignment,
 } from "@ironcalc/wasm";
 import {
@@ -27,6 +28,7 @@ import {
   Layers,
   Minus,
   PaintBucket,
+  Paintbrush,
   PaintRoller,
   Percent,
   Plus,
@@ -52,6 +54,7 @@ import {
   increaseDecimalPlaces,
   NumberFormats,
 } from "../FormatMenu/formatUtil";
+import ThemeMenu from "../ThemeMenu/ThemeMenu";
 import "./toolbar.css";
 import { Tooltip } from "../Tooltip/Tooltip";
 
@@ -95,6 +98,9 @@ type ToolbarProperties = {
   isConditionalFormattingOpen: boolean;
   onOpenNamedStyles: () => void;
   isNamedStylesOpen: boolean;
+  themes: IronCalcTheme[];
+  currentThemeName: string;
+  onThemePicked: (theme: IronCalcTheme) => void;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -575,6 +581,22 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
+          <ThemeMenu
+            themes={properties.themes}
+            currentThemeName={properties.currentThemeName}
+            onChange={properties.onThemePicked}
+          >
+            <Tooltip title={t("toolbar.theme")}>
+              <Button
+                variant="ghost"
+                size="sm"
+                style={{ gap: 0, paddingLeft: 4, paddingRight: 2 }}
+                endIcon={<ChevronDown size={12} />}
+              >
+                <Paintbrush size={16} />
+              </Button>
+            </Tooltip>
+          </ThemeMenu>
         </div>
 
         <ColorPicker

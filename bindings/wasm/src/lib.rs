@@ -53,6 +53,13 @@ pub fn get_supported_locales() -> Vec<String> {
     ironcalc_base::get_supported_locales()
 }
 
+/// Returns the list of builtin themes with their color slots.
+#[wasm_bindgen(js_name = "getThemeList", unchecked_return_type = "IronCalcTheme[]")]
+#[allow(clippy::unwrap_used)]
+pub fn get_theme_list() -> JsValue {
+    serde_wasm_bindgen::to_value(&ironcalc_base::themes::builtin_themes()).unwrap()
+}
+
 #[derive(Serialize)]
 struct DefinedName {
     name: String,
@@ -622,6 +629,36 @@ impl Model {
     #[wasm_bindgen(js_name = "getShowGridLines")]
     pub fn get_show_grid_lines(&mut self, sheet: u32) -> Result<bool, JsError> {
         self.model.get_show_grid_lines(sheet).map_err(to_js_error)
+    }
+
+    /// Sets the workbook theme.
+    #[wasm_bindgen(js_name = "setTheme")]
+    pub fn set_theme(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "IronCalcTheme")] theme: JsValue,
+    ) -> Result<(), JsError> {
+        let theme: ironcalc_base::types::Theme =
+            serde_wasm_bindgen::from_value(theme).map_err(|e| to_js_error(e.to_string()))?;
+        self.model.set_theme(theme);
+        Ok(())
+    }
+
+    /// Returns the name of the current workbook theme.
+    #[wasm_bindgen(js_name = "getThemeName")]
+    pub fn get_theme_name(&self) -> String {
+        self.model.get_theme_name().to_string()
+    }
+
+    /// Resolves a `Color` value to a CSS hex string using the current workbook theme.
+    /// Accepts `Color | undefined`; returns `""` for absent/None colors.
+    #[wasm_bindgen(js_name = "resolveColor")]
+    pub fn resolve_color(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "Color | undefined")] color: JsValue,
+    ) -> String {
+        let color: ironcalc_base::types::Color =
+            serde_wasm_bindgen::from_value(color).unwrap_or(ironcalc_base::types::Color::None);
+        self.model.resolve_color(&color)
     }
 
     #[wasm_bindgen(js_name = "autoFillRows")]

@@ -3,7 +3,7 @@
 
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::{load_from_icalc, load_from_xlsx, load_from_xlsx_bytes};
-use ironcalc_base::types::{HorizontalAlignment, VerticalAlignment};
+use ironcalc_base::types::{Color, HorizontalAlignment, VerticalAlignment};
 use ironcalc_base::{Model, UserModel};
 use std::fs;
 use std::io::Read;
@@ -477,5 +477,10 @@ fn test_relationship_whitespace_example() {
 fn test_workbook_theme_colors() {
     let model = load_from_xlsx("tests/custom_theme_colors.xlsx", "en", "UTC", "en").unwrap();
     let style_b15 = model.get_style_for_cell(0, 15, 2).unwrap();
-    assert_eq!(style_b15.fill.color.as_deref(), Some("#C9211E"));
+    // Theme index 9 = accent6 in OOXML; the custom theme sets accent6 = #C9211E
+    assert_eq!(style_b15.fill.color, Color::Theme(9, 0.0));
+    assert_eq!(
+        style_b15.fill.color.to_rgb(&model.workbook.theme),
+        "#C9211E".to_string()
+    );
 }

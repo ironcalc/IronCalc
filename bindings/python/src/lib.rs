@@ -3,7 +3,7 @@ use pyo3::{create_exception, prelude::*, wrap_pyfunction};
 
 use types::{PyCellType, PySheetProperty, PyStyle};
 use xlsx::base::expressions::types::Area;
-use xlsx::base::types::{Style, Workbook};
+use xlsx::base::types::{Color, Style, Workbook};
 use xlsx::base::{Model, UserModel};
 
 use xlsx::export::{save_to_icalc, save_to_xlsx};
@@ -280,7 +280,10 @@ impl PyModel {
                 name: s.name,
                 state: s.state,
                 sheet_id: s.sheet_id,
-                color: s.color,
+                color: match s.color {
+                    Color::Rgb(s) => Some(s),
+                    Color::Theme(_, _) | Color::None => None,
+                },
             })
             .collect())
     }

@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::types::Color;
 
 use crate::{
     constants::{DEFAULT_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT, LAST_COLUMN, LAST_ROW},
@@ -56,49 +57,49 @@ fn delete_column_formatting() {
 
     // Check the style of G123 is now what it was before
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     // Check the style of the whole row is still there
     let style = model.get_cell_style(0, 3, 1).unwrap();
-    assert_eq!(style.fill.color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_owned()));
 
     // Check the style of the whole column is now gone
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     let style = model.get_cell_style(0, 40, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     model.undo().unwrap();
 
     // Check the style of G123 is now what it was before
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#FF5533".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#FF5533".to_owned()));
 
     // Check G3 is the row style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_owned()));
 
     // Check G40 is the column style
     let style = model.get_cell_style(0, 40, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#555666".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#555666".to_owned()));
 
     model.redo().unwrap();
 
     // Check the style of G123 is now what it was before
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     // Check the style of the whole row is still there
     let style = model.get_cell_style(0, 3, 1).unwrap();
-    assert_eq!(style.fill.color, Some("#333444".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#333444".to_owned()));
 
     // Check the style of the whole column is now gone
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     let style = model.get_cell_style(0, 40, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 }
 
 #[test]
@@ -185,14 +186,14 @@ fn column_row_style_undo() {
 
     // check G123 is empty
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 
     // uno clear formatting
     model.undo().unwrap();
 
     // G123 has the row style
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#111222".to_owned()));
+    assert_eq!(style.fill.color, Color::Rgb("#111222".to_owned()));
 
     // undo twice
     model.undo().unwrap();
@@ -200,7 +201,7 @@ fn column_row_style_undo() {
 
     // check G123 is empty
     let style = model.get_cell_style(0, 123, 7).unwrap();
-    assert_eq!(style.fill.color, None);
+    assert_eq!(style.fill.color, Color::None);
 }
 
 #[test]
@@ -239,7 +240,7 @@ fn column_row_row_height_undo() {
 
     // check G3 has the column style
     let style = model.get_cell_style(0, 3, 7).unwrap();
-    assert_eq!(style.fill.color, Some("#555666".to_string()));
+    assert_eq!(style.fill.color, Color::Rgb("#555666".to_string()));
 }
 
 // Regression test: deleting a row removes SpillCell style information.
@@ -272,11 +273,11 @@ fn delete_row_preserves_spill_cell_style() {
     // Verify D6 and D7 carry the green style before deletion
     assert_eq!(
         model.get_cell_style(0, 6, 4).unwrap().fill.color,
-        Some("#00FF00".to_owned())
+        Color::Rgb("#00FF00".to_owned())
     );
     assert_eq!(
         model.get_cell_style(0, 7, 4).unwrap().fill.color,
-        Some("#00FF00".to_owned())
+        Color::Rgb("#00FF00".to_owned())
     );
 
     // Step 3: delete row 1 — everything shifts up by one
@@ -286,12 +287,12 @@ fn delete_row_preserves_spill_cell_style() {
     // The spill cells (now at D5 and D6) must still carry the green background
     assert_eq!(
         model.get_cell_style(0, 5, 4).unwrap().fill.color,
-        Some("#00FF00".to_owned()),
+        Color::Rgb("#00FF00".to_owned()),
         "D5 (ex-D6 spill cell) should retain green background after row deletion"
     );
     assert_eq!(
         model.get_cell_style(0, 6, 4).unwrap().fill.color,
-        Some("#00FF00".to_owned()),
+        Color::Rgb("#00FF00".to_owned()),
         "D6 (ex-D7 spill cell) should retain green background after row deletion"
     );
 }
@@ -322,7 +323,7 @@ fn undo_delete_row_preserves_spill_cell_style() {
 
     assert_eq!(
         model.get_cell_style(0, 6, 4).unwrap().fill.color,
-        Some("#00FF00".to_owned())
+        Color::Rgb("#00FF00".to_owned())
     );
 
     // Delete row 6 (the first spill cell of the array)
@@ -338,7 +339,7 @@ fn undo_delete_row_preserves_spill_cell_style() {
     );
     assert_eq!(
         model.get_cell_style(0, 6, 4).unwrap().fill.color,
-        Some("#00FF00".to_owned()),
+        Color::Rgb("#00FF00".to_owned()),
         "D6 (spill cell) should retain green background after undo of row deletion"
     );
 }

@@ -1,4 +1,4 @@
-import type { NamedStyle } from "@ironcalc/wasm";
+import type { Model, NamedStyle } from "@ironcalc/wasm";
 import { PencilLine, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../../Button/IconButton";
@@ -6,12 +6,14 @@ import { Tooltip } from "../../Tooltip/Tooltip";
 import { getTileStyle } from "./named-styles-utils";
 
 interface ManageCustomStylesProps {
+  model: Model;
   customStyles: NamedStyle[];
   onEdit: (style: NamedStyle) => void;
   onDelete: (style: NamedStyle) => void;
 }
 
 const ManageCustomStyles = ({
+  model,
   customStyles,
   onEdit,
   onDelete,
@@ -23,7 +25,7 @@ const ManageCustomStyles = ({
         <div key={s.name} className="ic-named-styles-manage-item">
           <div
             className="ic-named-styles-manage-item-preview"
-            style={getTileStyle(s.style)}
+            style={getTileStyle(model, s.style)}
           >
             Aa
           </div>

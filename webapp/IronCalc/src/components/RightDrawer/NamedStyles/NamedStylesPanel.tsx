@@ -1,4 +1,4 @@
-import type { FmtSettings, NamedStyle } from "@ironcalc/wasm";
+import type { FmtSettings, Model, NamedStyle } from "@ironcalc/wasm";
 import { ArrowLeft, Plus, Settings2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -133,6 +133,7 @@ type PanelView =
   | { mode: "delete-confirm"; style: NamedStyle };
 
 interface NamedStylesPanelProps {
+  model: Model;
   customStyles: NamedStyle[];
   builtinStyles: NamedStyle[];
   formatOptions: FmtSettings;
@@ -147,6 +148,7 @@ interface NamedStylesPanelProps {
 }
 
 const NamedStylesPanel = ({
+  model,
   customStyles,
   builtinStyles,
   formatOptions,
@@ -173,7 +175,7 @@ const NamedStylesPanel = ({
       key={name}
       type="button"
       className="ic-named-styles-tile"
-      style={getTileStyle(style)}
+      style={getTileStyle(model, style)}
       onClick={() => onApplyNamedStyle(name)}
     >
       <span className="ic-named-styles-tile-text">{label ?? name}</span>
@@ -238,6 +240,7 @@ const NamedStylesPanel = ({
         {renderSubHeader(t("named_styles.add_new_style"))}
         <div className="ic-named-styles-content">
           <EditNamedStyle
+            model={model}
             name=""
             style={normalStyle.style}
             formatOptions={formatOptions}
@@ -265,6 +268,7 @@ const NamedStylesPanel = ({
         {renderSubHeader(t("named_styles.manage_styles"))}
         <div className="ic-named-styles-content">
           <ManageCustomStyles
+            model={model}
             customStyles={customStyles}
             onEdit={(style) => setView({ mode: "editing", style })}
             onDelete={(style) => setView({ mode: "delete-confirm", style })}
@@ -286,6 +290,7 @@ const NamedStylesPanel = ({
         )}
         <div className="ic-named-styles-content">
           <EditNamedStyle
+            model={model}
             name={editingStyle.name}
             style={editingStyle.style}
             formatOptions={formatOptions}

@@ -114,7 +114,7 @@ const ConditionalFormatting = ({
             modelIndex,
           ) as Dxf | null)
         : null;
-      const formatStyle = dxfToFormatStyle(dxf);
+      const formatStyle = dxfToFormatStyle(model, dxf);
       return [
         {
           ...partial,

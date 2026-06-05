@@ -13,7 +13,7 @@ mod top_bottom;
 use crate::{
     cf_types::{CfRule, CfRuleInput, Cfvo, ColorScaleThreshold, Icon, ValueOperator},
     test::util::new_empty_model,
-    types::{Dxf, Fill},
+    types::{Color, Dxf, Fill},
 };
 
 // ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ fn cell_is_gt(threshold: &str) -> CfRuleInput {
 fn red_fill() -> Dxf {
     Dxf {
         fill: Some(Fill {
-            color: Some("#FF0000".to_string()),
+            color: Color::Rgb("#FF0000".to_string()),
         }),
         font: None,
         border: None,
@@ -262,8 +262,8 @@ fn test_color_scale_applies_fill() {
 
     let style_a1 = model.get_extended_style_for_cell(0, 1, 1).unwrap();
     let style_a5 = model.get_extended_style_for_cell(0, 5, 1).unwrap();
-    assert_eq!(style_a1.style.fill.color, Some("#FF0000".to_string()));
-    assert_eq!(style_a5.style.fill.color, Some("#00FF00".to_string()));
+    assert_eq!(style_a1.style.fill.color, Color::Rgb("#FF0000".to_string()));
+    assert_eq!(style_a5.style.fill.color, Color::Rgb("#00FF00".to_string()));
 }
 
 #[test]
@@ -353,7 +353,7 @@ fn test_higher_priority_number_wins() {
 
     // A1 = min: the second rule (higher priority number) must win → blue.
     let style = model.get_extended_style_for_cell(0, 1, 1).unwrap();
-    assert_eq!(style.style.fill.color, Some("#0000FF".to_string()));
+    assert_eq!(style.style.fill.color, Color::Rgb("#0000FF".to_string()));
 }
 
 #[test]
@@ -415,7 +415,7 @@ fn test_cell_is_with_format_applies_fill() {
 
     // A4 = 4 > 3, should have red fill
     let style_a4 = model.get_extended_style_for_cell(0, 4, 1).unwrap();
-    assert_eq!(style_a4.style.fill.color, Some("#FF0000".to_string()));
+    assert_eq!(style_a4.style.fill.color, Color::Rgb("#FF0000".to_string()));
 
     // A1 = 1, not > 3, no CF fill
     let style_a1 = model.get_extended_style_for_cell(0, 1, 1).unwrap();
@@ -441,7 +441,7 @@ fn test_format_retrieved_via_get_dxf() {
         .unwrap()
         .unwrap();
     let fill = dxf.fill.unwrap();
-    assert_eq!(fill.color, Some("#FF0000".to_string()));
+    assert_eq!(fill.color, Color::Rgb("#FF0000".to_string()));
 }
 
 #[test]
@@ -502,7 +502,7 @@ fn test_cell_is_threshold_from_sum() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     // A3=3 is not > 3
     assert!(model
@@ -548,7 +548,7 @@ fn test_cell_is_threshold_addition() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     // A3=3 is not > 3
     assert!(model
@@ -593,7 +593,7 @@ fn test_blanks_applies_to_empty_cells() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     assert_eq!(
         model
@@ -602,7 +602,7 @@ fn test_blanks_applies_to_empty_cells() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     // A1, A2, A4 are not blank → unstyled
     assert!(model
@@ -657,7 +657,7 @@ fn test_not_blanks_applies_to_non_empty_cells() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     assert_eq!(
         model
@@ -666,7 +666,7 @@ fn test_not_blanks_applies_to_non_empty_cells() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     assert_eq!(
         model
@@ -675,7 +675,7 @@ fn test_not_blanks_applies_to_non_empty_cells() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     // A3, A5 are blank → unstyled
     assert!(model
@@ -727,7 +727,7 @@ fn test_errors_applies_to_error_cells() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     // A1 (number), A3 (string), A4 (blank) are not errors → unstyled
     assert!(model
@@ -782,7 +782,7 @@ fn test_no_errors_applies_to_non_error_cells() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     assert_eq!(
         model
@@ -791,7 +791,7 @@ fn test_no_errors_applies_to_non_error_cells() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     // A2 is an error → unstyled
     assert!(model
@@ -846,7 +846,7 @@ fn test_color_scale_formula_cfvo_with_sum() {
             .style
             .fill
             .color,
-        Some("#FF0000".to_string())
+        Color::Rgb("#FF0000".to_string())
     );
     // A5=5 is at the maximum (SUM=5) → green
     assert_eq!(
@@ -856,7 +856,7 @@ fn test_color_scale_formula_cfvo_with_sum() {
             .style
             .fill
             .color,
-        Some("#00FF00".to_string())
+        Color::Rgb("#00FF00".to_string())
     );
 }
 

@@ -1,4 +1,4 @@
-use ironcalc_base::types::{Styles, Workbook};
+use ironcalc_base::types::{Color, Styles, Workbook};
 
 use crate::export::{
     dxfs_styles::get_dxfs_xml,
@@ -12,10 +12,16 @@ fn get_fonts_xml(styles: &Styles) -> String {
     let mut fonts_str: Vec<String> = vec![];
     for font in fonts {
         let size = format!("<sz val=\"{}\"/>", font.sz);
-        let color = if let Some(some_color) = &font.color {
-            format!("<color rgb=\"FF{}\"/>", some_color.trim_start_matches('#'))
-        } else {
-            "".to_string()
+        let color = match &font.color {
+            Color::Rgb(s) => format!("<color rgb=\"FF{}\"/>", s.trim_start_matches('#')),
+            Color::Theme(idx, tint) => {
+                if *tint == 0.0 {
+                    format!("<color theme=\"{idx}\"/>")
+                } else {
+                    format!("<color theme=\"{idx}\" tint=\"{:.16}\"/>", tint)
+                }
+            }
+            Color::None => "".to_string(),
         };
         let name = format!("<name val=\"{}\"/>", escape_xml(&font.name));
         let bold = if font.b { "<b/>" } else { "" };
@@ -47,9 +53,20 @@ fn get_fonts_xml(styles: &Styles) -> String {
 
 fn get_fills_xml(styles: &Styles) -> String {
     let fills = &styles.fills;
-    let mut fills_str: Vec<String> = vec![];
+    // The first two fills must be the default fills
+    let mut fills_str = vec![
+        "<fill><patternFill patternType=\"none\"/></fill>".to_string(),
+        "<fill><patternFill patternType=\"gray125\"/></fill>".to_string(),
+    ];
+    let mut fill_count = 0;
     for fill in fills {
-        fills_str.push(get_fill_xml(fill));
+        if fill_count < 2 {
+            fill_count += 1;
+            continue;
+        } else {
+            fills_str.push(get_fill_xml(fill));
+        }
+        fill_count += 1;
     }
     let fill_count = fills.len();
     format!(
@@ -103,18 +120,28 @@ fn get_cell_style_xfs_xml(styles: &Styles) -> String {
         let fill_id = cell_style_xf.fill_id;
         let font_id = cell_style_xf.font_id;
         let num_fmt_id = cell_style_xf.num_fmt_id;
-        let apply_alignment_str = if cell_style_xf.apply_alignment {
-            r#" applyAlignment="1""#
+        let apply_alignment_str = if !cell_style_xf.apply_alignment {
+            r#" applyAlignment="0""#
         } else {
             ""
         };
-        let apply_font_str = if cell_style_xf.apply_font {
-            r#" applyFont="1""#
+        let apply_font_str = if !cell_style_xf.apply_font {
+            r#" applyFont="0""#
         } else {
             ""
         };
-        let apply_fill_str = if cell_style_xf.apply_fill {
-            r#" applyFill="1""#
+        let apply_fill_str = if !cell_style_xf.apply_fill {
+            r#" applyFill="0""#
+        } else {
+            ""
+        };
+        let apply_number_format_str = if !cell_style_xf.apply_number_format {
+            r#" applyNumberFormat="0""#
+        } else {
+            ""
+        };
+        let apply_border_str = if !cell_style_xf.apply_border {
+            r#" applyBorder="0""#
         } else {
             ""
         };
@@ -126,7 +153,9 @@ fn get_cell_style_xfs_xml(styles: &Styles) -> String {
               numFmtId=\"{num_fmt_id}\"\
               {apply_alignment_str}\
               {apply_font_str}\
-              {apply_fill_str}/>"
+              {apply_fill_str}\
+              {apply_number_format_str}\
+              {apply_border_str}/>"
         ));
     }
     let style_count = cell_style_xfs.len();
@@ -165,6 +194,16 @@ fn get_cell_xfs_xml(styles: &Styles) -> String {
         } else {
             ""
         };
+        let apply_number_format_str = if cell_xf.apply_number_format {
+            r#" applyNumberFormat="1""#
+        } else {
+            ""
+        };
+        let apply_border_str = if cell_xf.apply_border {
+            r#" applyBorder="1""#
+        } else {
+            ""
+        };
         let properties = format!(
             "xfId=\"{xf_id}\" \
                 borderId=\"{border_id}\" \
@@ -174,7 +213,9 @@ fn get_cell_xfs_xml(styles: &Styles) -> String {
                 {quote_prefix_str}\
                 {apply_alignment_str}\
                 {apply_font_str}\
-                {apply_fill_str}"
+                {apply_fill_str}\
+                {apply_number_format_str}\
+                {apply_border_str}"
         );
         if let Some(alignment) = &cell_xf.alignment {
             let alignment = get_alignment(alignment);

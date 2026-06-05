@@ -1,26 +1,13 @@
-use crate::{
-    colors::hex_with_tint_to_rgb,
-    types::{Border, BorderItem, BorderStyle, Fill, Font, FontScheme, Style},
-};
+use crate::types::{Border, BorderItem, BorderStyle, Color, Fill, Font, FontScheme, Style};
 
-const ACCENT1: &str = "#4472C4";
-const ACCENT2: &str = "#ED7D31";
-const ACCENT3: &str = "#A5A5A5";
-const ACCENT4: &str = "#FFC000";
-const ACCENT5: &str = "#5B9BD5";
-const ACCENT6: &str = "#70AD47";
-const DK2: &str = "#44546A";
-
-fn solid_fill(c: &str) -> Fill {
-    Fill {
-        color: Some(c.to_string()),
-    }
+fn solid_fill(color: Color) -> Fill {
+    Fill { color }
 }
 
-fn thin_box_border(color: &str) -> Border {
+fn thin_box_border(color: Color) -> Border {
     let item = Some(BorderItem {
         style: BorderStyle::Thin,
-        color: Some(color.to_string()),
+        color: color.clone(),
     });
     Border {
         left: item.clone(),
@@ -31,10 +18,10 @@ fn thin_box_border(color: &str) -> Border {
     }
 }
 
-fn double_box_border(color: &str) -> Border {
+fn double_box_border(color: Color) -> Border {
     let item = Some(BorderItem {
         style: BorderStyle::Double,
-        color: Some(color.to_string()),
+        color: color.clone(),
     });
     Border {
         left: item.clone(),
@@ -45,44 +32,50 @@ fn double_box_border(color: &str) -> Border {
     }
 }
 
-fn thick_bottom_border(color: &str) -> Border {
+fn thick_bottom_border(color: Color) -> Border {
     Border {
         bottom: Some(BorderItem {
             style: BorderStyle::Thick,
-            color: Some(color.to_string()),
+            color,
         }),
         ..Default::default()
     }
 }
 
-fn thin_top_double_bottom_border(color: &str) -> Border {
+fn thin_top_double_bottom_border(color: Color) -> Border {
     Border {
         top: Some(BorderItem {
             style: BorderStyle::Thin,
-            color: Some(color.to_string()),
+            color: color.clone(),
         }),
         bottom: Some(BorderItem {
             style: BorderStyle::Double,
-            color: Some(color.to_string()),
+            color,
         }),
         ..Default::default()
     }
 }
+
+// IronCalc theme indices (after the dk/lt swap applied by Theme::resolve):
+//   3 = dk2, 4 = accent1, 5 = accent2, 6 = accent3,
+//   7 = accent4, 8 = accent5, 9 = accent6
+const IDX_DK2: i32 = 3;
+const IDX_ACCENT: [i32; 6] = [4, 5, 6, 7, 8, 9];
 
 /// Returns the full list of Excel built-in named styles with their style definitions.
 #[allow(clippy::vec_init_then_push)]
 pub fn builtin_named_styles() -> Vec<(String, Style)> {
     let mut result = vec![];
 
-    // Good, Bad, Neutral
+    // Good, Bad, Neutral — fixed RGB colors, not theme-dependent
     result.push((
         "Good".to_string(),
         Style {
             font: Font {
-                color: Some("#006100".to_string()),
+                color: Color::Rgb("#006100".to_string()),
                 ..Default::default()
             },
-            fill: solid_fill("#C6EFCE"),
+            fill: solid_fill(Color::Rgb("#C6EFCE".to_string())),
             ..Default::default()
         },
     ));
@@ -90,10 +83,10 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
         "Bad".to_string(),
         Style {
             font: Font {
-                color: Some("#9C0006".to_string()),
+                color: Color::Rgb("#9C0006".to_string()),
                 ..Default::default()
             },
-            fill: solid_fill("#FFC7CE"),
+            fill: solid_fill(Color::Rgb("#FFC7CE".to_string())),
             ..Default::default()
         },
     ));
@@ -101,10 +94,10 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
         "Neutral".to_string(),
         Style {
             font: Font {
-                color: Some("#9C5700".to_string()),
+                color: Color::Rgb("#9C5700".to_string()),
                 ..Default::default()
             },
-            fill: solid_fill("#FFEB9C"),
+            fill: solid_fill(Color::Rgb("#FFEB9C".to_string())),
             ..Default::default()
         },
     ));
@@ -112,17 +105,17 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
     // Normal (always in every model, included here for the panel)
     result.push(("Normal".to_string(), Style::default()));
 
-    // Data and Model
+    // Data and Model — fixed RGB colors
     result.push((
         "Calculation".to_string(),
         Style {
             font: Font {
                 b: true,
-                color: Some("#FA7D00".to_string()),
+                color: Color::Rgb("#FA7D00".to_string()),
                 ..Default::default()
             },
-            fill: solid_fill("#F2F2F2"),
-            border: thin_box_border("#7F7F7F"),
+            fill: solid_fill(Color::Rgb("#F2F2F2".to_string())),
+            border: thin_box_border(Color::Rgb("#7F7F7F".to_string())),
             ..Default::default()
         },
     ));
@@ -131,11 +124,11 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
         Style {
             font: Font {
                 b: true,
-                color: Some("#FFFFFF".to_string()),
+                color: Color::Rgb("#FFFFFF".to_string()),
                 ..Default::default()
             },
-            fill: solid_fill("#A5A5A5"),
-            border: double_box_border("#3F3F3F"),
+            fill: solid_fill(Color::Rgb("#A5A5A5".to_string())),
+            border: double_box_border(Color::Rgb("#3F3F3F".to_string())),
             ..Default::default()
         },
     ));
@@ -144,7 +137,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
         Style {
             font: Font {
                 i: true,
-                color: Some("#7F7F7F".to_string()),
+                color: Color::Rgb("#7F7F7F".to_string()),
                 ..Default::default()
             },
             ..Default::default()
@@ -154,11 +147,11 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
         "Input".to_string(),
         Style {
             font: Font {
-                color: Some("#3F3F76".to_string()),
+                color: Color::Rgb("#3F3F76".to_string()),
                 ..Default::default()
             },
-            fill: solid_fill("#FFCC99"),
-            border: thin_box_border("#7F7F7F"),
+            fill: solid_fill(Color::Rgb("#FFCC99".to_string())),
+            border: thin_box_border(Color::Rgb("#7F7F7F".to_string())),
             ..Default::default()
         },
     ));
@@ -166,13 +159,13 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
         "Linked Cell".to_string(),
         Style {
             font: Font {
-                color: Some("#FA7D00".to_string()),
+                color: Color::Rgb("#FA7D00".to_string()),
                 ..Default::default()
             },
             border: Border {
                 bottom: Some(BorderItem {
                     style: BorderStyle::Double,
-                    color: Some("#FF8001".to_string()),
+                    color: Color::Rgb("#FF8001".to_string()),
                 }),
                 ..Default::default()
             },
@@ -182,8 +175,8 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
     result.push((
         "Note".to_string(),
         Style {
-            fill: solid_fill("#FFFFE1"),
-            border: thin_box_border("#B2B2B2"),
+            fill: solid_fill(Color::Rgb("#FFFFE1".to_string())),
+            border: thin_box_border(Color::Rgb("#B2B2B2".to_string())),
             ..Default::default()
         },
     ));
@@ -192,11 +185,11 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
         Style {
             font: Font {
                 b: true,
-                color: Some("#3F3F3F".to_string()),
+                color: Color::Rgb("#3F3F3F".to_string()),
                 ..Default::default()
             },
-            fill: solid_fill("#F2F2F2"),
-            border: thin_box_border("#3F3F3F"),
+            fill: solid_fill(Color::Rgb("#F2F2F2".to_string())),
+            border: thin_box_border(Color::Rgb("#3F3F3F".to_string())),
             ..Default::default()
         },
     ));
@@ -204,20 +197,20 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
         "Warning Text".to_string(),
         Style {
             font: Font {
-                color: Some("#FF0000".to_string()),
+                color: Color::Rgb("#FF0000".to_string()),
                 ..Default::default()
             },
             ..Default::default()
         },
     ));
 
-    // Titles and Headings
+    // Titles and Headings — font color uses dk2, borders use accent1, all theme-relative
     result.push((
         "Title".to_string(),
         Style {
             font: Font {
                 sz: 18,
-                color: Some(DK2.to_string()),
+                color: Color::Theme(IDX_DK2, 0.0),
                 scheme: FontScheme::Major,
                 ..Default::default()
             },
@@ -230,24 +223,23 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             font: Font {
                 b: true,
                 sz: 15,
-                color: Some(DK2.to_string()),
+                color: Color::Theme(IDX_DK2, 0.0),
                 ..Default::default()
             },
-            border: thick_bottom_border(ACCENT1),
+            border: thick_bottom_border(Color::Theme(IDX_ACCENT[0], 0.0)),
             ..Default::default()
         },
     ));
-    let h2_border_color = hex_with_tint_to_rgb(ACCENT1, 0.5);
     result.push((
         "Heading 2".to_string(),
         Style {
             font: Font {
                 b: true,
                 sz: 13,
-                color: Some(DK2.to_string()),
+                color: Color::Theme(IDX_DK2, 0.0),
                 ..Default::default()
             },
-            border: thick_bottom_border(&h2_border_color),
+            border: thick_bottom_border(Color::Theme(IDX_ACCENT[0], 0.5)),
             ..Default::default()
         },
     ));
@@ -256,13 +248,13 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
         Style {
             font: Font {
                 b: true,
-                color: Some(DK2.to_string()),
+                color: Color::Theme(IDX_DK2, 0.0),
                 ..Default::default()
             },
             border: Border {
                 bottom: Some(BorderItem {
                     style: BorderStyle::Thin,
-                    color: Some(ACCENT1.to_string()),
+                    color: Color::Theme(IDX_ACCENT[0], 0.0),
                 }),
                 ..Default::default()
             },
@@ -275,7 +267,7 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
             font: Font {
                 b: true,
                 i: true,
-                color: Some(DK2.to_string()),
+                color: Color::Theme(IDX_DK2, 0.0),
                 ..Default::default()
             },
             ..Default::default()
@@ -288,54 +280,51 @@ pub fn builtin_named_styles() -> Vec<(String, Style)> {
                 b: true,
                 ..Default::default()
             },
-            border: thin_top_double_bottom_border(ACCENT1),
+            border: thin_top_double_bottom_border(Color::Theme(IDX_ACCENT[0], 0.0)),
             ..Default::default()
         },
     ));
 
-    // Themed Cell Styles: 20% / 40% / 60% tints and solid for each accent
-    for (accent_name, accent_hex) in [
-        ("Accent1", ACCENT1),
-        ("Accent2", ACCENT2),
-        ("Accent3", ACCENT3),
-        ("Accent4", ACCENT4),
-        ("Accent5", ACCENT5),
-        ("Accent6", ACCENT6),
-    ] {
-        let c20 = hex_with_tint_to_rgb(accent_hex, 0.8);
+    // Themed Cell Styles: 20% / 40% / 60% tints and solid for each accent.
+    // Tint values match hex_with_tint_to_rgb semantics: 0.8 = very light (20%), 0.0 = solid.
+    for (i, accent_name) in [
+        "Accent1", "Accent2", "Accent3", "Accent4", "Accent5", "Accent6",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let idx = IDX_ACCENT[i];
         result.push((
             format!("20% - {accent_name}"),
             Style {
-                fill: solid_fill(&c20),
+                fill: solid_fill(Color::Theme(idx, 0.8)),
                 ..Default::default()
             },
         ));
-        let c40 = hex_with_tint_to_rgb(accent_hex, 0.6);
         result.push((
             format!("40% - {accent_name}"),
             Style {
-                fill: solid_fill(&c40),
+                fill: solid_fill(Color::Theme(idx, 0.6)),
                 ..Default::default()
             },
         ));
-        let c60 = hex_with_tint_to_rgb(accent_hex, 0.4);
         result.push((
             format!("60% - {accent_name}"),
             Style {
-                fill: solid_fill(&c60),
+                fill: solid_fill(Color::Theme(idx, 0.4)),
                 ..Default::default()
             },
         ));
         result.push((
             accent_name.to_string(),
             Style {
-                fill: solid_fill(accent_hex),
+                fill: solid_fill(Color::Theme(idx, 0.0)),
                 ..Default::default()
             },
         ));
     }
 
-    // Number Format styles
+    // Number Format styles — no color dependency
     result.push((
         "Comma".to_string(),
         Style {

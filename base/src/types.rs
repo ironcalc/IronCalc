@@ -12,6 +12,37 @@ fn is_false(b: &bool) -> bool {
     !*b
 }
 
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
+#[serde(untagged)]
+pub enum Color {
+    Rgb(String),
+    /// Theme slot index and tint. Tint ∈ [-1, 1]: positive lightens, negative darkens.
+    Theme(i32, f64),
+    /// No color — equivalent to OOXML `<color auto="1"/>` or absence of `<color>`.
+    #[default]
+    None,
+}
+
+impl Color {
+    pub fn is_none(&self) -> bool {
+        matches!(self, Color::None)
+    }
+
+    pub fn is_some(&self) -> bool {
+        !matches!(self, Color::None)
+    }
+
+    /// Resolves the color to a `#RRGGBB` string, consulting the workbook theme when needed.
+    /// Returns an empty string for `Color::None`.
+    pub fn to_rgb(&self, theme: &Theme) -> String {
+        match self {
+            Color::Rgb(s) => s.clone(),
+            Color::Theme(idx, tint) => theme.resolve(*idx, *tint),
+            Color::None => String::new(),
+        }
+    }
+}
+
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Metadata {
     pub application: String,
@@ -51,6 +82,7 @@ pub struct Workbook {
     pub metadata: Metadata,
     pub tables: HashMap<String, Table>,
     pub views: HashMap<u32, WorkbookView>,
+    pub theme: Theme,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -109,7 +141,7 @@ pub struct Worksheet {
     pub shared_formulas: Vec<String>,
     pub sheet_id: u32,
     pub state: SheetState,
-    pub color: Option<String>,
+    pub color: Color,
     pub merge_cells: Vec<String>,
     pub comments: Vec<Comment>,
     pub frozen_rows: i32,
@@ -320,7 +352,7 @@ pub struct TableStyleInfo {
     pub show_column_stripes: bool,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
 pub struct DxfFont {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strike: Option<bool>,
@@ -332,15 +364,16 @@ pub struct DxfFont {
     pub i: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sz: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
 }
 
 // Dxf stands for "Differential Formatting". It is used in places like:
 // * conditional formatting
 // * tables
 // to specify partial formatting that overrides the cell formatting.
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
 pub struct Dxf {
     pub font: Option<DxfFont>,
     pub fill: Option<Fill>,
@@ -349,7 +382,7 @@ pub struct Dxf {
     pub alignment: Option<Alignment>,
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Styles {
     pub num_fmts: Vec<NumFmt>,
     pub fonts: Vec<Font>,
@@ -376,7 +409,7 @@ impl Default for Styles {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Style {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
@@ -438,7 +471,7 @@ impl Display for FontScheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct Font {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
@@ -453,7 +486,9 @@ pub struct Font {
     #[serde(skip_serializing_if = "is_false")]
     pub i: bool,
     pub sz: i32,
-    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
     pub name: String,
     // This is the font family fallback
     // 1 -> serif
@@ -472,12 +507,7 @@ impl Default for Font {
             b: false,
             i: false,
             sz: 13,
-            // No color set means "use the automatic/default color" — equivalent to
-            // <color auto="1"/> in OOXML and to a <font> with no <color> child.
-            // Setting Some("#000000") here would cause the exporter to emit an
-            // explicit <color rgb="FF000000"/>, indistinguishable on reload from
-            // a user-chosen black.
-            color: None,
+            color: Color::None,
             name: "Calibri".to_string(),
             family: 2,
             scheme: FontScheme::Minor,
@@ -485,10 +515,11 @@ impl Default for Font {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
 pub struct Fill {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
@@ -669,13 +700,15 @@ impl Display for BorderStyle {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct BorderItem {
     pub style: BorderStyle,
-    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone, Default)]
 pub struct Border {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
@@ -702,6 +735,68 @@ pub struct SheetProperties {
     pub name: String,
     pub state: String,
     pub sheet_id: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Color::is_none")]
+    #[serde(default)]
+    pub color: Color,
+}
+
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct Theme {
+    pub name: String,
+    pub dk1: String,
+    pub lt1: String,
+    pub dk2: String,
+    pub lt2: String,
+    pub accent1: String,
+    pub accent2: String,
+    pub accent3: String,
+    pub accent4: String,
+    pub accent5: String,
+    pub accent6: String,
+    pub hlink: String,
+    pub fol_hlink: String,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Theme {
+            name: "Office Theme".to_string(),
+            dk1: "#000000".to_string(),
+            lt1: "#FFFFFF".to_string(),
+            dk2: "#44546A".to_string(),
+            lt2: "#E7E6E6".to_string(),
+            accent1: "#4472C4".to_string(),
+            accent2: "#ED7D31".to_string(),
+            accent3: "#A5A5A5".to_string(),
+            accent4: "#FFC000".to_string(),
+            accent5: "#5B9BD5".to_string(),
+            accent6: "#70AD47".to_string(),
+            hlink: "#0563C1".to_string(),
+            fol_hlink: "#954F72".to_string(),
+        }
+    }
+}
+
+impl Theme {
+    /// Resolves a `theme="N"` attribute (and optional `tint`) to an `#RRGGBB` string.
+    /// Applies the OOXML dk/lt swap for indices 0–3.
+    pub fn resolve(&self, theme_index: i32, tint: f64) -> String {
+        use crate::colors::hex_with_tint_to_rgb;
+        let color = match theme_index {
+            0 => &self.lt1,
+            1 => &self.dk1,
+            2 => &self.lt2,
+            3 => &self.dk2,
+            4 => &self.accent1,
+            5 => &self.accent2,
+            6 => &self.accent3,
+            7 => &self.accent4,
+            8 => &self.accent5,
+            9 => &self.accent6,
+            10 => &self.hlink,
+            11 => &self.fol_hlink,
+            _ => &self.dk1,
+        };
+        hex_with_tint_to_rgb(color, tint)
+    }
 }

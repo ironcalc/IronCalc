@@ -10,10 +10,9 @@ use roxmltree::Node;
 
 use crate::error::XlsxError;
 
-use super::{
-    theme::Theme,
-    util::{get_attribute, get_color},
-};
+use ironcalc_base::types::Theme;
+
+use super::util::{get_attribute, get_color};
 
 fn parse_cfvo(node: Node) -> Result<Cfvo, XlsxError> {
     let val = node.attribute("val").unwrap_or("0");
@@ -97,7 +96,9 @@ fn parse_x14_data_bars(ws: Node, theme: &Theme) -> HashMap<String, DataBarExt> {
                         let negative_color = db_node
                             .children()
                             .find(|n| n.has_tag_name("negativeFillColor"))
-                            .and_then(|n| get_color(n, theme).ok().flatten())
+                            .and_then(|n| get_color(n, theme).ok())
+                            .filter(|c| c.is_some())
+                            .map(|c| c.to_rgb(theme))
                             .unwrap_or_else(|| "#FF0000".to_string());
                         map.insert(
                             id,
@@ -414,8 +415,9 @@ pub(super) fn load_conditional_formatting(
                         match child.tag_name().name() {
                             "cfvo" => cfvo_list.push(parse_cfvo(child)?),
                             "color" => {
-                                if let Some(c) = get_color(child, theme)? {
-                                    color_list.push(c);
+                                let c = get_color(child, theme)?;
+                                if c.is_some() {
+                                    color_list.push(c.to_rgb(theme));
                                 }
                             }
                             _ => {}
@@ -514,8 +516,9 @@ pub(super) fn load_conditional_formatting(
                         match child.tag_name().name() {
                             "cfvo" => simple_cfvos.push(parse_cfvo(child)?),
                             "color" => {
-                                if let Some(c) = get_color(child, theme)? {
-                                    positive_color = c;
+                                let c = get_color(child, theme)?;
+                                if c.is_some() {
+                                    positive_color = c.to_rgb(theme);
                                 }
                             }
                             _ => {}

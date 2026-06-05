@@ -160,6 +160,7 @@ const RightDrawer = ({
       case "namedStyles":
         return (
           <NamedStylesPanel
+            model={model}
             onClose={onClose}
             customStyles={customStyles}
             builtinStyles={builtinStyles}

@@ -358,7 +358,7 @@ export default class WorksheetCanvas {
       // Font.color is optional: a missing color means "use the default" — fall back
       // to the theme's default text color rather than leaving it undefined.
       if (style.font.color) {
-        color = style.font.color;
+        color = this.model.resolveColor(style.font.color);
       }
       font = style.font.b ? `bold ${font}` : `400 ${font}`;
       if (style.font.i) {
@@ -763,7 +763,7 @@ export default class WorksheetCanvas {
 
     let backgroundColor = this.theme.backgroundColor;
     if (style.fill.color) {
-      backgroundColor = style.fill.color;
+      backgroundColor = this.model.resolveColor(style.fill.color);
     }
     const cellGridColor = this.model.getShowGridLines(selectedSheet)
       ? this.theme.gridColor
@@ -802,7 +802,7 @@ export default class WorksheetCanvas {
       let borderLeftColor = cellGridColor;
       let borderLeftStyle = "thin";
       if (border.left) {
-        borderLeftColor = border.left.color;
+        borderLeftColor = this.model.resolveColor(border.left.color);
         borderLeftStyle = border.left.style;
       } else {
         const leftExtended = this.model.getCellStyle(
@@ -812,12 +812,14 @@ export default class WorksheetCanvas {
         );
         const leftStyle = leftExtended.style;
         if (leftStyle.border.right) {
-          borderLeftColor = leftStyle.border.right.color;
+          borderLeftColor = this.model.resolveColor(
+            leftStyle.border.right.color,
+          );
           borderLeftStyle = leftStyle.border.right.style;
         } else if (style.fill.color) {
-          borderLeftColor = style.fill.color;
+          borderLeftColor = this.model.resolveColor(style.fill.color);
         } else if (leftStyle.fill.color) {
-          borderLeftColor = leftStyle.fill.color;
+          borderLeftColor = this.model.resolveColor(leftStyle.fill.color);
         }
       }
 
@@ -836,7 +838,7 @@ export default class WorksheetCanvas {
     let borderTopColor = cellGridColor;
     let borderTopStyle = "thin";
     if (border.top) {
-      borderTopColor = border.top.color;
+      borderTopColor = this.model.resolveColor(border.top.color);
       borderTopStyle = border.top.style;
     } else {
       const topExtended = this.model.getCellStyle(
@@ -846,12 +848,12 @@ export default class WorksheetCanvas {
       );
       const topStyle = topExtended.style;
       if (topStyle.border.bottom) {
-        borderTopColor = topStyle.border.bottom.color;
+        borderTopColor = this.model.resolveColor(topStyle.border.bottom.color);
         borderTopStyle = topStyle.border.bottom.style;
       } else if (style.fill.color) {
-        borderTopColor = style.fill.color;
+        borderTopColor = this.model.resolveColor(style.fill.color);
       } else if (topStyle.fill.color) {
-        borderTopColor = topStyle.fill.color;
+        borderTopColor = this.model.resolveColor(topStyle.fill.color);
       }
     }
     drawBorder(

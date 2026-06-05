@@ -1,13 +1,21 @@
 use ironcalc_base::types::{
-    Alignment, Border, BorderItem, Fill, HorizontalAlignment, VerticalAlignment,
+    Alignment, Border, BorderItem, Color, Fill, HorizontalAlignment, VerticalAlignment,
 };
 
-pub(crate) fn get_color_xml(color: &Option<String>, name: &str) -> String {
-    // We blindly append FF at the beginning of these RGB color to make it ARGB
-    if let Some(some_color) = color {
-        format!("<{name} rgb=\"FF{}\"/>", some_color.trim_start_matches('#'))
-    } else {
-        "".to_string()
+pub(crate) fn get_color_xml(color: &Color, name: &str) -> String {
+    match color {
+        Color::Rgb(s) => {
+            let hex = s.trim_start_matches('#');
+            format!("<{name} rgb=\"FF{hex}\"/>")
+        }
+        Color::Theme(idx, tint) => {
+            if *tint == 0.0 {
+                format!("<{name} theme=\"{idx}\"/>")
+            } else {
+                format!("<{name} theme=\"{idx}\" tint=\"{:.16}\"/>", tint)
+            }
+        }
+        Color::None => "".to_string(),
     }
 }
 
@@ -48,9 +56,12 @@ pub(crate) fn get_border_xml(border: &Border) -> String {
 }
 
 pub(crate) fn get_fill_xml(fill: &Fill) -> String {
-    if let Some(ref color) = fill.color {
-        let bg_color = get_color_xml(&Some(color.clone()), "bgColor");
-        format!("<fill><patternFill patternType=\"solid\">{bg_color}</patternFill></fill>")
+    if fill.color.is_some() {
+        let fg_color = get_color_xml(&fill.color, "fgColor");
+        let bg_color = "<bgColor indexed=\"64\"/>".to_string();
+        format!(
+            "<fill><patternFill patternType=\"solid\">{fg_color}{bg_color}</patternFill></fill>"
+        )
     } else {
         "<fill><patternFill patternType=\"none\"/></fill>".to_string()
     }
