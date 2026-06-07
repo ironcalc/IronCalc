@@ -1110,22 +1110,15 @@ impl<'a> Model<'a> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut model = Model::new_empty("model", "en", "UTC", "en")?;
     /// assert_eq!(model.workbook.worksheet(0)?.color, Color::None);
-    /// model.set_sheet_color(0, "#DBBE29")?;
+    /// model.set_sheet_color(0, &Color::Rgb("#DBBE29".to_string()))?;
     /// assert_eq!(model.workbook.worksheet(0)?.color, Color::Rgb("#DBBE29".to_string()));
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> Result<(), String> {
+    pub fn set_sheet_color(&mut self, sheet: u32, color: &Color) -> Result<(), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
-        if color.is_empty() {
-            worksheet.color = Color::None;
-            return Ok(());
-        }
-        if common::is_valid_hex_color(color) {
-            worksheet.color = Color::Rgb(color.to_string());
-            return Ok(());
-        }
-        Err(format!("Invalid color: {color}"))
+        worksheet.color = color.clone();
+        Ok(())
     }
 
     /// Changes the visibility of a sheet
@@ -1140,9 +1133,9 @@ impl<'a> Model<'a> {
         self.workbook.theme = theme;
     }
 
-    /// Returns the name of the current workbook theme.
-    pub fn get_theme_name(&self) -> &str {
-        &self.workbook.theme.name
+    /// Returns the Theme
+    pub fn get_theme(&self) -> Theme {
+        self.workbook.theme.clone()
     }
 
     /// Makes the grid lines in the sheet visible (`true`) or hidden (`false`)

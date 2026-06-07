@@ -11,7 +11,7 @@ use ironcalc_base::{
         types::Area,
         utils::{number_to_column, quote_name as quote_name_ic},
     },
-    types::{CellType, Style},
+    types::{CellType, Color, Style},
     worksheet::NavigationDirection,
     BorderArea, ClipboardData, UserModel as BaseModel,
 };
@@ -202,9 +202,15 @@ impl Model {
     }
 
     #[wasm_bindgen(js_name = "setSheetColor")]
-    pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> Result<(), JsError> {
+    pub fn set_sheet_color(
+        &mut self,
+        sheet: u32,
+        #[wasm_bindgen(unchecked_param_type = "Color")] color: JsValue,
+    ) -> Result<(), JsError> {
+        let color: ironcalc_base::types::Color =
+            serde_wasm_bindgen::from_value(color).unwrap_or(Color::None);
         self.model
-            .set_sheet_color(sheet, color)
+            .set_sheet_color(sheet, &color)
             .map_err(to_js_error)
     }
 
@@ -643,18 +649,18 @@ impl Model {
         Ok(())
     }
 
-    /// Returns the name of the current workbook theme.
-    #[wasm_bindgen(js_name = "getThemeName")]
-    pub fn get_theme_name(&self) -> String {
-        self.model.get_theme_name().to_string()
+    /// Returns the current workbook theme.
+    #[wasm_bindgen(js_name = "getTheme")]
+    pub fn get_theme(&self) -> Result<JsValue, JsError> {
+        serde_wasm_bindgen::to_value(&self.model.get_theme()).map_err(|e| to_js_error(e.to_string()))
     }
 
     /// Resolves a `Color` value to a CSS hex string using the current workbook theme.
-    /// Accepts `Color | undefined`; returns `""` for absent/None colors.
+    /// Accepts `Color`; returns `""` for absent/None colors.
     #[wasm_bindgen(js_name = "resolveColor")]
     pub fn resolve_color(
         &self,
-        #[wasm_bindgen(unchecked_param_type = "Color | undefined")] color: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "Color")] color: JsValue,
     ) -> String {
         let color: ironcalc_base::types::Color =
             serde_wasm_bindgen::from_value(color).unwrap_or(ironcalc_base::types::Color::None);

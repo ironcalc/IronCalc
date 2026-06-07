@@ -132,7 +132,7 @@ export interface WorksheetProperties {
  *
  * Pass to `model.resolveColor(color)` to get the final CSS hex string.
  */
-export type Color = string | [number, number];
+export type Color = string | [number, number] | undefined;
 
 interface CellStyleFill {
   color?: Color;

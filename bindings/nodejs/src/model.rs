@@ -5,9 +5,7 @@ use serde::Serialize;
 
 use ironcalc::{
   base::{
-    expressions::types::Area,
-    types::{CellType, Style},
-    Model as BaseModel,
+    Model as BaseModel, expressions::types::Area, types::{CellType, Color, Style}
   },
   error::XlsxError,
   export::{save_to_icalc, save_to_xlsx},
@@ -276,8 +274,10 @@ impl Model {
       .unwrap()
   }
 
+  // FIXME: this should also allow themed colors
   #[napi]
   pub fn set_sheet_color(&mut self, sheet: u32, color: String) -> Result<()> {
+    let color = Color::from_rgb(&color).map_err(to_js_error)?;
     self
       .model
       .set_sheet_color(sheet, &color)

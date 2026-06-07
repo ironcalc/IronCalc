@@ -31,7 +31,7 @@ fn add_undo_redo() {
 #[test]
 fn set_sheet_color() {
     let mut model = new_empty_user_model();
-    model.set_sheet_color(0, "#343434").unwrap();
+    model.set_sheet_color(0, &Color::Rgb("#343434".to_string())).unwrap();
     let worksheets_properties = model.get_worksheets_properties();
     assert_eq!(worksheets_properties.len(), 1);
     assert_eq!(
@@ -47,13 +47,13 @@ fn set_sheet_color() {
         Color::Rgb("#343434".to_owned())
     );
     // changes the color if there is one
-    model.set_sheet_color(0, "#2534FF").unwrap();
+    model.set_sheet_color(0, &Color::Rgb("#2534FF".to_string())).unwrap();
     assert_eq!(
         model.get_worksheets_properties()[0].color,
         Color::Rgb("#2534FF".to_owned())
     );
     // Setting it back to none
-    model.set_sheet_color(0, "").unwrap();
+    model.set_sheet_color(0, &Color::None).unwrap();
     assert_eq!(model.get_worksheets_properties()[0].color, Color::None);
 }
 

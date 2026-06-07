@@ -138,23 +138,6 @@ pub fn get_all_timezones() -> Vec<String> {
     crate::tz::get_all_timezone_names()
 }
 
-/// Valid hex colors are #FFAABB
-/// #fff is not valid
-pub(crate) fn is_valid_hex_color(color: &str) -> bool {
-    if color.chars().count() != 7 {
-        return false;
-    }
-    if !color.starts_with('#') {
-        return false;
-    }
-    if let Ok(z) = i32::from_str_radix(&color[1..], 16) {
-        if (0..=0xffffff).contains(&z) {
-            return true;
-        }
-    }
-    false
-}
-
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used)]
@@ -357,21 +340,5 @@ mod tests {
 
         assert!(value_needs_quoting("#REF!", en_language));
         assert!(value_needs_quoting("#NAME?", en_language));
-    }
-
-    #[test]
-    fn test_is_valid_hex_color() {
-        assert!(is_valid_hex_color("#000000"));
-        assert!(is_valid_hex_color("#ffffff"));
-
-        assert!(!is_valid_hex_color("000000"));
-        assert!(!is_valid_hex_color("ffffff"));
-
-        assert!(!is_valid_hex_color("#gggggg"));
-
-        // Not obvious cases unrecognized as colors
-        assert!(!is_valid_hex_color("#ffffff "));
-        assert!(!is_valid_hex_color("#fff")); // CSS shorthand
-        assert!(!is_valid_hex_color("#ffffff00")); // with alpha channel
     }
 }
