@@ -20,7 +20,6 @@ const instance: typeof i18n = i18n.createInstance({
   interpolation: {
     escapeValue: false,
   },
-  showSupportNotice: false,
 });
 
 export default instance;
