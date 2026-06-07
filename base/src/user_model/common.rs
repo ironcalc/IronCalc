@@ -13,7 +13,8 @@ use crate::{
     },
     model::{FmtSettings, Model},
     types::{
-        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment, SheetProperties, SheetState, Style, Theme, VerticalAlignment
+        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
+        SheetProperties, SheetState, Style, Theme, VerticalAlignment,
     },
 };
 

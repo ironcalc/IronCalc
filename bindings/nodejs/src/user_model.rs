@@ -5,7 +5,9 @@ use serde::Serialize;
 use napi::{self, bindgen_prelude::*, Result, Unknown};
 
 use ironcalc::base::{
-  BorderArea, ClipboardData, UserModel as BaseModel, expressions::types::Area, types::{CellType, Color, Style}
+  expressions::types::Area,
+  types::{CellType, Color, Style},
+  BorderArea, ClipboardData, UserModel as BaseModel,
 };
 
 #[derive(Serialize)]

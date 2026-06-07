@@ -652,7 +652,8 @@ impl Model {
     /// Returns the current workbook theme.
     #[wasm_bindgen(js_name = "getTheme", unchecked_return_type = "IronCalcTheme")]
     pub fn get_theme(&self) -> Result<JsValue, JsError> {
-        serde_wasm_bindgen::to_value(&self.model.get_theme()).map_err(|e| to_js_error(e.to_string()))
+        serde_wasm_bindgen::to_value(&self.model.get_theme())
+            .map_err(|e| to_js_error(e.to_string()))
     }
 
     /// Resolves a `Color` value to a CSS hex string using the current workbook theme.

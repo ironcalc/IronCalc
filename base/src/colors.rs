@@ -67,13 +67,13 @@ fn hue_to_rgb(p: f64, q: f64, t: f64) -> f64 {
         c -= 1.0;
     }
     if c < 1.0 / 6.0 {
-        return p + (q - p) * 6.0 * t;
+        return p + (q - p) * 6.0 * c;
     };
     if c < 0.5 {
         return q;
     };
     if c < 2.0 / 3.0 {
-        return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+        return p + (q - p) * (2.0 / 3.0 - c) * 6.0;
     };
     p
 }
@@ -231,6 +231,62 @@ mod tests {
             let diff =
                 (rgb2[0] - rgb[0]).abs() + (rgb2[1] - rgb[1]).abs() + (rgb2[2] - rgb[2]).abs();
             assert!(diff < 4);
+        }
+    }
+
+    #[test]
+    fn test_tint() {
+        let accent3 = "#8064A2";
+        assert_eq!(hex_with_tint_to_rgb(accent3, 0.8), "#E5DFEC");
+        assert_eq!(hex_with_tint_to_rgb(accent3, 0.6), "#CBBFD9");
+        assert_eq!(hex_with_tint_to_rgb(accent3, 0.4), "#B3A3C8");
+    }
+
+    #[test]
+    fn test_hsl_to_rgb() {
+        // Achromatic: saturation=0 bypasses hue_to_rgb entirely
+        assert_eq!(hsl_to_rgb([0, 0, 0]), [0, 0, 0]);
+        assert_eq!(hsl_to_rgb([0, 0, 100]), [255, 255, 255]);
+        assert_eq!(hsl_to_rgb([0, 0, 50]), [128, 128, 128]);
+
+        // Primary colors
+        assert_eq!(hsl_to_rgb([0, 100, 50]), [255, 0, 0]);
+        assert_eq!(hsl_to_rgb([120, 100, 50]), [0, 255, 0]);
+        assert_eq!(hsl_to_rgb([240, 100, 50]), [0, 0, 255]);
+
+        // hue=30°: blue channel wraps up (t < 0 → c = t+1 ≥ 2/3 → return p)
+        assert_eq!(hsl_to_rgb([30, 100, 50]), [255, 128, 0]);
+
+        // hue=180° and hue=210°: green channel hits the (2/3 - c)*6 branch (c ∈ [0.5, 2/3))
+        assert_eq!(hsl_to_rgb([180, 100, 50]), [0, 255, 255]);
+        assert_eq!(hsl_to_rgb([210, 100, 50]), [0, 127, 255]);
+
+        // hue=270°: red channel wraps down (t > 1 → c = t-1 < 1/6 → first formula with c ≠ t)
+        // 127 not 128 because 6*(1/12) lands just under 0.5 in f64
+        assert_eq!(hsl_to_rgb([270, 100, 50]), [127, 0, 255]);
+    }
+
+    #[test]
+    fn test_hsl_round_trip_wrapping_hues() {
+        // Hue 240°–300° (purple/violet): red channel wraps down in hue_to_rgb (t = hue+1/3 > 1).
+        // Hue 0°–120° (warm): blue channel wraps up (t = hue-1/3 < 0).
+        for hex in [
+            "#8064A2", // ~267° — purple range
+            "#7030A0", // ~274°
+            "#4B0082", // ~275° indigo
+            "#FF6600", // ~24° orange
+            "#ED7D31", // ~24°
+            "#FFCC00", // ~48° yellow
+        ] {
+            let rgb = hex_to_rgb(hex);
+            let hsl = rgb_to_hsl(rgb);
+            let rgb2 = hsl_to_rgb(hsl);
+            let diff =
+                (rgb2[0] - rgb[0]).abs() + (rgb2[1] - rgb[1]).abs() + (rgb2[2] - rgb[2]).abs();
+            assert!(
+                diff < 6,
+                "round-trip failed for {hex}: {rgb:?} → {hsl:?} → {rgb2:?}"
+            );
         }
     }
 }
