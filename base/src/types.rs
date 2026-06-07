@@ -63,7 +63,7 @@ impl Color {
         if is_valid_hex_color(color) {
             return Ok(Color::Rgb(color.to_string()));
         }
-        Err("Invalid color".to_string())
+        Err(format!("Invalid color: '{}'.", color))
     }
 }
 
