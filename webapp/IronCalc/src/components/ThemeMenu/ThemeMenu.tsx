@@ -45,31 +45,36 @@ const ThemeMenu = ({
 
   return (
     <Menu trigger={<div className="ic-format-menu-anchor">{children}</div>}>
-      {allThemes.map((theme) => (
-        <MenuItem
-          key={theme.name}
-          onClick={() => onChange(theme)}
-          checked={themeEquals(theme, currentTheme)}
-          secondaryText={
-            <span style={{ display: "flex", gap: 2, alignItems: "center" }}>
-              {ACCENT_KEYS.map((key) => (
-                <span
-                  key={key}
-                  style={{
-                    display: "inline-block",
-                    width: 10,
-                    height: 10,
-                    borderRadius: 2,
-                    backgroundColor: theme[key] as string,
-                  }}
-                />
-              ))}
-            </span>
-          }
-        >
-          {theme.name}
-        </MenuItem>
-      ))}
+      {allThemes.map((theme) => {
+        const isCurrent = themeEquals(theme, currentTheme);
+        const suffix = isCurrent ? " (current)" : "";
+        const key = `${theme.name}${suffix}`;
+        return (
+          <MenuItem
+            key={key}
+            onClick={() => onChange(theme)}
+            checked={isCurrent}
+            secondaryText={
+              <span style={{ display: "flex", gap: 2, alignItems: "center" }}>
+                {ACCENT_KEYS.map((key) => (
+                  <span
+                    key={key}
+                    style={{
+                      display: "inline-block",
+                      width: 10,
+                      height: 10,
+                      borderRadius: 2,
+                      backgroundColor: theme[key] as string,
+                    }}
+                  />
+                ))}
+              </span>
+            }
+          >
+            {theme.name}
+          </MenuItem>
+        );
+      })}
     </Menu>
   );
 };
