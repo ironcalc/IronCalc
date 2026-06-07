@@ -28,7 +28,6 @@ import {
   Layers,
   Minus,
   PaintBucket,
-  Paintbrush,
   PaintRoller,
   Percent,
   Plus,
@@ -593,7 +592,7 @@ function Toolbar(properties: ToolbarProperties) {
                 style={{ gap: 0, paddingLeft: 4, paddingRight: 2 }}
                 endIcon={<ChevronDown size={12} />}
               >
-                <Paintbrush size={16} />
+                {t("toolbar.theme")}
               </Button>
             </Tooltip>
           </ThemeMenu>
