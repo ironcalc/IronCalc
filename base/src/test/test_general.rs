@@ -335,7 +335,7 @@ fn test_style_fmt_id() {
 fn test_set_sheet_color() {
     let mut model = new_empty_model();
     assert_eq!(model.workbook.worksheet(0).unwrap().color, Color::None);
-    assert!(model.set_sheet_color(0, "#FFFAAA").is_ok());
+    assert!(model.set_sheet_color(0, &Color::from_rgb("#FFFAAA").unwrap()).is_ok());
 
     // Test new tab color is properly set
     assert_eq!(
@@ -344,7 +344,7 @@ fn test_set_sheet_color() {
     );
 
     // Test we can remove it
-    assert!(model.set_sheet_color(0, "").is_ok());
+    assert!(model.set_sheet_color(0, &Color::None).is_ok());
     assert_eq!(model.workbook.worksheet(0).unwrap().color, Color::None);
 }
 
@@ -352,7 +352,7 @@ fn test_set_sheet_color() {
 fn test_set_sheet_color_invalid_sheet() {
     let mut model = new_empty_model();
     assert_eq!(
-        model.set_sheet_color(10, "#FFFAAA"),
+        model.set_sheet_color(10, &Color::Rgb("#FFFAAA".to_string())),
         Err("Invalid sheet index".to_string())
     );
 }
@@ -361,29 +361,8 @@ fn test_set_sheet_color_invalid_sheet() {
 fn test_set_sheet_color_invalid() {
     let mut model = new_empty_model();
     // Boundaries
-    assert!(model.set_sheet_color(0, "#FFFFFF").is_ok());
-    assert!(model.set_sheet_color(0, "#000000").is_ok());
-
-    assert_eq!(
-        model.set_sheet_color(0, "#FFF"),
-        Err("Invalid color: #FFF".to_string())
-    );
-    assert_eq!(
-        model.set_sheet_color(0, "-#FFF"),
-        Err("Invalid color: -#FFF".to_string())
-    );
-    assert_eq!(
-        model.set_sheet_color(0, "#-FFF"),
-        Err("Invalid color: #-FFF".to_string())
-    );
-    assert_eq!(
-        model.set_sheet_color(0, "2FFFFFF"),
-        Err("Invalid color: 2FFFFFF".to_string())
-    );
-    assert_eq!(
-        model.set_sheet_color(0, "#FFFFFF1"),
-        Err("Invalid color: #FFFFFF1".to_string())
-    );
+    assert!(model.set_sheet_color(0, &Color::Rgb("#FFFFFF".to_string())).is_ok());
+    assert!(model.set_sheet_color(0, &Color::Rgb("#000000".to_string())).is_ok());
 }
 
 #[test]

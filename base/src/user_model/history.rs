@@ -4,7 +4,7 @@ use bitcode::{Decode, Encode};
 
 use crate::{
     cf_types::CfRule,
-    types::{Cell, Col, Row, SheetState, Style, Theme, Worksheet},
+    types::{Cell, Col, Color, Row, SheetState, Style, Theme, Worksheet},
 };
 
 #[derive(Clone, Encode, Decode)]
@@ -162,8 +162,8 @@ pub(crate) enum Diff {
     },
     SetSheetColor {
         index: u32,
-        old_value: String,
-        new_value: String,
+        old_value: Color,
+        new_value: Color,
     },
     SetSheetState {
         index: u32,

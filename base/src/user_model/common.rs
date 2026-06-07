@@ -13,10 +13,8 @@ use crate::{
     },
     model::{FmtSettings, Model},
     types::{
-        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment,
-        SheetProperties, SheetState, Style, VerticalAlignment,
+        Alignment, ArrayKind, BorderItem, Cell, CellType, Col, Color, HorizontalAlignment, SheetProperties, SheetState, Style, Theme, VerticalAlignment
     },
-    utils::is_valid_hex_color,
 };
 
 use crate::user_model::history::{
@@ -69,16 +67,6 @@ fn boolean(value: &str) -> Result<bool, String> {
     }
 }
 
-fn color(value: &str) -> Result<Color, String> {
-    if value.is_empty() {
-        return Ok(Color::None);
-    }
-    if !is_valid_hex_color(value) {
-        return Err(format!("Invalid color: '{value}'."));
-    }
-    Ok(Color::Rgb(value.to_owned()))
-}
-
 fn horizontal(value: &str) -> Result<HorizontalAlignment, String> {
     match value {
         "center" => Ok(HorizontalAlignment::Center),
@@ -122,7 +110,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
             style.font.strike = boolean(value)?;
         }
         "font.color" => {
-            style.font.color = color(value)?;
+            style.font.color = Color::from_rgb(value)?;
         }
         "font.size" => {
             let new_size: i32 = value
@@ -145,7 +133,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
             style.font.sz = new_size;
         }
         "fill.color" | "fill.bg_color" | "fill.fg_color" => {
-            style.fill.color = color(value)?;
+            style.fill.color = Color::from_rgb(value)?;
         }
         "num_fmt" => {
             value.clone_into(&mut style.num_fmt);
@@ -597,17 +585,13 @@ impl<'a> UserModel<'a> {
     /// See also
     /// * [Model::set_sheet_color]
     /// * [UserModel::get_worksheets_properties]
-    pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> Result<(), String> {
-        let old_value = match &self.model.workbook.worksheet(sheet)?.color {
-            Color::Rgb(s) => s.clone(),
-            Color::Theme(idx, tint) => self.model.workbook.theme.resolve(*idx, *tint),
-            Color::None => "".to_string(),
-        };
+    pub fn set_sheet_color(&mut self, sheet: u32, color: &Color) -> Result<(), String> {
+        let old_value = self.model.workbook.worksheet(sheet)?.color.clone();
         self.model.set_sheet_color(sheet, color)?;
         self.push_diff_list(vec![Diff::SetSheetColor {
             index: sheet,
             old_value,
-            new_value: color.to_string(),
+            new_value: color.clone(),
         }]);
         Ok(())
     }
@@ -1759,7 +1743,7 @@ impl<'a> UserModel<'a> {
     }
 
     /// Sets the workbook theme.
-    pub fn set_theme(&mut self, theme: crate::types::Theme) {
+    pub fn set_theme(&mut self, theme: Theme) {
         let old_value = self.model.workbook.theme.clone();
         let new_value = theme.clone();
         self.model.set_theme(theme);
@@ -1769,14 +1753,14 @@ impl<'a> UserModel<'a> {
         }]);
     }
 
-    /// Returns the name of the current workbook theme.
-    pub fn get_theme_name(&self) -> &str {
-        self.model.get_theme_name()
+    /// Returns the current workbook theme.
+    pub fn get_theme(&self) -> Theme {
+        self.model.get_theme()
     }
 
     /// Resolves a `Color` value to a CSS hex string using the current workbook theme.
     /// Returns an empty string for `Color::None`.
-    pub fn resolve_color(&self, color: &crate::types::Color) -> String {
+    pub fn resolve_color(&self, color: &Color) -> String {
         color.to_rgb(&self.model.workbook.theme)
     }
 

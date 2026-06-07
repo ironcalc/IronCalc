@@ -23,6 +23,23 @@ pub enum Color {
     None,
 }
 
+/// Valid hex colors are #FFAABB
+/// #fff is not valid
+fn is_valid_hex_color(color: &str) -> bool {
+    if color.chars().count() != 7 {
+        return false;
+    }
+    if !color.starts_with('#') {
+        return false;
+    }
+    if let Ok(z) = i32::from_str_radix(&color[1..], 16) {
+        if (0..=0xffffff).contains(&z) {
+            return true;
+        }
+    }
+    false
+}
+
 impl Color {
     pub fn is_none(&self) -> bool {
         matches!(self, Color::None)
@@ -40,6 +57,13 @@ impl Color {
             Color::Theme(idx, tint) => theme.resolve(*idx, *tint),
             Color::None => String::new(),
         }
+    }
+
+    pub fn from_rgb(color: &str) -> Result<Self, String> {
+        if is_valid_hex_color(color) {
+            return Ok(Color::Rgb(color.to_string()));
+        }
+        Err("Invalid color".to_string())
     }
 }
 
@@ -760,7 +784,7 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Theme {
-            name: "Office Theme".to_string(),
+            name: "Office".to_string(),
             dk1: "#000000".to_string(),
             lt1: "#FFFFFF".to_string(),
             dk2: "#44546A".to_string(),
@@ -798,5 +822,26 @@ impl Theme {
             _ => &self.dk1,
         };
         hex_with_tint_to_rgb(color, tint)
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_is_valid_hex_color() {
+        assert!(is_valid_hex_color("#000000"));
+        assert!(is_valid_hex_color("#ffffff"));
+
+        assert!(!is_valid_hex_color("000000"));
+        assert!(!is_valid_hex_color("ffffff"));
+
+        assert!(!is_valid_hex_color("#gggggg"));
+
+        // Not obvious cases unrecognized as colors
+        assert!(!is_valid_hex_color("#ffffff "));
+        assert!(!is_valid_hex_color("#fff")); // CSS shorthand
+        assert!(!is_valid_hex_color("#ffffff00")); // with alpha channel
     }
 }

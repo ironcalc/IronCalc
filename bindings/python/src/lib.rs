@@ -288,9 +288,11 @@ impl PyModel {
             .collect())
     }
 
+    // FIXME: this should also use themed colors
     pub fn set_sheet_color(&mut self, sheet: u32, color: &str) -> PyResult<()> {
+        let color = Color::from_rgb(color).map_err(|e| WorkbookError::new_err(e.to_string()))?;
         self.model
-            .set_sheet_color(sheet, color)
+            .set_sheet_color(sheet, &color)
             .map_err(|e| WorkbookError::new_err(e.to_string()))
     }
 
