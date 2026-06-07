@@ -60,7 +60,7 @@ fn try_load<R: Read + std::io::Seek>(
         .descendants()
         .find(|n| n.has_tag_name("theme"))
         .and_then(|n| n.attribute("name"))
-        .unwrap_or("Office Theme")
+        .unwrap_or("Office")
         .to_string();
     // strips "Theme" suffix if present, to avoid redundant "Office Theme Theme" default name.
     let theme_name = theme_name
