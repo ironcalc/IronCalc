@@ -250,7 +250,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   };
 
   const fmtSettings = model.getFmtSettings();
-  const themes = getThemeList();
+  const themesRef = useRef<IronCalcTheme[] | null>(null);
+  if (themesRef.current === null) {
+    themesRef.current = getThemeList();
+  }
+  const themes = themesRef.current ?? [];
 
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
   // the Rust backend
