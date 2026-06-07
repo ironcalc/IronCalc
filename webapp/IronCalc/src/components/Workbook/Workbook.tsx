@@ -250,8 +250,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   };
 
   const fmtSettings = model.getFmtSettings();
-  const themes = getThemeList() as IronCalcTheme[];
-  const currentThemeName = model.getThemeName();
+  const themes = getThemeList();
 
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
   // the Rust backend
@@ -803,7 +802,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onOpenNamedStyles={() => openDrawer("namedStyles")}
         isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
         themes={themes}
-        currentThemeName={currentThemeName}
+        currentTheme={model.getTheme()}
         onThemePicked={(theme: IronCalcTheme) => {
           model.setTheme(theme);
           setRedrawId((id) => id + 1);

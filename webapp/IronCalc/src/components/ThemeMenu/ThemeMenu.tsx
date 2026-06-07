@@ -15,43 +15,63 @@ const ACCENT_KEYS: (keyof IronCalcTheme)[] = [
 type ThemeMenuProperties = {
   children: ReactNode;
   themes: IronCalcTheme[];
-  currentThemeName: string;
+  currentTheme: IronCalcTheme;
   onChange: (theme: IronCalcTheme) => void;
 };
+
+function themeEquals(theme1: IronCalcTheme, theme2: IronCalcTheme) {
+  return (
+    theme1.name === theme2.name &&
+    ACCENT_KEYS.every((key) => theme1[key] === theme2[key]) &&
+    theme1.dk1 === theme2.dk1 &&
+    theme1.lt1 === theme2.lt1 &&
+    theme1.dk2 === theme2.dk2 &&
+    theme1.lt2 === theme2.lt2 &&
+    theme1.fol_hlink === theme2.fol_hlink &&
+    theme1.hlink === theme2.hlink
+  );
+}
 
 const ThemeMenu = ({
   children,
   themes,
-  currentThemeName,
+  currentTheme,
   onChange,
-}: ThemeMenuProperties) => (
-  <Menu trigger={<div className="ic-format-menu-anchor">{children}</div>}>
-    {themes.map((theme) => (
-      <MenuItem
-        key={theme.name}
-        checked={theme.name === currentThemeName}
-        onClick={() => onChange(theme)}
-        secondaryText={
-          <span style={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {ACCENT_KEYS.map((key) => (
-              <span
-                key={key}
-                style={{
-                  display: "inline-block",
-                  width: 10,
-                  height: 10,
-                  borderRadius: 2,
-                  backgroundColor: theme[key] as string,
-                }}
-              />
-            ))}
-          </span>
-        }
-      >
-        {theme.name}
-      </MenuItem>
-    ))}
-  </Menu>
-);
+}: ThemeMenuProperties) => {
+  let allThemes = themes;
+  if (!themes.some((theme) => themeEquals(theme, currentTheme))) {
+    allThemes = [...themes, currentTheme];
+  }
+
+  return (
+    <Menu trigger={<div className="ic-format-menu-anchor">{children}</div>}>
+      {allThemes.map((theme) => (
+        <MenuItem
+          key={theme.name}
+          onClick={() => onChange(theme)}
+          checked={themeEquals(theme, currentTheme)}
+          secondaryText={
+            <span style={{ display: "flex", gap: 2, alignItems: "center" }}>
+              {ACCENT_KEYS.map((key) => (
+                <span
+                  key={key}
+                  style={{
+                    display: "inline-block",
+                    width: 10,
+                    height: 10,
+                    borderRadius: 2,
+                    backgroundColor: theme[key] as string,
+                  }}
+                />
+              ))}
+            </span>
+          }
+        >
+          {theme.name}
+        </MenuItem>
+      ))}
+    </Menu>
+  );
+};
 
 export default ThemeMenu;

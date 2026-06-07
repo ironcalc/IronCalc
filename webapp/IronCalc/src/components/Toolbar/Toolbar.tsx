@@ -99,7 +99,7 @@ type ToolbarProperties = {
   onOpenNamedStyles: () => void;
   isNamedStylesOpen: boolean;
   themes: IronCalcTheme[];
-  currentThemeName: string;
+  currentTheme: IronCalcTheme;
   onThemePicked: (theme: IronCalcTheme) => void;
 };
 
@@ -583,7 +583,7 @@ function Toolbar(properties: ToolbarProperties) {
           </Tooltip>
           <ThemeMenu
             themes={properties.themes}
-            currentThemeName={properties.currentThemeName}
+            currentTheme={properties.currentTheme}
             onChange={properties.onThemePicked}
           >
             <Tooltip title={t("toolbar.theme")}>
