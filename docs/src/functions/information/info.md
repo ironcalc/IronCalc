@@ -32,6 +32,8 @@ The *type_text* argument is **always in English**, regardless of the workbook's 
 | `"recalc"` | The current recalculation mode. IronCalc always returns `"Automatic"`. |
 | `"release"` | The version of IronCalc as a text string. |
 | `"system"` | The name of the operating environment: `"browser"` in the web app, or the OS name (e.g. `"linux"`, `"windows"`, `"macos"`) in other contexts. |
+| `"timezone"` | The timezone of the workbook. |
+| `"timezones"` | The list of all available timezones. |
 
 The following *type_text* values are recognized but **not yet implemented** and return a [`#N/IMPL!`](/features/error-types.md#nimpl) error: `"directory"`, `"origin"`, `"osversion"`.
 

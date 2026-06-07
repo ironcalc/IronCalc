@@ -2,7 +2,13 @@ mod isomitted;
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::number_to_column},
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+        utils::number_to_column,
+    },
+    get_all_timezones,
     model::{Model, ParsedDefinedName},
 };
 
@@ -510,6 +516,14 @@ impl<'a> Model<'a> {
             "RECALC" => CalcResult::String("Automatic".to_string()),
             "RELEASE" => CalcResult::String(release.to_string()),
             "SYSTEM" => CalcResult::String(get_system()),
+            "TIMEZONE" => CalcResult::String(self.get_timezone()),
+            "TIMEZONES" => {
+                let list: Vec<Vec<ArrayNode>> = get_all_timezones()
+                    .into_iter()
+                    .map(|name| vec![ArrayNode::String(name.to_string())])
+                    .collect();
+                CalcResult::Array(list)
+            }
             _ => CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
