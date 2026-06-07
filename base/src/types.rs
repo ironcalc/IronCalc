@@ -825,7 +825,6 @@ impl Theme {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;

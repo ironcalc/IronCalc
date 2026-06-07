@@ -5,7 +5,9 @@ use serde::Serialize;
 
 use ironcalc::{
   base::{
-    Model as BaseModel, expressions::types::Area, types::{CellType, Color, Style}
+    expressions::types::Area,
+    types::{CellType, Color, Style},
+    Model as BaseModel,
   },
   error::XlsxError,
   export::{save_to_icalc, save_to_xlsx},

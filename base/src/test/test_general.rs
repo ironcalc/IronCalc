@@ -335,7 +335,9 @@ fn test_style_fmt_id() {
 fn test_set_sheet_color() {
     let mut model = new_empty_model();
     assert_eq!(model.workbook.worksheet(0).unwrap().color, Color::None);
-    assert!(model.set_sheet_color(0, &Color::from_rgb("#FFFAAA").unwrap()).is_ok());
+    assert!(model
+        .set_sheet_color(0, &Color::from_rgb("#FFFAAA").unwrap())
+        .is_ok());
 
     // Test new tab color is properly set
     assert_eq!(
@@ -361,8 +363,12 @@ fn test_set_sheet_color_invalid_sheet() {
 fn test_set_sheet_color_invalid() {
     let mut model = new_empty_model();
     // Boundaries
-    assert!(model.set_sheet_color(0, &Color::Rgb("#FFFFFF".to_string())).is_ok());
-    assert!(model.set_sheet_color(0, &Color::Rgb("#000000".to_string())).is_ok());
+    assert!(model
+        .set_sheet_color(0, &Color::Rgb("#FFFFFF".to_string()))
+        .is_ok());
+    assert!(model
+        .set_sheet_color(0, &Color::Rgb("#000000".to_string()))
+        .is_ok());
 }
 
 #[test]

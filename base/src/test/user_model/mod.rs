@@ -36,4 +36,5 @@ mod test_undo_redo;
 mod test_user_input_dates_quote;
 mod test_view;
 mod test_window_size;
+mod themes;
 mod util;
