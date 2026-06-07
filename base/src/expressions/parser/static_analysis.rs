@@ -1821,7 +1821,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::N => scalar_arguments(args),
         Function::Sheets => scalar_arguments(args),
         Function::Cell => StaticResult::Unknown,
-        Function::Info => scalar_arguments(args),
+        Function::Info => StaticResult::Unknown,
         Function::Dget => not_implemented(args),
         Function::Dmax => not_implemented(args),
         Function::Dmin => not_implemented(args),

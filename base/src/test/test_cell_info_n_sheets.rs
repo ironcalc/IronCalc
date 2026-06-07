@@ -35,6 +35,36 @@ fn arguments() {
 }
 
 #[test]
+fn info_timezone() {
+    let mut model = new_empty_model();
+    model._set("A1", "=INFO(\"timezone\")");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"UTC");
+
+    model.set_timezone("America/Panama").unwrap();
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"America/Panama");
+}
+
+#[test]
+fn info_timezones() {
+    let mut model = new_empty_model();
+    model._set("A1", "=INFO(\"timezones\")");
+    model._set("B1", "=COUNTA(A:A)");
+
+    model.evaluate();
+
+    // Well just remove this tests if it fails
+    assert_eq!(model._get_text("A1"), *"Africa/Abidjan");
+    let timezones = model._get_text("B1").parse::<i32>().unwrap_or(0);
+    assert!(timezones > 400);
+}
+
+#[test]
 fn cell_filename() {
     // Default workbook name is model
     let mut model = new_empty_model();
