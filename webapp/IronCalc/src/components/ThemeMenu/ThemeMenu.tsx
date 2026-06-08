@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Menu } from "../Menu/Menu";
 import { MenuDivider } from "../Menu/MenuDivider";
 import { MenuItem } from "../Menu/MenuItem";
+import { themeEquals } from "../RightDrawer/Themes/themeUtils";
 import "./theme-menu.css";
 
 const ACCENT_KEYS: (keyof IronCalcTheme)[] = [
@@ -23,19 +24,6 @@ type ThemeMenuProperties = {
   onChange: (theme: IronCalcTheme) => void;
   onManageThemes: () => void;
 };
-
-function themeEquals(theme1: IronCalcTheme, theme2: IronCalcTheme) {
-  return (
-    theme1.name === theme2.name &&
-    ACCENT_KEYS.every((key) => theme1[key] === theme2[key]) &&
-    theme1.dk1 === theme2.dk1 &&
-    theme1.lt1 === theme2.lt1 &&
-    theme1.dk2 === theme2.dk2 &&
-    theme1.lt2 === theme2.lt2 &&
-    theme1.fol_hlink === theme2.fol_hlink &&
-    theme1.hlink === theme2.hlink
-  );
-}
 
 const ThemeMenu = ({
   children,

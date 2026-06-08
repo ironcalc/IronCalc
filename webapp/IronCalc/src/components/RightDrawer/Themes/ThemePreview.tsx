@@ -48,7 +48,8 @@ const ThemePreview = ({ theme, className }: ThemePreviewProps) => (
       >
         {theme.accentColors.map((color, i) => (
           <path
-            key={color}
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length array, order never changes
+            key={i}
             d={sectorPath(14, 14, 13, i * 60, (i + 1) * 60)}
             fill={color}
           />
