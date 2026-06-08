@@ -784,19 +784,19 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Theme {
-            name: "IronCalc".to_string(),
-            dk1: "#272525".to_string(),
+            name: "Office".to_string(),
+            dk1: "#000000".to_string(),
             lt1: "#FFFFFF".to_string(),
-            dk2: "#595555".to_string(),
-            lt2: "#E8E8E8".to_string(),
-            accent1: "#1B717E".to_string(),
-            accent2: "#3BB68A".to_string(),
-            accent3: "#8CB354".to_string(),
-            accent4: "#F8CD3D".to_string(),
-            accent5: "#F2994A".to_string(),
-            accent6: "#EC5753".to_string(),
-            hlink: "#1B717E".to_string(),
-            fol_hlink: "#523E93".to_string(),
+            dk2: "#44546A".to_string(),
+            lt2: "#E7E6E6".to_string(),
+            accent1: "#4472C4".to_string(),
+            accent2: "#ED7D31".to_string(),
+            accent3: "#A5A5A5".to_string(),
+            accent4: "#FFC000".to_string(),
+            accent5: "#5B9BD5".to_string(),
+            accent6: "#70AD47".to_string(),
+            hlink: "#0563C1".to_string(),
+            fol_hlink: "#954F72".to_string(),
         }
     }
 }
