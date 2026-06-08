@@ -1,4 +1,5 @@
 import type { IronCalcTheme } from "@ironcalc/wasm";
+import { Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Menu } from "../Menu/Menu";
@@ -77,7 +78,9 @@ const ThemeMenu = ({
         );
       })}
       <MenuDivider />
-      <MenuItem onClick={onManageThemes}>{t("themes.manage_themes")}</MenuItem>
+      <MenuItem icon={<Settings />} onClick={onManageThemes}>
+        {t("themes.manage_themes")}
+      </MenuItem>
     </Menu>
   );
 };
