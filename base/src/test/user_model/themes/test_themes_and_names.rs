@@ -14,10 +14,13 @@ fn test_named_styles_and_themes() {
 
     // switching to a theme should update the color to the theme's accent3 with tint 80%
     let themes = builtin_themes();
-    let theme = &themes[1];
+    let theme = themes
+        .iter()
+        .find(|theme| theme.name == "IronCalc")
+        .expect("IronCalc theme should be a builtin theme");
     model.set_theme(theme.clone());
 
     let color_after_theme = model.get_cell_style(0, 1, 1).unwrap().fill.color;
     let resolved_color_after_theme = model.resolve_color(&color_after_theme);
-    assert_eq!(resolved_color_after_theme, "#E5DFEC");
+    assert_eq!(resolved_color_after_theme, "#E7EFDC");
 }
