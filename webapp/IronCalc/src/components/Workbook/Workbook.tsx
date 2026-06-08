@@ -256,6 +256,11 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   }
   const themes = themesRef.current ?? [];
 
+  const handleThemePicked = (theme: IronCalcTheme) => {
+    model.setTheme(theme);
+    setRedrawId((id) => id + 1);
+  };
+
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
   // the Rust backend
   const { onKeyDown } = useKeyboardNavigation({
@@ -807,12 +812,8 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
         themes={themes}
         currentTheme={model.getTheme()}
-        onThemePicked={(theme: IronCalcTheme) => {
-          model.setTheme(theme);
-          setRedrawId((id) => id + 1);
-        }}
+        onThemePicked={handleThemePicked}
         onOpenThemes={() => openDrawer("themes")}
-        isThemesOpen={isDrawerOpen && drawerType === "themes"}
       />
       <div
         className="ic-workbook-worksheet-area-left"
@@ -922,6 +923,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           return getFullRangeToString(selectedView, worksheetNames);
         }}
         drawerType={drawerType}
+        themes={themes}
+        currentTheme={model.getTheme()}
+        onThemePicked={handleThemePicked}
         customStyles={(() => {
           const builtinNames = new Set(
             model.getBuiltinNamedStyles().map((s) => s.name.toLowerCase()),

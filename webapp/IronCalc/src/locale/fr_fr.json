@@ -268,6 +268,7 @@
     "dark_color_label": "Sombre",
     "edit_theme": "Modifier le thème",
     "light_color_label": "Clair",
+    "manage_themes": "Gérer les thèmes",
     "panel_title": "Thèmes",
     "text_color_label": "Texte"
   },
@@ -328,7 +329,7 @@
     "selected_png": "Exporter la zone sélectionnée en PNG",
     "show_hide_grid_lines": "Afficher/masquer le quadrillage",
     "strike_through": "Barré",
-    "theme": "Thème",
+    "themes": "Thèmes",
     "underline": "Souligné",
     "undo": "Annuler",
     "vertical_align_bottom": "Aligner en bas",

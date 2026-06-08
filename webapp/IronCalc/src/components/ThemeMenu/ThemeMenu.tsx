@@ -1,7 +1,10 @@
 import type { IronCalcTheme } from "@ironcalc/wasm";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Menu } from "../Menu/Menu";
+import { MenuDivider } from "../Menu/MenuDivider";
 import { MenuItem } from "../Menu/MenuItem";
+import "./theme-menu.css";
 
 const ACCENT_KEYS: (keyof IronCalcTheme)[] = [
   "accent1",
@@ -17,6 +20,7 @@ type ThemeMenuProperties = {
   themes: IronCalcTheme[];
   currentTheme: IronCalcTheme;
   onChange: (theme: IronCalcTheme) => void;
+  onManageThemes: () => void;
 };
 
 function themeEquals(theme1: IronCalcTheme, theme2: IronCalcTheme) {
@@ -37,7 +41,9 @@ const ThemeMenu = ({
   themes,
   currentTheme,
   onChange,
+  onManageThemes,
 }: ThemeMenuProperties) => {
+  const { t } = useTranslation();
   let allThemes = themes;
   if (!themes.some((theme) => themeEquals(theme, currentTheme))) {
     allThemes = [...themes, currentTheme];
@@ -55,17 +61,12 @@ const ThemeMenu = ({
             onClick={() => onChange(theme)}
             checked={isCurrent}
             secondaryText={
-              <span style={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <span className="ic-theme-menu-swatches">
                 {ACCENT_KEYS.map((key) => (
                   <span
                     key={key}
-                    style={{
-                      display: "inline-block",
-                      width: 10,
-                      height: 10,
-                      borderRadius: 2,
-                      backgroundColor: theme[key] as string,
-                    }}
+                    className="ic-theme-menu-swatch"
+                    style={{ backgroundColor: theme[key] as string }}
                   />
                 ))}
               </span>
@@ -75,6 +76,8 @@ const ThemeMenu = ({
           </MenuItem>
         );
       })}
+      <MenuDivider />
+      <MenuItem onClick={onManageThemes}>{t("themes.manage_themes")}</MenuItem>
     </Menu>
   );
 };
