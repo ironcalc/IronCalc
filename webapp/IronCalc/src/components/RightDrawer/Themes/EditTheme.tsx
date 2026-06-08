@@ -17,18 +17,15 @@ export interface ThemeData {
 }
 
 interface EditThemeProps {
-  initialName?: string;
-  initialTextColor?: string;
-  initialBgColor?: string;
-  initialLightColor?: string;
-  initialDarkColor?: string;
-  initialAccentColors?: [string, string, string, string, string, string];
+  initialName: string;
+  initialTextColor: string;
+  initialBgColor: string;
+  initialLightColor: string;
+  initialDarkColor: string;
+  initialAccentColors: [string, string, string, string, string, string];
   onSave: (data: ThemeData) => void;
   onClose: () => void;
 }
-
-const DEFAULT_ACCENT_COLORS: [string, string, string, string, string, string] =
-  ["#4472C4", "#ED7D31", "#A9D18E", "#FFC000", "#5B9BD5", "#70AD47"];
 
 interface ColorFieldProps {
   label: string;
@@ -80,12 +77,12 @@ const ColorField = ({ label, value, onChange, onKeyDown }: ColorFieldProps) => {
 };
 
 const EditTheme = ({
-  initialName = "",
-  initialTextColor = "#000000",
-  initialBgColor = "#FFFFFF",
-  initialLightColor = "#F5F5F5",
-  initialDarkColor = "#333333",
-  initialAccentColors = DEFAULT_ACCENT_COLORS,
+  initialName,
+  initialTextColor,
+  initialBgColor,
+  initialLightColor,
+  initialDarkColor,
+  initialAccentColors,
   onSave,
   onClose,
 }: EditThemeProps) => {
@@ -130,7 +127,7 @@ const EditTheme = ({
         <div className="ic-edit-theme-header-box">
           <ThemePreview
             theme={{ bgColor, textColor, accentColors }}
-            className="ic-themes-list-item-preview"
+            className="ic-edit-theme-preview"
           />
           <span className="ic-edit-theme-header-box-text">{initialName}</span>
         </div>
