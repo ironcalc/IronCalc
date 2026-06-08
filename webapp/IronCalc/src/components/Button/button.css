@@ -73,10 +73,10 @@
 }
 
 .ic-button--secondary:not(:disabled):is(
-    :hover,
-    :active,
-    [aria-pressed="true"]
-  ) {
+  :hover,
+  :active,
+  [aria-pressed="true"]
+) {
   background-color: var(--palette-grey-300);
 }
 
@@ -103,10 +103,10 @@
 }
 
 .ic-button--ghost:not(:disabled):is(
-    :active,
-    [aria-pressed="true"],
-    [aria-expanded="true"]
-  ) {
+  :active,
+  [aria-pressed="true"],
+  [aria-expanded="true"]
+) {
   background-color: var(--palette-grey-200);
 }
 
@@ -116,10 +116,10 @@
 }
 
 .ic-button--destructive:not(:disabled):is(
-    :hover,
-    :active,
-    [aria-pressed="true"]
-  ) {
+  :hover,
+  :active,
+  [aria-pressed="true"]
+) {
   background-color: var(--palette-error-dark);
 }
 
@@ -128,9 +128,9 @@
 }
 
 :is(.ic-button--outline, .ic-button--ghost):not(:disabled):is(
-    :active,
-    [aria-pressed="true"]
-  ) {
+  :active,
+  [aria-pressed="true"]
+) {
   box-shadow: none;
 }
 
