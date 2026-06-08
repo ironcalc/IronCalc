@@ -1006,15 +1006,37 @@ impl<'a> Model<'a> {
         CalcResult::Number(count as f64 * sign)
     }
 
+    // Extends the standard by adding an optional timezone parameter
     pub(crate) fn fn_today(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !args.is_empty() {
+        if args.len() > 1 {
             return CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell,
                 message: "Wrong number of arguments".to_string(),
             };
         }
-        match crate::tz::excel_serial_for_now(&self.tz) {
+        let tz_owned;
+        let tz: &Tz = match args.first() {
+            Some(arg0) => {
+                let tz_str = match self.get_string(arg0, cell) {
+                    Ok(s) => s,
+                    Err(e) => return e,
+                };
+                tz_owned = match Tz::parse(&tz_str) {
+                    Ok(tz) => tz,
+                    Err(_) => {
+                        return CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: format!("Invalid timezone: {}", &tz_str),
+                        }
+                    }
+                };
+                &tz_owned
+            }
+            None => &self.tz,
+        };
+        match crate::tz::excel_serial_for_now(tz) {
             Some(serial) => CalcResult::Number(serial.floor()),
             None => CalcResult::Error {
                 error: Error::ERROR,
@@ -1024,6 +1046,7 @@ impl<'a> Model<'a> {
         }
     }
 
+    // Extends the standard by adding an optional timezone parameter
     pub(crate) fn fn_now(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 1 {
             return CalcResult::Error {
