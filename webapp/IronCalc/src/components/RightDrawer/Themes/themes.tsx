@@ -40,38 +40,51 @@ const Themes = ({
   onClose,
 }: ThemesProps) => {
   const { t } = useTranslation();
-  const [themes, setThemes] = useState<ThemeData[]>(() =>
-    builtinThemes.map(themeToThemeData),
-  );
+  const [themes, setThemes] = useState<IronCalcTheme[]>(builtinThemes);
   const [selectedIndex, setSelectedIndex] = useState(() => {
-    const index = builtinThemes.findIndex(
-      (theme) => theme.name === currentTheme.name,
-    );
+    const index = themes.findIndex((theme) => theme.name === currentTheme.name);
     return index === -1 ? 0 : index;
   });
 
   const selectTheme = (index: number) => {
     setSelectedIndex(index);
-    onThemePicked(builtinThemes[index]);
+    onThemePicked(themes[index]);
   };
-  const [editing, setEditing] = useState<{
-    theme: ThemeData;
-    index: number;
-  } | null>(null);
+  const [editing, setEditing] = useState<IronCalcTheme | null>(null);
 
   const handleSave = (data: ThemeData) => {
     if (editing === null) {
       return;
     }
-    setThemes((prev) => {
-      const next = [...prev];
-      next[editing.index] = data;
-      return next;
-    });
+    const customThemeName = t("themes.custom_theme_name");
+    const newTheme: IronCalcTheme = {
+      ...editing,
+      name: customThemeName,
+      dk1: data.textColor,
+      lt1: data.bgColor,
+      dk2: data.darkColor,
+      lt2: data.lightColor,
+      accent1: data.accentColors[0],
+      accent2: data.accentColors[1],
+      accent3: data.accentColors[2],
+      accent4: data.accentColors[3],
+      accent5: data.accentColors[4],
+      accent6: data.accentColors[5],
+    };
+
+    // Only one custom theme can exist at a time, and it always sits at the top, selected.
+    const next = [
+      newTheme,
+      ...themes.filter((theme) => theme.name !== customThemeName),
+    ];
+    setThemes(next);
+    setSelectedIndex(0);
+    onThemePicked(newTheme);
     setEditing(null);
   };
 
   if (editing) {
+    const editingData = themeToThemeData(editing);
     return (
       <div className="ic-themes-container">
         <div className="ic-themes-edit-header">
@@ -95,12 +108,12 @@ const Themes = ({
         </div>
         <div className="ic-themes-content">
           <EditTheme
-            initialName={editing.theme.name}
-            initialTextColor={editing.theme.textColor}
-            initialBgColor={editing.theme.bgColor}
-            initialLightColor={editing.theme.lightColor}
-            initialDarkColor={editing.theme.darkColor}
-            initialAccentColors={editing.theme.accentColors}
+            initialName={editingData.name}
+            initialTextColor={editingData.textColor}
+            initialBgColor={editingData.bgColor}
+            initialLightColor={editingData.lightColor}
+            initialDarkColor={editingData.darkColor}
+            initialAccentColors={editingData.accentColors}
             onSave={handleSave}
             onClose={() => setEditing(null)}
           />
@@ -139,7 +152,7 @@ const Themes = ({
             }}
           >
             <ThemePreview
-              theme={theme}
+              theme={themeToThemeData(theme)}
               className="ic-themes-list-item-preview"
             />
             <div className="ic-themes-list-item-name">{theme.name}</div>
@@ -149,7 +162,7 @@ const Themes = ({
                   icon={<PencilLine />}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEditing({ theme, index: i });
+                    setEditing(theme);
                   }}
                   aria-label={t("themes.edit_theme")}
                 />
