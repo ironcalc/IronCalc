@@ -518,7 +518,9 @@ impl<'a> Model<'a> {
             "SYSTEM" => CalcResult::String(get_system()),
             "TIMEZONE" => CalcResult::String(self.get_timezone()),
             "TIMEZONES" => {
-                let list: Vec<Vec<ArrayNode>> = get_all_timezones()
+                let mut tzs = get_all_timezones();
+                tzs.sort();
+                let list: Vec<Vec<ArrayNode>> = tzs
                     .into_iter()
                     .map(|name| vec![ArrayNode::String(name.to_string())])
                     .collect();

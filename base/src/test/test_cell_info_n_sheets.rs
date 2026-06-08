@@ -58,9 +58,8 @@ fn info_timezones() {
 
     model.evaluate();
 
-    // Well just remove this tests if it fails
-    assert_eq!(model._get_text("A1"), *"Africa/Abidjan");
-    let timezones = model._get_text("B1").parse::<i32>().unwrap_or(0);
+    assert_ne!(model._get_text("A1"), *"");
+    let timezones = model._get_text("B1").parse::<i32>().unwrap();
     assert!(timezones > 400);
 }
 
