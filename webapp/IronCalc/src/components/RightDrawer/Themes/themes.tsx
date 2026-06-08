@@ -6,6 +6,7 @@ import { IconButton } from "../../Button/IconButton";
 import { Tooltip } from "../../Tooltip/Tooltip";
 import EditTheme, { type ThemeData } from "./EditTheme";
 import ThemePreview from "./ThemePreview";
+import { themeEquals } from "./themeUtils";
 import "./themes.css";
 
 function themeToThemeData(theme: IronCalcTheme): ThemeData {
@@ -42,7 +43,7 @@ const Themes = ({
   const { t } = useTranslation();
   const [themes, setThemes] = useState<IronCalcTheme[]>(builtinThemes);
   const [selectedIndex, setSelectedIndex] = useState(() => {
-    const index = themes.findIndex((theme) => theme.name === currentTheme.name);
+    const index = themes.findIndex((theme) => themeEquals(theme, currentTheme));
     return index === -1 ? 0 : index;
   });
 
@@ -72,7 +73,7 @@ const Themes = ({
       accent6: data.accentColors[5],
     };
 
-    // Only one custom theme can exist at a time, and it always sits at the top, selected.
+    // Only one custom theme at a time. Always placed on top.
     const next = [
       newTheme,
       ...themes.filter((theme) => theme.name !== customThemeName),
@@ -134,14 +135,19 @@ const Themes = ({
           />
         </Tooltip>
       </div>
-      <div className="ic-themes-content">
+      <div
+        className="ic-themes-content"
+        role="listbox"
+        aria-label={t("themes.panel_title")}
+      >
         {themes.map((theme, i) => (
-          // biome-ignore lint/a11y/noStaticElementInteractions: FIXME
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: themes list has stable order
             key={i}
             className={`ic-themes-list-item${selectedIndex === i ? " ic-themes-list-item--selected" : ""}`}
-            // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
+            role="option"
+            aria-selected={selectedIndex === i}
+            aria-label={theme.name}
             tabIndex={0}
             onClick={() => selectTheme(i)}
             onKeyDown={(e) => {
