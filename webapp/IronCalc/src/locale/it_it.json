@@ -268,6 +268,7 @@
     "dark_color_label": "Scuro",
     "edit_theme": "Modifica tema",
     "light_color_label": "Chiaro",
+    "manage_themes": "Gestisci temi",
     "panel_title": "Temi",
     "text_color_label": "Testo"
   },
@@ -328,7 +329,7 @@
     "selected_png": "Esporta area selezionata come PNG",
     "show_hide_grid_lines": "Mostra/nascondi griglia",
     "strike_through": "Barrato",
-    "theme": "Tema",
+    "themes": "Temi",
     "underline": "Sottolineato",
     "undo": "Annulla",
     "vertical_align_bottom": "Allinea in basso",

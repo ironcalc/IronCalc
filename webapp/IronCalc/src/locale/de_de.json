@@ -268,6 +268,7 @@
     "dark_color_label": "Dunkel",
     "edit_theme": "Design bearbeiten",
     "light_color_label": "Hell",
+    "manage_themes": "Designs verwalten",
     "panel_title": "Designs",
     "text_color_label": "Text"
   },
@@ -328,7 +329,7 @@
     "selected_png": "Ausgewählten Bereich als PNG exportieren",
     "show_hide_grid_lines": "Gitternetzlinien ein-/ausblenden",
     "strike_through": "Durchgestrichen",
-    "theme": "Design",
+    "themes": "Designs",
     "underline": "Unterstrichen",
     "undo": "Rückgängig",
     "vertical_align_bottom": "Unten ausrichten",

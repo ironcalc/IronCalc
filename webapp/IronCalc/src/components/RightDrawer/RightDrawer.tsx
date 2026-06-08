@@ -1,4 +1,9 @@
-import type { FmtSettings, Model, NamedStyle } from "@ironcalc/wasm";
+import type {
+  FmtSettings,
+  IronCalcTheme,
+  Model,
+  NamedStyle,
+} from "@ironcalc/wasm";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import ConditionalFormatting from "./ConditionalFormatting/ConditionalFormatting";
@@ -36,6 +41,10 @@ interface RightDrawerProps {
   onUpdate: () => void;
   getSelectedArea: () => string;
   drawerType: DrawerType;
+  // Themes props
+  themes: IronCalcTheme[];
+  currentTheme: IronCalcTheme;
+  onThemePicked: (theme: IronCalcTheme) => void;
   // Named styles props
   customStyles: NamedStyle[];
   builtinStyles: NamedStyle[];
@@ -63,6 +72,9 @@ const RightDrawer = ({
   model,
   onUpdate,
   drawerType,
+  themes,
+  currentTheme,
+  onThemePicked,
   customStyles,
   builtinStyles,
   formatOptions,
@@ -194,7 +206,14 @@ const RightDrawer = ({
           />
         );
       case "themes":
-        return <Themes onClose={onClose} />;
+        return (
+          <Themes
+            onClose={onClose}
+            themes={themes}
+            currentTheme={currentTheme}
+            onThemePicked={onThemePicked}
+          />
+        );
       default:
         return (
           <NamedRanges

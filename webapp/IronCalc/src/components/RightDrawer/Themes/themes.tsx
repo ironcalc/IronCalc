@@ -1,3 +1,4 @@
+import type { IronCalcTheme } from "@ironcalc/wasm";
 import { ArrowLeft, PencilLine, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,62 +8,52 @@ import EditTheme, { type ThemeData } from "./EditTheme";
 import ThemePreview from "./ThemePreview";
 import "./themes.css";
 
-const INITIAL_THEMES: ThemeData[] = [
-  {
-    name: "Default",
-    textColor: "#272525",
-    bgColor: "#FFFFFF",
-    lightColor: "#F5F5F5",
-    darkColor: "#333333",
+function themeToThemeData(theme: IronCalcTheme): ThemeData {
+  return {
+    name: theme.name,
+    textColor: theme.dk1,
+    bgColor: theme.lt1,
+    darkColor: theme.dk2,
+    lightColor: theme.lt2,
     accentColors: [
-      "#4472C4",
-      "#ED7D31",
-      "#A9D18E",
-      "#FFC000",
-      "#5B9BD5",
-      "#70AD47",
+      theme.accent1,
+      theme.accent2,
+      theme.accent3,
+      theme.accent4,
+      theme.accent5,
+      theme.accent6,
     ],
-  },
-  {
-    name: "Ocean",
-    textColor: "#1A2B3C",
-    bgColor: "#F0F7FF",
-    lightColor: "#E8F4FD",
-    darkColor: "#1A2B3C",
-    accentColors: [
-      "#0066CC",
-      "#00A3BF",
-      "#007A87",
-      "#005F73",
-      "#0096C7",
-      "#48CAE4",
-    ],
-  },
-  {
-    name: "Forest",
-    textColor: "#1B3A1F",
-    bgColor: "#F0FFF4",
-    lightColor: "#E8F5E9",
-    darkColor: "#1B3A1F",
-    accentColors: [
-      "#2D6A4F",
-      "#40916C",
-      "#74C69D",
-      "#95D5B2",
-      "#52B788",
-      "#1B4332",
-    ],
-  },
-];
+  };
+}
 
 type ThemesProps = {
+  themes: IronCalcTheme[];
+  currentTheme: IronCalcTheme;
+  onThemePicked: (theme: IronCalcTheme) => void;
   onClose: () => void;
 };
 
-const Themes = ({ onClose }: ThemesProps) => {
+const Themes = ({
+  themes: builtinThemes,
+  currentTheme,
+  onThemePicked,
+  onClose,
+}: ThemesProps) => {
   const { t } = useTranslation();
-  const [themes, setThemes] = useState<ThemeData[]>(INITIAL_THEMES);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [themes, setThemes] = useState<ThemeData[]>(() =>
+    builtinThemes.map(themeToThemeData),
+  );
+  const [selectedIndex, setSelectedIndex] = useState(() => {
+    const index = builtinThemes.findIndex(
+      (theme) => theme.name === currentTheme.name,
+    );
+    return index === -1 ? 0 : index;
+  });
+
+  const selectTheme = (index: number) => {
+    setSelectedIndex(index);
+    onThemePicked(builtinThemes[index]);
+  };
   const [editing, setEditing] = useState<{
     theme: ThemeData;
     index: number;
@@ -139,11 +130,11 @@ const Themes = ({ onClose }: ThemesProps) => {
             className={`ic-themes-list-item${selectedIndex === i ? " ic-themes-list-item--selected" : ""}`}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
             tabIndex={0}
-            onClick={() => setSelectedIndex(i)}
+            onClick={() => selectTheme(i)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                setSelectedIndex(i);
+                selectTheme(i);
               }
             }}
           >

@@ -102,7 +102,6 @@ type ToolbarProperties = {
   currentTheme: IronCalcTheme;
   onThemePicked: (theme: IronCalcTheme) => void;
   onOpenThemes: () => void;
-  isThemesOpen: boolean;
 };
 
 function Toolbar(properties: ToolbarProperties) {
@@ -467,15 +466,20 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-          <Tooltip title={t("toolbar.themes")}>
-            <IconButton
-              icon={<SwatchBook />}
-              aria-label={t("toolbar.themes")}
-              pressed={properties.isThemesOpen}
-              onClick={properties.onOpenThemes}
-              disabled={!canEdit}
-            />
-          </Tooltip>
+          <ThemeMenu
+            themes={properties.themes}
+            currentTheme={properties.currentTheme}
+            onChange={properties.onThemePicked}
+            onManageThemes={properties.onOpenThemes}
+          >
+            <Tooltip title={t("toolbar.themes")}>
+              <IconButton
+                icon={<SwatchBook />}
+                aria-label={t("toolbar.themes")}
+                disabled={!canEdit}
+              />
+            </Tooltip>
+          </ThemeMenu>
           <Tooltip title={t("toolbar.named_styles")}>
             <IconButton
               icon={<Layers />}
@@ -592,22 +596,6 @@ function Toolbar(properties: ToolbarProperties) {
               disabled={!canEdit}
             />
           </Tooltip>
-          <ThemeMenu
-            themes={properties.themes}
-            currentTheme={properties.currentTheme}
-            onChange={properties.onThemePicked}
-          >
-            <Tooltip title={t("toolbar.theme")}>
-              <Button
-                variant="ghost"
-                size="sm"
-                style={{ gap: 0, paddingLeft: 4, paddingRight: 2 }}
-                endIcon={<ChevronDown size={12} />}
-              >
-                {t("toolbar.theme")}
-              </Button>
-            </Tooltip>
-          </ThemeMenu>
         </div>
 
         <ColorPicker
