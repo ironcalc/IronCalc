@@ -12,11 +12,11 @@ fn color_scale() -> CfRuleInput {
         thresholds: vec![
             ColorScaleThreshold {
                 cfvo: Cfvo::Min,
-                color: "#FF0000".to_string(),
+                color: Color::Rgb("#FF0000".to_string()),
             },
             ColorScaleThreshold {
                 cfvo: Cfvo::Max,
-                color: "#00FF00".to_string(),
+                color: Color::Rgb("#00FF00".to_string()),
             },
         ],
     }
@@ -26,8 +26,8 @@ fn data_bar() -> CfRuleInput {
     CfRuleInput::DataBar {
         min: Some(Cfvo::Min),
         max: Some(Cfvo::Max),
-        positive_color: "#0000FF".to_string(),
-        negative_color: "#FF0000".to_string(),
+        positive_color: Color::Rgb("#0000FF".to_string()),
+        negative_color: Color::Rgb("#FF0000".to_string()),
         is_gradient: true,
         show_value: true,
     }
@@ -400,7 +400,7 @@ fn test_icon_rating_uses_thresholds() {
             "A1",
             CfRuleInput::IconRating {
                 icon: Icon::Star,
-                color: "#FFD700".to_string(),
+                color: Color::Rgb("#FFD700".to_string()),
                 show_value: true,
                 thresholds: vec![
                     (Cfvo::Number(0.0), true),  // >= 0  → count ≥ 1
@@ -436,7 +436,7 @@ fn test_icon_rating_count_from_cell_value() {
             "A1:A5",
             CfRuleInput::IconRating {
                 icon: Icon::Star,
-                color: "#FFD700".to_string(),
+                color: Color::Rgb("#FFD700".to_string()),
                 show_value: true,
                 thresholds: vec![
                     (Cfvo::Number(1.0), true),
@@ -477,7 +477,7 @@ fn test_icon_rating_clamps_to_max() {
             "A1:A3",
             CfRuleInput::IconRating {
                 icon: Icon::Star,
-                color: "#FFD700".to_string(),
+                color: Color::Rgb("#FFD700".to_string()),
                 thresholds: vec![
                     (Cfvo::Number(1.0), true),
                     (Cfvo::Number(2.0), true),
@@ -1016,8 +1016,8 @@ fn insert_row_updates_cfvo_formula_in_data_bar() {
             CfRuleInput::DataBar {
                 min: Some(Cfvo::Formula("=$A$2".to_string())),
                 max: Some(Cfvo::Formula("=$A$10".to_string())),
-                positive_color: "#0000FF".to_string(),
-                negative_color: "#FF0000".to_string(),
+                positive_color: Color::Rgb("#0000FF".to_string()),
+                negative_color: Color::Rgb("#FF0000".to_string()),
                 is_gradient: true,
                 show_value: true,
             },

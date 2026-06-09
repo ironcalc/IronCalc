@@ -8,22 +8,25 @@ import type { WorkbookState } from "../workbookState";
 import SheetDeleteModal from "./SheetDeleteModal";
 import { SheetTabMenu } from "./SheetTabMenu";
 import "./sheet-tab.css";
+import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 
 interface SheetTabProps {
   name: string;
   color: string;
   selected: boolean;
   onSelected: () => void;
-  onColorChanged: (hex: string) => void;
+  onColorChanged: (color: Color) => void;
   onRenamed: (name: string) => void;
   canDelete: boolean;
   onDeleted: () => void;
   onHideSheet: () => void;
   workbookState: WorkbookState;
+  currentTheme: IronCalcTheme;
 }
 
 function SheetTab(props: SheetTabProps) {
-  const { name, color, selected, workbookState, onSelected } = props;
+  const { name, color, selected, workbookState, onSelected, currentTheme } =
+    props;
   const { t } = useTranslation();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -233,6 +236,7 @@ function SheetTab(props: SheetTabProps) {
         anchorEl={tabRef}
         open={colorPickerOpen}
         placement="top"
+        theme={currentTheme}
       />
 
       <SheetDeleteModal

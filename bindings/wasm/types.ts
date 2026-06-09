@@ -151,7 +151,7 @@ interface CellStyleFont {
 }
 
 export interface BorderOptions {
-  color: string;
+  color?: Color;
   style: BorderStyle;
   border: BorderType;
 }
@@ -283,13 +283,13 @@ export type Cfvo =
 
 export interface ColorScaleThreshold {
   cfvo: Cfvo;
-  color: string;
+  color: Color;
 }
 
 export interface IconThreshold {
   icon: Icon;
   cfvo: Cfvo;
-  color: string;
+  color: Color;
   is_strict: boolean;
 }
 
@@ -310,9 +310,9 @@ export type CfRule =
   | { type: "BelowAverage"; stop_if_true: boolean }
   | { type: "Top10"; rank: number; percent: boolean; stop_if_true: boolean }
   | { type: "Bottom10"; rank: number; percent: boolean; stop_if_true: boolean }
-  | { type: "DataBar"; min: Cfvo | null; max: Cfvo | null; positive_color: string; negative_color: string; is_gradient: boolean; show_value: boolean }
+  | { type: "DataBar"; min: Cfvo | null; max: Cfvo | null; positive_color: Color; negative_color: Color; is_gradient: boolean; show_value: boolean }
   | { type: "IconSet"; thresholds: IconThreshold[]; show_value: boolean }
-  | { type: "IconRating"; icon: Icon; color: string; thresholds: [Cfvo, boolean][]; show_value: boolean };
+  | { type: "IconRating"; icon: Icon; color: Color; thresholds: [Cfvo, boolean][]; show_value: boolean };
 
 /** Input CF rule for addConditionalFormatting / updateConditionalFormatting.
  *  Dxf-based variants carry an inline `format` and a `stop_if_true` flag. */
@@ -332,9 +332,9 @@ export type CfRuleInput =
   | { type: "BelowAverage"; format: Dxf; stop_if_true: boolean }
   | { type: "Top10"; rank: number; percent: boolean; format: Dxf; stop_if_true: boolean }
   | { type: "Bottom10"; rank: number; percent: boolean; format: Dxf; stop_if_true: boolean }
-  | { type: "DataBar"; min: Cfvo | null; max: Cfvo | null; positive_color: string; negative_color: string; is_gradient: boolean; show_value: boolean }
+  | { type: "DataBar"; min: Cfvo | null; max: Cfvo | null; positive_color: Color; negative_color: Color; is_gradient: boolean; show_value: boolean }
   | { type: "IconSet"; thresholds: IconThreshold[]; show_value: boolean }
-  | { type: "IconRating"; icon: Icon; color: string; thresholds: [Cfvo, boolean][]; show_value: boolean };
+  | { type: "IconRating"; icon: Icon; color: Color; thresholds: [Cfvo, boolean][]; show_value: boolean };
 
 export type FontScheme = "minor" | "major" | "none";
 
@@ -413,13 +413,13 @@ export type IconSetType =
 
 export interface CfIcon {
   icon: Icon;
-  color: string;
+  color: Color;
   show_value: boolean;
 }
 
 export interface CfDataBar {
-  positive_color: string;
-  negative_color: string;
+  positive_color: Color;
+  negative_color: Color;
   is_gradient: boolean;
   value: number;
   axis_position: number;
@@ -430,7 +430,7 @@ export interface CfRating {
   icon: Icon;
   count: number;
   max: number;
-  color: string;
+  color: Color;
   show_value: boolean;
 }
 

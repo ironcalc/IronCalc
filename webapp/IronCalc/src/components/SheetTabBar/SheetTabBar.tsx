@@ -1,4 +1,4 @@
-import type { Model } from "@ironcalc/wasm";
+import type { Color, Model } from "@ironcalc/wasm";
 import { Menu as MenuIcon, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../Button/Button";
@@ -18,7 +18,7 @@ export interface SheetTabBarProps {
   workbookState: WorkbookState;
   onSheetSelected: (index: number) => void;
   onAddBlankSheet: () => void;
-  onSheetColorChanged: (hex: string) => void;
+  onSheetColorChanged: (color: Color) => void;
   onSheetRenamed: (name: string) => void;
   onSheetDeleted: () => void;
   onHideSheet: () => void;
@@ -78,8 +78,8 @@ function SheetTabBar(props: SheetTabBarProps) {
               color={tab.color}
               selected={tab.index === selectedIndex}
               onSelected={() => onSheetSelected(tab.index)}
-              onColorChanged={(hex: string): void => {
-                props.onSheetColorChanged(hex);
+              onColorChanged={(color) => {
+                props.onSheetColorChanged(color);
               }}
               onRenamed={(name: string): void => {
                 props.onSheetRenamed(name);
@@ -90,6 +90,7 @@ function SheetTabBar(props: SheetTabBarProps) {
               }}
               onHideSheet={props.onHideSheet}
               workbookState={workbookState}
+              currentTheme={props.model.getTheme()}
             />
           ))}
         </div>

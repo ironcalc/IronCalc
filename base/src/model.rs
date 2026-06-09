@@ -1131,6 +1131,7 @@ impl<'a> Model<'a> {
     /// Sets the workbook theme.
     pub fn set_theme(&mut self, theme: crate::types::Theme) {
         self.workbook.theme = theme;
+        self.evaluate_conditional_formatting();
     }
 
     /// Returns the Theme

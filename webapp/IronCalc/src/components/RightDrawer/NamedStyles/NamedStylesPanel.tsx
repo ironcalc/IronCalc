@@ -1,4 +1,9 @@
-import type { FmtSettings, Model, NamedStyle } from "@ironcalc/wasm";
+import type {
+  FmtSettings,
+  IronCalcTheme,
+  Model,
+  NamedStyle,
+} from "@ironcalc/wasm";
 import { ArrowLeft, Plus, Settings2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -137,6 +142,7 @@ interface NamedStylesPanelProps {
   customStyles: NamedStyle[];
   builtinStyles: NamedStyle[];
   formatOptions: FmtSettings;
+  currentTheme: IronCalcTheme;
   onApplyNamedStyle: (name: string) => void;
   onAddNamedStyle: (payload: NamedStyleSavePayload) => SaveError;
   onUpdateNamedStyle: (
@@ -152,6 +158,7 @@ const NamedStylesPanel = ({
   customStyles,
   builtinStyles,
   formatOptions,
+  currentTheme,
   onApplyNamedStyle,
   onAddNamedStyle,
   onUpdateNamedStyle,
@@ -245,6 +252,7 @@ const NamedStylesPanel = ({
             style={normalStyle.style}
             formatOptions={formatOptions}
             existingStyleNames={allStyleNames}
+            currentTheme={currentTheme}
             onSave={(payload) => {
               if (
                 allStyleNames.some(
@@ -295,6 +303,7 @@ const NamedStylesPanel = ({
             style={editingStyle.style}
             formatOptions={formatOptions}
             existingStyleNames={allStyleNames}
+            currentTheme={currentTheme}
             onSave={(payload) => {
               if (
                 otherStyleNames.some(

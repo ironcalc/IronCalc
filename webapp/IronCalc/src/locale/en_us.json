@@ -6,6 +6,8 @@
     "default": "Default color",
     "no_fill": "No fill",
     "recent": "Recent",
+    "standard_colors": "Standard colors",
+    "themed_colors": "Theme colors",
     "title": "Color Picker"
   },
   "conditional_formatting": {

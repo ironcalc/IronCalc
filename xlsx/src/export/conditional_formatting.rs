@@ -3,6 +3,7 @@ use ironcalc_base::cf_types::{
     icon_set_icons, CfRule, Cfvo, ConditionalFormatting, Icon, IconThreshold, PeriodType,
     TextOperator, ValueOperator,
 };
+use ironcalc_base::types::Color;
 
 fn cfvo_xml(cfvo: &Cfvo) -> String {
     match cfvo {
@@ -43,8 +44,22 @@ fn cfvo_x14_xml(cfvo: &Cfvo) -> String {
     }
 }
 
-fn color_rgb_xml(color: &str) -> String {
-    format!(r#"<color rgb="FF{}"/>"#, color.trim_start_matches('#'))
+fn color_xml(color: &Color) -> String {
+    match color {
+        Color::Rgb(s) => format!(r#"<color rgb="FF{}"/>"#, s.trim_start_matches('#')),
+        Color::Theme(idx, tint) if *tint == 0.0 => format!(r#"<color theme="{idx}"/>"#),
+        Color::Theme(idx, tint) => format!(r#"<color theme="{idx}" tint="{tint}"/>"#),
+        Color::None => String::new(),
+    }
+}
+
+fn color_to_hex(color: &Color) -> String {
+    match color {
+        Color::Rgb(s) => format!(r#"rgb="FF{}""#, s.trim_start_matches('#')),
+        Color::Theme(idx, tint) if *tint == 0.0 => format!(r#"theme="{idx}""#),
+        Color::Theme(idx, tint) => format!(r#"theme="{idx}" tint="{tint}""#),
+        Color::None => String::new(),
+    }
 }
 
 fn value_operator_to_str(op: &ValueOperator) -> &'static str {
@@ -177,7 +192,7 @@ const KNOWN_ICON_SETS: &[&str] = &[
 // we could do better with x14 custom sets. Similarly to what we do for DataBars.
 fn icon_set_name_from_thresholds(thresholds: &[IconThreshold]) -> Option<&'static str> {
     // We first try to see if it is one of the standard sets by comparing the (icon, color) pairs of the thresholds to the known sets.
-    let pairs: Vec<(Icon, String)> = thresholds
+    let pairs: Vec<(Icon, Color)> = thresholds
         .iter()
         .map(|t| (t.icon.clone(), t.color.clone()))
         .collect();
@@ -419,7 +434,7 @@ fn build_cf_rule_xml(
         }
         CfRule::ColorScale { thresholds } => {
             let cfvos: String = thresholds.iter().map(|t| cfvo_xml(&t.cfvo)).collect();
-            let colors: String = thresholds.iter().map(|t| color_rgb_xml(&t.color)).collect();
+            let colors: String = thresholds.iter().map(|t| color_xml(&t.color)).collect();
             format!(
                 r#"<conditionalFormatting sqref="{range}"><cfRule type="colorScale" priority="{excel_priority}"><colorScale>{cfvos}{colors}</colorScale></cfRule></conditionalFormatting>"#
             )
@@ -443,7 +458,7 @@ fn build_cf_rule_xml(
                 .as_ref()
                 .map(cfvo_xml)
                 .unwrap_or_else(|| r#"<cfvo type="max"/>"#.to_string());
-            let pos_color = color_rgb_xml(positive_color);
+            let pos_color = color_xml(positive_color);
             let show_val = if !show_value { r#" showValue="0""# } else { "" };
 
             let ext_ref = format!(
@@ -463,8 +478,8 @@ fn build_cf_rule_xml(
                 .map(cfvo_x14_xml)
                 .unwrap_or_else(|| r#"<x14:cfvo type="autoMax"/>"#.to_string());
             let neg_color_xml = format!(
-                r#"<x14:negativeFillColor rgb="FF{}"/>"#,
-                negative_color.trim_start_matches('#')
+                r#"<x14:negativeFillColor {} />"#,
+                color_to_hex(negative_color)
             );
             let x14_entry = format!(
                 r#"<x14:conditionalFormatting xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main"><x14:cfRule type="dataBar" id="{guid}"><x14:dataBar minLength="0" maxLength="100"{gradient_attr}>{x14_min}{x14_max}{neg_color_xml}<x14:axisColor rgb="FF000000"/></x14:dataBar></x14:cfRule><xm:sqref>{range}</xm:sqref></x14:conditionalFormatting>"#

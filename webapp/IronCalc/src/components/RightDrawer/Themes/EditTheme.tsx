@@ -3,9 +3,11 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import ColorPicker from "../../ColorPicker/ColorPicker";
+import { resolveColorToHex } from "../../ColorPicker/util";
 import { Input } from "../../Input/Input";
 import ThemePreview from "./ThemePreview";
 import "./edit-theme.css";
+import type { IronCalcTheme } from "@ironcalc/wasm";
 
 export interface ThemeData {
   name: string;
@@ -22,6 +24,7 @@ interface EditThemeProps {
   initialBgColor: string;
   initialLightColor: string;
   initialDarkColor: string;
+  currentTheme: IronCalcTheme;
   initialAccentColors: [string, string, string, string, string, string];
   onSave: (data: ThemeData) => void;
   onClose: () => void;
@@ -32,9 +35,16 @@ interface ColorFieldProps {
   value: string;
   onChange: (color: string) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
+  currentTheme: IronCalcTheme;
 }
 
-const ColorField = ({ label, value, onChange, onKeyDown }: ColorFieldProps) => {
+const ColorField = ({
+  label,
+  value,
+  onChange,
+  onKeyDown,
+  currentTheme,
+}: ColorFieldProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
@@ -64,12 +74,13 @@ const ColorField = ({ label, value, onChange, onKeyDown }: ColorFieldProps) => {
           defaultColor={value}
           title={t("color_picker.default")}
           onChange={(c) => {
-            onChange(c);
+            onChange(resolveColorToHex(c, currentTheme));
             setOpen(false);
           }}
           onClose={() => setOpen(false)}
           anchorEl={ref}
           open={open}
+          theme={currentTheme}
         />
       </div>
     </div>
@@ -85,6 +96,7 @@ const EditTheme = ({
   initialAccentColors,
   onSave,
   onClose,
+  currentTheme,
 }: EditThemeProps) => {
   const { t } = useTranslation();
   const [textColor, setTextColor] = useState(initialTextColor);
@@ -137,12 +149,14 @@ const EditTheme = ({
             value={textColor}
             onChange={setTextColor}
             onKeyDown={handleKeyDown}
+            currentTheme={currentTheme}
           />
           <ColorField
             label={t("themes.bg_color_label")}
             value={bgColor}
             onChange={setBgColor}
             onKeyDown={handleKeyDown}
+            currentTheme={currentTheme}
           />
         </div>
         <div className="ic-edit-theme-section">
@@ -151,12 +165,14 @@ const EditTheme = ({
             value={darkColor}
             onChange={setDarkColor}
             onKeyDown={handleKeyDown}
+            currentTheme={currentTheme}
           />
           <ColorField
             label={t("themes.light_color_label")}
             value={lightColor}
             onChange={setLightColor}
             onKeyDown={handleKeyDown}
+            currentTheme={currentTheme}
           />
         </div>
         <div className="ic-edit-theme-section">
@@ -168,6 +184,7 @@ const EditTheme = ({
               value={color}
               onChange={(c) => setAccent(i, c)}
               onKeyDown={handleKeyDown}
+              currentTheme={currentTheme}
             />
           ))}
         </div>

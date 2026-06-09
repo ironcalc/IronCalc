@@ -42,7 +42,7 @@ fn test_cf_file() {
                 .unwrap();
             let icon = extended_style.icon.unwrap();
             assert_eq!(icon.icon, Icon::ArrowDown);
-            assert_eq!(icon.color, "#e43400".to_string());
+            assert_eq!(icon.color, Color::Rgb("#e43400".to_string()));
         }
         {
             let row = 19;
@@ -51,7 +51,7 @@ fn test_cf_file() {
                 .unwrap();
             let icon = extended_style.icon.unwrap();
             assert_eq!(icon.icon, Icon::ArrowAngleDown);
-            assert_eq!(icon.color, "#ffeb84".to_string());
+            assert_eq!(icon.color, Color::Rgb("#ffeb84".to_string()));
         }
     }
     {
@@ -63,7 +63,7 @@ fn test_cf_file() {
             .unwrap();
         let icon = extended_style.icon.unwrap();
         assert_eq!(icon.icon, Icon::Flag);
-        assert_eq!(icon.color, "#f8696b".to_string());
+        assert_eq!(icon.color, Color::Rgb("#f8696b".to_string()));
     }
 }
 

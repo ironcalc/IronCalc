@@ -1,6 +1,8 @@
+import type { IronCalcTheme } from "@ironcalc/wasm";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
+import { resolveColorToHex } from "../../ColorPicker/util";
 import ClassicRule from "./ClassicRule";
 import ColorScaleRule, {
   type ColorScaleRuleData,
@@ -36,6 +38,7 @@ interface EditRuleProps {
   initialValues?: RuleData;
   getSelectedArea: () => string;
   resolveValue?: (val: string) => string;
+  currentTheme: IronCalcTheme;
 }
 
 const DEFAULT_FORMAT_STYLE: FormatStyle = {
@@ -55,6 +58,7 @@ const EditRule = ({
   initialValues,
   getSelectedArea,
   resolveValue,
+  currentTheme,
 }: EditRuleProps) => {
   const { t } = useTranslation();
   const initialTab: TabId =
@@ -88,9 +92,18 @@ const EditRule = ({
   >(
     initialValues?.colorScale
       ? [
-          initialValues.colorScale.minimum.color,
-          initialValues.colorScale.midpoint.color,
-          initialValues.colorScale.maximum.color,
+          resolveColorToHex(
+            initialValues.colorScale.minimum.color,
+            currentTheme,
+          ),
+          resolveColorToHex(
+            initialValues.colorScale.midpoint.color,
+            currentTheme,
+          ),
+          resolveColorToHex(
+            initialValues.colorScale.maximum.color,
+            currentTheme,
+          ),
         ]
       : ["#8CB354", "#F8CD3D", "#EC5753"],
   );
@@ -105,8 +118,9 @@ const EditRule = ({
       ]
         .filter(Boolean)
         .join(" ") || "none",
-    color: formatStyle.fontColor || "#000000",
-    backgroundColor: formatStyle.fillColor || "transparent",
+    color: resolveColorToHex(formatStyle.fontColor, currentTheme) || "#000000",
+    backgroundColor:
+      resolveColorToHex(formatStyle.fillColor, currentTheme) || "transparent",
   };
 
   const tabs: { id: TabId; label: string }[] = [
@@ -177,6 +191,7 @@ const EditRule = ({
           onFormatStyleChange={setFormatStyle}
           onDescriptionChange={setClassicDescription}
           resolveValue={resolveValue}
+          currentTheme={currentTheme}
         />
       )}
       {activeTab === "color_scale" && (
@@ -198,6 +213,7 @@ const EditRule = ({
           initialValues={initialValues?.colorScale}
           onPreviewChange={setCsPreviewColors}
           getSelectedArea={getSelectedArea}
+          currentTheme={currentTheme}
         />
       )}
       {activeTab === "data_bars" && (
@@ -219,6 +235,7 @@ const EditRule = ({
           getSelectedArea={getSelectedArea}
           initialValues={initialValues?.dataBars}
           onPreviewChange={setDbPreview}
+          currentTheme={currentTheme}
         />
       )}
       {activeTab === "icon_sets" && (
@@ -240,6 +257,7 @@ const EditRule = ({
           initialValues={initialValues?.iconSets}
           onCancel={onCancel}
           onPreviewChange={setIsPreview}
+          currentTheme={currentTheme}
         />
       )}
     </div>

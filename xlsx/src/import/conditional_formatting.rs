@@ -10,7 +10,7 @@ use roxmltree::Node;
 
 use crate::error::XlsxError;
 
-use ironcalc_base::types::Theme;
+use ironcalc_base::types::{Color, Theme};
 
 use super::util::{get_attribute, get_color};
 
@@ -59,7 +59,7 @@ struct DataBarExt {
     /// `None` = automatic axis (autoMin/autoMax).
     min: Option<Cfvo>,
     max: Option<Cfvo>,
-    negative_color: String,
+    negative_color: Color,
     is_gradient: bool,
 }
 
@@ -98,8 +98,7 @@ fn parse_x14_data_bars(ws: Node, theme: &Theme) -> HashMap<String, DataBarExt> {
                             .find(|n| n.has_tag_name("negativeFillColor"))
                             .and_then(|n| get_color(n, theme).ok())
                             .filter(|c| c.is_some())
-                            .map(|c| c.to_rgb(theme))
-                            .unwrap_or_else(|| "#FF0000".to_string());
+                            .unwrap_or(Color::Rgb("#FF0000".to_string()));
                         map.insert(
                             id,
                             DataBarExt {
@@ -120,8 +119,8 @@ fn parse_x14_data_bars(ws: Node, theme: &Theme) -> HashMap<String, DataBarExt> {
 /// Returns the (Icon, color) pair for an Excel (iconSet, iconId) reference.
 /// iconId is 0-based from the lowest bucket to the highest.
 /// Unrecognized sets (e.g. 5Signal) fall back to Circle.
-fn icon_from_excel_id(icon_set: &str, icon_id: u32) -> (Icon, String) {
-    let s = |c: &'static str| c.to_string();
+fn icon_from_excel_id(icon_set: &str, icon_id: u32) -> (Icon, Color) {
+    let s = |c: &'static str| Color::Rgb(c.to_string());
     // Standard sets are already in icon_set_icons, indexed from lowest to highest.
     if let Some(icons) = icon_set_icons(icon_set) {
         if let Some((icon, color)) = icons.get(icon_id as usize) {
@@ -174,8 +173,8 @@ fn icon_from_excel_id(icon_set: &str, icon_id: u32) -> (Icon, String) {
 
 /// Returns the representative (Icon, color) used when displaying a rating type
 /// as repeated icons (e.g. ★★☆ for 2 out of 3 stars).
-fn rating_icon_color(icon_set_attr: &str) -> (Icon, String) {
-    let s = |c: &'static str| c.to_string();
+fn rating_icon_color(icon_set_attr: &str) -> (Icon, Color) {
+    let s = |c: &'static str| Color::Rgb(c.to_string());
     match icon_set_attr {
         "3Stars" => (Icon::Star, s("#FFD700")),
         "5Quarters" => (Icon::Circle, s("#FFD700")),
@@ -243,7 +242,7 @@ fn parse_x14_icon_sets(ws: Node) -> Vec<ConditionalFormatting> {
 
                         let cf_rule = if is_custom {
                             // Explicit per-icon overrides via <x14:cfIcon iconSet="..." iconId="..."/>
-                            let icon_list: Vec<(Icon, String)> = is_node
+                            let icon_list: Vec<(Icon, Color)> = is_node
                                 .children()
                                 .filter(|n| n.has_tag_name("cfIcon"))
                                 .map(|n| {
@@ -410,14 +409,14 @@ pub(super) fn load_conditional_formatting(
                         continue;
                     }
                     let mut cfvo_list: Vec<Cfvo> = Vec::new();
-                    let mut color_list: Vec<String> = Vec::new();
+                    let mut color_list: Vec<Color> = Vec::new();
                     for child in cs_nodes[0].children() {
                         match child.tag_name().name() {
                             "cfvo" => cfvo_list.push(parse_cfvo(child)?),
                             "color" => {
                                 let c = get_color(child, theme)?;
                                 if c.is_some() {
-                                    color_list.push(c.to_rgb(theme));
+                                    color_list.push(c);
                                 }
                             }
                             _ => {}
@@ -511,14 +510,14 @@ pub(super) fn load_conditional_formatting(
                     let db = db_nodes[0];
                     let show_value = db.attribute("showValue") != Some("0");
                     let mut simple_cfvos: Vec<Cfvo> = Vec::new();
-                    let mut positive_color = String::new();
+                    let mut positive_color = Color::None;
                     for child in db.children() {
                         match child.tag_name().name() {
                             "cfvo" => simple_cfvos.push(parse_cfvo(child)?),
                             "color" => {
                                 let c = get_color(child, theme)?;
                                 if c.is_some() {
-                                    positive_color = c.to_rgb(theme);
+                                    positive_color = c;
                                 }
                             }
                             _ => {}
@@ -544,7 +543,7 @@ pub(super) fn load_conditional_formatting(
                             None => (
                                 simple_cfvos.first().cloned(),
                                 simple_cfvos.get(1).cloned(),
-                                "#FF0000".to_string(),
+                                Color::Rgb("#FF0000".to_string()),
                                 true,
                             ),
                         };

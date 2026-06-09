@@ -1,3 +1,4 @@
+import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowDown,
@@ -26,6 +27,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
+import { resolveColorToHex } from "../../ColorPicker/util";
 import IconPicker, { iconSpecFor } from "../../IconPicker/IconPicker";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
@@ -318,7 +320,7 @@ interface IconThreshold {
   operator: ">=" | ">";
   value: string;
   type: ThresholdType;
-  color: string;
+  color: Color;
   iconName: string;
 }
 
@@ -338,7 +340,7 @@ function defaultThresholds(icons: IconSetIcon[]): IconThreshold[] {
 
 function defaultRatingThresholds(
   count: number,
-  color: string,
+  color: Color,
   iconName = "Star",
 ): IconThreshold[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -390,14 +392,14 @@ export interface IconPreviewInfo {
 
 export interface IconSetsRuleData {
   presetId: string;
-  rating?: { count: 3 | 4 | 5; icon: string; color: string };
+  rating?: { count: 3 | 4 | 5; icon: string; color: Color };
   // Ordered HIGH→LOW: thresholds[0] = highest icon bucket, thresholds[n-1] = lowest/"else".
   // Each threshold's value is the LOWER bound for that bucket (operator ">=" or ">").
   thresholds: {
     operator: ">=" | ">";
     value: string;
     type: ThresholdType;
-    color: string;
+    color: Color;
     iconName: string;
   }[];
   showValue: boolean;
@@ -411,6 +413,7 @@ interface IconSetsRuleProps {
   getSelectedArea: () => string;
   initialValues?: IconSetsRuleData;
   onPreviewChange?: (icon: IconPreviewInfo) => void;
+  currentTheme: IronCalcTheme;
 }
 
 type Mode = "preset" | "rating";
@@ -423,6 +426,7 @@ const IconSetsRule = ({
   getSelectedArea,
   initialValues,
   onPreviewChange,
+  currentTheme,
 }: IconSetsRuleProps) => {
   const { t } = useTranslation();
 
@@ -434,7 +438,7 @@ const IconSetsRule = ({
   const [ratingCount, setRatingCount] = useState<3 | 4 | 5>(
     (initialValues?.rating?.count as (3 | 4 | 5) | undefined) ?? 3,
   );
-  const [ratingColor, setRatingColor] = useState<string>(
+  const [ratingColor, setRatingColor] = useState<Color>(
     initialValues?.rating?.color ?? DEFAULT_RATING_COLOR,
   );
   const [ratingIcon, setRatingIcon] = useState<string>(
@@ -471,11 +475,18 @@ const IconSetsRule = ({
       const spec = iconSpecFor(ratingIcon);
       onPreviewChange?.({
         Icon: spec.Icon,
-        color: ratingColor,
+        color: resolveColorToHex(ratingColor, currentTheme),
         filled: spec.filled,
       });
     }
-  }, [selectedPreset, mode, ratingColor, ratingIcon, onPreviewChange]);
+  }, [
+    selectedPreset,
+    mode,
+    ratingColor,
+    ratingIcon,
+    onPreviewChange,
+    currentTheme,
+  ]);
 
   const typeOptions = THRESHOLD_TYPE_OPTIONS.map((v) => ({
     value: v,
@@ -499,7 +510,7 @@ const IconSetsRule = ({
     setThresholds(defaultRatingThresholds(count, color, iconName));
   };
 
-  const handleRatingColorChange = (color: string) => {
+  const handleRatingColorChange = (color: Color) => {
     setRatingColor(color);
     setThresholds((ts) => ts.map((th) => ({ ...th, color })));
     setRatingColorOpen(false);
@@ -702,7 +713,7 @@ const IconSetsRule = ({
                       <div className="ic-input-control md ic-cs-color-swatch-wrapper">
                         <IconPicker
                           value={threshold.iconName}
-                          color={iconColor}
+                          color={resolveColorToHex(iconColor, currentTheme)}
                           onChange={(name) =>
                             updateThreshold(i, { iconName: name })
                           }
@@ -716,14 +727,22 @@ const IconSetsRule = ({
                           }}
                           type="button"
                           className="ic-cs-color-swatch"
-                          style={{ backgroundColor: threshold.color }}
+                          style={{
+                            backgroundColor: resolveColorToHex(
+                              threshold.color,
+                              currentTheme,
+                            ),
+                          }}
                           onClick={() => setColorOpenIndex(i)}
                           aria-label={t("color_picker.title")}
                         />
                       </div>
                       <ColorPicker
                         color={threshold.color}
-                        defaultColor={threshold.color}
+                        defaultColor={resolveColorToHex(
+                          threshold.color,
+                          currentTheme,
+                        )}
                         title={t("color_picker.default")}
                         onChange={(c) => {
                           updateThreshold(i, { color: c });
@@ -736,6 +755,7 @@ const IconSetsRule = ({
                           } as React.RefObject<HTMLButtonElement>
                         }
                         open={colorOpenIndex === i}
+                        theme={currentTheme}
                       />
                     </div>
                   </div>
@@ -808,7 +828,7 @@ const IconSetsRule = ({
                       >
                         <IconPicker
                           value={ratingIcon}
-                          color={ratingColor}
+                          color={resolveColorToHex(ratingColor, currentTheme)}
                           onChange={setRatingIcon}
                         />
                       </div>
@@ -819,7 +839,12 @@ const IconSetsRule = ({
                           ref={i === 0 ? ratingColorButtonRef : null}
                           type="button"
                           className="ic-cs-color-swatch"
-                          style={{ backgroundColor: ratingColor }}
+                          style={{
+                            backgroundColor: resolveColorToHex(
+                              ratingColor,
+                              currentTheme,
+                            ),
+                          }}
                           onClick={
                             i === 0 ? () => setRatingColorOpen(true) : undefined
                           }
@@ -829,7 +854,10 @@ const IconSetsRule = ({
                       {i === 0 && (
                         <ColorPicker
                           color={ratingColor}
-                          defaultColor={ratingColor}
+                          defaultColor={resolveColorToHex(
+                            ratingColor,
+                            currentTheme,
+                          )}
                           title={t("color_picker.default")}
                           onChange={handleRatingColorChange}
                           onClose={() => setRatingColorOpen(false)}
@@ -839,6 +867,7 @@ const IconSetsRule = ({
                             } as React.RefObject<HTMLButtonElement>
                           }
                           open={ratingColorOpen}
+                          theme={currentTheme}
                         />
                       )}
                     </div>

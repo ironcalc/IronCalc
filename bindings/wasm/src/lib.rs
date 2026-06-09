@@ -6,6 +6,7 @@ use wasm_bindgen::{
 
 use ironcalc_base::{
     cf_types::CfRuleInput,
+    colors,
     expressions::{
         lexer::util::get_tokens as tokenizer,
         types::Area,
@@ -58,6 +59,12 @@ pub fn get_supported_locales() -> Vec<String> {
 #[allow(clippy::unwrap_used)]
 pub fn get_theme_list() -> JsValue {
     serde_wasm_bindgen::to_value(&ironcalc_base::themes::builtin_themes()).unwrap()
+}
+
+/// Tint algorithm
+#[wasm_bindgen(js_name = "hexWithTintToRgb")]
+pub fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
+    colors::hex_with_tint_to_rgb(hex, tint)
 }
 
 #[derive(Serialize)]

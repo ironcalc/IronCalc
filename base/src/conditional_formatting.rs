@@ -375,7 +375,10 @@ impl<'a> Model<'a> {
         if values.is_empty() {
             return;
         }
-        let colors: Vec<String> = thresholds.iter().map(|t| t.color.clone()).collect();
+        let colors: Vec<String> = thresholds
+            .iter()
+            .map(|t| t.color.to_rgb(&self.workbook.theme))
+            .collect();
         let mut stops: Vec<f64> = Vec::with_capacity(thresholds.len());
         for t in thresholds {
             stops.push(self.resolve_cfvo(&t.cfvo, &values, sheet));
@@ -396,7 +399,7 @@ impl<'a> Model<'a> {
                             sheet,
                             row,
                             col,
-                            CfCellResult::ColorScale(color),
+                            CfCellResult::ColorScale(Color::Rgb(color)),
                             false,
                         );
                     }
@@ -411,8 +414,8 @@ impl<'a> Model<'a> {
         sheet: u32,
         min: Option<&Cfvo>,
         max: Option<&Cfvo>,
-        positive_color: &str,
-        negative_color: &str,
+        positive_color: &Color,
+        negative_color: &Color,
         is_gradient: bool,
         show_value: bool,
         ranges: &[(i32, i32, i32, i32)],
@@ -446,8 +449,8 @@ impl<'a> Model<'a> {
                             row,
                             col,
                             CfCellResult::DataBar {
-                                positive_color: positive_color.to_string(),
-                                negative_color: negative_color.to_string(),
+                                positive_color: positive_color.clone(),
+                                negative_color: negative_color.clone(),
                                 is_gradient,
                                 value: proportion,
                                 axis_position,
@@ -505,7 +508,7 @@ impl<'a> Model<'a> {
         &mut self,
         sheet: u32,
         icon: &Icon,
-        color: &str,
+        color: &Color,
         thresholds: &[(Cfvo, bool)],
         show_value: bool,
         ranges: &[(i32, i32, i32, i32)],
@@ -550,7 +553,7 @@ impl<'a> Model<'a> {
                                 icon: icon.clone(),
                                 count: count.min(max),
                                 max,
-                                color: color.to_string(),
+                                color: color.clone(),
                                 show_value,
                             },
                             false,
@@ -1110,7 +1113,7 @@ impl<'a> Model<'a> {
                     }
                 }
                 CfCellResult::ColorScale(color) => {
-                    style.fill.color = Color::Rgb(color.clone());
+                    style.fill.color = color.clone();
                 }
                 CfCellResult::DataBar {
                     positive_color,

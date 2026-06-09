@@ -109,7 +109,8 @@ pub fn hsl_to_rgb(hsl: [i32; 3]) -> [i32; 3] {
     ]
 }
 
-/* 18.8.3 bgColor tint algorithm */
+/// Applies the OOXML §18.8.3 tint algorithm to a hex color string.
+/// Positive tint lightens, negative tint darkens. Returns the hex string unchanged if tint is 0.
 pub fn hex_with_tint_to_rgb(hex: &str, tint: f64) -> String {
     if tint == 0.0 {
         return hex.to_string();

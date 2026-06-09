@@ -23,8 +23,8 @@ fn data_bar_rule() -> CfRuleInput {
     CfRuleInput::DataBar {
         min: Some(Cfvo::Min),
         max: Some(Cfvo::Max),
-        positive_color: "#638EC6".to_string(),
-        negative_color: "#FF0000".to_string(),
+        positive_color: Color::Rgb("#638EC6".to_string()),
+        negative_color: Color::Rgb("#FF0000".to_string()),
         is_gradient: true,
         show_value: true,
     }

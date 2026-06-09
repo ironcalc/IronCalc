@@ -34,11 +34,11 @@ fn color_scale_rule() -> CfRuleInput {
         thresholds: vec![
             ColorScaleThreshold {
                 cfvo: Cfvo::Min,
-                color: "#FF0000".to_string(),
+                color: Color::Rgb("#FF0000".to_string()),
             },
             ColorScaleThreshold {
                 cfvo: Cfvo::Max,
-                color: "#00FF00".to_string(),
+                color: Color::Rgb("#00FF00".to_string()),
             },
         ],
     }
@@ -48,8 +48,8 @@ fn data_bar_rule() -> CfRuleInput {
     CfRuleInput::DataBar {
         min: Some(Cfvo::Min),
         max: Some(Cfvo::Max),
-        positive_color: "#0000FF".to_string(),
-        negative_color: "#FF0000".to_string(),
+        positive_color: Color::Rgb("#0000FF".to_string()),
+        negative_color: Color::Rgb("#FF0000".to_string()),
         is_gradient: true,
         show_value: true,
     }
@@ -339,11 +339,11 @@ fn test_higher_priority_number_wins() {
                 thresholds: vec![
                     ColorScaleThreshold {
                         cfvo: Cfvo::Min,
-                        color: "#0000FF".to_string(),
+                        color: Color::Rgb("#0000FF".to_string()),
                     },
                     ColorScaleThreshold {
                         cfvo: Cfvo::Max,
-                        color: "#FFFF00".to_string(),
+                        color: Color::Rgb("#FFFF00".to_string()),
                     },
                 ],
             },
@@ -826,11 +826,11 @@ fn test_color_scale_formula_cfvo_with_sum() {
                 thresholds: vec![
                     ColorScaleThreshold {
                         cfvo: Cfvo::Formula("=SUM($B$1:$B$2)".to_string()),
-                        color: "#FF0000".to_string(),
+                        color: Color::Rgb("#FF0000".to_string()),
                     },
                     ColorScaleThreshold {
                         cfvo: Cfvo::Formula("=SUM($B$3:$B$4)".to_string()),
-                        color: "#00FF00".to_string(),
+                        color: Color::Rgb("#00FF00".to_string()),
                     },
                 ],
             },
@@ -876,7 +876,7 @@ fn test_icon_rating_count() {
             "A1:A5",
             CfRuleInput::IconRating {
                 icon: Icon::Star,
-                color: "#FFD700".to_string(),
+                color: Color::Rgb("#FFD700".to_string()),
                 // stored lowest-first: 0% → 33% → 67%
                 thresholds: vec![
                     (Cfvo::Percent(0.0), true),

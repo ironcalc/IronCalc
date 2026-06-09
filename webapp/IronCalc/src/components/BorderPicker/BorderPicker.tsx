@@ -1,4 +1,10 @@
-import { type BorderOptions, BorderStyle, BorderType } from "@ironcalc/wasm";
+import {
+  type BorderOptions,
+  BorderStyle,
+  BorderType,
+  type Color,
+  type IronCalcTheme,
+} from "@ironcalc/wasm";
 import {
   Grid2X2 as BorderAllIcon,
   ChevronRight,
@@ -29,6 +35,7 @@ type BorderPickerProps = {
   onClose: () => void;
   anchorEl: React.RefObject<HTMLElement | null>;
   open: boolean;
+  currentTheme: IronCalcTheme;
 };
 
 type Position = {
@@ -107,6 +114,7 @@ export default function BorderPicker({
   onClose,
   anchorEl,
   open,
+  currentTheme,
 }: BorderPickerProps) {
   const { t } = useTranslation();
 
@@ -115,7 +123,7 @@ export default function BorderPicker({
 
   const [position, setPosition] = useState<Position | null>(null);
   const [borderSelected, setBorderSelected] = useState<BorderType | null>(null);
-  const [borderColor, setBorderColor] = useState(DEFAULT_BORDER_COLOR);
+  const [borderColor, setBorderColor] = useState<Color>(DEFAULT_BORDER_COLOR);
   const [borderStyle, setBorderStyle] = useState(BorderStyle.Thin);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [stylePickerOpen, setStylePickerOpen] = useState(false);
@@ -317,6 +325,7 @@ export default function BorderPicker({
             anchorEl={borderColorButtonRef}
             open={colorPickerOpen}
             placement="right"
+            theme={currentTheme}
           />
         </div>
         {/* biome-ignore lint/a11y/noStaticElementInteractions: FIXME */}

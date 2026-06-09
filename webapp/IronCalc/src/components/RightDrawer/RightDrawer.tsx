@@ -179,6 +179,7 @@ const RightDrawer = ({
             customStyles={customStyles}
             builtinStyles={builtinStyles}
             formatOptions={formatOptions}
+            currentTheme={currentTheme}
             onApplyNamedStyle={onApplyNamedStyle}
             onAddNamedStyle={onAddNamedStyle}
             onUpdateNamedStyle={onUpdateNamedStyle}
@@ -203,6 +204,7 @@ const RightDrawer = ({
             sheet={model.getSelectedView().sheet}
             onUpdate={onUpdate}
             model={model}
+            currentTheme={currentTheme}
           />
         );
       case "themes":

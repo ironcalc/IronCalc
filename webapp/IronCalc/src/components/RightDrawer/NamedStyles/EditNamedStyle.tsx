@@ -1,8 +1,14 @@
-import type { CellStyle, FmtSettings, Model } from "@ironcalc/wasm";
+import type {
+  CellStyle,
+  FmtSettings,
+  IronCalcTheme,
+  Model,
+} from "@ironcalc/wasm";
 import { Check } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
+import { resolveColorToHex } from "../../ColorPicker/util";
 import { NumberFormats } from "../../FormatMenu/formatUtil";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
@@ -21,6 +27,7 @@ interface EditNamedStyleProps {
   style: CellStyle;
   formatOptions: FmtSettings;
   existingStyleNames: string[];
+  currentTheme: IronCalcTheme;
   onSave: (payload: NamedStyleSavePayload) => SaveError;
   onClose: () => void;
 }
@@ -30,7 +37,10 @@ export interface NamedStyleSavePayload {
   style: CellStyle;
 }
 
-function formatStyleToPreview(formatStyle: FormatStyle): CSSProperties {
+function formatStyleToPreview(
+  formatStyle: FormatStyle,
+  currentTheme: IronCalcTheme,
+): CSSProperties {
   const decorations: string[] = [];
   if (formatStyle.underline) {
     decorations.push("underline");
@@ -39,8 +49,9 @@ function formatStyleToPreview(formatStyle: FormatStyle): CSSProperties {
     decorations.push("line-through");
   }
   return {
-    backgroundColor: formatStyle.fillColor || undefined,
-    color: formatStyle.fontColor || undefined,
+    backgroundColor:
+      resolveColorToHex(formatStyle.fillColor, currentTheme) || undefined,
+    color: resolveColorToHex(formatStyle.fontColor, currentTheme) || undefined,
     fontWeight: formatStyle.bold ? "bold" : undefined,
     fontStyle: formatStyle.italic ? "italic" : undefined,
     textDecoration: decorations.length > 0 ? decorations.join(" ") : undefined,
@@ -66,6 +77,7 @@ const EditNamedStyle = ({
   style,
   formatOptions,
   existingStyleNames,
+  currentTheme,
   onSave,
   onClose,
 }: EditNamedStyleProps) => {
@@ -189,7 +201,7 @@ const EditNamedStyle = ({
         <div className="ic-edit-style-header-box">
           <div
             className="ic-edit-style-preview"
-            style={formatStyleToPreview(formatStyle)}
+            style={formatStyleToPreview(formatStyle, currentTheme)}
           >
             Aa
           </div>
@@ -234,7 +246,11 @@ const EditNamedStyle = ({
           </div>
           <div className="ic-edit-style-format-group">
             <span className="ic-edit-style-label">Style</span>
-            <FormatStylePicker value={formatStyle} onChange={setFormatStyle} />
+            <FormatStylePicker
+              value={formatStyle}
+              onChange={setFormatStyle}
+              currentTheme={currentTheme}
+            />
           </div>
         </div>
       </div>
