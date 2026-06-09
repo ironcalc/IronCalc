@@ -1,9 +1,11 @@
+import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { Check, SquareMousePointer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
+import { resolveColorToHex } from "../../ColorPicker/util";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
@@ -25,8 +27,8 @@ export interface DataBarBound {
 export interface DataBarsRuleData {
   color: string;
   gradient: boolean;
-  positiveColor: string;
-  negativeColor: string;
+  positiveColor: Color;
+  negativeColor: Color;
   hideCellContent: boolean;
   minBound: DataBarBound;
   maxBound: DataBarBound;
@@ -38,6 +40,7 @@ interface DataBarsRuleProps {
   applyTo: string;
   onApplyToChange: (val: string) => void;
   getSelectedArea: () => string;
+  currentTheme: IronCalcTheme;
   initialValues?: DataBarsRuleData;
   onPreviewChange?: (data: DataBarsRuleData) => void;
 }
@@ -142,6 +145,7 @@ const DataBarsRule = ({
   getSelectedArea,
   initialValues,
   onPreviewChange,
+  currentTheme,
 }: DataBarsRuleProps) => {
   const { t } = useTranslation();
   const [positiveOpen, setPositiveOpen] = useState(false);
@@ -364,7 +368,10 @@ const DataBarsRule = ({
               <div className="ic-cs-settings-row">
                 <Input
                   type="text"
-                  value={selected.positiveColor}
+                  value={resolveColorToHex(
+                    selected.positiveColor,
+                    currentTheme,
+                  )}
                   onChange={(e) =>
                     setSelected((s) => ({
                       ...s,
@@ -377,14 +384,22 @@ const DataBarsRule = ({
                     ref={positiveRef}
                     type="button"
                     className="ic-cs-color-swatch"
-                    style={{ backgroundColor: selected.positiveColor }}
+                    style={{
+                      backgroundColor: resolveColorToHex(
+                        selected.positiveColor,
+                        currentTheme,
+                      ),
+                    }}
                     onClick={() => setPositiveOpen(true)}
                     aria-label={t("conditional_formatting.data_bars_positive")}
                   />
                 </div>
                 <ColorPicker
                   color={selected.positiveColor}
-                  defaultColor={selected.positiveColor}
+                  defaultColor={resolveColorToHex(
+                    selected.positiveColor,
+                    currentTheme,
+                  )}
                   title={t("color_picker.default")}
                   onChange={(c) => {
                     setSelected((s) => ({ ...s, positiveColor: c }));
@@ -393,6 +408,7 @@ const DataBarsRule = ({
                   onClose={() => setPositiveOpen(false)}
                   anchorEl={positiveRef}
                   open={positiveOpen}
+                  theme={currentTheme}
                 />
               </div>
             </div>
@@ -403,7 +419,10 @@ const DataBarsRule = ({
               <div className="ic-cs-settings-row">
                 <Input
                   type="text"
-                  value={selected.negativeColor}
+                  value={resolveColorToHex(
+                    selected.negativeColor,
+                    currentTheme,
+                  )}
                   onChange={(e) =>
                     setSelected((s) => ({
                       ...s,
@@ -416,14 +435,22 @@ const DataBarsRule = ({
                     ref={negativeRef}
                     type="button"
                     className="ic-cs-color-swatch"
-                    style={{ backgroundColor: selected.negativeColor }}
+                    style={{
+                      backgroundColor: resolveColorToHex(
+                        selected.negativeColor,
+                        currentTheme,
+                      ),
+                    }}
                     onClick={() => setNegativeOpen(true)}
                     aria-label={t("conditional_formatting.data_bars_negative")}
                   />
                 </div>
                 <ColorPicker
                   color={selected.negativeColor}
-                  defaultColor={selected.negativeColor}
+                  defaultColor={resolveColorToHex(
+                    selected.negativeColor,
+                    currentTheme,
+                  )}
                   title={t("color_picker.default")}
                   onChange={(c) => {
                     setSelected((s) => ({ ...s, negativeColor: c }));
@@ -432,6 +459,7 @@ const DataBarsRule = ({
                   onClose={() => setNegativeOpen(false)}
                   anchorEl={negativeRef}
                   open={negativeOpen}
+                  theme={currentTheme}
                 />
               </div>
             </div>

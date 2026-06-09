@@ -115,6 +115,7 @@ const Themes = ({
             initialLightColor={editingData.lightColor}
             initialDarkColor={editingData.darkColor}
             initialAccentColors={editingData.accentColors}
+            currentTheme={currentTheme}
             onSave={handleSave}
             onClose={() => setEditing(null)}
           />

@@ -11,11 +11,11 @@ fn color_scale_rule() -> CfRuleInput {
         thresholds: vec![
             ColorScaleThreshold {
                 cfvo: Cfvo::Min,
-                color: "#FF0000".to_string(),
+                color: Color::Rgb("#FF0000".to_string()),
             },
             ColorScaleThreshold {
                 cfvo: Cfvo::Max,
-                color: "#00FF00".to_string(),
+                color: Color::Rgb("#00FF00".to_string()),
             },
         ],
     }
@@ -25,8 +25,8 @@ fn data_bar_rule() -> CfRuleInput {
     CfRuleInput::DataBar {
         min: Some(Cfvo::Min),
         max: Some(Cfvo::Max),
-        positive_color: "#0000FF".to_string(),
-        negative_color: "#FF0000".to_string(),
+        positive_color: Color::Rgb("#0000FF".to_string()),
+        negative_color: Color::Rgb("#FF0000".to_string()),
         is_gradient: true,
         show_value: true,
     }
@@ -38,19 +38,19 @@ fn icon_set_rule() -> CfRuleInput {
             IconThreshold {
                 icon: Icon::ArrowDown,
                 cfvo: Cfvo::Min,
-                color: "#e43400".to_string(),
+                color: Color::Rgb("#e43400".to_string()),
                 is_strict: false,
             },
             IconThreshold {
                 icon: Icon::ArrowRight,
                 cfvo: Cfvo::Percent(33.0),
-                color: "#ffeb84".to_string(),
+                color: Color::Rgb("#ffeb84".to_string()),
                 is_strict: false,
             },
             IconThreshold {
                 icon: Icon::ArrowUp,
                 cfvo: Cfvo::Percent(67.0),
-                color: "#84cb1f".to_string(),
+                color: Color::Rgb("#84cb1f".to_string()),
                 is_strict: false,
             },
         ],
@@ -205,11 +205,11 @@ fn test_higher_priority_number_wins() {
                 thresholds: vec![
                     ColorScaleThreshold {
                         cfvo: Cfvo::Min,
-                        color: "#0000FF".to_string(),
+                        color: Color::Rgb("#0000FF".to_string()),
                     },
                     ColorScaleThreshold {
                         cfvo: Cfvo::Max,
-                        color: "#FFFF00".to_string(),
+                        color: Color::Rgb("#FFFF00".to_string()),
                     },
                 ],
             },
@@ -241,19 +241,19 @@ fn test_higher_priority_icon_set_wins() {
                     IconThreshold {
                         icon: Icon::Flag,
                         cfvo: Cfvo::Min,
-                        color: "#f8696b".to_string(),
+                        color: Color::Rgb("#f8696b".to_string()),
                         is_strict: false,
                     },
                     IconThreshold {
                         icon: Icon::Flag,
                         cfvo: Cfvo::Percent(33.0),
-                        color: "#ffeb84".to_string(),
+                        color: Color::Rgb("#ffeb84".to_string()),
                         is_strict: false,
                     },
                     IconThreshold {
                         icon: Icon::Flag,
                         cfvo: Cfvo::Percent(67.0),
-                        color: "#63be7b".to_string(),
+                        color: Color::Rgb("#63be7b".to_string()),
                         is_strict: false,
                     },
                 ],

@@ -1,4 +1,4 @@
-import type { CfDataBar, CfIcon, CfRating } from "@ironcalc/wasm";
+import type { CfDataBar, CfIcon, CfRating, Color } from "@ironcalc/wasm";
 import { ICON_PATH_SPECS } from "./lucideIconPaths";
 
 // Width (in pixels) reserved on the left of a cell for an icon-set indicator.
@@ -123,9 +123,11 @@ export function renderDataBar(
   width: number,
   height: number,
   dataBar: CfDataBar,
+  resolveColor: (color: Color) => string,
 ): void {
-  const { value, axis_position, positive_color, negative_color, is_gradient } =
-    dataBar;
+  const { value, axis_position, is_gradient } = dataBar;
+  const positive_color = resolveColor(dataBar.positive_color);
+  const negative_color = resolveColor(dataBar.negative_color);
   const vertPad = Math.max(2, Math.round(height * 0.15));
   const barY = y + vertPad;
   const barHeight = height - 2 * vertPad;
@@ -223,12 +225,13 @@ export function renderIcon(
   height: number,
   icon: CfIcon,
   size: number,
+  resolveColor: (color: Color) => string,
 ): void {
   context.save();
   drawLucideIcon(
     context,
     icon.icon,
-    icon.color,
+    resolveColor(icon.color),
     x + ICON_LEFT_MARGIN + size / 2,
     y + height / 2,
     size,
@@ -243,13 +246,15 @@ export function renderRating(
   height: number,
   rating: CfRating,
   size: number,
+  resolveColor: (color: Color) => string,
 ): void {
   context.save();
+  const color = resolveColor(rating.color);
   for (let i = 0; i < rating.count; i++) {
     drawLucideIcon(
       context,
       rating.icon,
-      rating.color,
+      color,
       x + ICON_LEFT_MARGIN + size / 2 + i * size,
       y + height / 2,
       size,

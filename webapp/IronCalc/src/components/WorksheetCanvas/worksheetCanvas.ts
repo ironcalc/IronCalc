@@ -774,15 +774,21 @@ export default class WorksheetCanvas {
 
     // CF overlays rendered on top of the background.
     if (extended.data_bar) {
-      renderDataBar(context, x, y, width, height, extended.data_bar);
+      renderDataBar(context, x, y, width, height, extended.data_bar, (c) =>
+        this.model.resolveColor(c),
+      );
     }
     if (extended.icon) {
       const iconSize = style.font?.sz ? style.font.sz * 1.2 : 16;
-      renderIcon(context, x, y, height, extended.icon, iconSize);
+      renderIcon(context, x, y, height, extended.icon, iconSize, (c) =>
+        this.model.resolveColor(c),
+      );
     }
     if (extended.rating) {
       const iconSize = style.font?.sz ? style.font.sz * 1.2 : 16;
-      renderRating(context, x, y, height, extended.rating, iconSize);
+      renderRating(context, x, y, height, extended.rating, iconSize, (c) =>
+        this.model.resolveColor(c),
+      );
     }
 
     // Let's do the border

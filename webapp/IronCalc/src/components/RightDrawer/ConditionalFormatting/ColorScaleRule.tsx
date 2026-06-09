@@ -1,9 +1,11 @@
+import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { Check, SquareMousePointer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
+import { resolveColorToHex } from "../../ColorPicker/util";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
 import { Tooltip } from "../../Tooltip/Tooltip";
@@ -21,7 +23,7 @@ type StopType = (typeof STOP_TYPE_OPTIONS)[number];
 export interface ColorScaleStop {
   type: StopType;
   value: string;
-  color: string;
+  color: Color;
 }
 
 export interface ColorScaleRuleData {
@@ -38,6 +40,7 @@ interface ColorScaleRuleProps {
   initialValues?: ColorScaleRuleData;
   onPreviewChange?: (colors: [string, string, string]) => void;
   getSelectedArea: () => string;
+  currentTheme: IronCalcTheme;
 }
 
 interface ColorScalePreset {
@@ -128,6 +131,7 @@ interface StopRowProps {
   onChange: (stop: ColorScaleStop) => void;
   getSelectedArea: () => string;
   type: "default" | "min" | "midpoint" | "max";
+  currentTheme: IronCalcTheme;
 }
 
 function getOptionsFromType(type: StopRowProps["type"]): readonly StopType[] {
@@ -149,6 +153,7 @@ const StopRow = ({
   onChange,
   getSelectedArea,
   type,
+  currentTheme,
 }: StopRowProps) => {
   const { t } = useTranslation();
   const [colorOpen, setColorOpen] = useState(false);
@@ -200,14 +205,16 @@ const StopRow = ({
                 ref={colorRef}
                 type="button"
                 className="ic-cs-color-swatch"
-                style={{ backgroundColor: stop.color }}
+                style={{
+                  backgroundColor: resolveColorToHex(stop.color, currentTheme),
+                }}
                 onClick={() => setColorOpen(true)}
                 aria-label={label}
               />
             </div>
             <ColorPicker
               color={stop.color}
-              defaultColor={stop.color}
+              defaultColor={resolveColorToHex(stop.color, currentTheme)}
               title={t("color_picker.default")}
               onChange={(c) => {
                 onChange({ ...stop, color: c });
@@ -216,6 +223,7 @@ const StopRow = ({
               onClose={() => setColorOpen(false)}
               anchorEl={colorRef}
               open={colorOpen}
+              theme={currentTheme}
             />
           </>
         )}
@@ -232,6 +240,7 @@ const ColorScaleRule = ({
   initialValues,
   onPreviewChange,
   getSelectedArea,
+  currentTheme,
 }: ColorScaleRuleProps) => {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<string>(PRESETS[0].id);
@@ -271,15 +280,24 @@ const ColorScaleRule = ({
   useEffect(() => {
     const midColor =
       midpoint.type === "none"
-        ? interpolateColor(minimum.color, maximum.color, 0.5)
-        : midpoint.color;
-    onPreviewChange?.([minimum.color, midColor, maximum.color]);
+        ? interpolateColor(
+            resolveColorToHex(minimum.color, currentTheme),
+            resolveColorToHex(maximum.color, currentTheme),
+            0.5,
+          )
+        : resolveColorToHex(midpoint.color, currentTheme);
+    onPreviewChange?.([
+      resolveColorToHex(minimum.color, currentTheme),
+      midColor,
+      resolveColorToHex(maximum.color, currentTheme),
+    ]);
   }, [
     minimum.color,
     midpoint.color,
     midpoint.type,
     maximum.color,
     onPreviewChange,
+    currentTheme,
   ]);
 
   const isStopValid = (stop: ColorScaleStop) =>
@@ -360,6 +378,7 @@ const ColorScaleRule = ({
             onChange={setMinimum}
             getSelectedArea={getSelectedArea}
             type="min"
+            currentTheme={currentTheme}
           />
           <StopRow
             label={t("conditional_formatting.color_scale_midpoint")}
@@ -367,6 +386,7 @@ const ColorScaleRule = ({
             onChange={setMidpoint}
             getSelectedArea={getSelectedArea}
             type="midpoint"
+            currentTheme={currentTheme}
           />
           <StopRow
             label={t("conditional_formatting.color_scale_maximum")}
@@ -374,6 +394,7 @@ const ColorScaleRule = ({
             onChange={setMaximum}
             getSelectedArea={getSelectedArea}
             type="max"
+            currentTheme={currentTheme}
           />
         </div>
       </div>

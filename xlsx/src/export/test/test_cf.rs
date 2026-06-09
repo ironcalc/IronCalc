@@ -187,11 +187,11 @@ fn test_cf_round_trip() {
                 thresholds: vec![
                     ColorScaleThreshold {
                         cfvo: Cfvo::Min,
-                        color: "#FF0000".to_string(),
+                        color: Color::Rgb("#FF0000".to_string()),
                     },
                     ColorScaleThreshold {
                         cfvo: Cfvo::Max,
-                        color: "#00FF00".to_string(),
+                        color: Color::Rgb("#00FF00".to_string()),
                     },
                 ],
             },
@@ -207,15 +207,15 @@ fn test_cf_round_trip() {
                 thresholds: vec![
                     ColorScaleThreshold {
                         cfvo: Cfvo::Min,
-                        color: "#FF0000".to_string(),
+                        color: Color::Rgb("#FF0000".to_string()),
                     },
                     ColorScaleThreshold {
                         cfvo: Cfvo::Percentile(50.0),
-                        color: "#FFFF00".to_string(),
+                        color: Color::Rgb("#FFFF00".to_string()),
                     },
                     ColorScaleThreshold {
                         cfvo: Cfvo::Max,
-                        color: "#00FF00".to_string(),
+                        color: Color::Rgb("#00FF00".to_string()),
                     },
                 ],
             },
@@ -230,8 +230,8 @@ fn test_cf_round_trip() {
             CfRuleInput::DataBar {
                 min: None,
                 max: None,
-                positive_color: "#638EC6".to_string(),
-                negative_color: "#FF0000".to_string(),
+                positive_color: Color::Rgb("#638EC6".to_string()),
+                negative_color: Color::Rgb("#FF0000".to_string()),
                 is_gradient: true,
                 show_value: true,
             },
@@ -246,8 +246,8 @@ fn test_cf_round_trip() {
             CfRuleInput::DataBar {
                 min: Some(Cfvo::Number(2.0)),
                 max: Some(Cfvo::Number(8.0)),
-                positive_color: "#FF555A".to_string(),
-                negative_color: "#FF0000".to_string(),
+                positive_color: Color::Rgb("#FF555A".to_string()),
+                negative_color: Color::Rgb("#FF0000".to_string()),
                 is_gradient: false,
                 show_value: false,
             },
@@ -315,7 +315,7 @@ fn test_cf_round_trip() {
             "I1:I10",
             CfRuleInput::IconRating {
                 icon: Icon::Star,
-                color: "#FFD700".to_string(),
+                color: Color::Rgb("#FFD700".to_string()),
                 thresholds: vec![
                     (Cfvo::Percent(0.0), true),
                     (Cfvo::Percent(33.0), true),
@@ -333,7 +333,7 @@ fn test_cf_round_trip() {
             "J1:J10",
             CfRuleInput::IconRating {
                 icon: Icon::Circle,
-                color: "#FFD700".to_string(),
+                color: Color::Rgb("#FFD700".to_string()),
                 thresholds: vec![
                     (Cfvo::Percent(0.0), true),
                     (Cfvo::Percent(20.0), true),
@@ -672,9 +672,9 @@ fn test_cf_round_trip() {
         .expect("ColorScale 2-color not found");
     if let CfRule::ColorScale { thresholds } = r3 {
         assert_eq!(thresholds.len(), 2);
-        assert_eq!(thresholds[0].color, "#FF0000");
+        assert_eq!(thresholds[0].color, Color::Rgb("#FF0000".to_string()));
         assert!(matches!(thresholds[0].cfvo, Cfvo::Min));
-        assert_eq!(thresholds[1].color, "#00FF00");
+        assert_eq!(thresholds[1].color, Color::Rgb("#00FF00".to_string()));
         assert!(matches!(thresholds[1].cfvo, Cfvo::Max));
     }
 
@@ -682,7 +682,7 @@ fn test_cf_round_trip() {
         .expect("ColorScale 3-color not found");
     if let CfRule::ColorScale { thresholds } = r4 {
         assert_eq!(thresholds.len(), 3);
-        assert_eq!(thresholds[1].color, "#FFFF00");
+        assert_eq!(thresholds[1].color, Color::Rgb("#FFFF00".to_string()));
         assert!(matches!(thresholds[1].cfvo, Cfvo::Percentile(_)));
     }
 
@@ -700,7 +700,7 @@ fn test_cf_round_trip() {
     {
         assert!(min.is_none(), "auto-min should be None");
         assert!(max.is_none(), "auto-max should be None");
-        assert_eq!(positive_color, "#638EC6");
+        assert_eq!(positive_color, &Color::Rgb("#638EC6".to_string()));
         assert!(is_gradient, "should be gradient");
         assert!(show_value);
     }
@@ -718,7 +718,7 @@ fn test_cf_round_trip() {
     {
         assert!(matches!(min, Some(Cfvo::Number(n)) if (*n - 2.0).abs() < 1e-9));
         assert!(matches!(max, Some(Cfvo::Number(n)) if (*n - 8.0).abs() < 1e-9));
-        assert_eq!(positive_color, "#FF555A");
+        assert_eq!(positive_color, &Color::Rgb("#FF555A".to_string()));
         assert!(!is_gradient, "should be solid");
         assert!(!show_value);
     }
@@ -766,7 +766,7 @@ fn test_cf_round_trip() {
     } = r9
     {
         assert_eq!(*icon, Icon::Star);
-        assert_eq!(color, "#FFD700");
+        assert_eq!(color, &Color::Rgb("#FFD700".to_string()));
         assert_eq!(thresholds.len(), 3);
         assert!(show_value);
     }
@@ -1001,19 +1001,19 @@ fn test_cf_custom_icon_set_round_trip() {
                     IconThreshold {
                         icon: Icon::Star,
                         cfvo: Cfvo::Percent(0.0),
-                        color: "#FFD700".to_string(),
+                        color: Color::Rgb("#FFD700".to_string()),
                         is_strict: true,
                     },
                     IconThreshold {
                         icon: Icon::ArrowUp,
                         cfvo: Cfvo::Percent(50.0),
-                        color: "#84cb1f".to_string(),
+                        color: Color::Rgb("#84cb1f".to_string()),
                         is_strict: true,
                     },
                     IconThreshold {
                         icon: Icon::Cross,
                         cfvo: Cfvo::Percent(80.0),
-                        color: "#f8696b".to_string(),
+                        color: Color::Rgb("#f8696b".to_string()),
                         is_strict: false,
                     },
                 ],
@@ -1029,7 +1029,7 @@ fn test_cf_custom_icon_set_round_trip() {
             "B1:B10",
             CfRuleInput::IconRating {
                 icon: Icon::Heart,
-                color: "#FF69B4".to_string(),
+                color: Color::Rgb("#FF69B4".to_string()),
                 thresholds: vec![
                     (Cfvo::Percent(0.0), true),
                     (Cfvo::Percent(33.0), true),
@@ -1050,13 +1050,13 @@ fn test_cf_custom_icon_set_round_trip() {
                     IconThreshold {
                         icon: Icon::ThumbsDown,
                         cfvo: Cfvo::Percent(0.0),
-                        color: "#FF0000".to_string(),
+                        color: Color::Rgb("#FF0000".to_string()),
                         is_strict: true,
                     },
                     IconThreshold {
                         icon: Icon::ThumbsUp,
                         cfvo: Cfvo::Percent(50.0),
-                        color: "#00FF00".to_string(),
+                        color: Color::Rgb("#00FF00".to_string()),
                         is_strict: true,
                     },
                 ],

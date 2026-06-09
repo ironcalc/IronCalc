@@ -6,6 +6,8 @@
     "default": "Colore predefinito",
     "no_fill": "Nessun riempimento",
     "recent": "Recenti",
+    "standard_colors": "Colori standard",
+    "themed_colors": "Colori del tema",
     "title": "Selettore di colore"
   },
   "conditional_formatting": {

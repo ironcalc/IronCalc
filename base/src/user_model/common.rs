@@ -111,7 +111,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
             style.font.strike = boolean(value)?;
         }
         "font.color" => {
-            style.font.color = Color::from_rgb(value)?;
+            style.font.color = Color::from_param(value)?;
         }
         "font.size" => {
             let new_size: i32 = value
@@ -134,7 +134,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
             style.font.sz = new_size;
         }
         "fill.color" | "fill.bg_color" | "fill.fg_color" => {
-            style.fill.color = Color::from_rgb(value)?;
+            style.fill.color = Color::from_param(value)?;
         }
         "num_fmt" => {
             value.clone_into(&mut style.num_fmt);

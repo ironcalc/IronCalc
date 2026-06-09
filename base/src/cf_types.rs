@@ -1,7 +1,7 @@
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use crate::types::{Dxf, Style};
+use crate::types::{Color, Dxf, Style};
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub enum ValueOperator {
@@ -82,14 +82,14 @@ pub enum Icon {
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct ColorScaleThreshold {
     pub cfvo: Cfvo,
-    pub color: String,
+    pub color: Color,
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct IconThreshold {
     pub icon: Icon,
     pub cfvo: Cfvo,
-    pub color: String,
+    pub color: Color,
     // If true, the threshold is "strict":
     // the icon applies only if the value is strictly greater than (for ">=" operator) the threshold value.
     pub is_strict: bool,
@@ -176,15 +176,15 @@ pub enum CfRule {
         // min is Min(0, values in the range), max is Max(0, values in the range).
         min: Option<Cfvo>,
         max: Option<Cfvo>,
-        positive_color: String,
-        negative_color: String,
+        positive_color: Color,
+        negative_color: Color,
         is_gradient: bool,
         // missing:
         // has_border: bool,
-        // border_color_positive: String,
-        // border_color_negative: String,
+        // border_color_positive: Color,
+        // border_color_negative: Color,
         // axis_position: DataBarAxisPosition, (automatic, none, cell_midpoint)
-        // axis_color: String,
+        // axis_color: Color,
         show_value: bool,
     },
     IconSet {
@@ -201,7 +201,7 @@ pub enum CfRule {
     IconRating {
         // In a rating an icon is repeated `max` times, with `count` of them filled in.
         icon: Icon,
-        color: String,
+        color: Color,
         // thresholds from highest to lowest value. There are `max-1` thresholds.
         // (threshold, is_strict)
         thresholds: Vec<(Cfvo, bool)>,
@@ -291,8 +291,8 @@ pub enum CfRuleInput {
     DataBar {
         min: Option<Cfvo>,
         max: Option<Cfvo>,
-        positive_color: String,
-        negative_color: String,
+        positive_color: Color,
+        negative_color: Color,
         is_gradient: bool,
         show_value: bool,
     },
@@ -302,7 +302,7 @@ pub enum CfRuleInput {
     },
     IconRating {
         icon: Icon,
-        color: String,
+        color: Color,
         thresholds: Vec<(Cfvo, bool)>,
         show_value: bool,
     },
@@ -324,12 +324,12 @@ pub struct ConditionalFormatting {
 pub(crate) enum CfCellResult {
     /// A dxf-based rule matched; dxf_id indexes into styles.dxfs.
     Dxf(u32),
-    /// Color scale: the pre-computed interpolated fill color (hex).
-    ColorScale(String),
+    /// Color scale: the pre-computed interpolated fill color.
+    ColorScale(Color),
     /// Data bar: proportion filled (0..1), colors, gradient flag, and show_value flag.
     DataBar {
-        positive_color: String,
-        negative_color: String,
+        positive_color: Color,
+        negative_color: Color,
         is_gradient: bool,
         value: f64,
         /// Proportion [0,1] at which the zero axis falls within the cell width.
@@ -339,7 +339,7 @@ pub(crate) enum CfCellResult {
     /// Custom icon: icon name (Icon enum variant) and color.
     Icon {
         icon: Icon,
-        color: String,
+        color: Color,
         show_value: bool,
     },
     /// Rating: show `count` copies of `icon` out of `max` possible.
@@ -347,7 +347,7 @@ pub(crate) enum CfCellResult {
         icon: Icon,
         count: u32,
         max: u32,
-        color: String,
+        color: Color,
         show_value: bool,
     },
 }
@@ -360,15 +360,15 @@ pub(crate) enum CfCellResult {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CfIcon {
     pub icon: Icon,
-    pub color: String,
+    pub color: Color,
     pub show_value: bool,
 }
 
 /// Data bar decoration for a cell.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CfDataBar {
-    pub positive_color: String,
-    pub negative_color: String,
+    pub positive_color: Color,
+    pub negative_color: Color,
     pub is_gradient: bool,
     /// Proportion of the bar to fill, in \[0.0, 1.0\].
     pub value: f64,
@@ -386,7 +386,7 @@ pub struct CfRating {
     pub count: u32,
     /// Maximum number of icons in the scale (3, 4, or 5).
     pub max: u32,
-    pub color: String,
+    pub color: Color,
     pub show_value: bool,
 }
 
@@ -394,8 +394,8 @@ pub struct CfRating {
 /// ordered from lowest to highest value bucket.
 /// `name` is the XLSX `iconSetType` attribute value (e.g. `"3TrafficLights2"`).
 /// Returns `None` for unknown names.
-pub fn icon_set_icons(name: &str) -> Option<Vec<(Icon, String)>> {
-    let s = |c: &'static str| c.to_string();
+pub fn icon_set_icons(name: &str) -> Option<Vec<(Icon, Color)>> {
+    let s = |c: &'static str| Color::Rgb(c.to_string());
     match name {
         "3Arrows" => Some(vec![
             (Icon::ArrowDown, s("#e43400")),

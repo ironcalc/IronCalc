@@ -6,6 +6,8 @@
     "default": "Couleur par défaut",
     "no_fill": "Sans remplissage",
     "recent": "Récentes",
+    "standard_colors": "Couleurs standard",
+    "themed_colors": "Couleurs du thème",
     "title": "Sélecteur de couleur"
   },
   "conditional_formatting": {

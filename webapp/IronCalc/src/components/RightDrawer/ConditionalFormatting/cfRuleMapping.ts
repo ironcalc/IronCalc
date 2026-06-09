@@ -1,6 +1,7 @@
 import type {
   CfRuleInput,
   Cfvo,
+  Color,
   ColorScaleThreshold,
   ConditionalFormatting,
   Dxf,
@@ -8,7 +9,6 @@ import type {
   DxfFont,
   Icon,
   IconThreshold,
-  Model,
   PeriodType,
   TextOperator,
   ValueOperator,
@@ -155,17 +155,14 @@ export function formatStyleToDxf(style: FormatStyle): Dxf {
   return dxf;
 }
 
-export function dxfToFormatStyle(
-  model: Model,
-  dxf: Dxf | null | undefined,
-): FormatStyle {
+export function dxfToFormatStyle(dxf: Dxf | null | undefined): FormatStyle {
   return {
     bold: dxf?.font?.b ?? false,
     italic: dxf?.font?.i ?? false,
     underline: dxf?.font?.u ?? false,
     strike: dxf?.font?.strike ?? false,
-    fontColor: model.resolveColor(dxf?.font?.color) || "#000000",
-    fillColor: model.resolveColor(dxf?.fill?.color),
+    fontColor: dxf?.font?.color ?? "#000000",
+    fillColor: dxf?.fill?.color,
   };
 }
 
@@ -191,7 +188,7 @@ function stopToCfvo(stop: ColorScaleStop): Cfvo {
   }
 }
 
-function cfvoToStop(cfvo: Cfvo, color: string): ColorScaleStop {
+function cfvoToStop(cfvo: Cfvo, color: Color): ColorScaleStop {
   if (cfvo === "Min") {
     return { type: "min", value: "", color };
   }
@@ -281,8 +278,8 @@ function thresholdToCfvo(th: { type: ThresholdType; value: string }): Cfvo {
 
 function cfvoToThreshold(
   cfvo: Cfvo,
-  color: string,
-): { operator: "<="; value: string; type: ThresholdType; color: string } {
+  color: Color,
+): { operator: "<="; value: string; type: ThresholdType; color: Color } {
   if (cfvo === "Min" || cfvo === "Max") {
     return {
       operator: "<=",
@@ -324,7 +321,7 @@ function cfvoToThreshold(
 // Each UI row's value is the LOWER bound for that bucket; the last row (d=n-1) is the "else" / lowest.
 function buildThresholds(
   cfvo: readonly Cfvo[],
-  colors: readonly string[],
+  colors: readonly Color[],
   iconNames: readonly string[],
   isStrict: readonly boolean[],
   n: number,
@@ -641,7 +638,10 @@ export function cfRuleToRuleData(
     }
     case "DataBar": {
       const dataBars: DataBarsRuleData = {
-        color: cf_rule.positive_color,
+        color:
+          typeof cf_rule.positive_color === "string"
+            ? cf_rule.positive_color
+            : "",
         gradient: cf_rule.is_gradient,
         positiveColor: cf_rule.positive_color,
         negativeColor: cf_rule.negative_color,
@@ -680,7 +680,7 @@ export function cfRuleToRuleData(
       const isStrict = cf_rule.thresholds.map(([, s]) => s);
       const thresholds = buildThresholds(
         cfvo,
-        Array(n).fill(cf_rule.color) as string[],
+        Array(n).fill(cf_rule.color) as Color[],
         Array(n).fill(cf_rule.icon) as string[],
         isStrict,
         n,

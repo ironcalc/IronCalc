@@ -5,7 +5,7 @@ import type {
   Model,
   WorksheetProperties,
 } from "@ironcalc/wasm";
-import { getThemeList } from "@ironcalc/wasm";
+import { type Color, getThemeList } from "@ironcalc/wasm";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -38,6 +38,16 @@ import type { WorkbookState } from "../workbookState";
 import useKeyboardNavigation from "./useKeyboardNavigation";
 import "./workbook.css";
 import { Alert } from "../Modal";
+
+function colorToParam(color: Color): string {
+  if (color === undefined) {
+    return "";
+  }
+  if (typeof color === "string") {
+    return color;
+  }
+  return `[${color[0]}, ${color[1]}]`;
+}
 
 const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   const { model, workbookState } = props;
@@ -156,12 +166,12 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
     updateRangeStyle("alignment.wrap_text", `${value}`);
   };
 
-  const onTextColorPicked = (hex: string) => {
-    updateRangeStyle("font.color", hex);
+  const onTextColorPicked = (color: Color) => {
+    updateRangeStyle("font.color", colorToParam(color));
   };
 
-  const onFillColorPicked = (hex: string) => {
-    updateRangeStyle("fill.color", hex);
+  const onFillColorPicked = (color: Color) => {
+    updateRangeStyle("fill.color", colorToParam(color));
   };
 
   const onNumberFormatPicked = (numberFmt: string) => {
@@ -495,6 +505,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   }, [model]);
 
   const style = getCellStyle();
+  const currentTheme = model.getTheme();
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: This div needs to be focusable to handle keyboard events for the workbook
@@ -811,7 +822,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onOpenNamedStyles={() => openDrawer("namedStyles")}
         isNamedStylesOpen={isDrawerOpen && drawerType === "namedStyles"}
         themes={themes}
-        currentTheme={model.getTheme()}
+        currentTheme={currentTheme}
         onThemePicked={handleThemePicked}
         onOpenThemes={() => openDrawer("themes")}
       />
@@ -872,9 +883,9 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             model.newSheet();
             setRedrawId((value) => value + 1);
           }}
-          onSheetColorChanged={(hex: string): void => {
+          onSheetColorChanged={(color: Color): void => {
             try {
-              model.setSheetColor(model.getSelectedSheet(), hex);
+              model.setSheetColor(model.getSelectedSheet(), color);
               setRedrawId((value) => value + 1);
             } catch (e) {
               // TODO: Show a proper modal dialog

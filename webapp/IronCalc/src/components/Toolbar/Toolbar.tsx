@@ -1,5 +1,6 @@
 import type {
   BorderOptions,
+  Color,
   FmtSettings,
   HorizontalAlignment,
   IronCalcTheme,
@@ -71,8 +72,8 @@ type ToolbarProperties = {
   onToggleVerticalAlign: (v: string) => void;
   onToggleWrapText: (v: boolean) => void;
   onCopyStyles: () => void;
-  onTextColorPicked: (hex: string) => void;
-  onFillColorPicked: (hex: string) => void;
+  onTextColorPicked: (color: Color) => void;
+  onFillColorPicked: (color: Color) => void;
   onNumberFormatPicked: (numberFmt: string) => void;
   onBorderChanged: (border: BorderOptions) => void;
   onClearFormatting: () => void;
@@ -121,7 +122,7 @@ function Toolbar(properties: ToolbarProperties) {
 
   const { t } = useTranslation();
 
-  const { canEdit } = properties;
+  const { canEdit, currentTheme } = properties;
 
   useEffect(() => {
     setFontSizeInput(`${properties.fontSize}`);
@@ -611,6 +612,7 @@ function Toolbar(properties: ToolbarProperties) {
           }}
           anchorEl={fontColorButton}
           open={fontColorPickerOpen}
+          theme={currentTheme}
         />
         <ColorPicker
           color={properties.fillColor}
@@ -627,6 +629,7 @@ function Toolbar(properties: ToolbarProperties) {
           }}
           anchorEl={fillColorButton}
           open={fillColorPickerOpen}
+          theme={currentTheme}
         />
         <BorderPicker
           onChange={(border): void => {
@@ -637,6 +640,7 @@ function Toolbar(properties: ToolbarProperties) {
           }}
           anchorEl={borderButton}
           open={borderPickerOpen}
+          currentTheme={currentTheme}
         />
       </div>
 

@@ -65,6 +65,31 @@ impl Color {
         }
         Err(format!("Invalid color: '{}'.", color))
     }
+
+    /// Parses a color from the JS/WASM parameter format:
+    /// - `""` => `Color::None`
+    /// - `"#RRGGBB"` => `Color::Rgb(...)`
+    /// - `"[index, tint]"` => `Color::Theme(index, tint)`
+    pub fn from_param(s: &str) -> Result<Self, String> {
+        if s.is_empty() {
+            return Ok(Color::None);
+        }
+        if is_valid_hex_color(s) {
+            return Ok(Color::Rgb(s.to_string()));
+        }
+        if let Some(inner) = s.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+            let mut parts = inner.splitn(2, ',');
+            if let (Some(idx_str), Some(tint_str)) = (parts.next(), parts.next()) {
+                if let (Ok(idx), Ok(tint)) = (
+                    idx_str.trim().parse::<i32>(),
+                    tint_str.trim().parse::<f64>(),
+                ) {
+                    return Ok(Color::Theme(idx, tint));
+                }
+            }
+        }
+        Err(format!("Invalid color: '{}'.", s))
+    }
 }
 
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]

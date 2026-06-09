@@ -1,4 +1,4 @@
-import { getTokens } from "@ironcalc/wasm";
+import { getTokens, type IronCalcTheme } from "@ironcalc/wasm";
 import { Check, SquareMousePointer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -24,6 +24,7 @@ interface ClassicRuleProps {
   onFormatStyleChange: (style: FormatStyle) => void;
   onDescriptionChange?: (description: string) => void;
   resolveValue?: (val: string) => string;
+  currentTheme: IronCalcTheme;
 }
 
 const ClassicRule = ({
@@ -37,6 +38,7 @@ const ClassicRule = ({
   onFormatStyleChange,
   onDescriptionChange,
   resolveValue,
+  currentTheme,
 }: ClassicRuleProps) => {
   const { t } = useTranslation();
   const [ruleType, setRuleType] = useState(
@@ -321,6 +323,7 @@ const ClassicRule = ({
           <FormatStylePicker
             value={formatStyle}
             onChange={onFormatStyleChange}
+            currentTheme={currentTheme}
           />
         </div>
         <div className="ic-edit-rule-section">

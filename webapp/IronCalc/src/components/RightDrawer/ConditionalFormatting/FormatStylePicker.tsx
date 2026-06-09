@@ -11,15 +11,17 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../../Button/IconButton";
 import ColorPicker from "../../ColorPicker/ColorPicker";
+import { resolveColorToHex } from "../../ColorPicker/util";
 import "./format-style-picker.css";
+import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 
 export interface FormatStyle {
   bold: boolean;
   italic: boolean;
   underline: boolean;
   strike: boolean;
-  fontColor: string;
-  fillColor: string;
+  fontColor: Color;
+  fillColor: Color;
 }
 
 const DEFAULT_STYLE: FormatStyle = {
@@ -45,9 +47,14 @@ const PRESETS: FormatStyle[] = [
 interface FormatStylePickerProps {
   value: FormatStyle;
   onChange: (style: FormatStyle) => void;
+  currentTheme: IronCalcTheme;
 }
 
-const FormatStylePicker = ({ value, onChange }: FormatStylePickerProps) => {
+const FormatStylePicker = ({
+  value,
+  onChange,
+  currentTheme,
+}: FormatStylePickerProps) => {
   const { t } = useTranslation();
   const [fontColorOpen, setFontColorOpen] = useState(false);
   const [fillColorOpen, setFillColorOpen] = useState(false);
@@ -65,8 +72,9 @@ const FormatStylePicker = ({ value, onChange }: FormatStylePickerProps) => {
       [value.underline ? "underline" : "", value.strike ? "line-through" : ""]
         .filter(Boolean)
         .join(" ") || "none",
-    color: value.fontColor || "#000000",
-    backgroundColor: value.fillColor || "transparent",
+    color: resolveColorToHex(value.fontColor, currentTheme) || "#000000",
+    backgroundColor:
+      resolveColorToHex(value.fillColor, currentTheme) || "transparent",
   };
 
   return (
@@ -110,7 +118,11 @@ const FormatStylePicker = ({ value, onChange }: FormatStylePickerProps) => {
                   <Type />
                   <div
                     className="ic-fsp-color-bar"
-                    style={{ backgroundColor: value.fontColor || "#000000" }}
+                    style={{
+                      backgroundColor:
+                        resolveColorToHex(value.fontColor, currentTheme) ||
+                        "#000000",
+                    }}
                   />
                 </>
               }
@@ -125,7 +137,9 @@ const FormatStylePicker = ({ value, onChange }: FormatStylePickerProps) => {
                   <div
                     className="ic-fsp-color-bar"
                     style={{
-                      backgroundColor: value.fillColor || "transparent",
+                      backgroundColor:
+                        resolveColorToHex(value.fillColor, currentTheme) ||
+                        "transparent",
                     }}
                   />
                 </>
@@ -152,9 +166,11 @@ const FormatStylePicker = ({ value, onChange }: FormatStylePickerProps) => {
               type="button"
               className="ic-fsp-preset"
               style={{
-                color: preset.fontColor,
-                backgroundColor: preset.fillColor || "#FFFFFF",
-                borderColor: preset.fontColor,
+                color: resolveColorToHex(preset.fontColor, currentTheme),
+                backgroundColor:
+                  resolveColorToHex(preset.fillColor, currentTheme) ||
+                  "#FFFFFF",
+                borderColor: resolveColorToHex(preset.fontColor, currentTheme),
               }}
               onClick={() => onChange(preset)}
               aria-label={t("conditional_formatting.apply_preset")}
@@ -176,6 +192,7 @@ const FormatStylePicker = ({ value, onChange }: FormatStylePickerProps) => {
         onClose={() => setFontColorOpen(false)}
         anchorEl={fontColorRef}
         open={fontColorOpen}
+        theme={currentTheme}
       />
       <ColorPicker
         color={value.fillColor || "#FFFFFF"}
@@ -188,6 +205,7 @@ const FormatStylePicker = ({ value, onChange }: FormatStylePickerProps) => {
         onClose={() => setFillColorOpen(false)}
         anchorEl={fillColorRef}
         open={fillColorOpen}
+        theme={currentTheme}
       />
     </div>
   );

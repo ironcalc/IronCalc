@@ -1,4 +1,106 @@
-export const mainColors = [
+import { type Color, type IronCalcTheme, hexWithTintToRgb } from "@ironcalc/wasm";
+
+export function computeToneArrays(theme: IronCalcTheme): string[][] {
+  const ltTones = (c: string) => [
+    hexWithTintToRgb(c, -0.05),
+    hexWithTintToRgb(c, -0.15),
+    hexWithTintToRgb(c, -0.25),
+    hexWithTintToRgb(c, -0.35),
+    hexWithTintToRgb(c, -0.5),
+  ];
+  const dkTones = (c: string) => [
+    hexWithTintToRgb(c, 0.5),
+    hexWithTintToRgb(c, 0.35),
+    hexWithTintToRgb(c, 0.25),
+    hexWithTintToRgb(c, 0.15),
+    hexWithTintToRgb(c, 0.05),
+  ];
+  const accentTones = (c: string) => [
+    hexWithTintToRgb(c, 0.8),
+    hexWithTintToRgb(c, 0.6),
+    hexWithTintToRgb(c, 0.4),
+    hexWithTintToRgb(c, -0.25),
+    hexWithTintToRgb(c, -0.5),
+  ];
+  return [
+    ltTones(theme.lt1),
+    dkTones(theme.dk1),
+    ltTones(theme.lt2),
+    dkTones(theme.dk2),
+    accentTones(theme.accent1),
+    accentTones(theme.accent2),
+    accentTones(theme.accent3),
+    accentTones(theme.accent4),
+    accentTones(theme.accent5),
+    accentTones(theme.accent6),
+  ];
+}
+
+// Returns [themeIndex, tint] for every cell in the themed tone grid.
+// Negative tint = shade (darker), positive tint = lighter — matches the Rust Color::Theme convention.
+export function computeThemeToneValues(): [number, number][][] {
+  const lt = (idx: number): [number, number][] => [
+    [idx, -0.05],
+    [idx, -0.15],
+    [idx, -0.25],
+    [idx, -0.35],
+    [idx, -0.5],
+  ];
+  const dk = (idx: number): [number, number][] => [
+    [idx, 0.5],
+    [idx, 0.35],
+    [idx, 0.25],
+    [idx, 0.15],
+    [idx, 0.05],
+  ];
+  const accent = (idx: number): [number, number][] => [
+    [idx, 0.8],
+    [idx, 0.6],
+    [idx, 0.4],
+    [idx, -0.25],
+    [idx, -0.5],
+  ];
+  return [
+    lt(0),
+    dk(1),
+    lt(2),
+    dk(3),
+    accent(4),
+    accent(5),
+    accent(6),
+    accent(7),
+    accent(8),
+    accent(9),
+  ];
+}
+
+// Resolves a Color value to a display hex string.
+// Used where the model is unavailable (e.g. recent-color swatches).
+export function resolveColorToHex(color: Color, theme: IronCalcTheme): string {
+  if (!color) {
+    return "";
+  }
+  if (typeof color === "string") {
+    return color;
+  }
+  const [index, tint] = color;
+  const bases = [
+    theme.lt1,
+    theme.dk1,
+    theme.lt2,
+    theme.dk2,
+    theme.accent1,
+    theme.accent2,
+    theme.accent3,
+    theme.accent4,
+    theme.accent5,
+    theme.accent6,
+  ];
+  const base = bases[index] ?? theme.dk1;
+  return hexWithTintToRgb(base, tint);
+}
+
+export const staticMainColors = [
   "#FFFFFF",
   "#272525",
   "#1B717E",
@@ -9,44 +111,6 @@ export const mainColors = [
   "#EC5753",
   "#523E93",
   "#3358B7",
-];
-
-const lightTones = [
-  "#F5F5F5", // --palette-grey-50
-  "#F2F2F2", // --palette-grey-100
-  "#EEEEEE", // --palette-grey-200
-  "#E0E0E0", // --palette-grey-300
-  "#BDBDBD", // --palette-grey-400
-];
-
-const darkTones = [
-  "#9E9E9E", // --palette-grey-500
-  "#757575", // --palette-grey-600
-  "#616161", // --palette-grey-700
-  "#424242", // --palette-grey-800
-  "#333333", // --palette-grey-900
-];
-
-const tealTones = ["#BBD4D8", "#82B1B8", "#498D98", "#1E5A63", "#224348"];
-const greenTones = ["#C4E9DC", "#93D7BF", "#62C5A1", "#358A6C", "#2F5F4D"];
-const limeTones = ["#DDE8CC", "#C0D5A1", "#A3C276", "#6E8846", "#4F5E38"];
-const yellowTones = ["#FDF0C5", "#FBE394", "#F9D764", "#B99A36", "#7A682E"];
-const orangeTones = ["#FBE0C9", "#F8C79B", "#F5AD6E", "#B5763F", "#785334"];
-const redTones = ["#F9CDCB", "#F5A3A0", "#F07975", "#B14845", "#763937"];
-const purpleTones = ["#CBC5DF", "#A095C4", "#7565A9", "#453672", "#382F51"];
-const blueTones = ["#C2CDE9", "#8FA3D7", "#5D79C5", "#30498B", "#2C395F"];
-
-export const toneArrays = [
-  lightTones,
-  darkTones,
-  tealTones,
-  greenTones,
-  limeTones,
-  yellowTones,
-  orangeTones,
-  redTones,
-  purpleTones,
-  blueTones,
 ];
 
 // This function checks if a color is light or dark.

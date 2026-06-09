@@ -1,6 +1,7 @@
 import type {
   ConditionalFormatting as CfEntry,
   Dxf,
+  IronCalcTheme,
   Model,
 } from "@ironcalc/wasm";
 import {
@@ -17,6 +18,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
+import { resolveColorToHex } from "../../ColorPicker/util";
 import { parseRangeInSheet } from "../../Editor/util";
 import { iconSpecFor } from "../../IconPicker/IconPicker";
 import { Input } from "../../Input/Input";
@@ -67,6 +69,7 @@ interface ConditionalFormattingProps {
   sheet: number;
   onUpdate: () => void;
   model: Model;
+  currentTheme: IronCalcTheme;
 }
 
 const ConditionalFormatting = ({
@@ -75,6 +78,7 @@ const ConditionalFormatting = ({
   sheet,
   onUpdate,
   model,
+  currentTheme,
 }: ConditionalFormattingProps) => {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -114,7 +118,7 @@ const ConditionalFormatting = ({
             modelIndex,
           ) as Dxf | null)
         : null;
-      const formatStyle = dxfToFormatStyle(model, dxf);
+      const formatStyle = dxfToFormatStyle(dxf);
       return [
         {
           ...partial,
@@ -211,6 +215,7 @@ const ConditionalFormatting = ({
             onCancel={handleCancel}
             getSelectedArea={getSelectedArea}
             resolveValue={resolveRef}
+            currentTheme={currentTheme}
             initialValues={
               editingRule ?? {
                 applyTo: getSelectedArea(),
@@ -334,9 +339,16 @@ const ConditionalFormatting = ({
                     rangesIntersect(selectedParsed, ruleParsed);
 
                   const previewStyle: React.CSSProperties = {
-                    color: rule.formatStyle.fontColor || "#000000",
+                    color:
+                      resolveColorToHex(
+                        rule.formatStyle.fontColor,
+                        currentTheme,
+                      ) || "#000000",
                     backgroundColor:
-                      rule.formatStyle.fillColor || "transparent",
+                      resolveColorToHex(
+                        rule.formatStyle.fillColor,
+                        currentTheme,
+                      ) || "transparent",
                     fontWeight: rule.formatStyle.bold ? "bold" : "normal",
                     fontStyle: rule.formatStyle.italic ? "italic" : "normal",
                     textDecoration:
@@ -354,13 +366,28 @@ const ConditionalFormatting = ({
                       ? steppedGradient(
                           rule.colorScale.midpoint.type === "none"
                             ? [
-                                rule.colorScale.minimum.color,
-                                rule.colorScale.maximum.color,
+                                resolveColorToHex(
+                                  rule.colorScale.minimum.color,
+                                  currentTheme,
+                                ),
+                                resolveColorToHex(
+                                  rule.colorScale.maximum.color,
+                                  currentTheme,
+                                ),
                               ]
                             : [
-                                rule.colorScale.minimum.color,
-                                rule.colorScale.midpoint.color,
-                                rule.colorScale.maximum.color,
+                                resolveColorToHex(
+                                  rule.colorScale.minimum.color,
+                                  currentTheme,
+                                ),
+                                resolveColorToHex(
+                                  rule.colorScale.midpoint.color,
+                                  currentTheme,
+                                ),
+                                resolveColorToHex(
+                                  rule.colorScale.maximum.color,
+                                  currentTheme,
+                                ),
                               ],
                         )
                       : undefined;
@@ -375,7 +402,10 @@ const ConditionalFormatting = ({
                       const spec = iconSpecFor(rule.iconSets.rating.icon);
                       return {
                         Icon: spec.Icon,
-                        color: rule.iconSets.rating.color,
+                        color: resolveColorToHex(
+                          rule.iconSets.rating.color,
+                          currentTheme,
+                        ),
                         filled: spec.filled,
                         backendName: rule.iconSets.rating.icon,
                       };
@@ -414,7 +444,12 @@ const ConditionalFormatting = ({
                       >
                         {isDataBars && rule.dataBars ? (
                           <DataBarMiniChart
-                            color={rule.dataBars.color}
+                            color={
+                              resolveColorToHex(
+                                rule.dataBars.positiveColor,
+                                currentTheme,
+                              ) || rule.dataBars.color
+                            }
                             gradient={rule.dataBars.gradient}
                           />
                         ) : isIconSets && iconSetsFirstIcon ? (

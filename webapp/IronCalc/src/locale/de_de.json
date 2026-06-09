@@ -6,6 +6,8 @@
     "default": "Standardfarbe",
     "no_fill": "Keine Füllung",
     "recent": "Zuletzt verwendet",
+    "standard_colors": "Standardfarben",
+    "themed_colors": "Designfarben",
     "title": "Farbwähler"
   },
   "conditional_formatting": {

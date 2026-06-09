@@ -11,22 +11,44 @@ import { useTranslation } from "react-i18next";
 import AdvancedColorPicker from "../AdvancedColorPicker.tsx/AdvancedColorPicker";
 import { getFocusableElements } from "../util";
 import "./color-picker.css";
+import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { createPortal } from "react-dom";
 import useKeyDown from "./useKeyDown";
-import { getCheckColor, isWhiteColor, mainColors, toneArrays } from "./util";
+import {
+  computeThemeToneValues,
+  computeToneArrays,
+  getCheckColor,
+  isWhiteColor,
+  resolveColorToHex,
+  staticMainColors,
+} from "./util";
 
 type ColorPickerProps = {
-  color: string;
+  color: Color;
   defaultColor: string;
   title: string;
-  onChange: (color: string) => void;
+  onChange: (color: Color) => void;
   onClose: () => void;
   anchorEl: React.RefObject<HTMLElement | null>;
   open: boolean;
+  theme: IronCalcTheme;
   placement?: Placement;
 };
 
 const FALLBACK_COLOR = "#272525"; // --palette-common-black
+
+function colorsEqual(a: Color, b: Color): boolean {
+  if (a === undefined || b === undefined) {
+    return a === b;
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a[0] === b[0] && a[1] === b[1];
+  }
+  if (typeof a === "string" && typeof b === "string") {
+    return a.toUpperCase() === b.toUpperCase();
+  }
+  return false;
+}
 
 type Placement = "bottom" | "top" | "right" | "left";
 
@@ -90,14 +112,31 @@ const ColorPicker = ({
   anchorEl,
   open,
   placement = "bottom",
+  theme,
 }: ColorPickerProps) => {
-  const [selectedColor, setSelectedColor] = useState<string>(color);
+  const [selectedColor, setSelectedColor] = useState<Color>(color);
   const [isPickerOpen, setPickerOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
-  const recentColors = useRef<string[]>([]);
+  const recentColors = useRef<{ color: Color; hex: string }[]>([]);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const { t } = useTranslation();
+
+  const mainColors = [
+    theme.lt1,
+    theme.dk1,
+    theme.lt2,
+    theme.dk2,
+    theme.accent1,
+    theme.accent2,
+    theme.accent3,
+    theme.accent4,
+    theme.accent5,
+    theme.accent6,
+  ];
+
+  const toneArrays = computeToneArrays(theme);
+  const themeToneValues = computeThemeToneValues();
 
   useEffect(() => {
     setSelectedColor(color);
@@ -167,43 +206,50 @@ const ColorPicker = ({
     [onClose, anchorEl],
   );
 
-  const handleColorSelect = (nextColor: string) => {
-    if (!recentColors.current.includes(nextColor)) {
-      recentColors.current = [nextColor, ...recentColors.current].slice(0, 14);
+  const handleColorSelect = (colorValue: Color, displayHex: string) => {
+    if (!recentColors.current.some((r) => colorsEqual(r.color, colorValue))) {
+      recentColors.current = [
+        { color: colorValue, hex: displayHex },
+        ...recentColors.current,
+      ].slice(0, 14);
     }
 
-    setSelectedColor(nextColor || FALLBACK_COLOR);
-    onChange(nextColor);
+    setSelectedColor(colorValue ?? FALLBACK_COLOR);
+    onChange(colorValue);
     setPickerOpen(false);
   };
 
-  const renderColorSwatch = (presetColor: string, row: number, col: number) => {
-    const isSelected =
-      selectedColor.toUpperCase() === presetColor.toUpperCase();
+  const renderColorSwatch = (
+    displayHex: string,
+    colorValue: Color,
+    row: number,
+    col: number,
+  ) => {
+    const isSelected = colorsEqual(selectedColor, colorValue);
 
     const swatchClassName = [
       "ic-color-picker__swatch",
       "ic-color-picker__swatch--selectable",
-      isWhiteColor(presetColor) ? "ic-color-picker__swatch--white" : "",
+      isWhiteColor(displayHex) ? "ic-color-picker__swatch--white" : "",
     ]
       .filter(Boolean)
       .join(" ");
 
     return (
       <button
-        key={presetColor}
+        key={`r${row}c${col}`}
         type="button"
         className={swatchClassName}
-        style={{ backgroundColor: presetColor }}
-        onClick={() => handleColorSelect(presetColor)}
-        aria-label={presetColor}
+        style={{ backgroundColor: displayHex }}
+        onClick={() => handleColorSelect(colorValue, displayHex)}
+        aria-label={displayHex}
         data-nav-row={row}
         data-nav-col={col}
       >
         {isSelected ? (
           <Check
             className="ic-color-picker__check-icon"
-            style={{ color: getCheckColor(presetColor) }}
+            style={{ color: getCheckColor(displayHex) }}
           />
         ) : null}
       </button>
@@ -217,8 +263,8 @@ const ColorPicker = ({
   if (isPickerOpen) {
     return (
       <AdvancedColorPicker
-        color={selectedColor}
-        onAccept={handleColorSelect}
+        color={resolveColorToHex(selectedColor, theme) || FALLBACK_COLOR}
+        onAccept={(hex) => handleColorSelect(hex, hex)}
         onCancel={() => setPickerOpen(false)}
         anchorEl={anchorEl}
         open={true}
@@ -255,7 +301,7 @@ const ColorPicker = ({
         <button
           type="button"
           className="ic-color-picker__menu-item"
-          onClick={() => handleColorSelect(defaultColor)}
+          onClick={() => handleColorSelect(defaultColor, defaultColor)}
           data-nav-row={0}
           data-nav-col={0}
         >
@@ -269,10 +315,14 @@ const ColorPicker = ({
 
         <div className="ic-color-picker__divider" />
 
+        <div className="ic-color-picker__recent-label">
+          {t("color_picker.themed_colors")}
+        </div>
+
         <div className="ic-color-picker__colors-wrapper">
           <div className="ic-color-picker__color-list">
-            {mainColors.map((presetColor, col) =>
-              renderColorSwatch(presetColor, 1, col),
+            {mainColors.map((hex, col) =>
+              renderColorSwatch(hex, [col, 0], 1, col),
             )}
           </div>
 
@@ -282,12 +332,27 @@ const ColorPicker = ({
                 className="ic-color-picker__color-grid-col"
                 key={tones.join("-")}
               >
-                {tones.map((presetColor, toneIndex) =>
-                  renderColorSwatch(presetColor, 2 + toneIndex, col),
+                {tones.map((hex, toneIndex) =>
+                  renderColorSwatch(
+                    hex,
+                    themeToneValues[col][toneIndex],
+                    2 + toneIndex,
+                    col,
+                  ),
                 )}
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="ic-color-picker__recent-label">
+          {t("color_picker.standard_colors")}
+        </div>
+
+        <div className="ic-color-picker__color-list">
+          {staticMainColors.map((hex, col) =>
+            renderColorSwatch(hex, hex, 8, col),
+          )}
         </div>
 
         <div className="ic-color-picker__divider" />
@@ -298,28 +363,27 @@ const ColorPicker = ({
 
         <div className="ic-color-picker__recent-colors-list">
           {recentColors.current.length > 0 ? (
-            recentColors.current.map((recentColor, col) => (
-              <button
-                key={recentColor}
-                type="button"
-                className={[
-                  "ic-color-picker__swatch",
-                  isWhiteColor(recentColor)
-                    ? "ic-color-picker__swatch--white"
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                style={{ backgroundColor: recentColor }}
-                onClick={() => {
-                  setSelectedColor(recentColor);
-                  handleColorSelect(recentColor);
-                }}
-                aria-label={recentColor}
-                data-nav-row={7}
-                data-nav-col={col}
-              />
-            ))
+            recentColors.current.map(
+              ({ color: recentColor, hex: recentHex }, col) => (
+                <button
+                  key={recentHex}
+                  type="button"
+                  className={[
+                    "ic-color-picker__swatch",
+                    isWhiteColor(recentHex)
+                      ? "ic-color-picker__swatch--white"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  style={{ backgroundColor: recentHex }}
+                  onClick={() => handleColorSelect(recentColor, recentHex)}
+                  aria-label={recentHex}
+                  data-nav-row={7}
+                  data-nav-col={col}
+                />
+              ),
+            )
           ) : (
             <div className="ic-color-picker__empty" />
           )}
