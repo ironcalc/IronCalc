@@ -99,7 +99,7 @@ mod tests {
                 <b/>
                 <sz val="11"/>
                 <color rgb="FFFF0000"/>
-                <rFont val="Calibri"/>
+                <rFont val="Inter"/>
                 <family val="2"/>
                 <scheme val="minor"/>
             </rPr>

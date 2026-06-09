@@ -530,9 +530,9 @@ impl Default for Font {
             u: false,
             b: false,
             i: false,
-            sz: 13,
+            sz: 12,
             color: Color::None,
-            name: "Calibri".to_string(),
+            name: "Inter".to_string(),
             family: 2,
             scheme: FontScheme::Minor,
         }

@@ -86,7 +86,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         .collect::<Vec<Node>>()[0];
     for font in font_nodes.children() {
         let mut sz = 11;
-        let mut name = "Calibri".to_string();
+        let mut name = "Inter".to_string();
         // NOTE: In Excel you can have simple underline or double underline
         // In IronCalc convert double underline to simple
         // This in excel is u with a value of "double"
@@ -125,7 +125,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
                 "strike" => {
                     strike = true;
                 }
-                "name" => name = feature.attribute("val").unwrap_or("Calibri").to_string(),
+                "name" => name = "Inter".to_string(), // TODO: feature.attribute("val").unwrap_or("Calibri").to_string(),
                 // If there is a theme the font scheme and family overrides other properties like the name
                 "family" => {
                     family = feature
