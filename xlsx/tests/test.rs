@@ -197,10 +197,10 @@ fn test_model_has_correct_styles(model: &Model) {
     assert!(style_g1.font.u);
 
     let height_row_3 = model.workbook.worksheet(0).unwrap().row_height(3).unwrap();
-    assert_eq!(height_row_3, 136.0);
+    assert_eq!(height_row_3, 85.0);
 
     let height_row_5 = model.workbook.worksheet(0).unwrap().row_height(5).unwrap();
-    assert_eq!(height_row_5, 62.0);
+    assert_eq!(height_row_5, 38.75);
 
     // Second sheet has alignment
     // Horizontal

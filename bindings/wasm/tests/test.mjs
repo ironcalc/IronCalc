@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert'
 import { Model } from "../pkg/wasm.js";
 
-const DEFAULT_ROW_HEIGHT = 28;
+const DEFAULT_ROW_HEIGHT = 20;
 
 test('Frozen rows and columns', () => {
     let model = new Model('Workbook1', 'en', 'UTC', 'en');
@@ -45,7 +45,7 @@ test('Evaluates correctly', (t) => {
 const DEFAULT_STYLE = {
     num_fmt: 'general',
     fill: { },
-    font: { sz: 13, name: 'Calibri', family: 2, scheme: 'minor' },
+    font: { sz: 12, name: 'Inter', family: 2, scheme: 'minor' },
     border: {},
     quote_prefix: false,
 };
