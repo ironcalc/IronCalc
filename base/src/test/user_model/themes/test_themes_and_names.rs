@@ -17,7 +17,7 @@ fn test_named_styles_and_themes() {
     let theme = themes
         .iter()
         .find(|theme| theme.name == "IronCalc")
-        .expect("IronCalc theme should be a builtin theme");
+        .unwrap();
     model.set_theme(theme.clone());
 
     let color_after_theme = model.get_cell_style(0, 1, 1).unwrap().fill.color;
