@@ -1,38 +1,21 @@
-import { type Color, type IronCalcTheme, hexWithTintToRgb } from "@ironcalc/wasm";
+import {
+  type Color,
+  hexWithTintToRgb,
+  type IronCalcTheme,
+} from "@ironcalc/wasm";
 
-export function computeToneArrays(theme: IronCalcTheme): string[][] {
-  const ltTones = (c: string) => [
-    hexWithTintToRgb(c, -0.05),
-    hexWithTintToRgb(c, -0.15),
-    hexWithTintToRgb(c, -0.25),
-    hexWithTintToRgb(c, -0.35),
-    hexWithTintToRgb(c, -0.5),
-  ];
-  const dkTones = (c: string) => [
-    hexWithTintToRgb(c, 0.5),
-    hexWithTintToRgb(c, 0.35),
-    hexWithTintToRgb(c, 0.25),
-    hexWithTintToRgb(c, 0.15),
-    hexWithTintToRgb(c, 0.05),
-  ];
-  const accentTones = (c: string) => [
-    hexWithTintToRgb(c, 0.8),
-    hexWithTintToRgb(c, 0.6),
-    hexWithTintToRgb(c, 0.4),
-    hexWithTintToRgb(c, -0.25),
-    hexWithTintToRgb(c, -0.5),
-  ];
+function themeBaseColors(theme: IronCalcTheme): string[] {
   return [
-    ltTones(theme.lt1),
-    dkTones(theme.dk1),
-    ltTones(theme.lt2),
-    dkTones(theme.dk2),
-    accentTones(theme.accent1),
-    accentTones(theme.accent2),
-    accentTones(theme.accent3),
-    accentTones(theme.accent4),
-    accentTones(theme.accent5),
-    accentTones(theme.accent6),
+    theme.lt1,
+    theme.dk1,
+    theme.lt2,
+    theme.dk2,
+    theme.accent1,
+    theme.accent2,
+    theme.accent3,
+    theme.accent4,
+    theme.accent5,
+    theme.accent6,
   ];
 }
 
@@ -45,6 +28,13 @@ export function computeThemeToneValues(): [number, number][][] {
     [idx, -0.25],
     [idx, -0.35],
     [idx, -0.5],
+  ];
+  const lt2 = (idx: number): [number, number][] => [
+    [idx, -0.1],
+    [idx, -0.25],
+    [idx, -0.5],
+    [idx, -0.75],
+    [idx, -0.9],
   ];
   const dk = (idx: number): [number, number][] => [
     [idx, 0.5],
@@ -63,8 +53,8 @@ export function computeThemeToneValues(): [number, number][][] {
   return [
     lt(0),
     dk(1),
-    lt(2),
-    dk(3),
+    lt2(2),
+    accent(3),
     accent(4),
     accent(5),
     accent(6),
@@ -72,6 +62,13 @@ export function computeThemeToneValues(): [number, number][][] {
     accent(8),
     accent(9),
   ];
+}
+
+export function computeToneArrays(theme: IronCalcTheme): string[][] {
+  const bases = themeBaseColors(theme);
+  return computeThemeToneValues().map((col) =>
+    col.map(([index, tint]) => hexWithTintToRgb(bases[index], tint)),
+  );
 }
 
 // Resolves a Color value to a display hex string.
@@ -84,20 +81,8 @@ export function resolveColorToHex(color: Color, theme: IronCalcTheme): string {
     return color;
   }
   const [index, tint] = color;
-  const bases = [
-    theme.lt1,
-    theme.dk1,
-    theme.lt2,
-    theme.dk2,
-    theme.accent1,
-    theme.accent2,
-    theme.accent3,
-    theme.accent4,
-    theme.accent5,
-    theme.accent6,
-  ];
-  const base = bases[index] ?? theme.dk1;
-  return hexWithTintToRgb(base, tint);
+  const bases = themeBaseColors(theme);
+  return hexWithTintToRgb(bases[index] ?? theme.dk1, tint);
 }
 
 export const staticMainColors = [
