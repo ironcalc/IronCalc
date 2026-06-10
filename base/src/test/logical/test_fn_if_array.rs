@@ -200,3 +200,17 @@ fn let_calendar_function() {
     assert_eq!(model._get_text("C10"), "5");
     assert_eq!(model._get_text("H13"), "31");
 }
+
+#[test]
+fn let_calendar_function_with_array_cond() {
+    let mut model = new_empty_model();
+    model._set("B2", "2026");
+    let formula = r#"=LET(d,DAY(EOMONTH(DATE($B$2,1,1),0)),n,SEQUENCE(1,31),IF(n<=d,TEXT(DATE($B$2,1,n),"ddd"),""))"#;
+    model._set("A10", formula);
+    model.evaluate();
+
+    assert_eq!(model._get_text("A10"), "Thu");
+    assert_eq!(model._get_text("B10"), "Fri");
+    assert_eq!(model._get_text("C10"), "Sat");
+    assert_eq!(model._get_text("D10"), "Sun");
+}

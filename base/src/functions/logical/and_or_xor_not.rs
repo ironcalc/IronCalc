@@ -1,6 +1,10 @@
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     model::Model,
 };
 
@@ -128,11 +132,41 @@ impl<'a> Model<'a> {
                 }
                 // References to empty cells are ignored. If all args are ignored the result is #VALUE!
                 CalcResult::EmptyCell => {}
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // Each element of the array is treated as an individual value, exactly like the
+                // cells of a range. Booleans and numbers are evaluated, strings and empties are
+                // ignored and errors are propagated.
+                CalcResult::Array(array) => {
+                    for array_row in &array {
+                        for node in array_row {
+                            match node {
+                                ArrayNode::Boolean(value) => result = Some(fold_fn(result, *value)),
+                                ArrayNode::Number(value) => {
+                                    result = Some(fold_fn(result, *value != 0.0))
+                                }
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::new_error(
+                                        error.clone(),
+                                        cell,
+                                        "Error in array".to_string(),
+                                    )
+                                }
+                                ArrayNode::String(_) | ArrayNode::Empty => {}
+                            }
+                            if let (Some(current_result), Some(short_circuit_value)) =
+                                (result, short_circuit_value)
+                            {
+                                if current_result == short_circuit_value {
+                                    return CalcResult::Boolean(current_result);
+                                }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
-                        message: "Arrays not supported yet".to_string(),
+                        message: "Lambdas not supported".to_string(),
                     }
                 }
             }

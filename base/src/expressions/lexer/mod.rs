@@ -71,6 +71,28 @@ pub struct LexerError {
 
 pub(super) type Result<T> = std::result::Result<T, LexerError>;
 
+/// Decides whether `name` should be accepted as an identifier in R1C1 mode, once
+/// the reference-parsing paths have already failed.
+///
+/// This uses the A1 identifier rules (`is_valid_a1_identifier`) rather than
+/// `is_valid_identifier`, so the single-character names "R"/"C" are accepted: they
+/// are valid LAMBDA parameters and LET variables. This matters on reload, because
+/// formulas are stored internally in R1C1 format, so a formula like
+/// `=BYROW(A1:C1, LAMBDA(c, MAX(c)))` is re-parsed in R1C1 mode and must not reject
+/// the `c` parameter.
+///
+/// The one exception is a bare "R"/"C" immediately followed by '[': that is a
+/// malformed R1C1 reference (e.g. `R[`), not an identifier, so it is rejected.
+/// Genuine R1C1 references (`R[n]C[n]`, `RnCn`) are consumed before this fallback.
+fn is_valid_r1c1_identifier(name: &str, next_char: Option<char>) -> bool {
+    if !utils::is_valid_a1_identifier(name) {
+        return false;
+    }
+    // `is_valid_identifier` differs from `is_valid_a1_identifier` only for "R"/"C".
+    // For those, only reject when they start a (malformed) reference, i.e. `R[`.
+    utils::is_valid_identifier(name) || next_char != Some('[')
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub enum LexerMode {
     A1,
@@ -401,7 +423,7 @@ impl<'a> Lexer<'a> {
                                     Ok(ParsedRange { left, right }) => {
                                         if pos > self.position {
                                             self.position = pos;
-                                            if utils::is_valid_identifier(&name) {
+                                            if is_valid_r1c1_identifier(&name, self.peek_char()) {
                                                 return TokenType::Ident(name);
                                             } else {
                                                 self.position = self.len;
@@ -444,7 +466,7 @@ impl<'a> Lexer<'a> {
                                         }
                                         self.position = pos;
 
-                                        if utils::is_valid_identifier(&name) {
+                                        if is_valid_r1c1_identifier(&name, self.peek_char()) {
                                             return TokenType::Ident(name);
                                         } else {
                                             return TokenType::Illegal(self.set_error(
