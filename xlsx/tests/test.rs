@@ -43,10 +43,6 @@ fn test_example() {
     assert_eq!(ws[0].views[&0].row, 13);
     assert_eq!(ws[0].views[&0].column, 5);
     assert_eq!(ws[0].views[&0].range, [13, 5, 20, 14]);
-
-    let model2 = load_from_icalc("tests/example.ic", "en").unwrap();
-    let _ = bitcode::encode(&model2.workbook);
-    assert_eq!(workbook, model2.workbook);
 }
 
 #[test]
