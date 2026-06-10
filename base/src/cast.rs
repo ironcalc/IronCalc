@@ -20,6 +20,41 @@ pub(crate) enum ValueOrArray {
     Array(Vec<Vec<ArrayNode>>),
 }
 
+/// A scalar string or a 2-D array, used for element-wise text operations.
+pub(crate) enum StringOrArray {
+    String(String),
+    Array(Vec<Vec<ArrayNode>>),
+}
+
+/// Collapses a scalar [`CalcResult`] into a single array element.
+/// Ranges, arrays and lambdas cannot be a single element, so they become `#VALUE!`.
+pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
+    match result {
+        CalcResult::Number(n) => ArrayNode::Number(n),
+        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
+        CalcResult::String(s) => ArrayNode::String(s),
+        CalcResult::Error { error, .. } => ArrayNode::Error(error),
+        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
+        _ => ArrayNode::Error(Error::VALUE),
+    }
+}
+
+/// Converts a single array element to a string using the same rules as
+/// [`Model::cast_to_string`]. Errors propagate.
+pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
+    match node {
+        ArrayNode::Number(f) => Ok(format!("{f}")),
+        ArrayNode::String(s) => Ok(s.clone()),
+        ArrayNode::Boolean(b) => Ok(if *b {
+            "TRUE".to_string()
+        } else {
+            "FALSE".to_string()
+        }),
+        ArrayNode::Empty => Ok("".to_string()),
+        ArrayNode::Error(e) => Err(e.clone()),
+    }
+}
+
 impl<'a> Model<'a> {
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
         match s.trim().parse::<f64>() {
@@ -125,6 +160,75 @@ impl<'a> Model<'a> {
             }
             CalcResult::Array(arr) => Ok(ValueOrArray::Array(arr)),
             other => Ok(ValueOrArray::Value(other)),
+        }
+    }
+
+    /// Like `get_number_or_array` but for text: scalars are coerced to a `String`,
+    /// ranges and arrays are returned as a 2-D array (to be processed element-wise).
+    pub(crate) fn get_string_or_array(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<StringOrArray, CalcResult> {
+        match self.evaluate_node_in_context(node, cell) {
+            error @ CalcResult::Error { .. } => Err(error),
+            CalcResult::Range { left, right } => {
+                Ok(StringOrArray::Array(self.evaluate_range(left, right)))
+            }
+            CalcResult::Array(arr) => Ok(StringOrArray::Array(arr)),
+            other => Ok(StringOrArray::String(self.cast_to_string(other, cell)?)),
+        }
+    }
+
+    /// Applies a scalar numeric transform element-wise over a node that may evaluate
+    /// to a number, a range, or an array. Mirrors the `single_number_fn!` /
+    /// `date_part_fn!` macros but accepts a closure, so callers can capture extra
+    /// scalar arguments (e.g. WEEKDAY's `return_type`) or use non-arithmetic
+    /// transforms (e.g. date helpers).
+    ///
+    /// Element coercion matches the rest of the array machinery: booleans → 0/1,
+    /// empty → 0, strings are parsed with `cast_number` (`#VALUE!` if they don't
+    /// parse), and errors propagate.
+    pub(crate) fn apply_number_unary(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        op: impl Fn(f64) -> Result<f64, Error>,
+    ) -> CalcResult {
+        match self.get_number_or_array(node, cell) {
+            Ok(NumberOrArray::Number(f)) => match op(f) {
+                Ok(x) => CalcResult::Number(x),
+                Err(e) => CalcResult::new_error(e, cell, String::new()),
+            },
+            Ok(NumberOrArray::Array(a)) => {
+                let mut array = Vec::with_capacity(a.len());
+                for row in a {
+                    let mut data_row = Vec::with_capacity(row.len());
+                    for value in row {
+                        let n = match value {
+                            ArrayNode::Number(n) => Some(n),
+                            ArrayNode::Boolean(b) => Some(if b { 1.0 } else { 0.0 }),
+                            ArrayNode::Empty => Some(0.0),
+                            ArrayNode::String(s) => self.cast_number(&s),
+                            ArrayNode::Error(e) => {
+                                data_row.push(ArrayNode::Error(e));
+                                continue;
+                            }
+                        };
+                        let out = match n {
+                            Some(f) => match op(f) {
+                                Ok(x) => ArrayNode::Number(x),
+                                Err(e) => ArrayNode::Error(e),
+                            },
+                            None => ArrayNode::Error(Error::VALUE),
+                        };
+                        data_row.push(out);
+                    }
+                    array.push(data_row);
+                }
+                CalcResult::Array(array)
+            }
+            Err(e) => e,
         }
     }
 

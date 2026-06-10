@@ -149,6 +149,70 @@ fn fn_or_xor() {
 }
 
 #[test]
+fn fn_or_xor_arrays() {
+    inner("or");
+    inner("xor");
+
+    fn inner(func: &str) {
+        println!("Testing function: {func}");
+
+        let mut model = new_empty_model();
+
+        // Boolean array literals
+        model._set("A1", &format!("={func}({{TRUE, FALSE, FALSE}})"));
+        model._set("A2", &format!("={func}({{FALSE, FALSE, FALSE}})"));
+
+        // Number array literals (0 is FALSE, anything else TRUE)
+        model._set("A3", &format!("={func}({{0, 0, 1}})"));
+        model._set("A4", &format!("={func}({{0, 0, 0}})"));
+
+        // Strings in arrays are ignored
+        model._set("A5", &format!(r#"={func}({{"text", TRUE}})"#));
+        model._set("A6", &format!(r#"={func}({{"text", FALSE}})"#));
+
+        // Two-dimensional array combined with a scalar argument
+        model._set("A7", &format!("={func}({{FALSE; FALSE}}, TRUE)"));
+
+        // Errors inside an array are propagated
+        model._set("A8", &format!(r#"={func}({{#DIV/0!, TRUE}})"#));
+
+        model.evaluate();
+
+        assert_eq!(model._get_text("A1"), *"TRUE");
+        assert_eq!(model._get_text("A2"), *"FALSE");
+        assert_eq!(model._get_text("A3"), *"TRUE");
+        assert_eq!(model._get_text("A4"), *"FALSE");
+        assert_eq!(model._get_text("A5"), *"TRUE");
+        assert_eq!(model._get_text("A6"), *"FALSE");
+        assert_eq!(model._get_text("A7"), *"TRUE");
+        assert_eq!(model._get_text("A8"), *"#DIV/0!");
+    }
+}
+
+#[test]
+fn fn_and_arrays() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=AND({TRUE, TRUE, TRUE})");
+    model._set("A2", "=AND({TRUE, FALSE, TRUE})");
+    model._set("A3", "=AND({1, 2, 3})");
+    model._set("A4", "=AND({1, 0, 3})");
+    // Strings ignored
+    model._set("A5", r#"=AND({"text", TRUE})"#);
+    // Error propagated
+    model._set("A6", "=AND({TRUE, #N/A})");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"FALSE");
+    assert_eq!(model._get_text("A3"), *"TRUE");
+    assert_eq!(model._get_text("A4"), *"FALSE");
+    assert_eq!(model._get_text("A5"), *"TRUE");
+    assert_eq!(model._get_text("A6"), *"#N/A");
+}
+
+#[test]
 #[ignore = "not yet implemented"]
 fn spill_behaviour() {
     let mut model = new_empty_model();

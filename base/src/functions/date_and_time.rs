@@ -13,6 +13,25 @@ fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
 }
 
+/// Maps a date to the WEEKDAY number for the given `return_type`.
+/// Returns `Error::VALUE`/`Error::NUM` for an invalid `return_type`.
+fn weekday_number(date: chrono::NaiveDate, return_type: i32) -> Result<f64, Error> {
+    let weekday = date.weekday();
+    let num = match return_type {
+        1 => weekday.num_days_from_sunday() + 1,
+        2 => weekday.number_from_monday(),
+        3 => (weekday.number_from_monday() - 1) % 7, // 0-based Monday start
+        11..=17 => {
+            let start = (return_type - 11) as u32; // 0 = Monday, 6 = Sunday
+            let zero_based = weekday.number_from_monday() - 1; // 0..6, Monday = 0
+            ((zero_based + 7 - start) % 7) + 1
+        }
+        0 => return Err(Error::VALUE),
+        _ => return Err(Error::NUM),
+    };
+    Ok(num as f64)
+}
+
 fn is_feb_29_between_dates(start: chrono::NaiveDate, end: chrono::NaiveDate) -> bool {
     let start_year = start.year();
     let end_year = end.year();
@@ -39,58 +58,20 @@ fn is_feb_29_between_dates(start: chrono::NaiveDate, end: chrono::NaiveDate) -> 
 macro_rules! date_part_fn {
     ($name:ident, $method:ident) => {
         pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-            use crate::cast::NumberOrArray;
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            // Applies the date component extraction to a single serial number.
-            // Uses the free function from_excel_date to avoid borrowing self.
-            let apply = |f: f64| -> Result<f64, Error> {
-                match from_excel_date(f.floor() as i64) {
+            // Convert the serial number to a NaiveDate and return the requested
+            // component. Broadcasts element-wise over ranges/arrays. Uses the free
+            // function from_excel_date to avoid borrowing self in the closure.
+            self.apply_number_unary(
+                &args[0],
+                cell,
+                |f| match from_excel_date(f.floor() as i64) {
                     Ok(date) => Ok(date.$method() as f64),
                     Err(_) => Err(Error::NUM),
-                }
-            };
-            match self.get_number_or_array(&args[0], cell) {
-                Ok(NumberOrArray::Number(f)) => match apply(f) {
-                    Ok(n) => CalcResult::Number(n),
-                    Err(e) => CalcResult::new_error(e, cell, "Invalid date".to_string()),
                 },
-                Ok(NumberOrArray::Array(a)) => {
-                    let mut result = Vec::new();
-                    for row in a {
-                        let mut data_row = Vec::new();
-                        for node in row {
-                            let out = match node {
-                                ArrayNode::Number(f) => match apply(f) {
-                                    Ok(n) => ArrayNode::Number(n),
-                                    Err(e) => ArrayNode::Error(e),
-                                },
-                                ArrayNode::Boolean(b) => match apply(if b { 1.0 } else { 0.0 }) {
-                                    Ok(n) => ArrayNode::Number(n),
-                                    Err(e) => ArrayNode::Error(e),
-                                },
-                                ArrayNode::Error(e) => ArrayNode::Error(e),
-                                ArrayNode::Empty => match apply(0.0) {
-                                    Ok(n) => ArrayNode::Number(n),
-                                    Err(e) => ArrayNode::Error(e),
-                                },
-                                ArrayNode::String(s) => match self.cast_number(&s) {
-                                    Some(f) => match apply(f) {
-                                        Ok(n) => ArrayNode::Number(n),
-                                        Err(e) => ArrayNode::Error(e),
-                                    },
-                                    None => ArrayNode::Error(Error::VALUE),
-                                },
-                            };
-                            data_row.push(out);
-                        }
-                        result.push(data_row);
-                    }
-                    CalcResult::Array(result)
-                }
-                Err(e) => e,
-            }
+            )
         }
     };
 }
@@ -630,45 +611,102 @@ impl<'a> Model<'a> {
 
     // year, month, day
     pub(crate) fn fn_date(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count != 3 {
+        if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let year = match self.get_number(&args[0], cell) {
-            Ok(c) => {
-                let t = c.floor() as i32;
-                if t < 0 {
-                    return CalcResult::Error {
-                        error: Error::NUM,
+        use crate::cast::NumberOrArray;
+
+        let year_na = match self.get_number_or_array(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let month_na = match self.get_number_or_array(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let day_na = match self.get_number_or_array(&args[2], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+
+        fn date_node(year_f: f64, month_f: f64, day_f: f64) -> ArrayNode {
+            let year = year_f.floor() as i32;
+            if year < 0 {
+                return ArrayNode::Error(Error::NUM);
+            }
+            match permissive_date_to_serial_number(
+                day_f.floor() as i32,
+                month_f.floor() as i32,
+                year,
+            ) {
+                Ok(n) => ArrayNode::Number(n as f64),
+                Err(_) => ArrayNode::Error(Error::NUM),
+            }
+        }
+
+        match (&year_na, &month_na, &day_na) {
+            (NumberOrArray::Number(yr), NumberOrArray::Number(mo), NumberOrArray::Number(dy)) => {
+                match date_node(*yr, *mo, *dy) {
+                    ArrayNode::Number(n) => CalcResult::Number(n),
+                    ArrayNode::Error(e) => CalcResult::Error {
+                        error: e,
                         origin: cell,
                         message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
+                    },
+                    _ => unreachable!(),
+                }
+            }
+            _ => {
+                let dims = |na: &NumberOrArray| -> (usize, usize) {
+                    match na {
+                        NumberOrArray::Number(_) => (1, 1),
+                        NumberOrArray::Array(a) => (a.len(), a.first().map_or(0, |r| r.len())),
+                    }
+                };
+                let max_rows = dims(&year_na).0.max(dims(&month_na).0).max(dims(&day_na).0);
+                let max_cols = dims(&year_na).1.max(dims(&month_na).1).max(dims(&day_na).1);
+
+                // Extract a scalar f64 from a NumberOrArray element at (row, col).
+                // Pass row/col as metavariables to avoid macro-hygiene scope issues.
+                macro_rules! elem {
+                    ($na:expr, $row:expr, $col:expr) => {
+                        match &$na {
+                            NumberOrArray::Number(f) => Ok(*f),
+                            NumberOrArray::Array(a) => {
+                                match a.get($row).and_then(|r| r.get($col)) {
+                                    None => Err(Error::NA),
+                                    Some(ArrayNode::Number(f)) => Ok(*f),
+                                    Some(ArrayNode::Boolean(b)) => Ok(if *b { 1.0 } else { 0.0 }),
+                                    Some(ArrayNode::Empty) => Ok(0.0),
+                                    Some(ArrayNode::String(s)) => {
+                                        self.cast_number(&s).ok_or(Error::VALUE)
+                                    }
+                                    Some(ArrayNode::Error(e)) => Err(e.clone()),
+                                }
+                            }
+                        }
                     };
                 }
-                t
+
+                let mut output = Vec::with_capacity(max_rows);
+                for r in 0..max_rows {
+                    let mut row = Vec::with_capacity(max_cols);
+                    for c in 0..max_cols {
+                        let yr_f: Result<f64, Error> = elem!(year_na, r, c);
+                        let mo_f: Result<f64, Error> = elem!(month_na, r, c);
+                        let dy_f: Result<f64, Error> = elem!(day_na, r, c);
+                        let node = match (yr_f, mo_f, dy_f) {
+                            (Ok(yr), Ok(mo), Ok(dy)) => date_node(yr, mo, dy),
+                            (Err(e), _, _) => ArrayNode::Error(e),
+                            (_, Err(e), _) => ArrayNode::Error(e),
+                            (_, _, Err(e)) => ArrayNode::Error(e),
+                        };
+                        row.push(node);
+                    }
+                    output.push(row);
+                }
+                CalcResult::Array(output)
             }
-            Err(s) => return s,
-        };
-        let month = match self.get_number(&args[1], cell) {
-            Ok(c) => {
-                let t = c.floor();
-                t as i32
-            }
-            Err(s) => return s,
-        };
-        let day = match self.get_number(&args[2], cell) {
-            Ok(c) => {
-                let t = c.floor();
-                t as i32
-            }
-            Err(s) => return s,
-        };
-        match permissive_date_to_serial_number(day, month, year) {
-            Ok(serial_number) => CalcResult::Number(serial_number as f64),
-            Err(message) => CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message,
-            },
         }
     }
 
@@ -1405,14 +1443,6 @@ impl<'a> Model<'a> {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let serial = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let date = match self.excel_date(serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
         let return_type = if args.len() == 2 {
             match self.get_number(&args[1], cell) {
                 Ok(f) => f as i32,
@@ -1421,22 +1451,11 @@ impl<'a> Model<'a> {
         } else {
             1
         };
-        let weekday = date.weekday();
-        let num = match return_type {
-            1 => weekday.num_days_from_sunday() + 1,
-            2 => weekday.number_from_monday(),
-            3 => (weekday.number_from_monday() - 1) % 7, // 0-based Monday start
-            11..=17 => {
-                let start = (return_type - 11) as u32; // 0 = Monday, 6 = Sunday
-                let zero_based = weekday.number_from_monday() - 1; // 0..6, Monday = 0
-                ((zero_based + 7 - start) % 7) + 1
-            }
-            0 => {
-                return CalcResult::new_error(Error::VALUE, cell, "Invalid return_type".to_string())
-            }
-            _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
-        };
-        CalcResult::Number(num as f64)
+        // Broadcasts element-wise over a range/array date argument.
+        self.apply_number_unary(&args[0], cell, move |serial| {
+            let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
+            weekday_number(date, return_type)
+        })
     }
 
     pub(crate) fn fn_weeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1498,15 +1517,11 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let serial = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let date = match self.excel_date(serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        CalcResult::Number(date.iso_week().week() as f64)
+        // Broadcasts element-wise over a range/array date argument.
+        self.apply_number_unary(&args[0], cell, |serial| {
+            let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
+            Ok(date.iso_week().week() as f64)
+        })
     }
 
     fn is_weekend(day: chrono::Weekday, weekend_mask: &[bool; 7]) -> bool {

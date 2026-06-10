@@ -528,22 +528,7 @@ impl<'a> Model<'a> {
                     },
                 }
             }
-            OpConcatenateKind { left, right } => {
-                let l = match self.get_string(left, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
-                };
-                let r = match self.get_string(right, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
-                };
-                let result = format!("{l}{r}");
-                CalcResult::String(result)
-            }
+            OpConcatenateKind { left, right } => self.handle_concatenate(left, right, cell),
             OpProductKind { kind, left, right } => match kind {
                 OpProduct::Times => {
                     self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1 * f2))

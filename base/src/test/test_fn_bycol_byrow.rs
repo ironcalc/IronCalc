@@ -104,6 +104,24 @@ fn byrow_single_row() {
     assert_eq!(model._get_text("A4"), "");
 }
 
+// Regression: a single-character LAMBDA parameter named `c` (or `r`) must survive
+// the round-trip through the internal R1C1 storage. Formulas are stored in R1C1
+// format, and `c`/`r` used to be rejected as invalid R1C1 references on reload,
+// turning the formula into a parse error that displayed the raw R1C1 string.
+#[test]
+fn byrow_single_char_param_displays_a1() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("B1", "20");
+    model._set("C1", "30");
+    // Placed in B22 so the stored R1C1 form is BYROW(R[-21]C[-1]:R[-21]C[1],...).
+    model._set("B22", "=BYROW(A1:C1, LAMBDA(c, MAX(c)))");
+    model.evaluate();
+    assert_eq!(model._get_text("B22"), "30");
+    // The displayed formula must remain in A1 notation, not the raw R1C1 string.
+    assert_eq!(model._get_formula("B22"), "=BYROW(A1:C1,LAMBDA(c,MAX(c)))");
+}
+
 #[test]
 fn byrow_wrong_arg_count() {
     let mut model = new_empty_model();
@@ -179,4 +197,20 @@ fn makearray_invalid_cols() {
     model._set("A1", "=MAKEARRAY(3, 0, LAMBDA(x, y, y))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#VALUE!");
+}
+
+#[test]
+fn bycol_lambda_counta() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A2", "y");
+    model._set("A3", "z");
+    model._set("B1", "x");
+    model._set("C1", "y");
+    model._set("C2", "z");
+    model._set("G1", "=BYCOL(A1:C3, LAMBDA(col, COUNTA(col)))");
+    model.evaluate();
+    assert_eq!(model._get_text("G1"), "3");
+    assert_eq!(model._get_text("H1"), "1");
+    assert_eq!(model._get_text("I1"), "2");
 }

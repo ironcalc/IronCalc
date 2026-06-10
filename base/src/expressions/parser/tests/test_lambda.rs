@@ -318,3 +318,37 @@ fn sin_is_not_immediately_invocable() {
         "SIN(x)(3) must not produce a LambdaCallKind"
     );
 }
+
+// Regression: a LAMBDA whose parameter is the single-char name `c` (or `r`) must
+// round-trip through the internal R1C1 representation. These names are valid LAMBDA
+// parameters in A1 mode, get stored in R1C1 format on save, and must re-parse as
+// identifiers (not be rejected as invalid R1C1 references) on reload. Otherwise the
+// formula becomes a ParseError that displays the raw R1C1 string to the user.
+#[test]
+fn lambda_single_char_rc_param_roundtrips_in_r1c1_mode() {
+    use crate::expressions::lexer::LexerMode;
+    let mut p = parser();
+    p.set_lexer_mode(LexerMode::R1C1);
+    let t = p.parse("BYROW(R[-21]C[-1]:R[-21]C[1],LAMBDA(c,MAX(c)))", &cell());
+    assert!(
+        !matches!(t, Node::ParseErrorKind { .. }),
+        "R1C1 reload should not be a parse error, got {t:?}"
+    );
+    assert!(
+        matches!(
+            t,
+            Node::FunctionKind {
+                kind: crate::functions::Function::Byrow,
+                ..
+            }
+        ),
+        "expected a BYROW call, got {t:?}"
+    );
+
+    // Same with `r`.
+    let t = p.parse("LAMBDA(r,r+1)", &cell());
+    assert!(
+        matches!(t, Node::LambdaDefKind { .. }),
+        "LAMBDA(r,...) should parse in R1C1 mode, got {t:?}"
+    );
+}

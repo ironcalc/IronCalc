@@ -401,6 +401,15 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
+                CalcResult::Array(a) => {
+                    for row in a {
+                        for node in row {
+                            if !matches!(node, crate::expressions::parser::ArrayNode::Empty) {
+                                result += 1.0;
+                            }
+                        }
+                    }
+                }
                 _ => {
                     result += 1.0;
                 }

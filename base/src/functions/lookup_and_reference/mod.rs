@@ -1,5 +1,9 @@
+use crate::calc_result::Range;
+use crate::cast::{calc_result_to_array_node, NumberOrArray};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::implicit_intersection::implicit_intersection;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -17,6 +21,21 @@ mod transpose;
 mod trimrange;
 mod wrapcols_wraprows;
 mod xmatch;
+
+/// Converts a single array element into a scalar [`CalcResult`].
+fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
+    match node {
+        ArrayNode::Number(n) => CalcResult::Number(*n),
+        ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
+        ArrayNode::String(s) => CalcResult::String(s.clone()),
+        ArrayNode::Error(e) => CalcResult::Error {
+            error: e.clone(),
+            origin: cell,
+            message: "".to_string(),
+        },
+        ArrayNode::Empty => CalcResult::EmptyCell,
+    }
+}
 
 impl<'a> Model<'a> {
     pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -102,6 +121,52 @@ impl<'a> Model<'a> {
                     row,
                     column,
                 })
+            }
+            CalcResult::Array(arr) => {
+                if arr.is_empty() || arr[0].is_empty() {
+                    return CalcResult::Error {
+                        error: Error::REF,
+                        origin: cell,
+                        message: "Empty array".to_string(),
+                    };
+                }
+                let num_rows = arr.len();
+                let num_cols = arr[0].len();
+                let row_num = row_num as usize;
+                let ref_error = CalcResult::Error {
+                    error: Error::REF,
+                    origin: cell,
+                    message: "Wrong reference".to_string(),
+                };
+                if (col_num + 1.0).abs() < f64::EPSILON {
+                    // Two-argument form: INDEX(array, num).
+                    if num_rows == 1 {
+                        // Row vector: `num` is a column index, return a scalar.
+                        if row_num > num_cols {
+                            return ref_error;
+                        }
+                        array_node_to_calc_result(&arr[0][row_num - 1], cell)
+                    } else if num_cols == 1 {
+                        // Column vector: `num` is a row index, return a scalar.
+                        if row_num > num_rows {
+                            return ref_error;
+                        }
+                        array_node_to_calc_result(&arr[row_num - 1][0], cell)
+                    } else {
+                        // 2-D array: `num` selects a whole row, returned as an array.
+                        if row_num > num_rows {
+                            return ref_error;
+                        }
+                        CalcResult::Array(vec![arr[row_num - 1].clone()])
+                    }
+                } else {
+                    // Three-argument form: INDEX(array, row_num, col_num).
+                    let col_num = col_num as usize;
+                    if row_num > num_rows || col_num > num_cols {
+                        return ref_error;
+                    }
+                    array_node_to_calc_result(&arr[row_num - 1][col_num - 1], cell)
+                }
             }
             error @ CalcResult::Error { .. } => error,
             _ => CalcResult::Error {
@@ -661,20 +726,71 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let index_num = match self.get_number(&args[0], cell) {
-            Ok(index_num) => index_num as usize,
-            Err(calc_err) => return calc_err,
-        };
+        // The index argument may be a single number or an array/range. In the array
+        // case we broadcast: each index element selects the matching value argument,
+        // collapsed to a single scalar (the result has the shape of the index array).
+        match self.get_number_or_array(&args[0], cell) {
+            Ok(NumberOrArray::Number(index_num)) => {
+                let index_num = index_num as usize;
+                if index_num < 1 || index_num > (args.len() - 1) {
+                    return CalcResult::new_error(Error::VALUE, cell, "Invalid index".to_string());
+                }
+                self.evaluate_node_with_reference(&args[index_num], cell)
+            }
+            Ok(NumberOrArray::Array(index_array)) => {
+                let result = index_array
+                    .iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|node| self.choose_element(args, node, cell))
+                            .collect()
+                    })
+                    .collect();
+                CalcResult::Array(result)
+            }
+            Err(calc_err) => calc_err,
+        }
+    }
+
+    /// Selects the CHOOSE value argument for a single index element and collapses
+    /// it to one array cell. A chosen range is reduced by implicit intersection.
+    fn choose_element(
+        &mut self,
+        args: &[Node],
+        index_node: &ArrayNode,
+        cell: CellReferenceIndex,
+    ) -> ArrayNode {
+        let index_num = match index_node {
+            ArrayNode::Number(n) => *n,
+            ArrayNode::Boolean(b) => {
+                if *b {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            ArrayNode::Empty => 0.0,
+            ArrayNode::String(s) => match self.cast_number(s) {
+                Some(f) => f,
+                None => return ArrayNode::Error(Error::VALUE),
+            },
+            ArrayNode::Error(e) => return ArrayNode::Error(e.clone()),
+        } as usize;
 
         if index_num < 1 || index_num > (args.len() - 1) {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid index".to_string(),
-            };
+            return ArrayNode::Error(Error::VALUE);
         }
 
-        self.evaluate_node_with_reference(&args[index_num], cell)
+        let value = match self.evaluate_node_with_reference(&args[index_num], cell) {
+            CalcResult::Range { left, right } => {
+                match implicit_intersection(&cell, &Range { left, right }) {
+                    Some(reference) => self.evaluate_cell(reference),
+                    None => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
+                }
+            }
+            other => other,
+        };
+        calc_result_to_array_node(value)
     }
 
     // COLUMNS(range)

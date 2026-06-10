@@ -1,6 +1,6 @@
 use crate::{
     calc_result::CalcResult,
-    cast::{NumberOrArray, ValueOrArray},
+    cast::{array_node_to_string, NumberOrArray, StringOrArray, ValueOrArray},
     expressions::{
         parser::{ArrayNode, Node},
         token::{Error, OpCompare},
@@ -9,6 +9,19 @@ use crate::{
     functions::util::compare_values,
     model::Model,
 };
+
+/// Maps an output index `i` back to the source array index, applying Excel's
+/// size-1 broadcasting rule: a length-1 dimension repeats its only element, an
+/// equal-length dimension maps one-to-one, and any other mismatch is out of range.
+pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
+    if len == 1 {
+        Some(0)
+    } else if i < len {
+        Some(i)
+    } else {
+        None
+    }
+}
 
 /// Unify how we map booleans/strings to f64
 fn to_f64(value: &ArrayNode) -> Result<f64, Error> {
@@ -150,6 +163,80 @@ impl<'a> Model<'a> {
                             // Mismatched dimensions => #VALUE!
                             _ => data_row.push(ArrayNode::Error(Error::VALUE)),
                         }
+                    }
+                    array.push(data_row);
+                }
+                CalcResult::Array(array)
+            }
+        }
+    }
+
+    /// Applies the concatenation operator (`&`) element-wise.
+    /// When either operand is a range or array the result is an array of strings;
+    /// when both are scalars the result is a single String.
+    pub(crate) fn handle_concatenate(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let l = match self.get_string_or_array(left, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let r = match self.get_string_or_array(right, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+
+        // Concatenates two array elements, propagating errors as error nodes.
+        let concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
+            match (array_node_to_string(a), array_node_to_string(b)) {
+                (Ok(sa), Ok(sb)) => ArrayNode::String(format!("{sa}{sb}")),
+                (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
+            }
+        };
+
+        match (l, r) {
+            (StringOrArray::String(s1), StringOrArray::String(s2)) => {
+                CalcResult::String(format!("{s1}{s2}"))
+            }
+            (StringOrArray::String(s1), StringOrArray::Array(a2)) => CalcResult::Array(
+                a2.iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|n| concat_nodes(&ArrayNode::String(s1.clone()), n))
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            (StringOrArray::Array(a1), StringOrArray::String(s2)) => CalcResult::Array(
+                a1.iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|n| concat_nodes(n, &ArrayNode::String(s2.clone())))
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            (StringOrArray::Array(a1), StringOrArray::Array(a2)) => {
+                let rows = a1.len().max(a2.len());
+                let cols = a1
+                    .first()
+                    .map(|r| r.len())
+                    .unwrap_or(0)
+                    .max(a2.first().map(|r| r.len()).unwrap_or(0));
+                let mut array = Vec::with_capacity(rows);
+                for ri in 0..rows {
+                    let mut data_row = Vec::with_capacity(cols);
+                    for ci in 0..cols {
+                        let v1 = a1.get(ri).and_then(|r| r.get(ci));
+                        let v2 = a2.get(ri).and_then(|r| r.get(ci));
+                        let node = match (v1, v2) {
+                            (Some(v1), Some(v2)) => concat_nodes(v1, v2),
+                            _ => ArrayNode::Error(Error::VALUE),
+                        };
+                        data_row.push(node);
                     }
                     array.push(data_row);
                 }
