@@ -4,7 +4,7 @@ import {
   type IronCalcTheme,
 } from "@ironcalc/wasm";
 
-function themeBaseColors(theme: IronCalcTheme): string[] {
+export function themeBaseColors(theme: IronCalcTheme): string[] {
   return [
     theme.lt1,
     theme.dk1,
@@ -19,60 +19,39 @@ function themeBaseColors(theme: IronCalcTheme): string[] {
   ];
 }
 
-// Returns [themeIndex, tint] for every cell in the themed tone grid.
-// Negative tint = shade (darker), positive tint = lighter — matches the Rust Color::Theme convention.
-export function computeThemeToneValues(): [number, number][][] {
-  const lt = (idx: number): [number, number][] => [
-    [idx, -0.05],
-    [idx, -0.15],
-    [idx, -0.25],
-    [idx, -0.35],
-    [idx, -0.5],
-  ];
-  const lt2 = (idx: number): [number, number][] => [
-    [idx, -0.1],
-    [idx, -0.25],
-    [idx, -0.5],
-    [idx, -0.75],
-    [idx, -0.9],
-  ];
-  const dk = (idx: number): [number, number][] => [
-    [idx, 0.5],
-    [idx, 0.35],
-    [idx, 0.25],
-    [idx, 0.15],
-    [idx, 0.05],
-  ];
-  const accent = (idx: number): [number, number][] => [
-    [idx, 0.8],
-    [idx, 0.6],
-    [idx, 0.4],
-    [idx, -0.25],
-    [idx, -0.5],
-  ];
-  return [
-    lt(0),
-    dk(1),
-    lt2(2),
-    accent(3),
-    accent(4),
-    accent(5),
-    accent(6),
-    accent(7),
-    accent(8),
-    accent(9),
-  ];
+// FIXME:
+const TINT_PATTERNS = [
+  [-0.05, -0.15, -0.25, -0.35, -0.5], // 0: lt1
+  [0.5, 0.35, 0.25, 0.15, 0.05], // 1: dk1
+  [-0.1, -0.25, -0.5, -0.75, -0.9], // 2: lt2
+  [0.8, 0.6, 0.4, -0.25, -0.5], // 3: dk2
+  [0.8, 0.6, 0.4, -0.25, -0.5], // 4–9: accents
+  [0.8, 0.6, 0.4, -0.25, -0.5],
+  [0.8, 0.6, 0.4, -0.25, -0.5],
+  [0.8, 0.6, 0.4, -0.25, -0.5],
+  [0.8, 0.6, 0.4, -0.25, -0.5],
+  [0.8, 0.6, 0.4, -0.25, -0.5],
+];
+
+function themeToneValues(): [number, number][][] {
+  return TINT_PATTERNS.map((tints, index) =>
+    tints.map((tint) => [index, tint]),
+  );
 }
 
-export function computeToneArrays(theme: IronCalcTheme): string[][] {
+export function computeThemeGrid(
+  theme: IronCalcTheme,
+): { hex: string; color: [number, number] }[][] {
   const bases = themeBaseColors(theme);
-  return computeThemeToneValues().map((col) =>
-    col.map(([index, tint]) => hexWithTintToRgb(bases[index], tint)),
+  return themeToneValues().map((col) =>
+    col.map(([index, tint]) => ({
+      hex: hexWithTintToRgb(bases[index], tint),
+      color: [index, tint],
+    })),
   );
 }
 
 // Resolves a Color value to a display hex string.
-// Used where the model is unavailable (e.g. recent-color swatches).
 export function resolveColorToHex(color: Color, theme: IronCalcTheme): string {
   if (!color) {
     return "";
@@ -85,7 +64,7 @@ export function resolveColorToHex(color: Color, theme: IronCalcTheme): string {
   return hexWithTintToRgb(bases[index] ?? theme.dk1, tint);
 }
 
-export const staticMainColors = [
+export const standardColors = [
   "#800000", // Dark Red
   "#FF0000", // Red
   "#FFA500", // Orange

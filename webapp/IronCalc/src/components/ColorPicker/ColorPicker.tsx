@@ -15,12 +15,12 @@ import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { createPortal } from "react-dom";
 import useKeyDown from "./useKeyDown";
 import {
-  computeThemeToneValues,
-  computeToneArrays,
+  computeThemeGrid,
   getCheckColor,
   isWhiteColor,
   resolveColorToHex,
-  staticMainColors,
+  standardColors,
+  themeBaseColors,
 } from "./util";
 
 type ColorPickerProps = {
@@ -122,21 +122,9 @@ const ColorPicker = ({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const { t } = useTranslation();
 
-  const mainColors = [
-    theme.lt1,
-    theme.dk1,
-    theme.lt2,
-    theme.dk2,
-    theme.accent1,
-    theme.accent2,
-    theme.accent3,
-    theme.accent4,
-    theme.accent5,
-    theme.accent6,
-  ];
+  const themeColors = themeBaseColors(theme);
 
-  const toneArrays = computeToneArrays(theme);
-  const themeToneValues = computeThemeToneValues();
+  const themeGrid = computeThemeGrid(theme);
 
   useEffect(() => {
     setSelectedColor(color);
@@ -321,24 +309,19 @@ const ColorPicker = ({
 
         <div className="ic-color-picker__colors-wrapper">
           <div className="ic-color-picker__color-list">
-            {mainColors.map((hex, col) =>
+            {themeColors.map((hex, col) =>
               renderColorSwatch(hex, [col, 0], 1, col),
             )}
           </div>
 
           <div className="ic-color-picker__color-grid">
-            {toneArrays.map((tones, col) => (
+            {themeGrid.map((col, colIndex) => (
               <div
                 className="ic-color-picker__color-grid-col"
-                key={tones.join("-")}
+                key={col.map((c) => c.hex).join("-")}
               >
-                {tones.map((hex, toneIndex) =>
-                  renderColorSwatch(
-                    hex,
-                    themeToneValues[col][toneIndex],
-                    2 + toneIndex,
-                    col,
-                  ),
+                {col.map(({ hex, color }, toneIndex) =>
+                  renderColorSwatch(hex, color, 2 + toneIndex, colIndex),
                 )}
               </div>
             ))}
@@ -353,7 +336,7 @@ const ColorPicker = ({
           className="ic-color-picker__color-list"
           style={{ marginLeft: "13px" }}
         >
-          {staticMainColors.map((hex, col) =>
+          {standardColors.map((hex, col) =>
             renderColorSwatch(hex, hex, 8, col),
           )}
         </div>
