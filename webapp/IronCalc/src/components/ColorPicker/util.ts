@@ -86,16 +86,16 @@ export function resolveColorToHex(color: Color, theme: IronCalcTheme): string {
 }
 
 export const staticMainColors = [
-  "#FFFFFF",
-  "#272525",
-  "#1B717E",
-  "#3BB68A",
-  "#8CB354",
-  "#F8CD3C",
-  "#F2994A",
-  "#EC5753",
-  "#523E93",
-  "#3358B7",
+  "#800000", // Dark Red
+  "#FF0000", // Red
+  "#FFA500", // Orange
+  "#FFFF00", // Yellow
+  "#92d050", // Light green
+  "#00b050", // Green
+  "#00b0f0", // Light blue
+  "#0070c0", // Blue
+  "#002060", // Dark blue
+  "#7030a0", // Purple
 ];
 
 // This function checks if a color is light or dark.
