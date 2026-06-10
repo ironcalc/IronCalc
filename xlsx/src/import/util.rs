@@ -49,6 +49,10 @@ pub(super) fn get_color(node: Node, _theme: &Theme) -> Result<Color, XlsxError> 
         Ok(Color::Rgb(hex))
     } else if node.has_attribute("indexed") {
         let index = node.attribute("indexed").unwrap().parse::<i32>()?;
+        if index == 64 {
+            // 64 is "transparent" in OOXML, but we don't have a good way to represent that, so we'll just ignore it
+            return Ok(Color::None);
+        }
         let rgb = get_indexed_color(index);
         Ok(Color::Rgb(rgb))
     } else if node.has_attribute("theme") {
