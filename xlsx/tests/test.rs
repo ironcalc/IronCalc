@@ -2,7 +2,7 @@
 #![allow(clippy::panic)]
 
 use ironcalc::export::save_to_xlsx;
-use ironcalc::import::{load_from_icalc, load_from_xlsx, load_from_xlsx_bytes};
+use ironcalc::import::{load_from_xlsx, load_from_xlsx_bytes};
 use ironcalc_base::types::{Color, HorizontalAlignment, VerticalAlignment};
 use ironcalc_base::{Model, UserModel};
 use std::fs;
