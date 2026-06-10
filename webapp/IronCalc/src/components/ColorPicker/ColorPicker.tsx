@@ -349,7 +349,10 @@ const ColorPicker = ({
           {t("color_picker.standard_colors")}
         </div>
 
-        <div className="ic-color-picker__color-list">
+        <div
+          className="ic-color-picker__color-list"
+          style={{ marginLeft: "13px" }}
+        >
           {staticMainColors.map((hex, col) =>
             renderColorSwatch(hex, hex, 8, col),
           )}
