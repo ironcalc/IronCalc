@@ -38,20 +38,6 @@
   min-height: 0;
 }
 
-/* Footer */
-
-.app-ic-wd-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 12px;
-}
-
-@media (max-width: 600px) {
-  .app-ic-wd-footer button {
-    width: 100%;
-  }
-}
-
 /* Two-column layout for WelcomeDialog */
 
 .app-ic-wd-content--two-col {
@@ -232,6 +218,7 @@
 .app-ic-wd-new-item:hover,
 .app-ic-wd-new-item--active {
   border-color: var(--palette-grey-600);
+  outline: 4px solid red;
 }
 
 .app-ic-wd-new-item:focus-visible {
@@ -252,7 +239,7 @@
 .app-ic-wd-templates-list {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: 20px;
   padding: 8px 24px 24px 24px;
   flex: 1;
   min-height: 0;
@@ -384,73 +371,6 @@
   background-color: var(--palette-common-white);
 }
 
-/* Templates dialog — fixed-size paper with scrollable content */
-
-.app-ic-wd-paper--templates {
-  height: 560px;
-}
-
-.app-ic-wd-paper--templates .app-ic-wd-content {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-/* Category filter pills */
-
-.app-ic-wd-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 16px 4px;
-}
-
-.app-ic-wd-filter-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 12px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: none;
-  font-size: 13px;
-  font-family: var(--typography-font-family);
-  color: var(--palette-grey-600);
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background 0.1s,
-    color 0.1s;
-}
-
-.app-ic-wd-filter-pill:hover {
-  background: var(--palette-grey-100);
-  color: var(--palette-common-black);
-}
-
-.app-ic-wd-filter-pill--active {
-  background: var(--palette-common-black);
-  color: var(--palette-common-white);
-}
-
-.app-ic-wd-filter-pill--active:hover {
-  background: var(--palette-grey-900);
-  color: var(--palette-common-white);
-}
-
-/* TemplatesDialog header */
-
-.app-ic-wd-template-header {
-  display: flex;
-  align-items: center;
-  height: 44px;
-  padding: 0 12px;
-  gap: 8px;
-}
-
-.app-ic-wd-template-header-title {
-  flex: 1;
-}
-
 /* WelcomeDialog header */
 
 .app-ic-wd-welcome-header {
@@ -494,16 +414,6 @@
 .app-ic-wd-logo-title {
   font-size: calc(var(--typography-font-size) + 2px);
   font-weight: 600;
-}
-
-.app-ic-wd-template-header-title {
-  min-width: 0;
-  font-size: calc(var(--typography-font-size) + 1px);
-  font-weight: 600;
-  color: var(--palette-grey-900);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .app-ic-wd-header-title {
