@@ -27,6 +27,8 @@ function TemplatesListItem({
           <img
             src={thumbnailUrl}
             alt={title}
+            loading="lazy"
+            decoding="async"
             className="app-ic-wd-list-item-thumbnail-img"
           />
         )}
