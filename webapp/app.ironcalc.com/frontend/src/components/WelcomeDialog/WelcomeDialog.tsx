@@ -18,15 +18,17 @@ function WelcomeDialog({
 }: {
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
-  onModelUpload: (blob: ArrayBuffer, fileName: string) => Promise<void>;
+  onModelUpload: (arrayBuffer: ArrayBuffer, fileName: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [gridScrolled, setGridScrolled] = useState(false);
   const dialogRef = useDialogFocus(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const blankButtonRef = useRef<HTMLButtonElement>(null);
+  const lastTemplateRef = useRef<HTMLButtonElement>(null);
 
   const { onKeyDown } = useDialogKeyDown({
-    focusableElements: [],
+    focusableElements: [blankButtonRef, lastTemplateRef],
     onClose,
   });
 
@@ -34,6 +36,7 @@ function WelcomeDialog({
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) {
       return;
     }
@@ -57,6 +60,7 @@ function WelcomeDialog({
         <input
           ref={fileInputRef}
           type="file"
+          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           style={{ display: "none" }}
           onChange={handleFileChange}
         />
@@ -71,6 +75,7 @@ function WelcomeDialog({
               </div>
               <div className="app-ic-wd-action-group">
                 <button
+                  ref={blankButtonRef}
                   type="button"
                   className="app-ic-wd-action-button"
                   onClick={() => onSelectTemplate("blank")}
@@ -112,6 +117,7 @@ function WelcomeDialog({
               handleTemplateSelect={onSelectTemplate}
               columns={3}
               onScroll={(e) => setGridScrolled(e.currentTarget.scrollTop > 0)}
+              lastItemRef={lastTemplateRef}
             />
           </div>
         </div>

@@ -10,6 +10,7 @@ function TemplatesList(props: {
   limit?: number;
   columns?: number;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
+  lastItemRef?: React.Ref<HTMLButtonElement>;
 }) {
   const {
     selectedTemplate,
@@ -18,6 +19,7 @@ function TemplatesList(props: {
     limit,
     columns,
     onScroll,
+    lastItemRef,
   } = props;
   const { t } = useTranslation();
 
@@ -38,9 +40,10 @@ function TemplatesList(props: {
           : undefined
       }
     >
-      {visible.map((tmpl) => (
+      {visible.map((tmpl, index) => (
         <TemplatesListItem
           key={tmpl.id}
+          ref={index === visible.length - 1 ? lastItemRef : undefined}
           title={t(tmpl.titleKey)}
           category={t(tmpl.categoryKey)}
           active={selectedTemplate === tmpl.id}

@@ -82,6 +82,11 @@
   color: var(--palette-common-black);
 }
 
+.app-ic-wd-filter-pill:focus-visible {
+  outline: 2px solid var(--palette-primary-main);
+  outline-offset: 2px;
+}
+
 /* Footer */
 
 .app-ic-wd-footer {

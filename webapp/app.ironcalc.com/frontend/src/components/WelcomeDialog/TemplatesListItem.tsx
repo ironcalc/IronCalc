@@ -6,6 +6,7 @@ interface TemplatesListItemProps {
   active: boolean;
   thumbnailUrl?: string;
   onClick: () => void;
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
 function TemplatesListItem({
@@ -14,9 +15,11 @@ function TemplatesListItem({
   active,
   thumbnailUrl,
   onClick,
+  ref,
 }: TemplatesListItemProps) {
   return (
     <button
+      ref={ref}
       type="button"
       className={`app-ic-wd-list-item${active ? " app-ic-wd-list-item--active" : ""}`}
       aria-pressed={active}
