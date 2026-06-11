@@ -66,8 +66,8 @@
 }
 
 .ic-themes-list-item-preview {
-  width: 52px;
-  height: 36px;
+  width: 56px;
+  height: 40px;
   border-radius: 4px;
   box-shadow: inset 0 0 0 1px
     color-mix(in srgb, var(--palette-common-black) 12%, transparent);
@@ -82,7 +82,6 @@
 }
 
 .ic-theme-preview-inner {
-  position: relative;
   display: flex;
   align-items: center;
   align-self: stretch;
@@ -91,46 +90,30 @@
   margin: 4px;
   padding-left: 4px;
   gap: 4px;
-  background: linear-gradient(
-    to bottom,
-    transparent calc(30% - 0.5px),
-    color-mix(in srgb, var(--palette-grey-900) 10%, transparent)
-      calc(30% - 0.5px),
-    color-mix(in srgb, var(--palette-grey-900) 10%, transparent)
-      calc(30% + 0.5px),
-    transparent calc(30% + 0.5px),
-    transparent calc(70% - 0.5px),
-    color-mix(in srgb, var(--palette-grey-900) 10%, transparent)
-      calc(70% - 0.5px),
-    color-mix(in srgb, var(--palette-grey-900) 10%, transparent)
-      calc(70% + 0.5px),
-    transparent calc(70% + 0.5px)
-  );
-  outline: 1px solid
-    color-mix(in srgb, var(--palette-grey-900) 10%, transparent);
-}
-
-.ic-theme-preview-inner::before,
-.ic-theme-preview-inner::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: color-mix(in srgb, var(--palette-grey-900) 10%, transparent);
-}
-
-.ic-theme-preview-inner::before {
-  left: 33%;
-}
-
-.ic-theme-preview-inner::after {
-  left: 67%;
-}
-
-.ic-theme-preview-inner > * {
-  position: relative;
-  z-index: 1;
+  background:
+    linear-gradient(
+      to bottom,
+      transparent calc(30% - 0.5px),
+      color-mix(in srgb, currentColor 10%, transparent) calc(30% - 0.5px),
+      color-mix(in srgb, currentColor 10%, transparent) calc(30% + 0.5px),
+      transparent calc(30% + 0.5px),
+      transparent calc(70% - 0.5px),
+      color-mix(in srgb, currentColor 10%, transparent) calc(70% - 0.5px),
+      color-mix(in srgb, currentColor 10%, transparent) calc(70% + 0.5px),
+      transparent calc(70% + 0.5px)
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(33% - 0.5px),
+      color-mix(in srgb, currentColor 10%, transparent) calc(33% - 0.5px),
+      color-mix(in srgb, currentColor 10%, transparent) calc(33% + 0.5px),
+      transparent calc(33% + 0.5px),
+      transparent calc(67% - 0.5px),
+      color-mix(in srgb, currentColor 10%, transparent) calc(67% - 0.5px),
+      color-mix(in srgb, currentColor 10%, transparent) calc(67% + 0.5px),
+      transparent calc(67% + 0.5px)
+    );
+  outline: 1px solid color-mix(in srgb, currentColor 10%, transparent);
 }
 
 .ic-theme-preview-pie {
