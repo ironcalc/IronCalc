@@ -7,6 +7,7 @@ import TemplatesList from "./TemplatesList";
 import { TEMPLATE_CATEGORIES } from "./templates";
 import { useDialogFocus } from "./useDialogFocus";
 import { useDialogKeyDown } from "./useDialogKeyDown";
+import "./templates-dialog.css";
 import "./welcome-dialog.css";
 
 interface TemplatesDialogProperties {
@@ -26,6 +27,7 @@ function TemplatesDialog({
     "mortgage_calculator",
   );
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [gridScrolled, setGridScrolled] = useState(false);
   const dialogRef = useDialogFocus(open);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
@@ -66,7 +68,9 @@ function TemplatesDialog({
             onClick={handleClose}
           />
         </div>
-        <div className="app-ic-wd-filters">
+        <div
+          className={`app-ic-wd-filters${gridScrolled ? " app-ic-wd-filters--scrolled" : ""}`}
+        >
           <button
             type="button"
             className={`app-ic-wd-filter-pill${selectedCategory === "all" ? " app-ic-wd-filter-pill--active" : ""}`}
@@ -90,6 +94,7 @@ function TemplatesDialog({
             selectedTemplate={selectedTemplate}
             handleTemplateSelect={setSelectedTemplate}
             categoryFilter={selectedCategory}
+            onScroll={(e) => setGridScrolled(e.currentTarget.scrollTop > 0)}
           />
         </div>
         <div className="app-ic-wd-footer">
