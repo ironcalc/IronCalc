@@ -2,7 +2,7 @@ import {
   IconButton,
   IronCalcIconWhite as IronCalcIcon,
 } from "@ironcalc/workbook";
-import { BookOpen, Plus, Upload, X } from "lucide-react";
+import { CloudOff, Plus, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -88,22 +88,12 @@ function WelcomeDialog({
                 </button>
               </div>
             </div>
-            <div className="app-ic-wd-action-group">
-              <button
-                type="button"
-                className="app-ic-wd-action-button"
-                onClick={() =>
-                  window.open(
-                    "https://docs.ironcalc.com",
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
-                }
-              >
-                <BookOpen />
-                {t("welcome_dialog.documentation")}
-              </button>
-              <span className="app-ic-wd-version">v0.8</span>
+            <div className="app-ic-wd-storage-warning">
+              <CloudOff />
+              <div>
+                {t("file_bar.title_input.warning_text1")}
+                <strong>{t("file_bar.title_input.warning_text2")}</strong>
+              </div>
             </div>
           </div>
           <div className="app-ic-wd-col-templates">
