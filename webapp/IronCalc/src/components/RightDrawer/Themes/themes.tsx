@@ -24,6 +24,8 @@ function themeToThemeData(theme: IronCalcTheme): ThemeData {
       theme.accent5,
       theme.accent6,
     ],
+    hlinkColor: theme.hlink,
+    folHlinkColor: theme.fol_hlink,
   };
 }
 
@@ -77,6 +79,8 @@ const Themes = ({
       accent4: data.accentColors[3],
       accent5: data.accentColors[4],
       accent6: data.accentColors[5],
+      hlink: data.hlinkColor,
+      fol_hlink: data.folHlinkColor,
     };
 
     // Only one custom theme at a time. Always placed on top.
@@ -121,6 +125,8 @@ const Themes = ({
             initialLightColor={editingData.lightColor}
             initialDarkColor={editingData.darkColor}
             initialAccentColors={editingData.accentColors}
+            initialHlinkColor={editingData.hlinkColor}
+            initialFolHlinkColor={editingData.folHlinkColor}
             currentTheme={currentTheme}
             onSave={handleSave}
             onClose={() => setEditing(null)}

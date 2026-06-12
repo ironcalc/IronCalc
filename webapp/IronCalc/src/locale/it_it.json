@@ -270,6 +270,8 @@
     "custom_theme_name": "Personalizzato",
     "dark_color_label": "Scuro",
     "edit_theme": "Modifica tema",
+    "fol_hlink_color_label": "Link visitato",
+    "hlink_color_label": "Link",
     "light_color_label": "Chiaro",
     "manage_themes": "Gestisci temi",
     "panel_title": "Temi",

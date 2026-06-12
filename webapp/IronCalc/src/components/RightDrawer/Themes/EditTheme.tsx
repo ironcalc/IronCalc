@@ -16,6 +16,8 @@ export interface ThemeData {
   lightColor: string;
   darkColor: string;
   accentColors: [string, string, string, string, string, string];
+  hlinkColor: string;
+  folHlinkColor: string;
 }
 
 interface EditThemeProps {
@@ -26,6 +28,8 @@ interface EditThemeProps {
   initialDarkColor: string;
   currentTheme: IronCalcTheme;
   initialAccentColors: [string, string, string, string, string, string];
+  initialHlinkColor: string;
+  initialFolHlinkColor: string;
   onSave: (data: ThemeData) => void;
   onClose: () => void;
 }
@@ -94,6 +98,8 @@ const EditTheme = ({
   initialLightColor,
   initialDarkColor,
   initialAccentColors,
+  initialHlinkColor,
+  initialFolHlinkColor,
   onSave,
   onClose,
   currentTheme,
@@ -104,6 +110,8 @@ const EditTheme = ({
   const [lightColor, setLightColor] = useState(initialLightColor);
   const [darkColor, setDarkColor] = useState(initialDarkColor);
   const [accentColors, setAccentColors] = useState(initialAccentColors);
+  const [hlinkColor, setHlinkColor] = useState(initialHlinkColor);
+  const [folHlinkColor, setFolHlinkColor] = useState(initialFolHlinkColor);
 
   const setAccent = (index: number, color: string) => {
     setAccentColors((prev) => {
@@ -121,6 +129,8 @@ const EditTheme = ({
       lightColor,
       darkColor,
       accentColors,
+      hlinkColor,
+      folHlinkColor,
     });
   };
 
@@ -187,6 +197,22 @@ const EditTheme = ({
               currentTheme={currentTheme}
             />
           ))}
+        </div>
+        <div className="ic-edit-theme-section">
+          <ColorField
+            label={t("themes.hlink_color_label")}
+            value={hlinkColor}
+            onChange={setHlinkColor}
+            onKeyDown={handleKeyDown}
+            currentTheme={currentTheme}
+          />
+          <ColorField
+            label={t("themes.fol_hlink_color_label")}
+            value={folHlinkColor}
+            onChange={setFolHlinkColor}
+            onKeyDown={handleKeyDown}
+            currentTheme={currentTheme}
+          />
         </div>
       </div>
       <div className="ic-edit-theme-footer">
