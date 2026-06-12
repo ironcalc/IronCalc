@@ -199,7 +199,7 @@ const ColorPicker = ({
       recentColors.current = [
         { color: colorValue, hex: displayHex },
         ...recentColors.current,
-      ].slice(0, 14);
+      ];
     }
 
     setSelectedColor(colorValue ?? FALLBACK_COLOR);
@@ -286,105 +286,112 @@ const ColorPicker = ({
           event.stopPropagation();
         }}
       >
-        <button
-          type="button"
-          className="ic-color-picker__menu-item"
-          onClick={() => handleColorSelect(defaultColor, defaultColor)}
-          data-nav-row={0}
-          data-nav-col={0}
-        >
-          <span
-            className="ic-color-picker__menu-item-square"
-            style={{ backgroundColor: defaultColor }}
-            aria-hidden="true"
-          />
-          <span className="ic-color-picker__menu-item-text">{title}</span>
-        </button>
-
-        <div className="ic-color-picker__divider" />
-
-        <div className="ic-color-picker__recent-label">
-          {t("color_picker.themed_colors")}
-        </div>
-
-        <div className="ic-color-picker__colors-wrapper">
-          <div className="ic-color-picker__color-list">
-            {themeColors.map((hex, col) =>
-              renderColorSwatch(hex, [col, 0], 1, col),
-            )}
-          </div>
-
-          <div className="ic-color-picker__color-grid">
-            {themeGrid.map((col, colIndex) => (
-              <div
-                className="ic-color-picker__color-grid-col"
-                key={col.map((c) => c.hex).join("-")}
-              >
-                {col.map(({ hex, color }, toneIndex) =>
-                  renderColorSwatch(hex, color, 2 + toneIndex, colIndex),
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="ic-color-picker__recent-label">
-          {t("color_picker.standard_colors")}
-        </div>
-
-        <div
-          className="ic-color-picker__color-list"
-          style={{ marginLeft: "13px" }}
-        >
-          {standardColors.map((hex, col) =>
-            renderColorSwatch(hex, hex, 8, col),
-          )}
-        </div>
-
-        <div className="ic-color-picker__divider" />
-
-        <div className="ic-color-picker__recent-label">
-          {t("color_picker.recent")}
-        </div>
-
-        <div className="ic-color-picker__recent-colors-list">
-          {recentColors.current.length > 0 ? (
-            recentColors.current.map(
-              ({ color: recentColor, hex: recentHex }, col) => (
-                <button
-                  key={recentHex}
-                  type="button"
-                  className={[
-                    "ic-color-picker__swatch",
-                    isWhiteColor(recentHex)
-                      ? "ic-color-picker__swatch--white"
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  style={{ backgroundColor: recentHex }}
-                  onClick={() => handleColorSelect(recentColor, recentHex)}
-                  aria-label={recentHex}
-                  data-nav-row={7}
-                  data-nav-col={col}
-                />
-              ),
-            )
-          ) : (
-            <div className="ic-color-picker__empty" />
-          )}
-
+        <div className="ic-color-picker__section">
           <button
             type="button"
-            className="ic-color-picker__plus-button"
-            onClick={() => setPickerOpen(true)}
-            title={t("color_picker.add")}
-            aria-label={t("color_picker.add")}
-            data-nav-row={7}
-            data-nav-col={recentColors.current.length}
+            className="ic-color-picker__menu-item"
+            onClick={() => handleColorSelect(defaultColor, defaultColor)}
+            data-nav-row={0}
+            data-nav-col={0}
           >
-            <Plus />
+            <span
+              className="ic-color-picker__menu-item-square"
+              style={{ backgroundColor: defaultColor }}
+              aria-hidden="true"
+            />
+            <span className="ic-color-picker__menu-item-text">{title}</span>
           </button>
+        </div>
+
+        <div className="ic-color-picker__divider" />
+
+        <div className="ic-color-picker__section">
+          <div className="ic-color-picker__label">
+            {t("color_picker.themed_colors")}
+          </div>
+
+          <div className="ic-color-picker__colors-wrapper">
+            <div className="ic-color-picker__color-list">
+              {themeColors.map((hex, col) =>
+                renderColorSwatch(hex, [col, 0], 1, col),
+              )}
+            </div>
+
+            <div className="ic-color-picker__color-grid">
+              {themeGrid.map((col, colIndex) => (
+                <div
+                  className="ic-color-picker__color-grid-col"
+                  key={col.map((c) => c.hex).join("-")}
+                >
+                  {col.map(({ hex, color }, toneIndex) =>
+                    renderColorSwatch(hex, color, 2 + toneIndex, colIndex),
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="ic-color-picker__divider" />
+
+        <div className="ic-color-picker__section">
+          <div className="ic-color-picker__label">
+            {t("color_picker.standard_colors")}
+          </div>
+
+          <div className="ic-color-picker__color-list">
+            {standardColors.map((hex, col) =>
+              renderColorSwatch(hex, hex, 8, col),
+            )}
+          </div>
+        </div>
+
+        <div className="ic-color-picker__divider" />
+
+        <div className="ic-color-picker__section">
+          <div className="ic-color-picker__label">
+            {t("color_picker.recent")}
+          </div>
+
+          <div className="ic-color-picker__color-list">
+            {recentColors.current.length > 0 ? (
+              recentColors.current.map(
+                ({ color: recentColor, hex: recentHex }, col) => (
+                  <button
+                    key={recentHex}
+                    type="button"
+                    className={[
+                      "ic-color-picker__swatch",
+                      isWhiteColor(recentHex)
+                        ? "ic-color-picker__swatch--white"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    style={{ backgroundColor: recentHex }}
+                    onClick={() => handleColorSelect(recentColor, recentHex)}
+                    aria-label={recentHex}
+                    data-nav-row={7}
+                    data-nav-col={col}
+                  />
+                ),
+              )
+            ) : (
+              <div className="ic-color-picker__empty" />
+            )}
+
+            <button
+              type="button"
+              className="ic-color-picker__plus-button"
+              onClick={() => setPickerOpen(true)}
+              title={t("color_picker.add")}
+              aria-label={t("color_picker.add")}
+              data-nav-row={7}
+              data-nav-col={recentColors.current.length}
+            >
+              <Plus />
+            </button>
+          </div>
         </div>
       </div>
     </div>,
