@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert'
 import { Model } from "../pkg/wasm.js";
 
-const DEFAULT_ROW_HEIGHT = 20;
+const DEFAULT_ROW_HEIGHT = 25;
 
 test('Frozen rows and columns', () => {
     let model = new Model('Workbook1', 'en', 'UTC', 'en');
@@ -103,10 +103,10 @@ test("invalid column throws an exception", () => {
 
 test("floating column numbers get truncated", () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
-    model.setRowsHeight(0.8, 5.2, 5.5, 100.5);
+    model.setRowsHeight(0.8, 5.2, 5.5, 125);
 
-    assert.strictEqual(model.getRowHeight(0.11, 5.99), 100.5);
-    assert.strictEqual(model.getRowHeight(0, 5), 100.5);
+    assert.strictEqual(model.getRowHeight(0.11, 5.99), 125);
+    assert.strictEqual(model.getRowHeight(0, 5), 125);
 });
 
 test("autofill", () => {

@@ -4,7 +4,7 @@
 use ironcalc::export::save_to_xlsx;
 use ironcalc::import::{load_from_xlsx, load_from_xlsx_bytes};
 use ironcalc_base::types::{Color, HorizontalAlignment, VerticalAlignment};
-use ironcalc_base::{Model, UserModel};
+use ironcalc_base::{Model, UserModel, ROW_HEIGHT_FACTOR};
 use std::fs;
 use std::io::Read;
 
@@ -192,11 +192,15 @@ fn test_model_has_correct_styles(model: &Model) {
     let style_g1 = model.get_style_for_cell(0, 1, 7).unwrap();
     assert!(style_g1.font.u);
 
+    // Taken from the xlsx
+    let ht_row3 = 68.0;
     let height_row_3 = model.workbook.worksheet(0).unwrap().row_height(3).unwrap();
-    assert_eq!(height_row_3, 85.0);
+    assert_eq!(height_row_3, ht_row3 * ROW_HEIGHT_FACTOR);
 
+    // Taken from the xlsx
+    let ht_row_5 = 31.0;
     let height_row_5 = model.workbook.worksheet(0).unwrap().row_height(5).unwrap();
-    assert_eq!(height_row_5, 38.75);
+    assert_eq!(height_row_5, ht_row_5 * ROW_HEIGHT_FACTOR);
 
     // Second sheet has alignment
     // Horizontal
