@@ -107,7 +107,7 @@ const Themes = ({
             />
           </Tooltip>
           <div className="ic-themes-edit-header-title">
-            {t("themes.edit_theme")}
+            {t("themes.customize_theme")}
           </div>
           <Tooltip title={t("right_drawer.close")}>
             <IconButton
@@ -177,14 +177,14 @@ const Themes = ({
             <div className="ic-themes-list-item-name">{theme.name}</div>
             {selectedIndex === i && (
               <div className="ic-themes-list-item-icons">
-                <Tooltip title={t("themes.edit_theme")}>
+                <Tooltip title={t("themes.customize_theme")}>
                   <IconButton
                     icon={<PencilLine />}
                     onClick={(e) => {
                       e.stopPropagation();
                       setEditing(theme);
                     }}
-                    aria-label={t("themes.edit_theme")}
+                    aria-label={t("themes.customize_theme")}
                   />
                 </Tooltip>
               </div>
