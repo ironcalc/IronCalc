@@ -163,18 +163,20 @@ const Themes = ({
               className="ic-themes-list-item-preview"
             />
             <div className="ic-themes-list-item-name">{theme.name}</div>
-            <div className="ic-themes-list-item-icons">
-              <Tooltip title={t("themes.edit_theme")}>
-                <IconButton
-                  icon={<PencilLine />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditing(theme);
-                  }}
-                  aria-label={t("themes.edit_theme")}
-                />
-              </Tooltip>
-            </div>
+            {selectedIndex === i && (
+              <div className="ic-themes-list-item-icons">
+                <Tooltip title={t("themes.edit_theme")}>
+                  <IconButton
+                    icon={<PencilLine />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditing(theme);
+                    }}
+                    aria-label={t("themes.edit_theme")}
+                  />
+                </Tooltip>
+              </div>
+            )}
           </div>
         ))}
       </div>
