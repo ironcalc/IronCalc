@@ -412,7 +412,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.font_color")}>
             <IconButton
               type="button"
-              pressed={false}
+              pressed={fontColorPickerOpen}
               disabled={!canEdit}
               ref={fontColorButton}
               aria-label={t("toolbar.font_color")}
@@ -431,7 +431,7 @@ function Toolbar(properties: ToolbarProperties) {
           <Tooltip title={t("toolbar.fill_color")}>
             <IconButton
               type="button"
-              pressed={false}
+              pressed={fillColorPickerOpen}
               disabled={!canEdit}
               ref={fillColorButton}
               aria-label={t("toolbar.fill_color")}

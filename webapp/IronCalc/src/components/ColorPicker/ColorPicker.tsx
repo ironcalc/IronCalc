@@ -1,12 +1,6 @@
 import { Check, Plus } from "lucide-react";
-import React, {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import AdvancedColorPicker from "../AdvancedColorPicker.tsx/AdvancedColorPicker";
 import { getFocusableElements } from "../util";
@@ -14,6 +8,7 @@ import "./color-picker.css";
 import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { createPortal } from "react-dom";
 import { Tooltip } from "../Tooltip/Tooltip";
+import useAnchorPosition, { type Placement } from "./useAnchorPosition";
 import useKeyDown from "./useKeyDown";
 import {
   computeThemeGrid,
@@ -51,59 +46,6 @@ function colorsEqual(a: Color, b: Color): boolean {
   return false;
 }
 
-type Placement = "bottom" | "top" | "right" | "left";
-
-function getMenuPosition(
-  anchor: HTMLElement,
-  panel: HTMLElement,
-  placement: Placement,
-) {
-  const anchorRect = anchor.getBoundingClientRect();
-  const panelWidth = panel.offsetWidth;
-  const panelHeight = panel.offsetHeight;
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-
-  const offset = 4;
-  const margin = 8;
-
-  let left = 0;
-  let top = 0;
-
-  if (placement === "bottom") {
-    left = anchorRect.left;
-    top = anchorRect.bottom + offset;
-  } else if (placement === "top") {
-    left = anchorRect.left;
-    top = anchorRect.top - panelHeight - offset;
-  } else if (placement === "right") {
-    // This is used in the BorderPicker to be aligned with the line picker
-    left = anchorRect.right;
-    top = anchorRect.top;
-  } else {
-    left = anchorRect.left - panelWidth - offset;
-    top = anchorRect.top;
-  }
-
-  if (left + panelWidth > viewportWidth - margin) {
-    left = viewportWidth - panelWidth - margin;
-  }
-
-  if (left < margin) {
-    left = margin;
-  }
-
-  if (top + panelHeight > viewportHeight - margin) {
-    top = viewportHeight - panelHeight - margin;
-  }
-
-  if (top < margin) {
-    top = margin;
-  }
-
-  return { top, left };
-}
-
 const ColorPicker = ({
   color,
   defaultColor,
@@ -117,10 +59,14 @@ const ColorPicker = ({
 }: ColorPickerProps) => {
   const [selectedColor, setSelectedColor] = useState<Color>(color);
   const [isPickerOpen, setPickerOpen] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  const { panelRef, position } = useAnchorPosition(
+    open && !isPickerOpen,
+    anchorEl,
+    placement,
+  );
 
   const recentColors = useRef<{ color: Color; hex: string }[]>([]);
-  const panelRef = useRef<HTMLDivElement | null>(null);
   const { t } = useTranslation();
 
   const themeColors = themeBaseColors(theme);
@@ -144,56 +90,38 @@ const ColorPicker = ({
     if (open && !isPickerOpen) {
       panelRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
     }
-  }, [open, isPickerOpen]);
+  }, [open, isPickerOpen, panelRef]);
 
-  useLayoutEffect(() => {
+  // Close on presses outside the panel without swallowing them, so the
+  // pressed element (e.g. another toolbar menu) reacts in the same click
+  useEffect(() => {
     if (!open || isPickerOpen) {
       return;
     }
 
-    const anchor = anchorEl.current;
-    const panel = panelRef.current;
-
-    if (!anchor || !panel) {
-      return;
-    }
-
-    const updatePosition = () => {
-      setPosition(getMenuPosition(anchor, panel, placement));
-    };
-
-    updatePosition();
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [anchorEl, open, isPickerOpen, placement]);
-
-  const onPointerDown = useCallback(
-    (event: React.PointerEvent) => {
+    const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
-      const panel = panelRef.current;
-      const anchor = anchorEl.current;
 
-      if (!target || !panel) {
+      if (!target) {
         return;
       }
 
-      if (panel.contains(target)) {
+      if (panelRef.current?.contains(target)) {
         return;
       }
 
-      if (anchor?.contains(target)) {
+      if (anchorEl.current?.contains(target)) {
         return;
       }
 
       onClose();
-    },
-    [onClose, anchorEl],
-  );
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+    };
+  }, [open, isPickerOpen, onClose, anchorEl, panelRef]);
 
   const handleColorSelect = (colorValue: Color, displayHex: string) => {
     if (!recentColors.current.some((r) => colorsEqual(r.color, colorValue))) {
@@ -262,138 +190,117 @@ const ColorPicker = ({
   }
 
   return createPortal(
-    <div className="ic-menu-layer">
-      <div
-        className="ic-menu-backdrop"
-        onPointerDown={onClose}
-        aria-hidden="true"
-      />
-      <div
-        ref={panelRef}
-        className="ic-color-picker"
-        style={
-          {
-            top: `${position.top}px`,
-            left: `${position.left}px`,
-          } as CSSProperties
-        }
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("color_picker.add")}
-        onKeyDown={onKeyDown}
-        onPointerDown={onPointerDown}
-        onClick={(event) => {
-          // Otherwise the sheet would grab the keyboard focus
-          event.stopPropagation();
-        }}
-      >
-        <div className="ic-color-picker__section">
-          <button
-            type="button"
-            className="ic-color-picker__menu-item"
-            onClick={() => handleColorSelect(defaultColor, defaultColor)}
-            data-nav-row={0}
-            data-nav-col={0}
-          >
-            <span
-              className="ic-color-picker__menu-item-square"
-              style={{ backgroundColor: defaultColor }}
-              aria-hidden="true"
-            />
-            <span className="ic-color-picker__menu-item-text">{title}</span>
-          </button>
+    <div
+      ref={panelRef}
+      className="ic-color-picker"
+      style={position}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("color_picker.add")}
+      onKeyDown={onKeyDown}
+      onClick={(event) => {
+        // Otherwise the sheet would grab the keyboard focus
+        event.stopPropagation();
+      }}
+    >
+      <div className="ic-color-picker__section">
+        <button
+          type="button"
+          className="ic-color-picker__menu-item"
+          onClick={() => handleColorSelect(defaultColor, defaultColor)}
+          data-nav-row={0}
+          data-nav-col={0}
+        >
+          <span
+            className="ic-color-picker__menu-item-square"
+            style={{ backgroundColor: defaultColor }}
+            aria-hidden="true"
+          />
+          <span className="ic-color-picker__menu-item-text">{title}</span>
+        </button>
+      </div>
+
+      <div className="ic-color-picker__divider" />
+
+      <div className="ic-color-picker__section">
+        <div className="ic-color-picker__label">
+          {t("color_picker.themed_colors")}
         </div>
 
-        <div className="ic-color-picker__divider" />
+        <div className="ic-color-picker__color-list">
+          {themeColors.map((hex, col) =>
+            renderColorSwatch(hex, [col, 0], 1, col),
+          )}
+        </div>
 
-        <div className="ic-color-picker__section">
-          <div className="ic-color-picker__label">
-            {t("color_picker.themed_colors")}
-          </div>
-
-          <div className="ic-color-picker__colors-wrapper">
-            <div className="ic-color-picker__color-list">
-              {themeColors.map((hex, col) =>
-                renderColorSwatch(hex, [col, 0], 1, col),
+        <div className="ic-color-picker__color-grid">
+          {themeGrid.map((col, colIndex) => (
+            <div
+              className="ic-color-picker__color-grid-col"
+              key={col.map((c) => c.hex).join("-")}
+            >
+              {col.map(({ hex, color }, toneIndex) =>
+                renderColorSwatch(hex, color, 2 + toneIndex, colIndex),
               )}
             </div>
+          ))}
+        </div>
+      </div>
 
-            <div className="ic-color-picker__color-grid">
-              {themeGrid.map((col, colIndex) => (
-                <div
-                  className="ic-color-picker__color-grid-col"
-                  key={col.map((c) => c.hex).join("-")}
-                >
-                  {col.map(({ hex, color }, toneIndex) =>
-                    renderColorSwatch(hex, color, 2 + toneIndex, colIndex),
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+      <div className="ic-color-picker__divider" />
+
+      <div className="ic-color-picker__section">
+        <div className="ic-color-picker__label">
+          {t("color_picker.standard_colors")}
         </div>
 
-        <div className="ic-color-picker__divider" />
-
-        <div className="ic-color-picker__section">
-          <div className="ic-color-picker__label">
-            {t("color_picker.standard_colors")}
-          </div>
-
-          <div className="ic-color-picker__color-list">
-            {standardColors.map((hex, col) =>
-              renderColorSwatch(hex, hex, 8, col),
-            )}
-          </div>
+        <div className="ic-color-picker__color-list">
+          {standardColors.map((hex, col) =>
+            renderColorSwatch(hex, hex, 7, col),
+          )}
         </div>
+      </div>
 
-        <div className="ic-color-picker__divider" />
+      <div className="ic-color-picker__divider" />
 
-        <div className="ic-color-picker__section">
-          <div className="ic-color-picker__label">
-            {t("color_picker.recent")}
-          </div>
+      <div className="ic-color-picker__section">
+        <div className="ic-color-picker__label">{t("color_picker.recent")}</div>
 
-          <div className="ic-color-picker__color-list">
-            {recentColors.current.length > 0 ? (
-              recentColors.current.map(
-                ({ color: recentColor, hex: recentHex }, col) => (
-                  <button
-                    key={recentHex}
-                    type="button"
-                    className={[
-                      "ic-color-picker__swatch",
-                      isWhiteColor(recentHex)
-                        ? "ic-color-picker__swatch--white"
-                        : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    style={{ backgroundColor: recentHex }}
-                    onClick={() => handleColorSelect(recentColor, recentHex)}
-                    aria-label={recentHex}
-                    data-nav-row={7}
-                    data-nav-col={col}
-                  />
-                ),
-              )
-            ) : (
-              <div className="ic-color-picker__empty" />
-            )}
-
-            <Tooltip title={t("color_picker.add")} container={panelRef.current}>
+        <div className="ic-color-picker__color-list">
+          {recentColors.current.map(
+            ({ color: recentColor, hex: recentHex }, col) => (
               <button
+                key={recentHex}
                 type="button"
-                className="ic-color-picker__plus-button"
-                onClick={() => setPickerOpen(true)}
-                aria-label={t("color_picker.add")}
-                data-nav-row={7}
-                data-nav-col={recentColors.current.length}
-              >
-                <Plus />
-              </button>
-            </Tooltip>
-          </div>
+                className={[
+                  "ic-color-picker__swatch",
+                  isWhiteColor(recentHex)
+                    ? "ic-color-picker__swatch--white"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                style={{ backgroundColor: recentHex }}
+                onClick={() => handleColorSelect(recentColor, recentHex)}
+                aria-label={recentHex}
+                data-nav-row={8}
+                data-nav-col={col}
+              />
+            ),
+          )}
+
+          <Tooltip title={t("color_picker.add")} container={panelRef.current}>
+            <button
+              type="button"
+              className="ic-color-picker__plus-button"
+              onClick={() => setPickerOpen(true)}
+              aria-label={t("color_picker.add")}
+              data-nav-row={8}
+              data-nav-col={recentColors.current.length}
+            >
+              <Plus />
+            </button>
+          </Tooltip>
         </div>
       </div>
     </div>,
