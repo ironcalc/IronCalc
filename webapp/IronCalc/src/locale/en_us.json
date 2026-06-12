@@ -270,6 +270,8 @@
     "custom_theme_name": "Custom",
     "dark_color_label": "Dark",
     "edit_theme": "Edit theme",
+    "fol_hlink_color_label": "Followed hyperlink",
+    "hlink_color_label": "Hyperlink",
     "light_color_label": "Light",
     "manage_themes": "Manage themes",
     "panel_title": "Themes",

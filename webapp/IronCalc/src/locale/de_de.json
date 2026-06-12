@@ -270,6 +270,8 @@
     "custom_theme_name": "Benutzerdefiniert",
     "dark_color_label": "Dunkel",
     "edit_theme": "Design bearbeiten",
+    "fol_hlink_color_label": "Besuchter Hyperlink",
+    "hlink_color_label": "Hyperlink",
     "light_color_label": "Hell",
     "manage_themes": "Designs verwalten",
     "panel_title": "Designs",
