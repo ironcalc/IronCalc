@@ -154,6 +154,18 @@
   flex-shrink: 0;
 }
 
+.app-ic-wd-storage-warning .app-ic-wd-storage-warning-icon {
+  color: var(--palette-error-main);
+}
+
+.app-ic-wd-storage-warning-title {
+  color: var(--palette-error-main);
+}
+
+.app-ic-wd-storage-warning a {
+  color: var(--palette-primary-main);
+}
+
 .app-ic-wd-action-group {
   display: flex;
   flex-direction: column;

@@ -16,6 +16,7 @@
     "blank_workbook_description": "Crea desde cero o sube tu propio archivo.",
     "import_workbook": "Importar libro",
     "import_workbook_description": "Abre un archivo de hoja de cálculo existente.",
+    "storage_warning": "<warn>Achtung!</warn> Esta aplicación es una prueba de concepto y no un producto terminado. Puedes experimentar libremente, compartir modelos y descargarlos o subirlos, pero no compartas ni subas modelos con datos sensibles o privados. Los datos se eliminarán periódicamente. <docsLink>Leer más</docsLink>",
     "templates": {
       "choose_template": "Elegir una plantilla",
       "templates": "Plantillas",
