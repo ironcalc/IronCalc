@@ -16,6 +16,7 @@
     "blank_workbook_description": "Von Grund auf erstellen oder eigene Datei hochladen.",
     "import_workbook": "Arbeitsmappe importieren",
     "import_workbook_description": "Eine vorhandene Tabellendatei öffnen.",
+    "storage_warning": "<warn>Achtung!</warn> Diese App ist ein Proof of Concept und kein fertiges Produkt. Sie können gerne experimentieren, Modelle teilen sowie herunter- und hochladen, aber teilen oder laden Sie keine Modelle mit sensiblen oder privaten Daten hoch. Daten werden regelmäßig gelöscht. <docsLink>Mehr erfahren</docsLink>",
     "templates": {
       "choose_template": "Vorlage auswählen",
       "templates": "Vorlagen",

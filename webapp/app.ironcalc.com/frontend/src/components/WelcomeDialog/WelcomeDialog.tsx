@@ -2,10 +2,10 @@ import {
   IconButton,
   IronCalcIconWhite as IronCalcIcon,
 } from "@ironcalc/workbook";
-import { CloudOff, Plus, Upload, X } from "lucide-react";
+import { Plus, TriangleAlert, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import TemplatesList from "./TemplatesList";
 import { useDialogFocus } from "./useDialogFocus";
 import { useDialogKeyDown } from "./useDialogKeyDown";
@@ -94,10 +94,24 @@ function WelcomeDialog({
               </div>
             </div>
             <div className="app-ic-wd-storage-warning">
-              <CloudOff />
+              <TriangleAlert className="app-ic-wd-storage-warning-icon" />
               <div>
-                {t("file_bar.title_input.warning_text1")}
-                <strong>{t("file_bar.title_input.warning_text2")}</strong>
+                <Trans
+                  i18nKey="welcome_dialog.storage_warning"
+                  components={{
+                    warn: (
+                      <strong className="app-ic-wd-storage-warning-title" />
+                    ),
+                    docsLink: (
+                      // biome-ignore lint/a11y/useAnchorContent: content is provided by the translation
+                      <a
+                        href="https://docs.ironcalc.com/web-application/about.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      />
+                    ),
+                  }}
+                />
               </div>
             </div>
           </div>

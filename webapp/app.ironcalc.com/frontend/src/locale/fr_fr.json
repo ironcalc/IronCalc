@@ -16,6 +16,7 @@
     "blank_workbook_description": "Créez à partir de zéro ou téléchargez votre propre fichier.",
     "import_workbook": "Importer un classeur",
     "import_workbook_description": "Ouvrir un fichier tableur existant.",
+    "storage_warning": "<warn>Achtung!</warn> Cette application est une preuve de concept et non un produit fini. Vous êtes libre d'expérimenter, de partager des modèles et de les télécharger ou les importer, mais ne partagez pas et n'importez pas de modèles contenant des données sensibles ou privées. Les données seront supprimées périodiquement. <docsLink>En savoir plus</docsLink>",
     "templates": {
       "choose_template": "Choisir un modèle",
       "templates": "Modèles",
