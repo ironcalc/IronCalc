@@ -75,3 +75,79 @@ fn test_index_array_strings_and_booleans() {
     assert_eq!(model._get_text("A1"), "TRUE");
     assert_eq!(model._get_text("A2"), "b");
 }
+
+// ── Zero / missing indices select whole rows, columns or the entire array ─────
+
+#[test]
+fn test_index_missing_both_returns_whole_array() {
+    let mut model = new_empty_model();
+    // Missing row and column -> the whole array spills.
+    model._set("A1", "=INDEX({1,2,3,4},,)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("C1"), "3");
+    assert_eq!(model._get_text("D1"), "4");
+}
+
+#[test]
+fn test_index_missing_row_returns_whole_column() {
+    let mut model = new_empty_model();
+    // Missing row, column 1 -> the whole first column spills down.
+    model._set("A1", "=INDEX({1,2;3,4},,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "3");
+}
+
+#[test]
+fn test_index_zero_row_returns_whole_column() {
+    let mut model = new_empty_model();
+    // A row index of 0 behaves like a missing row.
+    model._set("A1", "=INDEX({1,2,3;4,5,6},0,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "4");
+}
+
+#[test]
+fn test_index_zero_column_returns_whole_row() {
+    let mut model = new_empty_model();
+    // A column index of 0 (with the area argument) selects the whole row.
+    model._set("A1", "=INDEX({1,2,3},1,0,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("C1"), "3");
+}
+
+#[test]
+fn test_index_negative_row_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=INDEX({1,2,3;4,5,6},-1,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+}
+
+#[test]
+fn test_index_area_out_of_range_is_ref_error() {
+    let mut model = new_empty_model();
+    // Only one area exists, so area_num = 2 is #REF!.
+    model._set("A1", "=INDEX({1,2,3},1,0,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#REF!");
+}
+
+#[test]
+fn test_index_range_missing_row_spills_column() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("B1", "30");
+    model._set("B2", "40");
+    // Missing row, column 2 of A1:B2 -> the whole second column spills.
+    model._set("D1", "=INDEX(A1:B2,,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "30");
+    assert_eq!(model._get_text("D2"), "40");
+}
