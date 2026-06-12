@@ -2,6 +2,7 @@ import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { getThemeList } from "@ironcalc/wasm";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { init } from "../../index";
 import ColorPicker from "./ColorPicker";
 
@@ -29,6 +30,7 @@ function ColorPickerStory({ theme: themeName }: ColorPickerStoryProps) {
   // must be initialized before rendering the picker.
   const [themes, setThemes] = useState<IronCalcTheme[] | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +66,7 @@ function ColorPickerStory({ theme: themeName }: ColorPickerStoryProps) {
       <ColorPicker
         color={color}
         defaultColor="#000000"
-        title="Default"
+        title={t("color_picker.default")}
         onChange={setColor}
         onClose={() => {}}
         anchorEl={anchorRef}
