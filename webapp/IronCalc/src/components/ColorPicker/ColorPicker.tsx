@@ -13,6 +13,7 @@ import { getFocusableElements } from "../util";
 import "./color-picker.css";
 import type { Color, IronCalcTheme } from "@ironcalc/wasm";
 import { createPortal } from "react-dom";
+import { Tooltip } from "../Tooltip/Tooltip";
 import useKeyDown from "./useKeyDown";
 import {
   computeThemeGrid,
@@ -380,17 +381,18 @@ const ColorPicker = ({
               <div className="ic-color-picker__empty" />
             )}
 
-            <button
-              type="button"
-              className="ic-color-picker__plus-button"
-              onClick={() => setPickerOpen(true)}
-              title={t("color_picker.add")}
-              aria-label={t("color_picker.add")}
-              data-nav-row={7}
-              data-nav-col={recentColors.current.length}
-            >
-              <Plus />
-            </button>
+            <Tooltip title={t("color_picker.add")} container={panelRef.current}>
+              <button
+                type="button"
+                className="ic-color-picker__plus-button"
+                onClick={() => setPickerOpen(true)}
+                aria-label={t("color_picker.add")}
+                data-nav-row={7}
+                data-nav-col={recentColors.current.length}
+              >
+                <Plus />
+              </button>
+            </Tooltip>
           </div>
         </div>
       </div>
