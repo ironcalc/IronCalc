@@ -42,14 +42,20 @@ const Themes = ({
 }: ThemesProps) => {
   const { t } = useTranslation();
   const [themes, setThemes] = useState<IronCalcTheme[]>(builtinThemes);
+  let allThemes = themes;
+  if (!themes.some((theme) => themeEquals(theme, currentTheme))) {
+    allThemes = [...themes, currentTheme];
+  }
   const [selectedIndex, setSelectedIndex] = useState(() => {
-    const index = themes.findIndex((theme) => themeEquals(theme, currentTheme));
+    const index = allThemes.findIndex((theme) =>
+      themeEquals(theme, currentTheme),
+    );
     return index === -1 ? 0 : index;
   });
 
   const selectTheme = (index: number) => {
     setSelectedIndex(index);
-    onThemePicked(themes[index]);
+    onThemePicked(allThemes[index]);
   };
   const [editing, setEditing] = useState<IronCalcTheme | null>(null);
 
@@ -141,7 +147,7 @@ const Themes = ({
         role="listbox"
         aria-label={t("themes.panel_title")}
       >
-        {themes.map((theme, i) => (
+        {allThemes.map((theme, i) => (
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: themes list has stable order
             key={i}
