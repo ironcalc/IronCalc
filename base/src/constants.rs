@@ -1,16 +1,16 @@
 #![deny(missing_docs)]
 
 /// Default column width in pixels
-pub(crate) const DEFAULT_COLUMN_WIDTH: f64 = 70.0;
+pub(crate) const DEFAULT_COLUMN_WIDTH: f64 = 90.0;
 
 /// Default row height in pixels
-pub(crate) const DEFAULT_ROW_HEIGHT: f64 = 20.0;
+pub(crate) const DEFAULT_ROW_HEIGHT: f64 = 25.0;
 
 /// A column width of Excel value `w` will result in `w * COLUMN_WIDTH_FACTOR` pixels
-pub(crate) const COLUMN_WIDTH_FACTOR: f64 = 7.0;
+pub const COLUMN_WIDTH_FACTOR: f64 = 9.0;
 
 /// A row height of Excel value `h` will result in `h * ROW_HEIGHT_FACTOR` pixels
-pub(crate) const ROW_HEIGHT_FACTOR: f64 = 1.25; // 20.0 / 16.0
+pub const ROW_HEIGHT_FACTOR: f64 = 1.5625; // 25.0 / 16.0
 
 /// Default window height in pixels
 pub(crate) const DEFAULT_WINDOW_HEIGHT: i64 = 600;

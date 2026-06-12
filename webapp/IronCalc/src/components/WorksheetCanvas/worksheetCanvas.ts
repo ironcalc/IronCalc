@@ -640,7 +640,7 @@ export default class WorksheetCanvas {
       let textY: number;
       // The idea is that in the present font-size and default row heigh,
       // top/bottom and center horizontalAlign coincide
-      const verticalPadding = 4;
+      const verticalPadding = 6.5; // default row height is 25 and font size is 13, so (25 - 13) / 2
       if (horizontalAlign === "right") {
         textX = width - cellPadding + x - textWidth / 2;
       } else if (horizontalAlign === "center") {
