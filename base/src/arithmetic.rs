@@ -140,13 +140,13 @@ impl<'a> Model<'a> {
 
                 let mut array = Vec::new();
                 for i in 0..n {
-                    let row1 = a1.get(i);
-                    let row2 = a2.get(i);
+                    let row1 = bcast_idx(n1, i).and_then(|ri| a1.get(ri));
+                    let row2 = bcast_idx(n2, i).and_then(|ri| a2.get(ri));
 
                     let mut data_row = Vec::new();
                     for j in 0..m {
-                        let val1 = row1.and_then(|r| r.get(j));
-                        let val2 = row2.and_then(|r| r.get(j));
+                        let val1 = row1.and_then(|r| bcast_idx(m1, j).and_then(|cj| r.get(cj)));
+                        let val2 = row2.and_then(|r| bcast_idx(m2, j).and_then(|cj| r.get(cj)));
 
                         match (val1, val2) {
                             (Some(v1), Some(v2)) => match (to_f64(v1), to_f64(v2)) {
@@ -220,18 +220,20 @@ impl<'a> Model<'a> {
                     .collect(),
             ),
             (StringOrArray::Array(a1), StringOrArray::Array(a2)) => {
-                let rows = a1.len().max(a2.len());
-                let cols = a1
-                    .first()
-                    .map(|r| r.len())
-                    .unwrap_or(0)
-                    .max(a2.first().map(|r| r.len()).unwrap_or(0));
+                let n1 = a1.len();
+                let m1 = a1.first().map(|r| r.len()).unwrap_or(0);
+                let n2 = a2.len();
+                let m2 = a2.first().map(|r| r.len()).unwrap_or(0);
+                let rows = n1.max(n2);
+                let cols = m1.max(m2);
                 let mut array = Vec::with_capacity(rows);
                 for ri in 0..rows {
+                    let row1 = bcast_idx(n1, ri).and_then(|i| a1.get(i));
+                    let row2 = bcast_idx(n2, ri).and_then(|i| a2.get(i));
                     let mut data_row = Vec::with_capacity(cols);
                     for ci in 0..cols {
-                        let v1 = a1.get(ri).and_then(|r| r.get(ci));
-                        let v2 = a2.get(ri).and_then(|r| r.get(ci));
+                        let v1 = row1.and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)));
+                        let v2 = row2.and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)));
                         let node = match (v1, v2) {
                             (Some(v1), Some(v2)) => concat_nodes(v1, v2),
                             _ => ArrayNode::Error(Error::VALUE),
@@ -313,18 +315,24 @@ impl<'a> Model<'a> {
                     .collect(),
             ),
             (ValueOrArray::Array(la), ValueOrArray::Array(ra)) => {
-                let rows = la.len().max(ra.len());
-                let cols = la
-                    .first()
-                    .map(|r| r.len())
-                    .unwrap_or(0)
-                    .max(ra.first().map(|r| r.len()).unwrap_or(0));
+                let n1 = la.len();
+                let m1 = la.first().map(|r| r.len()).unwrap_or(0);
+                let n2 = ra.len();
+                let m2 = ra.first().map(|r| r.len()).unwrap_or(0);
+                let rows = n1.max(n2);
+                let cols = m1.max(m2);
                 let mut array = Vec::with_capacity(rows);
                 for ri in 0..rows {
+                    let lrow = bcast_idx(n1, ri).and_then(|i| la.get(i));
+                    let rrow = bcast_idx(n2, ri).and_then(|i| ra.get(i));
                     let mut data_row = Vec::with_capacity(cols);
                     for ci in 0..cols {
-                        let lv = la.get(ri).and_then(|r| r.get(ci)).map(node_to_calc);
-                        let rv = ra.get(ri).and_then(|r| r.get(ci)).map(node_to_calc);
+                        let lv = lrow
+                            .and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)))
+                            .map(node_to_calc);
+                        let rv = rrow
+                            .and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)))
+                            .map(node_to_calc);
                         let node = match (lv, rv) {
                             (Some(lv), Some(rv)) => ArrayNode::Boolean(apply(&lv, &rv)),
                             _ => ArrayNode::Error(Error::VALUE),

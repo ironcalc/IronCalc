@@ -101,6 +101,7 @@ macro_rules! time_part_fn {
     };
 }
 
+use crate::arithmetic::bcast_idx;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
@@ -666,14 +667,21 @@ impl<'a> Model<'a> {
                 let max_rows = dims(&year_na).0.max(dims(&month_na).0).max(dims(&day_na).0);
                 let max_cols = dims(&year_na).1.max(dims(&month_na).1).max(dims(&day_na).1);
 
-                // Extract a scalar f64 from a NumberOrArray element at (row, col).
+                // Extract a scalar f64 from a NumberOrArray element at (row, col),
+                // applying Excel's size-1 broadcasting so a singleton row/column
+                // repeats across the other arguments instead of producing #N/A.
                 // Pass row/col as metavariables to avoid macro-hygiene scope issues.
                 macro_rules! elem {
                     ($na:expr, $row:expr, $col:expr) => {
                         match &$na {
                             NumberOrArray::Number(f) => Ok(*f),
                             NumberOrArray::Array(a) => {
-                                match a.get($row).and_then(|r| r.get($col)) {
+                                let n = a.len();
+                                let m = a.first().map_or(0, |r| r.len());
+                                let value = bcast_idx(n, $row)
+                                    .and_then(|ri| a.get(ri))
+                                    .and_then(|r| bcast_idx(m, $col).and_then(|cj| r.get(cj)));
+                                match value {
                                     None => Err(Error::NA),
                                     Some(ArrayNode::Number(f)) => Ok(*f),
                                     Some(ArrayNode::Boolean(b)) => Ok(if *b { 1.0 } else { 0.0 }),

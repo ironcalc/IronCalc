@@ -1655,7 +1655,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Countifs => not_implemented(args),
         Function::Maxifs => not_implemented(args),
         Function::Minifs => not_implemented(args),
-        Function::Date => not_implemented(args),
+        // DATE broadcasts element-wise: an array/range argument yields an array.
+        Function::Date => scalar_arguments(args),
         Function::Datedif => not_implemented(args),
         Function::Datevalue => not_implemented(args),
         Function::Day => scalar_arguments(args),

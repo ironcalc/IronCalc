@@ -95,3 +95,44 @@ fn text_and_date_parts_broadcast_over_range() {
     assert_eq!(model._get_text("E1"), "2024");
     assert_eq!(model._get_text("E2"), "2024");
 }
+
+// Regression: Excel's size-1 broadcasting for element-wise operators when the
+// two operands have different (but compatible) shapes. A 2×1 array combined
+// with a 1×2 array must produce a 2×2 result, with the singleton row/column
+// repeating — not #VALUE! holes from out-of-range indexing.
+
+#[test]
+fn arithmetic_size_one_broadcast() {
+    let mut model = new_empty_model();
+    // {1;2} + {10,20} -> 2x2
+    model._set("A1", "={1;2}+{10,20}");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "11");
+    assert_eq!(model._get_text("B1"), "21");
+    assert_eq!(model._get_text("A2"), "12");
+    assert_eq!(model._get_text("B2"), "22");
+}
+
+#[test]
+fn concatenate_size_one_broadcast() {
+    let mut model = new_empty_model();
+    // {"a";"b"} & {"x","y"} -> 2x2
+    model._set("A1", "={\"a\";\"b\"}&{\"x\",\"y\"}");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "ax");
+    assert_eq!(model._get_text("B1"), "ay");
+    assert_eq!(model._get_text("A2"), "bx");
+    assert_eq!(model._get_text("B2"), "by");
+}
+
+#[test]
+fn comparison_size_one_broadcast() {
+    let mut model = new_empty_model();
+    // {1;2} = {1,2} -> 2x2
+    model._set("A1", "={1;2}={1,2}");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "TRUE");
+    assert_eq!(model._get_text("B1"), "FALSE");
+    assert_eq!(model._get_text("A2"), "FALSE");
+    assert_eq!(model._get_text("B2"), "TRUE");
+}
