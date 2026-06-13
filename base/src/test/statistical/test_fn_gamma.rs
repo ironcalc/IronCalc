@@ -111,3 +111,55 @@ fn test_fn_gamma_inv() {
     assert_eq!(model._get_text("A9"), *"1.386294361");
     assert_eq!(model._get_text("A10"), *"8.668951184");
 }
+
+#[test]
+fn test_fn_gammaln() {
+    let mut model = new_empty_model();
+
+    // Valid inputs
+    model._set("A1", "=GAMMALN(0.5)");
+
+    // Wrong number of arguments -> #ERROR!
+    model._set("A2", "=GAMMALN()");
+    model._set("A3", "=GAMMALN(0.5, 9)");
+
+    // Should accept booleans
+    model._set("A4", "=GAMMALN(TRUE)");
+    model._set("A5", "=GAMMALN(FALSE)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"0.572364943");
+
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+
+    assert_eq!(model._get_text("A4"), *"0");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+}
+
+#[test]
+fn test_fn_gammaln_precise() {
+    let mut model = new_empty_model();
+
+    // Valid inputs
+    model._set("A1", "=GAMMALN.PRECISE(0.5)");
+
+    // Wrong number of arguments -> #ERROR!
+    model._set("A2", "=GAMMALN.PRECISE()");
+    model._set("A3", "=GAMMALN.PRECISE(0.5, 9)");
+
+    // Should accept booleans
+    model._set("A4", "=GAMMALN.PRECISE(TRUE)");
+    model._set("A5", "=GAMMALN.PRECISE(FALSE)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"0.572364943");
+
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+
+    assert_eq!(model._get_text("A4"), *"0");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+}
