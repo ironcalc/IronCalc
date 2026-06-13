@@ -10,12 +10,12 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
+        let x = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
 
-        let lambda = match self.get_number_no_bools(&args[1], cell) {
+        let lambda = match self.get_number(&args[1], cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
