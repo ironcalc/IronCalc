@@ -3,6 +3,7 @@ import {
   ArrowUp,
   Eye,
   EyeOff,
+  MoveVertical,
   Plus,
   Snowflake,
   Trash2,
@@ -23,6 +24,7 @@ interface RowHeaderContextMenuProps {
   onDeleteRows: () => void;
   onMoveRowsUp: () => void;
   onMoveRowsDown: () => void;
+  onSetRowHeight: () => void;
   onHideRows: () => void;
   onShowHiddenRows: () => void;
   range: {
@@ -48,6 +50,7 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
     onDeleteRows,
     onMoveRowsUp,
     onMoveRowsDown,
+    onSetRowHeight,
     onHideRows,
     onShowHiddenRows,
     range,
@@ -77,6 +80,12 @@ const RowHeaderContextMenu = (properties: RowHeaderContextMenuProps) => {
       </MenuItem>
       <MenuItem icon={<ArrowDown />} onClick={onMoveRowsDown}>
         {t("context_menu.row_header.move_rows_down")}
+      </MenuItem>
+
+      <MenuDivider />
+
+      <MenuItem icon={<MoveVertical />} onClick={onSetRowHeight}>
+        {t("context_menu.row_header.set_row_height")}
       </MenuItem>
 
       <MenuDivider />

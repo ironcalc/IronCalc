@@ -133,6 +133,7 @@
       "insert_columns_before": "Insert {{count}} column(s) left",
       "move_columns_left": "Move columns left",
       "move_columns_right": "Move columns right",
+      "set_column_width": "Column width...",
       "show_hidden_columns": "Show hidden columns",
       "unfreeze_columns": "Unfreeze columns"
     },
@@ -146,6 +147,7 @@
       "insert_rows_below": "Insert {{count}} row(s) below",
       "move_rows_down": "Move rows down",
       "move_rows_up": "Move rows up",
+      "set_row_height": "Row height...",
       "show_hidden_rows": "Show hidden rows",
       "unfreeze_rows": "Unfreeze rows"
     }
@@ -204,7 +206,6 @@
     "name_already_exists": "A style with this name already exists",
     "new_style": "New style",
     "panel_title": "Cell styles",
-
     "update_style": "Edit style"
   },
   "navigation": {

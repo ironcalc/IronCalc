@@ -133,6 +133,7 @@
       "insert_columns_before": "{{count}} Spalte(n) links einfügen",
       "move_columns_left": "Spalten nach links verschieben",
       "move_columns_right": "Spalten nach rechts verschieben",
+      "set_column_width": "Spaltenbreite...",
       "show_hidden_columns": "Ausgeblendete Spalten einblenden",
       "unfreeze_columns": "Fixierung der Spalten aufheben"
     },
@@ -146,6 +147,7 @@
       "insert_rows_below": "{{count}} Zeile(n) unterhalb einfügen",
       "move_rows_down": "Zeilen nach unten verschieben",
       "move_rows_up": "Zeilen nach oben verschieben",
+      "set_row_height": "Zeilenhöhe...",
       "show_hidden_rows": "Ausgeblendete Zeilen einblenden",
       "unfreeze_rows": "Fixierung der Zeilen aufheben"
     }
@@ -204,7 +206,6 @@
     "name_already_exists": "Ein Stil mit diesem Namen existiert bereits",
     "new_style": "Neuer Stil",
     "panel_title": "Zellformate",
-
     "update_style": "Stil bearbeiten"
   },
   "navigation": {

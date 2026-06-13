@@ -133,6 +133,7 @@
       "insert_columns_before": "Insérer {{count}} colonne(s) à gauche",
       "move_columns_left": "Déplacer les colonnes vers la gauche",
       "move_columns_right": "Déplacer les colonnes vers la droite",
+      "set_column_width": "Largeur de colonne...",
       "show_hidden_columns": "Afficher les colonnes masquées",
       "unfreeze_columns": "Annuler le figeage des colonnes"
     },
@@ -146,6 +147,7 @@
       "insert_rows_below": "Insérer {{count}} ligne(s) en dessous",
       "move_rows_down": "Déplacer les lignes vers le bas",
       "move_rows_up": "Déplacer les lignes vers le haut",
+      "set_row_height": "Hauteur de ligne...",
       "show_hidden_rows": "Afficher les lignes masquées",
       "unfreeze_rows": "Annuler le figeage des lignes"
     }
@@ -204,7 +206,6 @@
     "name_already_exists": "Un style avec ce nom existe déjà",
     "new_style": "Nouveau style",
     "panel_title": "Styles de cellule",
-
     "update_style": "Modifier le style"
   },
   "navigation": {

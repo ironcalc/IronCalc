@@ -133,6 +133,7 @@
       "insert_columns_before": "Inserisci {{count}} colonna(e) a sinistra",
       "move_columns_left": "Sposta le colonne a sinistra",
       "move_columns_right": "Sposta le colonne a destra",
+      "set_column_width": "Larghezza colonna...",
       "show_hidden_columns": "Mostra colonne nascoste",
       "unfreeze_columns": "Rimuovi blocco delle colonne"
     },
@@ -146,6 +147,7 @@
       "insert_rows_below": "Inserisci {{count}} riga(e) sotto",
       "move_rows_down": "Sposta le righe verso il basso",
       "move_rows_up": "Sposta le righe verso l’alto",
+      "set_row_height": "Altezza riga...",
       "show_hidden_rows": "Mostra righe nascoste",
       "unfreeze_rows": "Rimuovi blocco delle righe"
     }
@@ -204,7 +206,6 @@
     "name_already_exists": "Esiste già uno stile con questo nome",
     "new_style": "Nuovo stile",
     "panel_title": "Stili di cella",
-
     "update_style": "Modifica stile"
   },
   "navigation": {
