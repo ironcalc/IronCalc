@@ -12,11 +12,9 @@ import { useTooltipPosition } from "./useTooltipPosition";
 export interface TooltipProperties {
   title: string;
   children: ReactElement;
-  /** Portal target; pass an elevated container (menu, dialog) to paint above it */
-  container?: Element | null;
 }
 
-export function Tooltip({ title, children, container }: TooltipProperties) {
+export function Tooltip({ title, children }: TooltipProperties) {
   const tooltipId = useId();
   const [visible, setVisible] = useState(false);
   const { triggerRef, tooltipRef, position } = useTooltipPosition(visible);
@@ -60,7 +58,7 @@ export function Tooltip({ title, children, container }: TooltipProperties) {
         >
           {title}
         </div>,
-        container ?? document.body,
+        document.body,
       )}
     </>
   );
