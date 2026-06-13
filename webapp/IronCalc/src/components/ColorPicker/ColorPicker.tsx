@@ -32,6 +32,8 @@ type ColorPickerProps = {
 
 const FALLBACK_COLOR = "#272525"; // --palette-common-black
 
+const MAX_RECENT_COLORS = 29;
+
 function colorsEqual(a: Color, b: Color): boolean {
   if (a === undefined || b === undefined) {
     return a === b;
@@ -127,7 +129,7 @@ const ColorPicker = ({
       recentColors.current = [
         { color: colorValue, hex: displayHex },
         ...recentColors.current,
-      ];
+      ].slice(0, MAX_RECENT_COLORS);
     }
 
     setSelectedColor(colorValue ?? FALLBACK_COLOR);
@@ -194,7 +196,6 @@ const ColorPicker = ({
       className="ic-color-picker"
       style={position}
       role="dialog"
-      aria-modal="true"
       aria-label={t("color_picker.add")}
       onKeyDown={onKeyDown}
       onClick={(event) => {
