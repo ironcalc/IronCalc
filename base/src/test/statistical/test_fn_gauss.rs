@@ -33,3 +33,15 @@ fn test_fn_gauss_smoke() {
     assert_eq!(model._get_text("G6"), *"#ERROR!");
     assert_eq!(model._get_text("G7"), *"#ERROR!");
 }
+
+#[test]
+fn test_fn_gauss_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", "=GAUSS(TRUE)");
+    model._set("A2", "=GAUSS(FALSE)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"0.341344746");
+    assert_eq!(model._get_text("A2"), *"0");
+}
