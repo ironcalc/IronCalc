@@ -2,7 +2,7 @@ import {
   IconButton,
   IronCalcIconWhite as IronCalcIcon,
 } from "@ironcalc/workbook";
-import { Plus, TriangleAlert, Upload, X } from "lucide-react";
+import { LayoutTemplate, Plus, TriangleAlert, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trans, useTranslation } from "react-i18next";
@@ -15,10 +15,12 @@ function WelcomeDialog({
   onClose,
   onSelectTemplate,
   onModelUpload,
+  onOpenTemplates,
 }: {
   onClose: () => void;
   onSelectTemplate: (templateId: string) => void;
   onModelUpload: (arrayBuffer: ArrayBuffer, fileName: string) => Promise<void>;
+  onOpenTemplates: () => void;
 }) {
   const { t } = useTranslation();
   const [gridScrolled, setGridScrolled] = useState(false);
@@ -72,6 +74,12 @@ function WelcomeDialog({
                   <IronCalcIcon />
                 </div>
                 <span className="app-ic-wd-logo-title">IronCalc</span>
+                <IconButton
+                  className="app-ic-wd-mobile-close"
+                  icon={<X />}
+                  aria-label={t("welcome_dialog.close_dialog")}
+                  onClick={onClose}
+                />
               </div>
               <div className="app-ic-wd-action-group">
                 <button
@@ -90,6 +98,14 @@ function WelcomeDialog({
                 >
                   <Upload />
                   {t("welcome_dialog.import_workbook")}
+                </button>
+                <button
+                  type="button"
+                  className="app-ic-wd-action-button app-ic-wd-action-button--mobile-only"
+                  onClick={onOpenTemplates}
+                >
+                  <LayoutTemplate />
+                  {t("welcome_dialog.templates.templates")}
                 </button>
               </div>
             </div>

@@ -231,6 +231,10 @@ function App() {
             }
             setShowWelcomeDialog(false);
           }}
+          onOpenTemplates={() => {
+            setShowWelcomeDialog(false);
+            setTemplatesDialogOpen(true);
+          }}
           onModelUpload={async (arrayBuffer: ArrayBuffer, fileName: string) => {
             const blob = await uploadFile(arrayBuffer, fileName);
             const bytes = new Uint8Array(await blob.arrayBuffer());
