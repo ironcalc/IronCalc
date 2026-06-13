@@ -692,7 +692,7 @@ export default class WorksheetCanvas {
         ((column < frozenColumns && spillColumn <= frozenColumns) ||
           column > frozenColumns)
       ) {
-        rightColumnX += this.model.getColumnWidth(selectedSheet, spillColumn);
+        rightColumnX += this.getColumnWidth(selectedSheet, spillColumn);
         // marks (row, spillColumn) as spilling so we don't draw a border to the left
         this.spills.set(`${row}-${spillColumn}`, 1);
         spillColumn += 1;
@@ -839,6 +839,34 @@ export default class WorksheetCanvas {
         y + height,
         true,
       );
+    } else {
+      // If the cell spills to the right we don't want to set the border but we still need to fill
+      // the border gap with the background color
+      const leftExtended = this.model.getCellStyle(
+        selectedSheet,
+        row,
+        column - 1,
+      );
+      const borderLeftStyle = "thin";
+      const leftStyle = leftExtended.style;
+      let borderLeftColor = null;
+      if (style.fill.color) {
+        borderLeftColor = this.model.resolveColor(style.fill.color);
+      } else if (leftStyle.fill.color) {
+        borderLeftColor = this.model.resolveColor(leftStyle.fill.color);
+      }
+      if (borderLeftColor) {
+        drawBorder(
+          context,
+          borderLeftStyle,
+          borderLeftColor,
+          x,
+          y,
+          x,
+          y + height,
+          true,
+        );
+      }
     }
 
     let borderTopColor = cellGridColor;
