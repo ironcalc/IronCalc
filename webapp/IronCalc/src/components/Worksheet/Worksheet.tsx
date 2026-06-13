@@ -637,7 +637,7 @@ const Worksheet = forwardRef(
           onSetColumnWidth={(): void => {
             const view = model.getSelectedView();
             const width = model.getColumnWidth(view.sheet, view.range[1]);
-            setColumnWidthDefault(`${Math.round(width)}`);
+            setColumnWidthDefault(`${width}`);
             setColumnWidthDialogOpen(true);
             setColHeaderContextMenuOpen(false);
           }}
@@ -761,7 +761,7 @@ const Worksheet = forwardRef(
           onSetRowHeight={(): void => {
             const view = model.getSelectedView();
             const height = model.getRowHeight(view.sheet, view.range[0]);
-            setRowHeightDefault(`${Math.round(height)}`);
+            setRowHeightDefault(`${height}`);
             setRowHeightDialogOpen(true);
             setRowHeaderContextMenuOpen(false);
           }}
@@ -823,7 +823,7 @@ const Worksheet = forwardRef(
           onClose={() => setColumnWidthDialogOpen(false)}
           title={t("context_menu.column_header.set_column_width")}
           defaultValue={columnWidthDefault}
-          inputProps={{ type: "number", min: 0 }}
+          inputProps={{ type: "number", min: 0, step: "any" }}
           onSubmit={(value): void => {
             const width = Number.parseFloat(value);
             if (!Number.isFinite(width) || width < 0) {
@@ -841,7 +841,7 @@ const Worksheet = forwardRef(
           onClose={() => setRowHeightDialogOpen(false)}
           title={t("context_menu.row_header.set_row_height")}
           defaultValue={rowHeightDefault}
-          inputProps={{ type: "number", min: 0 }}
+          inputProps={{ type: "number", min: 0, step: "any" }}
           onSubmit={(value): void => {
             const height = Number.parseFloat(value);
             if (!Number.isFinite(height) || height < 0) {
