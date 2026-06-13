@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
+  MoveHorizontal,
   Plus,
   Snowflake,
   Trash2,
@@ -33,6 +34,7 @@ interface ColumnHeaderContextMenuProps {
   onShowHiddenColumns: () => void;
   onMoveColumnsLeft: () => void;
   onMoveColumnsRight: () => void;
+  onSetColumnWidth: () => void;
   range: Range;
   frozenColumnsCount: number;
   hiddenColumnsCount: number;
@@ -51,6 +53,7 @@ const ColumnHeaderContextMenu = (properties: ColumnHeaderContextMenuProps) => {
     onDeleteColumns,
     onMoveColumnsLeft,
     onMoveColumnsRight,
+    onSetColumnWidth,
     onHideColumns,
     onShowHiddenColumns,
     range,
@@ -84,6 +87,12 @@ const ColumnHeaderContextMenu = (properties: ColumnHeaderContextMenuProps) => {
       </MenuItem>
       <MenuItem icon={<ArrowRight />} onClick={onMoveColumnsRight}>
         {t("context_menu.column_header.move_columns_right")}
+      </MenuItem>
+
+      <MenuDivider />
+
+      <MenuItem icon={<MoveHorizontal />} onClick={onSetColumnWidth}>
+        {t("context_menu.column_header.set_column_width")}
       </MenuItem>
 
       <MenuDivider />

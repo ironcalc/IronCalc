@@ -133,6 +133,7 @@
       "insert_columns_before": "Insertar {{count}} columna(s) a la izquierda",
       "move_columns_left": "Mover columnas a la izquierda",
       "move_columns_right": "Mover columnas a la derecha",
+      "set_column_width": "Ancho de columna...",
       "show_hidden_columns": "Mostrar columnas ocultas",
       "unfreeze_columns": "Quitar fijación de columnas"
     },
@@ -146,6 +147,7 @@
       "insert_rows_below": "Insertar {{count}} fila(s) debajo",
       "move_rows_down": "Mover filas hacia abajo",
       "move_rows_up": "Mover filas hacia arriba",
+      "set_row_height": "Alto de fila...",
       "show_hidden_rows": "Mostrar filas ocultas",
       "unfreeze_rows": "Quitar fijación de filas"
     }
@@ -204,7 +206,6 @@
     "name_already_exists": "Ya existe un estilo con este nombre",
     "new_style": "Nuevo estilo",
     "panel_title": "Estilos de celda",
-
     "update_style": "Editar estilo"
   },
   "navigation": {

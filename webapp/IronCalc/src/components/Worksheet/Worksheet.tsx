@@ -26,7 +26,7 @@ import ColumnHeaderContextMenu from "./ContextMenus/ColumnHeader";
 import RowHeaderContextMenu from "./ContextMenus/RowHeader";
 import usePointer from "./usePointer";
 import "./worksheet.css";
-import { Alert } from "../Modal";
+import { Alert, Prompt } from "../Modal";
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -82,6 +82,10 @@ const Worksheet = forwardRef(
     const [rowColErrorTitle, setRowColErrorTitle] = useState<string | null>(
       null,
     );
+    const [columnWidthDialogOpen, setColumnWidthDialogOpen] = useState(false);
+    const [columnWidthDefault, setColumnWidthDefault] = useState("");
+    const [rowHeightDialogOpen, setRowHeightDialogOpen] = useState(false);
+    const [rowHeightDefault, setRowHeightDefault] = useState("");
 
     const ignoreScrollEventRef = useRef(false);
 
@@ -630,6 +634,13 @@ const Worksheet = forwardRef(
             }
             setColHeaderContextMenuOpen(false);
           }}
+          onSetColumnWidth={(): void => {
+            const view = model.getSelectedView();
+            const width = model.getColumnWidth(view.sheet, view.range[1]);
+            setColumnWidthDefault(`${Math.round(width)}`);
+            setColumnWidthDialogOpen(true);
+            setColHeaderContextMenuOpen(false);
+          }}
           onFreezeColumns={(): void => {
             const view = model.getSelectedView();
             model.setFrozenColumnsCount(view.sheet, view.column);
@@ -747,6 +758,13 @@ const Worksheet = forwardRef(
             }
             setRowHeaderContextMenuOpen(false);
           }}
+          onSetRowHeight={(): void => {
+            const view = model.getSelectedView();
+            const height = model.getRowHeight(view.sheet, view.range[0]);
+            setRowHeightDefault(`${Math.round(height)}`);
+            setRowHeightDialogOpen(true);
+            setRowHeaderContextMenuOpen(false);
+          }}
           onFreezeRows={(): void => {
             const view = model.getSelectedView();
             model.setFrozenRowsCount(view.sheet, view.row);
@@ -799,6 +817,42 @@ const Worksheet = forwardRef(
           onClose={() => setRowColErrorTitle(null)}
           title={rowColErrorTitle ?? ""}
           message={rowColErrorTitle ?? ""}
+        />
+        <Prompt
+          open={columnWidthDialogOpen}
+          onClose={() => setColumnWidthDialogOpen(false)}
+          title={t("context_menu.column_header.set_column_width")}
+          defaultValue={columnWidthDefault}
+          inputProps={{ type: "number", min: 0 }}
+          onSubmit={(value): void => {
+            const width = Number.parseFloat(value);
+            if (!Number.isFinite(width) || width < 0) {
+              return;
+            }
+            const view = model.getSelectedView();
+            const columnStart = view.range[1];
+            const columnEnd = view.range[3];
+            model.setColumnsWidth(view.sheet, columnStart, columnEnd, width);
+            worksheetCanvas.current?.renderSheet();
+          }}
+        />
+        <Prompt
+          open={rowHeightDialogOpen}
+          onClose={() => setRowHeightDialogOpen(false)}
+          title={t("context_menu.row_header.set_row_height")}
+          defaultValue={rowHeightDefault}
+          inputProps={{ type: "number", min: 0 }}
+          onSubmit={(value): void => {
+            const height = Number.parseFloat(value);
+            if (!Number.isFinite(height) || height < 0) {
+              return;
+            }
+            const view = model.getSelectedView();
+            const rowStart = view.range[0];
+            const rowEnd = view.range[2];
+            model.setRowsHeight(view.sheet, rowStart, rowEnd, height);
+            worksheetCanvas.current?.renderSheet();
+          }}
         />
       </div>
     );
