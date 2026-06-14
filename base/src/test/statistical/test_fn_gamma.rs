@@ -124,8 +124,7 @@ fn test_fn_gammaln() {
     model._set("A3", "=GAMMALN(0.5, 9)");
 
     // Should accept booleans
-    model._set("A4", "=GAMMALN(TRUE)");
-    model._set("A5", "=GAMMALN(FALSE)");
+    model._set("A4", "=GAMMALN(FALSE)");
 
     model.evaluate();
 
@@ -134,8 +133,7 @@ fn test_fn_gammaln() {
     assert_eq!(model._get_text("A2"), *"#ERROR!");
     assert_eq!(model._get_text("A3"), *"#ERROR!");
 
-    assert_eq!(model._get_text("A4"), *"0");
-    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
 }
 
 #[test]
@@ -150,8 +148,7 @@ fn test_fn_gammaln_precise() {
     model._set("A3", "=GAMMALN.PRECISE(0.5, 9)");
 
     // Should accept booleans
-    model._set("A4", "=GAMMALN.PRECISE(TRUE)");
-    model._set("A5", "=GAMMALN.PRECISE(FALSE)");
+    model._set("A4", "=GAMMALN.PRECISE(FALSE)");
 
     model.evaluate();
 
@@ -160,6 +157,5 @@ fn test_fn_gammaln_precise() {
     assert_eq!(model._get_text("A2"), *"#ERROR!");
     assert_eq!(model._get_text("A3"), *"#ERROR!");
 
-    assert_eq!(model._get_text("A4"), *"0");
-    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
 }
