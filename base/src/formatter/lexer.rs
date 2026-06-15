@@ -344,11 +344,22 @@ impl Lexer {
                                 Token::ILLEGAL
                             }
                         } else if c == '$' {
-                            // currency
+                            // currency: [$<symbol>] or [$<symbol>-<locale>]
+                            // (e.g. [$€-40C]). The optional "-<locale>" suffix
+                            // is consumed and ignored. Locale-only tokens like
+                            // [$-40C] keep the previous unsupported behaviour.
                             self.read_next_char();
                             if let Some(currency) = self.read_next_char() {
-                                if self.read_next_char() == Some(']') {
-                                    return Token::Currency(currency);
+                                if currency != '-' {
+                                    loop {
+                                        match self.read_next_char() {
+                                            Some(']') => {
+                                                return Token::Currency(currency)
+                                            }
+                                            Some(_) => continue,
+                                            None => break,
+                                        }
+                                    }
                                 }
                             }
                             self.set_error("Failed to parse currency");
