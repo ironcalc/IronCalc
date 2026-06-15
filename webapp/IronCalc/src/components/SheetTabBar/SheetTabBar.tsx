@@ -24,6 +24,8 @@ export interface SheetTabBarProps {
   onHideSheet: () => void;
   model: Model;
   onOpenRegionalSettings: () => void;
+  /** When false, sheet add/rename/delete affordances are hidden. */
+  canEdit: boolean;
 }
 
 function SheetTabBar(props: SheetTabBarProps) {
@@ -44,13 +46,15 @@ function SheetTabBar(props: SheetTabBarProps) {
   return (
     <div className="ic-sheet-tab-bar-container">
       <div className="ic-sheet-tab-bar-left-buttons-container">
-        <Tooltip title={t("navigation.add_sheet")}>
-          <IconButton
-            aria-label={t("navigation.add_sheet")}
-            icon={<Plus />}
-            onClick={props.onAddBlankSheet}
-          />
-        </Tooltip>
+        {props.canEdit && (
+          <Tooltip title={t("navigation.add_sheet")}>
+            <IconButton
+              aria-label={t("navigation.add_sheet")}
+              icon={<Plus />}
+              onClick={props.onAddBlankSheet}
+            />
+          </Tooltip>
+        )}
         <Tooltip title={t("navigation.sheet_list")}>
           <Menu
             trigger={
@@ -74,6 +78,7 @@ function SheetTabBar(props: SheetTabBarProps) {
           {nonHiddenSheets.map((tab) => (
             <SheetTab
               key={tab.sheetId}
+              canEdit={props.canEdit}
               name={tab.name}
               color={tab.color}
               selected={tab.index === selectedIndex}
