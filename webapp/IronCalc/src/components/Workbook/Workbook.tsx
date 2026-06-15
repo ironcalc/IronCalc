@@ -49,8 +49,13 @@ function colorToParam(color: Color): string {
   return `[${color[0]}, ${color[1]}]`;
 }
 
-const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
-  const { model, workbookState } = props;
+const Workbook = (props: {
+  model: Model;
+  workbookState: WorkbookState;
+  /** When false, the toolbar/formula bar are hidden and all edits are blocked. */
+  canEdit?: boolean;
+}) => {
+  const { model, workbookState, canEdit = true } = props;
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const worksheetRef = useRef<{
@@ -274,6 +279,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   // FIXME: I *think* we should have only one on onKeyPressed function that goes to
   // the Rust backend
   const { onKeyDown } = useKeyboardNavigation({
+    canEdit,
     onCellsDeleted: (): void => {
       const {
         sheet,
@@ -523,6 +529,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         }
       }}
       onPaste={(event: React.ClipboardEvent) => {
+        if (!canEdit) return;
         workbookState.clearCutRange();
         const { items } = event.clipboardData;
         if (!items) {
@@ -640,6 +647,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         event.stopPropagation();
       }}
       onCut={(event: React.ClipboardEvent) => {
+        if (!canEdit) return;
         const data = model.copyToClipboard();
         const sheet = model.getSelectedSheet();
         // '2024-10-18T14:07:37.599Z'
@@ -687,6 +695,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         setRedrawId((id) => id + 1);
       }}
     >
+      {canEdit && (
       <Toolbar
         canUndo={model.canUndo()}
         canRedo={model.canRedo()}
@@ -826,6 +835,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         onThemePicked={handleThemePicked}
         onOpenThemes={() => openDrawer("themes")}
       />
+      )}
       <div
         className="ic-workbook-worksheet-area-left"
         style={{
@@ -847,7 +857,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
           openDrawer={() => {
             openDrawer("namedRanges");
           }}
-          canEdit={isArrayFormula}
+          canEdit={canEdit && isArrayFormula}
         />
         <Worksheet
           model={model}
@@ -856,7 +866,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             setRedrawId((id) => id + 1);
           }}
           ref={worksheetRef}
-          canEdit={isArrayFormula}
+          canEdit={canEdit && isArrayFormula}
           onCut={(): void => {
             focusWorkbook();
             document.execCommand("cut");
@@ -869,6 +879,7 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
         />
 
         <SheetTabBar
+          canEdit={canEdit}
           sheets={info}
           selectedIndex={model.getSelectedSheet()}
           workbookState={workbookState}

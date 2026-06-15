@@ -16,6 +16,8 @@ interface IronCalcProperties {
   model: Model;
   themeVariables?: PartialIronCalcThemeVariables;
   rootContainer?: HTMLElement | null;
+  /** When false, renders without the toolbar/formula bar and blocks all edits. */
+  canEdit?: boolean;
 }
 
 export interface IronCalcHandle {
@@ -23,7 +25,7 @@ export interface IronCalcHandle {
 }
 
 const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
-  ({ themeVariables, model, rootContainer }, ref) => {
+  ({ themeVariables, model, rootContainer, canEdit = true }, ref) => {
     const root = rootContainer ?? document.body;
     useEffect(() => {
       if (root.classList.contains("ic-root")) {
@@ -53,7 +55,11 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
     return (
       <div className="ic-widget">
         <I18nextProvider i18n={i18n}>
-          <Workbook model={model} workbookState={new WorkbookState()} />
+          <Workbook
+            model={model}
+            workbookState={new WorkbookState()}
+            canEdit={canEdit}
+          />
         </I18nextProvider>
       </div>
     );
