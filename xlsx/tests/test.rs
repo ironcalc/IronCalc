@@ -470,6 +470,12 @@ fn test_relationship_whitespace_example() {
 }
 
 #[test]
+fn test_missing_r_on_row() {
+    let mut model = load_from_xlsx("tests/missing_r_on_row.xlsx", "en", "UTC", "en").unwrap();
+    model.evaluate();
+}
+
+#[test]
 // This tests theme color resolution against the workbook's `xl/theme/theme1.xml`
 // rather than the hardcoded Office 2013 palette. custom_theme_colors.xlsx ships
 // a custom theme where accent6 = #C9211E; B15 uses <fgColor theme="9"/>, which
