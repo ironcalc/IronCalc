@@ -2,7 +2,7 @@ import {
   IconButton,
   IronCalcIconWhite as IronCalcIcon,
 } from "@ironcalc/workbook";
-import { LayoutTemplate, Plus, TriangleAlert, Upload, X } from "lucide-react";
+import { LayoutTemplate, Plus, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trans, useTranslation } from "react-i18next";
@@ -88,7 +88,9 @@ function WelcomeDialog({
                   className="app-ic-wd-action-button"
                   onClick={() => onSelectTemplate("blank")}
                 >
-                  <Plus />
+                  <span className="app-ic-wd-action-button-icon">
+                    <Plus />
+                  </span>
                   {t("welcome_dialog.blank_workbook")}
                 </button>
                 <button
@@ -96,7 +98,9 @@ function WelcomeDialog({
                   className="app-ic-wd-action-button"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Upload />
+                  <span className="app-ic-wd-action-button-icon">
+                    <Upload />
+                  </span>
                   {t("welcome_dialog.import_workbook")}
                 </button>
                 <button
@@ -104,13 +108,14 @@ function WelcomeDialog({
                   className="app-ic-wd-action-button app-ic-wd-action-button--mobile-only"
                   onClick={onOpenTemplates}
                 >
-                  <LayoutTemplate />
+                  <span className="app-ic-wd-action-button-icon">
+                    <LayoutTemplate />
+                  </span>
                   {t("welcome_dialog.templates.templates")}
                 </button>
               </div>
             </div>
             <div className="app-ic-wd-storage-warning">
-              <TriangleAlert className="app-ic-wd-storage-warning-icon" />
               <div>
                 <Trans
                   i18nKey="welcome_dialog.storage_warning"
