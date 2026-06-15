@@ -292,7 +292,13 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
         .filter(|n| n.has_tag_name("cellXfs"))
         .collect::<Vec<Node>>()[0];
     for xfs in cell_xfs_nodes.children() {
-        let xf_id = get_attribute(&xfs, "xfId")?.parse::<i32>()?;
+        // `xfId` is optional on a cellXfs <xf> (it references cellStyleXfs;
+        // many Excel/LibreOffice files omit it). Default to 0 when absent.
+        let xf_id = xfs
+            .attribute("xfId")
+            .map(|s| s.parse::<i32>())
+            .transpose()?
+            .unwrap_or(0);
         let num_fmt_id = get_number(xfs, "numFmtId");
         let font_id = get_number(xfs, "fontId");
         let fill_id = get_number(xfs, "fillId");
