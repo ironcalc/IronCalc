@@ -133,7 +133,7 @@
       "insert_columns_before": "Insert {{count}} column(s) left",
       "move_columns_left": "Move columns left",
       "move_columns_right": "Move columns right",
-      "set_column_width": "Column width...",
+      "set_column_width": "Set column width",
       "show_hidden_columns": "Show hidden columns",
       "unfreeze_columns": "Unfreeze columns"
     },
@@ -147,7 +147,7 @@
       "insert_rows_below": "Insert {{count}} row(s) below",
       "move_rows_down": "Move rows down",
       "move_rows_up": "Move rows up",
-      "set_row_height": "Row height...",
+      "set_row_height": "Set row height",
       "show_hidden_rows": "Show hidden rows",
       "unfreeze_rows": "Unfreeze rows"
     }
