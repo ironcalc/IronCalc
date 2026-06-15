@@ -1,4 +1,4 @@
-import { Button, IconButton } from "@ironcalc/workbook";
+import { IconButton } from "@ironcalc/workbook";
 import { X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -23,21 +23,18 @@ function TemplatesDialog({
 }: TemplatesDialogProperties) {
   const { t } = useTranslation();
   const titleId = useId();
-  const [selectedTemplate, setSelectedTemplate] = useState(
-    "mortgage_calculator",
-  );
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [gridScrolled, setGridScrolled] = useState(false);
   const dialogRef = useDialogFocus(open);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const lastTemplateRef = useRef<HTMLButtonElement>(null);
 
   const handleClose = () => {
     onClose();
   };
 
   const { onKeyDown } = useDialogKeyDown({
-    focusableElements: [closeButtonRef, confirmButtonRef],
+    focusableElements: [closeButtonRef, lastTemplateRef],
     onClose: handleClose,
   });
 
@@ -91,19 +88,12 @@ function TemplatesDialog({
         </div>
         <div className="app-ic-wd-content">
           <TemplatesList
-            selectedTemplate={selectedTemplate}
-            handleTemplateSelect={setSelectedTemplate}
+            selectedTemplate=""
+            handleTemplateSelect={onSelectTemplate}
             categoryFilter={selectedCategory}
             onScroll={(e) => setGridScrolled(e.currentTarget.scrollTop > 0)}
+            lastItemRef={lastTemplateRef}
           />
-        </div>
-        <div className="app-ic-wd-footer">
-          <Button
-            ref={confirmButtonRef}
-            onClick={() => onSelectTemplate(selectedTemplate)}
-          >
-            {t("welcome_dialog.create_workbook")}
-          </Button>
         </div>
       </div>
     </div>,

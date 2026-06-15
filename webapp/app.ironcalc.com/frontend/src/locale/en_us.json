@@ -16,7 +16,7 @@
     "blank_workbook_description": "An empty grid, ready when you are.",
     "import_workbook": "Import .xlsx",
     "import_workbook_description": "Open a spreadsheet from your computer.",
-    "storage_warning": "<warn>Achtung!</warn> This app is a proof of concept and not a finished product. You are free to play around, share models, and download and upload models, but don't share or upload models with sensitive or private data. Data will be deleted periodically. <docsLink>Read more</docsLink>",
+    "storage_warning": "<warn>Heads up!</warn>  This app is a proof of concept, not a finished product. Feel free to explore, share, and upload/download models. Please avoid sensitive or private data, since everything gets deleted periodically. <docsLink>Read more</docsLink>",
     "templates": {
       "choose_template": "Choose a template",
       "templates": "Templates",
