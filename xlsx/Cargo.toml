@@ -12,7 +12,9 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-zip = "0.6"
+# Default features pull in bzip2 (a C library) which can't target wasm32.
+# xlsx archives use DEFLATE, so that's all we need.
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
 roxmltree = "0.19"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

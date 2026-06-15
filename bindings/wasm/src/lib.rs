@@ -134,6 +134,50 @@ impl Model {
         Ok(Model { model })
     }
 
+    /// Loads a model directly from the bytes of an xlsx file, in the browser.
+    #[wasm_bindgen(js_name = "loadFromXlsx")]
+    pub fn load_from_xlsx(
+        bytes: &[u8],
+        name: &str,
+        locale: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<Model, JsError> {
+        let language_id = leak_str(language_id);
+        let workbook = ironcalc::import::load_from_xlsx_bytes(bytes, name, locale, timezone)
+            .map_err(|e| to_js_error(e.to_string()))?;
+        let model =
+            ironcalc_base::Model::from_workbook(workbook, language_id).map_err(to_js_error)?;
+        Ok(Model {
+            model: BaseModel::from_model(model),
+        })
+    }
+
+    /// Bounding box of cells with data: `[min_row, min_col, max_row, max_col]`.
+    #[wasm_bindgen(js_name = "getDimension")]
+    pub fn get_dimension(&self, sheet: u32) -> Result<Vec<i32>, JsError> {
+        let worksheet = self
+            .model
+            .get_model()
+            .workbook
+            .worksheet(sheet)
+            .map_err(to_js_error)?;
+        let d = worksheet.dimension();
+        Ok(vec![d.min_row, d.min_column, d.max_row, d.max_column])
+    }
+
+    /// Merged cell ranges (e.g. `"A1:B2"`) for the given sheet.
+    #[wasm_bindgen(js_name = "getMergeCells")]
+    pub fn get_merge_cells(&self, sheet: u32) -> Result<Vec<String>, JsError> {
+        let worksheet = self
+            .model
+            .get_model()
+            .workbook
+            .worksheet(sheet)
+            .map_err(to_js_error)?;
+        Ok(worksheet.merge_cells.clone())
+    }
+
     pub fn undo(&mut self) -> Result<(), JsError> {
         self.model.undo().map_err(to_js_error)
     }
