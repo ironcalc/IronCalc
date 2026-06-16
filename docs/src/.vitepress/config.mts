@@ -252,41 +252,6 @@ export default defineConfig({
             ],
           },
           {
-            text: "Cube",
-            collapsed: true,
-            link: "/functions/cube",
-            items: [
-              {
-                text: "CUBEKPIMEMBER",
-                link: "/functions/cube/cubekpimember",
-              },
-              {
-                text: "CUBEMEMBER",
-                link: "/functions/cube/cubemember",
-              },
-              {
-                text: "CUBEMEMBERPROPERTY",
-                link: "/functions/cube/cubememberproperty",
-              },
-              {
-                text: "CUBERANKEDMEMBER",
-                link: "/functions/cube/cuberankedmember",
-              },
-              {
-                text: "CUBESET",
-                link: "/functions/cube/cubeset",
-              },
-              {
-                text: "CUBESETCOUNT",
-                link: "/functions/cube/cubesetcount",
-              },
-              {
-                text: "CUBEVALUE",
-                link: "/functions/cube/cubevalue",
-              },
-            ],
-          },
-          {
             text: "Financial",
             collapsed: true,
             link: "/functions/financial",
