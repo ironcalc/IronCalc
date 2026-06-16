@@ -10,6 +10,10 @@
     "themed_colors": "Couleurs du thème",
     "title": "Sélecteur de couleur"
   },
+  "common": {
+    "apply": "Appliquer",
+    "cancel": "Annuler"
+  },
   "conditional_formatting": {
     "add_new_rule": "Ajouter une nouvelle règle",
     "apply": "Appliquer les modifications",
