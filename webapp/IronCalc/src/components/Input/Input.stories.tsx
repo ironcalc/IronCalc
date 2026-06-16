@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { AlertCircle, Mail, Search } from "lucide-react";
+import { useState } from "react";
 import type { InputProperties } from "./Input";
 import { Input } from "./Input";
 
@@ -159,4 +160,43 @@ export const WithBothAdornments: Story = {
     endAdornmentName: "alertCircle",
     size: "md",
   },
+};
+
+function StepperExample() {
+  const [width, setWidth] = useState("120");
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        width: 200,
+      }}
+    >
+      <Input
+        label="Column width"
+        type="number"
+        min={0}
+        step="any"
+        stepper
+        endAdornment="px"
+        value={width}
+        onChange={(e) => setWidth(e.target.value)}
+      />
+      <Input
+        label="Disabled"
+        type="number"
+        min={0}
+        stepper
+        endAdornment="px"
+        value="64"
+        disabled
+      />
+    </div>
+  );
+}
+
+export const Stepper: Story = {
+  args: defaultArgs,
+  render: () => <StepperExample />,
 };
