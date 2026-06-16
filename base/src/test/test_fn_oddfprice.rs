@@ -3,7 +3,6 @@
 use crate::test::util::new_empty_model;
 
 // Odd first long period (issue to settlement): Jan 15, 2020 => March 1, 2021
-#[ignore]
 #[test]
 fn test_oddfprice_basis1_2() {
     let mut model = new_empty_model();
@@ -19,7 +18,7 @@ fn test_oddfprice_basis1_2() {
     model._set("A9", "2"); // Basis: 2 (Actual/360)
     model._set("C3", "=ODDFPRICE(A1,A2,A3,A4,A5,A6,A7,A8,A9)");
     model.evaluate();
-    assert_eq!(model._get_text("C3"), "113.50846650691000");
+    assert_eq!(model._get_text("C3"), "113.508466507");
     // 115.98854775223758 yield 6.7%
 }
 

@@ -94,7 +94,7 @@ Schedule
 Rate
 Yield
 discount
-Treasure bill
+Treasury bill
 Bond
 Price
 
@@ -104,15 +104,15 @@ A basis specifies the 'accounting days' and 'accounting days in a year' count co
 
 Each convention specifies two things:
 
-1.How to calculate the number of days between two dates, date1 and date2. 
-2.How to calculate the number of days in each year between two dates, date1 and date2. 
+1. How to calculate the number of days between two dates, date1 and date2. 
+2. How to calculate the number of days in each year between two dates, date1 and date2. 
 
 There are five day-count conventions in use in IronCalc:
 
 
 0 => US 30/360
 1 => Actual/Actual
-2 => actual/365
+2 => Actual/365
 4 => European 30/360
 
 See: YEARFRAC (Date and time)

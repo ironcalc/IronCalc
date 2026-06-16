@@ -1221,7 +1221,13 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             }
         }
         Function::Sumproduct => vec![Signature::Vector; arg_count],
-        Function::Percentof => vec![Signature::Vector, Signature::Vector],
+        Function::Percentof => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::N => args_signature_scalars(arg_count, 1, 0),
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_scalars(arg_count, 1, 1),
