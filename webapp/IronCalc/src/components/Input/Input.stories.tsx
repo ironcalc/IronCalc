@@ -162,7 +162,7 @@ export const WithBothAdornments: Story = {
   },
 };
 
-function StepperExample() {
+function NumberInputExample() {
   const [width, setWidth] = useState("120");
   return (
     <div
@@ -178,7 +178,7 @@ function StepperExample() {
         type="number"
         min={0}
         step="any"
-        stepper
+        numberInput
         endAdornment="px"
         value={width}
         onChange={(e) => setWidth(e.target.value)}
@@ -187,7 +187,7 @@ function StepperExample() {
         label="Disabled"
         type="number"
         min={0}
-        stepper
+        numberInput
         endAdornment="px"
         value="64"
         disabled
@@ -196,7 +196,7 @@ function StepperExample() {
   );
 }
 
-export const Stepper: Story = {
+export const NumberInput: Story = {
   args: defaultArgs,
-  render: () => <StepperExample />,
+  render: () => <NumberInputExample />,
 };

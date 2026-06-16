@@ -20,7 +20,7 @@ export type InputSize = "sm" | "md";
 
 /** Extends native `<input>` props.
  * Defaults: `size` "md".
- * Optional: `label`, `helperText`, `error`, `startAdornment`, `endAdornment`, `stepper`.
+ * Optional: `label`, `helperText`, `error`, `startAdornment`, `endAdornment`, `numberInput`.
  */
 
 export interface InputProperties
@@ -31,7 +31,7 @@ export interface InputProperties
   error?: boolean;
   startAdornment?: ReactNode;
   endAdornment?: ReactNode;
-  stepper?: boolean;
+  numberInput?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProperties>(
@@ -44,7 +44,7 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
       disabled = false,
       startAdornment,
       endAdornment,
-      stepper = false,
+      numberInput = false,
       required,
       id: idProp,
       className,
@@ -82,16 +82,16 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
       `${size}`,
       error && "is-error",
       disabled && "is-disabled",
-      !stepper && startAdornment && "has-start",
-      !stepper && endAdornment && "has-end",
-      stepper && "is-stepper",
+      !numberInput && startAdornment && "has-start",
+      !numberInput && endAdornment && "has-end",
+      numberInput && "is-number-input",
     ]
       .filter(Boolean)
       .join(" ");
 
     const inputControl = (
       <div className={controlClassName}>
-        {stepper ? (
+        {numberInput ? (
           <>
             <IconButton
               icon={<Minus />}
@@ -99,7 +99,7 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
               variant="ghost"
               size="xs"
               disabled={disabled}
-              className="ic-input-stepper-btn"
+              className="ic-input-number-btn"
               onClick={(e) => handleStep("down", e)}
             />
             {editMode ? (
@@ -130,13 +130,13 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
             ) : (
               <button
                 type="button"
-                className="ic-input-stepper-display"
+                className="ic-input-number-display"
                 disabled={disabled}
                 onClick={() => setEditMode(true)}
               >
                 <span>{rest.value}</span>
                 {endAdornment && (
-                  <span className="ic-input-stepper-unit">{endAdornment}</span>
+                  <span className="ic-input-number-unit">{endAdornment}</span>
                 )}
               </button>
             )}
@@ -146,7 +146,7 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
               variant="ghost"
               size="xs"
               disabled={disabled}
-              className="ic-input-stepper-btn"
+              className="ic-input-number-btn"
               onClick={(e) => handleStep("up", e)}
             />
           </>

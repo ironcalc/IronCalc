@@ -130,16 +130,16 @@
   margin-left: 6px;
 }
 
-/* Stepper variant */
-.ic-input-control.md.is-stepper {
+/* NumberInput variant */
+.ic-input-control.md.is-number-input {
   padding-inline: 3px;
 }
 
-.ic-input-stepper-btn {
+.ic-input-number-btn {
   border-radius: 4px;
 }
 
-.ic-input-stepper-display {
+.ic-input-number-display {
   flex: 1;
   display: flex;
   align-items: center;
@@ -154,23 +154,23 @@
   color: var(--palette-common-black);
 }
 
-.ic-input-stepper-display:disabled {
+.ic-input-number-display:disabled {
   cursor: not-allowed;
   color: var(--palette-grey-400);
 }
 
-.ic-input-stepper-unit {
+.ic-input-number-unit {
   color: var(--palette-grey-500);
 }
 
-.ic-input-control.is-stepper > input {
+.ic-input-control.is-number-input > input {
   flex: 1;
   text-align: center;
   appearance: textfield;
 }
 
-.ic-input-control.is-stepper > input::-webkit-outer-spin-button,
-.ic-input-control.is-stepper > input::-webkit-inner-spin-button {
+.ic-input-control.is-number-input > input::-webkit-outer-spin-button,
+.ic-input-control.is-number-input > input::-webkit-inner-spin-button {
   -webkit-appearance: none;
 }
 
