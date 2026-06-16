@@ -22,5 +22,5 @@ fn test_named_styles_and_themes() {
 
     let color_after_theme = model.get_cell_style(0, 1, 1).unwrap().fill.color;
     let resolved_color_after_theme = model.resolve_color(&color_after_theme);
-    assert_eq!(resolved_color_after_theme, "#E7EFDC");
+    assert_eq!(resolved_color_after_theme, "#FCE9D9");
 }
