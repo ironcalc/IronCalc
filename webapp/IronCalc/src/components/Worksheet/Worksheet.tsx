@@ -822,8 +822,16 @@ const Worksheet = forwardRef(
           open={columnWidthDialogOpen}
           onClose={() => setColumnWidthDialogOpen(false)}
           title={t("context_menu.column_header.set_column_width")}
+          confirmLabel={t("common.apply")}
+          cancelLabel={t("common.cancel")}
           defaultValue={columnWidthDefault}
-          inputProps={{ type: "number", min: 0, step: "any" }}
+          inputProps={{
+            type: "number",
+            min: 0,
+            step: "any",
+            endAdornment: "px",
+            stepper: true,
+          }}
           onSubmit={(value): void => {
             const width = Number.parseFloat(value);
             if (!Number.isFinite(width) || width < 0) {
@@ -840,8 +848,16 @@ const Worksheet = forwardRef(
           open={rowHeightDialogOpen}
           onClose={() => setRowHeightDialogOpen(false)}
           title={t("context_menu.row_header.set_row_height")}
+          confirmLabel={t("common.apply")}
+          cancelLabel={t("common.cancel")}
           defaultValue={rowHeightDefault}
-          inputProps={{ type: "number", min: 0, step: "any" }}
+          inputProps={{
+            type: "number",
+            min: 0,
+            step: "any",
+            endAdornment: "px",
+            stepper: true,
+          }}
           onSubmit={(value): void => {
             const height = Number.parseFloat(value);
             if (!Number.isFinite(height) || height < 0) {

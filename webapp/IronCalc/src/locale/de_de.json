@@ -10,6 +10,10 @@
     "themed_colors": "Designfarben",
     "title": "Farbwähler"
   },
+  "common": {
+    "apply": "Anwenden",
+    "cancel": "Abbrechen"
+  },
   "conditional_formatting": {
     "add_new_rule": "Neue Regel hinzufügen",
     "apply": "Änderungen übernehmen",
