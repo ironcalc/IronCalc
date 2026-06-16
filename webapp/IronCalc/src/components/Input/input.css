@@ -130,6 +130,50 @@
   margin-left: 6px;
 }
 
+/* Stepper variant */
+.ic-input-control.md.is-stepper {
+  padding-inline: 3px;
+}
+
+.ic-input-stepper-btn {
+  border-radius: 4px;
+}
+
+.ic-input-stepper-display {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: text;
+  font-size: var(--typography-font-size);
+  font-family: var(--typography-font-family);
+  color: var(--palette-common-black);
+}
+
+.ic-input-stepper-display:disabled {
+  cursor: not-allowed;
+  color: var(--palette-grey-400);
+}
+
+.ic-input-stepper-unit {
+  color: var(--palette-grey-500);
+}
+
+.ic-input-control.is-stepper > input {
+  flex: 1;
+  text-align: center;
+  appearance: textfield;
+}
+
+.ic-input-control.is-stepper > input::-webkit-outer-spin-button,
+.ic-input-control.is-stepper > input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
 /* Helper text */
 .ic-input > p {
   margin: 0;
