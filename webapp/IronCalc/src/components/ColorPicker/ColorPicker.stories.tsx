@@ -10,13 +10,15 @@ import ColorPicker from "./ColorPicker";
 const THEME_NAMES = [
   "IronCalc",
   "Office",
-  "Greyscale",
   "Cold",
   "Warm",
   "Ocean",
   "Pastel",
-  "Dark",
+  "Contrast",
   "Forest",
+  "Greyscale",
+  "Sunshine",
+  "Emerald",
 ] as const;
 
 interface ColorPickerStoryProps {
