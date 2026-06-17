@@ -178,7 +178,6 @@ function NumberInputExample() {
         type="number"
         min={0}
         step="any"
-        numberInput
         endAdornment="px"
         value={width}
         onChange={(e) => setWidth(e.target.value)}
@@ -187,7 +186,6 @@ function NumberInputExample() {
         label="Disabled"
         type="number"
         min={0}
-        numberInput
         endAdornment="px"
         value="64"
         disabled

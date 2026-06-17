@@ -20,7 +20,8 @@ export type InputSize = "sm" | "md";
 
 /** Extends native `<input>` props.
  * Defaults: `size` "md".
- * Optional: `label`, `helperText`, `error`, `startAdornment`, `endAdornment`, `numberInput`.
+ * Optional: `label`, `helperText`, `error`, `startAdornment`, `endAdornment`.
+ * When `type="number"`, renders a NumberInput with [−] display [+] controls.
  */
 
 export interface InputProperties
@@ -31,7 +32,6 @@ export interface InputProperties
   error?: boolean;
   startAdornment?: ReactNode;
   endAdornment?: ReactNode;
-  numberInput?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProperties>(
@@ -44,7 +44,6 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
       disabled = false,
       startAdornment,
       endAdornment,
-      numberInput = false,
       required,
       id: idProp,
       className,
@@ -73,7 +72,7 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
       const next = direction === "up" ? current + stepSize : current - stepSize;
       const clamped = Math.max(minVal, Math.min(maxVal, next));
       rest.onChange?.({
-        target: { value: String(clamped) },
+        target: { value: `${clamped}` },
       } as React.ChangeEvent<HTMLInputElement>);
     };
 
@@ -82,41 +81,50 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
       `${size}`,
       error && "is-error",
       disabled && "is-disabled",
-      !numberInput && startAdornment && "has-start",
-      !numberInput && endAdornment && "has-end",
-      numberInput && "is-number-input",
+      rest.type !== "number" && startAdornment && "has-start",
+      rest.type !== "number" && endAdornment && "has-end",
+      rest.type === "number" && "is-number-input",
     ]
       .filter(Boolean)
       .join(" ");
 
     const inputControl = (
       <div className={controlClassName}>
-        {numberInput ? (
+        {rest.type === "number" ? (
           <>
             <IconButton
               icon={<Minus />}
               aria-label="Decrease"
+              type="button"
               variant="ghost"
               size="xs"
               disabled={disabled}
               className="ic-input-number-btn"
-              onClick={(e) => handleStep("down", e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStep("down", e);
+              }}
             />
             {editMode ? (
               <input
                 ref={ref}
                 id={id}
-                // biome-ignore lint/a11y/noAutofocus: user explicitly clicked to enter edit mode
-                autoFocus
                 disabled={disabled}
                 required={required}
                 aria-invalid={error || undefined}
                 aria-describedby={helperText ? helperId : undefined}
+                spellCheck={false}
+                {...rest}
+                // biome-ignore lint/a11y/noAutofocus: user explicitly clicked to enter edit mode
+                autoFocus
                 onBlur={() => setEditMode(false)}
                 onKeyDown={(e) => {
                   e.stopPropagation();
-                  if (e.key === "Enter" || e.key === "Escape") {
+                  if (e.key === "Escape") {
                     setEditMode(false);
+                  } else if (e.key === "Enter") {
+                    setEditMode(false);
+                    rest.onKeyDown?.(e);
                   }
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -124,15 +132,19 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
                 onCopy={(e) => e.stopPropagation()}
                 onCut={(e) => e.stopPropagation()}
                 onFocus={(e) => e.target.select()}
-                spellCheck={false}
-                {...rest}
               />
             ) : (
               <button
                 type="button"
+                id={id}
                 className="ic-input-number-display"
                 disabled={disabled}
-                onClick={() => setEditMode(true)}
+                aria-invalid={error || undefined}
+                aria-describedby={helperText ? helperId : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditMode(true);
+                }}
               >
                 <span>{rest.value}</span>
                 {endAdornment && (
@@ -143,11 +155,15 @@ export const Input = forwardRef<HTMLInputElement, InputProperties>(
             <IconButton
               icon={<Plus />}
               aria-label="Increase"
+              type="button"
               variant="ghost"
               size="xs"
               disabled={disabled}
               className="ic-input-number-btn"
-              onClick={(e) => handleStep("up", e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStep("up", e);
+              }}
             />
           </>
         ) : (
