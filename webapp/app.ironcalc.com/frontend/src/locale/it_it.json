@@ -13,10 +13,8 @@
     "close_dialog": "Chiudi finestra",
     "new": "Nuovo",
     "blank_workbook": "Cartella di lavoro vuota",
-    "blank_workbook_description": "Crea da zero o carica il tuo file.",
     "import_workbook": "Importa cartella di lavoro",
-    "import_workbook_description": "Apri un file foglio di calcolo esistente.",
-    "storage_warning": "<warn>Attenzione!</warn> Questa applicazione è una prova di concetto e non un prodotto finito. Sentiti libero di esplorare, condividere e caricare/scaricare modelli. Evita dati sensibili o privati, poiché tutto viene eliminato periodicamente. <docsLink>Scopri di più</docsLink>",
+    "storage_warning": "<warn>Attenzione!</warn> Questa applicazione è una prova di concetto e non un prodotto finito. Sentiti libero di esplorare, condividere e caricare/scaricare modelli, ma non condividere o caricare modelli con dati sensibili o privati. I dati verranno eliminati periodicamente. <docsLink>Scopri di più</docsLink>",
     "templates": {
       "choose_template": "Scegli un modello",
       "templates": "Modelli",
