@@ -139,19 +139,35 @@
   border-radius: 4px;
 }
 
+.ic-input-number-btn:focus-visible {
+  outline: none;
+  background-color: var(--palette-grey-100);
+}
+
 .ic-input-number-display {
   flex: 1;
+  align-self: stretch;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  border-radius: 4px;
   background: none;
   border: none;
+  margin: 3px;
+  gap: 4px;
   padding: 0;
   cursor: text;
   font-size: var(--typography-font-size);
   font-family: var(--typography-font-family);
   color: var(--palette-common-black);
+}
+
+.ic-input-number-display:focus {
+  outline: none;
+}
+
+.ic-input-number-display:focus-visible {
+  background-color: var(--palette-grey-100);
 }
 
 .ic-input-number-display:disabled {

@@ -830,7 +830,6 @@ const Worksheet = forwardRef(
             min: 0,
             step: "any",
             endAdornment: "px",
-            numberInput: true,
           }}
           onSubmit={(value): void => {
             const width = Number.parseFloat(value);
@@ -856,7 +855,6 @@ const Worksheet = forwardRef(
             min: 0,
             step: "any",
             endAdornment: "px",
-            numberInput: true,
           }}
           onSubmit={(value): void => {
             const height = Number.parseFloat(value);
