@@ -13,10 +13,8 @@
     "close_dialog": "Fermer la boîte de dialogue",
     "new": "Nouveau",
     "blank_workbook": "Classeur vierge",
-    "blank_workbook_description": "Créez à partir de zéro ou téléchargez votre propre fichier.",
     "import_workbook": "Importer un classeur",
-    "import_workbook_description": "Ouvrir un fichier tableur existant.",
-    "storage_warning": "<warn>Attention !</warn> Cette application est une preuve de concept et non un produit fini. N'hésitez pas à explorer, partager et importer/télécharger des modèles. Veuillez éviter les données sensibles ou privées, car tout est supprimé périodiquement. <docsLink>En savoir plus</docsLink>",
+    "storage_warning": "<warn>Attention !</warn> Cette application est une preuve de concept et non un produit fini. N'hésitez pas à explorer, partager et importer/télécharger des modèles, mais ne partagez pas et n'importez pas de modèles contenant des données sensibles ou privées. Les données seront supprimées périodiquement. <docsLink>En savoir plus</docsLink>",
     "templates": {
       "choose_template": "Choisir un modèle",
       "templates": "Modèles",
