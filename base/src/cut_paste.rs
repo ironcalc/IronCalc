@@ -5,6 +5,8 @@ use crate::{
         types::{Area, CellReferenceRC},
         utils,
     },
+    language::get_default_language,
+    locale::get_default_locale,
     model::Model,
     utils as common,
 };
@@ -399,7 +401,8 @@ impl<'a> Model<'a> {
                 row: anchor_row,
                 column: anchor_col,
             };
-            let node = self.parser.parse(body, &cell_ref);
+            // CF formulas are stored internally in English.
+            let node = self.parse_internal_formula(body, &cell_ref);
             let new_body = move_formula(
                 &node,
                 &MoveContext {
@@ -411,8 +414,8 @@ impl<'a> Model<'a> {
                     row_delta,
                     column_delta: col_delta,
                 },
-                self.locale,
-                self.language,
+                get_default_locale(),
+                get_default_language(),
             );
             if has_eq {
                 format!("={new_body}")

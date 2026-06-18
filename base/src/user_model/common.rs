@@ -1952,7 +1952,7 @@ impl<'a> UserModel<'a> {
 
     /// Returns the list of defined names
     pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String)> {
-        self.model.workbook.get_defined_names_with_scope()
+        self.model.get_defined_name_list()
     }
 
     /// Delete an existing defined name
@@ -1977,10 +1977,16 @@ impl<'a> UserModel<'a> {
         formula: &str,
     ) -> Result<(), String> {
         self.model.new_defined_name(name, scope, formula)?;
+        // Diffs store the internal (English) formula so undo/redo replays
+        // correctly regardless of the active language at replay time.
+        let value = self
+            .model
+            .get_defined_name_formula(name, scope)
+            .unwrap_or_else(|_| formula.to_string());
         let diff_list = vec![Diff::CreateDefinedName {
             name: name.to_string(),
             scope,
-            value: formula.to_string(),
+            value,
         }];
         self.push_diff_list(diff_list);
         self.evaluate_if_not_paused();
@@ -1996,21 +2002,27 @@ impl<'a> UserModel<'a> {
         new_scope: Option<u32>,
         new_formula: &str,
     ) -> Result<(), String> {
+        // Both formulas in the diff are stored internally (in English) so
+        // undo/redo replays correctly regardless of the active language.
         let old_formula = self
             .model
             .get_defined_name_formula(name, scope)
             .map_err(|_| "General: Failed to get old name")?;
+        self.model
+            .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
+        let new_formula_internal = self
+            .model
+            .get_defined_name_formula(new_name, new_scope)
+            .unwrap_or_else(|_| new_formula.to_string());
         let diff_list = vec![Diff::UpdateDefinedName {
             name: name.to_string(),
             scope,
-            old_formula: old_formula.to_string(),
+            old_formula,
             new_name: new_name.to_string(),
             new_scope,
-            new_formula: new_formula.to_string(),
+            new_formula: new_formula_internal,
         }];
         self.push_diff_list(diff_list);
-        self.model
-            .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
         self.evaluate_if_not_paused();
         Ok(())
     }
