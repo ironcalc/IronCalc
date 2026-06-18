@@ -23,10 +23,8 @@
   top: calc(100% + 4px);
   left: -4px;
   z-index: 1000;
-
-  max-width: 460px;
+  max-width: min(400px, calc(100vw - 16px));
   padding: 4px 0;
-
   border: 1px solid var(--palette-grey-200);
   border-radius: 8px;
   background: var(--palette-common-white);
@@ -90,9 +88,14 @@
 }
 
 .ic-formula-bar-menu-item-example {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 50%;
   margin-left: 12px;
+  overflow: hidden;
   color: var(--palette-grey-400);
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .ic-formula-bar-menu-divider {
