@@ -10,7 +10,7 @@ const ICON_LEFT_MARGIN = 3;
 // Border drawing helpers (extracted from WorksheetCanvas to keep it smaller)
 // ---------------------------------------------------------------------------
 
-function drawBorderLine(
+export function drawBorderLine(
   context: CanvasRenderingContext2D,
   x1: number,
   y1: number,
