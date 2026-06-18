@@ -12,8 +12,11 @@ use crate::{
         lexer::LexerMode,
         parser::{
             move_formula::{move_formula, MoveContext},
+            new_parser_english,
             static_analysis::StaticResult,
-            stringify::{rename_defined_name_in_node, to_localized_string, to_rc_format},
+            stringify::{
+                rename_defined_name_in_node, to_english_string, to_localized_string, to_rc_format,
+            },
             ArrayNode, NamedVariable, Node, Parser,
         },
         token::{get_error_by_name, Error, OpProduct, OpSum, OpUnary},
@@ -26,7 +29,7 @@ use crate::{
     },
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
-    locale::{get_locale, Locale},
+    locale::{get_default_locale, get_locale, Locale},
     types::*,
     utils as common,
 };
@@ -400,6 +403,94 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// Parses a formula that is stored internally (always in English) and
+    /// returns the resulting node.
+    ///
+    /// Formula strings kept outside of cells (defined names and conditional
+    /// formatting rules) are always stored in English — see
+    /// [Model::user_formula_to_internal]. They must therefore be parsed with
+    /// the English language and locale regardless of the user's active
+    /// language. This temporarily switches the parser, parses, and restores it.
+    pub(crate) fn parse_internal_formula(&mut self, body: &str, context: &CellReferenceRC) -> Node {
+        let locale = self.locale;
+        let language = self.language;
+        self.parser.set_locale(get_default_locale());
+        self.parser.set_language(get_default_language());
+        let node = self.parser.parse(body, context);
+        self.parser.set_locale(locale);
+        self.parser.set_language(language);
+        node
+    }
+
+    /// Translates a formula the user typed (in the active language and locale)
+    /// into the canonical English representation that is stored internally.
+    ///
+    /// The formula is first parsed in the active language/locale. If that fails
+    /// it is parsed as English — this lets internally generated formulas (which
+    /// are already English, e.g. produced by undo/redo or cut & paste) round
+    /// trip unchanged regardless of the active language. Returns an error if the
+    /// formula parses in neither. Any leading `=` is preserved.
+    pub(crate) fn user_formula_to_internal(
+        &mut self,
+        formula: &str,
+        context: &CellReferenceRC,
+    ) -> Result<String, String> {
+        let trimmed = formula.trim();
+        let had_equals = trimmed.starts_with('=');
+        let body = trimmed.strip_prefix('=').unwrap_or(trimmed);
+        let mut node = self.parser.parse(body, context);
+        if let Node::ParseErrorKind { .. } = node {
+            // The user's language could not parse it: it might already be in the
+            // internal English form.
+            node = self.parse_internal_formula(body, context);
+        }
+        if let Node::ParseErrorKind { .. } = node {
+            return Err(format!("Invalid formula: '{formula}'"));
+        }
+        let english = to_english_string(&node, context);
+        Ok(if had_equals {
+            format!("={english}")
+        } else {
+            english
+        })
+    }
+
+    /// Translates an internally-stored (English) formula into the active
+    /// language and locale for display to the user. Any leading `=` is
+    /// preserved. If the formula fails to parse it is returned unchanged.
+    pub(crate) fn internal_formula_to_display(
+        &self,
+        formula: &str,
+        context: &CellReferenceRC,
+    ) -> String {
+        let trimmed = formula.trim();
+        let had_equals = trimmed.starts_with('=');
+        let body = trimmed.strip_prefix('=').unwrap_or(trimmed);
+        if body.is_empty() {
+            return formula.to_string();
+        }
+        // Stored formulas are in English, so parse with an English parser.
+        let worksheet_names = self
+            .workbook
+            .worksheets
+            .iter()
+            .map(|s| s.get_name())
+            .collect();
+        let defined_names = self.workbook.get_defined_names_with_scope();
+        let mut parser =
+            new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
+        let node = parser.parse(body, context);
+        if let Node::ParseErrorKind { .. } = node {
+            return formula.to_string();
+        }
+        let local = to_localized_string(&node, context, self.locale, self.language);
+        if had_equals {
+            format!("={local}")
+        } else {
+            local
+        }
+    }
+
     /// Evaluates a formula string on a sheet, returning the numeric result.
     /// Assumes the workbook has already been evaluated (cell values are up-to-date).
     /// Returns `None` if the formula is invalid or does not produce a number.
@@ -414,7 +505,7 @@ impl<'a> Model<'a> {
             row: 1,
             column: 1,
         };
-        let node = self.parser.parse(body, &context_rc);
+        let node = self.parse_internal_formula(body, &context_rc);
         let context_index = CellReferenceIndex {
             sheet,
             row: 1,
@@ -2619,6 +2710,22 @@ impl<'a> Model<'a> {
         Err("Defined name not found".to_string())
     }
 
+    /// Returns the list of defined names as `(name, scope, formula)`.
+    ///
+    /// Formulas are stored internally in English; they are translated into the
+    /// active language/locale for display.
+    pub fn get_defined_name_list(&self) -> Vec<(String, Option<u32>, String)> {
+        let context = self.defined_name_context();
+        self.workbook
+            .get_defined_names_with_scope()
+            .into_iter()
+            .map(|(name, scope, formula)| {
+                let formula = self.internal_formula_to_display(&formula, &context);
+                (name, scope, formula)
+            })
+            .collect()
+    }
+
     /// Gets the Excel Value (Bool, Number, String) of a cell
     ///
     /// See also:
@@ -3388,14 +3495,33 @@ impl<'a> Model<'a> {
         formula: &str,
     ) -> Result<(), String> {
         let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
+        // Defined-name formulas are stored internally in English so they keep
+        // working when the user switches language/locale.
+        let context = self.defined_name_context();
+        let internal_formula = self.user_formula_to_internal(formula, &context)?;
         self.workbook.defined_names.push(DefinedName {
             name: name.to_string(),
-            formula: formula.to_string(),
+            formula: internal_formula,
             sheet_id,
         });
         self.reset_parsed_structures();
 
         Ok(())
+    }
+
+    /// The context used to parse/stringify defined-name formulas. Defined names
+    /// have no natural anchor cell, so we use the first worksheet's A1.
+    fn defined_name_context(&self) -> CellReferenceRC {
+        CellReferenceRC {
+            sheet: self
+                .workbook
+                .worksheets
+                .first()
+                .map(|ws| ws.get_name())
+                .unwrap_or_else(|| "Sheet1".to_string()),
+            row: 1,
+            column: 1,
+        }
     }
 
     /// Validates if a defined name can be created
@@ -3446,7 +3572,13 @@ impl<'a> Model<'a> {
                 row: 1,
                 column: 1,
             };
-            let node = self.parser.parse(formula_body, &dummy_ref);
+            // Accept the formula whether it is written in the active language
+            // or already in the internal English form (e.g. generated by
+            // undo/redo or cut & paste).
+            let mut node = self.parser.parse(formula_body, &dummy_ref);
+            if let Node::ParseErrorKind { .. } = node {
+                node = self.parse_internal_formula(formula_body, &dummy_ref);
+            }
             if !matches!(node, Node::LambdaDefKind { .. }) {
                 return Err("Formula: Invalid defined name formula".to_string());
             }
@@ -3527,6 +3659,9 @@ impl<'a> Model<'a> {
                 index = Some(i);
             }
         }
+        // Defined-name formulas are stored internally in English.
+        let context = self.defined_name_context();
+        let internal_formula = self.user_formula_to_internal(new_formula, &context)?;
         if let Some(i) = index {
             if let Some(df) = self.workbook.defined_names.get_mut(i) {
                 if new_name != df.name {
@@ -3555,7 +3690,7 @@ impl<'a> Model<'a> {
                 }
                 df.name = new_name.to_string();
                 df.sheet_id = new_sheet_id;
-                df.formula = new_formula.to_string();
+                df.formula = internal_formula;
                 self.reset_parsed_structures();
             }
             Ok(())

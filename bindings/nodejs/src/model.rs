@@ -313,8 +313,7 @@ impl Model {
   pub fn get_defined_name_list(&'_ self, env: Env) -> Result<Unknown<'_>> {
     let data: Vec<DefinedName> = self
       .model
-      .workbook
-      .get_defined_names_with_scope()
+      .get_defined_name_list()
       .iter()
       .map(|s| DefinedName {
         name: s.0.to_owned(),

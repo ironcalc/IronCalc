@@ -116,6 +116,7 @@ mod test_implicit_intersection;
 mod test_issue_155;
 mod test_issue_483;
 mod test_language;
+mod test_language_switch;
 mod test_ln;
 mod test_locale;
 mod test_log;
