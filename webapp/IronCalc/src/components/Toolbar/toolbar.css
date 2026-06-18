@@ -17,11 +17,7 @@
   overflow-x: auto;
   padding: 4px 8px;
   gap: 4px;
-  scrollbar-width: none; /* Firefox */
-}
-
-.ic-toolbar-container::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  scrollbar-width: none;
 }
 
 /* Color line */
