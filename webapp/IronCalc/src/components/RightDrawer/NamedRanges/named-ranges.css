@@ -108,12 +108,24 @@
 .ic-named-ranges-formula-text {
   font-size: 12px;
   color: var(--palette-grey-600);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .ic-named-ranges-name-text {
   font-size: 12px;
   color: var(--palette-common-black);
   font-weight: 600;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
   word-break: break-all;
   overflow-wrap: break-word;
 }
