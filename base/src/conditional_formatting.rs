@@ -1361,58 +1361,65 @@ impl<'a> Model<'a> {
         }
     }
 
-    /// Translates every formula in a CF rule from the active language/locale
-    /// into the internal English representation that is stored.
-    fn cf_rule_to_internal(&mut self, rule: &mut CfRule, sheet: u32) {
+    /// Translates every formula in a CF rule input from the active
+    /// language/locale into the internal English representation that is stored.
+    ///
+    /// This runs before the rule is materialized (and before any dxf entry is
+    /// created), so an invalid formula fails the whole operation without leaving
+    /// behind an orphan dxf or storing a non-canonical formula that would later
+    /// fail to parse as English.
+    fn cf_rule_input_to_internal(
+        &mut self,
+        rule: &mut CfRuleInput,
+        sheet: u32,
+    ) -> Result<(), String> {
         let ctx = self.cf_formula_context(sheet);
         match rule {
-            CfRule::CellIs {
+            CfRuleInput::CellIs {
                 formula, formula2, ..
             } => {
-                let f = formula.clone();
-                *formula = self.user_formula_to_internal(&f, &ctx).unwrap_or(f);
+                *formula = self.user_formula_to_internal(formula, &ctx)?;
                 if let Some(f2) = formula2 {
-                    let f2c = f2.clone();
-                    *f2 = self.user_formula_to_internal(&f2c, &ctx).unwrap_or(f2c);
+                    *f2 = self.user_formula_to_internal(f2, &ctx)?;
                 }
             }
-            CfRule::Formula { formula, .. } => {
-                let f = formula.clone();
-                *formula = self.user_formula_to_internal(&f, &ctx).unwrap_or(f);
+            CfRuleInput::Formula { formula, .. } => {
+                *formula = self.user_formula_to_internal(formula, &ctx)?;
             }
-            CfRule::ColorScale { thresholds } => {
+            CfRuleInput::ColorScale { thresholds } => {
                 for t in thresholds {
-                    self.cfvo_to_internal(&mut t.cfvo, &ctx);
+                    self.cfvo_to_internal(&mut t.cfvo, &ctx)?;
                 }
             }
-            CfRule::DataBar { min, max, .. } => {
+            CfRuleInput::DataBar { min, max, .. } => {
                 if let Some(min) = min {
-                    self.cfvo_to_internal(min, &ctx);
+                    self.cfvo_to_internal(min, &ctx)?;
                 }
                 if let Some(max) = max {
-                    self.cfvo_to_internal(max, &ctx);
+                    self.cfvo_to_internal(max, &ctx)?;
                 }
             }
-            CfRule::IconSet { thresholds, .. } => {
+            CfRuleInput::IconSet { thresholds, .. } => {
                 for t in thresholds {
-                    self.cfvo_to_internal(&mut t.cfvo, &ctx);
+                    self.cfvo_to_internal(&mut t.cfvo, &ctx)?;
                 }
             }
-            CfRule::IconRating { thresholds, .. } => {
+            CfRuleInput::IconRating { thresholds, .. } => {
                 for (cfvo, _) in thresholds {
-                    self.cfvo_to_internal(cfvo, &ctx);
+                    self.cfvo_to_internal(cfvo, &ctx)?;
                 }
             }
             // Remaining rule kinds carry no formula strings.
             _ => {}
         }
+        Ok(())
     }
 
-    fn cfvo_to_internal(&mut self, cfvo: &mut Cfvo, ctx: &CellReferenceRC) {
+    fn cfvo_to_internal(&mut self, cfvo: &mut Cfvo, ctx: &CellReferenceRC) -> Result<(), String> {
         if let Cfvo::Formula(f) = cfvo {
-            let fc = f.clone();
-            *f = self.user_formula_to_internal(&fc, ctx).unwrap_or(fc);
+            *f = self.user_formula_to_internal(f, ctx)?;
         }
+        Ok(())
     }
 
     /// Translates every formula in a CF rule from the internal English
@@ -1526,10 +1533,12 @@ impl<'a> Model<'a> {
         if parse_sqref(range).is_empty() {
             return Err(format!("Invalid conditional formatting range: '{range}'"));
         }
-        let mut final_rule = self.cf_rule_from_input(rule);
         // Formulas are stored internally in English regardless of the user's
-        // active language.
-        self.cf_rule_to_internal(&mut final_rule, sheet);
+        // active language. Translate before materializing the rule so an invalid
+        // formula fails without creating an orphan dxf.
+        let mut rule = rule;
+        self.cf_rule_input_to_internal(&mut rule, sheet)?;
+        let final_rule = self.cf_rule_from_input(rule);
         let ws = self.workbook.worksheet_mut(sheet)?;
         let priority = ws
             .conditional_formatting
@@ -1575,10 +1584,12 @@ impl<'a> Model<'a> {
                 "Invalid conditional formatting range: '{new_range}'"
             ));
         }
-        let mut final_rule = self.cf_rule_from_input(new_rule);
         // Formulas are stored internally in English regardless of the user's
-        // active language.
-        self.cf_rule_to_internal(&mut final_rule, sheet);
+        // active language. Translate before materializing the rule so an invalid
+        // formula fails without creating an orphan dxf.
+        let mut new_rule = new_rule;
+        self.cf_rule_input_to_internal(&mut new_rule, sheet)?;
+        let final_rule = self.cf_rule_from_input(new_rule);
         let ws = self.workbook.worksheet_mut(sheet)?;
         if index >= ws.conditional_formatting.len() {
             return Err(format!(
