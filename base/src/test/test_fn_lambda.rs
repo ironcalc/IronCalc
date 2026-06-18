@@ -32,6 +32,24 @@ fn evaluation_with_defined_name() {
     assert_eq!(model._get_text("A1"), *"3");
 }
 
+// Regression: a defined-name LAMBDA that returns an array must spill.
+// Calling it (a `NamedFunctionKind`) was statically classified as a scalar,
+// so the cell was never marked dynamic and the array result reached a
+// scalar context instead of spilling.
+#[test]
+fn defined_name_lambda_spills_array() {
+    let mut model = new_empty_model();
+    model
+        .new_defined_name("MySeq", None, "=LAMBDA(n, SEQUENCE(n))")
+        .unwrap();
+    model._set("A1", "=MySeq(3)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"2");
+    assert_eq!(model._get_text("A3"), *"3");
+}
+
 #[test]
 fn wrong_number_of_arguments() {
     let mut model = new_empty_model();

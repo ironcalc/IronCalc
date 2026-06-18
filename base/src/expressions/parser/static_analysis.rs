@@ -262,8 +262,10 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             StaticResult::Scalar
         }
         Node::NamedFunctionKind { .. } => {
-            // StaticResult::Unknown is also valid
-            StaticResult::Scalar
+            // A named-function call invokes a LAMBDA (defined-name or LET-bound) whose
+            // result shape is unknown at parse time — it may well be an array that needs
+            // to spill (e.g. a LAMBDA wrapping SEQUENCE). Treat it like LambdaCallKind.
+            StaticResult::Unknown
         }
         Node::ArrayKind(array) => {
             let n = array.len() as i32;
