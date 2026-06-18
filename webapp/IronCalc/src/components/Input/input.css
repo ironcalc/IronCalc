@@ -185,6 +185,7 @@
   appearance: textfield;
 }
 
+/* Textfield alone doesn't hide spin buttons in Chrome/Safari so we need these */
 .ic-input-control.is-number-input > input::-webkit-outer-spin-button,
 .ic-input-control.is-number-input > input::-webkit-inner-spin-button {
   -webkit-appearance: none;
