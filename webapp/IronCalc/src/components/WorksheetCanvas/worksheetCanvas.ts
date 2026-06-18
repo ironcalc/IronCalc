@@ -5,6 +5,7 @@ import type { Cell } from "../types";
 import type { WorkbookState } from "../workbookState";
 import {
   drawBorder,
+  drawBorderLine,
   ICON_AREA_WIDTH,
   renderDataBar,
   renderIcon,
@@ -2044,6 +2045,24 @@ export default class WorksheetCanvas {
     context.lineTo(x + headerColumnWidth, 0.5);
     context.stroke();
 
+    // Separators between the headers and the cells
+    context.strokeStyle = this.theme.headerBorderColor;
+    drawBorderLine(
+      context,
+      0,
+      headerRowHeight + 0.5,
+      this.width,
+      headerRowHeight + 0.5,
+    );
+    drawBorderLine(
+      context,
+      headerColumnWidth + 0.5,
+      0,
+      headerColumnWidth + 0.5,
+      this.height,
+    );
+
+    // Overlays drawn on top of everything else
     this.drawCellOutline();
     this.drawCellEditor();
     this.drawExtendToArea();
