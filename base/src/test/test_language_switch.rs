@@ -145,6 +145,25 @@ fn cf_formula_entered_in_spanish_is_stored_in_english() {
     }
 }
 
+/// An invalid CF formula is rejected rather than silently stored in a
+/// non-canonical form (which would later fail to parse as English).
+#[test]
+fn cf_invalid_formula_is_rejected() {
+    let mut model = model_with_column_a();
+    let result = model.add_conditional_formatting(
+        0,
+        "A1:A10",
+        CfRuleInput::Formula {
+            formula: "=IF(".to_string(),
+            format: red_fill(),
+            stop_if_true: false,
+        },
+    );
+    assert!(result.is_err(), "an invalid CF formula should be rejected");
+    // Nothing was stored.
+    assert!(model.get_conditional_formatting_list(0).unwrap().is_empty());
+}
+
 // ---------------------------------------------------------------------------
 // Defined names
 // ---------------------------------------------------------------------------

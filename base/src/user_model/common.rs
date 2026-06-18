@@ -1978,11 +1978,10 @@ impl<'a> UserModel<'a> {
     ) -> Result<(), String> {
         self.model.new_defined_name(name, scope, formula)?;
         // Diffs store the internal (English) formula so undo/redo replays
-        // correctly regardless of the active language at replay time.
-        let value = self
-            .model
-            .get_defined_name_formula(name, scope)
-            .unwrap_or_else(|_| formula.to_string());
+        // correctly regardless of the active language at replay time. A
+        // just-created name is guaranteed to be retrievable, so propagate any
+        // (unexpected) error rather than masking it with a localized formula.
+        let value = self.model.get_defined_name_formula(name, scope)?;
         let diff_list = vec![Diff::CreateDefinedName {
             name: name.to_string(),
             scope,
@@ -2010,10 +2009,9 @@ impl<'a> UserModel<'a> {
             .map_err(|_| "General: Failed to get old name")?;
         self.model
             .update_defined_name(name, scope, new_name, new_scope, new_formula)?;
-        let new_formula_internal = self
-            .model
-            .get_defined_name_formula(new_name, new_scope)
-            .unwrap_or_else(|_| new_formula.to_string());
+        // Read back the canonical (English) formula that was just stored so the
+        // diff stays canonical; a successful update guarantees it is retrievable.
+        let new_formula_internal = self.model.get_defined_name_formula(new_name, new_scope)?;
         let diff_list = vec![Diff::UpdateDefinedName {
             name: name.to_string(),
             scope,
