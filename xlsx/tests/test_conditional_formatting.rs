@@ -5,7 +5,11 @@
 use std::fs;
 
 use ironcalc::{export::save_to_xlsx, import::load_from_xlsx};
-use ironcalc_base::{cf_types::Icon, types::Color, Model, UserModel};
+use ironcalc_base::{
+    cf_types::{CfRule, Icon},
+    types::Color,
+    Model, UserModel,
+};
 
 #[test]
 fn test_cf_file() {
@@ -122,5 +126,58 @@ fn test_conditional_formatting_lists() {
 
     let imported = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
     test_cf_lists(imported);
+    fs::remove_file(temp_file_name).unwrap();
+}
+
+/// The crossword template stores its CF rules only in the x14 `extLst`
+/// extension: `type="expression"` rules with cross-sheet references, inline
+/// `<x14:dxf>` formats, and non-consecutive sqref ranges.
+fn assert_crossword_rules(model: Model) {
+    let model = UserModel::from_model(model);
+    // Sheet 0 is "Crossword".
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    assert_eq!(list.len(), 2);
+
+    for cf in &list {
+        // Non-consecutive ranges are preserved verbatim.
+        assert!(cf.range.split_whitespace().count() > 1);
+        assert!(matches!(cf.cf_rule, CfRule::Formula { .. }));
+    }
+
+    // The inline dxfs resolve to the green ("matches") and red ("differs") fills.
+    let dxf0 = model
+        .get_dxf_for_conditional_formatting(0, 0)
+        .unwrap()
+        .unwrap();
+    let dxf1 = model
+        .get_dxf_for_conditional_formatting(0, 1)
+        .unwrap()
+        .unwrap();
+    let mut fills: Vec<Color> = [dxf0, dxf1]
+        .iter()
+        .map(|d| d.fill.as_ref().unwrap().color.clone())
+        .collect();
+    fills.sort_by_key(|c| format!("{c:?}"));
+    assert_eq!(
+        fills,
+        vec![
+            Color::Rgb("#C6EFCE".to_string()),
+            Color::Rgb("#FFC7CE".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn test_x14_expression_conditional_formatting() {
+    let model = load_from_xlsx("tests/templates/crossword.xlsx", "en", "UTC", "en").unwrap();
+
+    // The rules survive a save / load round-trip (exported as regular
+    // `type="expression"` rules in the main conditionalFormatting block).
+    let temp_file_name = "tests/templates/crossword_round_trip.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    assert_crossword_rules(model);
+
+    let imported = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    assert_crossword_rules(imported);
     fs::remove_file(temp_file_name).unwrap();
 }

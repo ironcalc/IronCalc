@@ -102,6 +102,10 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     let theme_path = resolve_theme_path(&rels);
     let theme = theme::load(&mut archive, theme_path.as_deref());
     let mut tables = HashMap::new();
+    // Styles must be loaded before the worksheets: conditional-formatting rules
+    // stored in x14 `extLst` extensions carry inline `<x14:dxf>` formats that we
+    // append to `styles.dxfs`, referencing them back by index from the rule.
+    let mut styles = load_styles(&mut archive, &theme)?;
     let (worksheets, selected_sheet) = load_sheets(
         &mut archive,
         &rels,
@@ -109,8 +113,8 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
         &mut tables,
         &mut shared_strings,
         &theme,
+        &mut styles.dxfs,
     )?;
-    let styles = load_styles(&mut archive, &theme)?;
     // reparse formulas in defined names, since they may refer to sheets and tables that have been loaded
     let worksheet_names = worksheets
         .iter()
