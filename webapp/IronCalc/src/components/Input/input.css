@@ -37,21 +37,10 @@
 /* Sizes */
 .ic-input-control.sm {
   height: 28px;
-  padding: 0 8px;
 }
 
 .ic-input-control.md {
   height: 32px;
-  padding: 0 10px;
-}
-
-/* Adjust padding when icons are present */
-.ic-input-control.has-start {
-  padding-left: 8px;
-}
-
-.ic-input-control.has-end {
-  padding-right: 8px;
 }
 
 /* States */
@@ -87,6 +76,7 @@
 /* Input */
 .ic-input-control > input {
   flex: 1;
+  align-self: stretch;
   min-width: 0;
   border: none;
   outline: none;
@@ -95,7 +85,6 @@
   font-family: var(--typography-font-family);
   font-size: var(--typography-font-size);
   font-weight: 400;
-  padding: 0;
 }
 
 .ic-input-control > input::placeholder {
@@ -105,6 +94,23 @@
 .ic-input-control > input:disabled {
   cursor: not-allowed;
   color: var(--palette-grey-400);
+}
+
+.ic-input-control.sm > input {
+  padding: 0 8px;
+}
+
+.ic-input-control.md > input {
+  padding: 0 10px;
+}
+
+/* Adjust padding when icons are present */
+.ic-input-control.has-start > input {
+  padding-left: 6px;
+}
+
+.ic-input-control.has-end > input {
+  padding-right: 6px;
 }
 
 /* Adornments */
@@ -123,11 +129,13 @@
 }
 
 .ic-input-control.has-start > span:first-child {
+  margin-left: 8px;
   margin-right: 6px;
 }
 
 .ic-input-control.has-end > span:last-child {
   margin-left: 6px;
+  margin-right: 8px;
 }
 
 /* NumberInput variant */
