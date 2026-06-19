@@ -10,7 +10,7 @@ use ironcalc_base::{
     expressions::{
         lexer::util::get_tokens as tokenizer,
         types::Area,
-        utils::{number_to_column, quote_name as quote_name_ic},
+        utils::{number_to_column, column_to_number, quote_name as quote_name_ic},
     },
     types::{CellType, Color, Style},
     worksheet::NavigationDirection,
@@ -34,6 +34,14 @@ pub fn column_name_from_number(column: i32) -> Result<String, JsError> {
     match number_to_column(column) {
         Some(c) => Ok(c),
         None => Err(JsError::new("Invalid column number")),
+    }
+}
+
+#[wasm_bindgen(js_name = "columnNumberFromName")]
+pub fn column_number_from_name(column: &str) -> Result<i32, JsError> {
+    match column_to_number(column) {
+        Ok(c) => Ok(c),
+        Err(_) => Err(JsError::new("Invalid column name")),
     }
 }
 

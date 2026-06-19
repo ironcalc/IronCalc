@@ -1,4 +1,5 @@
 import {
+  columnNumberFromName,
   getTokens,
   type Model,
   type Range,
@@ -237,44 +238,29 @@ export function parseRangeInSheet(
   return null;
 }
 
-/**
- * Returns true if every cell of `range` is covered by the union of `ranges`.
- *
- * @param range  A single cell or range, e.g. "A3" or "A1:A4"
- * @param ranges A space-separated list of cells/ranges, e.g. "A1:A2 A4 G6:G10"
- */
-export function isRangeInRanges(range: string, ranges: string): boolean {
-  // "A" -> 1, "B" -> 2, ... "Z" -> 26, "AA" -> 27, ...
-  const colToNum = (col: string): number => {
-    let n = 0;
-    for (const ch of col.toUpperCase()) {
-      n = n * 26 + (ch.charCodeAt(0) - 64); // 'A' === 65
-    }
-    return n;
-  };
+// Parse a single cell like "A3" into { col, row }.
+const parseCell = (cell: string): { col: number; row: number } => {
+  const m = /^([A-Za-z]+)(\d+)$/.exec(cell.trim());
+  if (!m) {
+    throw new Error(`Invalid cell: "${cell}"`);
+  }
+  return { col: columnNumberFromName(m[1]), row: parseInt(m[2], 10) };
+};
 
-  // Parse a single cell like "A3" into { col, row }.
-  const parseCell = (cell: string): { col: number; row: number } => {
-    const m = /^([A-Za-z]+)(\d+)$/.exec(cell.trim());
-    if (!m) {
-      throw new Error(`Invalid cell: "${cell}"`);
-    }
-    return { col: colToNum(m[1]), row: parseInt(m[2], 10) };
+// Parse "A1:A4" or "A4" into a normalized rectangle.
+export const parseRect = (token: string) => {
+  const [a, b] = token.split(":");
+  const c1 = parseCell(a);
+  const c2 = b ? parseCell(b) : c1;
+  return {
+    minCol: Math.min(c1.col, c2.col),
+    maxCol: Math.max(c1.col, c2.col),
+    minRow: Math.min(c1.row, c2.row),
+    maxRow: Math.max(c1.row, c2.row),
   };
+};
 
-  // Parse "A1:A4" or "A4" into a normalized rectangle.
-  const parseRect = (token: string) => {
-    const [a, b] = token.split(":");
-    const c1 = parseCell(a);
-    const c2 = b ? parseCell(b) : c1;
-    return {
-      minCol: Math.min(c1.col, c2.col),
-      maxCol: Math.max(c1.col, c2.col),
-      minRow: Math.min(c1.row, c2.row),
-      maxRow: Math.max(c1.row, c2.row),
-    };
-  };
-
+function isRangeInRangesRaw(range: string, ranges: string): boolean {
   const target = parseRect(range);
   const rects = ranges.trim().split(/\s+/).filter(Boolean).map(parseRect);
 
@@ -297,6 +283,21 @@ export function isRangeInRanges(range: string, ranges: string): boolean {
     }
   }
   return true;
+}
+
+/**
+ * Returns true if every cell of `range` is covered by the union of `ranges`.
+ *
+ * @param range  A single cell or range, e.g. "A3" or "A1:A4"
+ * @param ranges A space-separated list of cells/ranges, e.g. "A1:A2 A4 G6:G10"
+ */
+export function isRangeInRanges(range: string, ranges: string): boolean {
+  try {
+    return isRangeInRangesRaw(range, ranges);
+  } catch (e) {
+    console.error("Error in isRangeInRanges:", e);
+    return false;
+  }
 }
 
 export default getFormulaHTML;

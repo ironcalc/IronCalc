@@ -19,7 +19,11 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { resolveColorToHex } from "../../ColorPicker/util";
-import { isRangeInRanges, parseRangeInSheet } from "../../Editor/util";
+import {
+  isRangeInRanges,
+  parseRangeInSheet,
+  parseRect,
+} from "../../Editor/util";
 import { iconSpecFor } from "../../IconPicker/IconPicker";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
@@ -121,10 +125,15 @@ const ConditionalFormatting = ({
   const rules = loadRules();
 
   const selectRuleRange = (rule: Rule): void => {
-    const range = parseRangeInSheet(model, rule.applyTo);
+    const firstRange = rule.applyTo.split(/\s+/)[0];
+    const range = parseRect(firstRange);
     if (range) {
-      const [sheetIndex, rowStart, columnStart, rowEnd, columnEnd] = range;
-      model.setSelectedSheet(sheetIndex);
+      const {
+        minCol: columnStart,
+        maxCol: columnEnd,
+        minRow: rowStart,
+        maxRow: rowEnd,
+      } = range;
       model.setSelectedCell(rowStart, columnStart);
       model.setSelectedRange(rowStart, columnStart, rowEnd, columnEnd);
     }
