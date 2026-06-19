@@ -98,6 +98,17 @@
   padding: 8px 10px;
 }
 
+.ic-textarea-control.has-end > textarea {
+  padding-right: 32px;
+}
+
+/* Adornment */
+.ic-textarea-end-adornment {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
 /* Helper text */
 .ic-textarea > p {
   margin: 0;
