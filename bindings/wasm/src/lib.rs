@@ -10,7 +10,7 @@ use ironcalc_base::{
     expressions::{
         lexer::util::get_tokens as tokenizer,
         types::Area,
-        utils::{number_to_column, column_to_number, quote_name as quote_name_ic},
+        utils::{column_to_number, number_to_column, quote_name as quote_name_ic},
     },
     types::{CellType, Color, Style},
     worksheet::NavigationDirection,
