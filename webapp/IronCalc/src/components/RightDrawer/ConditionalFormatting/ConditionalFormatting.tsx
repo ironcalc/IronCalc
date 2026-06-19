@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { resolveColorToHex } from "../../ColorPicker/util";
-import { parseRangeInSheet } from "../../Editor/util";
+import { isRangeInRanges, parseRangeInSheet } from "../../Editor/util";
 import { iconSpecFor } from "../../IconPicker/IconPicker";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
@@ -39,28 +39,6 @@ import "./conditional-formatting.css";
 
 export interface Rule extends RuleData {
   id: string;
-}
-
-// HACK: We should just have the range without the sheet name in the model
-function getRange(applyTo: string): string {
-  const parts = applyTo.split("!");
-  return parts.length === 2 ? parts[1] : applyTo;
-}
-
-function rangesIntersect(
-  a: [number, number, number, number, number],
-  b: [number, number, number, number, number],
-): boolean {
-  const [aSheet, aR1, aC1, aR2, aC2] = a;
-  const [bSheet, bR1, bC1, bR2, bC2] = b;
-  if (aSheet !== bSheet) {
-    return false;
-  }
-  const aMinR = Math.min(aR1, aR2);
-  const aMaxR = Math.max(aR1, aR2);
-  const aMinC = Math.min(aC1, aC2);
-  const aMaxC = Math.max(aC1, aC2);
-  return aMinR <= bR2 && bR1 <= aMaxR && aMinC <= bC2 && bC1 <= aMaxC;
 }
 
 interface ConditionalFormattingProps {
@@ -85,6 +63,12 @@ const ConditionalFormatting = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOption, setFilterOption] = useState("sheet");
   const { t } = useTranslation();
+
+  function getSanitizedSelectedArea(): string {
+    const selectedArea = getSelectedArea();
+    // convert Sheet1!$A$1:$B$2 to A1:B2
+    return selectedArea.replace(/^\w+!/, "").replace(/\$/g, "");
+  }
 
   const filterOptions = [
     { value: "sheet", label: t("conditional_formatting.filter_this_sheet") },
@@ -136,13 +120,8 @@ const ConditionalFormatting = ({
 
   const rules = loadRules();
 
-  const sheetName = model.getWorksheetsProperties()[sheet]?.name ?? "";
-
-  const getRuleRange = (rule: Rule): string =>
-    rule.applyTo.includes("!") ? rule.applyTo : `${sheetName}!${rule.applyTo}`;
-
   const selectRuleRange = (rule: Rule): void => {
-    const range = parseRangeInSheet(model, getRuleRange(rule));
+    const range = parseRangeInSheet(model, rule.applyTo);
     if (range) {
       const [sheetIndex, rowStart, columnStart, rowEnd, columnEnd] = range;
       model.setSelectedSheet(sheetIndex);
@@ -164,7 +143,7 @@ const ConditionalFormatting = ({
     if (!cfRule) {
       return;
     }
-    const applyTo = getRange(data.applyTo);
+    const applyTo = data.applyTo;
     if (editingRule) {
       model.updateConditionalFormatting(
         sheet,
@@ -213,12 +192,12 @@ const ConditionalFormatting = ({
           <EditRule
             onSave={handleSave}
             onCancel={handleCancel}
-            getSelectedArea={getSelectedArea}
+            getSelectedArea={getSanitizedSelectedArea}
             resolveValue={resolveRef}
             currentTheme={currentTheme}
             initialValues={
               editingRule ?? {
-                applyTo: getSelectedArea(),
+                applyTo: getSanitizedSelectedArea(),
                 ruleType: "cell_value",
                 ruleOperator: "between",
                 ruleValue: "",
@@ -241,15 +220,7 @@ const ConditionalFormatting = ({
 
   const filteredRules = rules.filter((rule) => {
     if (filterOption === "selection") {
-      const selectedParsed = parseRangeInSheet(model, getSelectedArea());
-      if (!selectedParsed) {
-        return false;
-      }
-      const ruleParsed = parseRangeInSheet(model, getRuleRange(rule));
-      if (!ruleParsed) {
-        return false;
-      }
-      if (!rangesIntersect(selectedParsed, ruleParsed)) {
+      if (!isRangeInRanges(getSanitizedSelectedArea(), rule.applyTo)) {
         return false;
       }
     }
@@ -325,18 +296,10 @@ const ConditionalFormatting = ({
                 </div>
               ) : (
                 filteredRules.map((rule) => {
-                  const selectedParsed = parseRangeInSheet(
-                    model,
-                    getSelectedArea(),
+                  const isActive = isRangeInRanges(
+                    getSanitizedSelectedArea(),
+                    rule.applyTo,
                   );
-                  const ruleParsed = parseRangeInSheet(
-                    model,
-                    getRuleRange(rule),
-                  );
-                  const isActive =
-                    selectedParsed !== null &&
-                    ruleParsed !== null &&
-                    rangesIntersect(selectedParsed, ruleParsed);
 
                   const previewStyle: React.CSSProperties = {
                     color:
