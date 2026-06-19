@@ -756,7 +756,16 @@ impl<'a> Model<'a> {
         stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
-        let Some(&(anchor_row, anchor_col, _, _)) = ranges.first() else {
+        // The parse anchor is the top-left of the bounding box of *all* areas:
+        // the minimum row and minimum column across every range. For a
+        // single-area rule this is just its top-left, but for a multiple-areas
+        // rule like "D4:D8 B10:D10" the anchor is B4 (min row 4, min col 2),
+        // not the first area's top-left (D4).
+        let Some((anchor_row, anchor_col)) = ranges
+            .iter()
+            .map(|&(r1, c1, _, _)| (r1, c1))
+            .reduce(|(r, c), (r1, c1)| (r.min(r1), c.min(c1)))
+        else {
             return;
         };
         let body = formula.trim().strip_prefix('=').unwrap_or(formula.trim());
