@@ -26,6 +26,7 @@ export interface TextareaProperties
   label?: ReactNode;
   helperText?: ReactNode;
   error?: boolean;
+  endAdornment?: ReactNode;
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProperties>(
@@ -37,6 +38,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProperties>(
       error = false,
       disabled = false,
       required,
+      endAdornment,
       id: idProp,
       className,
       style,
@@ -53,6 +55,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProperties>(
       `${size}`,
       error && "is-error",
       disabled && "is-disabled",
+      endAdornment && "has-end",
     ]
       .filter(Boolean)
       .join(" ");
@@ -86,6 +89,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProperties>(
             spellCheck={false}
             {...rest}
           />
+          {endAdornment && (
+            <span className="ic-textarea-end-adornment">{endAdornment}</span>
+          )}
         </div>
 
         {helperText && <p id={helperId}>{helperText}</p>}
