@@ -71,8 +71,9 @@ const ConditionalFormatting = ({
 
   function getSanitizedSelectedArea(): string {
     const selectedArea = getSelectedArea();
-    // convert Sheet1!$A$1:$B$2 to A1:B2
-    return selectedArea.replace(/^\w+!/, "").replace(/\$/g, "");
+    // convert Sheet1!$A$1:$B$2 (or 'My Sheet'!$A$1:$B$2) to A1:B2
+    const withoutSheet = selectedArea.split("!").pop() ?? selectedArea;
+    return withoutSheet.replace(/\$/g, "");
   }
 
   const filterOptions = [
