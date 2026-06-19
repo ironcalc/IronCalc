@@ -4,7 +4,7 @@
 use crate::{
     cf_types::{CfRule, CfRuleInput, Cfvo, ColorScaleThreshold, Icon, ValueOperator},
     test::user_model::util::new_empty_user_model,
-    types::{Color, Dxf},
+    types::{Color, Dxf, Fill},
 };
 
 fn color_scale() -> CfRuleInput {
@@ -1033,4 +1033,61 @@ fn insert_row_updates_cfvo_formula_in_data_bar() {
     } else {
         panic!("Expected DataBar CF rule");
     }
+}
+
+// ---------------------------------------------------------------------------
+// Multiple-areas Formula rule: parse anchor must be the top-left of the
+// bounding box of *all* areas (min row, min col), not the top-left of the
+// first area.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn multi_area_formula_anchor_is_min_row_min_col() {
+    // CF rule over two areas: "D4:D8 B10:D10".
+    // Bounding-box top-left is (row 4, col 2) = B4, even though the first
+    // area's top-left is D4 (row 4, col 4).
+    //
+    // Formula "=B4<>\"\"" written relative to anchor B4 means "this cell is
+    // non-empty": for every cell in the ranges the relative reference resolves
+    // to the cell itself.
+    //
+    // If the anchor were the first area's top-left (D4), the relative reference
+    // would be two columns to the left of the current cell. Evaluated at B10
+    // (col 2) that points at column 0, which does not exist, so B10 would never
+    // be formatted — which is the bug we are guarding against.
+    let mut model = new_empty_user_model();
+
+    // B10 is in the second area and has a value, so it must be formatted.
+    model.set_user_input(0, 10, 2, "hello").unwrap();
+
+    let format = Dxf {
+        fill: Some(Fill {
+            color: Color::Rgb("#FF0000".to_string()),
+        }),
+        ..Default::default()
+    };
+
+    model
+        .add_conditional_formatting(
+            0,
+            "D4:D8 B10:D10",
+            CfRuleInput::Formula {
+                formula: "=B4<>\"\"".to_string(),
+                format,
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+
+    // B10 has a value → its own cell is non-empty → it should be formatted.
+    assert_eq!(
+        model
+            .get_extended_cell_style(0, 10, 2)
+            .unwrap()
+            .style
+            .fill
+            .color,
+        Color::Rgb("#FF0000".to_string()),
+        "B10 has a value and must be formatted by the multi-area CF rule"
+    );
 }
