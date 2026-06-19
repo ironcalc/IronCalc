@@ -6,6 +6,7 @@ import { Button } from "../../Button/Button";
 import { IconButton } from "../../Button/IconButton";
 import { Input } from "../../Input/Input";
 import { Select } from "../../Select/Select";
+import { Textarea } from "../../Textarea/Textarea";
 import { Tooltip } from "../../Tooltip/Tooltip";
 import { getFullRangeToString } from "../../util";
 import "./edit-name-range.css";
@@ -211,7 +212,7 @@ const EditNamedRange = ({
               })),
             ]}
           />
-          <Input
+          <Textarea
             label={t("name_manager_dialog.refers_to")}
             placeholder={t("name_manager_dialog.enter_formula")}
             value={formula}
