@@ -830,16 +830,19 @@ export default class WorksheetCanvas {
         }
       }
 
-      drawBorder(
-        context,
-        borderLeftStyle,
-        borderLeftColor,
-        x,
-        y,
-        x,
-        y + height,
-        true,
-      );
+      // The left border of the first column is shared with the header separator
+      if (x !== headerColumnWidth + 0.5 || border.left) {
+        drawBorder(
+          context,
+          borderLeftStyle,
+          borderLeftColor,
+          x,
+          y,
+          x,
+          y + height,
+          true,
+        );
+      }
     } else {
       // If the cell spills to the right we don't want to set the border but we still need to fill
       // the border gap with the background color
@@ -891,16 +894,19 @@ export default class WorksheetCanvas {
         borderTopColor = this.model.resolveColor(topStyle.fill.color);
       }
     }
-    drawBorder(
-      context,
-      borderTopStyle,
-      borderTopColor,
-      x,
-      y,
-      x + width,
-      y,
-      false,
-    );
+    // The top border of the first row is shared with the header separator
+    if (y !== headerRowHeight + 0.5 || border.top) {
+      drawBorder(
+        context,
+        borderTopStyle,
+        borderTopColor,
+        x,
+        y,
+        x + width,
+        y,
+        false,
+      );
+    }
   }
 
   /// Renders the text in the cell.
@@ -1906,6 +1912,16 @@ export default class WorksheetCanvas {
     ctx.setLineDash([]);
   }
 
+  private drawHeaderSeparators(x: number, y: number): void {
+    const context = this.ctx;
+    context.save();
+    context.strokeStyle = this.theme.headerBorderColor;
+    context.lineWidth = 1;
+    drawBorderLine(context, x, y, this.width, y);
+    drawBorderLine(context, x, y, x, this.height);
+    context.restore();
+  }
+
   renderSheet(): void {
     const context = this.ctx;
     const { canvas } = this;
@@ -1925,9 +1941,13 @@ export default class WorksheetCanvas {
     const frozenColumns = this.model.getFrozenColumnsCount(selectedSheet);
     const frozenRows = this.model.getFrozenRowsCount(selectedSheet);
 
-    // Draw frozen rows and columns (top-left-pane)
     let x = headerColumnWidth + 0.5;
     let y = headerRowHeight + 0.5;
+
+    // Separators between the headers and the cells
+    this.drawHeaderSeparators(x, y);
+
+    // Draw frozen rows and columns (top-left-pane)
     for (let row = 1; row <= frozenRows; row += 1) {
       const rowHeight = this.getRowHeight(selectedSheet, row);
       x = headerColumnWidth + 0.5;
@@ -2044,23 +2064,6 @@ export default class WorksheetCanvas {
     context.moveTo(0, 0.5);
     context.lineTo(x + headerColumnWidth, 0.5);
     context.stroke();
-
-    // Separators between the headers and the cells
-    context.strokeStyle = this.theme.headerBorderColor;
-    drawBorderLine(
-      context,
-      0,
-      headerRowHeight + 0.5,
-      this.width,
-      headerRowHeight + 0.5,
-    );
-    drawBorderLine(
-      context,
-      headerColumnWidth + 0.5,
-      0,
-      headerColumnWidth + 0.5,
-      this.height,
-    );
 
     // Overlays drawn on top of everything else
     this.drawCellOutline();
