@@ -14,7 +14,7 @@
  * cannot pick up (e.g. the prefix itself is dynamic).
  */
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // Explicit dynamic-prefix allowlist (auto-detected prefixes are also included)
@@ -80,7 +80,9 @@ function extractUsedKeys(srcDir) {
       staticKeys.add(m[1]); // intersected with locale keys later
     }
     for (const m of content.matchAll(DYNAMIC_RE)) {
-      if (m[1]) detectedPrefixes.add(m[1]);
+      if (m[1]) {
+        detectedPrefixes.add(m[1]);
+      }
     }
   }
 
@@ -116,7 +118,9 @@ const referenceKeys = new Set(locales[REFERENCE_LOCALE]);
 
 // 1. Key consistency across locales
 for (const [file, keys] of Object.entries(locales)) {
-  if (file === REFERENCE_LOCALE) continue;
+  if (file === REFERENCE_LOCALE) {
+    continue;
+  }
   const keySet = new Set(keys);
   const missing = [...referenceKeys].filter((k) => !keySet.has(k)).sort();
   const extra = keys.filter((k) => !referenceKeys.has(k)).sort();

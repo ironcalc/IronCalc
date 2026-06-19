@@ -21,6 +21,7 @@ import { IconButton } from "../../Button/IconButton";
 import { resolveColorToHex } from "../../ColorPicker/util";
 import {
   isRangeInRanges,
+  isValidRanges,
   parseRangeInSheet,
   parseRect,
 } from "../../Editor/util";
@@ -153,6 +154,9 @@ const ConditionalFormatting = ({
       return;
     }
     const applyTo = data.applyTo;
+    if (!isValidRanges(applyTo)) {
+      return;
+    }
     if (editingRule) {
       model.updateConditionalFormatting(
         sheet,
