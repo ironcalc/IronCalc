@@ -49,8 +49,12 @@ function colorToParam(color: Color): string {
   return `[${color[0]}, ${color[1]}]`;
 }
 
-const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
-  const { model, workbookState } = props;
+const Workbook = (props: {
+  model: Model;
+  workbookState: WorkbookState;
+  externalRevision?: number;
+}) => {
+  const { model, workbookState, externalRevision = 0 } = props;
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const worksheetRef = useRef<{
@@ -61,6 +65,13 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
   // Calling `setRedrawId((id) => id + 1);` forces a redraw
   // This is needed because `model` or `workbookState` can change without React being aware of it
   const setRedrawId = useState(0)[1];
+
+  // We also redraw if we modify the model from the outside, indicated by
+  // `externalRevision`. This way we can redraw the canvas without throwing away
+  // the editing state (which would cause edits and focus to be lost)
+  useEffect(() => {
+    setRedrawId((id) => id + 1);
+  }, [externalRevision, setRedrawId]);
 
   const [alertDialogMessage, setAlertDialogMessage] = useState<string | null>(
     null,
