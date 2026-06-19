@@ -169,6 +169,9 @@
   font-size: 12px;
   color: var(--palette-grey-600);
   font-family: var(--typography-font-family);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ic-cf-list-item-icons {
