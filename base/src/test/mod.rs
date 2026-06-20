@@ -23,6 +23,7 @@ mod test_fn_bond_functions;
 mod test_fn_choose;
 mod test_fn_concatenate;
 mod test_fn_count;
+mod test_fn_depreciation;
 mod test_fn_financial_simple;
 mod test_forecast;
 mod test_statistical_functions;

@@ -14,6 +14,7 @@ use crate::{
 
 mod accrint;
 mod financial_bonds;
+mod financial_depreciation;
 mod financial_util;
 
 use financial_util::{compute_irr, compute_npv, compute_rate, compute_xirr, compute_xnpv};
