@@ -81,4 +81,54 @@ impl<'a> Model<'a> {
     ) -> CalcResult {
         self.fn_forecast_linear_impl(args, cell)
     }
+
+    // The FORECAST.ETS family (exponential triple smoothing) is recognized but
+    // not yet implemented; it returns the #N/IMPL! error.
+    pub(crate) fn fn_forecast_ets(
+        &mut self,
+        _args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        CalcResult::new_error(
+            Error::NIMPL,
+            cell,
+            "FORECAST.ETS not implemented".to_string(),
+        )
+    }
+
+    pub(crate) fn fn_forecast_ets_confint(
+        &mut self,
+        _args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        CalcResult::new_error(
+            Error::NIMPL,
+            cell,
+            "FORECAST.ETS.CONFINT not implemented".to_string(),
+        )
+    }
+
+    pub(crate) fn fn_forecast_ets_seasonality(
+        &mut self,
+        _args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        CalcResult::new_error(
+            Error::NIMPL,
+            cell,
+            "FORECAST.ETS.SEASONALITY not implemented".to_string(),
+        )
+    }
+
+    pub(crate) fn fn_forecast_ets_stat(
+        &mut self,
+        _args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        CalcResult::new_error(
+            Error::NIMPL,
+            cell,
+            "FORECAST.ETS.STAT not implemented".to_string(),
+        )
+    }
 }

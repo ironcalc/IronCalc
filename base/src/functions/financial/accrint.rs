@@ -162,7 +162,7 @@ fn acc_find_pcd_ncd(
 
 // EFF `DaysBetween` for a given basis. `numerator` selects the numerator vs
 // denominator convention used by the Actual/360 and Actual/365 bases.
-fn acc_days_between(
+pub(super) fn acc_days_between(
     start: NaiveDate,
     end: NaiveDate,
     numerator: bool,

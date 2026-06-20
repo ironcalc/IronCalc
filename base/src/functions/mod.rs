@@ -283,6 +283,10 @@ pub enum Function {
     FisherInv,
     Forecast,
     ForecastLinear,
+    ForecastEts,
+    ForecastEtsConfint,
+    ForecastEtsSeasonality,
+    ForecastEtsStat,
     Gamma,
     GammaDist,
     GammaInv,
@@ -465,6 +469,9 @@ pub enum Function {
     Coupncd,
     Coupnum,
     Couppcd,
+    Amordegrc,
+    Amorlinc,
+    Vdb,
 
     // Engineering: Bessel and transcendental functions
     Besseli,
@@ -986,6 +993,9 @@ impl_function_lookup! {
     coupncd    => Coupncd,
     coupnum    => Coupnum,
     couppcd    => Couppcd,
+    amordegrc  => Amordegrc,
+    amorlinc   => Amorlinc,
+    vdb        => Vdb,
 
     // Engineering: Bessel and transcendental functions
     besseli       => Besseli,
@@ -1074,6 +1084,10 @@ impl_function_lookup! {
     steyx           => Steyx,
     forecast        => Forecast,
     forecastlinear  => ForecastLinear,
+    forecastets            => ForecastEts,
+    forecastetsconfint     => ForecastEtsConfint,
+    forecastetsseasonality => ForecastEtsSeasonality,
+    forecastetsstat        => ForecastEtsStat,
     frequency       => Frequency,
     growth          => Growth,
     linest          => Linest,
@@ -1493,6 +1507,9 @@ impl Function {
             Function::Coupncd => functions.coupncd.clone(),
             Function::Coupnum => functions.coupnum.clone(),
             Function::Couppcd => functions.couppcd.clone(),
+            Function::Amordegrc => functions.amordegrc.clone(),
+            Function::Amorlinc => functions.amorlinc.clone(),
+            Function::Vdb => functions.vdb.clone(),
             Function::Besseli => functions.besseli.clone(),
             Function::Besselj => functions.besselj.clone(),
             Function::Besselk => functions.besselk.clone(),
@@ -1567,6 +1584,10 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
             Function::Forecast => functions.forecast.clone(),
             Function::ForecastLinear => functions.forecastlinear.clone(),
+            Function::ForecastEts => functions.forecastets.clone(),
+            Function::ForecastEtsConfint => functions.forecastetsconfint.clone(),
+            Function::ForecastEtsSeasonality => functions.forecastetsseasonality.clone(),
+            Function::ForecastEtsStat => functions.forecastetsstat.clone(),
             Function::Frequency => functions.frequency.clone(),
             Function::Growth => functions.growth.clone(),
             Function::Linest => functions.linest.clone(),
@@ -1587,7 +1608,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 487> {
+    pub fn into_iter() -> IntoIter<Function, 494> {
         [
             Function::And,
             Function::False,
@@ -1863,6 +1884,9 @@ impl Function {
             Function::Coupncd,
             Function::Coupnum,
             Function::Couppcd,
+            Function::Amordegrc,
+            Function::Amorlinc,
+            Function::Vdb,
             Function::Besseli,
             Function::Besselj,
             Function::Besselk,
@@ -2047,6 +2071,10 @@ impl Function {
             Function::Steyx,
             Function::Forecast,
             Function::ForecastLinear,
+            Function::ForecastEts,
+            Function::ForecastEtsConfint,
+            Function::ForecastEtsSeasonality,
+            Function::ForecastEtsStat,
             Function::Frequency,
             Function::Growth,
             Function::Linest,
@@ -2249,6 +2277,11 @@ impl Function {
             Function::Permutationa => "_xlfn.PERMUTATIONA".to_string(),
             Function::QuartileExc => "_xlfn.QUARTILE.EXC".to_string(),
             Function::QuartileInc => "_xlfn.QUARTILE.INC".to_string(),
+
+            Function::ForecastEts => "_xlfn.FORECAST.ETS".to_string(),
+            Function::ForecastEtsConfint => "_xlfn.FORECAST.ETS.CONFINT".to_string(),
+            Function::ForecastEtsSeasonality => "_xlfn.FORECAST.ETS.SEASONALITY".to_string(),
+            Function::ForecastEtsStat => "_xlfn.FORECAST.ETS.STAT".to_string(),
 
             _ => {
                 let language = get_default_language();
@@ -2509,6 +2542,9 @@ impl<'a> Model<'a> {
             Function::Coupncd => self.fn_coupncd(args, cell),
             Function::Coupnum => self.fn_coupnum(args, cell),
             Function::Couppcd => self.fn_couppcd(args, cell),
+            Function::Amordegrc => self.fn_amordegrc(args, cell),
+            Function::Amorlinc => self.fn_amorlinc(args, cell),
+            Function::Vdb => self.fn_vdb(args, cell),
             Function::Besseli => self.fn_besseli(args, cell),
             Function::Besselj => self.fn_besselj(args, cell),
             Function::Besselk => self.fn_besselk(args, cell),
@@ -2728,6 +2764,10 @@ impl<'a> Model<'a> {
             Function::Steyx => self.fn_steyx(args, cell),
             Function::Forecast => self.fn_forecast(args, cell),
             Function::ForecastLinear => self.fn_forecast_linear(args, cell),
+            Function::ForecastEts => self.fn_forecast_ets(args, cell),
+            Function::ForecastEtsConfint => self.fn_forecast_ets_confint(args, cell),
+            Function::ForecastEtsSeasonality => self.fn_forecast_ets_seasonality(args, cell),
+            Function::ForecastEtsStat => self.fn_forecast_ets_stat(args, cell),
             Function::Frequency => self.fn_frequency(args, cell),
             Function::Growth => self.fn_growth(args, cell),
             Function::Linest => self.fn_linest(args, cell),

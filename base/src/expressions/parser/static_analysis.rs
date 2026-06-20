@@ -1089,6 +1089,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Coupncd => args_signature_scalars(arg_count, 3, 1),
         Function::Coupnum => args_signature_scalars(arg_count, 3, 1),
         Function::Couppcd => args_signature_scalars(arg_count, 3, 1),
+        Function::Amordegrc => args_signature_scalars(arg_count, 6, 1),
+        Function::Amorlinc => args_signature_scalars(arg_count, 6, 1),
+        Function::Vdb => args_signature_scalars(arg_count, 5, 2),
         Function::Besseli => args_signature_scalars(arg_count, 2, 0),
         Function::Besselj => args_signature_scalars(arg_count, 2, 0),
         Function::Besselk => args_signature_scalars(arg_count, 2, 0),
@@ -1447,6 +1450,10 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Forecast | Function::ForecastLinear => {
             vec![Signature::Scalar, Signature::Vector, Signature::Vector]
         }
+        Function::ForecastEts
+        | Function::ForecastEtsConfint
+        | Function::ForecastEtsSeasonality
+        | Function::ForecastEtsStat => vec![Signature::Vector; arg_count],
         Function::Frequency => vec![Signature::Vector, Signature::Vector],
         Function::Growth | Function::Trend => match arg_count {
             1 => vec![Signature::Vector],
@@ -1753,6 +1760,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Coupncd => StaticResult::Scalar,
         Function::Coupnum => StaticResult::Scalar,
         Function::Couppcd => StaticResult::Scalar,
+        Function::Amordegrc => StaticResult::Scalar,
+        Function::Amorlinc => StaticResult::Scalar,
+        Function::Vdb => StaticResult::Scalar,
         Function::Besseli => scalar_arguments(args),
         Function::Besselj => scalar_arguments(args),
         Function::Besselk => scalar_arguments(args),
@@ -1979,6 +1989,10 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Steyx => StaticResult::Scalar,
         Function::Forecast => StaticResult::Scalar,
         Function::ForecastLinear => StaticResult::Scalar,
+        Function::ForecastEts => StaticResult::Scalar,
+        Function::ForecastEtsConfint => StaticResult::Scalar,
+        Function::ForecastEtsSeasonality => StaticResult::Scalar,
+        Function::ForecastEtsStat => StaticResult::Scalar,
         // Spill-returning functions
         Function::Frequency => StaticResult::Unknown,
         Function::Growth => StaticResult::Unknown,
