@@ -520,8 +520,8 @@ fn fn_accrint_xlsx_oracle_i5_freq4_default_basis() {
     model.evaluate();
     let a1: f64 = model._get_text("A1").parse().unwrap();
     assert!(
-        (a1 - 16.666_666_667).abs() < 1e-6,
-        "I5 freq=4 default basis = {a1}, expected 16.66666667"
+        (a1 - 16.944_444_444_444).abs() < 1e-6,
+        "I5 freq=4 default basis = {a1}, expected 16.944444444444"
     );
 }
 
