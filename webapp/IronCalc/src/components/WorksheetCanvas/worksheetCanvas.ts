@@ -771,7 +771,7 @@ export default class WorksheetCanvas {
       : backgroundColor;
     const context = this.ctx;
     context.fillStyle = backgroundColor;
-    context.fillRect(x, y, width, height);
+    context.fillRect(x + 0.5, y + 0.5, width - 1, height - 1);
 
     // CF overlays rendered on top of the background.
     if (extended.data_bar) {
@@ -831,7 +831,7 @@ export default class WorksheetCanvas {
       }
 
       // The left border of the first column is shared with the header separator
-      if (x !== headerColumnWidth + 0.5 || border.left) {
+      if (x > headerColumnWidth + 0.51 || border.left) {
         drawBorder(
           context,
           borderLeftStyle,
@@ -895,7 +895,7 @@ export default class WorksheetCanvas {
       }
     }
     // The top border of the first row is shared with the header separator
-    if (y !== headerRowHeight + 0.5 || border.top) {
+    if (y > headerRowHeight + 0.51 || border.top) {
       drawBorder(
         context,
         borderTopStyle,
@@ -1188,7 +1188,7 @@ export default class WorksheetCanvas {
       }
       const selected = row >= rowStart && row <= rowEnd;
       context.fillStyle = this.theme.headerBorderColor;
-      context.fillRect(0.5, topLeftCornerY, headerColumnWidth, rowHeight);
+      context.fillRect(0.5, topLeftCornerY, headerColumnWidth - 1, rowHeight);
       context.fillStyle = selected
         ? isFullRowSelected
           ? this.theme.primaryMain
@@ -1197,7 +1197,7 @@ export default class WorksheetCanvas {
       context.fillRect(
         0.5,
         topLeftCornerY + 0.5,
-        headerColumnWidth,
+        headerColumnWidth - 1,
         rowHeight - 1,
       );
       if (selected) {
