@@ -12,8 +12,6 @@ mod database;
 mod date_and_time;
 mod engineering;
 mod financial;
-mod financial_bonds;
-mod financial_util;
 mod information;
 mod logical;
 mod lookup_and_reference;
