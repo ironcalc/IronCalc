@@ -1091,3 +1091,132 @@ fn multi_area_formula_anchor_is_min_row_min_col() {
         "B10 has a value and must be formatted by the multi-area CF rule"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Raise / lower priority
+// ---------------------------------------------------------------------------
+
+fn icon_set() -> CfRuleInput {
+    CfRuleInput::DataBar {
+        min: Some(Cfvo::Min),
+        max: Some(Cfvo::Max),
+        positive_color: Color::Rgb("#123456".to_string()),
+        negative_color: Color::Rgb("#654321".to_string()),
+        is_gradient: false,
+        show_value: false,
+    }
+}
+
+// Priorities in insertion order (not the priority-sorted display list).
+fn priorities(model: &crate::UserModel) -> Vec<u32> {
+    model
+        .model
+        .workbook
+        .worksheet(0)
+        .unwrap()
+        .conditional_formatting
+        .iter()
+        .map(|cf| cf.priority)
+        .collect()
+}
+
+#[test]
+fn test_raise_priority_swaps_with_neighbour() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", data_bar())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", icon_set())
+        .unwrap();
+    assert_eq!(priorities(&model), vec![1, 2, 3]);
+
+    // Raise the first rule: swaps priority 1 with priority 2.
+    model.raise_conditional_formatting_priority(0, 0).unwrap();
+    assert_eq!(priorities(&model), vec![2, 1, 3]);
+}
+
+#[test]
+fn test_lower_priority_swaps_with_neighbour() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", data_bar())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", icon_set())
+        .unwrap();
+    assert_eq!(priorities(&model), vec![1, 2, 3]);
+
+    // Lower the last rule: swaps priority 3 with priority 2.
+    model.lower_conditional_formatting_priority(0, 2).unwrap();
+    assert_eq!(priorities(&model), vec![1, 3, 2]);
+}
+
+#[test]
+fn test_raise_priority_at_top_is_noop_and_pushes_no_history() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", data_bar())
+        .unwrap();
+    assert_eq!(priorities(&model), vec![1, 2]);
+
+    // Index 1 already has the highest priority number → no-op.
+    model.raise_conditional_formatting_priority(0, 1).unwrap();
+    assert_eq!(priorities(&model), vec![1, 2]);
+
+    // No diff was recorded: undo must roll back the second add, not a swap.
+    model.undo().unwrap();
+    assert_eq!(model.get_conditional_formatting_list(0).unwrap().len(), 1);
+}
+
+#[test]
+fn test_undo_redo_raise_priority() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", data_bar())
+        .unwrap();
+    assert_eq!(priorities(&model), vec![1, 2]);
+
+    model.raise_conditional_formatting_priority(0, 0).unwrap();
+    assert_eq!(priorities(&model), vec![2, 1]);
+
+    // Undo restores the original priorities.
+    model.undo().unwrap();
+    assert_eq!(priorities(&model), vec![1, 2]);
+
+    // Redo re-applies the swap.
+    model.redo().unwrap();
+    assert_eq!(priorities(&model), vec![2, 1]);
+}
+
+#[test]
+fn test_undo_redo_lower_priority() {
+    let mut model = new_empty_user_model();
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", data_bar())
+        .unwrap();
+
+    model.lower_conditional_formatting_priority(0, 1).unwrap();
+    assert_eq!(priorities(&model), vec![2, 1]);
+
+    model.undo().unwrap();
+    assert_eq!(priorities(&model), vec![1, 2]);
+
+    model.redo().unwrap();
+    assert_eq!(priorities(&model), vec![2, 1]);
+}

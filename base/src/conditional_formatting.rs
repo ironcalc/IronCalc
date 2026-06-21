@@ -7,8 +7,8 @@ use crate::{
     cell::CellValue,
     cf_types::{
         CfCellResult, CfDataBar, CfIcon, CfRating, CfRule, CfRuleInput, Cfvo, ColorScaleThreshold,
-        ConditionalFormatting, ExtendedStyle, Icon, IconThreshold, PeriodType, TextOperator,
-        ValueOperator,
+        ConditionalFormatting, ConditionalFormattingView, ExtendedStyle, Icon, IconThreshold,
+        PeriodType, TextOperator, ValueOperator,
     },
     expressions::types::{CellReferenceIndex, CellReferenceRC},
     types::{Color, Dxf},
@@ -1480,23 +1480,44 @@ impl<'a> Model<'a> {
         }
     }
 
-    /// Returns all CF rules for the given sheet in list order.
+    /// Returns all CF rules for the given sheet, sorted by priority descending
+    /// (highest priority first).
+    ///
+    /// Each entry carries its `index` into the worksheet's stored
+    /// `conditional_formatting` vector so callers can pass it back to the
+    /// index-based mutators ([`Self::get_dxf_for_conditional_formatting`],
+    /// [`Self::update_conditional_formatting`], [`Self::delete_conditional_formatting`],
+    /// [`Self::raise_conditional_formatting_priority`],
+    /// [`Self::lower_conditional_formatting_priority`]) without having to infer the
+    /// index from the display position.
     ///
     /// Formulas are stored internally in English; they are translated into the
     /// active language/locale for display.
     pub fn get_conditional_formatting_list(
         &self,
         sheet: u32,
-    ) -> Result<Vec<ConditionalFormatting>, String> {
-        let mut list = self
+    ) -> Result<Vec<ConditionalFormattingView>, String> {
+        let mut list: Vec<(usize, ConditionalFormatting)> = self
             .workbook
             .worksheet(sheet)?
             .conditional_formatting
-            .clone();
-        for cf in &mut list {
+            .iter()
+            .cloned()
+            .enumerate()
+            .collect();
+        // sort by priority descending (highest first)
+        list.sort_by_key(|(_, cf)| std::cmp::Reverse(cf.priority));
+        let mut result = Vec::with_capacity(list.len());
+        for (index, mut cf) in list {
             self.cf_rule_to_display(&mut cf.cf_rule, sheet);
+            result.push(ConditionalFormattingView {
+                index,
+                range: cf.range,
+                cf_rule: cf.cf_rule,
+                priority: cf.priority,
+            });
         }
-        Ok(list)
+        Ok(result)
     }
 
     /// Returns the differential format (Dxf) for the CF rule at `index` on `sheet`,
@@ -1609,6 +1630,76 @@ impl<'a> Model<'a> {
         ws.conditional_formatting[index].range = new_range.to_string();
         ws.conditional_formatting[index].cf_rule = final_rule;
         Ok(old)
+    }
+
+    /// Raises the priority of the CF rule at `index` on `sheet`.
+    ///
+    /// In IronCalc a higher priority *number* means higher priority. Raising a
+    /// rule swaps its priority with the rule that has the next-higher priority
+    /// number (the closest rule above it). If the rule is already the
+    /// highest-priority one, this is a no-op.
+    pub fn raise_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: usize,
+    ) -> Result<(), String> {
+        let ws = self.workbook.worksheet_mut(sheet)?;
+        if index >= ws.conditional_formatting.len() {
+            return Err(format!(
+                "Conditional formatting index {index} out of bounds"
+            ));
+        }
+        let current = ws.conditional_formatting[index].priority;
+        // The neighbour is the rule with the smallest priority strictly greater
+        // than `current`.
+        let neighbour = ws
+            .conditional_formatting
+            .iter()
+            .enumerate()
+            .filter(|(_, cf)| cf.priority > current)
+            .min_by_key(|(_, cf)| cf.priority)
+            .map(|(i, _)| i);
+        if let Some(j) = neighbour {
+            let other = ws.conditional_formatting[j].priority;
+            ws.conditional_formatting[j].priority = current;
+            ws.conditional_formatting[index].priority = other;
+        }
+        Ok(())
+    }
+
+    /// Lowers the priority of the CF rule at `index` on `sheet`.
+    ///
+    /// In IronCalc a higher priority *number* means higher priority. Lowering a
+    /// rule swaps its priority with the rule that has the next-lower priority
+    /// number (the closest rule below it). If the rule is already the
+    /// lowest-priority one, this is a no-op.
+    pub fn lower_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: usize,
+    ) -> Result<(), String> {
+        let ws = self.workbook.worksheet_mut(sheet)?;
+        if index >= ws.conditional_formatting.len() {
+            return Err(format!(
+                "Conditional formatting index {index} out of bounds"
+            ));
+        }
+        let current = ws.conditional_formatting[index].priority;
+        // The neighbour is the rule with the largest priority strictly less than
+        // `current`.
+        let neighbour = ws
+            .conditional_formatting
+            .iter()
+            .enumerate()
+            .filter(|(_, cf)| cf.priority < current)
+            .max_by_key(|(_, cf)| cf.priority)
+            .map(|(i, _)| i);
+        if let Some(j) = neighbour {
+            let other = ws.conditional_formatting[j].priority;
+            ws.conditional_formatting[j].priority = current;
+            ws.conditional_formatting[index].priority = other;
+        }
+        Ok(())
     }
 
     /// Inserts a CF entry at `index` without modifying priority (used for undo/redo).

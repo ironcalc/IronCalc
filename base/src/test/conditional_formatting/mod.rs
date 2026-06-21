@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod average;
 mod cell_is;
@@ -104,8 +104,10 @@ fn test_add_multiple_rules() {
         .unwrap();
     let list = model.get_conditional_formatting_list(0).unwrap();
     assert_eq!(list.len(), 2);
-    assert_eq!(list[0].range, "A1:A5");
-    assert_eq!(list[1].range, "B1:B10");
+    // The list is ordered by priority descending (highest priority number first),
+    // so the last-added rule (B1:B10, priority 2) comes before A1:A5 (priority 1).
+    assert_eq!(list[0].range, "B1:B10");
+    assert_eq!(list[1].range, "A1:A5");
 }
 
 #[test]
@@ -134,9 +136,11 @@ fn test_add_assigns_increasing_priorities() {
         .add_conditional_formatting(0, "B1:B5", data_bar_rule())
         .unwrap();
     let list = model.get_conditional_formatting_list(0).unwrap();
+    // The list is ordered by priority descending, so the last-added rule (with the
+    // higher priority number) appears first.
     assert!(
-        list[0].priority < list[1].priority,
-        "first-added rule should have lower (higher-priority) number"
+        list[0].priority > list[1].priority,
+        "last-added rule should appear first with the higher priority number"
     );
 }
 
@@ -459,6 +463,68 @@ fn test_no_format_gives_none_from_get_dxf() {
 fn test_get_dxf_out_of_bounds_errors() {
     let model = new_empty_model();
     assert!(model.get_dxf_for_conditional_formatting(0, 99).is_err());
+}
+
+// Regression: the `index` carried by each list entry must address the rule's
+// storage slot, even after a priority swap reorders the list. Resolving the dxf
+// through `view.index` must return the format of *that* rule, not of whatever
+// rule happens to sit at the same position in the priority-sorted list.
+#[test]
+fn test_list_index_resolves_dxf_after_priority_swap() {
+    let blue_fill = Dxf {
+        fill: Some(Fill {
+            color: Color::Rgb("#0000FF".to_string()),
+        }),
+        ..Dxf::default()
+    };
+    let mut model = new_empty_model();
+    // Storage index 0: A1:A5 → red. Storage index 1: B1:B5 → blue.
+    model
+        .add_conditional_formatting(
+            0,
+            "A1:A5",
+            CfRuleInput::DuplicateValues {
+                format: red_fill(),
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+    model
+        .add_conditional_formatting(
+            0,
+            "B1:B5",
+            CfRuleInput::DuplicateValues {
+                format: blue_fill,
+                stop_if_true: false,
+            },
+        )
+        .unwrap();
+
+    // Raising the first rule swaps the two priorities but does NOT move them in
+    // storage, so storage order and priority order now disagree.
+    model.raise_conditional_formatting_priority(0, 0).unwrap();
+
+    let list = model.get_conditional_formatting_list(0).unwrap();
+    // Each entry's index must point back at its own rule: the dxf retrieved via
+    // `index` must match the color expected for that entry's range.
+    for view in &list {
+        let expected = match view.range.as_str() {
+            "A1:A5" => Color::Rgb("#FF0000".to_string()),
+            "B1:B5" => Color::Rgb("#0000FF".to_string()),
+            other => panic!("unexpected range {other}"),
+        };
+        let dxf = model
+            .get_dxf_for_conditional_formatting(0, view.index)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            dxf.fill.unwrap().color,
+            expected,
+            "index {} for range {} resolved to the wrong rule's dxf",
+            view.index,
+            view.range
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------

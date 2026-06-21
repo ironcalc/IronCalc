@@ -394,6 +394,18 @@ export interface ConditionalFormatting {
   priority: number;
 }
 
+/** A CF rule plus its storage `index` in the worksheet's rule list, returned by
+ * getConditionalFormattingList. The list is sorted by priority (descending), so
+ * `index` — not the array position — must be used to address a rule in
+ * getDxfForConditionalFormatting / updateConditionalFormatting /
+ * deleteConditionalFormatting / raise·lowerConditionalFormattingPriority. */
+export interface ConditionalFormattingView {
+  index: number;
+  range: string;
+  cf_rule: CfRule;
+  priority: number;
+}
+
 export type IconSetType =
   | "Arrows3"
   | "ArrowsGray3"

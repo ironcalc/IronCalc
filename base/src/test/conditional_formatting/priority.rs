@@ -89,10 +89,16 @@ fn test_priority() {
 
     let list = model.get_conditional_formatting_list(0).unwrap();
     assert_eq!(list.len(), 2);
-    // First-added rule (color scale) must have the lower priority number.
+    // The list is ordered by priority descending (highest priority number first).
+    // The CellIs rule (added second) has the higher priority number, so it comes
+    // first; the color scale (added first) has the lower number and comes last.
     assert!(
-        list[0].priority < list[1].priority,
-        "color scale (added first) should have lower priority number than CellIs"
+        list[0].priority > list[1].priority,
+        "CellIs (added second) should have the higher priority number and sort first"
+    );
+    assert!(
+        matches!(list[1].cf_rule, crate::cf_types::CfRule::ColorScale { .. }),
+        "color scale (added first) should be last in descending priority order"
     );
 
     // Color scale applies: A1 is the min (red) and A5 is the max (green).
@@ -267,6 +273,101 @@ fn test_higher_priority_icon_set_wins() {
     let extended = model.get_extended_style_for_cell(0, 1, 1).unwrap();
     let icon = extended.icon.expect("A1 should have an icon");
     assert_eq!(icon.icon, Icon::Flag);
+}
+
+// Helper: returns the priority of every rule keyed by its index in the
+// `conditional_formatting` list (the same order rules were added in).
+fn priorities(model: &crate::Model<'static>) -> Vec<u32> {
+    model
+        .workbook
+        .worksheet(0)
+        .unwrap()
+        .conditional_formatting
+        .iter()
+        .map(|cf| cf.priority)
+        .collect()
+}
+
+// Raising a rule swaps its priority with the next-higher-priority rule.
+#[test]
+fn test_raise_priority() {
+    let mut model = model_with_values();
+
+    // Three rules added in order get priorities 1, 2, 3 (index 0, 1, 2).
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale_rule())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", data_bar_rule())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", icon_set_rule())
+        .unwrap();
+    assert_eq!(priorities(&model), vec![1, 2, 3]);
+
+    // Raise the first rule (priority 1): swaps with the next one up (priority 2).
+    model.raise_conditional_formatting_priority(0, 0).unwrap();
+    assert_eq!(priorities(&model), vec![2, 1, 3]);
+
+    // Raise it again: now at priority 2, swaps with priority 3.
+    model.raise_conditional_formatting_priority(0, 0).unwrap();
+    assert_eq!(priorities(&model), vec![3, 1, 2]);
+
+    // Raising the top-priority rule is a no-op.
+    model.raise_conditional_formatting_priority(0, 0).unwrap();
+    assert_eq!(priorities(&model), vec![3, 1, 2]);
+}
+
+// Lowering a rule swaps its priority with the next-lower-priority rule.
+#[test]
+fn test_lower_priority() {
+    let mut model = model_with_values();
+
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale_rule())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", data_bar_rule())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", icon_set_rule())
+        .unwrap();
+    assert_eq!(priorities(&model), vec![1, 2, 3]);
+
+    // Lower the last rule (index 2, priority 3): swaps with priority 2.
+    model.lower_conditional_formatting_priority(0, 2).unwrap();
+    assert_eq!(priorities(&model), vec![1, 3, 2]);
+
+    // Lower it again: now at priority 2, swaps with priority 1.
+    model.lower_conditional_formatting_priority(0, 2).unwrap();
+    assert_eq!(priorities(&model), vec![2, 3, 1]);
+
+    // Lowering the bottom-priority rule is a no-op.
+    model.lower_conditional_formatting_priority(0, 2).unwrap();
+    assert_eq!(priorities(&model), vec![2, 3, 1]);
+}
+
+// Raising then lowering the same rule returns to the original ordering, and
+// out-of-bounds indices return an error.
+#[test]
+fn test_raise_lower_roundtrip_and_bounds() {
+    let mut model = model_with_values();
+
+    model
+        .add_conditional_formatting(0, "A1:A5", color_scale_rule())
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A1:A5", data_bar_rule())
+        .unwrap();
+    assert_eq!(priorities(&model), vec![1, 2]);
+
+    model.raise_conditional_formatting_priority(0, 0).unwrap();
+    assert_eq!(priorities(&model), vec![2, 1]);
+    model.lower_conditional_formatting_priority(0, 0).unwrap();
+    assert_eq!(priorities(&model), vec![1, 2]);
+
+    assert!(model.raise_conditional_formatting_priority(0, 5).is_err());
+    assert!(model.lower_conditional_formatting_priority(0, 5).is_err());
 }
 
 // ColorScale fill must respect priority ordering relative to Dxf fill.

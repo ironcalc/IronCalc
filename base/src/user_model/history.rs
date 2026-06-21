@@ -255,6 +255,15 @@ pub(crate) enum Diff {
         new_range: String,
         new_rule: Box<CfRule>,
     },
+    /// Swaps the priorities of the two CF rules at `index_a` and `index_b`.
+    /// `priority_a`/`priority_b` are their priorities *before* the swap.
+    SwapConditionalFormattingPriority {
+        sheet: u32,
+        index_a: u32,
+        index_b: u32,
+        priority_a: u32,
+        priority_b: u32,
+    },
     // FIXME: we are missing SetViewDiffs
 }
 

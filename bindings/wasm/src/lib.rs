@@ -1021,7 +1021,7 @@ impl Model {
 
     #[wasm_bindgen(
         js_name = "getConditionalFormattingList",
-        unchecked_return_type = "ConditionalFormatting[]"
+        unchecked_return_type = "ConditionalFormattingView[]"
     )]
     pub fn get_conditional_formatting_list(&self, sheet: u32) -> Result<JsValue, JsError> {
         let list = self
@@ -1080,6 +1080,28 @@ impl Model {
             serde_wasm_bindgen::from_value(new_rule).map_err(|e| to_js_error(e.to_string()))?;
         self.model
             .update_conditional_formatting(sheet, index, new_range, new_rule)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "raiseConditionalFormattingPriority")]
+    pub fn raise_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<(), JsError> {
+        self.model
+            .raise_conditional_formatting_priority(sheet, index)
+            .map_err(|e| to_js_error(e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = "lowerConditionalFormattingPriority")]
+    pub fn lower_conditional_formatting_priority(
+        &mut self,
+        sheet: u32,
+        index: u32,
+    ) -> Result<(), JsError> {
+        self.model
+            .lower_conditional_formatting_priority(sheet, index)
             .map_err(|e| to_js_error(e.to_string()))
     }
 

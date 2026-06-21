@@ -1,9 +1,4 @@
-import type {
-  ConditionalFormatting as CfEntry,
-  Dxf,
-  IronCalcTheme,
-  Model,
-} from "@ironcalc/wasm";
+import type { Dxf, IronCalcTheme, Model } from "@ironcalc/wasm";
 import {
   ArrowLeft,
   PackageOpen,
@@ -95,8 +90,11 @@ const ConditionalFormatting = ({
   };
 
   const loadRules = (): Rule[] => {
-    const list = model.getConditionalFormattingList(sheet) as CfEntry[];
-    return list.flatMap((cf, modelIndex) => {
+    const list = model.getConditionalFormattingList(sheet);
+    return list.flatMap((cf) => {
+      // The list is sorted by priority, so the rule's storage index is carried
+      // explicitly in `cf.index` rather than inferred from its position.
+      const modelIndex = cf.index;
       const partial = cfRuleToRuleData(cf);
       if (!partial) {
         return [];
@@ -112,7 +110,7 @@ const ConditionalFormatting = ({
       return [
         {
           ...partial,
-          id: String(modelIndex),
+          id: `${modelIndex}`,
           applyTo: cf.range,
           ruleType,
           ruleOperator: partial.ruleOperator ?? "",
@@ -175,6 +173,18 @@ const ConditionalFormatting = ({
 
   const handleDelete = (id: string) => {
     model.deleteConditionalFormatting(sheet, parseInt(id, 10));
+    onUpdate();
+  };
+
+  // Temporary UX: double click raises a rule's priority, ctrl/cmd + double click
+  // lowers it. A proper reordering UX will replace this later.
+  const handleReorder = (rule: Rule, lower: boolean) => {
+    const index = parseInt(rule.id, 10);
+    if (lower) {
+      model.lowerConditionalFormattingPriority(sheet, index);
+    } else {
+      model.raiseConditionalFormattingPriority(sheet, index);
+    }
     onUpdate();
   };
 
@@ -400,6 +410,10 @@ const ConditionalFormatting = ({
                       // biome-ignore lint/a11y/noNoninteractiveTabindex: FIXME
                       tabIndex={0}
                       onClick={() => selectRuleRange(rule)}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        handleReorder(rule, e.ctrlKey || e.metaKey);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
