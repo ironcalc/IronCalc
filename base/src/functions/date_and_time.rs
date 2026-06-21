@@ -32,20 +32,24 @@ fn weekday_number(date: chrono::NaiveDate, return_type: i32) -> Result<f64, Erro
     Ok(num as f64)
 }
 
-fn is_feb_29_between_dates(start: chrono::NaiveDate, end: chrono::NaiveDate) -> bool {
-    let start_year = start.year();
-    let end_year = end.year();
-
-    for year in start_year..=end_year {
-        if is_leap_year(year)
-            && (year < end_year
-                || (year == end_year && end.month() > 2)
-                    && (year > start_year || (year == start_year && start.month() <= 2)))
-        {
-            return true;
+// Port of `isFeb29BetweenConsecutiveYears` from ExcelFinancialFunctions. Only
+// called for dates at most one year apart (`y1 == y2` or `y2 == y1 + 1`).
+fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::NaiveDate) -> bool {
+    let (y1, m1) = (start.year(), start.month());
+    let (y2, m2) = (end.year(), end.month());
+    if y1 == y2 {
+        is_leap_year(y1) && m1 <= 2 && m2 > 2
+    } else if y2 == y1 + 1 {
+        if is_leap_year(y1) {
+            m1 <= 2
+        } else if is_leap_year(y2) {
+            m2 > 2
+        } else {
+            false
         }
+    } else {
+        false
     }
-    false
 }
 
 // ---------------------------------------------------------------------------
@@ -1694,52 +1698,66 @@ impl<'a> Model<'a> {
         let days = (end_date - start_date).num_days() as f64;
         let result = match basis {
             0 => {
-                let d360 = self.fn_days360(args, cell);
-                if let CalcResult::Number(n) = d360 {
-                    n / 360.0
-                } else {
-                    return d360;
+                // YEARFRAC basis 0 uses the financial US 30/360 convention
+                // (`dateDiff360Us`, ModifyStartDate), which differs from the
+                // DAYS360 worksheet function for February month-ends: a
+                // February-end *end* date only collapses to 30 when the *start*
+                // is also a February month-end, and the `end == 31` rule tests
+                // the original (un-normalised) start day.
+                let last_day_feb = |year: i32| if is_leap_year(year) { 29 } else { 28 };
+                let sd_is_feb_last =
+                    start_date.month() == 2 && start_date.day() == last_day_feb(start_date.year());
+                let ed_is_feb_last =
+                    end_date.month() == 2 && end_date.day() == last_day_feb(end_date.year());
+                let mut sd_day = start_date.day() as i32;
+                let mut ed_day = end_date.day() as i32;
+
+                if ed_is_feb_last && sd_is_feb_last {
+                    ed_day = 30;
                 }
+                if ed_day == 31 && sd_day >= 30 {
+                    ed_day = 30;
+                }
+                if sd_day == 31 {
+                    sd_day = 30;
+                }
+                if sd_is_feb_last {
+                    sd_day = 30;
+                }
+                let d360 = (end_date.year() - start_date.year()) * 360
+                    + (end_date.month() as i32 - start_date.month() as i32) * 30
+                    + (ed_day - sd_day);
+                d360 as f64 / 360.0
             }
             1 => {
-                // Procedure E
+                // Actual/Actual. Port of ExcelFinancialFunctions
+                // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.
+                let (y1, m1, d1) = (start_date.year(), start_date.month(), start_date.day());
+                let (y2, m2, d2) = (end_date.year(), end_date.month(), end_date.day());
 
-                let start_year = start_date.year();
-                let end_year = end_date.year();
+                // lessOrEqualToAYearApart
+                let within_a_year =
+                    y1 == y2 || (y2 == y1 + 1 && (m1 > m2 || (m1 == m2 && d1 >= d2)));
 
-                let step_a = start_year != end_year;
-                let step_b = start_year + 1 != end_year;
-                let step_c = start_date.month() < end_date.month();
-                let step_d = start_date.month() == end_date.month();
-                let step_e = start_date.day() <= end_date.day();
-                let step_f = step_a && (step_b || step_c || (step_d && step_e));
-                if step_f {
-                    // 7.
-                    // return average of days in year between start_year and end_year, inclusive
-                    let mut total_days = 0;
-                    for year in start_year..=end_year {
-                        if is_leap_year(year) {
-                            total_days += 366;
-                        } else {
-                            total_days += 365;
-                        }
-                    }
-                    days / (total_days as f64 / (end_year - start_year + 1) as f64)
-                } else if step_a && is_leap_year(start_year) {
-                    // 8.
-                    days / 366.0
-                } else if is_feb_29_between_dates(start_date, end_date) {
-                    // 9. If a February 29 occurs between date1 and date2 then return 366
-                    days / 366.0
-                } else if end_date.month() == 2 && end_date.day() == 29 {
-                    // 10. If date2 is February 29 then return 366
-                    days / 366.0
-                } else if !step_a && is_leap_year(start_year) {
-                    days / 366.0
+                let days_in_year = if !within_a_year {
+                    // Dates more than a year apart: average the calendar-year
+                    // lengths spanned, inclusive of both end years.
+                    let tot_days: i64 = (y1..=y2)
+                        .map(|y| if is_leap_year(y) { 366 } else { 365 })
+                        .sum();
+                    tot_days as f64 / (y2 - y1 + 1) as f64
                 } else {
-                    // 11.
-                    days / 365.0
-                }
+                    // considerAsBisestile
+                    let consider = (y1 == y2 && is_leap_year(y1))
+                        || (m2 == 2 && d2 == 29)
+                        || is_feb29_between_consecutive_years(start_date, end_date);
+                    if consider {
+                        366.0
+                    } else {
+                        365.0
+                    }
+                };
+                days / days_in_year
             }
             2 => days / 360.0,
             3 => days / 365.0,
@@ -1774,16 +1792,23 @@ mod tests {
     }
 
     #[test]
-    fn test_is_feb_29_between_dates() {
+    fn test_is_feb29_between_consecutive_years() {
+        // Same leap year, spanning Feb 29.
         let d1 = chrono::NaiveDate::from_ymd_opt(2020, 2, 28).unwrap();
         let d2 = chrono::NaiveDate::from_ymd_opt(2020, 3, 1).unwrap();
-        assert!(is_feb_29_between_dates(d1, d2));
+        assert!(is_feb29_between_consecutive_years(d1, d2));
     }
 
     #[test]
-    fn test_is_feb_29_between_dates_false() {
+    fn test_is_feb29_between_consecutive_years_false() {
+        // Non-leap year, no Feb 29 in range.
         let d1 = chrono::NaiveDate::from_ymd_opt(2021, 2, 28).unwrap();
         let d2 = chrono::NaiveDate::from_ymd_opt(2021, 3, 1).unwrap();
-        assert!(!is_feb_29_between_dates(d1, d2));
+        assert!(!is_feb29_between_consecutive_years(d1, d2));
+
+        // Leap year, but the period starts after Feb 29 (March).
+        let d3 = chrono::NaiveDate::from_ymd_opt(1992, 3, 4).unwrap();
+        let d4 = chrono::NaiveDate::from_ymd_opt(1993, 3, 1).unwrap();
+        assert!(!is_feb29_between_consecutive_years(d3, d4));
     }
 }
