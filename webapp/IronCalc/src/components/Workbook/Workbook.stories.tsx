@@ -4,13 +4,32 @@ import { init, Model } from "../../index";
 import { WorkbookState } from "../workbookState";
 import Workbook from "./Workbook";
 
+// Optionally load the example workbook in webapp/IronCalc/tests/example.ic if
+// present. The file is gitignored, so this glob resolves to an empty object
+// when the file is missing and we fall back to a new empty workbook.
+const exampleWorkbooks = import.meta.glob("../../../tests/example.ic", {
+  query: "?url",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+async function loadModel(): Promise<Model> {
+  const exampleUrl = Object.values(exampleWorkbooks)[0];
+  if (exampleUrl) {
+    const response = await fetch(exampleUrl);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return Model.from_bytes(bytes, "en");
+  }
+  return new Model("Workbook1", "en", "UTC", "en");
+}
+
 function WorkbookWithInit() {
   const [model, setModel] = useState<Model | null>(null);
 
   useEffect(() => {
     async function start() {
       await init();
-      setModel(new Model("Workbook1", "en", "UTC", "en"));
+      setModel(await loadModel());
     }
     start();
   }, []);

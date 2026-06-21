@@ -579,6 +579,23 @@ impl<'a> UserModel<'a> {
                     }
                     needs_evaluation = true;
                 }
+                Diff::SwapConditionalFormattingPriority {
+                    sheet,
+                    index_a,
+                    index_b,
+                    priority_a,
+                    priority_b,
+                } => {
+                    // Undo: restore each rule's original priority.
+                    let ws = self.model.workbook.worksheet_mut(*sheet)?;
+                    if let Some(cf) = ws.conditional_formatting.get_mut(*index_a as usize) {
+                        cf.priority = *priority_a;
+                    }
+                    if let Some(cf) = ws.conditional_formatting.get_mut(*index_b as usize) {
+                        cf.priority = *priority_b;
+                    }
+                    needs_evaluation = true;
+                }
             }
         }
         if needs_evaluation {
@@ -953,6 +970,23 @@ impl<'a> UserModel<'a> {
                     if i < ws.conditional_formatting.len() {
                         ws.conditional_formatting[i].range = new_range.clone();
                         ws.conditional_formatting[i].cf_rule = *new_rule.clone();
+                    }
+                    needs_evaluation = true;
+                }
+                Diff::SwapConditionalFormattingPriority {
+                    sheet,
+                    index_a,
+                    index_b,
+                    priority_a,
+                    priority_b,
+                } => {
+                    // Apply/redo: swap the two priorities.
+                    let ws = self.model.workbook.worksheet_mut(*sheet)?;
+                    if let Some(cf) = ws.conditional_formatting.get_mut(*index_a as usize) {
+                        cf.priority = *priority_b;
+                    }
+                    if let Some(cf) = ws.conditional_formatting.get_mut(*index_b as usize) {
+                        cf.priority = *priority_a;
                     }
                     needs_evaluation = true;
                 }

@@ -34,13 +34,21 @@ test('CF: add and retrieve', () => {
     assert.strictEqual(typeof list[0].priority, 'number');
 });
 
-test('CF: add two rules, priorities increase', () => {
+test('CF: add two rules, list sorted by priority descending', () => {
     const model = new Model('Workbook1', 'en', 'UTC', 'en');
     model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
     model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);
     const list = model.getConditionalFormattingList(0);
     assert.strictEqual(list.length, 2);
-    assert.ok(list[0].priority < list[1].priority);
+    // The list is sorted by priority descending (highest priority first), so the
+    // last-added rule (B1:B5) comes first.
+    assert.ok(list[0].priority > list[1].priority);
+    assert.strictEqual(list[0].range, 'B1:B5');
+    assert.strictEqual(list[1].range, 'A1:A5');
+    // Each entry carries its storage index (insertion order), which is the
+    // reverse of the priority-sorted display order here.
+    assert.strictEqual(list[0].index, 1);
+    assert.strictEqual(list[1].index, 0);
 });
 
 test('CF: delete removes rule', () => {
@@ -207,4 +215,87 @@ test('CF: getDxfForConditionalFormatting returns undefined for ColorScale', () =
     model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
     const dxf = model.getDxfForConditionalFormatting(0, 0);
     assert.strictEqual(dxf, undefined);
+});
+
+// Returns the priority for each storage index, in insertion order.
+function prioritiesByIndex(model, sheet) {
+    const list = model.getConditionalFormattingList(sheet);
+    const out = [];
+    for (const view of list) {
+        out[view.index] = view.priority;
+    }
+    return out;
+}
+
+test('CF: raise priority swaps with the next-higher-priority rule', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE); // index 0, priority 1
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);    // index 1, priority 2
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+
+    // Raise the first rule (storage index 0): its priority swaps with index 1's.
+    model.raiseConditionalFormattingPriority(0, 0);
+    assert.deepEqual(prioritiesByIndex(model, 0), [2, 1]);
+});
+
+test('CF: lower priority swaps with the next-lower-priority rule', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE); // index 0, priority 1
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);    // index 1, priority 2
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+
+    // Lower the second rule (storage index 1): its priority swaps with index 0's.
+    model.lowerConditionalFormattingPriority(0, 1);
+    assert.deepEqual(prioritiesByIndex(model, 0), [2, 1]);
+});
+
+test('CF: raising the top-priority rule is a no-op', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);
+    // Index 1 already has the highest priority.
+    model.raiseConditionalFormattingPriority(0, 1);
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+});
+
+test('CF: undo/redo a raise priority', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    model.addConditionalFormatting(0, 'A1:A5', COLOR_SCALE);
+    model.addConditionalFormatting(0, 'B1:B5', DATA_BAR);
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+
+    model.raiseConditionalFormattingPriority(0, 0);
+    assert.deepEqual(prioritiesByIndex(model, 0), [2, 1]);
+
+    model.undo();
+    assert.deepEqual(prioritiesByIndex(model, 0), [1, 2]);
+
+    model.redo();
+    assert.deepEqual(prioritiesByIndex(model, 0), [2, 1]);
+});
+
+test('CF: list index resolves the right dxf after a priority swap', () => {
+    const model = new Model('Workbook1', 'en', 'UTC', 'en');
+    const redRule = {
+        type: 'DuplicateValues',
+        format: { fill: { color: '#FF0000' } },
+        stop_if_true: false,
+    };
+    const blueRule = {
+        type: 'DuplicateValues',
+        format: { fill: { color: '#0000FF' } },
+        stop_if_true: false,
+    };
+    model.addConditionalFormatting(0, 'A1:A5', redRule); // index 0 → red
+    model.addConditionalFormatting(0, 'B1:B5', blueRule); // index 1 → blue
+
+    // Swap priorities so storage order and priority order disagree.
+    model.raiseConditionalFormattingPriority(0, 0);
+
+    // Each entry's index must resolve to its own rule's format.
+    const expected = { 'A1:A5': '#FF0000', 'B1:B5': '#0000FF' };
+    for (const view of model.getConditionalFormattingList(0)) {
+        const dxf = model.getDxfForConditionalFormatting(0, view.index);
+        assert.strictEqual(dxf.fill.color, expected[view.range]);
+    }
 });
