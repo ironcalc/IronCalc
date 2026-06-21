@@ -12,7 +12,7 @@ use super::accrint::acc_days_between;
 // ---------------------------------------------------------------------------
 // VDB / AMORDEGRC / AMORLINC
 //
-// Faithful port of the depreciation calculations as implemented in the
+// Port of the depreciation calculations as implemented in the
 // `ExcelFinancialFunctions` library (depreciation.fs).
 // See https://github.com/fsprojects/ExcelFinancialFunctions
 // ---------------------------------------------------------------------------
@@ -81,6 +81,63 @@ fn vdb_depr_between(
 ) -> f64 {
     vdb_total_depr(cost, salvage, life, end_period, factor, straight_line)
         - vdb_total_depr(cost, salvage, life, start_period, factor, straight_line)
+}
+
+// `db`: fixed-declining-balance depreciation for a single `period`.
+pub(super) fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) -> f64 {
+    // The depreciation rate, rounded to three decimal places.
+    let rate = ((1.0 - (salvage / cost).powf(1.0 / life)) * 1000.0).round() / 1000.0;
+    let int_period = period.trunc() as i64;
+    let int_life = life.trunc() as i64;
+
+    // First period (also covers a fractional period below 1).
+    let mut accumulated = cost * rate * month / 12.0;
+    if int_period <= 1 {
+        return accumulated;
+    }
+    // Accumulate the declining balance through the period before the one asked.
+    for _ in 2..int_period {
+        accumulated += (cost - accumulated) * rate;
+    }
+    if int_period == int_life + 1 {
+        (cost - accumulated) * rate * (12.0 - month) / 12.0
+    } else {
+        (cost - accumulated) * rate
+    }
+}
+
+// `ddb`: double-declining-balance depreciation for a single `period`.
+// (see LibreOffice's `ScGetDDB`)
+pub(super) fn ddb_depreciation(
+    cost: f64,
+    salvage: f64,
+    life: f64,
+    period: f64,
+    factor: f64,
+) -> f64 {
+    // Excel special-cases a fractional period in (0, 1), treating it as period 1
+    // (`period` is already guaranteed > 0 by the caller's validation).
+    let period = if period < 1.0 { 1.0 } else { period };
+
+    let mut rate = factor / life;
+    let old_value = if rate >= 1.0 {
+        rate = 1.0;
+        if period == 1.0 {
+            cost
+        } else {
+            0.0
+        }
+    } else {
+        cost * (1.0 - rate).powf(period - 1.0)
+    };
+    let new_value = cost * (1.0 - rate).powf(period);
+
+    let ddb = if new_value < salvage {
+        old_value - salvage
+    } else {
+        old_value - new_value
+    };
+    ddb.max(0.0)
 }
 
 fn is_leap_year(year: i32) -> bool {

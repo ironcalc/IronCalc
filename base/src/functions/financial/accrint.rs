@@ -26,7 +26,7 @@ fn last_day_of_month(year: i32, month: u32) -> u32 {
 // ---------------------------------------------------------------------------
 // ACCRINT day-count helpers
 //
-// Faithful port of the Excel ACCRINT algorithm as implemented in the
+// Port of the ACCRINT algorithm as implemented in the
 // `ExcelFinancialFunctions` library (bonds.fs / daycountbasis.fs)
 // See https://github.com/fsprojects/ExcelFinancialFunctions
 // ---------------------------------------------------------------------------
@@ -205,7 +205,7 @@ fn acc_coup_days(settl: NaiveDate, mat: NaiveDate, freq: i32, basis: i32) -> Res
     Ok(coup_days)
 }
 
-// Excel ACCRINT (per the ExcelFinancialFunctions reference port).
+// ACCRINT
 //
 // Accrued interest = par * rate / frequency * Σ contributionᵢ, summed over the
 // quasi-coupon periods spanned by the accrual interval. The schedule is anchored

@@ -24,7 +24,13 @@ fn last_day_of_feb(year: i32) -> u32 {
     }
 }
 
-// Days d1→d2 via the US 30/360 convention (basis 0).
+// Days d1→d2 via the US (NASD) 30/360 convention (basis 0).
+//
+// Port of `dateDiff360Us` with the `ModifyStartDate` method from
+// ExcelFinancialFunctions (the variant used by `DaysBetween` in the
+// Numerator position). The order matters: the `day == 31 → 30` adjustment for
+// the end date tests the *original* start day, before the start day is itself
+// normalised.
 fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
     let y1 = d1.year();
     let m1 = d1.month() as i32;
@@ -33,14 +39,20 @@ fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
     let m2 = d2.month() as i32;
     let mut day2 = d2.day() as i32;
 
-    if (m1 == 2 && d1.day() == last_day_of_feb(y1)) || day1 == 31 {
-        day1 = 30;
-    }
-    if m2 == 2 && d2.day() == last_day_of_feb(y2) && day1 == 30 {
+    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
+    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+
+    if end_is_feb_last && start_is_feb_last {
         day2 = 30;
     }
     if day2 == 31 && day1 >= 30 {
         day2 = 30;
+    }
+    if day1 == 31 {
+        day1 = 30;
+    }
+    if start_is_feb_last {
+        day1 = 30;
     }
     (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
 }
@@ -74,52 +86,67 @@ fn basis_days(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
 // Coupon-schedule helpers
 // ============================================================
 
+fn last_day_of_month(year: i32, month: u32) -> u32 {
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => last_day_of_feb(year),
+        _ => 30,
+    }
+}
+
+fn is_last_day_of_month(d: NaiveDate) -> bool {
+    d.day() == last_day_of_month(d.year(), d.month())
+}
+
+// Shifts `date` by `num_months` (clamping the day to the target month.
+// When `return_last` is set the result rounds to the last
+// day of the target month.
+// The end-of-month coupon rule: when maturity
+// falls on a month end, every coupon date does too (so a 11/30 maturity yields
+// coupons on 5/31, not 5/30).
+fn change_month(date: NaiveDate, num_months: i32, return_last: bool) -> Result<NaiveDate, String> {
+    let shifted = if num_months >= 0 {
+        date.checked_add_months(Months::new(num_months as u32))
+    } else {
+        date.checked_sub_months(Months::new((-num_months) as u32))
+    }
+    .ok_or("Date arithmetic error")?;
+    if return_last {
+        let last = last_day_of_month(shifted.year(), shifted.month());
+        NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), last)
+            .ok_or("Date error".to_string())
+    } else {
+        Ok(shifted)
+    }
+}
+
+// Walks the coupon schedule backwards from maturity to find the previous coupon
+// date (<= settlement) and the next coupon date (> settlement). Port of
+// `findPcdNcd`/`findCouponDates` from ExcelFinancialFunctions, including the
+// end-of-month rule anchored on the maturity date.
+fn find_pcd_ncd(settlement: i64, maturity: i64, frequency: u32) -> Result<(i64, i64), String> {
+    let months_per = (12 / frequency) as i32;
+    let mat = from_excel_date(maturity)?;
+    let return_last = is_last_day_of_month(mat);
+
+    let mut front = mat;
+    let mut trailing = mat;
+    while naivedate_to_serial(front) > settlement {
+        trailing = front;
+        front = change_month(front, -months_per, return_last)?;
+    }
+    Ok((naivedate_to_serial(front), naivedate_to_serial(trailing)))
+}
+
 // Latest coupon date that is <= settlement, anchored by maturity & frequency.
 fn prev_coupon_date(settlement: i64, maturity: i64, frequency: u32) -> Result<i64, String> {
-    let months_per = 12 / frequency;
-    let mat = from_excel_date(maturity)?;
-    let set = from_excel_date(settlement)?;
-
-    let mat_months = mat.year() * 12 + mat.month() as i32;
-    let set_months = set.year() * 12 + set.month() as i32;
-    let diff_months = mat_months - set_months;
-
-    // Estimate how many periods to subtract from maturity.
-    let periods_back = ((diff_months as f64 / months_per as f64).ceil() as u32).max(1);
-
-    let mut candidate = mat
-        .checked_sub_months(Months::new(periods_back * months_per))
-        .ok_or("Date arithmetic error")?;
-
-    // Slide forward while the next coupon date is still <= settlement.
-    loop {
-        let next = candidate
-            .checked_add_months(Months::new(months_per))
-            .ok_or("Date arithmetic error")?;
-        if naivedate_to_serial(next) > settlement {
-            break;
-        }
-        candidate = next;
-    }
-
-    // Slide backward if we somehow overshot.
-    while naivedate_to_serial(candidate) > settlement {
-        candidate = candidate
-            .checked_sub_months(Months::new(months_per))
-            .ok_or("Date arithmetic error")?;
-    }
-
-    Ok(naivedate_to_serial(candidate))
+    Ok(find_pcd_ncd(settlement, maturity, frequency)?.0)
 }
 
 // Earliest coupon date strictly after settlement.
 fn next_coupon_date(settlement: i64, maturity: i64, frequency: u32) -> Result<i64, String> {
-    let months_per = 12 / frequency;
-    let prev = from_excel_date(prev_coupon_date(settlement, maturity, frequency)?)?;
-    let next = prev
-        .checked_add_months(Months::new(months_per))
-        .ok_or("Date arithmetic error")?;
-    Ok(naivedate_to_serial(next))
+    Ok(find_pcd_ncd(settlement, maturity, frequency)?.1)
 }
 
 // Number of coupon payments strictly after settlement up to and including maturity.
@@ -220,6 +247,13 @@ fn compute_price(
     let dsc_over_e = (e - a) / e;
 
     let coupon = 100.0 * rate / frequency as f64;
+    let accrued = coupon * (a / e);
+
+    // A single remaining coupon is discounted with simple (linear) interest
+    if n == 1.0 {
+        return Ok((redemption + coupon) / (1.0 + dsc_over_e * yld / frequency as f64) - accrued);
+    }
+
     let v = 1.0 + yld / frequency as f64;
     let first_term = redemption / v.powf(dsc_over_e + n - 1.0);
 
@@ -229,9 +263,7 @@ fn compute_price(
         second_term += coupon / v.powf(t);
     }
 
-    let last_term = coupon * (a / e);
-
-    Ok(first_term + second_term - last_term)
+    Ok(first_term + second_term - accrued)
 }
 
 // ============================================================
@@ -312,6 +344,91 @@ fn compute_yield_from_price(
 }
 
 // ============================================================
+// Odd-coupon helpers (port of ExcelFinancialFunctions oddbonds.fs)
+// ============================================================
+
+// Days d1→d2 via US 30/360 with the `ModifyBothDates` rule — the "PSA hack"
+// the odd-last-coupon code uses for basis 0.
+fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
+    let y1 = d1.year();
+    let m1 = d1.month() as i32;
+    let mut day1 = d1.day() as i32;
+    let y2 = d2.year();
+    let m2 = d2.month() as i32;
+    let mut day2 = d2.day() as i32;
+
+    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
+    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+
+    if end_is_feb_last {
+        day2 = 30;
+    }
+    if day2 == 31 {
+        day2 = 30;
+    }
+    if day1 == 31 {
+        day1 = 30;
+    }
+    if start_is_feb_last {
+        day1 = 30;
+    }
+    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
+}
+
+// `DaysBetween` (Numerator position), clamped to be non-negative.
+fn days_between_not_neg(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
+    basis_days(d1, d2, basis).max(0.0)
+}
+
+// As above, but basis 0 uses the 30/360 ModifyBothDates rule.
+fn days_between_not_neg_with_hack(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
+    if basis == 0 {
+        days_30_360_us_both(d1, d2).max(0.0)
+    } else {
+        days_between_not_neg(d1, d2, basis)
+    }
+}
+
+// Port of `coupNumber`: counts whole quasi-coupon periods between
+// `settl` and the anchor date `mat`, walking forward by `num_months` from a
+// (possibly month-end-adjusted) settlement.
+fn coup_number(
+    mat: i64,
+    settl: i64,
+    num_months: i32,
+    is_whole_number: bool,
+) -> Result<f64, String> {
+    let mat_d = from_excel_date(mat)?;
+    let settl_d = from_excel_date(settl)?;
+
+    let coupons_temp = if is_whole_number { 0.0 } else { 1.0 };
+    let end_of_month_temp = is_last_day_of_month(mat_d);
+    let end_of_month = if !end_of_month_temp
+        && mat_d.month() != 2
+        && mat_d.day() > 28
+        && mat_d.day() < last_day_of_month(mat_d.year(), mat_d.month())
+    {
+        is_last_day_of_month(settl_d)
+    } else {
+        end_of_month_temp
+    };
+
+    let start_date = change_month(settl_d, 0, end_of_month)?;
+    let mut coupons = if settl_d < start_date {
+        coupons_temp + 1.0
+    } else {
+        coupons_temp
+    };
+
+    let mut front = change_month(start_date, num_months, end_of_month)?;
+    while front < mat_d {
+        coupons += 1.0;
+        front = change_month(front, num_months, end_of_month)?;
+    }
+    Ok(coupons)
+}
+
+// ============================================================
 // Odd-first-period price
 // ============================================================
 
@@ -333,176 +450,152 @@ fn compute_oddfprice(
     frequency: u32,
     basis: u32,
 ) -> Result<f64, String> {
-    // If settlement is at or after first_coupon, use the standard price formula.
-    if settlement >= first_coupon {
-        return compute_price(
-            settlement, maturity, rate, yld, redemption, frequency, basis,
-        );
-    }
+    let m = frequency as f64;
+    let num_months = (12 / frequency) as i32;
 
-    // convert dates to NaiveDate for arithmetic
-    let first_coupon_date = from_excel_date(first_coupon)?;
-    let maturity_date = from_excel_date(maturity)?;
-    let issue_date = from_excel_date(issue)?;
-    let settlement_date = from_excel_date(settlement)?;
+    let settlement_d = from_excel_date(settlement)?;
+    let issue_d = from_excel_date(issue)?;
+    let first_coupon_d = from_excel_date(first_coupon)?;
 
-    // Determine if it is a long first period (NC > E) or a short first period (NC < E).
+    // E: length of the quasi-coupon period that ends on the first coupon.
+    let e = coupon_days_e(settlement, first_coupon, frequency, basis)?;
+    let dfc = days_between_not_neg(issue_d, first_coupon_d, basis);
 
-    let months_per = 12 / frequency;
+    if dfc < e {
+        // --- Short odd first coupon period ---
+        let n = coupon_count(settlement, maturity, frequency)? as f64;
+        let dsc = days_between_not_neg(settlement_d, first_coupon_d, basis);
+        let a = days_between_not_neg(issue_d, settlement_d, basis);
+        let x = yld / m + 1.0;
+        let y = dsc / e;
 
-    // Quasi-coupon period (E): the period settlement in [prev_coupon, next_coupon).
-    let next_coupon = next_coupon_date(settlement, maturity, frequency)?;
-    let next_coupon = from_excel_date(next_coupon)?;
-    let prev_coupon = prev_coupon_date(settlement, maturity, frequency)?;
-    let prev_coupon = from_excel_date(prev_coupon)?;
-
-    let e: f64 = match basis {
-        0 | 2 | 4 => 360.0 / frequency as f64,
-        1 => actual_days(prev_coupon, next_coupon),
-        3 => 365.0 / frequency as f64,
-        _ => return Err("Invalid basis".to_string()),
-    };
-
-    let nc = basis_days(issue_date, first_coupon_date, basis);
-
-    // DSC/E: time from settlement to first coupon, in coupon periods. Accumulates
-    // 1.0 per full period + the fractional last step, so this correctly handles
-    // settlement more than one period before FC as well as the on-coupon-date case.
-    let dsc_over_e = {
-        let mut result = 0.0_f64;
-        let mut period_end = first_coupon_date;
-        loop {
-            let period_start = period_end
-                .checked_sub_months(Months::new(months_per))
-                .ok_or("Date arithmetic error")?;
-            let e_i = match basis {
-                0 | 2 | 4 => 360.0 / frequency as f64,
-                1 => actual_days(period_start, period_end),
-                3 => 365.0 / frequency as f64,
-                _ => return Err("Invalid basis".to_string()),
-            };
-            if settlement_date >= period_start {
-                let dsc_i = basis_days(settlement_date, period_end, basis);
-                result += dsc_i / e_i;
-                break;
-            }
-            result += 1.0;
-            period_end = period_start;
+        let term1 = redemption / x.powf(n - 1.0 + y);
+        let term2 = 100.0 * rate / m * dfc / e / x.powf(y);
+        let mut term3 = 0.0;
+        for index in 2..=(n as i64) {
+            term3 += 100.0 * rate / m / x.powf(index as f64 - 1.0 + y);
         }
-        result
-    };
-
-    // N = total coupon payments from first_coupon to maturity (inclusive).
-    let fc_months = first_coupon_date.year() * 12 + first_coupon_date.month() as i32;
-    let mat_months = maturity_date.year() * 12 + maturity_date.month() as i32;
-    let diff = mat_months - fc_months;
-    if diff < 0 {
-        return Err("first_coupon after maturity".to_string());
-    }
-    let n = (diff / months_per as i32) as u32 + 1;
-
-    let coupon = 100.0 * rate / frequency as f64;
-    let v = 1.0 + yld / frequency as f64;
-
-    // For actual-day bases (1, 2) with a long first period (NC > E), adjacent
-    // quasi-coupon periods can have different actual lengths (e.g. one might
-    // contain Feb 29), so we weight each sub-period individually rather than by
-    // the single constant E. The DC term (the long coupon actually paid) and the
-    // A term (accrued interest owed) are weighted differently:
-    //
-    //   * DC: a *full* quasi-coupon period contributes exactly 1 coupon, and the
-    //     *partial* (stub) period is prorated by its normal length NL_i — actual
-    //     length for basis 1, nominal 360/frequency for basis 2 (Excel does NOT
-    //     prorate the basis-2 stub by its actual length).
-    //   * A: pure day count. Every sub-period (full or partial) is prorated by
-    //     NL_i, so basis 2 accrues actual_days(issue, settlement)/E with no
-    //     clamping of full periods to 1.
-    //
-    // For 30/360 bases (0, 4) every period is exactly 360 days, so the simple
-    // nc/e in the else branch is correct.
-    let (nc_over_e, a_over_e) = if matches!(basis, 1 | 2) && nc > e {
-        let mut sum_nc = 0.0_f64;
-        let mut sum_a = 0.0_f64;
-        let mut period_end = first_coupon_date;
-        loop {
-            let period_start = period_end
-                .checked_sub_months(Months::new(months_per))
-                .ok_or("Date arithmetic error")?;
-            let nl_i = actual_days(period_start, period_end);
-            let nominal = 360.0 / frequency as f64;
-            // DC weight: a full period (overlap == nl_i) weighs 1; a partial period
-            // under basis 2 is prorated by the nominal length, else by nl_i.
-            let weight_dc = |overlap: f64| {
-                if basis == 2 && overlap < nl_i {
-                    overlap / nominal
-                } else {
-                    overlap / nl_i
-                }
-            };
-            // A weight: pure day count — basis 2 always prorates by the nominal
-            // length (so full accrued periods are not clamped to 1), else by nl_i.
-            let weight_a = |overlap: f64| {
-                if basis == 2 {
-                    overlap / nominal
-                } else {
-                    overlap / nl_i
-                }
-            };
-
-            if issue_date < period_end {
-                // DC_i: odd-period days falling in [period_start, period_end]
-                let sub_start = if issue_date > period_start {
-                    issue_date
-                } else {
-                    period_start
-                };
-                sum_nc += weight_dc(actual_days(sub_start, period_end));
-
-                // A_i: those days that are also before (or at) settlement
-                if settlement_date > period_start {
-                    let a_start = if issue_date > period_start {
-                        issue_date
-                    } else {
-                        period_start
-                    };
-                    let a_end = if settlement_date < period_end {
-                        settlement_date
-                    } else {
-                        period_end
-                    };
-                    sum_a += weight_a(actual_days(a_start, a_end));
-                }
-            }
-
-            if period_start <= issue_date {
-                break;
-            }
-            period_end = period_start;
-        }
-        (sum_nc, sum_a)
+        let term4 = a / e * (rate / m) * 100.0;
+        Ok(term1 + term2 + term3 - term4)
     } else {
-        let a = basis_days(issue_date, settlement_date, basis);
-        (nc / e, a / e)
-    };
+        // --- Long odd first coupon period (spans several quasi-coupon periods) ---
+        let nc = coupon_count(issue, first_coupon, frequency)? as i64;
 
-    let first_term = redemption / v.powf(dsc_over_e + (n as f64 - 1.0));
+        let mut late_coupon = first_coupon_d;
+        let mut dcnl = 0.0_f64;
+        let mut anl = 0.0_f64;
+        for index in (1..=nc).rev() {
+            let early_coupon = change_month(late_coupon, -num_months, false)?;
+            let nl = if basis == 1 {
+                days_between_not_neg(early_coupon, late_coupon, basis)
+            } else {
+                e
+            };
+            let dci = if index > 1 {
+                nl
+            } else {
+                days_between_not_neg(issue_d, late_coupon, basis)
+            };
+            let start_date = issue_d.max(early_coupon);
+            let end_date = settlement_d.min(late_coupon);
+            let a = days_between_not_neg(start_date, end_date, basis);
+            late_coupon = early_coupon;
+            dcnl += dci / nl;
+            anl += a / nl;
+        }
 
-    let second_term = coupon * nc_over_e / v.powf(dsc_over_e);
-    let mut third_term = 0.0;
-    for k in 1..n {
-        let kf = k as f64;
-        third_term += coupon / v.powf(dsc_over_e + kf);
+        let dsc = if basis == 2 || basis == 3 {
+            let ncd = from_excel_date(next_coupon_date(settlement, first_coupon, frequency)?)?;
+            days_between_not_neg(settlement_d, ncd, basis)
+        } else {
+            let pcd = from_excel_date(prev_coupon_date(settlement, first_coupon, frequency)?)?;
+            e - basis_days(pcd, settlement_d, basis)
+        };
+
+        let nq = coup_number(first_coupon, settlement, num_months, true)?;
+        let n = coupon_count(first_coupon, maturity, frequency)? as f64;
+        let x = yld / m + 1.0;
+        let y = dsc / e;
+
+        let term1 = redemption / x.powf(y + nq + n);
+        let term2 = 100.0 * rate / m * dcnl / x.powf(nq + y);
+        let mut term3 = 0.0;
+        for index in 1..=(n as i64) {
+            term3 += 100.0 * rate / m / x.powf(index as f64 + nq + y);
+        }
+        let term4 = 100.0 * rate / m * anl;
+        Ok(term1 + term2 + term3 - term4)
     }
-
-    let last_term = coupon * a_over_e;
-    Ok(first_term + second_term + third_term - last_term)
 }
 // ============================================================
-// Odd-last-period price
+// Odd-last-period price / yield
 // ============================================================
 
-// Clean price for a bond with an odd last coupon period.
-// last_interest: last regular interest (coupon) date before the odd last period
+// Port of `oddLFunc` from oddbonds.fs. With `is_l_price` it returns the
+// ODDLPRICE clean price; otherwise it returns the ODDLYIELD yield in closed form.
+// last_interest: last regular interest (coupon) date before the odd last period.
+#[allow(clippy::too_many_arguments)]
+fn odd_l_func(
+    settlement: i64,
+    maturity: i64,
+    last_interest: i64,
+    rate: f64,
+    pr_or_yld: f64,
+    redemption: f64,
+    frequency: u32,
+    basis: u32,
+    is_l_price: bool,
+) -> Result<f64, String> {
+    let m = frequency as f64;
+    let num_months = (12 / frequency) as i32;
+
+    let settlement_d = from_excel_date(settlement)?;
+    let maturity_d = from_excel_date(maturity)?;
+    let last_interest_d = from_excel_date(last_interest)?;
+
+    let nc = coupon_count(last_interest, maturity, frequency)? as i64;
+
+    let mut early_coupon = last_interest_d;
+    let mut dcnl = 0.0_f64;
+    let mut anl = 0.0_f64;
+    let mut dscnl = 0.0_f64;
+    for index in 1..=nc {
+        let late_coupon = change_month(early_coupon, num_months, false)?;
+        let nl = days_between_not_neg_with_hack(early_coupon, late_coupon, basis);
+        let dci = if index < nc {
+            nl
+        } else {
+            days_between_not_neg_with_hack(early_coupon, maturity_d, basis)
+        };
+        let a = if late_coupon < settlement_d {
+            dci
+        } else if early_coupon < settlement_d {
+            days_between_not_neg(early_coupon, settlement_d, basis)
+        } else {
+            0.0
+        };
+        let start_date = settlement_d.max(early_coupon);
+        let end_date = maturity_d.min(late_coupon);
+        let dsc = days_between_not_neg(start_date, end_date, basis);
+        early_coupon = late_coupon;
+        dcnl += dci / nl;
+        anl += a / nl;
+        dscnl += dsc / nl;
+    }
+
+    let x = 100.0 * rate / m;
+    let term1 = dcnl * x + redemption;
+    if is_l_price {
+        let term2 = dscnl * pr_or_yld / m + 1.0;
+        let term3 = anl * x;
+        Ok(term1 / term2 - term3)
+    } else {
+        let term2 = anl * x + pr_or_yld;
+        let term3 = m / dscnl;
+        Ok((term1 - term2) / term2 * term3)
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn compute_oddlprice(
     settlement: i64,
@@ -514,110 +607,17 @@ fn compute_oddlprice(
     frequency: u32,
     basis: u32,
 ) -> Result<f64, String> {
-    let months_per = 12 / frequency;
-    let li_date = from_excel_date(last_interest)?;
-    let mat_date = from_excel_date(maturity)?;
-    let set_date = from_excel_date(settlement)?;
-
-    // Quasi-coupon period (E): the first regular period after last_interest,
-    // [last_interest, last_interest + one period].
-    let next_li = li_date
-        .checked_add_months(Months::new(months_per))
-        .ok_or("Date arithmetic error")?;
-    let e: f64 = match basis {
-        0 | 2 | 4 => 360.0 / frequency as f64,
-        1 => actual_days(li_date, next_li),
-        3 => 365.0 / frequency as f64,
-        _ => return Err("Invalid basis".to_string()),
-    };
-
-    // NC: days in the odd last period (from last_interest to maturity).
-    let nc = basis_days(li_date, mat_date, basis);
-
-    let coupon = 100.0 * rate / frequency as f64;
-    let v = 1.0 + yld / frequency as f64;
-
-    // The odd last coupon spans NC/E quasi-coupon periods. For actual-day bases
-    // (1, 2, 3) with a long last period (NC > E), adjacent quasi-coupon periods
-    // can have different actual lengths (e.g. one might contain Feb 29). We must
-    // weight each sub-period's days by its own actual NL_i rather than the single
-    // constant E. For 30/360 bases (0, 4) every period is exactly 360 days, so
-    // the simple nc/e is correct. This mirrors compute_oddfprice.
-    //   nc_over_e: full odd last period in quasi-coupon units.
-    //   a_over_e:  accrued part of the odd last period up to settlement, in
-    //              quasi-coupon units (only meaningful when settlement is inside
-    //              the odd period, i.e. Case 1).
-    let (nc_over_e, a_over_e) = if matches!(basis, 1..=3) && nc > e {
-        let mut sum_nc = 0.0_f64;
-        let mut sum_a = 0.0_f64;
-        let mut period_start = li_date;
-        loop {
-            let period_end = period_start
-                .checked_add_months(Months::new(months_per))
-                .ok_or("Date arithmetic error")?;
-            let nl_i = actual_days(period_start, period_end);
-
-            // DC_i: odd-period days falling in [period_start, period_end].
-            let dc_end = if mat_date < period_end {
-                mat_date
-            } else {
-                period_end
-            };
-            sum_nc += actual_days(period_start, dc_end) / nl_i;
-
-            // A_i: those days that are also at or before settlement.
-            if set_date > period_start {
-                let a_end = if set_date < dc_end { set_date } else { dc_end };
-                sum_a += actual_days(period_start, a_end) / nl_i;
-            }
-
-            if period_end >= mat_date {
-                break;
-            }
-            period_start = period_end;
-        }
-        (sum_nc, sum_a)
-    } else {
-        let a = basis_days(li_date, set_date, basis);
-        (nc / e, a / e)
-    };
-
-    if settlement >= last_interest {
-        // --- Case 1: settlement is in the odd last period ---
-        // Only one remaining payment: redemption + odd coupon at maturity.
-        // Excel discounts the odd last period with *simple* interest over the
-        // whole span (1 + DSC/E * yld/M), not the compound v^(DSC/E) used for
-        // regular periods. This matters when the odd last period spans several
-        // quasi-coupon periods (DSC/E large).
-        let dsc_over_e = nc_over_e - a_over_e; // settlement -> maturity, in periods
-
-        let dirty =
-            (redemption + coupon * nc_over_e) / (1.0 + (yld / frequency as f64) * dsc_over_e);
-        let ai = coupon * a_over_e;
-        Ok(dirty - ai)
-    } else {
-        // --- Case 2: settlement is before last_interest ---
-        // N regular coupons remain (from next coupon after settlement to last_interest),
-        // followed by the odd final payment at maturity.
-        let n = coupon_count(settlement, last_interest, frequency)? as f64;
-        let e_reg = coupon_days_e(settlement, last_interest, frequency, basis)?;
-        let a_reg = coupon_days_a(settlement, last_interest, frequency, basis)?;
-        let dsc_over_e = (e_reg - a_reg) / e_reg;
-
-        // Regular coupons
-        let mut dirty = 0.0;
-        for k in 1..=(n as u32) {
-            dirty += coupon / v.powf(dsc_over_e + k as f64 - 1.0);
-        }
-
-        // Final odd payment at time (N-1+DSC/E) + NC/E from settlement.
-        let t_final = dsc_over_e + (n - 1.0) + nc_over_e;
-        dirty += (redemption + coupon * nc_over_e) / v.powf(t_final);
-
-        // Accrued interest (from last regular coupon before settlement to settlement).
-        let ai = coupon * (a_reg / e_reg);
-        Ok(dirty - ai)
-    }
+    odd_l_func(
+        settlement,
+        maturity,
+        last_interest,
+        rate,
+        yld,
+        redemption,
+        frequency,
+        basis,
+        true,
+    )
 }
 
 // ============================================================
@@ -1283,21 +1283,17 @@ impl<'a> Model<'a> {
             );
         }
 
-        let price_fn = |yld: f64| {
-            compute_oddlprice(
-                settlement,
-                maturity,
-                last_interest,
-                rate,
-                yld,
-                redemption,
-                frequency,
-                basis,
-            )
-            .ok()
-        };
-
-        match solve_yield(pr, rate, price_fn) {
+        match odd_l_func(
+            settlement,
+            maturity,
+            last_interest,
+            rate,
+            pr,
+            redemption,
+            frequency,
+            basis,
+            false,
+        ) {
             Ok(y) => CalcResult::Number(y),
             Err(e) => map_date_err(e, cell),
         }
@@ -1348,6 +1344,23 @@ impl<'a> Model<'a> {
             Ok(d) => d,
             Err(e) => return map_date_err(e, cell),
         };
+        if basis == 0 {
+            // ExcelFinancialFunctions enforces coupDaysNC = coupDays - coupDaysBS
+            // for the US 30/360 basis: the total 30/360 days in the coupon period
+            // (ModifyBothDates) minus the days from its start to settlement
+            // (ModifyStartDate). This is *not* simply 30/360(settlement, next).
+            let prev = match prev_coupon_date(settlement, maturity, frequency) {
+                Ok(v) => v,
+                Err(e) => return map_date_err(e, cell),
+            };
+            let prev_date = match from_excel_date(prev) {
+                Ok(d) => d,
+                Err(e) => return map_date_err(e, cell),
+            };
+            let total = days_30_360_us_both(prev_date, next_date);
+            let to_settlement = days_30_360_us(prev_date, set_date);
+            return CalcResult::Number(total - to_settlement);
+        }
         CalcResult::Number(basis_days(set_date, next_date, basis))
     }
 

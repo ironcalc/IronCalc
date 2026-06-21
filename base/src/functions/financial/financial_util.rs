@@ -129,6 +129,12 @@ fn compute_irr_newton_raphson(values: &[f64], guess: f64) -> Result<f64, (Error,
         let f_prime = compute_npv_prime(irr, values)?;
         let new_irr = irr - f / f_prime;
         if (new_irr - irr).abs() < eps {
+            // A rate <= -1 is outside the valid domain (it is a root of the NPV
+            // polynomial but not a real IRR). Reject it so the caller falls back
+            // to bisection, which finds the economically meaningful root.
+            if new_irr <= -1.0 {
+                return Err((Error::NUM, "converged to invalid rate".to_string()));
+            }
             return Ok(new_irr);
         }
         irr = new_irr;

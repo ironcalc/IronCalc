@@ -1197,6 +1197,11 @@ impl<'a> Model<'a> {
         if nper <= 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "nper should be >0".to_string());
         }
+        // When the value is unchanged the rate is zero (this also covers the
+        // pv == fv == 0 case, which Excel returns as 0 rather than an error).
+        if fv == pv {
+            return CalcResult::Number(0.0);
+        }
         if pv == 0.0 {
             // Note error is NUM not DIV/0 also bellow
             return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
@@ -1559,24 +1564,24 @@ impl<'a> Model<'a> {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let mut fraction = match self.get_number_no_bools(&args[1], cell) {
+        let fraction = match self.get_number_no_bools(&args[1], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
         if fraction < 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "fraction should be >= 1".to_string());
         }
-        if fraction < 1.0 {
-            // this is not necessarily DIV/0
+        // `fraction` is truncated to an integer; if that is 0 it is a DIV/0.
+        let a_base = fraction.trunc();
+        if a_base < 1.0 {
             return CalcResult::new_error(Error::DIV, cell, "fraction should be >= 1".to_string());
         }
-        fraction = fraction.trunc();
-        while fraction > 10.0 {
-            fraction /= 10.0;
-        }
-        let t = fractional_dollar.trunc();
-        let result = t + (fractional_dollar - t) * 10.0 / fraction;
-        CalcResult::Number(result)
+        // See LibreOffice/ExcelFinancialFunctions: the fractional part is scaled
+        // by 10^ceil(log10(a_base)) and divided by the fraction base.
+        let dollar = fractional_dollar.trunc();
+        let remainder = fractional_dollar - dollar;
+        let digits = 10f64.powf(a_base.log10().ceil());
+        CalcResult::Number(remainder * digits / a_base + dollar)
     }
 
     // DOLLARFR(decimal_dollar, fraction)
@@ -1588,24 +1593,24 @@ impl<'a> Model<'a> {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let mut fraction = match self.get_number_no_bools(&args[1], cell) {
+        let fraction = match self.get_number_no_bools(&args[1], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
         if fraction < 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "fraction should be >= 1".to_string());
         }
-        if fraction < 1.0 {
-            // this is not necessarily DIV/0
+        // `fraction` is truncated to an integer; if that is 0 it is a DIV/0.
+        let a_base = fraction.trunc();
+        if a_base < 1.0 {
             return CalcResult::new_error(Error::DIV, cell, "fraction should be >= 1".to_string());
         }
-        fraction = fraction.trunc();
-        while fraction > 10.0 {
-            fraction /= 10.0;
-        }
-        let t = decimal_dollar.trunc();
-        let result = t + (decimal_dollar - t) * fraction / 10.0;
-        CalcResult::Number(result)
+        // Inverse of DOLLARDE: the decimal remainder is expressed in fractional
+        // units (a_base) and scaled down by 10^ceil(log10(a_base)).
+        let dollar = decimal_dollar.trunc();
+        let remainder = decimal_dollar - dollar;
+        let digits = 10f64.powf(a_base.log10().ceil());
+        CalcResult::Number(remainder * a_base / digits.abs() + dollar)
     }
 
     // CUMIPMT(rate, nper, pv, start_period, end_period, type)
@@ -1779,22 +1784,7 @@ impl<'a> Model<'a> {
         if period > life || cost < 0.0 || salvage < 0.0 || period <= 0.0 || factor <= 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
         };
-        // let period_trunc = period.floor() as i32;
-        let mut rate = factor / life;
-        if rate > 1.0 {
-            rate = 1.0
-        };
-        let value = if rate == 1.0 {
-            if period == 1.0 {
-                cost
-            } else {
-                0.0
-            }
-        } else {
-            cost * (1.0 - rate).powf(period - 1.0)
-        };
-        let new_value = cost * (1.0 - rate).powf(period);
-        let result = f64::max(value - f64::max(salvage, new_value), 0.0);
+        let result = financial_depreciation::ddb_depreciation(cost, salvage, life, period, factor);
         CalcResult::Number(result)
     }
 
@@ -1840,30 +1830,8 @@ impl<'a> Model<'a> {
         if cost == 0.0 {
             return CalcResult::Number(0.0);
         }
-        // rounded to three decimal places
-        // FIXME: We should have utilities for this (see to_precision)
-        let rate = f64::round((1.0 - f64::powf(salvage / cost, 1.0 / life)) * 1000.0) / 1000.0;
-
-        let mut result = cost * rate * month / 12.0;
-
-        let period = period.floor() as i32;
-        let life = life.floor() as i32;
-
-        // Depreciation for the first and last periods is a special case.
-        if period == 1 {
-            return CalcResult::Number(result);
-        };
-
-        for _ in 0..period - 2 {
-            result += (cost - result) * rate;
-        }
-
-        if period == life + 1 {
-            // last period
-            return CalcResult::Number((cost - result) * rate * (12.0 - month) / 12.0);
-        }
-
-        CalcResult::Number(rate * (cost - result))
+        let result = financial_depreciation::db_depreciation(cost, salvage, life, period, month);
+        CalcResult::Number(result)
     }
 
     // ACCRINTM(issue, settlement, rate, [par], [basis])
@@ -1937,6 +1905,45 @@ impl<'a> Model<'a> {
             CalcResult::Number(yf) => Ok(yf),
             error => Err(error),
         }
+    }
+
+    // Day-count factors shared by PRICEMAT and YIELDMAT, mirroring
+    // `getMatFactors` in ExcelFinancialFunctions: all three terms share a single
+    // denominator `b = DaysInYear(issue, settlement)`, and the settlement→maturity
+    // span is `dim - a` (issue-anchored), not an independent year fraction.
+    //
+    // Returns `(a, dim, dsm)` already divided by `b`, i.e. in year units:
+    //   a   = DaysBetween(issue, settlement) / b   (= YEARFRAC(issue, settlement))
+    //   dim = DaysBetween(issue, maturity)   / b
+    //   dsm = dim - a
+    fn get_mat_factors(
+        &mut self,
+        issue: i64,
+        settlement: i64,
+        maturity: i64,
+        basis: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64, f64), CalcResult> {
+        let a = self.get_yearfrac(issue, settlement, basis, cell)?;
+        let dim = if basis == 1.0 {
+            // Actual/Actual has a date-dependent DaysInYear, so YEARFRAC(issue,
+            // maturity) would use a different denominator. Re-base onto `b` via
+            // the actual day counts: dim = dim_days * a / a_days = dim_days / b.
+            let a_days = (settlement - issue) as f64;
+            let dim_days = (maturity - issue) as f64;
+            if a_days == 0.0 {
+                return Err(CalcResult::new_error(
+                    Error::DIV,
+                    cell,
+                    "Division by zero".to_string(),
+                ));
+            }
+            dim_days * a / a_days
+        } else {
+            // Constant DaysInYear, so the common denominator is automatic.
+            self.get_yearfrac(issue, maturity, basis, cell)?
+        };
+        Ok((a, dim, dim - a))
     }
 
     // DISC(settlement, maturity, pr, redemption, [basis])
@@ -2169,23 +2176,15 @@ impl<'a> Model<'a> {
                 "settlement must be before maturity".to_string(),
             );
         }
-        let dim = match self.get_yearfrac(issue, maturity, basis, cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let dis = match self.get_yearfrac(issue, settlement, basis, cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let dsm = match self.get_yearfrac(settlement, maturity, basis, cell) {
-            Ok(f) => f,
+        let (a, dim, dsm) = match self.get_mat_factors(issue, settlement, maturity, basis, cell) {
+            Ok(v) => v,
             Err(e) => return e,
         };
         let denom = 1.0 + yld * dsm;
         if denom == 0.0 {
             return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
         }
-        CalcResult::Number(100.0 * ((1.0 + rate * dim) / denom - rate * dis))
+        CalcResult::Number(100.0 * ((1.0 + rate * dim) / denom - rate * a))
     }
 
     // RECEIVED(settlement, maturity, investment, discount, [basis])
@@ -2345,19 +2344,11 @@ impl<'a> Model<'a> {
                 "settlement must be before maturity".to_string(),
             );
         }
-        let dim = match self.get_yearfrac(issue, maturity, basis, cell) {
-            Ok(f) => f,
+        let (a, dim, dsm) = match self.get_mat_factors(issue, settlement, maturity, basis, cell) {
+            Ok(v) => v,
             Err(e) => return e,
         };
-        let dis = match self.get_yearfrac(issue, settlement, basis, cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let dsm = match self.get_yearfrac(settlement, maturity, basis, cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let denom = price / 100.0 + rate * dis;
+        let denom = price / 100.0 + rate * a;
         if denom == 0.0 {
             return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
         }
