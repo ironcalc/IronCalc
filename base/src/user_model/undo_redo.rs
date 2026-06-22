@@ -300,6 +300,22 @@ impl<'a> UserModel<'a> {
                         self.set_selected_sheet(*index - 1)?;
                     }
                 }
+                Diff::DuplicateSheet {
+                    source_index,
+                    new_index,
+                } => {
+                    needs_evaluation = true;
+                    // Remove the defined names that the duplication created
+                    // (they are scoped to the copy's sheet_id) before dropping
+                    // the worksheet itself.
+                    let new_sheet_id = self.model.workbook.worksheet(*new_index)?.sheet_id;
+                    self.model
+                        .workbook
+                        .defined_names
+                        .retain(|dn| dn.sheet_id != Some(new_sheet_id));
+                    self.model.delete_sheet(*new_index)?;
+                    self.set_selected_sheet(*source_index)?;
+                }
                 Diff::RenameSheet {
                     index,
                     old_value,
@@ -761,6 +777,16 @@ impl<'a> UserModel<'a> {
                 Diff::NewSheet { index, name } => {
                     self.model.insert_sheet(name, *index, None)?;
                     self.set_selected_sheet(*index)?;
+                }
+                Diff::DuplicateSheet {
+                    source_index,
+                    new_index,
+                } => {
+                    needs_evaluation = true;
+                    // `duplicate_sheet` is deterministic given the workbook
+                    // state, so re-running it reproduces the same copy.
+                    self.model.duplicate_sheet(*source_index)?;
+                    self.set_selected_sheet(*new_index)?;
                 }
                 Diff::RenameSheet {
                     index,

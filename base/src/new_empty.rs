@@ -9,7 +9,9 @@ use crate::{
         lexer::LexerMode,
         parser::{
             static_analysis::run_static_analysis_on_node,
-            stringify::{rename_sheet_in_node, to_localized_string, to_rc_format},
+            stringify::{
+                rename_sheet_in_node, to_english_string, to_localized_string, to_rc_format,
+            },
             Node, Parser,
         },
         types::CellReferenceRC,
@@ -275,6 +277,142 @@ impl<'a> Model<'a> {
         self.insert_sheet(sheet_name, self.workbook.worksheets.len() as u32, None)
     }
 
+    /// Duplicates an existing sheet, placing the copy immediately after the
+    /// original. Returns the new sheet's name and index.
+    ///
+    /// The new sheet is named `"{original} ({n})"`, where `n` is the smallest
+    /// positive integer that makes the name unique (so `Sheet1` becomes
+    /// `Sheet1 (1)`, then `Sheet1 (2)`, ...).
+    ///
+    /// All the cell data, styles, conditional formatting rules, the sheet tab
+    /// color and the view state are copied. Formulas are copied too:
+    ///   * references to the source sheet itself (whether implicit, like `A1`,
+    ///     or explicit, like `Sheet1!A1`) are retargeted to the new sheet, and
+    ///   * references to other sheets are left untouched.
+    ///
+    /// When copying a sheet:
+    ///   * names local to the source sheet are duplicated as names local to the
+    ///     new sheet, and
+    ///   * global names that reference the source sheet get a new sheet-local
+    ///     copy on the new sheet (the original global name is kept unchanged).
+    ///
+    /// In both cases references to the source sheet are retargeted to the copy.
+    ///
+    /// Fails if `source_index` is out of range.
+    pub fn duplicate_sheet(&mut self, source_index: u32) -> Result<(String, u32), String> {
+        // Validate the source and capture what we need before mutating anything.
+        let source = self.workbook.worksheet(source_index)?;
+        let source_name = source.get_name();
+        let source_sheet_id = source.sheet_id;
+
+        // Find a unique name of the form "{source_name} ({index})".
+        let existing_names: Vec<String> = self
+            .workbook
+            .get_worksheet_names()
+            .iter()
+            .map(|s| s.to_uppercase())
+            .collect();
+        let mut index = 1;
+        let new_name = loop {
+            let candidate = format!("{source_name} ({index})");
+            if !existing_names.contains(&candidate.to_uppercase()) {
+                break candidate;
+            }
+            index += 1;
+        };
+
+        let new_sheet_id = self.get_new_sheet_id();
+
+        // Clone the worksheet wholesale: this brings over cells, styles, merge
+        // cells, comments, conditional formatting, the tab color, frozen panes,
+        // the views and the shared formulas.
+        let mut new_worksheet = self.workbook.worksheet(source_index)?.clone();
+        new_worksheet.name = new_name.clone();
+        new_worksheet.sheet_id = new_sheet_id;
+
+        // Retarget the copied formulas: references to the source sheet become
+        // references to the new sheet, everything else is left as-is. Implicit
+        // (same-sheet) references carry no sheet name, so they automatically
+        // point to whichever sheet hosts the formula — the new sheet.
+        //
+        // Internal formulas are R1C1 and not anchored to a cell; we parse them
+        // in the context of the *source* sheet (the parser already knows that
+        // name) so that implicit references resolve to the source sheet index.
+        self.parser.set_lexer_mode(LexerMode::R1C1);
+        let cell_reference = CellReferenceRC {
+            sheet: source_name.clone(),
+            row: 1,
+            column: 1,
+        };
+        let mut shared_formulas = Vec::with_capacity(new_worksheet.shared_formulas.len());
+        for formula in &new_worksheet.shared_formulas {
+            let mut t = self.parser.parse(formula, &cell_reference);
+            rename_sheet_in_node(&mut t, source_index, &new_name);
+            shared_formulas.push(to_rc_format(&t));
+        }
+        new_worksheet.shared_formulas = shared_formulas;
+        self.parser.set_lexer_mode(LexerMode::A1);
+
+        // Insert the copy right after the source sheet.
+        let new_index = source_index as usize + 1;
+        self.workbook.worksheets.insert(new_index, new_worksheet);
+
+        // Duplicate the relevant defined names as sheet-local names on the copy.
+        // We snapshot first to avoid borrowing the workbook while parsing.
+        let context = self.defined_name_context();
+        let defined_names = self.workbook.defined_names.clone();
+        let mut new_defined_names: Vec<DefinedName> = Vec::new();
+        for defined_name in &defined_names {
+            let is_local_to_source = defined_name.sheet_id == Some(source_sheet_id);
+            let is_global = defined_name.sheet_id.is_none();
+            if !is_local_to_source && !is_global {
+                // Local to a different sheet: leave it alone.
+                continue;
+            }
+            // Don't create two names with the same scope (a name may be both
+            // global and local-to-source); the first one wins.
+            if new_defined_names
+                .iter()
+                .any(|d| d.name.eq_ignore_ascii_case(&defined_name.name))
+            {
+                continue;
+            }
+
+            // Defined-name formulas are stored internally in English. Parse,
+            // then retarget references to the source sheet to the copy.
+            let had_equals = defined_name.formula.trim_start().starts_with('=');
+            let body = defined_name
+                .formula
+                .strip_prefix('=')
+                .unwrap_or(&defined_name.formula);
+            let mut node = self.parse_internal_formula(body, &context);
+            let before = to_english_string(&node, &context);
+            rename_sheet_in_node(&mut node, source_index, &new_name);
+            let after = to_english_string(&node, &context);
+
+            // Global names are only duplicated when they actually reference the
+            // source sheet (matching Excel). Local names are always duplicated.
+            if is_global && before == after {
+                continue;
+            }
+
+            let formula = if had_equals {
+                format!("={after}")
+            } else {
+                after
+            };
+            new_defined_names.push(DefinedName {
+                name: defined_name.name.clone(),
+                formula,
+                sheet_id: Some(new_sheet_id),
+            });
+        }
+        self.workbook.defined_names.extend(new_defined_names);
+
+        self.reset_parsed_structures();
+        Ok((new_name, new_index as u32))
+    }
+
     /// Renames a sheet and updates all existing references to that sheet.
     /// It can fail if:
     ///   * The original sheet does not exists
@@ -508,6 +646,219 @@ impl<'a> Model<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::cf_types::{CfRuleInput, ValueOperator};
+    use crate::test::util::new_empty_model;
+    use crate::types::{Color, Dxf, Fill};
+
+    fn red_fill() -> Dxf {
+        Dxf {
+            font: None,
+            fill: Some(Fill {
+                color: Color::Rgb("#FF0000".to_string()),
+            }),
+            border: None,
+            num_fmt: None,
+            alignment: None,
+        }
+    }
+
+    #[test]
+    fn test_duplicate_sheet_naming() {
+        let mut model = new_empty_model();
+
+        // Sheet1 -> Sheet1 (1)
+        let (name1, index1) = model.duplicate_sheet(0).unwrap();
+        assert_eq!(name1, "Sheet1 (1)");
+        assert_eq!(index1, 1); // inserted right after the source
+
+        // Duplicating Sheet1 again -> Sheet1 (2)
+        let (name2, _) = model.duplicate_sheet(0).unwrap();
+        assert_eq!(name2, "Sheet1 (2)");
+
+        // Duplicating the copy -> Sheet1 (1) (1)
+        let source = model.get_sheet_index_by_name("Sheet1 (1)").unwrap();
+        let (name3, _) = model.duplicate_sheet(source).unwrap();
+        assert_eq!(name3, "Sheet1 (1) (1)");
+
+        // Out of range
+        assert!(model.duplicate_sheet(100).is_err());
+    }
+
+    #[test]
+    fn test_duplicate_sheet_formulas() {
+        let mut model = new_empty_model();
+        model.set_user_input(0, 1, 1, "10".to_string()).unwrap();
+        model.set_user_input(0, 1, 2, "=A1*2".to_string()).unwrap();
+        model.evaluate();
+
+        let (_, new_index) = model.duplicate_sheet(0).unwrap();
+
+        // The implicit self-reference is preserved and points to the copy.
+        assert_eq!(
+            model.get_cell_formula(new_index, 1, 2).unwrap(),
+            Some("=A1*2".to_string())
+        );
+        assert_eq!(
+            model.get_formatted_cell_value(new_index, 1, 2).unwrap(),
+            "20"
+        );
+
+        // The copy is independent: changing the copy doesn't touch the original.
+        model
+            .set_user_input(new_index, 1, 1, "100".to_string())
+            .unwrap();
+        model.evaluate();
+        assert_eq!(
+            model.get_formatted_cell_value(new_index, 1, 2).unwrap(),
+            "200"
+        );
+        assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "20");
+    }
+
+    #[test]
+    fn test_duplicate_sheet_formulas_to_other_sheets() {
+        let mut model = new_empty_model();
+        model.add_sheet("Other").unwrap();
+        let other = model.get_sheet_index_by_name("Other").unwrap();
+        model.set_user_input(other, 1, 1, "7".to_string()).unwrap();
+
+        // A reference to another sheet, and an explicit self-reference.
+        model
+            .set_user_input(0, 1, 1, "=Other!A1".to_string())
+            .unwrap();
+        model.set_user_input(0, 2, 1, "42".to_string()).unwrap();
+        model
+            .set_user_input(0, 1, 2, "=Sheet1!A2".to_string())
+            .unwrap();
+        model.evaluate();
+
+        let (_, new_index) = model.duplicate_sheet(0).unwrap();
+
+        // The cross-sheet reference is unchanged.
+        assert_eq!(
+            model.get_cell_formula(new_index, 1, 1).unwrap(),
+            Some("=Other!A1".to_string())
+        );
+        assert_eq!(
+            model.get_formatted_cell_value(new_index, 1, 1).unwrap(),
+            "7"
+        );
+
+        // The explicit self-reference is retargeted to the copy.
+        assert_eq!(
+            model.get_cell_formula(new_index, 1, 2).unwrap(),
+            Some("='Sheet1 (1)'!A2".to_string())
+        );
+        assert_eq!(
+            model.get_formatted_cell_value(new_index, 1, 2).unwrap(),
+            "42"
+        );
+    }
+
+    #[test]
+    fn test_duplicate_sheet_local_defined_names() {
+        let mut model = new_empty_model();
+        model.set_user_input(0, 1, 1, "5".to_string()).unwrap();
+        model
+            .new_defined_name("local_name", Some(0), "Sheet1!$A$1")
+            .unwrap();
+        model.evaluate();
+
+        let (_, new_index) = model.duplicate_sheet(0).unwrap();
+
+        // The local name is duplicated, scoped to the copy, retargeted to it.
+        let names = model.get_defined_name_list();
+        let copy = names
+            .iter()
+            .find(|(name, scope, _)| name == "local_name" && *scope == Some(new_index))
+            .expect("local name should be duplicated on the copy");
+        assert_eq!(copy.2, "'Sheet1 (1)'!$A$1");
+
+        // The original local name is left untouched.
+        assert!(names
+            .iter()
+            .any(|(name, scope, formula)| name == "local_name"
+                && *scope == Some(0)
+                && formula == "Sheet1!$A$1"));
+    }
+
+    #[test]
+    fn test_duplicate_sheet_global_names_made_local() {
+        let mut model = new_empty_model();
+        model.add_sheet("Other").unwrap();
+        model.set_user_input(0, 1, 1, "5".to_string()).unwrap();
+        // A global name referencing the source sheet, and one that doesn't.
+        model
+            .new_defined_name("from_source", None, "Sheet1!$A$1")
+            .unwrap();
+        model
+            .new_defined_name("from_other", None, "Other!$A$1")
+            .unwrap();
+        model.evaluate();
+
+        let (_, new_index) = model.duplicate_sheet(0).unwrap();
+        let names = model.get_defined_name_list();
+
+        // The original global names are preserved.
+        assert!(names
+            .iter()
+            .any(|(name, scope, _)| name == "from_source" && scope.is_none()));
+        assert!(names
+            .iter()
+            .any(|(name, scope, _)| name == "from_other" && scope.is_none()));
+
+        // The global name referencing the source is duplicated as a sheet-local
+        // name on the copy, retargeted to it.
+        let copy = names
+            .iter()
+            .find(|(name, scope, _)| name == "from_source" && *scope == Some(new_index))
+            .expect("global name referencing source should become local on copy");
+        assert_eq!(copy.2, "'Sheet1 (1)'!$A$1");
+
+        // The global name that does not reference the source is NOT duplicated.
+        assert!(!names
+            .iter()
+            .any(|(name, scope, _)| name == "from_other" && *scope == Some(new_index)));
+    }
+
+    #[test]
+    fn test_duplicate_sheet_conditional_formatting() {
+        let mut model = new_empty_model();
+        model.set_user_input(0, 1, 1, "10".to_string()).unwrap();
+        model
+            .add_conditional_formatting(
+                0,
+                "A1:A10",
+                CfRuleInput::CellIs {
+                    operator: ValueOperator::GreaterThan,
+                    formula: "5".to_string(),
+                    formula2: None,
+                    format: red_fill(),
+                    stop_if_true: false,
+                },
+            )
+            .unwrap();
+        model.evaluate();
+
+        let (_, new_index) = model.duplicate_sheet(0).unwrap();
+
+        let source_rules = model.get_conditional_formatting_list(0).unwrap();
+        let copy_rules = model.get_conditional_formatting_list(new_index).unwrap();
+        assert_eq!(copy_rules.len(), 1);
+        assert_eq!(copy_rules[0].range, "A1:A10");
+        assert_eq!(copy_rules[0].cf_rule, source_rules[0].cf_rule);
+    }
+
+    #[test]
+    fn test_duplicate_sheet_color() {
+        let mut model = new_empty_model();
+        let color = Color::Rgb("#123456".to_string());
+        model.set_sheet_color(0, &color).unwrap();
+
+        let (_, new_index) = model.duplicate_sheet(0).unwrap();
+        assert_eq!(model.workbook.worksheet(new_index).unwrap().color, color);
+    }
 
     #[test]
     fn test_is_valid_sheet_name() {

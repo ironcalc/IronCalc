@@ -262,6 +262,7 @@
   "sheet_tab": {
     "change_color": "Cambia colore",
     "delete": "Elimina",
+    "duplicate": "Duplica",
     "hide_sheet": "Nascondi foglio",
     "open_menu": "Apri menu del foglio",
     "rename": "Rinomina"

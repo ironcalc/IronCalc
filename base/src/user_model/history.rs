@@ -155,6 +155,12 @@ pub(crate) enum Diff {
         index: u32,
         name: String,
     },
+    DuplicateSheet {
+        /// Index of the sheet that was duplicated.
+        source_index: u32,
+        /// Index of the resulting copy (always `source_index + 1`).
+        new_index: u32,
+    },
     RenameSheet {
         index: u32,
         old_value: String,

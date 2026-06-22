@@ -262,6 +262,7 @@
   "sheet_tab": {
     "change_color": "Change Color",
     "delete": "Delete",
+    "duplicate": "Duplicate",
     "hide_sheet": "Hide sheet",
     "open_menu": "Open sheet menu",
     "rename": "Rename"
