@@ -16,9 +16,15 @@ const exampleWorkbooks = import.meta.glob("../../../tests/example.ic", {
 async function loadModel(): Promise<Model> {
   const exampleUrl = Object.values(exampleWorkbooks)[0];
   if (exampleUrl) {
-    const response = await fetch(exampleUrl);
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    return Model.from_bytes(bytes, "en");
+    try {
+      const response = await fetch(exampleUrl);
+      if (response.ok) {
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        return Model.from_bytes(bytes, "en");
+      }
+    } catch {
+      // Fall through to a new empty workbook on any fetch/parse error.
+    }
   }
   return new Model("Workbook1", "en", "UTC", "en");
 }
