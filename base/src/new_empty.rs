@@ -305,17 +305,37 @@ impl<'a> Model<'a> {
         let source_name = source.get_name();
         let source_sheet_id = source.sheet_id;
 
-        // Find a unique name of the form "{source_name} ({index})".
+        // Find a unique name of the form "{source_name} ({index})". Sheet names
+        // are capped at 31 characters (see `is_valid_sheet_name`), so when the
+        // base name plus the suffix would overflow we truncate the base to make
+        // room — and we still validate every candidate before accepting it,
+        // since we insert the worksheet directly without going through
+        // `insert_sheet`.
         let existing_names: Vec<String> = self
             .workbook
             .get_worksheet_names()
             .iter()
             .map(|s| s.to_uppercase())
             .collect();
+        const MAX_SHEET_NAME_LEN: usize = 31;
         let mut index = 1;
         let new_name = loop {
-            let candidate = format!("{source_name} ({index})");
-            if !existing_names.contains(&candidate.to_uppercase()) {
+            let suffix = format!(" ({index})");
+            let suffix_len = suffix.chars().count();
+            // Truncate the base name (by characters, to avoid splitting a
+            // multi-byte char) so that base + suffix fits within the limit.
+            let base: String = if source_name.chars().count() + suffix_len > MAX_SHEET_NAME_LEN {
+                source_name
+                    .chars()
+                    .take(MAX_SHEET_NAME_LEN.saturating_sub(suffix_len))
+                    .collect()
+            } else {
+                source_name.clone()
+            };
+            let candidate = format!("{base}{suffix}");
+            if is_valid_sheet_name(&candidate)
+                && !existing_names.contains(&candidate.to_uppercase())
+            {
                 break candidate;
             }
             index += 1;
@@ -694,6 +714,32 @@ mod tests {
 
         // Out of range
         assert!(model.duplicate_sheet(100).is_err());
+    }
+
+    #[test]
+    fn test_duplicate_sheet_name_respects_length_limit() {
+        let mut model = new_empty_model();
+        // A 31-character name (the maximum allowed).
+        let long_name = "AAAAAAAAAABBBBBBBBBBCCCCCCCCCCD";
+        assert_eq!(long_name.chars().count(), 31);
+        model.rename_sheet_by_index(0, long_name).unwrap();
+
+        // Naively "{name} (1)" would be 35 chars and thus invalid. The base
+        // name must be truncated so the result stays within the limit.
+        let (new_name, new_index) = model.duplicate_sheet(0).unwrap();
+        assert!(is_valid_sheet_name(&new_name));
+        assert!(new_name.chars().count() <= 31);
+        assert!(new_name.ends_with(" (1)"));
+        assert_eq!(
+            model.workbook.worksheet(new_index).unwrap().get_name(),
+            new_name
+        );
+
+        // A second copy still produces a distinct, valid name.
+        let (new_name2, _) = model.duplicate_sheet(0).unwrap();
+        assert!(is_valid_sheet_name(&new_name2));
+        assert!(new_name2.chars().count() <= 31);
+        assert_ne!(new_name2, new_name);
     }
 
     #[test]
