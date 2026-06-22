@@ -361,16 +361,26 @@ impl<'a> Model<'a> {
         // We snapshot first to avoid borrowing the workbook while parsing.
         let context = self.defined_name_context();
         let defined_names = self.workbook.defined_names.clone();
+        // A name can exist both as a sheet-local (to the source) and a global
+        // definition. Name resolution prefers the sheet-local one (see
+        // `Parser::get_defined_name`), so the copy must inherit that same
+        // definition. Process local-to-source names first; combined with the
+        // de-dup below this makes the sheet-local definition win regardless of
+        // their order in `workbook.defined_names`. (`sort_by_key` is stable, so
+        // entries within each group keep their original order.)
+        let mut ordered: Vec<&DefinedName> = defined_names.iter().collect();
+        ordered.sort_by_key(|dn| dn.sheet_id != Some(source_sheet_id));
         let mut new_defined_names: Vec<DefinedName> = Vec::new();
-        for defined_name in &defined_names {
+        for defined_name in ordered {
             let is_local_to_source = defined_name.sheet_id == Some(source_sheet_id);
             let is_global = defined_name.sheet_id.is_none();
             if !is_local_to_source && !is_global {
                 // Local to a different sheet: leave it alone.
                 continue;
             }
-            // Don't create two names with the same scope (a name may be both
-            // global and local-to-source); the first one wins.
+            // A name may be both global and local-to-source; since
+            // local-to-source entries are processed first, the first match wins
+            // and we skip any later (global) duplicate.
             if new_defined_names
                 .iter()
                 .any(|d| d.name.eq_ignore_ascii_case(&defined_name.name))
@@ -821,6 +831,34 @@ mod tests {
         assert!(!names
             .iter()
             .any(|(name, scope, _)| name == "from_other" && *scope == Some(new_index)));
+    }
+
+    #[test]
+    fn test_duplicate_sheet_prefers_local_over_global_name() {
+        // When a name exists both globally and as sheet-local to the source,
+        // resolution prefers the sheet-local one, so the copy must inherit the
+        // sheet-local definition — regardless of which is stored first.
+        let mut model = new_empty_model();
+        // The global is created first (so it comes earlier in `defined_names`).
+        model
+            .new_defined_name("shared", None, "Sheet1!$A$1")
+            .unwrap();
+        model
+            .new_defined_name("shared", Some(0), "Sheet1!$B$2")
+            .unwrap();
+        model.evaluate();
+
+        let (_, new_index) = model.duplicate_sheet(0).unwrap();
+        let names = model.get_defined_name_list();
+
+        // Exactly one "shared" name is local to the copy and it comes from the
+        // sheet-local definition ($B$2), not the global one ($A$1).
+        let local_copies: Vec<_> = names
+            .iter()
+            .filter(|(name, scope, _)| name == "shared" && *scope == Some(new_index))
+            .collect();
+        assert_eq!(local_copies.len(), 1);
+        assert_eq!(local_copies[0].2, "'Sheet1 (1)'!$B$2");
     }
 
     #[test]
