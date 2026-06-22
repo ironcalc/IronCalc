@@ -26,15 +26,14 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
   ({ themeVariables, model, externalRevision = 0 }, ref) => {
     const rootRef = useRef<HTMLDivElement>(null);
 
-    // We keep the WorkbookState as a ref so that it survives re-renders
-    // of this component.
-    // But we do reset it when model identity is explicitly changed.
-    const workbookState = useRef<WorkbookState | null>(null);
-    const lastModel = useRef<Model | null>(null);
-    if (workbookState.current === null || lastModel.current !== model) {
-      workbookState.current = new WorkbookState();
-      lastModel.current = model;
+    // We keep WorkbookState and the model as a ref, so that
+    // it survives re-rendering this component.
+    // We build a new WorkbookState whenever the model identity changes.
+    const workbook = useRef<{ state: WorkbookState; model: Model } | null>(null);
+    if (workbook.current === null || workbook.current.model !== model) {
+      workbook.current = { state: new WorkbookState(), model };
     }
+    const workbookState = workbook.current.state;
 
     useEffect(() => {
       if (rootRef.current && themeVariables) {
@@ -57,7 +56,7 @@ const IronCalc = forwardRef<IronCalcHandle, IronCalcProperties>(
         <I18nextProvider i18n={i18n}>
           <Workbook
             model={model}
-            workbookState={workbookState.current}
+            workbookState={workbookState}
             externalRevision={externalRevision}
           />
         </I18nextProvider>
