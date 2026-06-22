@@ -77,7 +77,7 @@ const Workbook = (props: {
       previousRevision.current = externalRevision;
       setRedrawId((id) => id + 1);
     }
-  }, [externalRevision, setRedrawId]);
+  }, [externalRevision]);
 
   const [alertDialogMessage, setAlertDialogMessage] = useState<string | null>(
     null,
