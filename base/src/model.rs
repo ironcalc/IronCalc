@@ -3511,7 +3511,7 @@ impl<'a> Model<'a> {
 
     /// The context used to parse/stringify defined-name formulas. Defined names
     /// have no natural anchor cell, so we use the first worksheet's A1.
-    fn defined_name_context(&self) -> CellReferenceRC {
+    pub(crate) fn defined_name_context(&self) -> CellReferenceRC {
         CellReferenceRC {
             sheet: self
                 .workbook

@@ -906,6 +906,16 @@ const Workbook = (props: { model: Model; workbookState: WorkbookState }) => {
             model.deleteSheet(selectedSheet);
             setRedrawId((value) => value + 1);
           }}
+          onSheetDuplicated={(): void => {
+            try {
+              const selectedSheet = model.getSelectedSheet();
+              model.duplicateSheet(selectedSheet);
+              setRedrawId((value) => value + 1);
+            } catch (e) {
+              // TODO: Show a proper modal dialog
+              alert(`${e}`);
+            }
+          }}
           onHideSheet={(): void => {
             const selectedSheet = model.getSelectedSheet();
             model.hideSheet(selectedSheet);

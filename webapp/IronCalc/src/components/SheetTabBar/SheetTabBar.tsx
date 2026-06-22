@@ -21,6 +21,7 @@ export interface SheetTabBarProps {
   onSheetColorChanged: (color: Color) => void;
   onSheetRenamed: (name: string) => void;
   onSheetDeleted: () => void;
+  onSheetDuplicated: () => void;
   onHideSheet: () => void;
   model: Model;
   onOpenRegionalSettings: () => void;
@@ -87,6 +88,9 @@ function SheetTabBar(props: SheetTabBarProps) {
               canDelete={nonHiddenSheets.length > 1}
               onDeleted={(): void => {
                 props.onSheetDeleted();
+              }}
+              onDuplicateSheet={(): void => {
+                props.onSheetDuplicated();
               }}
               onHideSheet={props.onHideSheet}
               workbookState={workbookState}

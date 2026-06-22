@@ -19,6 +19,7 @@ interface SheetTabProps {
   onRenamed: (name: string) => void;
   canDelete: boolean;
   onDeleted: () => void;
+  onDuplicateSheet: () => void;
   onHideSheet: () => void;
   workbookState: WorkbookState;
   currentTheme: IronCalcTheme;
@@ -217,6 +218,7 @@ function SheetTab(props: SheetTabProps) {
           canDelete={props.canDelete}
           onStartEditing={handleStartEditing}
           onOpenColorPicker={() => setColorPickerOpen(true)}
+          onDuplicateSheet={props.onDuplicateSheet}
           onHideSheet={props.onHideSheet}
           onDeleteSheet={() => setDeleteDialogOpen(true)}
         />

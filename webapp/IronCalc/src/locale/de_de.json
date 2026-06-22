@@ -262,6 +262,7 @@
   "sheet_tab": {
     "change_color": "Farbe ändern",
     "delete": "Löschen",
+    "duplicate": "Duplizieren",
     "hide_sheet": "Tabellenblatt ausblenden",
     "open_menu": "Tabellenblattmenü öffnen",
     "rename": "Umbenennen"

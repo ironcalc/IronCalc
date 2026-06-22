@@ -495,6 +495,21 @@ impl<'a> UserModel<'a> {
         Ok(())
     }
 
+    /// Duplicates a sheet by index, placing the copy right after it and
+    /// selecting it.
+    ///
+    /// See also:
+    /// * [Model::duplicate_sheet]
+    pub fn duplicate_sheet(&mut self, sheet: u32) -> Result<(), String> {
+        let (_name, new_index) = self.model.duplicate_sheet(sheet)?;
+        self.set_selected_sheet(new_index)?;
+        self.push_diff_list(vec![Diff::DuplicateSheet {
+            source_index: sheet,
+            new_index,
+        }]);
+        Ok(())
+    }
+
     /// Deletes sheet by index
     ///
     /// See also:
