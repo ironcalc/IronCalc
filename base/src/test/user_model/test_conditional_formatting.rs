@@ -1096,7 +1096,7 @@ fn multi_area_formula_anchor_is_min_row_min_col() {
 // Raise / lower priority
 // ---------------------------------------------------------------------------
 
-fn icon_set() -> CfRuleInput {
+fn data_bar_alt() -> CfRuleInput {
     CfRuleInput::DataBar {
         min: Some(Cfvo::Min),
         max: Some(Cfvo::Max),
@@ -1130,7 +1130,7 @@ fn test_raise_priority_swaps_with_neighbour() {
         .add_conditional_formatting(0, "A1:A5", data_bar())
         .unwrap();
     model
-        .add_conditional_formatting(0, "A1:A5", icon_set())
+        .add_conditional_formatting(0, "A1:A5", data_bar_alt())
         .unwrap();
     assert_eq!(priorities(&model), vec![1, 2, 3]);
 
@@ -1149,7 +1149,7 @@ fn test_lower_priority_swaps_with_neighbour() {
         .add_conditional_formatting(0, "A1:A5", data_bar())
         .unwrap();
     model
-        .add_conditional_formatting(0, "A1:A5", icon_set())
+        .add_conditional_formatting(0, "A1:A5", data_bar_alt())
         .unwrap();
     assert_eq!(priorities(&model), vec![1, 2, 3]);
 

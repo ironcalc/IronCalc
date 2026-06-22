@@ -398,7 +398,8 @@ export interface ConditionalFormatting {
  * getConditionalFormattingList. The list is sorted by priority (descending), so
  * `index` — not the array position — must be used to address a rule in
  * getDxfForConditionalFormatting / updateConditionalFormatting /
- * deleteConditionalFormatting / raise·lowerConditionalFormattingPriority. */
+ * deleteConditionalFormatting / raiseConditionalFormattingPriority /
+ * lowerConditionalFormattingPriority. */
 export interface ConditionalFormattingView {
   index: number;
   range: string;
