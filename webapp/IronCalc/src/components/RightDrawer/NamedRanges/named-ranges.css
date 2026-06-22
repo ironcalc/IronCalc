@@ -10,19 +10,23 @@
   flex-direction: column;
   color: var(--palette-grey-700);
   line-height: 1.5;
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ic-named-ranges-list-container {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .ic-named-ranges-list-body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .ic-named-ranges-scope-filter {
@@ -56,6 +60,7 @@
 
 .ic-named-ranges-search-container {
   height: 40px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: row;
   align-items: center;
