@@ -1931,6 +1931,8 @@ impl<'a> Model<'a> {
             // the actual day counts: dim = dim_days * a / a_days = dim_days / b.
             let a_days = (settlement - issue) as f64;
             let dim_days = (maturity - issue) as f64;
+            // Callers guarantee `issue < settlement`, so `a_days > 0`; this guard
+            // is defensive only.
             if a_days == 0.0 {
                 return Err(CalcResult::new_error(
                     Error::DIV,
@@ -2176,6 +2178,13 @@ impl<'a> Model<'a> {
                 "settlement must be before maturity".to_string(),
             );
         }
+        if issue >= settlement {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "issue must be before settlement".to_string(),
+            );
+        }
         let (a, dim, dsm) = match self.get_mat_factors(issue, settlement, maturity, basis, cell) {
             Ok(v) => v,
             Err(e) => return e,
@@ -2342,6 +2351,13 @@ impl<'a> Model<'a> {
                 Error::NUM,
                 cell,
                 "settlement must be before maturity".to_string(),
+            );
+        }
+        if issue >= settlement {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "issue must be before settlement".to_string(),
             );
         }
         let (a, dim, dsm) = match self.get_mat_factors(issue, settlement, maturity, basis, cell) {
