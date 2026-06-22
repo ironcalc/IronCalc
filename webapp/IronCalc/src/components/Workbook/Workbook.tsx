@@ -68,9 +68,15 @@ const Workbook = (props: {
 
   // We also redraw if we modify the model from the outside, indicated by
   // `externalRevision`. This way we can redraw the canvas without throwing away
-  // the editing state (which would cause edits and focus to be lost)
+  // the editing state (which would cause edits and focus to be lost).
+  // We track the previous revision so we only redraw on an actual change,
+  // not on the initial mount (where the canvas already draws on its own).
+  const previousRevision = useRef(externalRevision);
   useEffect(() => {
-    setRedrawId((id) => id + 1);
+    if (previousRevision.current !== externalRevision) {
+      previousRevision.current = externalRevision;
+      setRedrawId((id) => id + 1);
+    }
   }, [externalRevision, setRedrawId]);
 
   const [alertDialogMessage, setAlertDialogMessage] = useState<string | null>(
