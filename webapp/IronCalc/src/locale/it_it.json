@@ -46,6 +46,7 @@
     "data_bars_type_automatic": "Automatico",
     "default_styles": "Preset",
     "delete_rule": "Elimina regola",
+    "duplicate_rule": "Duplica regola",
     "edit_rule": "Modifica regola",
     "empty_message1": "Nessuna regola di formattazione condizionale.",
     "empty_message2": "Fai clic su \"Aggiungi nuovo\" per crearne una.",

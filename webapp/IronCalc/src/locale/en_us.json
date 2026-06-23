@@ -46,6 +46,7 @@
     "data_bars_type_automatic": "Automatic",
     "default_styles": "Presets",
     "delete_rule": "Delete rule",
+    "duplicate_rule": "Duplicate rule",
     "edit_rule": "Edit rule",
     "empty_message1": "No conditional formatting rules yet.",
     "empty_message2": "Click on 'Add new' to add one.",

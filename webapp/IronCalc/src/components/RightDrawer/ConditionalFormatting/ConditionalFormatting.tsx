@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronUp,
+  Copy,
   PackageOpen,
   PencilLine,
   Plus,
@@ -175,6 +176,15 @@ const ConditionalFormatting = ({
 
   const handleDelete = (id: string) => {
     model.deleteConditionalFormatting(sheet, parseInt(id, 10));
+    onUpdate();
+  };
+
+  const handleDuplicate = (rule: Rule) => {
+    const cfRule = ruleDataToCfRule(rule);
+    if (!cfRule) {
+      return;
+    }
+    model.addConditionalFormatting(sheet, rule.applyTo, cfRule);
     onUpdate();
   };
 
@@ -509,6 +519,20 @@ const ConditionalFormatting = ({
                               setEditingRule(rule);
                             }}
                             aria-label={t("conditional_formatting.edit_rule")}
+                          />
+                        </Tooltip>
+                        <Tooltip
+                          title={t("conditional_formatting.duplicate_rule")}
+                        >
+                          <IconButton
+                            icon={<Copy />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDuplicate(rule);
+                            }}
+                            aria-label={t(
+                              "conditional_formatting.duplicate_rule",
+                            )}
                           />
                         </Tooltip>
                         <Tooltip
