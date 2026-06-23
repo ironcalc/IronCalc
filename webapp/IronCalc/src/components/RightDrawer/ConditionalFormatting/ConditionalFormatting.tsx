@@ -327,7 +327,7 @@ const ConditionalFormatting = ({
                   {t("conditional_formatting.no_search_results")}
                 </div>
               ) : (
-                filteredRules.map((rule, index) => {
+                filteredRules.map((rule) => {
                   const isActive = isRangeInRanges(
                     getSanitizedSelectedArea(),
                     rule.applyTo,
@@ -429,19 +429,21 @@ const ConditionalFormatting = ({
                       <div className="ic-cf-list-item-order-stack">
                         <IconButton
                           className="ic-cf-list-item-order-chevron"
-                          icon={<ChevronUp size={14} />}
-                          disabled={index === 0}
+                          icon={<ChevronUp />}
+                          disabled={rules[0]?.id === rule.id}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleReorder(rule, false);
                           }}
                           aria-label={t("conditional_formatting.move_up")}
                         />
-                        <div className="ic-cf-list-item-order">{index + 1}</div>
+                        <div className="ic-cf-list-item-order">
+                          {rules.findIndex((r) => r.id === rule.id) + 1}
+                        </div>
                         <IconButton
                           className="ic-cf-list-item-order-chevron"
-                          icon={<ChevronDown size={14} />}
-                          disabled={index === filteredRules.length - 1}
+                          icon={<ChevronDown />}
+                          disabled={rules[rules.length - 1]?.id === rule.id}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleReorder(rule, true);
