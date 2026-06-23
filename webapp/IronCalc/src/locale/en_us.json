@@ -65,6 +65,8 @@
     "icon_sets_settings": "Settings",
     "icon_sets_show_value": "Show cell value",
     "icon_sets_when_value_is": "When value is",
+    "move_down": "Lower priority",
+    "move_up": "Raise priority",
     "new": "Add new",
     "no_search_results": "No rules match your search.",
     "op_begins_with": "Begins With",

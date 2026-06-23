@@ -65,6 +65,8 @@
     "icon_sets_settings": "Paramètres",
     "icon_sets_show_value": "Afficher la valeur de la cellule",
     "icon_sets_when_value_is": "Quand la valeur est",
+    "move_down": "Baisser la priorité",
+    "move_up": "Augmenter la priorité",
     "new": "Ajouter",
     "no_search_results": "Aucune règle ne correspond à votre recherche.",
     "op_begins_with": "Commence par",
