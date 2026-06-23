@@ -118,7 +118,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
+  padding: 8px 12px 8px 8px;
   cursor: pointer;
   height: 68px;
   box-sizing: border-box;
@@ -128,13 +128,32 @@
 }
 
 .ic-cf-list-item--selected {
-  padding-left: 20px;
+  padding-left: 16px;
   border-left: 3px solid var(--palette-primary-main);
 }
 
 .ic-cf-list-item:hover {
   background-color: var(--palette-grey-50);
-  padding-left: 20px;
+  padding-left: 16px;
+}
+
+.ic-cf-list-item-order {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--palette-grey-100);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-family: var(--typography-font-family);
+  color: var(--palette-grey-600);
+  transition: background-color 0.2s ease-in-out;
+}
+
+.ic-cf-list-item:hover .ic-cf-list-item-order {
+  background-color: var(--palette-grey-300);
 }
 
 .ic-cf-list-item-preview {
@@ -184,6 +203,12 @@
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+  opacity: 0;
+}
+
+.ic-cf-list-item:hover .ic-cf-list-item-icons,
+.ic-cf-list-item--selected .ic-cf-list-item-icons {
+  opacity: 1;
 }
 
 .ic-cf-edit-header {
