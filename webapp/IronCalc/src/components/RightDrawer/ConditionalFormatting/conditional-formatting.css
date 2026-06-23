@@ -156,19 +156,18 @@
   height: 16px;
   min-width: 16px;
   opacity: 0;
+  pointer-events: none;
 }
 
-.ic-cf-list-item:hover .ic-cf-list-item-order-chevron {
+.ic-cf-list-item:hover .ic-cf-list-item-order-chevron,
+.ic-cf-list-item:focus-within .ic-cf-list-item-order-chevron,
+.ic-cf-list-item--selected .ic-cf-list-item-order-chevron {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .ic-cf-list-item-order-chevron:not(:disabled):hover {
   background-color: var(--palette-grey-300);
-}
-
-.ic-cf-list-item-order-chevron:disabled {
-  opacity: 0;
-  pointer-events: none;
 }
 
 .ic-cf-list-item-preview {
@@ -219,11 +218,14 @@
   gap: 2px;
   flex-shrink: 0;
   opacity: 0;
+  pointer-events: none;
 }
 
 .ic-cf-list-item:hover .ic-cf-list-item-icons,
+.ic-cf-list-item:focus-within .ic-cf-list-item-icons,
 .ic-cf-list-item--selected .ic-cf-list-item-icons {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .ic-cf-edit-header {
