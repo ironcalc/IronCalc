@@ -319,7 +319,7 @@ const ConditionalFormatting = ({
                   {t("conditional_formatting.no_search_results")}
                 </div>
               ) : (
-                filteredRules.map((rule) => {
+                filteredRules.map((rule, index) => {
                   const isActive = isRangeInRanges(
                     getSanitizedSelectedArea(),
                     rule.applyTo,
@@ -421,6 +421,7 @@ const ConditionalFormatting = ({
                         }
                       }}
                     >
+                      <div className="ic-cf-list-item-order">{index + 1}</div>
                       <div
                         className="ic-cf-list-item-preview"
                         style={
