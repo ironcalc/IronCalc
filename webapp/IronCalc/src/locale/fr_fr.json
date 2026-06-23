@@ -46,6 +46,7 @@
     "data_bars_type_automatic": "Automatique",
     "default_styles": "Préréglages",
     "delete_rule": "Supprimer la règle",
+    "duplicate_rule": "Dupliquer la règle",
     "edit_rule": "Modifier la règle",
     "empty_message1": "Aucune règle de mise en forme conditionnelle.",
     "empty_message2": "Cliquez sur « Ajouter » pour en créer une.",

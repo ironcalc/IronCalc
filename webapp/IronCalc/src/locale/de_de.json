@@ -46,6 +46,7 @@
     "data_bars_type_automatic": "Automatisch",
     "default_styles": "Voreinstellungen",
     "delete_rule": "Regel löschen",
+    "duplicate_rule": "Regel duplizieren",
     "edit_rule": "Regel bearbeiten",
     "empty_message1": "Noch keine Regeln für bedingte Formatierung.",
     "empty_message2": "Klicke auf 'Neu hinzufügen', um eine anzulegen.",

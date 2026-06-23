@@ -46,6 +46,7 @@
     "data_bars_type_automatic": "Automático",
     "default_styles": "Presets",
     "delete_rule": "Eliminar regla",
+    "duplicate_rule": "Duplicar regla",
     "edit_rule": "Editar regla",
     "empty_message1": "Aún no hay reglas de formato condicional.",
     "empty_message2": "Haz clic en 'Añadir nuevo' para agregar una.",
