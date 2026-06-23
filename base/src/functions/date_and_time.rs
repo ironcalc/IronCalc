@@ -13,6 +13,29 @@ fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
 }
 
+/// Converts an Excel serial number into its `(year, month, day)` components using
+/// Excel's 1900 date system, including the fictitious dates 1900-01-00 (serial 0)
+/// and 1900-02-29 (serial 60, the 1900 leap-year bug). `YEARFRAC` and `DATEDIF`
+/// rely on these components to reproduce Excel's day-count conventions for the
+/// low-serial edge cases (e.g. empty cells / zero, which Excel treats as day 0).
+fn excel_serial_to_ymd(serial: i64) -> (i32, i32, i32) {
+    if serial <= 0 {
+        // Excel's fictitious "1900-01-00".
+        return (1900, 1, 0);
+    }
+    if serial == 60 {
+        // Excel's fictitious "1900-02-29".
+        return (1900, 2, 29);
+    }
+    // Serials 1..=59 map directly onto the real calendar from 1900-01-01; from
+    // serial 61 onwards we drop one day to skip the fictitious leap day.
+    let offset = if serial < 60 { serial } else { serial - 1 };
+    #[allow(clippy::expect_used)]
+    let base = chrono::NaiveDate::from_ymd_opt(1899, 12, 31).expect("valid date");
+    let date = base + chrono::Duration::days(offset);
+    (date.year(), date.month() as i32, date.day() as i32)
+}
+
 /// Maps a date to the WEEKDAY number for the given `return_type`.
 /// Returns `Error::VALUE`/`Error::NUM` for an invalid `return_type`.
 fn weekday_number(date: chrono::NaiveDate, return_type: i32) -> Result<f64, Error> {
@@ -512,14 +535,29 @@ impl<'a> Model<'a> {
         let result = self.evaluate_node_in_context(node, cell);
         match result {
             CalcResult::Number(f) => Ok(f.floor() as i64),
-            CalcResult::String(s) => match parse_datevalue_text(&s) {
-                Ok(n) => Ok(n as i64),
-                Err(_) => Err(CalcResult::Error {
+            // Match the worksheet coercion Excel applies to date arguments: numeric
+            // strings ("10") become numbers and recognised date strings ("2024-01-10",
+            // "1/10/2024") become serials. `cast_number` covers numbers and the
+            // locale's date formats; `parse_datevalue_text` then handles further
+            // formats (e.g. day-first "29/2/2020"). A value padded with surrounding
+            // whitespace is rejected (#VALUE!), as Excel does.
+            CalcResult::String(s) => {
+                let invalid = || CalcResult::Error {
                     error: Error::VALUE,
                     origin: cell,
                     message: "Invalid date".to_string(),
-                }),
-            },
+                };
+                if let Some(f) = self.cast_number(&s) {
+                    Ok(f.floor() as i64)
+                } else if s == s.trim() {
+                    match parse_datevalue_text(&s) {
+                        Ok(n) => Ok(n as i64),
+                        Err(_) => Err(invalid()),
+                    }
+                } else {
+                    Err(invalid())
+                }
+            }
             CalcResult::Boolean(b) => {
                 if b {
                     Ok(1)
@@ -1242,6 +1280,19 @@ impl<'a> Model<'a> {
             Ok(v) => v,
             Err(e) => return e,
         };
+        // Excel rejects negative or out-of-range serial numbers with #NUM!. Serial 0
+        // (the fictitious 1900-01-00, e.g. from an empty cell) is, however, valid.
+        if start_serial < 0
+            || end_serial < 0
+            || start_serial > MAXIMUM_DATE_SERIAL_NUMBER as i64
+            || end_serial > MAXIMUM_DATE_SERIAL_NUMBER as i64
+        {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Date out of range".to_string(),
+            };
+        }
         if end_serial < start_serial {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -1249,16 +1300,37 @@ impl<'a> Model<'a> {
                 message: "Start date greater than end date".to_string(),
             };
         }
+        let unit = match self.evaluate_node_in_context(&args[2], cell) {
+            CalcResult::String(s) => s.to_uppercase(),
+            CalcResult::Boolean(_) | CalcResult::Number(_) => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Unit must be a string".to_string(),
+                }
+            }
+            err @ CalcResult::Error { .. } => return err,
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                return CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                }
+            }
+            CalcResult::EmptyCell | CalcResult::EmptyArg => "0".to_string(),
+        };
+
+        // "D" is a plain serial difference and is defined even for serial 0, which
+        // has no representable `NaiveDate`. The remaining units need calendar dates.
+        if unit == "D" {
+            return CalcResult::Number((end_serial - start_serial) as f64);
+        }
         let start = match self.excel_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
         let end = match self.excel_date(end_serial, cell) {
             Ok(d) => d,
-            Err(e) => return e,
-        };
-        let unit = match self.get_string(&args[2], cell) {
-            Ok(s) => s.to_uppercase(),
             Err(e) => return e,
         };
 
@@ -1278,7 +1350,6 @@ impl<'a> Model<'a> {
                 }
                 months as f64
             }
-            "D" => (end_serial - start_serial) as f64,
             "YM" => {
                 let mut months =
                     (end.year() - start.year()) * 12 + (end.month() as i32 - start.month() as i32);
@@ -1352,7 +1423,7 @@ impl<'a> Model<'a> {
             }
             _ => {
                 return CalcResult::Error {
-                    error: Error::VALUE,
+                    error: Error::NUM,
                     origin: cell,
                     message: "Invalid unit".to_string(),
                 };
@@ -1671,33 +1742,39 @@ impl<'a> Model<'a> {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number(&args[0], cell) {
+        // Excel rejects booleans as dates in YEARFRAC with #VALUE! (unlike DATEDIF).
+        let start_serial = match self.get_number_no_bools(&args[0], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let end_serial = match self.get_number(&args[1], cell) {
+        let end_serial = match self.get_number_no_bools(&args[1], cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
         let basis = if args.len() == 3 {
-            match self.get_number(&args[2], cell) {
+            match self.get_number_no_bools(&args[2], cell) {
                 Ok(f) => f as i32,
                 Err(s) => return s,
             }
         } else {
             0
         };
-        let start_date = match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let end_date = match self.excel_date(end_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let days = (end_date - start_date).num_days() as f64;
+        // Negative or out-of-range serials are #NUM!; serial 0 (e.g. an empty cell,
+        // Excel's fictitious 1900-01-00) is valid.
+        if start_serial < 0
+            || end_serial < 0
+            || start_serial > MAXIMUM_DATE_SERIAL_NUMBER as i64
+            || end_serial > MAXIMUM_DATE_SERIAL_NUMBER as i64
+        {
+            return CalcResult::new_error(Error::NUM, cell, "Date out of range".to_string());
+        }
+        let days = (end_serial - start_serial) as f64;
         let result = match basis {
             0 => {
+                // Use Excel's serial components so the low-serial edge cases
+                // (serial 0/1) match Excel's day-count.
+                let (sy, sm, sd) = excel_serial_to_ymd(start_serial);
+                let (ey, em, ed) = excel_serial_to_ymd(end_serial);
                 // YEARFRAC basis 0 uses the financial US 30/360 convention
                 // (`dateDiff360Us`, ModifyStartDate), which differs from the
                 // DAYS360 worksheet function for February month-ends: a
@@ -1705,12 +1782,10 @@ impl<'a> Model<'a> {
                 // is also a February month-end, and the `end == 31` rule tests
                 // the original (un-normalised) start day.
                 let last_day_feb = |year: i32| if is_leap_year(year) { 29 } else { 28 };
-                let sd_is_feb_last =
-                    start_date.month() == 2 && start_date.day() == last_day_feb(start_date.year());
-                let ed_is_feb_last =
-                    end_date.month() == 2 && end_date.day() == last_day_feb(end_date.year());
-                let mut sd_day = start_date.day() as i32;
-                let mut ed_day = end_date.day() as i32;
+                let sd_is_feb_last = sm == 2 && sd == last_day_feb(sy);
+                let ed_is_feb_last = em == 2 && ed == last_day_feb(ey);
+                let mut sd_day = sd;
+                let mut ed_day = ed;
 
                 if ed_is_feb_last && sd_is_feb_last {
                     ed_day = 30;
@@ -1724,14 +1799,20 @@ impl<'a> Model<'a> {
                 if sd_is_feb_last {
                     sd_day = 30;
                 }
-                let d360 = (end_date.year() - start_date.year()) * 360
-                    + (end_date.month() as i32 - start_date.month() as i32) * 30
-                    + (ed_day - sd_day);
+                let d360 = (ey - sy) * 360 + (em - sm) * 30 + (ed_day - sd_day);
                 d360 as f64 / 360.0
             }
             1 => {
                 // Actual/Actual. Port of ExcelFinancialFunctions
                 // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.
+                let start_date = match self.excel_date(start_serial, cell) {
+                    Ok(d) => d,
+                    Err(e) => return e,
+                };
+                let end_date = match self.excel_date(end_serial, cell) {
+                    Ok(d) => d,
+                    Err(e) => return e,
+                };
                 let (y1, m1, d1) = (start_date.year(), start_date.month(), start_date.day());
                 let (y2, m2, d2) = (end_date.year(), end_date.month(), end_date.day());
 
