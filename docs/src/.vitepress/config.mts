@@ -47,6 +47,7 @@ export default defineConfig({
           { text: "Sharing Files", link: "/web-application/sharing-files" },
           { text: "Language selector", link: "/web-application/language-selector" },
           { text: "Managing Workbooks", link: "/web-application/managing-workbooks" },
+          { text: "Templates", link: "/web-application/templates" },
         ],
       },
       {
