@@ -37,7 +37,7 @@ Estimate payments, interest, and overall cost. The first sheet, **Settings**, is
 
 **Category:** Games
 
-Fill in the grid and solve the clues. Type one letter per white square—**conditional formatting** checks each entry automatically, turning the cell **green** when the letter is correct and **red** when it isn't, so you get instant feedback as you solve. The answer key lives on a hidden `Key` sheet.
+Fill in the grid and solve the clues. Type one letter per white square and **conditional formatting** will check each entry automatically, turning the cell **green** when the letter is correct and **red** when it isn't, so you get instant feedback as you solve. The answer key lives on a hidden `Key` sheet.
 
 ### Travel Expenses Tracker
 
@@ -55,7 +55,7 @@ Create client invoices. Use the **Invoice sheet** to add the list of items to in
 
 **Category:** Project Management
 
-Plan tasks and timelines on a Gantt chart. The **Settings sheet** holds the project-wide inputs: **Project Name**, **Project Start**, **Days to show**, **Today**, and up to **4 owners**. In the **Tasks sheet**, add one row per task with **Phase**, **Task Name**, **Owner**, **Start Date**, **Days**, **% Done**, and **Notes**—the **End Date** is calculated for you. The **Plan sheet** then pulls everything from these two sheets to draw the chart.
+Plan tasks and timelines on a Gantt chart. The **Settings sheet** holds the project-wide inputs: **Project Name**, **Project Start**, **Days to show**, **Today**, and up to **4 owners**. In the **Tasks sheet**, add one row per task with **Phase**, **Task Name**, **Owner**, **Start Date**, **Days**, **% Done**, and **Notes**. The **End Date** is calculated for you. The **Plan sheet** then pulls everything from these two sheets to draw the chart.
 
 ::: warning
 Phase names are tied to **conditional formatting rules**. If you rename or add a phase, you'll need to update the matching rule for it to be colored correctly.
@@ -71,7 +71,7 @@ Log and review hours worked each week. Each day gets its own row, with columns f
 
 **Category:** Finance
 
-Estimate net salary after taxes in **Germany 🇩🇪, France 🇫🇷, Spain 🇪🇸, Italy 🇮🇹, the Netherlands 🇳🇱, Belgium 🇧🇪, Austria 🇦🇹, and Poland 🇵🇱**. Enter the **country**, the **annual gross salary**, and whether **Church Tax** applies (Germany only), and the sheet breaks the result down into five sections: gross salary, employee social security contributions, income tax, net salary, and employer cost—including the effective tax rate and the total cost to the employer.
+Estimate net salary after taxes in **Germany 🇩🇪, France 🇫🇷, Spain 🇪🇸, Italy 🇮🇹, the Netherlands 🇳🇱, Belgium 🇧🇪, Austria 🇦🇹, and Poland 🇵🇱**. Enter the **country**, the **annual gross salary**, and whether **Church Tax** applies (Germany only), and the sheet breaks the result down into five sections: gross salary, employee social security contributions, income tax, net salary, and employer cost, including the effective tax rate and the total cost to the employer.
 
 ::: info
 Results are **orientative only**, meant for quick comparisons rather than exact payroll figures.
