@@ -65,6 +65,8 @@
     "icon_sets_settings": "Einstellungen",
     "icon_sets_show_value": "Zellenwert anzeigen",
     "icon_sets_when_value_is": "Wenn der Wert",
+    "move_down": "Priorität verringern",
+    "move_up": "Priorität erhöhen",
     "new": "Neu hinzufügen",
     "no_search_results": "Keine Regeln entsprechen Ihrer Suche.",
     "op_begins_with": "Beginnt mit",
