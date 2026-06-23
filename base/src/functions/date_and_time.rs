@@ -13,6 +13,81 @@ fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
 }
 
+fn last_day_of_feb(year: i32) -> u32 {
+    if is_leap_year(year) {
+        29
+    } else {
+        28
+    }
+}
+
+// Maps a date serial number (date part only) to the Excel (year, month, day) it
+// represents, replicating Excel's fictional 29 February 1900 (the "1900
+// leap-year bug") so DAYS360 matches Excel for early-1900 serials. Returns
+// `None` when the serial is outside `0..=MAXIMUM_DATE_SERIAL_NUMBER`, which Excel
+// reports as `#NUM!`.
+fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
+    if !(0..=MAXIMUM_DATE_SERIAL_NUMBER as i64).contains(&serial) {
+        return None;
+    }
+    // Excel renders serial 0 as "0 January 1900"; DAYS360 reads it as day 0 of
+    // January 1900 (not 31 December 1899), which is what makes it antisymmetric.
+    if serial == 0 {
+        return Some((1900, 1, 0));
+    }
+    // Excel's non-existent 29 February 1900 (serial 60).
+    if serial == 60 {
+        return Some((1900, 2, 29));
+    }
+    let date = if serial < 60 {
+        // Below the fictional leap day Excel counts serial 1 as 1900-01-01, so
+        // serial N is N days after 1899-12-31 (serial 0).
+        let base = chrono::NaiveDate::from_ymd_opt(1899, 12, 31)?;
+        base + chrono::Duration::days(serial)
+    } else {
+        // From 1900-03-01 (serial 61) onwards IronCalc's serials match Excel.
+        from_excel_date(serial).ok()?
+    };
+    Some((date.year(), date.month(), date.day()))
+}
+
+// Converts a raw numeric argument to a date serial (date part) for DAYS360,
+// rounding the time-of-day to the nearest second before discarding it. Excel
+// rolls e.g. 46000.999999 up to 46001 when extracting the date part.
+fn days360_serial(raw: f64) -> i64 {
+    ((raw * SECONDS_PER_DAY_F64).round() / SECONDS_PER_DAY_F64).floor() as i64
+}
+
+// Days d1→d2 via the US (NASD) 30/360 convention, as used by the worksheet
+// DAYS360 function. Note this differs from the bond 30/360 (`days_30_360_us`):
+// DAYS360 only promotes the *start* date when it is the last day of February,
+// and never adjusts the end date for February (it touches the end date only
+// when its day-of-month is literally 31).
+fn days360_us(start: (i32, u32, u32), end: (i32, u32, u32)) -> f64 {
+    let (y1, m1, day1) = start;
+    let (y2, m2, day2) = end;
+    let mut day1 = day1 as i32;
+    let mut day2 = day2 as i32;
+
+    if day1 == 31 || (m1 == 2 && day1 == last_day_of_feb(y1) as i32) {
+        day1 = 30;
+    }
+    if day2 == 31 && day1 == 30 {
+        day2 = 30;
+    }
+    (360 * (y2 - y1) + 30 * (m2 as i32 - m1 as i32) + (day2 - day1)) as f64
+}
+
+// Days d1→d2 via the European 30/360 convention used by DAYS360 (method = TRUE):
+// any day-of-month equal to 31 becomes 30, with no February handling.
+fn days360_eu(start: (i32, u32, u32), end: (i32, u32, u32)) -> f64 {
+    let (y1, m1, day1) = start;
+    let (y2, m2, day2) = end;
+    let day1 = (day1 as i32).min(30);
+    let day2 = (day2 as i32).min(30);
+    (360 * (y2 - y1) + 30 * (m2 as i32 - m1 as i32) + (day2 - day1)) as f64
+}
+
 /// Maps a date to the WEEKDAY number for the given `return_type`.
 /// Returns `Error::VALUE`/`Error::NUM` for an invalid `return_type`.
 fn weekday_number(date: chrono::NaiveDate, return_type: i32) -> Result<f64, Error> {
@@ -1373,14 +1448,17 @@ impl<'a> Model<'a> {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        match self.excel_date(end_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
+        // Excel accepts any serial in 0..=MAXIMUM (a 0 serial is 1900-01-00) and
+        // reports #NUM! otherwise. DAYS works directly on serials, so the dates
+        // themselves are never materialised.
+        let range = 0..=MAXIMUM_DATE_SERIAL_NUMBER as i64;
+        if !range.contains(&start_serial) || !range.contains(&end_serial) {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Out of range parameters for date".to_string(),
+            );
+        }
         CalcResult::Number((end_serial - start_serial) as f64)
     }
 
@@ -1389,66 +1467,44 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
         let start_serial = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
+            Ok(c) => days360_serial(c),
             Err(s) => return s,
         };
         let end_serial = match self.get_number(&args[1], cell) {
-            Ok(c) => c.floor() as i64,
+            Ok(c) => days360_serial(c),
             Err(s) => return s,
         };
+        // The European-method flag follows Excel's logical coercion: numbers are
+        // truthy when non-zero, and only the text "TRUE"/"FALSE" is accepted.
         let method = if args.len() == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f != 0.0,
+            match self.get_boolean(&args[2], cell) {
+                Ok(b) => b,
                 Err(s) => return s,
             }
         } else {
             false
         };
-        let start_date = match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+        let out_of_range = || {
+            CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Out of range parameters for date".to_string(),
+            )
         };
-        let end_date = match self.excel_date(end_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+        let start = match excel_serial_to_ymd(start_serial) {
+            Some(ymd) => ymd,
+            None => return out_of_range(),
         };
-        fn last_day_feb(year: i32) -> u32 {
-            if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
-                29
-            } else {
-                28
-            }
-        }
-        let mut sd_day = start_date.day();
-        let sd_month = start_date.month();
-        let sd_year = start_date.year();
-        let mut ed_day = end_date.day();
-        let ed_month = end_date.month();
-        let ed_year = end_date.year();
-
-        if method {
-            if sd_day == 31 {
-                sd_day = 30;
-            }
-            if ed_day == 31 {
-                ed_day = 30;
-            }
+        let end = match excel_serial_to_ymd(end_serial) {
+            Some(ymd) => ymd,
+            None => return out_of_range(),
+        };
+        let result = if !method {
+            days360_us(start, end)
         } else {
-            if (sd_month == 2 && sd_day == last_day_feb(sd_year)) || sd_day == 31 {
-                sd_day = 30;
-            }
-            if ed_month == 2 && ed_day == last_day_feb(ed_year) && sd_day == 30 {
-                ed_day = 30;
-            }
-            if ed_day == 31 && sd_day >= 30 {
-                ed_day = 30;
-            }
-        }
-
-        let result = (ed_year - sd_year) * 360
-            + (ed_month as i32 - sd_month as i32) * 30
-            + (ed_day as i32 - sd_day as i32);
-        CalcResult::Number(result as f64)
+            days360_eu(start, end)
+        };
+        CalcResult::Number(result)
     }
 
     pub(crate) fn fn_weekday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
