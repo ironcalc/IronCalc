@@ -3,6 +3,7 @@ mod test_arrays;
 mod test_complex_precedence;
 mod test_general;
 mod test_implicit_intersection;
+mod test_implicit_intersection_export;
 mod test_issue_155;
 mod test_issue_483;
 mod test_lambda;

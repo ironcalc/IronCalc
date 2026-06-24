@@ -62,7 +62,8 @@ impl<'a> Model<'a> {
                 ));
             }
             let n = value.trunc() as i64;
-            if n < 0 {
+
+            if value < 0.0 {
                 return Some(CalcResult::new_error(
                     Error::NUM,
                     cell,
