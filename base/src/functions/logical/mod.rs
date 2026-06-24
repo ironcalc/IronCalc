@@ -7,6 +7,7 @@ mod scan;
 mod switch;
 
 use crate::{
+    arithmetic::bcast_idx,
     calc_result::CalcResult,
     expressions::{
         parser::{ArrayNode, Node},
@@ -18,8 +19,9 @@ use crate::{
 
 // ── IF array helpers ──────────────────────────────────────────────────────────
 
-/// A branch argument to IF: either a scalar (broadcast to all positions) or a
-/// 2-D array (indexed by position; out-of-bounds → #N/A).
+/// A branch argument to IF/IFERROR/IFNA: either a scalar (broadcast to all
+/// positions) or a 2-D array (indexed by position with size-1 broadcasting; a
+/// ragged out-of-range position → #N/A). See [`if_arg_at`].
 enum IfArg {
     Scalar(ArrayNode),
     Array(Vec<Vec<ArrayNode>>),
@@ -32,13 +34,24 @@ fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
     }
 }
 
+/// Index a branch argument at output position (row, col), applying Excel's
+/// size-1 broadcasting rule: a scalar covers every position, a length-1
+/// dimension repeats its only element to cover the whole output extent, and a
+/// ragged mismatch (e.g. length 2 against an extent of 3) yields `#N/A`.
 fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
     match arg {
         IfArg::Scalar(node) => node.clone(),
-        IfArg::Array(arr) => match arr.get(row).and_then(|r| r.get(col)) {
-            Some(n) => n.clone(),
-            None => ArrayNode::Error(Error::NA),
-        },
+        IfArg::Array(arr) => {
+            let rows = arr.len();
+            let cols = arr.first().map_or(0, |r| r.len());
+            match bcast_idx(rows, row)
+                .and_then(|r| arr.get(r))
+                .and_then(|r| bcast_idx(cols, col).and_then(|c| r.get(c)))
+            {
+                Some(n) => n.clone(),
+                None => ArrayNode::Error(Error::NA),
+            }
+        }
     }
 }
 
@@ -155,7 +168,12 @@ impl<'a> Model<'a> {
         for r in 0..max_rows {
             let mut row: Vec<ArrayNode> = Vec::with_capacity(max_cols);
             for c in 0..max_cols {
-                let node = match cond_array.get(r).and_then(|row| row.get(c)) {
+                // Index cond with size-1 broadcasting; a ragged out-of-range
+                // position yields #N/A.
+                let cond_node = bcast_idx(cond_rows, r)
+                    .and_then(|cr| cond_array.get(cr))
+                    .and_then(|crow| bcast_idx(cond_cols, c).and_then(|cc| crow.get(cc)));
+                let node = match cond_node {
                     None => ArrayNode::Error(Error::NA),
                     Some(cond_node) => match array_node_to_bool(cond_node) {
                         Err(err_node) => err_node,
@@ -175,29 +193,89 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_iferror(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 2 {
-            let value = self.evaluate_node_in_context(&args[0], cell);
-            match value {
-                CalcResult::Error { .. } => {
-                    return self.evaluate_node_in_context(&args[1], cell);
-                }
-                _ => return value,
-            }
-        }
-        CalcResult::new_args_number_error(cell)
+        // IFERROR replaces every kind of error with the fallback.
+        self.if_error_like(args, cell, |_| true)
     }
 
     pub(crate) fn fn_ifna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 2 {
-            let value = self.evaluate_node_in_context(&args[0], cell);
-            if let CalcResult::Error { error, .. } = &value {
-                if error == &Error::NA {
-                    return self.evaluate_node_in_context(&args[1], cell);
-                }
-            }
-            return value;
+        // IFNA replaces only #N/A; every other error passes through.
+        self.if_error_like(args, cell, |error| error == &Error::NA)
+    }
+
+    /// Shared implementation for IFERROR and IFNA.
+    ///
+    /// `is_handled` selects which errors are swapped for the fallback: any error
+    /// for IFERROR, only `#N/A` for IFNA. Both functions support dynamic arrays:
+    /// when `value` is an array/range, each handled error element is replaced by
+    /// the corresponding (broadcast) element of the fallback; everything else
+    /// passes through. A position out of bounds in `value` is treated as `#N/A`,
+    /// which both functions handle, so it takes the fallback.
+    fn if_error_like(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        is_handled: impl Fn(&Error) -> bool,
+    ) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
         }
-        CalcResult::new_args_number_error(cell)
+        let value = self.evaluate_node_in_context(&args[0], cell);
+
+        // Normalize value to a 2-D array, or take the scalar early-return path.
+        let value_array: Vec<Vec<ArrayNode>> = match value {
+            CalcResult::Range { left, right } => self.evaluate_range(left, right),
+            CalcResult::Array(a) => a,
+            CalcResult::Error { ref error, .. } if is_handled(error) => {
+                // Scalar handled error: evaluate the fallback branch directly.
+                // The branch result may itself be an array (it will spill).
+                return self.evaluate_node_in_context(&args[1], cell);
+            }
+            // A non-error scalar (or an error this function does not handle)
+            // passes through unchanged.
+            other => return other,
+        };
+
+        // value is an array: replace each handled error element with the
+        // fallback, broadcasting the fallback across positions.
+        let fallback_result = self.evaluate_node_in_context(&args[1], cell);
+        let fallback_arg = match fallback_result {
+            CalcResult::Range { left, right } => IfArg::Array(self.evaluate_range(left, right)),
+            CalcResult::Array(a) => IfArg::Array(a),
+            other => IfArg::Scalar(calc_result_to_array_node(other)),
+        };
+
+        // Output size = largest extent across value and the fallback.
+        let value_rows = value_array.len();
+        let value_cols = value_array.first().map_or(0, |r| r.len());
+        let (fb_rows, fb_cols) = if_arg_dims(&fallback_arg);
+        let max_rows = value_rows.max(fb_rows);
+        let max_cols = value_cols.max(fb_cols);
+
+        let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(max_rows);
+        for r in 0..max_rows {
+            let mut row: Vec<ArrayNode> = Vec::with_capacity(max_cols);
+            for c in 0..max_cols {
+                // Index value with size-1 broadcasting; a ragged out-of-range
+                // position is treated as #N/A.
+                let value_node = bcast_idx(value_rows, r)
+                    .and_then(|vr| value_array.get(vr))
+                    .and_then(|vrow| bcast_idx(value_cols, c).and_then(|vc| vrow.get(vc)));
+                let node = match value_node {
+                    // A handled error element → use the (broadcast) fallback.
+                    Some(ArrayNode::Error(e)) if is_handled(e) => if_arg_at(&fallback_arg, r, c),
+                    // Anything else (including an unhandled error) passes through.
+                    Some(n) => n.clone(),
+                    // Out of range → #N/A. Both IFERROR and IFNA handle #N/A, so
+                    // it takes the fallback; guard with the predicate for clarity.
+                    None if is_handled(&Error::NA) => if_arg_at(&fallback_arg, r, c),
+                    None => ArrayNode::Error(Error::NA),
+                };
+                row.push(node);
+            }
+            output.push(row);
+        }
+
+        CalcResult::Array(output)
     }
 
     /// =IFS(condition1, value, [condition, value]*)

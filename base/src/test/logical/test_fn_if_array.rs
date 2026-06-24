@@ -101,21 +101,45 @@ fn if_array_cond_true_branch_smaller() {
     assert_eq!(model._get_text("C1"), "#N/A");
 }
 
-// ── Array cond, if_false array is smaller than cond ───────────────────────────
+// ── Array cond, if_false is a length-1 array (broadcasts) ─────────────────────
 //
+// A length-1 dimension broadcasts to cover the whole extent (Excel's rule), so
+// the single-element if_false array repeats across every false position.
 // =IF({TRUE,FALSE,TRUE}, {1,2,3}, {"A"})
-// Index 0: cond=TRUE  → true[0]=1  → 1
-// Index 1: cond=FALSE → false[1] missing → #N/A
-// Index 2: cond=TRUE  → true[2]=3  → 3
+// Index 0: cond=TRUE  → true[0]=1   → 1
+// Index 1: cond=FALSE → false[0]="A" → "A"  (broadcast)
+// Index 2: cond=TRUE  → true[2]=3   → 3
 
 #[test]
-fn if_array_cond_false_branch_smaller() {
+fn if_array_cond_false_branch_broadcasts() {
     let mut model = new_empty_model();
     model._set("A1", r#"=IF({TRUE,FALSE,TRUE}, {1,2,3}, {"A"})"#);
     model.evaluate();
     assert_eq!(model._get_text("A1"), "1");
-    assert_eq!(model._get_text("B1"), "#N/A");
+    assert_eq!(model._get_text("B1"), "A");
     assert_eq!(model._get_text("C1"), "3");
+}
+
+// ── Column cond × row branches broadcast to a 2-D grid ────────────────────────
+//
+// A 3×1 cond broadcasts its single column and the 1×2 branches broadcast their
+// single row, producing a 3×2 result.
+// =IF({TRUE;FALSE;TRUE}, {1,2}, {7,8})
+//   1 2   (cond row 0 = TRUE  → true row)
+//   7 8   (cond row 1 = FALSE → false row)
+//   1 2   (cond row 2 = TRUE  → true row)
+
+#[test]
+fn if_column_cond_broadcasts_row_branches() {
+    let mut model = new_empty_model();
+    model._set("A1", "=IF({TRUE;FALSE;TRUE}, {1,2}, {7,8})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("A2"), "7");
+    assert_eq!(model._get_text("B2"), "8");
+    assert_eq!(model._get_text("A3"), "1");
+    assert_eq!(model._get_text("B3"), "2");
 }
 
 // ── All three arguments are arrays; largest determines output size ────────────
