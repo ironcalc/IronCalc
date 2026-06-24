@@ -247,8 +247,10 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
                 add_implicit_intersection(&mut probe, true);
                 if matches!(probe, Node::ImplicitIntersection { .. }) {
                     // Redundant: drop the operator and keep cleaning the child.
+                    // The child is still in the same (scalar) context, so recurse
+                    // with `add` to also remove any nested redundant operators.
                     let mut inner = child.as_ref().clone();
-                    remove_redundant_implicit_intersection(&mut inner, false);
+                    remove_redundant_implicit_intersection(&mut inner, add);
                     *node = inner;
                     return;
                 }

@@ -126,3 +126,25 @@ fn same_range_depends_on_context() {
         ("SIN(_xlfn.SINGLE(J:J))", "SIN(@J:J)", "SIN(J:J)"),
     ]);
 }
+
+// Nested redundant operators must collapse completely. After dropping the outer
+// `@` in a scalar context the child is still in that same scalar context, so the
+// cleanup must continue there: `_xlfn.SINGLE(_xlfn.SINGLE(A1:A10))` has to export
+// as `A1:A10`, not `_xlfn.SINGLE(A1:A10)`.
+//
+// Note: this parses the formula directly (without `add_implicit_intersection`,
+// which collapses double-`@` on its own) to exercise `to_excel_string`'s own
+// normalization on a nested tree.
+#[test]
+fn nested_redundant_intersections_are_fully_removed() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let t = parser.parse("_xlfn.SINGLE(_xlfn.SINGLE(A1:A10))", &cell_reference);
+    let excel_formula = to_excel_string(&t, &cell_reference);
+    assert_eq!(excel_formula, "A1:A10");
+}
