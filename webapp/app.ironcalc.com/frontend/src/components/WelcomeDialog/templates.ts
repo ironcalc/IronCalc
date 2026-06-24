@@ -13,12 +13,6 @@ export const TEMPLATES: Template[] = [
     categoryId: "lifestyle",
   },
   {
-    id: "mortgage_calculator",
-    titleKey: "welcome_dialog.templates.mortgage_calculator",
-    categoryKey: "welcome_dialog.templates.category_finance",
-    categoryId: "finance",
-  },
-  {
     id: "crossword",
     titleKey: "welcome_dialog.templates.crossword",
     categoryKey: "welcome_dialog.templates.category_games",
@@ -45,18 +39,6 @@ export const TEMPLATES: Template[] = [
   {
     id: "weekly_timesheet",
     titleKey: "welcome_dialog.templates.weekly_timesheet",
-    categoryKey: "welcome_dialog.templates.category_project_management",
-    categoryId: "project_management",
-  },
-  {
-    id: "eu_salary_calculator",
-    titleKey: "welcome_dialog.templates.eu_salary_calculator",
-    categoryKey: "welcome_dialog.templates.category_finance",
-    categoryId: "finance",
-  },
-  {
-    id: "absence_schedule",
-    titleKey: "welcome_dialog.templates.absence_schedule",
     categoryKey: "welcome_dialog.templates.category_project_management",
     categoryId: "project_management",
   },
