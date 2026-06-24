@@ -9,6 +9,7 @@ use crate::{
     utils::ParsedReference,
 };
 
+use super::binary_search::binary_search_on_array;
 use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex, values_are_equal};
 
 mod address_areas;
@@ -268,155 +269,113 @@ impl<'a> Model<'a> {
         };
         let match_range = self.evaluate_node_in_context(&args[1], cell);
 
-        match match_range {
+        // MATCH operates on a vector (a single row or single column). We
+        // materialize the second argument, be it a range reference or an array
+        // literal, into a flat list of values and then run the search on it.
+        let values = match match_range {
             CalcResult::Range { left, right } => {
-                match match_type {
-                    -1 => {
-                        // We apply binary search leftmost for value in the range
-                        let is_row_vector;
-                        if left.row == right.row {
-                            is_row_vector = false;
-                        } else if left.column == right.column {
-                            is_row_vector = true;
-                        } else {
-                            // second argument must be a vector
-                            return CalcResult::Error {
-                                error: Error::ERROR,
-                                origin: cell,
-                                message: "Argument must be a vector".to_string(),
-                            };
-                        }
-                        let n = if is_row_vector {
-                            right.row - left.row
-                        } else {
-                            right.column - left.column
-                        } + 1;
-                        let mut l = 0;
-                        let mut r = n;
-                        while l < r {
-                            let m = (l + r) / 2;
-                            let row;
-                            let column;
-                            if is_row_vector {
-                                row = left.row + m;
-                                column = left.column;
-                            } else {
-                                column = left.column + m;
-                                row = left.row;
-                            }
-                            let value = self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            });
-
-                            if compare_values(&value, &target) >= 0 {
-                                l = m + 1;
-                            } else {
-                                r = m;
-                            }
-                        }
-                        // r is the number of elements less than target in the vector
-                        // If target is less than the minimum return #N/A
-                        if l == 0 {
-                            return CalcResult::Error {
-                                error: Error::NA,
-                                origin: cell,
-                                message: "Not found".to_string(),
-                            };
-                        }
-                        // Now l points to the leftmost element
-                        CalcResult::Number(l as f64)
-                    }
-                    0 => {
-                        // We apply linear search
-                        let is_row_vector;
-                        if left.row == right.row {
-                            is_row_vector = false;
-                        } else if left.column == right.column {
-                            is_row_vector = true;
-                        } else {
-                            // second argument must be a vector
-                            return CalcResult::Error {
-                                error: Error::ERROR,
-                                origin: cell,
-                                message: "Argument must be a vector".to_string(),
-                            };
-                        }
-                        let n = if is_row_vector {
-                            right.row - left.row
-                        } else {
-                            right.column - left.column
-                        } + 1;
-                        let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
-                            if let CalcResult::String(s) = &target {
-                                if let Ok(reg) = from_wildcard_to_regex(&s.to_lowercase(), true) {
-                                    Box::new(move |x| result_matches_regex(x, &reg))
-                                } else {
-                                    Box::new(move |_| false)
-                                }
-                            } else {
-                                Box::new(move |x| values_are_equal(x, &target))
-                            };
-                        for l in 0..n {
-                            let row;
-                            let column;
-                            if is_row_vector {
-                                row = left.row + l;
-                                column = left.column;
-                            } else {
-                                column = left.column + l;
-                                row = left.row;
-                            }
-                            let value = self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            });
-                            if result_matches(&value) {
-                                return CalcResult::Number(l as f64 + 1.0);
-                            }
-                        }
-                        CalcResult::Error {
-                            error: Error::NA,
-                            origin: cell,
-                            message: "Not found".to_string(),
-                        }
-                    }
-                    _ => {
-                        // l is the number of elements less than target in the vector
-                        let is_row_vector;
-                        if left.row == right.row {
-                            is_row_vector = false;
-                        } else if left.column == right.column {
-                            is_row_vector = true;
-                        } else {
-                            // second argument must be a vector
-                            return CalcResult::Error {
-                                error: Error::ERROR,
-                                origin: cell,
-                                message: "Argument must be a vector".to_string(),
-                            };
-                        }
-                        let l = self.binary_search(&target, &left, &right, is_row_vector);
-                        if l == -2 {
-                            return CalcResult::Error {
-                                error: Error::NA,
-                                origin: cell,
-                                message: "Not found".to_string(),
-                            };
-                        }
-
-                        CalcResult::Number(l as f64 + 1.0)
-                    }
+                let is_row_vector;
+                if left.row == right.row {
+                    is_row_vector = false;
+                } else if left.column == right.column {
+                    is_row_vector = true;
+                } else {
+                    // second argument must be a vector
+                    return CalcResult::Error {
+                        error: Error::ERROR,
+                        origin: cell,
+                        message: "Argument must be a vector".to_string(),
+                    };
+                }
+                self.prepare_array(&left, &right, is_row_vector)
+            }
+            CalcResult::Array(array) => {
+                // An array is a vector if it is a single row or a single column.
+                let is_vector = array.len() == 1 || array.iter().all(|row| row.len() == 1);
+                if !is_vector {
+                    return CalcResult::Error {
+                        error: Error::ERROR,
+                        origin: cell,
+                        message: "Argument must be a vector".to_string(),
+                    };
+                }
+                array
+                    .iter()
+                    .flatten()
+                    .map(|node| array_node_to_calc_result(node, cell))
+                    .collect()
+            }
+            error @ CalcResult::Error { .. } => return error,
+            _ => {
+                return CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Invalid".to_string(),
                 }
             }
-            error @ CalcResult::Error { .. } => error,
-            _ => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Invalid".to_string(),
-            },
+        };
+
+        match match_type {
+            -1 => {
+                // We apply binary search leftmost for value in the vector
+                let mut l = 0;
+                let mut r = values.len();
+                while l < r {
+                    let m = (l + r) / 2;
+                    if compare_values(&values[m], &target) >= 0 {
+                        l = m + 1;
+                    } else {
+                        r = m;
+                    }
+                }
+                // r is the number of elements less than target in the vector
+                // If target is less than the minimum return #N/A
+                if l == 0 {
+                    return CalcResult::Error {
+                        error: Error::NA,
+                        origin: cell,
+                        message: "Not found".to_string(),
+                    };
+                }
+                // Now l points to the leftmost element
+                CalcResult::Number(l as f64)
+            }
+            0 => {
+                // We apply linear search
+                let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
+                    if let CalcResult::String(s) = &target {
+                        if let Ok(reg) = from_wildcard_to_regex(&s.to_lowercase(), true) {
+                            Box::new(move |x| result_matches_regex(x, &reg))
+                        } else {
+                            Box::new(move |_| false)
+                        }
+                    } else {
+                        Box::new(move |x| values_are_equal(x, &target))
+                    };
+                for (l, value) in values.iter().enumerate() {
+                    if result_matches(value) {
+                        return CalcResult::Number(l as f64 + 1.0);
+                    }
+                }
+                CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Not found".to_string(),
+                }
+            }
+            _ => {
+                // l is the number of elements less than target in the vector
+                let l = binary_search_on_array(&target, &values);
+                if l == -2 {
+                    return CalcResult::Error {
+                        error: Error::NA,
+                        origin: cell,
+                        message: "Not found".to_string(),
+                    };
+                }
+
+                CalcResult::Number(l as f64 + 1.0)
+            }
         }
     }
 

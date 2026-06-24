@@ -180,28 +180,35 @@ impl<'a> Model<'a> {
         is_row_vector: bool,
     ) -> i32 {
         let array = self.prepare_array(left, right, is_row_vector);
-        // We apply binary search leftmost for value in the range
-        let mut l = 0;
-        let mut r = array.len();
-        while l < r {
-            let m = (l + r) / 2;
-            match compare_values(&array[m], target) {
-                -1 => {
-                    l = m + 1;
-                }
-                1 => {
-                    r = m;
-                }
-                _ => {
-                    return m as i32;
-                }
+        binary_search_on_array(target, &array)
+    }
+}
+
+/// Old style binary search over an already materialized vector of values.
+/// Returns the index of the matching element or the largest element smaller
+/// than `target`. Returns `-2` if `target` is smaller than every element.
+pub(crate) fn binary_search_on_array(target: &CalcResult, array: &[CalcResult]) -> i32 {
+    // We apply binary search leftmost for value in the array
+    let mut l = 0;
+    let mut r = array.len();
+    while l < r {
+        let m = (l + r) / 2;
+        match compare_values(&array[m], target) {
+            -1 => {
+                l = m + 1;
+            }
+            1 => {
+                r = m;
+            }
+            _ => {
+                return m as i32;
             }
         }
-        // If target is less than the minimum return #N/A
-        if l == 0 {
-            return -2;
-        }
-        // Now l points to the leftmost element
-        (l - 1) as i32
     }
+    // If target is less than the minimum return #N/A
+    if l == 0 {
+        return -2;
+    }
+    // Now l points to the leftmost element
+    (l - 1) as i32
 }
