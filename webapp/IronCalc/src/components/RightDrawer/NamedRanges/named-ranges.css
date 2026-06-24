@@ -72,12 +72,12 @@
 
 .ic-named-ranges-list-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  min-height: 40px;
+  min-height: 76px;
   box-sizing: border-box;
   border-bottom: 1px solid var(--palette-grey-200);
   transition: all 0.2s ease-in-out;
@@ -99,6 +99,7 @@
   color: var(--palette-common-black);
   font-family: var(--typography-font-family);
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -108,6 +109,10 @@
 .ic-named-ranges-scope-text {
   font-size: 12px;
   color: var(--palette-common-black);
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .ic-named-ranges-formula-text {
