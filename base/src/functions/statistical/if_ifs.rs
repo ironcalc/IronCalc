@@ -3,10 +3,29 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::build_criteria;
 use crate::{
     calc_result::{CalcResult, Range},
-    expressions::parser::Node,
+    expressions::parser::{ArrayNode, Node},
     expressions::token::Error,
     model::Model,
 };
+
+/// A compiled criterion predicate, as returned by `build_criteria`.
+type Criterion<'c> = Box<dyn Fn(&CalcResult) -> bool + 'c>;
+
+/// Converts a single array element into the equivalent scalar `CalcResult`,
+/// used to feed `build_criteria` from an inline-array criteria argument.
+fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
+    match node {
+        ArrayNode::Number(n) => CalcResult::Number(*n),
+        ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
+        ArrayNode::String(s) => CalcResult::String(s.clone()),
+        ArrayNode::Error(e) => CalcResult::Error {
+            error: e.clone(),
+            origin: cell,
+            message: "".to_string(),
+        },
+        ArrayNode::Empty => CalcResult::EmptyCell,
+    }
+}
 
 impl<'a> Model<'a> {
     pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -155,7 +174,7 @@ impl<'a> Model<'a> {
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        mut apply: F,
+        apply: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(f64),
@@ -224,6 +243,25 @@ impl<'a> Model<'a> {
             fn_criteria.push(build_criteria(criterion, self.locale));
         }
 
+        self.run_ifs(&sum_range, ranges.as_slice(), &fn_criteria, cell, apply)
+    }
+
+    /// Walks `sum_range` and applies `apply` to every numeric cell whose parallel
+    /// cell in each criteria range satisfies the matching criterion. `ranges` and
+    /// `fn_criteria` are parallel (one criteria range and one predicate per case).
+    ///
+    /// Shared by [`Model::apply_ifs`] and the array-criteria path of SUMIF.
+    pub(crate) fn run_ifs<F>(
+        &mut self,
+        sum_range: &Range,
+        ranges: &[Range],
+        fn_criteria: &[Criterion<'_>],
+        cell: CellReferenceIndex,
+        mut apply: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
         let left_row = sum_range.left.row;
         let left_column = sum_range.left.column;
         let mut right_row = sum_range.right.row;
@@ -257,10 +295,8 @@ impl<'a> Model<'a> {
         for row in left_row..right_row + 1 {
             for column in left_column..right_column + 1 {
                 let mut is_true = true;
-                for case_index in 0..case_count {
+                for (range, fn_criterion) in ranges.iter().zip(fn_criteria.iter()) {
                     // We check if value in range n meets criterion n
-                    let range = &ranges[case_index];
-                    let fn_criterion = &fn_criteria[case_index];
                     let value = self.evaluate_cell(CellReferenceIndex {
                         sheet: range.left.sheet,
                         row: range.left.row + row - sum_range.left.row,
@@ -286,6 +322,121 @@ impl<'a> Model<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Evaluates `node` and requires it to be a single-sheet range.
+    fn node_to_range(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Range, CalcResult> {
+        let value = self.evaluate_node_in_context(node, cell);
+        if value.is_error() {
+            return Err(value);
+        }
+        if let CalcResult::Range { left, right } = value {
+            if left.sheet != right.sheet {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Ranges are in different sheets".to_string(),
+                ));
+            }
+            Ok(Range { left, right })
+        } else {
+            Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expected a range".to_string(),
+            ))
+        }
+    }
+
+    /// SUMIF where the `criteria` argument may be a single value, a range or an
+    /// array. A scalar criterion yields a single sum; a range or array criterion
+    /// spills one sum per criterion element, preserving the criteria's shape.
+    pub(crate) fn sumif(
+        &mut self,
+        criteria_range: &Node,
+        criteria: &Node,
+        sum_range: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        // Collect the criteria into a 2-D grid of scalar values. A scalar
+        // criterion takes the ordinary (non-spilling) SUMIFS path.
+        let criteria_grid: Vec<Vec<CalcResult>> = match self
+            .evaluate_node_in_context(criteria, cell)
+        {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    );
+                }
+                let mut grid = Vec::new();
+                for r in left.row..=right.row {
+                    let mut row = Vec::new();
+                    for c in left.column..=right.column {
+                        row.push(self.evaluate_cell(CellReferenceIndex {
+                            sheet: left.sheet,
+                            row: r,
+                            column: c,
+                        }));
+                    }
+                    grid.push(row);
+                }
+                grid
+            }
+            CalcResult::Array(array) => array
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|node| array_node_to_calc_result(node, cell))
+                        .collect()
+                })
+                .collect(),
+            _ => {
+                // Single criterion: delegate to SUMIFS, which returns a scalar.
+                let arguments = vec![sum_range.clone(), criteria_range.clone(), criteria.clone()];
+                return self.fn_sumifs(&arguments, cell);
+            }
+        };
+
+        // Range/array criteria: resolve the ranges once, then compute one sum
+        // per criterion and spill the results.
+        let sum_range = match self.node_to_range(sum_range, cell) {
+            Ok(r) => r,
+            Err(e) => return e,
+        };
+        let criteria_range = match self.node_to_range(criteria_range, cell) {
+            Ok(r) => r,
+            Err(e) => return e,
+        };
+
+        let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(criteria_grid.len());
+        for criteria_row in &criteria_grid {
+            let mut out_row: Vec<ArrayNode> = Vec::with_capacity(criteria_row.len());
+            for criterion in criteria_row {
+                let fn_criteria = [build_criteria(criterion, self.locale)];
+                let mut total = 0.0;
+                let node = match self.run_ifs(
+                    &sum_range,
+                    std::slice::from_ref(&criteria_range),
+                    &fn_criteria,
+                    cell,
+                    |v| total += v,
+                ) {
+                    Ok(()) => ArrayNode::Number(total),
+                    Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+                    Err(_) => ArrayNode::Error(Error::ERROR),
+                };
+                out_row.push(node);
+            }
+            output.push(out_row);
+        }
+        CalcResult::Array(output)
     }
 
     pub(crate) fn fn_averageifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

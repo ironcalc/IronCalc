@@ -418,6 +418,21 @@ fn not_implemented(_args: &[Node]) -> StaticResult {
     StaticResult::Scalar
 }
 
+/// SUMIF spills according to the shape of its criteria argument (`args[1]`); the
+/// criteria_range and sum_range arguments are consumed, not broadcast. A scalar
+/// criterion yields a scalar; a range/array criterion yields an array of the
+/// same dimensions.
+fn sumif_static_result(args: &[Node]) -> StaticResult {
+    match args.get(1) {
+        Some(criteria) => match run_static_analysis_on_node(criteria) {
+            StaticResult::Array(a, b) | StaticResult::Range(a, b) => StaticResult::Array(a, b),
+            StaticResult::Scalar => StaticResult::Scalar,
+            StaticResult::Unknown => StaticResult::Unknown,
+        },
+        None => StaticResult::Scalar,
+    }
+}
+
 fn static_analysis_offset(args: &[Node]) -> StaticResult {
     // If first argument is a single cell reference and there are no4th and 5th argument,
     // or they are 1, then it is a scalar
@@ -549,6 +564,20 @@ fn args_signature_sumif(arg_count: usize) -> Vec<Signature> {
         vec![Signature::Vector, Signature::Scalar]
     } else if arg_count == 3 {
         vec![Signature::Vector, Signature::Scalar, Signature::Vector]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
+/// SUMIF signature with the criteria argument as a `Vector` instead of a
+/// `Scalar`. This stops a range/array criteria from being collapsed by implicit
+/// intersection, so SUMIF can spill one sum per criterion. (COUNTIF/AVERAGEIF
+/// keep the classic [`args_signature_sumif`], intersecting range criteria.)
+fn args_signature_sumif_spill(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Vector, Signature::Vector]
+    } else if arg_count == 3 {
+        vec![Signature::Vector, Signature::Vector, Signature::Vector]
     } else {
         vec![Signature::Error; arg_count]
     }
@@ -994,7 +1023,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sqrt => args_signature_scalars(arg_count, 1, 0),
         Function::Sqrtpi => args_signature_scalars(arg_count, 1, 0),
         Function::Sum => vec![Signature::Vector; arg_count],
-        Function::Sumif => args_signature_sumif(arg_count),
+        Function::Sumif => args_signature_sumif_spill(arg_count),
         Function::Sumifs => vec![Signature::Vector; arg_count],
         Function::Tan => args_signature_scalars(arg_count, 1, 0),
         Function::Tanh => args_signature_scalars(arg_count, 1, 0),
@@ -1644,7 +1673,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sqrt => scalar_arguments(args),
         Function::Sqrtpi => StaticResult::Scalar,
         Function::Sum => StaticResult::Scalar,
-        Function::Sumif => not_implemented(args),
+        Function::Sumif => sumif_static_result(args),
         Function::Sumifs => not_implemented(args),
         Function::Tan => scalar_arguments(args),
         Function::Tanh => scalar_arguments(args),
