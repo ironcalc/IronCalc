@@ -596,17 +596,18 @@ impl<'a> Model<'a> {
     }
 
     /// SUMIF(criteria_range, criteria, [sum_range])
-    /// if sum_rage is missing then criteria_range will be used
+    /// if sum_range is missing then criteria_range will be used.
+    ///
+    /// The `criteria` argument may be a single value, a range or an array; in the
+    /// latter two cases SUMIF spills one sum per criterion (see [`Model::sumif`]).
     pub(crate) fn fn_sumif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 2 {
-            let arguments = vec![args[0].clone(), args[0].clone(), args[1].clone()];
-            self.fn_sumifs(&arguments, cell)
-        } else if args.len() == 3 {
-            let arguments = vec![args[2].clone(), args[0].clone(), args[1].clone()];
-            self.fn_sumifs(&arguments, cell)
-        } else {
-            CalcResult::new_args_number_error(cell)
-        }
+        // When sum_range is missing, criteria_range doubles as the sum_range.
+        let (criteria_range, criteria, sum_range) = match args.len() {
+            2 => (&args[0], &args[1], &args[0]),
+            3 => (&args[0], &args[1], &args[2]),
+            _ => return CalcResult::new_args_number_error(cell),
+        };
+        self.sumif(criteria_range, criteria, sum_range, cell)
     }
 
     /// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)

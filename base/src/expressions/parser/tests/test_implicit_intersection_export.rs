@@ -127,6 +127,13 @@ fn same_range_depends_on_context() {
     ]);
 }
 
+#[test]
+fn sumif_unique() {
+    let test_str = r#"LARGE(SUMIF(E2:E7,UNIQUE(FILTER(E2:E7,E2:E7<>""))),B27)"#;
+    let test_excel = r#"LARGE(SUMIF(E2:E7,_xlfn.UNIQUE(_xlfn._xlws.FILTER(E2:E7,E2:E7<>""))),B27)"#;
+    check(&[(test_excel, test_str, test_excel)]);
+}
+
 // Nested redundant operators must collapse completely. After dropping the outer
 // `@` in a scalar context the child is still in that same scalar context, so the
 // cleanup must continue there: `_xlfn.SINGLE(_xlfn.SINGLE(A1:A10))` has to export
