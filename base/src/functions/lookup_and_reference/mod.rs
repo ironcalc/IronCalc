@@ -38,6 +38,99 @@ fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> Calc
     }
 }
 
+/// A two dimensional table for the LOOKUP family of functions. It abstracts over
+/// the two possible sources, a range reference or an in-formula array literal, so
+/// the lookup logic can be written once for both.
+enum LookupTable {
+    Range {
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+    },
+    Array(Vec<Vec<ArrayNode>>),
+}
+
+impl LookupTable {
+    fn rows(&self) -> i32 {
+        match self {
+            LookupTable::Range { left, right } => right.row - left.row + 1,
+            LookupTable::Array(array) => array.len() as i32,
+        }
+    }
+
+    fn columns(&self) -> i32 {
+        match self {
+            LookupTable::Range { left, right } => right.column - left.column + 1,
+            LookupTable::Array(array) => array.first().map_or(0, |row| row.len()) as i32,
+        }
+    }
+
+    /// Returns the value at the 0-based `(row, column)` offset within the table.
+    /// Callers must ensure the offsets are within bounds.
+    fn get(
+        &self,
+        model: &mut Model,
+        row: i32,
+        column: i32,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self {
+            LookupTable::Range { left, .. } => model.evaluate_cell(CellReferenceIndex {
+                sheet: left.sheet,
+                row: left.row + row,
+                column: left.column + column,
+            }),
+            LookupTable::Array(array) => {
+                array_node_to_calc_result(&array[row as usize][column as usize], cell)
+            }
+        }
+    }
+
+    /// Materializes the first row of the table (the search vector for HLOOKUP).
+    fn first_row(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
+        (0..self.columns())
+            .map(|column| self.get(model, 0, column, cell))
+            .collect()
+    }
+
+    /// Materializes the first column of the table (the search vector for VLOOKUP).
+    fn first_column(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
+        (0..self.rows())
+            .map(|row| self.get(model, row, 0, cell))
+            .collect()
+    }
+}
+
+/// Finds the 0-based index of `lookup_value` within `search_vector`.
+/// When `is_sorted` is true a binary search is used (assuming ascending order)
+/// returning the largest value smaller than or equal to the target; otherwise a
+/// linear search for an exact match (supporting wildcards for text) is used.
+/// Returns `None` when the value is not found.
+fn lookup_index(
+    lookup_value: &CalcResult,
+    search_vector: &[CalcResult],
+    is_sorted: bool,
+) -> Option<usize> {
+    if is_sorted {
+        match binary_search_on_array(lookup_value, search_vector) {
+            -2 => None,
+            l => Some(l as usize),
+        }
+    } else {
+        let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
+            if let CalcResult::String(s) = lookup_value {
+                if let Ok(reg) = from_wildcard_to_regex(&s.to_lowercase(), true) {
+                    Box::new(move |x| result_matches_regex(x, &reg))
+                } else {
+                    Box::new(move |_| false)
+                }
+            } else {
+                let lookup_value = lookup_value.clone();
+                Box::new(move |x| compare_values(x, &lookup_value) == 0)
+            };
+        search_vector.iter().position(result_matches)
+    }
+}
+
 /// Resolves the effective (row, column) indices for INDEX, where `0` means "the
 /// whole row/column" (used to spill an entire row, column or array).
 ///
@@ -105,6 +198,56 @@ fn index_from_array(
 }
 
 impl<'a> Model<'a> {
+    /// Materializes a value that is expected to be a vector (a single row or a
+    /// single column) into a flat list of values. Accepts both range references
+    /// and in-formula array literals. Used by the vector-based lookup functions
+    /// (MATCH, LOOKUP). Returns the appropriate error `CalcResult` when the value
+    /// is not a vector or not a valid source.
+    fn as_vector(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<CalcResult>, CalcResult> {
+        match value {
+            CalcResult::Range { left, right } => {
+                let is_row_vector = if left.row == right.row {
+                    false
+                } else if left.column == right.column {
+                    true
+                } else {
+                    return Err(CalcResult::Error {
+                        error: Error::ERROR,
+                        origin: cell,
+                        message: "Argument must be a vector".to_string(),
+                    });
+                };
+                Ok(self.prepare_array(&left, &right, is_row_vector))
+            }
+            CalcResult::Array(array) => {
+                // An array is a vector if it is a single row or a single column.
+                let is_vector = array.len() == 1 || array.iter().all(|row| row.len() == 1);
+                if !is_vector {
+                    return Err(CalcResult::Error {
+                        error: Error::ERROR,
+                        origin: cell,
+                        message: "Argument must be a vector".to_string(),
+                    });
+                }
+                Ok(array
+                    .iter()
+                    .flatten()
+                    .map(|node| array_node_to_calc_result(node, cell))
+                    .collect())
+            }
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => Err(CalcResult::Error {
+                error: Error::NA,
+                origin: cell,
+                message: "Invalid".to_string(),
+            }),
+        }
+    }
+
     // INDEX(array, row_num, [column_num])
     // INDEX(range, row_num, [column_num], [area_num])
     // At the moment IronCalc does not support references with multiple areas,
@@ -272,47 +415,9 @@ impl<'a> Model<'a> {
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
         // literal, into a flat list of values and then run the search on it.
-        let values = match match_range {
-            CalcResult::Range { left, right } => {
-                let is_row_vector;
-                if left.row == right.row {
-                    is_row_vector = false;
-                } else if left.column == right.column {
-                    is_row_vector = true;
-                } else {
-                    // second argument must be a vector
-                    return CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Argument must be a vector".to_string(),
-                    };
-                }
-                self.prepare_array(&left, &right, is_row_vector)
-            }
-            CalcResult::Array(array) => {
-                // An array is a vector if it is a single row or a single column.
-                let is_vector = array.len() == 1 || array.iter().all(|row| row.len() == 1);
-                if !is_vector {
-                    return CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Argument must be a vector".to_string(),
-                    };
-                }
-                array
-                    .iter()
-                    .flatten()
-                    .map(|node| array_node_to_calc_result(node, cell))
-                    .collect()
-            }
-            error @ CalcResult::Error { .. } => return error,
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Invalid".to_string(),
-                }
-            }
+        let values = match self.as_vector(match_range, cell) {
+            Ok(values) => values,
+            Err(error) => return error,
         };
 
         match match_type {
@@ -404,84 +509,41 @@ impl<'a> Model<'a> {
             true
         };
         let range = self.evaluate_node_in_context(&args[1], cell);
-        match range {
-            CalcResult::Range { left, right } => {
-                if is_sorted {
-                    // This assumes the values in row are in order
-                    let l = self.binary_search(&lookup_value, &left, &right, false);
-                    if l == -2 {
-                        return CalcResult::Error {
-                            error: Error::NA,
-                            origin: cell,
-                            message: "Not found".to_string(),
-                        };
-                    }
-                    let row = left.row + row_index - 1;
-                    let column = left.column + l;
-                    if row > right.row {
-                        return CalcResult::Error {
-                            error: Error::REF,
-                            origin: cell,
-                            message: "Invalid reference".to_string(),
-                        };
-                    }
-                    self.evaluate_cell(CellReferenceIndex {
-                        sheet: left.sheet,
-                        row,
-                        column,
-                    })
-                } else {
-                    // Linear search for exact match
-                    let n = right.column - left.column + 1;
-                    let row = left.row + row_index - 1;
-                    if row > right.row {
-                        return CalcResult::Error {
-                            error: Error::REF,
-                            origin: cell,
-                            message: "Invalid reference".to_string(),
-                        };
-                    }
-                    let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
-                        if let CalcResult::String(s) = &lookup_value {
-                            if let Ok(reg) = from_wildcard_to_regex(&s.to_lowercase(), true) {
-                                Box::new(move |x| result_matches_regex(x, &reg))
-                            } else {
-                                Box::new(move |_| false)
-                            }
-                        } else {
-                            Box::new(move |x| compare_values(x, &lookup_value) == 0)
-                        };
-                    for l in 0..n {
-                        let value = self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row: left.row,
-                            column: left.column + l,
-                        });
-                        if result_matches(&value) {
-                            return self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column: left.column + l,
-                            });
-                        }
-                    }
-                    CalcResult::Error {
-                        error: Error::NA,
-                        origin: cell,
-                        message: "Not found".to_string(),
-                    }
+        let table = match range {
+            CalcResult::Range { left, right } => LookupTable::Range { left, right },
+            CalcResult::Array(array) => LookupTable::Array(array),
+            error @ CalcResult::Error { .. } => return error,
+            CalcResult::String(_) => {
+                return CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Range expected".to_string(),
                 }
             }
-            error @ CalcResult::Error { .. } => error,
-            CalcResult::String(_) => CalcResult::Error {
-                error: Error::VALUE,
+            _ => {
+                return CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Range expected".to_string(),
+                }
+            }
+        };
+        // `row_index` is 1-based and must point inside the table
+        if row_index < 1 || row_index > table.rows() {
+            return CalcResult::Error {
+                error: Error::REF,
                 origin: cell,
-                message: "Range expected".to_string(),
-            },
-            _ => CalcResult::Error {
+                message: "Invalid reference".to_string(),
+            };
+        }
+        // We look for `lookup_value` in the first row of the table
+        let search_vector = table.first_row(self, cell);
+        match lookup_index(&lookup_value, &search_vector, is_sorted) {
+            Some(column) => table.get(self, row_index - 1, column as i32, cell),
+            None => CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
-                message: "Range expected".to_string(),
+                message: "Not found".to_string(),
             },
         }
     }
@@ -511,95 +573,58 @@ impl<'a> Model<'a> {
             true
         };
         let range = self.evaluate_node_in_context(&args[1], cell);
-        match range {
-            CalcResult::Range { left, right } => {
-                if is_sorted {
-                    // This assumes the values in column are in order
-                    let l = self.binary_search(&lookup_value, &left, &right, true);
-                    if l == -2 {
-                        return CalcResult::Error {
-                            error: Error::NA,
-                            origin: cell,
-                            message: "Not found".to_string(),
-                        };
-                    }
-                    let row = left.row + l;
-                    let column = left.column + column_index - 1;
-                    if column > right.column {
-                        return CalcResult::Error {
-                            error: Error::REF,
-                            origin: cell,
-                            message: "Invalid reference".to_string(),
-                        };
-                    }
-                    self.evaluate_cell(CellReferenceIndex {
-                        sheet: left.sheet,
-                        row,
-                        column,
-                    })
-                } else {
-                    // Linear search for exact match
-                    let n = right.row - left.row + 1;
-                    let column = left.column + column_index - 1;
-                    if column > right.column {
-                        return CalcResult::Error {
-                            error: Error::REF,
-                            origin: cell,
-                            message: "Invalid reference".to_string(),
-                        };
-                    }
-                    let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
-                        if let CalcResult::String(s) = &lookup_value {
-                            if let Ok(reg) = from_wildcard_to_regex(&s.to_lowercase(), true) {
-                                Box::new(move |x| result_matches_regex(x, &reg))
-                            } else {
-                                Box::new(move |_| false)
-                            }
-                        } else {
-                            Box::new(move |x| compare_values(x, &lookup_value) == 0)
-                        };
-                    for l in 0..n {
-                        let value = self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row: left.row + l,
-                            column: left.column,
-                        });
-                        if result_matches(&value) {
-                            return self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row: left.row + l,
-                                column,
-                            });
-                        }
-                    }
-                    CalcResult::Error {
-                        error: Error::NA,
-                        origin: cell,
-                        message: "Not found".to_string(),
-                    }
+        let table = match range {
+            CalcResult::Range { left, right } => LookupTable::Range { left, right },
+            CalcResult::Array(array) => LookupTable::Array(array),
+            error @ CalcResult::Error { .. } => return error,
+            CalcResult::String(_) => {
+                return CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Range expected".to_string(),
                 }
             }
-            error @ CalcResult::Error { .. } => error,
-            CalcResult::String(_) => CalcResult::Error {
-                error: Error::VALUE,
+            _ => {
+                return CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Range expected".to_string(),
+                }
+            }
+        };
+        // `column_index` is 1-based and must point inside the table
+        if column_index < 1 || column_index > table.columns() {
+            return CalcResult::Error {
+                error: Error::REF,
                 origin: cell,
-                message: "Range expected".to_string(),
-            },
-            _ => CalcResult::Error {
+                message: "Invalid reference".to_string(),
+            };
+        }
+        // We look for `lookup_value` in the first column of the table
+        let search_vector = table.first_column(self, cell);
+        match lookup_index(&lookup_value, &search_vector, is_sorted) {
+            Some(row) => table.get(self, row as i32, column_index - 1, cell),
+            None => CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
-                message: "Range expected".to_string(),
+                message: "Not found".to_string(),
             },
         }
     }
 
-    // LOOKUP(lookup_value, lookup_vector, [result_vector])
-    // Important: The values in lookup_vector must be placed in ascending order:
+    // LOOKUP has two forms:
+    //   * Vector form: LOOKUP(lookup_value, lookup_vector, result_vector)
+    //     Searches a one-row/one-column `lookup_vector` and returns the value at
+    //     the same position in `result_vector`.
+    //   * Array form: LOOKUP(lookup_value, array)
+    //     If `array` has more columns than rows it searches the first row and
+    //     returns from the last row; otherwise it searches the first column and
+    //     returns from the last column. (This subsumes the vector case where the
+    //     "first" and "last" row/column coincide.)
+    // Important: The values being searched must be placed in ascending order:
     // ..., -2, -1, 0, 1, 2, ..., A-Z, FALSE, TRUE;
     // otherwise, LOOKUP might not return the correct value.
     // Uppercase and lowercase text are equivalent.
-    // TODO: Implement the other form of INDEX:
-    // INDEX(reference, row_num, [column_num], [area_num])
     // NOTE: Please read the caveat above in binary search
     pub(crate) fn fn_lookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 3 || args.len() < 2 {
@@ -609,83 +634,62 @@ impl<'a> Model<'a> {
         if target.is_error() {
             return target;
         }
-        let value = self.evaluate_node_in_context(&args[1], cell);
-        match value {
-            CalcResult::Range { left, right } => {
-                let is_row_vector;
-                if left.row == right.row {
-                    is_row_vector = false;
-                } else if left.column == right.column {
-                    is_row_vector = true;
-                } else {
-                    // second argument must be a vector
-                    return CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Second argument must be a vector".to_string(),
-                    };
-                }
-                let l = self.binary_search(&target, &left, &right, is_row_vector);
-                if l == -2 {
-                    return CalcResult::Error {
-                        error: Error::NA,
-                        origin: cell,
-                        message: "Not found".to_string(),
-                    };
-                }
+        // LOOKUP always assumes the values being searched are in ascending order.
+        let not_found = CalcResult::Error {
+            error: Error::NA,
+            origin: cell,
+            message: "Not found".to_string(),
+        };
 
-                if args.len() == 3 {
-                    let target_range = self.evaluate_node_in_context(&args[2], cell);
-                    match target_range {
-                        CalcResult::Range {
-                            left: l1,
-                            right: _r1,
-                        } => {
-                            let row;
-                            let column;
-                            if is_row_vector {
-                                row = l1.row + l;
-                                column = l1.column;
-                            } else {
-                                column = l1.column + l;
-                                row = l1.row;
-                            }
-                            self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            })
-                        }
-                        error @ CalcResult::Error { .. } => error,
-                        _ => CalcResult::Error {
-                            error: Error::NA,
-                            origin: cell,
-                            message: "Range expected".to_string(),
-                        },
-                    }
-                } else {
-                    let row;
-                    let column;
-                    if is_row_vector {
-                        row = left.row + l;
-                        column = left.column;
-                    } else {
-                        column = left.column + l;
-                        row = left.row;
-                    }
-                    self.evaluate_cell(CellReferenceIndex {
-                        sheet: left.sheet,
-                        row,
-                        column,
-                    })
+        if args.len() == 3 {
+            // Vector form: search the lookup vector, return from the result
+            // vector at the same position.
+            let value = self.evaluate_node_in_context(&args[1], cell);
+            let lookup_vector = match self.as_vector(value, cell) {
+                Ok(values) => values,
+                Err(error) => return error,
+            };
+            let l = match lookup_index(&target, &lookup_vector, true) {
+                Some(l) => l,
+                None => return not_found,
+            };
+            let result = self.evaluate_node_in_context(&args[2], cell);
+            let result_vector = match self.as_vector(result, cell) {
+                Ok(values) => values,
+                Err(error) => return error,
+            };
+            return result_vector.into_iter().nth(l).unwrap_or(not_found);
+        }
+
+        // Array form (also covers a plain vector, where the first and last
+        // row/column coincide).
+        let value = self.evaluate_node_in_context(&args[1], cell);
+        let table = match value {
+            CalcResult::Range { left, right } => LookupTable::Range { left, right },
+            CalcResult::Array(array) => LookupTable::Array(array),
+            error @ CalcResult::Error { .. } => return error,
+            _ => {
+                return CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Invalid".to_string(),
                 }
             }
-            error @ CalcResult::Error { .. } => error,
-            _ => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Range expected".to_string(),
-            },
+        };
+        if table.columns() > table.rows() {
+            // Search the first row, return from the last row.
+            let search_vector = table.first_row(self, cell);
+            match lookup_index(&target, &search_vector, true) {
+                Some(column) => table.get(self, table.rows() - 1, column as i32, cell),
+                None => not_found,
+            }
+        } else {
+            // Search the first column, return from the last column.
+            let search_vector = table.first_column(self, cell);
+            match lookup_index(&target, &search_vector, true) {
+                Some(row) => table.get(self, row as i32, table.columns() - 1, cell),
+                None => not_found,
+            }
         }
     }
 

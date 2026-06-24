@@ -170,18 +170,6 @@ impl<'a> Model<'a> {
         }
         result
     }
-
-    /// Old style binary search. Used in HLOOKUP, etc
-    pub(crate) fn binary_search(
-        &mut self,
-        target: &CalcResult,
-        left: &CellReferenceIndex,
-        right: &CellReferenceIndex,
-        is_row_vector: bool,
-    ) -> i32 {
-        let array = self.prepare_array(left, right, is_row_vector);
-        binary_search_on_array(target, &array)
-    }
 }
 
 /// Old style binary search over an already materialized vector of values.
