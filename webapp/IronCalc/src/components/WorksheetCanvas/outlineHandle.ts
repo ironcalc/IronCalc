@@ -212,7 +212,16 @@ export function attachOutlineHandle(
       lastUsedRow = r;
     }
 
-    for (let r = rowEnd + 1; r <= lastUsedRow; r += 1) {
+    const firstTargetRow = rowEnd + 1;
+    const firstTargetRowEmpty = Array.from(
+      { length: columnEnd - columnStart + 1 },
+      (_, i) => columnStart + i,
+    ).every(
+      (c) =>
+        worksheet.model.getFormattedCellValue(sheet, firstTargetRow, c) === "",
+    );
+
+    for (let r = firstTargetRow; r <= lastUsedRow; r += 1) {
       let isAnyCellNotEmpty = false;
       for (let c = columnStart; c <= columnEnd; c += 1) {
         if (worksheet.model.getFormattedCellValue(sheet, r, c) !== "") {
@@ -220,9 +229,17 @@ export function attachOutlineHandle(
           break;
         }
       }
-      if (isAnyCellNotEmpty) {
-        lastUsedRow = r - 1;
-        break;
+
+      if (firstTargetRowEmpty) {
+        if (isAnyCellNotEmpty) {
+          lastUsedRow = r - 1;
+          break;
+        }
+      } else {
+        if (!isAnyCellNotEmpty) {
+          lastUsedRow = r - 1;
+          break;
+        }
       }
     }
 
