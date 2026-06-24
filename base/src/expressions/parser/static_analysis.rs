@@ -200,6 +200,87 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
     };
 }
 
+/// Inverse of [`add_implicit_intersection`], used when exporting to Excel.
+///
+/// The internal (RC) representation stores every implicit intersection as `@`,
+/// losing the `automatic` flag. When exporting we must decide, for each `@`,
+/// whether it should be written as `_xlfn.SINGLE(...)` (because it is meaningful)
+/// or dropped (because `add_implicit_intersection` would re-insert it on import).
+///
+/// That decision depends on the *context* of the operator, exactly like
+/// `add_implicit_intersection`: an `@` is redundant only in a position that
+/// expects a scalar (`add == true`). Crucially, an `@` sitting in a `Vector`
+/// argument of a function such as `SUM` is **not** redundant: on import no
+/// automatic intersection is added there, so dropping it would change the result
+/// (e.g. `SUM(A1,B1,@J:J)` would become `SUM(A1,B1,J:J)`, scanning the whole
+/// column). This pass removes only the redundant operators, leaving the rest to
+/// be stringified as `_xlfn.SINGLE`.
+///
+/// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
+/// (a formula is evaluated in a scalar context).
+pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
+    match node {
+        // Leaves and nodes that never contain a nested implicit intersection.
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ErrorKind(_)
+        | Node::EmptyArgKind
+        | Node::ParseErrorKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
+        | Node::NamedFunctionKind { .. }
+        | Node::ArrayKind(_)
+        | Node::ReferenceKind { .. }
+        | Node::RangeKind { .. }
+        | Node::OpRangeKind { .. }
+        | Node::DefinedNameKind(_)
+        | Node::NamedVariableKind { .. }
+        | Node::TableNameKind(_)
+        | Node::LambdaDefKind { .. }
+        | Node::LambdaCallKind { .. } => {}
+        Node::ImplicitIntersection { child, .. } => {
+            if add {
+                // Would `add_implicit_intersection` re-insert this operator on
+                // import? Probe the child in a scalar context to find out.
+                let mut probe = child.as_ref().clone();
+                add_implicit_intersection(&mut probe, true);
+                if matches!(probe, Node::ImplicitIntersection { .. }) {
+                    // Redundant: drop the operator and keep cleaning the child.
+                    let mut inner = child.as_ref().clone();
+                    remove_redundant_implicit_intersection(&mut inner, false);
+                    *node = inner;
+                    return;
+                }
+            }
+            // Meaningful operator: keep it, but still clean any nested ones.
+            remove_redundant_implicit_intersection(child, false);
+        }
+        Node::SpillRangeOperator { child } => {
+            remove_redundant_implicit_intersection(child, add);
+        }
+        Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
+        Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right, .. }
+        | Node::CompareKind { left, right, .. } => {
+            remove_redundant_implicit_intersection(left, add);
+            remove_redundant_implicit_intersection(right, add);
+        }
+        Node::FunctionKind { kind, args } => {
+            let arg_count = args.len();
+            let signature = get_function_args_signature(kind, arg_count);
+            for index in 0..arg_count {
+                // Scalar arguments are an intersecting context; vector arguments
+                // (ranges/arrays) are not.
+                let child_add = matches!(signature[index], Signature::Scalar);
+                remove_redundant_implicit_intersection(&mut args[index], child_add);
+            }
+        }
+    };
+}
+
 /// The result of the static analysis of a node
 pub enum StaticResult {
     // The result of the evaluation is a single value (number, string, boolean, error)
@@ -1853,8 +1934,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Quotient => scalar_arguments(args),
         Function::Mround => scalar_arguments(args),
         Function::Trunc => scalar_arguments(args),
-        Function::Gcd => not_implemented(args),
-        Function::Lcm => not_implemented(args),
+        Function::Gcd => StaticResult::Scalar,
+        Function::Lcm => StaticResult::Scalar,
         Function::Base => scalar_arguments(args),
         Function::Decimal => scalar_arguments(args),
         Function::Roman => scalar_arguments(args),

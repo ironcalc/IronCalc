@@ -1,7 +1,7 @@
 use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
-use crate::expressions::parser::static_analysis::add_implicit_intersection;
+use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
 use crate::expressions::token::{OpSum, OpUnary};
 use crate::language::{get_language, Language};
 use crate::locale::{get_locale, Locale};
@@ -92,8 +92,14 @@ pub fn to_excel_string(node: &Node, context: &CellReferenceRC) -> String {
     let locale = get_locale("en").expect("");
     #[allow(clippy::expect_used)]
     let language = get_language("en").expect("");
+    // The internal representation stores every implicit intersection as `@`,
+    // without the `automatic` flag. Drop the operators that Excel would re-insert
+    // automatically on import; the rest are kept as `_xlfn.SINGLE` while
+    // stringifying. See `remove_redundant_implicit_intersection`.
+    let mut node = node.clone();
+    remove_redundant_implicit_intersection(&mut node, true);
     stringify(
-        node,
+        &node,
         Some(context),
         &DisplaceData::None,
         true,
@@ -1033,21 +1039,9 @@ fn stringify(
             child,
         } => {
             if export_to_excel {
-                // We need to check wether the II can be automatic or not
-                let mut new_node = child.as_ref().clone();
-
-                add_implicit_intersection(&mut new_node, true);
-                if matches!(&new_node, Node::ImplicitIntersection { .. }) {
-                    return stringify(
-                        child,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language,
-                    );
-                }
-
+                // Redundant operators have already been stripped by
+                // `remove_redundant_implicit_intersection`; whatever remains is
+                // meaningful and must be exported explicitly.
                 return format!(
                     "_xlfn.SINGLE({})",
                     stringify(
