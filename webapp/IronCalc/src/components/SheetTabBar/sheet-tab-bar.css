@@ -61,6 +61,10 @@
   background-color: var(--palette-grey-300);
 }
 
+.ic-sheet-tab-bar-regional-settings-icon-button {
+  display: none;
+}
+
 @media (max-width: 769px) {
   .ic-sheet-tab-bar-left-buttons-container {
     padding: 0 8px;
@@ -70,7 +74,16 @@
     border-right: 1px solid var(--palette-grey-200);
   }
 
-  .ic-sheet-tab-bar-right-container {
+  .ic-sheet-tab-bar-regional-settings-button {
     display: none;
+  }
+
+  .ic-sheet-tab-bar-regional-settings-icon-button {
+    display: inline-flex;
+  }
+
+  .ic-sheet-tab-bar-right-container {
+    border-left: 1px solid var(--palette-grey-200);
+    gap: 0;
   }
 }
