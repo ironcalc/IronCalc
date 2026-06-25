@@ -300,31 +300,6 @@ export function isRangeInRanges(range: string, ranges: string): boolean {
   }
 }
 
-// Splits a space-separated list of ranges into individual tokens, keeping
-// spaces that live inside a quoted sheet name (e.g. `'My Sheet'!A1`) together.
-function _splitRanges(ranges: string): string[] {
-  const parts: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (const ch of ranges) {
-    if (ch === "'") {
-      inQuotes = !inQuotes;
-      current += ch;
-    } else if (/\s/.test(ch) && !inQuotes) {
-      if (current !== "") {
-        parts.push(current);
-        current = "";
-      }
-    } else {
-      current += ch;
-    }
-  }
-  if (current !== "") {
-    parts.push(current);
-  }
-  return parts;
-}
-
 /**
  * Returns true if `ranges` is a space-separated list of plain references or
  * ranges in canonical form: upper-case columns, no sheet names, no `$` absolute
